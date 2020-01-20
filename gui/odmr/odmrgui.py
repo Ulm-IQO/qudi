@@ -203,6 +203,8 @@ class ODMRGui(GUIBase):
                 add_range_button.setMaximumWidth(100)
                 add_range_button.clicked.connect(self.add_ranges_gui_elements_clicked)
                 gridLayout.addWidget(add_range_button, row, 7, 1, 1)
+                setattr(self._mw.odmr_control_DockWidget, 'add_range_button',
+                        add_range_button)
 
                 remove_range_button = QtWidgets.QPushButton(groupBox)
                 remove_range_button.setText('Remove Range')
@@ -210,6 +212,8 @@ class ODMRGui(GUIBase):
                 remove_range_button.setMaximumWidth(100)
                 remove_range_button.clicked.connect(self.remove_ranges_gui_elements_clicked)
                 gridLayout.addWidget(remove_range_button, row, 8, 1, 1)
+                setattr(self._mw.odmr_control_DockWidget, 'remove_range_button',
+                        remove_range_button)
 
                 matrix_range_label = QtWidgets.QLabel(groupBox)
                 matrix_range_label.setText('Matrix Range:')
@@ -226,7 +230,7 @@ class ODMRGui(GUIBase):
                 setattr(self._mw.odmr_control_DockWidget, 'matrix_range_SpinBox',
                         matrix_range_SpinBox)
 
-
+        self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
         setattr(self._mw.odmr_control_DockWidget, 'ranges_groupBox', groupBox)
         self._mw.dockWidgetContents_3_grid_layout = self._mw.dockWidgetContents_3.layout()
         # (QWidget * widget, int row, int column, Qt::Alignment alignment = Qt::Alignment())
@@ -571,8 +575,13 @@ class ODMRGui(GUIBase):
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
         self._odmr_logic.ranges -= 1
-        self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+        max_val = self._odmr_logic.ranges - 1
+        self._mw.fit_range_SpinBox.setMaximum(max_val)
+        if self._mw.fit_range_SpinBox.value() >  max_val:
+            self._mw.fit_range_SpinBox.setValue(max_val)
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+        if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() >  max_val:
+            self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setValue(max_val)
         return
 
     def get_objects_from_groupbox_row(self, row):
@@ -647,6 +656,8 @@ class ODMRGui(GUIBase):
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
                 [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
+            self._mw.odmr_control_DockWidget.add_range_button.setEnabled(False)
+            self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(False)
             self._mw.runtime_DoubleSpinBox.setEnabled(False)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
             self._sd.oversampling_SpinBox.setEnabled(False)
@@ -671,6 +682,8 @@ class ODMRGui(GUIBase):
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
                 [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
+            self._mw.odmr_control_DockWidget.add_range_button.setEnabled(False)
+            self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(False)
             self._mw.runtime_DoubleSpinBox.setEnabled(False)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
             self._sd.oversampling_SpinBox.setEnabled(False)
@@ -722,6 +735,8 @@ class ODMRGui(GUIBase):
                 for identifier_name in dspinbox_dict:
                     dspinbox_type_list = dspinbox_dict[identifier_name]
                     [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
+                self._mw.odmr_control_DockWidget.add_range_button.setEnabled(False)
+                self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(False)
                 self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
                 self._mw.runtime_DoubleSpinBox.setEnabled(False)
                 self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
@@ -738,6 +753,8 @@ class ODMRGui(GUIBase):
                 for identifier_name in dspinbox_dict:
                     dspinbox_type_list = dspinbox_dict[identifier_name]
                     [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
+                self._mw.odmr_control_DockWidget.add_range_button.setEnabled(True)
+                self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(True)
                 self._mw.sweep_power_DoubleSpinBox.setEnabled(True)
                 self._mw.runtime_DoubleSpinBox.setEnabled(True)
                 self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
@@ -758,6 +775,8 @@ class ODMRGui(GUIBase):
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
                 [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
+            self._mw.odmr_control_DockWidget.add_range_button.setEnabled(True)
+            self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(True)
             self._mw.runtime_DoubleSpinBox.setEnabled(True)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
             self._sd.oversampling_SpinBox.setEnabled(True)
@@ -784,9 +803,6 @@ class ODMRGui(GUIBase):
         # Update raw data matrix plot
         cb_range = self.get_matrix_cb_range()
         self.update_colorbar(cb_range)
-        self.log.warning("QRect Settings")
-        self.log.warning("First argument {}".format(odmr_data_x[0]))
-        self.log.warning("Third argument {}".format(odmr_data_x[-1] - odmr_data_x[0]))
         matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
         start = self._odmr_logic.mw_starts[matrix_range]
         step = self._odmr_logic.mw_steps[matrix_range]
@@ -808,7 +824,6 @@ class ODMRGui(GUIBase):
         x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
         y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
         odmr_matrix_range = odmr_matrix_dp[:, y_args]
-        self.log.warning('odmr_matrix_shape {}'.format(odmr_matrix.shape))
         self.odmr_matrix_image.setImage(
             image=odmr_matrix_range,
             axisOrder='row-major',
