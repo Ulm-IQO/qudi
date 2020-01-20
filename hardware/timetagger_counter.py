@@ -150,7 +150,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
     def get_counter_channels(self):
         if self._mode < 2:
-            return self._channel_apd
+            return [self._channel_apd]
         else:
             return [self._channel_apd_0, self._channel_apd_1]
 
