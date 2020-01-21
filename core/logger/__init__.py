@@ -20,7 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 __version__ = '0.1'
-__all__ = ('file_handler',
+__all__ = ('cleanup_handlers',
+           'file_handler',
            'get_handler',
            'get_logger',
            'init_rotating_file_handler',
@@ -97,6 +98,15 @@ def unregister_handler(handler_name, silent=False):
         raise KeyError('Unable to unregister logging handler. No handler by name "{0}" '
                        'registered.'.format(handler_name))
     return
+
+
+def cleanup_handlers():
+    global _handlers
+    if len(_root_logger.handlers) > 1:
+        for handler in _root_logger.handlers[1:]:
+            if handler is qt_handler:
+                continue
+            _root_logger.removeHandler(handler)
 
 
 def get_handler(name):
