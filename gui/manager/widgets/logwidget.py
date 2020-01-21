@@ -17,12 +17,11 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-Derived form ACQ4:
-Copyright 2010  Luke Campagnola
-Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
+import traceback
+from datetime import datetime
+from core.logger import get_logger, signal_handler
 from qtpy import QtCore, QtGui, QtWidgets
 
 
@@ -30,19 +29,22 @@ class LogTableModel(QtCore.QAbstractTableModel):
     """ This is a Qt model that represents the log for display in a QTableView.
     """
 
-    def __init__(self, parent=None, **kwargs):
+    _color_map = {'debug': QtGui.QColor('#77F'),
+                  'info': QtGui.QColor('#1F1'),
+                  'warning': QtGui.QColor('#F90'),
+                  'error': QtGui.QColor('#F11'),
+                  'critical': QtGui.QColor('#FF00FF')
+                  }
+    _fallback_color = QtGui.QColor('#FFF')
+    _header = ('Name', 'Time', 'Level', 'Message')
+
+    def __init__(self, parent=None, max_entries=1000, **kwargs):
         """ Set up the model.
         """
-        super().__init__(parent, **kwargs)
-        self.header = ('Name', 'Time', 'Level', 'Message')
-        self.color_map = {
-            'debug':   QtGui.QColor('#77F'),
-            'info':     QtGui.QColor('#1F1'),
-            'warning':  QtGui.QColor('#F90'),
-            'error':    QtGui.QColor('#F11'),
-            'critical': QtGui.QColor('#FF00FF')
-        }
-        self.entries = list()
+        super().__init__(parent)
+        self.max_entries = max(int(max_entries), 1)
+        self._entries = list()
+        signal_handler.sigMessageLogged.connect(self.append_entry, QtCore.Qt.QueuedConnection)
 
     def rowCount(self, parent=None):
         """
@@ -50,7 +52,7 @@ class LogTableModel(QtCore.QAbstractTableModel):
 
         @return int: number of log entries stored
         """
-        return len(self.entries)
+        return len(self._entries)
 
     def columnCount(self, parent=None):
         """
@@ -58,7 +60,7 @@ class LogTableModel(QtCore.QAbstractTableModel):
 
         @return int: number of log entry columns
         """
-        return len(self.header)
+        return len(self._header)
 
     def flags(self, index):
         """
@@ -71,47 +73,22 @@ class LogTableModel(QtCore.QAbstractTableModel):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
 
     def data(self, index, role):
-        """
-        Get data from model for a given cell. Data can have a role that affects display.
+        """Get data from model for a given cell. Data can have a role that affects display.
 
         @param QModelIndex index: cell for which data is requested
         @param ItemDataRole role: role for which data is requested
 
         @return QVariant: data for given cell and role
         """
-        if not index.isValid():
-            return None
-        elif role == QtCore.Qt.TextColorRole:
-            try:
-                return self.color_map[self.entries[index.row()][2]]
-            except KeyError:
-                return QtGui.QColor('#FFF')
-        elif role == QtCore.Qt.DisplayRole:
-            return self.entries[index.row()][index.column()]
-        elif role == QtCore.Qt.EditRole:
-            return self.entries[index.row()][index.column()]
-        else:
-            return None
-
-    def setData(self, index, value, role=None):
-        """
-        Set data in model for a given cell. Data can have a role that affects display.
-
-        @param QModelIndex index: cell for which data is requested
-        @param QVariant value: data tht is set in the cell
-        @param ItemDataRole role: role for which data is requested
-
-        @return bool: True if setting data succeeded, False otherwise
-        """
-        if role is None or role == QtCore.Qt.EditRole:
-            try:
-                self.entries[index.row()][index.column()] = value
-            except Exception:
-                return False
-            topleft = self.createIndex(index.row(), 0)
-            bottomright = self.createIndex(index.row(), 3)
-            self.dataChanged.emit(topleft, bottomright)
-            return True
+        if index.isValid():
+            if role == QtCore.Qt.TextColorRole:
+                try:
+                    return self._color_map[self._entries[index.row()][2]]
+                except KeyError:
+                    return self._fallback_color
+            if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.ToolTipRole or role == QtCore.Qt.EditRole:
+                return self._entries[index.row()][index.column()]
+        return None
 
     def headerData(self, section, orientation, role=None):
         """
@@ -123,72 +100,62 @@ class LogTableModel(QtCore.QAbstractTableModel):
 
         @return QVariant: header data for given column and role
         """
-        if not(0 <= section < len(self.header)):
-            return None
-        elif role is not None and role != QtCore.Qt.DisplayRole:
-            return None
-        elif orientation != QtCore.Qt.Horizontal:
-            return None
-        return self.header[section]
+        if (role is None or role == QtCore.Qt.DisplayRole) and orientation == QtCore.Qt.Horizontal:
+            try:
+                return self._header[section]
+            except IndexError:
+                pass
+        return None
 
-    def insert_entry(self, row, data):
-        """
-        Helper method to add a single log entry to the model.
-        Invokes insert_entries.
+    @staticmethod
+    def _format_log_record(record):
+        # Compose message to display
+        message = record.message if hasattr(record, 'message') else record.msg
+        if record.exc_info is not None:
+            message += '\n{0}'.format(traceback.format_exception(*record.exc_info)[-1][:-1])
+            tb = '\n'.join(traceback.format_exception(*record.exc_info)[:-1])
+            if tb:
+                message += '\n{0}'.format(tb)
 
-        @param int row: row before which to insert log entry
-        @param list[4] data: log entry in list format
+        # Create human-readable timestamp
+        timestamp = datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S')
 
+        # return 4 element tuple (name, timestamp, level, message)
+        return record.name, timestamp, record.levelname, message
+
+    @QtCore.Slot(object)
+    def append_entry(self, data):
+        """Append a single log entry to the end of the table model.
+
+        @param logging.LogRecord data: log record as returned from logging module
         @return bool: True if adding entry succeeded, False otherwise
         """
-        return self.insert_entries(row, [data])
 
-    def insert_entries(self, row, data):
-        """
-        Helper method to add multiple log entries to the model by inserting rows and filling them
-        with data.
-
-        @param int row: row before which to insert log entry
-        @param list data: log entries in list format (list of list of 4 elements)
-
-        @return bool: True if adding entry succeeded, False otherwise
-        """
-        self.beginInsertRows(QtCore.QModelIndex(), row, row + len(data) - 1)
-        self.entries[row:row] = data
-        self.endInsertRows()
-        top_left = self.createIndex(row, 0)
-        bottom_right = self.createIndex(row, 3)
-        self.dataChanged.emit(top_left, bottom_right)
+        row = len(self._entries)
+        remove = self.free_slots < 1
+        if remove:
+            # FIXME: Properly implement circular buffer style update of data model instead of reset
+            self.beginResetModel()
+            del self._entries[0]
+            self._entries.append(self._format_log_record(data))
+            self.endResetModel()
+        else:
+            self.beginInsertRows(QtCore.QModelIndex(), row, row)
+            self._entries.append(self._format_log_record(data))
+            self.endInsertRows()
+            top_left = self.createIndex(row, 0)
+            bottom_right = self.createIndex(row, 3)
+            self.dataChanged.emit(top_left, bottom_right)
         return True
 
-    def removeRow(self, row, parent=None):
+    @property
+    def free_slots(self):
+        """Read-Only property representing the number of free log entry slots that can be filled
+        before entries are discarded from the top of the table.
+
+        @return int: Number of free entry slots
         """
-        Remove single row (log entry) from model.
-        Invokes removeRows.
-
-        @param int row: from which row on to remove rows
-        @param QModelIndex parent: parent model index
-
-        @return bool: True if removal succeeded, False otherwise
-        """
-        return self.removeRows(row, 1, parent)
-
-    def removeRows(self, row, count, parent=None):
-        """
-        Remove rows (log entries) from model.
-
-        @param int row: from which row on to remove rows
-        @param int count: how many rows to remove
-        @param QModelIndex parent: parent model index
-
-        @return bool: True if removal succeeded, False otherwise
-        """
-        if parent is None:
-            parent = QtCore.QModelIndex()
-        self.beginRemoveRows(parent, row, row + count - 1)
-        del self.entries[row:row + count]
-        self.endRemoveRows()
-        return True
+        return self.max_entries - len(self._entries)
 
 
 class LogFilterProxy(QtCore.QSortFilterProxyModel):
@@ -246,25 +213,22 @@ class LogFilterProxy(QtCore.QSortFilterProxyModel):
         return
 
 
-class AutoToolTipDelegate(QtWidgets.QStyledItemDelegate):
-    """ A subclass of QStyledItemDelegate to display a tooltip if the text
-        doesn't fit into the cell.
+class SelectableTextDelegate(QtWidgets.QStyledItemDelegate):
+    """A subclass of QStyledItemDelegate to display a text editor for copying text fragments.
     """
     def createEditor(self, parent, option, index):
-        """
-        Overwrite method from base class QStyledItemDelegate to show a read-only QLineEdit widget.
+        """Overwrite method from base class QStyledItemDelegate to show a read-only QLabel widget.
         This is necessary to disable editing by the user but still be able to mark and copy text.
 
         @param QObject parent: The parent object for the editor to be created
         @param QStyleOptionViewItem option: Display options for the editor widget
         @param QModelIndex index: Data model index
 
-        @return QLineEdit: QLineEdit instance configured as read-only
+        @return QLabel: QLabel instance
         """
-        editor = QtWidgets.QLineEdit(parent)
+        editor = QtWidgets.QLabel(parent)
+        editor.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         editor.setAlignment(option.displayAlignment)
-        editor.setFont(option.font)
-        editor.setReadOnly(True)
         return editor
 
     def setEditorData(self, editor, index):
@@ -278,49 +242,22 @@ class AutoToolTipDelegate(QtWidgets.QStyledItemDelegate):
         editor.setText(data)
         return
 
-    def helpEvent(self, e, view, option, index):
-        """
-        The method responsible for displaying the tooltip. It ignores custom tooltips.
 
-        @param QHelpEvent e: the help event
-        @param QAbstractItemView view: the view
-        @param QStyleOptionViewItem option: the display options
-        @param QModelIndex index: the model index
-        """
-        if e is None or view is None:
-            return False
-
-        if e.type() == QtCore.QEvent.ToolTip:
-            if index.isValid():
-                text = index.data(QtCore.Qt.DisplayRole)
-                QtWidgets.QToolTip.showText(e.globalPos(), text, view)
-            else:
-                QtWidgets.QToolTip.hideText()
-            return True
-        return super().helpEvent(e, view, option, index)
-
-import logging
-from core.logger import QtLogFormatter
-class LogWidget(logging.Handler, QtWidgets.QSplitter):
+class LogWidget(QtWidgets.QSplitter):
     """A widget to show log entries and filter them.
     """
-    _sigAddEntry = QtCore.Signal(object)
 
-    def __init__(self, parent=None, **kwargs):
+    def __init__(self, parent=None, max_entries=1000, **kwargs):
         """
         Creates the log widget.
 
         @param QObject parent: Qt parent object for log widget
         @param Manager manager: Manager instance this widget belongs to
         """
-        # super().__init__(QtCore.Qt.Horizontal, parent, **kwargs)
-        logging.Handler.__init__(self, level=0)
-        QtWidgets.QSplitter.__init__(self, QtCore.Qt.Horizontal, parent)
-        self.setFormatter(QtLogFormatter())
-        self._log_length = 1000  # Number of max log model entries
+        super().__init__(QtCore.Qt.Horizontal, parent, **kwargs)
 
         # Set up data model and visibility filter model
-        self.log_model = LogTableModel()
+        self.log_model = LogTableModel(max_entries=max_entries)
         self.filter_model = LogFilterProxy()
         self.filter_model.setSourceModel(self.log_model)
 
@@ -356,7 +293,7 @@ class LogWidget(logging.Handler, QtWidgets.QSplitter):
         self.output_tableview.verticalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.ResizeToContents)
         self.output_tableview.verticalHeader().hide()
-        self.output_tableview.setItemDelegate(AutoToolTipDelegate(self.output_tableview))
+        self.output_tableview.setItemDelegate(SelectableTextDelegate())
 
         # Set up QTreeWidget for log filter ui
         self.filter_treewidget = QtWidgets.QTreeWidget()
@@ -392,23 +329,8 @@ class LogWidget(logging.Handler, QtWidgets.QSplitter):
         self.addWidget(self.filter_treewidget)
 
         # connect signals
-        self._sigAddEntry.connect(self.add_entry, QtCore.Qt.QueuedConnection)
         self.filter_treewidget.itemChanged.connect(self.update_filter_state)
-
-        logging.getLogger().addHandler(self)
-
-    def __del__(self):
-        logging.getLogger().removeHandler(self)
-        # super().__del__()
-
-    def emit(self, record):
-        record = self.format(record)
-        if record:
-            print(self.parent())
-            # This is a workaround for PySide2. Signal emits cause calls to <instance>.emit()
-            # QtCore.QObject.emit(self, QtCore.SIGNAL('sigLoggedMessage(PyObject)'), record)
-            # self.sigLoggedMessage.emit(record)
-            self.add_entry(record)
+        self.log_model.dataChanged.connect(self.scroll_to_bottom)
 
     @property
     def log_length(self):
@@ -417,7 +339,7 @@ class LogWidget(logging.Handler, QtWidgets.QSplitter):
 
         @return int: maximum number of log entries to be stored in model
         """
-        return self._log_length
+        return self.log_model.max_entries
 
     @log_length.setter
     def log_length(self, length):
@@ -428,7 +350,7 @@ class LogWidget(logging.Handler, QtWidgets.QSplitter):
         """
         length = int(length)
         if length > 0:
-            self._log_length = length
+            self.log_model.max_entries = length
         return
 
     @QtCore.Slot(int)
@@ -440,54 +362,32 @@ class LogWidget(logging.Handler, QtWidgets.QSplitter):
         """
         self.log_length = length
 
-    def load_from_file(self, f):
+    def load_from_file(self, file):
         """Load a log file for display.
 
-          @param str f: path to file that should be laoded.
-
-        f must be able to be read by pyqtgraph configfile.py
+        @param str file: path to file that should be loaded.
         """
         raise NotImplementedError()
 
-    @QtCore.Slot(object)
-    def add_entry(self, entry):
-        """
-        Add a log entry to the log view.
-
-        @param dict entry: log entry in dict format
-        """
-        # All incoming messages begin here
-        # for thread safety:
-        if QtCore.QThread.currentThread() != QtCore.QCoreApplication.instance().thread():
-            self._sigAddEntry.emit(entry)
-            return
-        if self.log_model.rowCount() > self.log_length:
-            self.log_model.removeRows(0, self.log_model.rowCount() - self.log_length)
-        text = entry['message']
-        if entry.get('exception') is not None:
-            if 'reasons' in entry['exception']:
-                text += '\n' + entry['exception']['reasons']
-            if 'message' in entry['exception']:
-                text += '\n' + entry['exception']['message']
-            for line in entry['exception']['traceback']:
-                text += '\n' + str(line)
-        log_entry = [entry['name'], entry['timestamp'], entry['level'], text]
-        self.log_model.insert_entry(self.log_model.rowCount(), log_entry)
-        self.output_tableview.scrollToBottom()
-
     @QtCore.Slot(int)
     def scroll_to_entry(self, entry_index):
-        """
-        Scroll to row in QTableView.
+        """Scroll to row in QTableView.
 
         @param int entry_index: row index to scroll the view to
         """
         self.output_tableview.scrollTo(self.log_model.index(entry_index, 0))
 
+    @QtCore.Slot()
+    def scroll_to_bottom(self):
+        self.output_tableview.scrollToBottom()
+
+    @QtCore.Slot()
+    def scroll_to_top(self):
+        self.output_tableview.scrollToTop()
+
     @QtCore.Slot(object, int)
     def update_filter_state(self, item, column):
-        """
-        Update log view from filter widget check states and synchronize check box states.
+        """Update log view from filter widget check states and synchronize check box states.
 
         @param int item: Item number
         @param int column: Column number
@@ -508,3 +408,4 @@ class LogWidget(logging.Handler, QtWidgets.QSplitter):
             if self.filter_treewidget.topLevelItem(1).checkState(0) or child.checkState(0):
                 level_filter.add(str(child.text(0)))
         self.filter_model.set_levels(level_filter)
+        self.scroll_to_bottom()
