@@ -51,10 +51,9 @@ args = parser.parse_args()
 
 
 # install logging facility
-from .logger import initialize_logger
-initialize_logger(args.logdir)
-import logging
-logger = logging.getLogger(__name__)
+from .logger import init_rotating_file_handler, get_logger
+init_rotating_file_handler(path=args.logdir)
+logger = get_logger(__name__)
 logger.info('Loading Qudi...')
 print('Loading Qudi...')
 
@@ -75,43 +74,8 @@ err_code = import_check()
 if err_code != 0:
     sys.exit(err_code)
 
-
-# install logging facility for Qt errors
-import qtpy
-from qtpy import QtCore
-
-
-def qt_message_handler(msg_type, context, msg):
-    """
-    A message handler handling Qt messages.
-    """
-    logger = logging.getLogger('Qt')
-    if qtpy.PYQT4:
-        msg = msg.decode('utf-8')
-    if msg_type == QtCore.QtDebugMsg:
-        logger.debug(msg)
-    elif msg_type == QtCore.QtWarningMsg:
-        logger.warning(msg)
-    elif msg_type == QtCore.QtCriticalMsg:
-        logger.critical(msg)
-    else:
-        import traceback
-        logger.critical('Fatal error occurred: {0}\nTraceback:\n{1}'
-                        ''.format(msg, ''.join(traceback.format_stack())))
-        global man
-        if man is not None:
-            logger.critical('Asking manager to quit.')
-            try:
-                man.quit()
-                QtCore.QCoreApplication.instance().processEvents()
-            except:
-                logger.exception('Manager failed quitting.')
-
-
-QtCore.qInstallMessageHandler(qt_message_handler)
-
-
 # instantiate Qt Application (gui or non-gui)
+from qtpy import QtCore
 if args.no_gui:
     app = QtCore.QCoreApplication(sys.argv)
 else:
@@ -235,11 +199,10 @@ if args.manhole:
     manhole.install()
 
 
-# Start Qt event loop unless running in interactive mode and not using PySide.
+# Start Qt event loop unless running in interactive mode
 import core.util.helpers as helpers
-interactive = (sys.flags.interactive == 1) and not qtpy.PYSIDE
 
-if interactive:
+if sys.flags.interactive == 1:
     logger.info('Interactive mode; not starting event loop.')
     print('Interactive mode; not starting event loop.')
 

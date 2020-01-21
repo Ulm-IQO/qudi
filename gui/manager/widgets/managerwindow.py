@@ -28,7 +28,7 @@ from .consolesettingsdialog import ConsoleSettingsDialog
 from .modulewidget import ModuleScrollWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-import logging
+
 class ManagerMainWindow(QtWidgets.QMainWindow):
     """
     Main Window definition for the manager GUI.
@@ -183,7 +183,7 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         self.config_dockwidget.setWidget(self.config_widget)
         self.config_dockwidget.setAllowedAreas(
             QtCore.Qt.BottomDockWidgetArea | QtCore.Qt.LeftDockWidgetArea)
-        self.log_widget = LogWidget()
+        self.log_widget = LogWidget(max_entries=10000)
         self.log_dockwidget = QtWidgets.QDockWidget('Log')
         self.log_dockwidget.setWidget(self.log_widget)
         self.log_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
