@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Bug fix to qudikernel.py kernel installer for Python 3.7.6
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
