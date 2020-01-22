@@ -20,6 +20,17 @@ from interface.fast_counter_interface import FastCounterInterface
 class Qutau(Base, FastCounterInterface):
     """
     This is just a dummy hardware class to be used with SimpleDataReaderLogic.
+    This is a dummy config file:
+        fastcounter_qutau:
+            module.Class: 'qutau.qutau.Qutau'
+            deviceID: -1
+            activeChannels: [1, 2]
+            coincidenceWindow: 0
+            fileformat: 'FORMAT_ASCII'
+            filename: 'C:/Data/qutau/binary'
+            minimal_binwidth: 0.081e-9
+            gated: False
+            aom_delay: 400e-9
     """
     _deviceId = ConfigOption('deviceID', 0, missing='warn')
     _activeChannels = ConfigOption('activeChannels', 0, missing='warn')
@@ -27,7 +38,7 @@ class Qutau(Base, FastCounterInterface):
     _fileformat = ConfigOption('fileformat', 0, missing='warn')
     _filename = ConfigOption('filename', 0, missing='warn')
     _bufferSize = 500
-    minimal_binwidth = ConfigOption('minimal_binwidth', 0.082e-9, missing='warn')
+    minimal_binwidth = ConfigOption('minimal_binwidth', missing='warn')
     gated = ConfigOption('gated', False, missing='warn')
     aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')
     _trigger_channel = 1  # means channel 2
@@ -56,6 +67,7 @@ class Qutau(Base, FastCounterInterface):
                          14: 'Requested Feature is not available'}
 
     def Initialize(self, id=_deviceId):
+        """Initialize QuTau '-1' enables all detected QuTau devices"""
         ans = self._dll.TDC_init(-1)
 
         if ans is not 0:
@@ -63,6 +75,7 @@ class Qutau(Base, FastCounterInterface):
         return ans
 
     def deInitialize(self):
+        """Disconnect QuTau"""
         ans = self._dll.TDC_deInit()
 
         if ans is not 0:  # from the documentation: "never fails"
@@ -88,6 +101,8 @@ class Qutau(Base, FastCounterInterface):
             print('Error in TDC_enableChannels' + self.err_dict[error])
 
     def setCoincidenceWindow(self, coincWin=None):
+        """Set Coincidence Window.
+            Sets the coincidence time window for the integrated coincidence counting. """
         if coincWin is None:
             coincWin = int(self._coincWin)
         ans = self._dll.TDC_setCoincidenceWindow(coincWin)
@@ -96,6 +111,9 @@ class Qutau(Base, FastCounterInterface):
         return 0
 
     def getDeviceParams(self):
+        """Read Back Device Parameters.
+        Reads the device parameters back from the device.
+        All Parameters are output parameters but may be NULL-Pointers if the result is not required. """
         channels = ctypes.c_int32()
         coinc_window = ctypes.c_int32()
         exp_time = ctypes.c_int32()
@@ -131,6 +149,8 @@ class Qutau(Base, FastCounterInterface):
         return ans
 
     def getBufferSize(self):
+        """Read back Timestamp Buffer Size.
+        Reads back the buffer size as set by TDC_setTimestampBufferSize. """
         sz = ctypes.c_int32()
         ans = self._dll.TDC_getTimestampBufferSize(ctypes.byref(sz))
         if ans != 0:
@@ -138,13 +158,40 @@ class Qutau(Base, FastCounterInterface):
         return sz.value
 
     def setBufferSize(self, size):
+        """Set Timestamp Buffer Size.
+        Sets the size of a ring buffer that stores the timestamps of the last detected events. The buffer's
+        contents can be retrieved with TDC_getLastTimestamps. By default, the buffersize is 0. When the function
+        is called, the buffer is cleared. """
         ans = self._dll.TDC_setTimestampBufferSize(size)
         if ans != 0:
             print("Error in TDC_setTimestampBufferSize: " + self.err_dict[ans])
         return ans
 
     def getLastTimestamps(self, reset=True):
+        """
+        Retrieve Last Timestamp Values.
 
+        Retrieves the timestamp values of the last n detected events on all TDC channels. The buffer size must have
+        been set with TDC_setTimestampBufferSize , otherwise 0 data will be returned.
+
+        Parameters:
+
+        reset	    If the data should be cleared after retrieving.
+
+        timestamps	Output: Timestamps of the last events in base units, see TDC_getTimebase. The array must have at
+                    least size elements, see TDC_setTimestampBufferSize . A NULL pointer is allowed to ignore the data.
+
+        channels	Output: Numbers of the channels where the events have been detected. Every array element belongs
+                    to the timestamp with the same index. Range is 0...7 for channels 1...8. The array must have at
+                    least size elements, see TDC_setTimestampBufferSize . A NULL pointer is allowed to ignore the data.
+
+        valid	    Output: Number of valid entries in the above arrays. May be less than the buffer size if the buffer
+                    has been cleared.
+
+        Returns
+            TDC_Ok (never fails)
+
+        """
         if self._number_of_gates:
             timestamps = np.zeros((self._number_of_gates, int(self._bufferSize)), dtype=np.int64)
             channels = np.zeros(int(self._bufferSize), dtype=np.int8)
@@ -224,9 +271,9 @@ class Qutau(Base, FastCounterInterface):
 
         # the unit of those entries are seconds per bin. In order to get the
         # current binwidth in seconds use the get_binwidth method.
-        constraints['hardware_binwidth_list'] = list(0.082e-9 * (2 ** np.array(
+        constraints['hardware_binwidth_list'] = list(0.081e-9 * (2 ** np.array(
             np.linspace(0, 24, 25))))
-        constraints['max_sweep_len'] = 6.8
+        constraints['max_sweep_len'] = 6.8 # todo add correct max sweep length
         return constraints
 
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
@@ -353,7 +400,6 @@ class Qutau(Base, FastCounterInterface):
         trigger_length = np.diff(timestamp_trigger)
         # average_sequence_length = np.average(trigger_length)
         index_count = np.where(channel_array == self._count_channel)
-          # todo not correct
         # calculate for each count event after a trigger event the time difference
         for ii, ch in enumerate(channel_array):
             if ch == self._trigger_channel:
@@ -367,46 +413,3 @@ class Qutau(Base, FastCounterInterface):
                      'elapsed_time': None}
 
         return self.counts_bin_array, info_dict
-
-    ################################################################################################
-    # You can either use the interface method decorator concept like this:
-    ################################################################################################
-
-# class Qutau(Base, SimpleDataInterface):
-#     _deviceId = ConfigOption('deviceID', 0, missing='warn')
-#
-#     def __init__(self):
-#         self._dll = ctypes.windll.LoadLibrary('tdcbase')
-#
-#     def on_activate(self):
-#         pass
-#
-#     def on_deactivate(self):
-#         pass
-#
-#     def getData(self):
-#         pass
-#
-#     def getChannels(self):
-#         pass
-#
-#     def init_TDC(self):
-#         answer = self._dll.TDC_init(-1)
-#
-#         return answer
-#
-#     def enable_channel(self):
-#         """enable all channels 15"""
-#         answer = self._dll.TDC_enableChannels(15)
-#
-#         return answer
-#
-#     def getDeviceParams(self):
-#         channels = ctypes.c_int32()
-#         coinc_window = ctypes.c_int32()
-#         exp_time = ctypes.c_int32()
-#
-#         answer = self._dll.TDC_getDeviceParams(ctypes.byref(channels), ctypes.byref(coinc_window),
-#                                                ctypes.byref(exp_time))
-#
-#         return answer, channels.value, coinc_window.value, exp_time.value
