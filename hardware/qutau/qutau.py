@@ -25,12 +25,17 @@ class Qutau(Base, FastCounterInterface):
             module.Class: 'qutau.qutau.Qutau'
             deviceID: -1
             activeChannels: [1, 2]
+            count_channel: 0
+            trigger_channel: 1
             coincidenceWindow: 0
             fileformat: 'FORMAT_ASCII'
             filename: 'C:/Data/qutau/binary'
             minimal_binwidth: 0.081e-9
             gated: False
-            aom_delay: 400e-9
+
+    Count channel 0 means channel 1 and trigger channel 1 means channel 2 and so on...
+    Load the Qutau library file tdcbase.dll. Can be found on the server or in the directory of the qutau software
+    in programs files folder and should be placed in <Windows>/System32/
     """
     _deviceId = ConfigOption('deviceID', 0, missing='warn')
     _activeChannels = ConfigOption('activeChannels', 0, missing='warn')
@@ -40,9 +45,8 @@ class Qutau(Base, FastCounterInterface):
     _bufferSize = 500
     minimal_binwidth = ConfigOption('minimal_binwidth', missing='warn')
     gated = ConfigOption('gated', False, missing='warn')
-    aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')
-    _trigger_channel = 1  # means channel 2
-    _count_channel = 0  # means channel 1
+    _trigger_channel = ConfigOption('trigger_channel', missing='warn')
+    _count_channel = ConfigOption('count_channel', missing='warn')
     _number_of_bins = 100
 
     def __init__(self, config, **kwargs):
