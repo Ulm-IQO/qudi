@@ -291,12 +291,18 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
         """
         return self.cv
 
+    def get_control_unit(self):
+        return self._control.get_control_unit()
+
     def get_process_value(self):
         """ Get current process input value.
 
             @return float: current process input value
         """
         return self.pv
+
+    def get_process_unit(self):
+        return self._control.get_process_unit()
 
     def get_extra(self):
         """ Extra information about the controller state.
