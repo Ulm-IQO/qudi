@@ -41,6 +41,7 @@ class PIDLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
 
     pid_name = ConfigOption('pid_name', 'process')
+    save_to_metadata = ConfigOption('save_to_metadata', True)
 
     # status vars
     buffer_length = StatusVar('buffer_length', 1000)
@@ -69,7 +70,11 @@ class PIDLogic(GenericLogic):
 
     def on_deactivate(self):
         """ Perform required deactivation. """
-        pass
+        if self.save_to_metadata:
+            self.savelogic().remove_additional_parameter('{}'.format(self.pid_name))
+            self.savelogic().remove_additional_parameter('{}_measured'.format(self.pid_name))
+            self.savelogic().remove_additional_parameter('{}_control_variable'.format(self.pid_name))
+            self.savelogic().remove_additional_parameter('{}_last_update'.format(self.pid_name))
 
     def get_buffer_length(self):
         """ Get the current data buffer length.
@@ -106,6 +111,14 @@ class PIDLogic(GenericLogic):
         self.sigUpdateDisplay.emit()
         if self.module_state() == 'running':
             self.timer.start(self.timestep*1e3)
+        if self.save_to_metadata:
+            self.savelogic().update_additional_parameters({'{}'.format(self.pid_name): self.controller().get_setpoint()})
+            self.savelogic().update_additional_parameters({'{}_measured'.format(self.pid_name):
+                                                           self.controller().get_process_value()})
+            self.savelogic().update_additional_parameters({'{}_control_variable'.format(self.pid_name):
+                                                           self.controller().get_control_value()})
+            self.savelogic().update_additional_parameters({'{}_last_update'.format(self.pid_name): time.time()})
+
 
 
     def get_saving_state(self):
