@@ -35,7 +35,10 @@ class LaserLogic(GenericLogic):
 
     # waiting time between queries im milliseconds
     laser = Connector(interface='SimpleLaserInterface')
+    savelogic = Connector(interface='SaveLogic', optional=True)
+
     queryInterval = ConfigOption('query_interval', 100)
+    laser_name = ConfigOption('laser_name', 'laser')
 
     sigUpdate = QtCore.Signal()
 
@@ -77,6 +80,12 @@ class LaserLogic(GenericLogic):
         """ Deactivate modeule.
         """
         self.stop_query_loop()
+        if self.savelogic.is_connected:
+            self.savelogic().remove_additional_parameter('{}_power_read'.format(self.laser_name))
+            self.savelogic().remove_additional_parameter('{}_power_setpoint'.format(self.laser_name))
+            self.savelogic().remove_additional_parameter('{}_current_read'.format(self.laser_name))
+            self.savelogic().remove_additional_parameter('{}_current_setpoint'.format(self.laser_name))
+            self.savelogic().remove_additional_parameter('{}_last_update'.format(self.laser_name))
         for i in range(5):
             time.sleep(self.queryInterval / 1000)
             QtCore.QCoreApplication.processEvents()
@@ -106,6 +115,16 @@ class LaserLogic(GenericLogic):
             self.data['power'][-1] = self.laser_power
             self.data['current'][-1] = self.laser_current
             self.data['time'][-1] = time.time()
+            if self.savelogic.is_connected:
+                self.savelogic().update_additional_parameters({'{}_power_read'.format(self.laser_name):
+                                                               self.laser_power})
+                self.savelogic().update_additional_parameters({'{}_power_setpoint'.format(self.laser_name):
+                                                               self.laser_power_setpoint})
+                self.savelogic().update_additional_parameters({'{}_current_read'.format(self.laser_name):
+                                                                   self.laser_current})
+                self.savelogic().update_additional_parameters({'{}_current_setpoint'.format(self.laser_name):
+                                                                   self.laser_current_setpoint})
+                self.savelogic().update_additional_parameters({'{}_last_update'.format(self.laser_name): time.time()})
 
             for k, v in self.laser_temps.items():
                 self.data[k][-1] = v
@@ -178,6 +197,14 @@ class LaserLogic(GenericLogic):
     def set_power(self, power):
         """ Set laser output power. """
         self._laser.set_power(power)
+
+    def get_power(self):
+        """ Get laser output power. """
+        self._laser.get_power()
+
+    def get_power_setpoint(self):
+        """ Get laser power setpoint """
+        self._laser.get_power_setpoint()
 
     @QtCore.Slot(float)
     def set_current(self, current):
