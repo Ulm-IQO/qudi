@@ -47,36 +47,18 @@ class PIDMainWindow(QtWidgets.QMainWindow):
 
 
 class PIDGui(GUIBase):
-    """ FIXME: Please document
+    """ GUI to control/monitor a PID device
     """
 
-    # declare connectors
     pidlogic = Connector(interface='PIDLogic')
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
 
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
     def on_activate(self):
-        """ Definition and initialisation of the GUI plus staring the measurement.
+        """ initialisation of the GUI """
 
-        """
-        self._pid_logic = self.pidlogic()
-
-        #####################
-        # Configuring the dock widgets
-        # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = PIDMainWindow()
-
-        # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
@@ -89,12 +71,12 @@ class PIDGui(GUIBase):
             '<font color={0}>Process Value</font> and <font color={1}>Setpoint</font>'.format(
                 palette.c1.name(),
                 palette.c2.name()),
-             units='unit')
+             units=self.pidlogic().get_process_unit()[0])
         self.plot1.setLabel('bottom', 'Time', units='s')
         self.plot1.showAxis('right')
         self.plot1.getAxis('right').setLabel(
             'Control Value',
-            units='unit',
+            units=self.pidlogic().get_control_unit()[0],
             color=palette.c3.name())
 
         self.plot2 = pg.ViewBox()
@@ -141,19 +123,19 @@ class PIDGui(GUIBase):
         self.plot1.vb.sigResized.connect(self.updateViews)
 
         # setting the x axis length correctly
-        self._pw.setXRange(0, self._pid_logic.getBufferLength() * self._pid_logic.timestep)
+        self._pw.setXRange(0, self.pidlogic().get_buffer_length() * self.pidlogic().timestep)
 
         #####################
         # Setting default parameters
-        self._mw.P_DoubleSpinBox.setValue(self._pid_logic.get_kp())
-        self._mw.I_DoubleSpinBox.setValue(self._pid_logic.get_ki())
-        self._mw.D_DoubleSpinBox.setValue(self._pid_logic.get_kd())
-        self._mw.setpointDoubleSpinBox.setValue(self._pid_logic.get_setpoint())
-        self._mw.manualDoubleSpinBox.setValue(self._pid_logic.get_manual_value())
-        self._mw.pidEnabledCheckBox.setChecked(self._pid_logic._controller.get_enabled())
+        self._mw.P_DoubleSpinBox.setValue(self.pidlogic().get_kp())
+        self._mw.I_DoubleSpinBox.setValue(self.pidlogic().get_ki())
+        self._mw.D_DoubleSpinBox.setValue(self.pidlogic().get_kd())
+        self._mw.setpointDoubleSpinBox.setValue(self.pidlogic().get_setpoint())
+        self._mw.manualDoubleSpinBox.setValue(self.pidlogic().get_manual_value())
+        self._mw.pidEnabledCheckBox.setChecked(self.pidlogic().get_enabled())
 
         # make correct button state
-        self._mw.start_control_Action.setChecked(self._pid_logic.get_enabled())
+        self._mw.start_control_Action.setChecked(self.pidlogic().get_enabled())
 
         #####################
         # Connecting user interactions
@@ -173,10 +155,10 @@ class PIDGui(GUIBase):
 
         #####################
         # starting the physical measurement
-        self.sigStart.connect(self._pid_logic.startLoop)
-        self.sigStop.connect(self._pid_logic.stopLoop)
+        self.sigStart.connect(self.pidlogic().start_loop)
+        self.sigStop.connect(self.pidlogic().stop_loop)
 
-        self._pid_logic.sigUpdateDisplay.connect(self.updateData)
+        self.pidlogic().sigUpdateDisplay.connect(self.updateData)
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -188,27 +170,26 @@ class PIDGui(GUIBase):
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
-        # FIXME: !
         self._mw.close()
 
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
         """
 
-        if self._pid_logic.get_enabled():
+        if self.pidlogic().module_state() != 'idle':
             self._mw.process_value_Label.setText(
                 '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c1.name(),
-                self._pid_logic.history[0, -1]))
+                self.pidlogic().history[0, -1]))
             self._mw.control_value_Label.setText(
                 '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c3.name(),
-                self._pid_logic.history[1, -1]))
+                self.pidlogic().history[1, -1]))
             self._mw.setpoint_value_Label.setText(
                 '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c2.name(),
-                self._pid_logic.history[2, -1]))
-            extra = self._pid_logic._controller.get_extra()
+                self.pidlogic().history[2, -1]))
+            extra = self.pidlogic().get_extra()
             if 'P' in extra:
                 self._mw.labelkP.setText('{0:,.6f}'.format(extra['P']))
             if 'I' in extra:
@@ -216,24 +197,24 @@ class PIDGui(GUIBase):
             if 'D' in extra:
                 self._mw.labelkD.setText('{0:,.6f}'.format(extra['D']))
             self._curve1.setData(
-                y=self._pid_logic.history[0],
-                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                y=self.pidlogic().history[0],
+                x=np.arange(0, self.pidlogic().get_buffer_length()) * self.pidlogic().timestep
                 )
             self._curve2.setData(
-                y=self._pid_logic.history[1],
-                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                y=self.pidlogic().history[1],
+                x=np.arange(0, self.pidlogic().get_buffer_length()) * self.pidlogic().timestep
                 )
             self._curve3.setData(
-                y=self._pid_logic.history[2],
-                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                y=self.pidlogic().history[2],
+                x=np.arange(0, self.pidlogic().get_buffer_length()) * self.pidlogic().timestep
                 )
 
-        if self._pid_logic.getSavingState():
+        if self.pidlogic().get_saving_state():
             self._mw.record_control_Action.setText('Save')
         else:
             self._mw.record_control_Action.setText('Start Saving Data')
 
-        if self._pid_logic.get_enabled():
+        if self.pidlogic().module_state() != 'idle':
             self._mw.start_control_Action.setText('Stop')
         else:
             self._mw.start_control_Action.setText('Start')
@@ -250,7 +231,7 @@ class PIDGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._pid_logic.get_enabled():
+        if self.pidlogic().module_state() == 'running':
             self._mw.start_control_Action.setText('Start')
             self.sigStop.emit()
         else:
@@ -260,12 +241,12 @@ class PIDGui(GUIBase):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        if self._pid_logic.getSavingState():
+        if self.pidlogic().get_saving_state():
             self._mw.record_counts_Action.setText('Start Saving Data')
-            self._pid_logic.saveData()
+            self.pidlogic().save_data()
         else:
             self._mw.record_counts_Action.setText('Save')
-            self._pid_logic.startSaving()
+            self.pidlogic().start_saving()
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -283,19 +264,19 @@ class PIDGui(GUIBase):
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.pid_parameters_DockWidget)
 
     def kpChanged(self):
-        self._pid_logic.set_kp(self._mw.P_DoubleSpinBox.value())
+        self.pidlogic().set_kp(self._mw.P_DoubleSpinBox.value())
 
     def kiChanged(self):
-        self._pid_logic.set_ki(self._mw.I_DoubleSpinBox.value())
+        self.pidlogic().set_ki(self._mw.I_DoubleSpinBox.value())
 
     def kdChanged(self):
-        self._pid_logic.set_kd(self._mw.D_DoubleSpinBox.value())
+        self.pidlogic().set_kd(self._mw.D_DoubleSpinBox.value())
 
     def setpointChanged(self):
-        self._pid_logic.set_setpoint(self._mw.setpointDoubleSpinBox.value())
+        self.pidlogic().set_setpoint(self._mw.setpointDoubleSpinBox.value())
 
     def manualValueChanged(self):
-        self._pid_logic.set_manual_value(self._mw.manualDoubleSpinBox.value())
+        self.pidlogic().set_manual_value(self._mw.manualDoubleSpinBox.value())
 
     def pidEnabledChanged(self, state):
-        self._pid_logic._controller.set_enabled(state)
+        self.pidlogic().set_enabled(state)
