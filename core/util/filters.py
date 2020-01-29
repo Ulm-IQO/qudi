@@ -19,16 +19,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('scan_blink_correction',)
+
 import numpy as np
 from scipy.ndimage import minimum_filter1d, maximum_filter1d
 
 import logging
-logger = logging.getLogger(__name__)
+__logger = logging.getLogger(__name__)
 
 
 def scan_blink_correction(image, axis=1):
-    """
-    This filter can be used to filter out impulsive noise from a 2D array along a single axis.
+    """This filter can be used to filter out impulsive noise from a 2D array along a single axis.
     As filter we apply a sequence of two filters. First a min-filter and then a max-filter.
     This composite non-linear filter technique is also called opening filter.
 
@@ -38,17 +39,18 @@ def scan_blink_correction(image, axis=1):
 
     @param numpy.ndarray image: A 2D numpy array to be filtered (e.g. image data)
     @param int axis: The axis along which to apply the 1D filter
+
     @return numpy.ndarray: The filtered image. Same dimensions as input image
     """
 
     if not isinstance(image, np.ndarray):
-        logger.error('Image must be 2D numpy array.')
+        __logger.error('Image must be 2D numpy array.')
         return image
     if image.ndim != 2:
-        logger.error('Image must be 2D numpy array.')
+        __logger.error('Image must be 2D numpy array.')
         return image
     if axis != 0 and axis != 1:
-        logger.error('Optional axis parameter must be either 0 or 1.')
+        __logger.error('Optional axis parameter must be either 0 or 1.')
         return image
 
     # Calculate median value of the image. This value is used for padding image boundaries during
