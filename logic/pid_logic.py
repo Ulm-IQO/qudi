@@ -208,7 +208,8 @@ class PIDLogic(GenericLogic):
 
             @return float: control value for manual mode
         """
-        return self.controller().get_manual_value()
+        value = self.controller().get_manual_value()
+        return value if value is not None else 0
 
     def set_manual_value(self, manualvalue):
         """ Set the control value for manual mode.

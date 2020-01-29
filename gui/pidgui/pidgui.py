@@ -142,12 +142,12 @@ class PIDGui(GUIBase):
         self._mw.start_control_Action.triggered.connect(self.start_clicked)
         self._mw.record_control_Action.triggered.connect(self.save_clicked)
 
-        self._mw.P_DoubleSpinBox.valueChanged.connect(self.kpChanged)
-        self._mw.I_DoubleSpinBox.valueChanged.connect(self.kiChanged)
-        self._mw.D_DoubleSpinBox.valueChanged.connect(self.kdChanged)
+        self._mw.P_DoubleSpinBox.editingFinished.connect(self.kpChanged)
+        self._mw.I_DoubleSpinBox.editingFinished.connect(self.kiChanged)
+        self._mw.D_DoubleSpinBox.editingFinished.connect(self.kdChanged)
 
-        self._mw.setpointDoubleSpinBox.valueChanged.connect(self.setpointChanged)
-        self._mw.manualDoubleSpinBox.valueChanged.connect(self.manualValueChanged)
+        self._mw.setpointDoubleSpinBox.editingFinished.connect(self.setpointChanged)
+        self._mw.manualDoubleSpinBox.editingFinished.connect(self.manualValueChanged)
         self._mw.pidEnabledCheckBox.toggled.connect(self.pidEnabledChanged)
 
         # Connect the default view action

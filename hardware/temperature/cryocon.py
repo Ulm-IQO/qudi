@@ -121,7 +121,7 @@ class Cryocon(Base, ProcessInterface, PIDControllerInterface):
         loop = 1 if channel == 'A' else 2
         try:
             text = 'loop {}:setp?'.format(loop)
-            setpoint = float(self._query(text)[:-1])
+            setpoint = float(self._query(text)[:-2])
         except:
             setpoint = np.NaN
         return setpoint
@@ -220,9 +220,6 @@ class Cryocon(Base, ProcessInterface, PIDControllerInterface):
 
     def set_control_limits(self, limits):
         pass
-
-    def get_process_value(self, channel=None):
-        self.get_temperature(channel=channel)
 
     def get_control_value(self, channel=None):
         channel = channel if channel is not None else self._main_channel
