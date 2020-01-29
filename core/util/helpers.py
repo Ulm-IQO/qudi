@@ -32,8 +32,7 @@ import importlib
 import logging
 import numpy as np
 
-# use setuptools parse_version if available and use distutils LooseVersion as
-# fallback
+# use setuptools parse_version if available and use distutils LooseVersion as fallback
 try:
     from pkg_resources import parse_version
 except ImportError:
@@ -101,22 +100,6 @@ def exit(exitcode=0):
         close_fd(fd_set)
 
     os._exit(exitcode)
-
-
-def get_appdata_dir():
-    """
-    Get the system specific application data directory.
-
-    @return str: path to appdata directory
-    """
-    if sys.platform == 'win32':
-        # resolves to "C:\Documents and Settings\<UserName>\Application Data" on XP
-        # and "C:\Users\<UserName>\AppData\Roaming" on win7 and newer
-        return os.path.join(os.environ['APPDATA'], 'qudi')
-    elif sys.platform == 'darwin':
-        return os.path.expanduser('~/Library/Preferences/qudi')
-    else:
-        return os.path.expanduser('~/.local/qudi')
 
 
 def close_fd(fd_set):
