@@ -552,8 +552,9 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.sigStatusChanged.emit(False, False)
                     return
 
-                samples_to_read = max(self._streamer.available_samples,
-                                      self._samples_per_frame * self._oversampling_factor)
+                samples_to_read = max(
+                    (self._streamer.available_samples // self._oversampling_factor) * self._oversampling_factor,
+                    self._samples_per_frame * self._oversampling_factor)
                 if samples_to_read < 1:
                     self._sigNextDataFrame.emit()
                     return
