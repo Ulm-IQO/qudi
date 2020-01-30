@@ -249,6 +249,7 @@ class CounterGui(GUIBase):
 
             ymax = -1
             ymin = 2000000000
+            len(self.curves)
             for i, ch in enumerate(self._counting_logic.get_channels()):
                 self.curves[2 * i].setData(y=self._counting_logic.countdata[i], x=x_vals)
                 self.curves[2 * i + 1].setData(y=self._counting_logic.countdata_smoothed[i],

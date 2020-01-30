@@ -12,12 +12,13 @@ from interface.simple_data_interface import SimpleDataInterface
 
 from core.module import Base
 from interface.fast_counter_interface import FastCounterInterface
+from interface.slow_counter_interface import SlowCounterInterface, SlowCounterConstraints, CountingMode
 
 
 # from core.interface import interface_method
 
 
-class Qutau(Base, FastCounterInterface):
+class Qutau(Base, FastCounterInterface, SlowCounterInterface):
     """
     This is just a dummy hardware class to be used with SimpleDataReaderLogic.
     This is a dummy config file:
@@ -48,6 +49,9 @@ class Qutau(Base, FastCounterInterface):
     _trigger_channel = ConfigOption('trigger_channel', missing='warn')
     _count_channel = ConfigOption('count_channel', missing='warn')
     _number_of_bins = 100
+    _clock_frequency = ConfigOption('clock_frequency', missing='warn')
+    _samples_number = ConfigOption('samples_number', missing='warn')
+    _counter_channels = ConfigOption('counter_channels', missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -94,8 +98,11 @@ class Qutau(Base, FastCounterInterface):
         arising bit    | 1 | 0 | 1 | 0 | 0 | 1 | 0 | 0 |
         so the corresponding bitfield number is 10100100 starting with 2^0.
         The number passed to qutau is then 1 * 2^(1-1) + 1 * 2^(3-1) + 1 * 2^(6-1) = 1 + 4 + 32 = 37"""
-        if channels is None:
-            channels = list(self._activeChannels)
+        try:
+            if channels is None:
+                channels = list(self._activeChannels)
+        except TypeError:
+            channels = [1]  # only activate first channel
         bitnumber = 0
         for channel in channels:
             bitnumber += 2 ** (channel - 1)
@@ -215,6 +222,30 @@ class Qutau(Base, FastCounterInterface):
 
         return timestamps, channels, valid.value
 
+    def setExposureTime(self, expTime):
+        """Set exposure time in units of ms between 0...65635 """
+        ans = self._dll.TDC_setExposureTime(int(expTime))
+        if ans != 0:
+            print("Error in TDC_setExposureTime: " + self.err_dict[ans])
+        return ans
+
+    def getCoincCounters(self):
+        data = np.zeros(int(19), dtype=np.int32)
+        update = ctypes.c_int32()
+        a = time.time()
+        ans = self._dll.TDC_getCoincCounters(data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+                                             ctypes.byref(update))
+        b = time.time()
+        print(b-a)
+        if update.value == 1:
+            return np.array(data)
+        else:
+            while update.value != 1:
+                ans = self._dll.TDC_getCoincCounters(data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+                                                     ctypes.byref(update))
+            return np.array(data)
+        # return np.array([np.random.randint(1, 30)])
+
     def on_activate(self):
         ans = self.Initialize()
         self.setChannels()
@@ -277,7 +308,7 @@ class Qutau(Base, FastCounterInterface):
         # current binwidth in seconds use the get_binwidth method.
         constraints['hardware_binwidth_list'] = list(0.081e-9 * (2 ** np.array(
             np.linspace(0, 24, 25))))
-        constraints['max_sweep_len'] = 6.8 # todo add correct max sweep length
+        constraints['max_sweep_len'] = 6.8  # todo add correct max sweep length
         return constraints
 
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
@@ -408,7 +439,7 @@ class Qutau(Base, FastCounterInterface):
         for ii, ch in enumerate(channel_array):
             if ch == self._trigger_channel:
                 self.start = timestamp[ii]
-            else:
+            elif ch == self._count_channel:
                 bin_number = timestamp[ii] - self.start
                 if self._number_of_bins > bin_number > 0:
                     self.counts_bin_array[bin_number] += 1
@@ -417,3 +448,105 @@ class Qutau(Base, FastCounterInterface):
                      'elapsed_time': None}
 
         return self.counts_bin_array, info_dict
+
+    # Slow Counter methods:
+
+    def get_constraints(self): # todo two get_constraints functions
+        """ Retrieve the hardware constrains from the counter device.
+
+        @return SlowCounterConstraints: object with constraints for the counter
+        """
+        constraints = SlowCounterConstraints() #todo in init
+        constraints.max_detectors = 8
+        constraints.min_count_frequency = 0.01526
+        constraints.max_count_frequency = 1000
+        constraints.counting_mode = [CountingMode.CONTINUOUS]  # todo not sure
+
+        return constraints
+
+    def set_up_clock(self, clock_frequency=None, clock_channel=None):
+        """ Configures the hardware clock of the NiDAQ card to give the timing.
+
+        @param float clock_frequency: if defined, this sets the frequency of the clock
+        @param string clock_channel: if defined, this is the physical channel of the clock
+        @return int: error code (0:OK, -1:error)
+        """
+        self._clock_frequency = clock_frequency
+        self._exp_time = int(1 / clock_frequency * 1000)  # calculate the inverse clock_frequency in ms
+        self.setExposureTime(self._exp_time)
+
+        return 0
+
+    def set_up_counter(self,
+                       counter_channels=None,
+                       sources=None,
+                       clock_channel=None,
+                       counter_buffer=None):
+        """ Configures the actual counter with a given clock.
+
+        @param list(str) counter_channels: optional, physical channel of the counter
+        @param list(str) sources: optional, physical channel where the photons
+                                   photons are to count from
+        @param str clock_channel: optional, specifies the clock channel for the
+                                  counter
+        @param int counter_buffer: optional, a buffer of specified integer
+                                   length, where in each bin the count numbers
+                                   are saved.
+
+        @return int: error code (0:OK, -1:error)
+
+        There need to be exactly the same number sof sources and counter channels and
+        they need to be given in the same order.
+        All counter channels share the same clock.
+        """
+        if counter_channels is None:
+            counter_channels = self._counter_channels
+        else:
+            self._counter_channels = counter_channels
+        self.setChannels(counter_channels)
+
+        channels = self.get_counter_channels()
+
+        return 0
+
+    def get_counter(self, samples=None):
+        """ Returns the current counts per second of the counter.
+
+        @param int samples: if defined, number of samples to read in one go
+
+        @return numpy.array((n, uint32)): the photon counts per second for n channels
+        """
+        data = self.getCoincCounters()
+        counter_data = np.array([[data[0]]]) / self._exp_time * 1000
+        # time.sleep(1/self._clock_frequency)
+        return counter_data
+
+    def get_counter_channels(self):
+        """ Returns the list of counter channel names.
+
+        @return list(str): channel names
+
+        Most methods calling this might just care about the number of channels, though.
+        """
+
+        channel_array = []
+        _, channels, _, _ = self.getDeviceParams()
+        channels_string = '{0:b}'.format(channels)
+        for ii, channel in enumerate(channels_string):
+            if int(channel):
+                channel_array.append(ii)
+        return channel_array
+
+    def close_counter(self):
+        """ Closes the counter and cleans up afterwards.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0
+
+    def close_clock(self):
+        """ Closes the clock and cleans up afterwards.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0

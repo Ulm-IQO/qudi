@@ -144,7 +144,6 @@ class SlowCounterDummy(Base, SlowCounterInterface):
             [self._simulate_counts(samples) + i * self.mean_signal
                 for i, ch in enumerate(self.get_counter_channels())]
             )
-
         time.sleep(1 / self._clock_frequency * samples)
         return count_data
 
