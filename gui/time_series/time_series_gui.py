@@ -67,7 +67,7 @@ class TimeSeriesGui(GUIBase):
     Example config for copy-paste:
 
     time_series_gui:
-        module.Class: 'time_series_gui.TimeSeriesGui'
+        module.Class: 'time_series.time_series_gui.TimeSeriesGui'
         use_antialias: True  # optional, set to False if you encounter performance issues
         connect:
             _time_series_logic_con: <TimeSeriesReaderLogic_name>
@@ -129,7 +129,6 @@ class TimeSeriesGui(GUIBase):
         # Configure PlotWidget
         self._pw = self._mw.data_trace_PlotWidget
         self._pw.setLabel('bottom', 'Time', units='s')
-        self._pw.disableAutoRange()
         self._pw.setMouseEnabled(x=False, y=False)
         self._pw.setMouseTracking(False)
         self._pw.setMenuEnabled(False)
@@ -140,7 +139,6 @@ class TimeSeriesGui(GUIBase):
         self._pw.scene().addItem(self._vb)
         self._pw.getAxis('right').linkToView(self._vb)
         self._vb.setXLink(self._pw)
-        self._vb.disableAutoRange()
         self._vb.setMouseEnabled(x=False, y=False)
         self._vb.setMenuEnabled(False)
         # Sync resize events
@@ -458,9 +456,6 @@ class TimeSeriesGui(GUIBase):
             for channel, y_arr in smooth_data.items():
                 self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
 
-        self._vb.autoRange()
-        self._pw.autoRange()
-
         curr_value_channel = self._mw.curr_value_comboBox.currentText()
         if curr_value_channel != 'None':
             if curr_value_channel.startswith('average '):
@@ -633,7 +628,6 @@ class TimeSeriesGui(GUIBase):
                 w['checkbox1'].setChecked(enabled)
         if 'averaged_channels' in settings_dict:
             val = settings_dict['averaged_channels']
-            print('averaged_channels in GUI:', val)
             for chnl, w in self._csd_widgets.items():
                 enabled = chnl in val
                 w['checkbox2'].setChecked(enabled)
