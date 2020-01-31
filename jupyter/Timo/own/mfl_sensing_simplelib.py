@@ -180,7 +180,7 @@ class ExpDecoKnownPrecessionModel():
 
     ## INITIALIZER ##
 
-    def __init__(self, min_freq=0, invT2=0., eta_assym=1):
+    def __init__(self, min_freq=0, invT2=0., eta_assym=1, read_phase=0.0):
         super(ExpDecoKnownPrecessionModel, self).__init__()
 
         self._min_freq = min_freq
@@ -188,6 +188,7 @@ class ExpDecoKnownPrecessionModel():
         if eta_assym is None:
             eta_assym = 1
         self._eta_assym = eta_assym
+        self._read_phase = read_phase
 
         # Initialize a default scale matrix.
         self._Q = np.ones((self.n_modelparams,))
@@ -223,6 +224,10 @@ class ExpDecoKnownPrecessionModel():
             1,
             self._Q * (a - b)
         )
+
+    def update_read_phase(self, phase):
+        # avoid including read phase in expparams and set manually like this
+        self._read_phase = phase
 
     def update_timestep(self, modelparams, expparams):
         r"""
@@ -390,7 +395,7 @@ class ExpDecoKnownPrecessionModel():
 
         # ESSENTIAL STEP > the likelihoods (i.e. cosines with a damping exp term) are evaluated for all particles
         pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
-        l = np.exp(-t * self._invT2) * (np.cos(t * dw / 2) ** 2) + 0.5 * (1 - np.exp(-t * self._invT2))
+        l = np.exp(-t * self._invT2) * (np.cos((t * dw + self._read_phase) / 2) ** 2) + 0.5 * (1 - np.exp(-t * self._invT2))
 
         # prepare output dimensions st. plot_zs() works
         try:
@@ -1310,6 +1315,63 @@ class stdPGH(qi.Heuristic):
 
         return eps
 
+class NonAdaptive_PGH(qi.Heuristic):
+
+    """
+    non-adaptive next tau and measurement phase as in Bonato (2015) Suppl.
+    """
+
+    def __init__(self, updater, inv_field='x_', t_field='t',
+                 inv_func=qi.expdesign.identity,
+                 t_func=qi.expdesign.identity,
+                 maxiters=10,
+                 other_fields=None,
+                 tau_0=20e-9,
+                 tau_short_to_long=True,
+                 n_taus=10,
+                 fix_readout_phase_rad=0
+                 ):
+        super().__init__(updater)
+        self._x_ = inv_field
+        self._t = t_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self.tau_0 = tau_0
+        self.n_taus = n_taus
+
+        self.readout_phase_rad = fix_readout_phase_rad
+        self.tau_short_to_long = tau_short_to_long
+
+    def __call__(self, i_tau, m_phase, m_tot_phases):
+
+        # i_tau: counts from 0! (1 in paper)
+
+        tau_0 = self.tau_0
+        n_taus = self.n_taus
+
+        if (n_taus - (i_tau+1)) < 0:
+            # repeat last tau when hitting n_tau limit
+            i_tau = n_taus - 1
+
+        if not self.tau_short_to_long:
+            next_tau = tau_0 * 2**(n_taus - (i_tau+1))     # tau from long to short, as in paper
+        else:
+            next_tau = tau_0 * 2**i_tau
+
+        next_tau_s = next_tau
+
+        if self.readout_phase_rad is None:
+            try:
+                phi_read = m_phase * 2*np.pi / m_tot_phases
+            except ZeroDivisionError:
+                phi_read = 0
+        else:
+            phi_read = self.readout_phase_rad
+
+        # not in normal format of heuristics!
+        return (next_tau_s, phi_read)
 
 class T2RandPenalty_PGH(stdPGH):
     def __init__(self, updater, tau_thresh_rescale, inv_field='x_', t_field='t',
@@ -1540,9 +1602,11 @@ class MultiHahnPGH(MultiPGH):
         tau = eps[self._t]
         n_periods = tau / tau_period_us
 
+        width_allow = 0.25 * tau_period_us
+
         is_flat_l = True
         while is_flat_l:
-            if abs((tau % tau_period_us) - tau_period_us / 2) > tau_period_us / 4:
+            if abs((tau % tau_period_us) - tau_period_us / 2) > width_allow:
                 tau += tau_period_us / 10
             else:
                 is_flat_l = False
@@ -1715,6 +1779,12 @@ class basic_SMCUpdater(qi.Distribution):
         self.reset(n_particles)
 
     ## PROPERTIES #############################################################
+
+    def update_read_phase(self, phase):
+        try:
+            self.model.update_read_phase(phase)
+        except:
+            pass    # no phase adaption in model
 
     @property
     def n_particles(self):

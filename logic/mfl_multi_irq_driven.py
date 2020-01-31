@@ -47,6 +47,7 @@ class MFL_Multi_IRQ_Driven(MFL_IRQ_Driven):
             self.log.debug("t2= {} us, inv_t2= {} MHz".format(t2star_s*1e6, inv_T2))
 
         # to save for dumping
+        self.mfl_n_particles = n_particles
         self.mfl_frq_min_mhz = 0
         self.mfl_frq_max_mhz = freq_max_mhz
         self.mfl_t2star_s = t2star_s

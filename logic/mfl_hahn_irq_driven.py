@@ -16,7 +16,7 @@ mfl_lib = imp.load_source('packages', path_mfl_lib)
 
 ARRAY_SIZE_MAX = 5000
 GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
-GAMMA_C_MHZ_GAUSS = 1.07084e3
+GAMMA_C_HZ_GAUSS = 1.07084e3
 
 class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
 
@@ -57,6 +57,7 @@ class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
             ))
 
         # to save for dumping
+        self.mfl_n_particles = n_particles
         self.mfl_frq_min_mhz = 0
         self.mfl_frq_max_mhz = freq_max_mhz
         self.mfl_t2_s = t2
@@ -69,6 +70,7 @@ class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
 
         self.mfl_prior = qi.UniformDistribution([freq_min, freq_max])
 
+        # ATTENTION: search for Aparr in this file beofre activating again!
         #self.mfl_model = mfl_lib.AparrKnownHahnModel(b0_gauss, 1e6* 2*np.pi * a_parallel_mhz,
         #                                             min_freq=2*np.pi * a_parallel_mhz, c_scale_2=c_scale_2)
 
@@ -92,20 +94,19 @@ class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
         except RuntimeError as e:
             self.log.error("Updating mfl failed in epoch {}: {}".format(self.i_epoch, str(e)))
 
-        self.prior_erase_f1()
+        #self.prior_erase_f1()
 
     def prior_erase_f1(self):
         # particles = [updater.particle_locations, updater.particle_weights]
 
-        gamma_c = 1.07084e3  # Hz
-        f1 = self.mfl_b0_gauss * gamma_c   # gamma
+        f1 = self.mfl_b0_gauss * GAMMA_C_HZ_GAUSS
 
         df = 10e3
 
         if self.n_est_ws == 1:
             self.mfl_updater.particle_weights[
-                 np.logical_and(2*np.pi* (f1 - df) < self.mfl_updater.particle_locations[:,0],
-                                self.mfl_updater.particle_locations[:,0] < 2*np.pi* (f1 + df))] = 0
+                 np.logical_and(1e-6 * 2*np.pi* (f1 - df) < self.mfl_updater.particle_locations[:,0],
+                                self.mfl_updater.particle_locations[:,0] < 1e-6 * 2*np.pi* (f1 + df))] = 0
         else:
             raise NotImplementedError
 

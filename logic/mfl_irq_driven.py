@@ -162,6 +162,14 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def dump(self, filename):
 
+        def try_issubtype(var, x):
+            issub = False
+            try:
+                issub = np.issubdtype(var, x)
+            except:
+                pass
+            return issub
+
         def to_dict(obj):
             mdict = {}
             accept_types = [np.ndarray, str, bool, float, int, list, tuple]
@@ -173,7 +181,8 @@ class MFL_IRQ_Driven(GenericLogic):
 
             for key, var in d.items():
                 # better version of: if type(var) in accept_types:
-                if any(map(lambda x: isinstance(var, x), accept_types)):
+                if any(map(lambda x: isinstance(var, x), accept_types)) or \
+                   any(map(lambda x: try_issubtype(var, x), accept_types)):
                     mdict[key] = var
                 # clear up subdicts from non accepted types
                 if type(var) is dict:
@@ -250,18 +259,21 @@ class MFL_IRQ_Driven(GenericLogic):
         # first estimate from flat prior stored in self.data_before_first_epcoh
         self.taus = np.zeros((n_epochs, 1))
         self.taus_requested = np.zeros((n_epochs, 1))
+        self.read_phases = np.zeros((n_epochs, 1))
+        self.read_phases_requested = np.zeros((n_epochs, 1))
         self.t_seqs = np.zeros((n_epochs, 1))
         self.bs = np.zeros((n_epochs, 1))   # MHz
         self.dbs = np.zeros((n_epochs, 1))
         self.zs = np.zeros((n_epochs, 1))
         self.priors = []   # element: [sampled_pos, particle_loc, particle_weight]
+        self.likelihoods = []   # element: [faxis (Mhz), probability]
 
     def init_mfl_algo(self, **kwargs):
 
-        t2star_s = kwargs.get('t2_star', None)
+        t2star_s = kwargs.get('t2star_s', None)
         freq_max_mhz = kwargs.get('freq_max_mhz', 10)
         eta_assym = kwargs.get('eta_assym', 1)
-        resample_a = kwargs.get('resample_1', 0.98),
+        resample_a = kwargs.get('resample_1', 0.98)
         resample_thresh = kwargs.get('resample_thresh', 0.5)
 
         n_particles = 1000
@@ -275,6 +287,7 @@ class MFL_IRQ_Driven(GenericLogic):
             self.log.debug("t2= {} us, inv_t2= {} MHz".format(t2star_s*1e6, inv_T2))
 
         # to save for dumping
+        self.mfl_n_particles = n_particles
         self.mfl_frq_min_mhz = 0
         self.mfl_frq_max_mhz = freq_max_mhz
         self.mfl_t2star_s = t2star_s
@@ -301,7 +314,7 @@ class MFL_IRQ_Driven(GenericLogic):
         else:
             return self._epoch_done_trig_ch
 
-    def set_jumptable(self, jumptable_dict, tau_list, t_seqs_list):
+    def set_jumptable(self, jumptable_dict, tau_list, t_seqs_list, phase_list=None):
         """
         self.jumptable format:
         {'name': [], 'idx_seqtable': [], 'jump_address': [], 'tau': [], 't_seq': []}
@@ -309,6 +322,8 @@ class MFL_IRQ_Driven(GenericLogic):
 
         jumptable_dict['tau'] = tau_list            # interaction time
         jumptable_dict['t_seq'] = t_seqs_list      # the length of the sequence on the AWG
+        if phase_list:
+            jumptable_dict['read_phase'] = phase_list
 
         self.jumptable = jumptable_dict
 
@@ -357,6 +372,11 @@ class MFL_IRQ_Driven(GenericLogic):
             pg_settting = loaded_qudi_vars['pulse_generator_settings']
 
         taus = seq.measurement_information['controlled_variable_virtual']   # needs to be added in generation method
+        try:
+            phases = seq.measurement_information['read_phases']
+        except KeyError:
+            phases = []
+
         t_seqs = self.pull_t_seq_list(ens, seq.ensemble_list, pg_settting)
 
         # get all sequence steps that correspond to a tau
@@ -365,6 +385,9 @@ class MFL_IRQ_Driven(GenericLogic):
         if len(taus) != len(seqsteps) or len(taus) != len(t_seqs):
             self.log.error("Couldn't pull jump address table.")
             return
+        if phases and len(phases) != len(taus):
+            self.log.error("Readout phases are not of same length as taus.")
+            return
 
         # prepare output
         jumptable = {'name': [], 'jump_address': [], 'idx_seqtable': []}
@@ -372,7 +395,7 @@ class MFL_IRQ_Driven(GenericLogic):
         jumptable['jump_address'] = [el['pattern_jump_address'] for (i, el) in seqsteps]
         jumptable['idx_seqtable'] = [i for (i, el) in seqsteps]
 
-        self.set_jumptable(jumptable, taus, t_seqs)
+        self.set_jumptable(jumptable, taus, t_seqs, phase_list=phases)
 
     def pull_t_seq_list(self, ens_dict_all, active_ensembles, pulse_generator_settings):
         """
@@ -420,6 +443,8 @@ class MFL_IRQ_Driven(GenericLogic):
         # taus needed for first epoch
         self.taus_requested[0] = tau_first_req
         self.taus[0] = tau_first_real
+        self.read_phases[0] = 0
+
         if t_first_seq is None:
             self.t_seqs[0] = 0   # this is not correct, but might be unknown at time of setup
         else:
@@ -439,12 +464,33 @@ class MFL_IRQ_Driven(GenericLogic):
         if self.save_priors:
             prior = self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi)
             self.priors.append(prior)
+            if self.n_est_ws is 1:
+                faxes = 2*np.pi * np.linspace(self.mfl_frq_min_mhz, self.mfl_frq_max_mhz, 500)
+                self.likelihoods.append([faxes / (2*np.pi), self.get_likelihood(faxes)[1]])
+            else:
+                raise NotImplementedError
+
             # needed?
             #particle_loc = self.mfl_updater.particle_locations / (2*np.pi)
             #particle_weight = self.mfl_updater.particle_weights
             #self.priors.append([prior, particle_loc, particle_weight])
 
-    def save_after_update(self, real_tau_s, tau_new_req_s, t_seq_s):
+    def get_likelihood(self, omega_mhzrad):
+        locs = omega_mhzrad
+
+        expparams = np.empty((1,), dtype=[('t', '<f8'), ('w_', '<f8')])  # tau (us)
+        expparams['t'] = self.taus[self._arr_idx(self.i_epoch), 0] * 1e6  # us
+        expparams['w_'] = 0
+
+        z_bin = self.majority_vote(self.zs[self._arr_idx(self.i_epoch), 0],
+                                   z_thresh=self.z_thresh)
+
+        y = self.mfl_model.likelihood(z_bin, locs, expparams).transpose([0, 2, 1]).transpose()[:,0,0]
+
+        return locs, y  # Mhz rad
+
+    def save_after_update(self, real_tau_s, tau_new_req_s, t_seq_s,
+                          read_phase=0.0, read_phase_req=0.0):
 
         b_mhz_rad = self.mfl_updater.est_mean()[:]
         db_mhz_rad = np.sqrt(np.abs(self.mfl_updater.est_covariance_mtx()[:]))
@@ -460,6 +506,8 @@ class MFL_IRQ_Driven(GenericLogic):
             self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
             self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
             self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = tau_new_req_s
+            self.read_phases[self._arr_idx(self.i_epoch) + 1, 0] = read_phase
+            self.read_phases_requested[self._arr_idx(self.i_epoch) + 1, 0] = read_phase_req
 
     def get_current_results(self, i_epoch=None):
 
@@ -705,6 +753,14 @@ class MFL_IRQ_Driven(GenericLogic):
         except Exception as e:
             pass
         self.log.debug("Saving result {} of measurement started at {} with lock {}".format(savefile, date_start, lock))
+
+        # calc mean of same taus
+        import pandas as pd
+        d = {'taus': self.taus.flatten(), 'zs': self.zs.flatten()}
+        df = pd.DataFrame(data=d)
+        df_mean = df.groupby('taus', as_index=False).mean()
+        self.z_mean = df_mean.to_dict()
+
         self.dump(savefile)
         # save to qudi pulsed mes?
 
@@ -832,13 +888,20 @@ class MFL_IRQ_Driven(GenericLogic):
 
         tau_and_x = self.mfl_tau_from_heuristic()
         tau = tau_and_x['t']    # us
-        tau = tau[0] * 1e-6
+        tau = tau[0] * 1e-6     # s
 
         #tau = 3500e-9   # DEBUG
 
         return tau
 
+    def calc_phase_from_posterior(self):
+        # normal MFL: readout phase = 0
+        # overwrite fucntion if needed
+
+        return 0
+
     def find_nearest_tau(self, tau_s):
+
         idx, val = self._find_nearest(self.jumptable['tau'], tau_s)
 
         return idx, val
@@ -858,7 +921,16 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return tau_real, t_seq
 
-    def calc_jump_addr(self, tau, last_tau=None):
+    def get_phase(self, idx_jumptable):
+
+        try:
+            phase_real = self.jumptable['read_phase'][idx_jumptable]
+        except KeyError:
+            phase_real = 0
+
+        return phase_real
+
+    def calc_jump_addr(self, tau, last_tau=None, readout_phase=None):
 
         # normal mode: find closest tau in jumptable
         idx_jumptable, val = self._find_nearest(self.jumptable['tau'], tau)
@@ -866,14 +938,29 @@ class MFL_IRQ_Driven(GenericLogic):
             # calibration mode: play taus linear after each other
             idx_jumptable, val = self._find_next_greatest(self.jumptable['tau'], last_tau)
             if idx_jumptable is -1:
-                self.log.warning("No next greatest tau. Repeating last tau.")
-                idx_jumptable, val = self._find_nearest(self.jumptable['tau'], last_tau)
+                self.log.warning("No next greatest tau. Repeating from smallest tau.")
+                idx_jumptable, val = self._find_nearest(self.jumptable['tau'], 0)
+
+        # search available phases for this tau
+        # search all phases for idx assuming that taus are ordered
+        i_last = idx_jumptable
+        while i_last < len(self.jumptable['tau']):
+            if self.jumptable['tau'][i_last] != val:
+                break
+            i_last += 1
+
+        val_phase = 0.
+        try:
+            idx_jumptable, val_phase = self._find_nearest(self.jumptable['read_phase'], readout_phase,
+                                                          idx_start=idx_jumptable, idx_end=i_last)
+        except KeyError:
+            pass   # no readout phase available in jumptable
 
         addr = self.jumptable['jump_address'][idx_jumptable]
         name_seqstep = self.jumptable['name'][idx_jumptable]
         if not self.nolog_callback:
-            self.log.info("Finding next tau {} ns (req: {}) in {} at jump address {} (0b{:08b})".
-                          format(1e9*val,1e9*tau, name_seqstep, addr, addr))
+            self.log.info("Finding next tau {} ns (req: {}), read_phase= {:.2f} in {} at jump address {} (0b{:08b})".
+                          format(1e9*val, 1e9*tau, val_phase, name_seqstep, addr, addr))
 
         return idx_jumptable, addr
 
@@ -917,10 +1004,20 @@ class MFL_IRQ_Driven(GenericLogic):
             raise NotImplemented
 
 
-    def _find_nearest(self, array, value):
-        array = np.asarray(array)
-        idx = (np.abs(array - value)).argmin()
-        return idx, array[idx]
+    def _find_nearest(self, array, value, idx_start=None, idx_end=None):
+        import copy as cp
+        # finds first occurence of closes value
+        search_array = np.asarray(cp.deepcopy(array))
+
+        # filter away indices to ignore
+        if idx_start is not None:
+            search_array[0:idx_start] = np.nan
+        if idx_end is not None:
+            search_array[idx_end:] = np.nan
+
+
+        idx = np.nanargmin((np.abs(search_array - value)))
+        return idx, search_array[idx]
 
     def _find_next_greatest(self, array, value):
 
@@ -962,13 +1059,18 @@ class MFL_IRQ_Driven(GenericLogic):
     def update_mfl(self, z_bin):
         # update posterior = prior * likelihood
         last_tau = self.taus[self.i_epoch, 0]           # get tau of experiment
+        last_phase = self.read_phases[self.i_epoch, 0]
         tau_and_x = self.get_tau_and_x(last_tau)
         try:
+            self.mfl_updater.update_read_phase(last_phase)
             self.mfl_updater.update(z_bin, tau_and_x)  # updates prior
         except RuntimeError as e:
             self.log.error("Updating mfl failed in epoch {}: {}".format(self.i_epoch, str(e)))
 
         self.prior_erase_beyond_sampling()
+
+    def get_should_end_run(self):
+        return self.n_epochs is not -1 and self.i_epoch >= self.n_epochs
 
     def prior_erase_beyond_sampling(self):
         # particles = [updater.particle_locations, updater.particle_weights]
@@ -1002,15 +1104,18 @@ class MFL_IRQ_Driven(GenericLogic):
 
         # for next epoch
         tau_new_req = self.calc_tau_from_posterior()
-        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, last_tau)
+        phase_new_req = self.calc_phase_from_posterior()
+        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, last_tau, readout_phase=phase_new_req)
         real_tau, t_seq = self.get_ts(idx_jumptable)
+        real_phase = self.get_phase(idx_jumptable)
 
         # after update: save next taus, current est(B)
-        self.save_after_update(real_tau, tau_new_req, t_seq)
+        self.save_after_update(real_tau, tau_new_req, t_seq,
+                               read_phase=real_phase, read_phase_req=phase_new_req)
         self.iterate_mfl()  # iterates i_epoch
 
         self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
-        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
+        if self.get_should_end_run():
             self.end_run()
             return 0
             # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
@@ -1338,7 +1443,7 @@ if __name__ == '__main__':
                        calibmode_lintau=calibmode_lintau, nowait_callback=nowait_callback)
         mfl_logic.meta_dict = meta_dict
 
-        mfl_logic.save_priors = True     # OK if callback slow
+        mfl_logic.save_priors = False#True     # OK if callback slow
         tau_first_req = mfl_logic.get_first_tau()
         # can pull here, since waiting for lock makes sure that seqtable is available as temp file
         mfl_logic.pull_jumptable(seqname=mfl_logic.sequence_name, load_vars_metafile=mfl_logic.qudi_vars_metafile)
