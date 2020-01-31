@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Bug fix to qudikernel.py kernel installer for Python 3.7.6
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
@@ -57,7 +58,11 @@ The potential sequence_options are:
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
 * added a hardware file for power supply  Teledyne T3PS3000
-* 
+* added pulse generator constraints to predefined
+* remove debug prints for flags in dummy pulser that were filling up the log
+* wider first column for ensemble and sequence editors to see long names and fixing header of first column in table of sequence editor
+* Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
+*
 
 
 Config changes:
