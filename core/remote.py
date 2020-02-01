@@ -117,8 +117,7 @@ class RemoteObjectManager(QObject):
         self.server.moveToThread(thread)
         thread.started.connect(self.server.run)
         thread.start()
-        logger.info('Started module server at {0} on port {1}'
-                    ''.format(hostname, port))
+        logger.info('Started module server at {0} on port {1}'.format(hostname, port))
 
     def stopServer(self):
         """ Stop the remote module server.
@@ -211,6 +210,9 @@ class RPyCServer(QObject):
                 port=self.port,
                 protocol_config={'allow_all_attrs': True})
         self.server.start()
+
+    def close(self):
+        self.server.close()
 
 
 class RemoteModule:

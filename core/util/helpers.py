@@ -49,60 +49,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-# Optional function for exiting immediately (with some manual teardown)
-def exit(exitcode=0):
-    """
-    Causes python to exit without garbage-collecting any objects, and thus
-    avoids calling object destructor methods. This is a sledgehammer
-    workaround for a variety of bugs in PyQt and Pyside that cause crashes
-    on exit.
-
-    This function does the following in an attempt to 'safely' terminate
-    the process:
-
-    * Invoke atexit callbacks
-    * Close all open file handles
-    * os._exit()
-
-    Note: there is some potential for causing damage with this function if you
-    are using objects that _require_ their destructors to be called (for
-    example, to properly terminate log files, disconnect from devices, etc).
-    Situations like this are probably quite rare, but use at your own risk.
-
-    @param int exitcode: system exit code
-    """
-
-    if has_pyqtgraph:
-        # first disable our pyqtgraph's cleanup function; won't be needing it.
-        pyqtgraph.setConfigOptions(exitCleanup=False)
-
-    # invoke atexit callbacks
-    atexit._run_exitfuncs()
-
-    # close file handles
-    fd_min = 3
-    fd_max = 4096
-    fd_except = set()
-
-    fd_set = set(range(fd_min, fd_max))
-
-    # in this subprocess we redefine the stdout, therefore on Unix systems we
-    # need to handle the opened file descriptors, see PEP 446:
-    #       https://www.python.org/dev/peps/pep-0446/
-    if sys.platform in ['linux', 'darwin']:
-
-        if sys.platform == 'darwin':
-            # trying to close 7 produces an illegal instruction on the Mac.
-            fd_except.add(7)
-
-        # remove specified file descriptor
-        fd_set = fd_set - fd_except
-
-        close_fd(fd_set)
-
-    os._exit(exitcode)
-
-
 def get_appdata_dir():
     """
     Get the system specific application data directory.
@@ -117,19 +63,6 @@ def get_appdata_dir():
         return os.path.expanduser('~/Library/Preferences/qudi')
     else:
         return os.path.expanduser('~/.local/qudi')
-
-
-def close_fd(fd_set):
-    """ Close routine for file descriptor
-
-    @param set fd_set: set of integers indicating the file descriptors which
-                       should be closed (or at least tried to close).
-    """
-    for fd in fd_set:
-        try:
-            os.close(fd)
-        except OSError:
-            pass
 
 
 def import_check():
