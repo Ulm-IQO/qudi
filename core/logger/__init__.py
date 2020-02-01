@@ -104,7 +104,7 @@ def cleanup_handlers():
     global _handlers
     if len(_root_logger.handlers) > 1:
         for handler in _root_logger.handlers[1:]:
-            if handler is qt_handler:
+            if handler is qt_handler or handler is signal_handler:
                 continue
             _root_logger.removeHandler(handler)
 
@@ -113,8 +113,8 @@ def get_handler(name):
     return _handlers.get(name, None)
 
 
-def get_logger(name):
-    return logging.getLogger(name)
+def get_logger(name=None):
+    return logging.getLogger(name) if name is not None else logging.getLogger()
 
 
 def init_rotating_file_handler(path='', filename='qudi.log', level=None, max_bytes=10485760,

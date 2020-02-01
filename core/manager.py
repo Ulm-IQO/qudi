@@ -72,7 +72,7 @@ class Manager(QtCore.QObject):
     sigModuleHasQuit = QtCore.Signal(object)
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
-    sigManagerQuit = QtCore.Signal(object, bool)
+    sigManagerQuit = QtCore.Signal(bool)
     sigShutdownAcknowledge = QtCore.Signal(bool, bool)
     sigShowManager = QtCore.Signal()
 
@@ -1240,7 +1240,9 @@ class Manager(QtCore.QObject):
                 logger.info('Deactivating module {0}.{1}'.format(base, module))
                 self.deactivate_module(base, module)
             QtCore.QCoreApplication.processEvents()
-        self.sigManagerQuit.emit(self, False)
+        if self.remote_manager is not None:
+            self.remote_manager.stopServer()
+        self.sigManagerQuit.emit(False)
 
     @QtCore.Slot()
     def restart(self):
@@ -1254,7 +1256,9 @@ class Manager(QtCore.QObject):
                     logger.exception(
                         'Module {0} failed to stop, continuing anyway.'.format(module_name))
                 QtCore.QCoreApplication.processEvents()
-        self.sigManagerQuit.emit(self, True)
+        if self.remote_manager is not None:
+            self.remote_manager.stopServer()
+        self.sigManagerQuit.emit(True)
 
     @QtCore.Slot(object)
     def register_task_runner(self, reference):

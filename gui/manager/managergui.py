@@ -195,7 +195,7 @@ class ManagerGui(GuiBase):
                 self._mw.remote_widget.port_label.setVisible(False)
                 self._mw.remote_widget.shared_module_listview.setVisible(False)
         else:
-            self._mw.action_view_remote.hide()
+            self._mw.action_view_remote.setVisible(False)
 
         self.reset_default_layout()
         self._mw.show()

@@ -23,32 +23,33 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-
 import sys
 import os
+import argparse
+import faulthandler
+
+# if __package__ is None:
+#     __package__ = 'core'
 
 # Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
 # -> e.g. for segmentation faults
-import faulthandler
 faulthandler.disable()
 faulthandler.enable(all_threads=True)
 
 # parse commandline parameters
-import argparse
 parser = argparse.ArgumentParser(prog='start.py')
 group = parser.add_mutually_exclusive_group()
-group.add_argument('-p', '--profile', action='store_true',
-        help='enables profiler')
-group.add_argument('-cg', '--callgraph', action='store_true',
-        help='display dependencies between the methods/modules')
-parser.add_argument('-m', '--manhole', action='store_true',
-        help='manhole for debugging purposes')
-parser.add_argument('-g', '--no-gui', action='store_true',
-        help='does not load the manager gui module')
+group.add_argument('-p', '--profile', action='store_true', help='enables profiler')
+group.add_argument('-cg',
+                   '--callgraph',
+                   action='store_true',
+                   help='display dependencies between the methods/modules')
+parser.add_argument('-m', '--manhole', action='store_true', help='manhole for debugging purposes')
+parser.add_argument(
+    '-g', '--no-gui', action='store_true', help='does not load the manager gui module')
 parser.add_argument('-c', '--config', default='', help='configuration file')
 parser.add_argument('-l', '--logdir', default='', help='log directory')
 args = parser.parse_args()
-
 
 # install logging facility
 from .logger import init_rotating_file_handler, get_logger
@@ -57,20 +58,9 @@ logger = get_logger(__name__)
 logger.info('Loading Qudi...')
 print('Loading Qudi...')
 
-
-# this loads Qt and makes sure the API version is right with PyQt4
-if __package__ is None:
-    __package__ = 'core'
-
-
-# define a global variable for the manager
-man = None
-
-# Until here every module is in the python standard library. Check vital packages for qudi,
-# otherwise qudi will not even start.
-from core.util.helpers import import_check
-err_code = import_check()
-
+# Check vital packages for qudi, otherwise qudi will not even start.
+from .util import helpers
+err_code = helpers.import_check()
 if err_code != 0:
     sys.exit(err_code)
 
@@ -82,190 +72,53 @@ else:
     from qtpy import QtWidgets
     app = QtWidgets.QApplication(sys.argv)
 
-
-# Install the pyzmq ioloop. This has to be done before anything else from
-# tornado is imported.
+# Install the pyzmq ioloop. This has to be done before anything else from tornado is imported.
 try:
     from zmq.eventloop import ioloop
     ioloop.install()
 except:
     logger.error('Preparing ZMQ failed, probably no IPython possible!')
 
-
-# Disable standard garbage collector and run it from the event loop to
-# improve stability.
-# (see garbage_collector in the doc for more information)
-from .garbage_collector import GarbageCollector
-gc = GarbageCollector(interval=1.0, debug=False)
-
-
-# define a watchdog for our application
-from .parentpoller import ParentPollerWindows, ParentPollerUnix
-
-
-class AppWatchdog(QtCore.QObject):
-    """This class periodically runs a function for debugging and handles
-      application exit.
-    """
-    sigDoQuit = QtCore.Signal(object)
-
-    def __init__(self):
-        super().__init__()
-        self.alreadyQuit = False
-        self.has_gui = False
-        self.exitcode = 0
-        # Run python code periodically to allow interactive debuggers to interrupt
-        # the qt event loop
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.donothing)
-        self.timer.start(1000)
-        self.sigDoQuit.connect(self.quitApplication)
-
-    def donothing(self):
-        """This function does nothing for debugging purposes.
-        """
-        #print('-- beat -- thread:', QtCore.QThread.currentThreadId())
-        x = 0
-        for i in range(0, 100):
-            x += i
-
-    def setupParentPoller(self, manager):
-        """ Set up parent pooler to find out when parent process is killed.
-
-            @param manager Manager: manager reference
-        """
-        self.parent_handle = int(os.environ.get('QUDI_PARENT_PID') or 0)
-        self.interrupt = int(os.environ.get('QUDI_INTERRUPT_EVENT') or 0)
-        if sys.platform == 'win32':
-            if self.interrupt or self.parent_handle:
-                self.poller = ParentPollerWindows(lambda: self.quitProxy(manager), self.interrupt, self.parent_handle)
-                self.poller.start()
-        elif self.parent_handle:
-            self.poller = ParentPollerUnix(lambda: self.quitProxy(manager))
-            self.poller.start()
-        else:
-            logger.warning('Qudi running unsupervised, restart wiill not work.')
-
-    def quitProxy(self, obj):
-        """ Helper function to emit doQuit signal
-
-            @param obj object: object passed to doQuit
-        """
-        print('Parent process is daed, committing sudoku...')
-        self.sigDoQuit.emit(obj)
-
-    def quitApplication(self, manager, restart = False):
-        """Clean up threads and windows, quit application.
-
-          @param object manager: manager belonging to this application
-
-        """
-        if restart:
-            # exitcode of 42 signals to start.py that this should be restarted
-            self.exitcode = 42
-        if not self.alreadyQuit:    # Need this because multiple triggers can
-                                    # call this function during quit.
-            self.alreadyQuit = True
-            self.timer.stop()
-            logger.info('Closing windows...')
-            print('Closing windows...')
-            if manager.has_gui:
-                manager.gui.close_windows()
-                manager.gui.close_system_tray_icon()
-            QtCore.QCoreApplication.instance().processEvents()
-            logger.info('Stopping threads...')
-            print('Stopping threads...')
-            manager.thread_manager.quit_all_threads()
-            QtCore.QCoreApplication.instance().processEvents()
-            logger.info('Qudi is closed!  Ciao.')
-            print('\n  Qudi is closed!  Ciao.')
-        QtCore.QCoreApplication.instance().quit()
-
-
 # Create Manager. This configures devices and creates the main manager window.
 # Arguments parsed by argparse are passed to the Manager.
 from .manager import Manager
-watchdog = AppWatchdog()
+from .watchdog import AppWatchdog
 man = Manager(args=args)
-watchdog.setupParentPoller(man)
-man.sigManagerQuit.connect(watchdog.quitApplication)
-
-## for debugging with pdb
-#QtCore.pyqtRemoveInputHook()
+watchdog = AppWatchdog(man)
 
 # manhole for debugging stuff inside the app from outside
-if args.manhole:
-    import manhole
-    manhole.install()
-
+# if args.manhole:
+#     import manhole
+#     manhole.install()
 
 # Start Qt event loop unless running in interactive mode
-import core.util.helpers as helpers
+app.exec_()
 
-if sys.flags.interactive == 1:
-    logger.info('Interactive mode; not starting event loop.')
-    print('Interactive mode; not starting event loop.')
+# first disable our pyqtgraph's cleanup function; won't be needing it.
+# try:
+#     import pyqtgraph
+#     pyqtgraph.setConfigOptions(exitCleanup=False)
+# except ImportError:
+#     pass
 
-    # import some modules which might be useful on the command line
-    import numpy as np
+# ToDo: Is the following issue still a thing with qudi?
+# in this subprocess we redefine the stdout, therefore on Unix systems we need to handle the opened
+# file descriptors, see PEP 446: https://www.python.org/dev/peps/pep-0446/
+if sys.platform in ['linux', 'darwin']:
+    fd_min, fd_max = 3, 4096
+    fd_except = set()
+    fd_set = set(range(fd_min, fd_max))
 
-    # Use CLI history and tab completion
-    import atexit
-    import os
-    historyPath = os.path.expanduser("~/.pyhistory")
-    try:
-        import readline
-    except ImportError:
-        print("Import Error in __main__: Module readline not available.")
-    else:
-        import rlcompleter
-        readline.parse_and_bind("tab: complete")
-        if os.path.exists(historyPath):
-            readline.read_history_file(historyPath)
+    if sys.platform == 'darwin':
+        # trying to close 7 produces an illegal instruction on the Mac.
+        fd_except.add(7)
 
-    def save_history(new_historyPath=historyPath):
+    # remove specified file descriptor
+    fd_set = fd_set - fd_except
+    for fd in fd_set:
         try:
-            import readline
-        except ImportError:
-            print("Import Error in __main__: Module readline not available.")
-        else:
-            readline.write_history_file(new_historyPath)
-    atexit.register(save_history)
-else:
-    # non-interactive, start application in different modes
-    if args.profile:
-        # with profiler
-        import cProfile, pstats
-        from io import StringIO
-        pr = cProfile.Profile()
-        pr.enable()
-        # ... do something ...
-        app.exec_()
-        pr.disable()
-        s = StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        # helpers.exit() causes python to exit before Qt has
-        # a chance to clean up.
-        # This avoids otherwise irritating exit crashes.
-        helpers.exit(watchdog.exitcode)
-    elif args.callgraph:
-        # with callgraph
-        from pycallgraph import PyCallGraph
-        from pycallgraph.output import GraphvizOutput
-        with PyCallGraph(output=GraphvizOutput()):
-            app.exec_()
-    elif not man.has_gui:
-        # without gui
-        app.exec_()
-        helpers.exit(watchdog.exitcode)
-    else:
-        # start regular
-        app.exec_()
-        # helpers.exit() causes python to exit before Qt has a chance to
-        # clean up.
-        # This avoids otherwise irritating exit crashes.
-        helpers.exit(watchdog.exitcode)
+            os.close(fd)
+        except OSError:
+            pass
 
+sys.exit(watchdog.exitcode)

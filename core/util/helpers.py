@@ -32,7 +32,8 @@ import importlib
 import logging
 import numpy as np
 
-# use setuptools parse_version if available and use distutils LooseVersion as fallback
+# use setuptools parse_version if available and use distutils LooseVersion as
+# fallback
 try:
     from pkg_resources import parse_version
 except ImportError:
@@ -48,71 +49,20 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-# Optional function for exiting immediately (with some manual teardown)
-def exit(exitcode=0):
+def get_appdata_dir():
     """
-    Causes python to exit without garbage-collecting any objects, and thus
-    avoids calling object destructor methods. This is a sledgehammer
-    workaround for a variety of bugs in PyQt and Pyside that cause crashes
-    on exit.
+    Get the system specific application data directory.
 
-    This function does the following in an attempt to 'safely' terminate
-    the process:
-
-    * Invoke atexit callbacks
-    * Close all open file handles
-    * os._exit()
-
-    Note: there is some potential for causing damage with this function if you
-    are using objects that _require_ their destructors to be called (for
-    example, to properly terminate log files, disconnect from devices, etc).
-    Situations like this are probably quite rare, but use at your own risk.
-
-    @param int exitcode: system exit code
+    @return str: path to appdata directory
     """
-
-    if has_pyqtgraph:
-        # first disable our pyqtgraph's cleanup function; won't be needing it.
-        pyqtgraph.setConfigOptions(exitCleanup=False)
-
-    # invoke atexit callbacks
-    atexit._run_exitfuncs()
-
-    # close file handles
-    fd_min = 3
-    fd_max = 4096
-    fd_except = set()
-
-    fd_set = set(range(fd_min, fd_max))
-
-    # in this subprocess we redefine the stdout, therefore on Unix systems we
-    # need to handle the opened file descriptors, see PEP 446:
-    #       https://www.python.org/dev/peps/pep-0446/
-    if sys.platform in ['linux', 'darwin']:
-
-        if sys.platform == 'darwin':
-            # trying to close 7 produces an illegal instruction on the Mac.
-            fd_except.add(7)
-
-        # remove specified file descriptor
-        fd_set = fd_set - fd_except
-
-        close_fd(fd_set)
-
-    os._exit(exitcode)
-
-
-def close_fd(fd_set):
-    """ Close routine for file descriptor
-
-    @param set fd_set: set of integers indicating the file descriptors which
-                       should be closed (or at least tried to close).
-    """
-    for fd in fd_set:
-        try:
-            os.close(fd)
-        except OSError:
-            pass
+    if sys.platform == 'win32':
+        # resolves to "C:\Documents and Settings\<UserName>\Application Data" on XP
+        # and "C:\Users\<UserName>\AppData\Roaming" on win7 and newer
+        return os.path.join(os.environ['APPDATA'], 'qudi')
+    elif sys.platform == 'darwin':
+        return os.path.expanduser('~/Library/Preferences/qudi')
+    else:
+        return os.path.expanduser('~/.local/qudi')
 
 
 def import_check():
@@ -127,7 +77,7 @@ def import_check():
     # encode like: (python-package-name, repository-name, version)
     vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
                  ('fysom', 'fysom', '2.1.4')]
-    opt_pkg = [('rpyc', 'rpyc', '4.0.2'),
+    opt_pkg = [('rpyc', 'rpyc', None),
                ('pyqtgraph', 'pyqtgraph', None),
                ('git', 'gitpython', None)]
 
@@ -166,9 +116,6 @@ def import_check():
                                'attribute. Ignoring version check!'.format(
                                    check_pkg_name))
                 return 0
-            # if version number is a tuple, convert to string
-            if isinstance(module_version, tuple):
-                module_version = '.'.join([str(v) for v in module_version])
             # compare version number
             if parse_version(module_version) < parse_version(check_version):
                 logger.error(
