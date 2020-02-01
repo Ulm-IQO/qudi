@@ -63,7 +63,6 @@ while True:
         process.win32_interrupt_event = interrupt_event
     try:
         retval = process.wait()
-        print('PROCESS RETURN VALUE:', retval)
         if retval == 0:
             break
         elif retval == 42:
