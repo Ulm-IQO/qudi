@@ -29,7 +29,6 @@ from core.connector import Connector
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from qtwidgets.scan_plotwidget import ScanImageItem
-from qtwidgets.save_dialog import SaveDialog
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -91,6 +90,22 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         # Load it
         super(OptimizerSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
+
+class SaveDialog(QtWidgets.QDialog):
+    """ Dialog to provide feedback and block GUI while saving """
+    def __init__(self, parent, title="Please wait", text="Saving..."):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
+
+        # Dialog layout
+        self.text = QtWidgets.QLabel("<font size='16'>" + text + "</font>")
+        self.hbox = QtWidgets.QHBoxLayout()
+        self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.hbox.addWidget(self.text)
+        self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.setLayout(self.hbox)
 
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
@@ -1562,6 +1577,8 @@ class ConfocalGui(GUIBase):
 
     def save_xy_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal data."""
+        self._save_dialog.show()
+
         cb_range = self.get_xy_cb_range()
 
         # Percentile range is None, unless the percentile scaling is selected in GUI.
@@ -1592,6 +1609,8 @@ class ConfocalGui(GUIBase):
 
     def save_depth_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""
+        self._save_dialog.show()
+
         cb_range = self.get_depth_cb_range()
 
         # Percentile range is None, unless the percentile scaling is selected in GUI.
