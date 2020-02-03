@@ -134,7 +134,7 @@ class SaveLogic(GenericLogic):
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
     log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')
-    save_pdf = ConfigOption('save_pdf', True)
+    save_pdf = ConfigOption('save_pdf', False)
     save_png = ConfigOption('save_png', True)
 
     # Matplotlib style definition for saving plots
