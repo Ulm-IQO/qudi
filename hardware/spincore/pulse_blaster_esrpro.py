@@ -729,6 +729,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         bitmask = self._convert_to_bitmask(active_channels)
         # with the branch or the stop command
+        length = np.round(np.round(length/self.GRAN_MIN+0.01) * self.GRAN_MIN, 12)
         if loop:
             num = self._write_pulse(flags=self.ON | bitmask,
                                     inst=self.BRANCH,
