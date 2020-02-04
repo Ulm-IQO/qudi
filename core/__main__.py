@@ -58,6 +58,11 @@ logger = get_logger(__name__)
 logger.info('Loading Qudi...')
 print('Loading Qudi...')
 
+# Check Qt API
+from qtpy import API_NAME
+logger.info('Used Qt API: {0}'.format(API_NAME))
+print('Used Qt API: {0}'.format(API_NAME))
+
 # Check vital packages for qudi, otherwise qudi will not even start.
 from .util import helpers
 err_code = helpers.import_check()

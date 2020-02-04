@@ -21,8 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __version__ = '0.1'
 
-# import Qt
 import os
+import sys
 
 # import PySide2
 # dirname = os.path.dirname(PySide2.__file__)
@@ -30,10 +30,6 @@ import os
 # os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 os.environ['QT_API'] = 'pyside2'
 
-import qtpy
-print('Used Qt API:', qtpy.API_NAME)
-
-import sys
 # Make icons work on non-X11 platforms, import a custom theme
 if sys.platform == 'win32':
     try:
