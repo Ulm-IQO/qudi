@@ -26,6 +26,9 @@ try:
 except ImportError:
     fn = None
 
+__all__ = ('create_formatted_output', 'get_relevant_digit', 'get_si_norm', 'get_unit_prefix_dict',
+           'round_value_to_error', 'ScaledFloat')
+
 
 def get_unit_prefix_dict():
     """

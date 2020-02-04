@@ -27,7 +27,6 @@ Copyright:
 import os
 import re
 import sys
-import atexit
 import importlib
 import logging
 import numpy as np
@@ -46,23 +45,10 @@ try:
 except ImportError:
     pass
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
-
-def get_appdata_dir():
-    """
-    Get the system specific application data directory.
-
-    @return str: path to appdata directory
-    """
-    if sys.platform == 'win32':
-        # resolves to "C:\Documents and Settings\<UserName>\Application Data" on XP
-        # and "C:\Users\<UserName>\AppData\Roaming" on win7 and newer
-        return os.path.join(os.environ['APPDATA'], 'qudi')
-    elif sys.platform == 'darwin':
-        return os.path.expanduser('~/Library/Preferences/qudi')
-    else:
-        return os.path.expanduser('~/.local/qudi')
+__all__ = ('csv_2_list', 'has_pyqtgraph', 'import_check', 'in_range', 'is_complex', 'is_float',
+           'is_integer', 'is_number', 'natural_sort')
 
 
 def import_check():
@@ -98,35 +84,28 @@ def import_check():
                 additional_text = 'It is recommended to have this package installed. '
             else:
                 additional_text = ''
-            logger.error(
-                'No Package "{0}" installed! {2}Perform e.g.\n\n'
-                '    pip install {1}\n\n'
-                'in the console to install the missing package.'.format(
-                    check_pkg_name,
-                    check_repo_name,
-                    additional_text
-                    ))
+            _logger.error('No Package "{0}" installed! {2}Perform e.g.\n\n    pip install {1}\n\n'
+                          'in the console to install the missing package.'.format(check_pkg_name,
+                                                                                  check_repo_name,
+                                                                                  additional_text))
             return 4
         if check_version is not None:
             # get package version number
             try:
                 module_version = module.__version__
             except AttributeError:
-                logger.warning('Package "{0}" does not have a __version__ '
-                               'attribute. Ignoring version check!'.format(
-                                   check_pkg_name))
+                _logger.warning('Package "{0}" does not have a __version__ attribute. Ignoring '
+                                'version check!'.format(check_pkg_name))
                 return 0
             # compare version number
             if parse_version(module_version) < parse_version(check_version):
-                logger.error(
-                    'Installed package "{0}" has version {1}, but version '
-                    '{2} is required. Upgrade e.g. with \n\n'
-                    '    pip install --upgrade {3}\n\n'
-                    'in the console to upgrade to newest version.'.format(
-                        check_pkg_name,
-                        module_version,
-                        check_version,
-                        check_repo_name))
+                _logger.error('Installed package "{0}" has version {1}, but version {2} is '
+                              'required. Upgrade e.g. with \n\n    pip install --upgrade {3}\n\n'
+                              'in the console to upgrade to newest version.'
+                              ''.format(check_pkg_name,
+                                        module_version,
+                                        check_version,
+                                        check_repo_name))
                 return 4
         return 0
 
@@ -139,9 +118,8 @@ def import_check():
     try:
         from qtpy.QtCore import Qt
     except ImportError:
-        logger.error('No Qt bindungs detected! Perform e.g.\n\n'
-                     '    pip install PyQt5\n\n'
-                     'in the console to install the missing package.')
+        _logger.error('No Qt bindungs detected! Perform e.g.\n\n    pip install PyQt5\n\n'
+                      'in the console to install the missing package.')
         err_code = err_code | 4
 
     # check optional packages

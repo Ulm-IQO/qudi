@@ -19,13 +19,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('scan_blink_correction',)
-
 import numpy as np
 from scipy.ndimage import minimum_filter1d, maximum_filter1d
 
 import logging
-__logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
+
+__all__ = ('scan_blink_correction',)
 
 
 def scan_blink_correction(image, axis=1):
@@ -44,13 +44,13 @@ def scan_blink_correction(image, axis=1):
     """
 
     if not isinstance(image, np.ndarray):
-        __logger.error('Image must be 2D numpy array.')
+        _logger.error('Image must be 2D numpy array.')
         return image
     if image.ndim != 2:
-        __logger.error('Image must be 2D numpy array.')
+        _logger.error('Image must be 2D numpy array.')
         return image
     if axis != 0 and axis != 1:
-        __logger.error('Optional axis parameter must be either 0 or 1.')
+        _logger.error('Optional axis parameter must be either 0 or 1.')
         return image
 
     # Calculate median value of the image. This value is used for padding image boundaries during

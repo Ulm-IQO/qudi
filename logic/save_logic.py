@@ -31,7 +31,6 @@ import time
 
 from collections import OrderedDict
 from core.configoption import ConfigOption
-from core.util import units
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.module import LogicBase

@@ -34,7 +34,7 @@ import importlib
 from qtpy import QtCore
 from . import config
 
-from .util import get_main_dir
+from .util.paths import get_main_dir
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from .util.modules import toposort, is_base
 from collections import OrderedDict

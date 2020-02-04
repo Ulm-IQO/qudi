@@ -23,6 +23,8 @@ from qtpy import QtCore
 from collections import OrderedDict
 from .mutex import Mutex
 
+__all__ = ('DictTableModel', 'ListTableModel')
+
 
 class DictTableModel(QtCore.QAbstractTableModel):
     """ Qt model storing a table in dictionaries
