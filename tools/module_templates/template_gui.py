@@ -45,7 +45,9 @@ class MyMainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.spinbox)
         layout.addWidget(self.button_down)
         layout.addWidget(self.label)
-        self.setLayout(layout)
+        widget = QtWidgets.QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
 
         # ToDo: The below code can be used instead to load a .ui file that has been created by
         #  QtDesigner. Just replace <myfilename> with the actual .ui filename.
