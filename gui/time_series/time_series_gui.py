@@ -458,7 +458,7 @@ class TimeSeriesGui(GUIBase):
             for channel, y_arr in smooth_data.items():
                 self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
 
-        self._vb.autoRange()
+        # self._vb.autoRange()
         self._pw.autoRange()
 
         curr_value_channel = self._mw.curr_value_comboBox.currentText()

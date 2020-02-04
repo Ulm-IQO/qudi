@@ -59,7 +59,7 @@ class Qutau(Base, DataInStreamInterface):
         self.__use_circular_buffer = False
         self.__streaming_mode = None
         self.__active_channels = [1, 2]
-
+        self.last_time = time.time()
         # Data buffer
         self._data_buffer = np.empty(0, dtype=self.__data_type)
         self._has_overflown = False
@@ -822,12 +822,27 @@ class Qutau(Base, DataInStreamInterface):
         return ans
 
     def get_coinc_counters(self, number_of_samples):
+        # self.new_time = time.time()
+        # time_difference = int((self.new_time-self.last_time)*1000)
+        # if time_difference < 1000:
+        #     pass
+        # elif time_difference == 0:
+        #     time_difference = 1
+        # else:
+        #     time_difference = 1000
+        #
+        # if time_difference < self._exp_time:
+        #     time.sleep(self._exp_time-time_difference)
+        #     self.set_exposure_time(self._exp_time)
+        # else:
+        #     self.set_exposure_time(time_difference)
         available_samples = number_of_samples
         if available_samples is not 0:
-            self.set_exposure_time(1)
+            exp_time = self._exp_time
+            self.set_exposure_time(exp_time)
             counter = 0
             data_array = np.array([])
-            while counter < self._exp_time * available_samples:
+            while counter * exp_time < self._exp_time * available_samples:
                 data = np.zeros(int(19), dtype=np.int32)
                 update = ctypes.c_int32()
                 ans = self._dll.TDC_getCoincCounters(data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
@@ -842,11 +857,11 @@ class Qutau(Base, DataInStreamInterface):
                     data_array = np.append(data_array, data[0:len(self.available_channels)])
 
             # print(counter, available_samples, self._exp_time)
-            raw_data = data_array.reshape(self._exp_time * available_samples, len(self.available_channels)).transpose()
+            raw_data = data_array.reshape(self._exp_time * available_samples // exp_time, len(self.available_channels)).transpose()
             return_data = np.empty((available_samples, len(self.available_channels)))
-            increment = int(self._exp_time)
+            increment = int(self._exp_time // exp_time)
             try:
-                for i in range(available_samples): #range(len(raw_data[0])//self._exp_time):
+                for i in range(available_samples):
                     return_data[i] = np.sum(raw_data[:, increment * i:(i+1) * increment], axis=1)
             except ValueError:
                 print(raw_data, available_samples, len(raw_data[0]//self._exp_time))
