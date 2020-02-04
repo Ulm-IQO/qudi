@@ -136,6 +136,8 @@ class ThreadManager(QtCore.QAbstractTableModel):
             logger.debug('Quit all threads.')
             for thread in self._threads:
                 thread.quit()
+                if not thread.wait(10000):
+                    logger.error('Waiting for thread {0} timed out.'.format(thread.objectName()))
 
     def get_thread_by_name(self, name):
         """
