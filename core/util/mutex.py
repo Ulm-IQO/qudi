@@ -26,7 +26,9 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 from qtpy import QtCore
 import traceback
 import logging
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
+
+__all__ = ('Mutex', 'RecursiveMutex')
 
 
 class Mutex(QtCore.QMutex):
@@ -85,13 +87,12 @@ class Mutex(QtCore.QMutex):
             if self.debug:
                 self.mutex.lock()
                 try:
-                    logger.debug('Waiting for mutex lock ({:.1} sec).'
-                                 'Traceback follows:'.format(c*wait_time/1000.))
-                    logger.debug(''.join(traceback.format_stack()))
+                    _logger.debug('Waiting for mutex lock ({:.1} sec). Traceback follows:\n'
+                                  ''.format(c*wait_time/1000.), ''.join(traceback.format_stack()))
                     if len(self.tb) > 0:
-                        logger.debug('Mutex is currently locked from: {0}\n'.format(self.tb[-1]))
+                        _logger.debug('Mutex is currently locked from: {0}\n'.format(self.tb[-1]))
                     else:
-                        logger.debug('Mutex is currently locked from [???]')
+                        _logger.debug('Mutex is currently locked from [???]')
                 finally:
                     self.mutex.unlock()
 

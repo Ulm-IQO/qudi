@@ -26,7 +26,7 @@ import os
 
 from collections import OrderedDict
 from core.statusvariable import StatusVar
-from core.util import get_main_dir
+from core.util.paths import get_main_dir
 from core.util.helpers import has_pyqtgraph
 from gui.manager.widgets.errordialog import ErrorDialog
 from gui.manager.widgets.managerwindow import ManagerMainWindow

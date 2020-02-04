@@ -13,6 +13,8 @@ Distributed under the terms of the Modified BSD License.
 
 import ctypes
 
+__all__ = ('create_interrupt_event', 'send_interrupt')
+
 
 def create_interrupt_event():
     """Create an interrupt event handle.

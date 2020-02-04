@@ -17,10 +17,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_appdata_dir', 'get_home_dir', 'get_main_dir')
-
 import os
 import sys
+
+__all__ = ('get_appdata_dir', 'get_home_dir', 'get_main_dir')
 
 
 def get_main_dir():
