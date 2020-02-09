@@ -173,14 +173,13 @@ class ModuleScrollWidget(QtWidgets.QScrollArea):
         return
 
     @QtCore.Slot(dict)
-    def set_module_states(self, loaded_tree):
+    def set_module_states(self, module_states):
         for mod_name, frame in self._frames.items():
-            if mod_name in loaded_tree:
-                try:
-                    state = loaded_tree[mod_name].module_state()
-                except:
-                    state = 'BROKEN'
-            else:
-                state = 'not loaded'
+            state = module_states.get(mod_name, 'BROKEN')
             frame.set_module_state(state)
         return
+
+    @QtCore.Slot(str, str)
+    def set_module_state(self, name, state):
+        if name in self._frames:
+            self._frames[name].set_module_state(state)

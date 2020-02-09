@@ -31,24 +31,10 @@ class TemplateHardware(Base):
     """Description of this qudi module goes here.
     """
 
-    # ToDo: Do not declare connectors in hardware modules
-
-    # ToDo: Declare configuration options. These are variables that can/must be declared for this
-    #  module in the configuration file and as such should be static during runtime. Consider
-    #  making them private (leading underscore) since this value should not be changed during
-    #  runtime. In this example the config option is optional (has a default value), will throw a
-    #  warning if it is not declared in the config file and can be declared using the name
-    #  "my_config_var".
     _my_config_var = ConfigOption(name='my_config_var', default=None, missing='warn')
 
-    # ToDo: Declare Qt signals owned by this hardware module. Every signal name should start with
-    #  the prefix "sig" and be named in CamelCase convention. Add a leading underscore (private) if
-    #  it should not be connected from outside this module.
     sigStuffDone = QtCore.Signal()
 
-    # ToDo: Declare status variables. Those are variables that can be used by the module like
-    #  normal attributes but their value will be saved to disk upon deactivation of the module and
-    #  loaded back in upon activation. Consider making these variables private (leading underscore).
     _my_status_variable = StatusVar(name='my_status_variable', default=42)
 
     def __init__(self, *args, **kwargs):

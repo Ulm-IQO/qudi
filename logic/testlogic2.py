@@ -26,16 +26,16 @@ from core.module import LogicBase
 from qtpy import QtCore
 
 
-class TemplateLogic(LogicBase):
+class TestLogic2(LogicBase):
     """Description of this qudi module goes here.
     """
 
-    my_logic_connector = Connector(interface='TestLogic2', optional=True)
-    my_hardware_connector = Connector(interface='TemplateHardware')
+    # my_logic_connector = Connector(interface='LogicClassName')
+    my_hardware_connector = Connector(interface='TestHardware2')
 
     _my_config_var = ConfigOption(name='my_config_var', default=None, missing='warn')
 
-    sigStuffDone = QtCore.Signal(object)
+    sigStuffDone = QtCore.Signal()
 
     _my_status_variable = StatusVar(name='my_status_variable', default=42)
 
@@ -71,7 +71,6 @@ class TemplateLogic(LogicBase):
         """
         print('StatusVar is: {0}\nConfigOption is: {1}'.format(
             self._my_status_variable, self._my_config_var))
-        self.sigStuffDone.emit(self._my_config_var)
         return
 
     @QtCore.Slot()

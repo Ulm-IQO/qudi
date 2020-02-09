@@ -39,28 +39,21 @@ class ConfigOption:
         module initalisation.
     """
 
-    def __init__(self, name=None, default=None, *, var_name=None, missing='nothing',
-                 constructor=None, checker=None, converter=None):
+    def __init__(self, name=None, default=None, *, missing='nothing', constructor=None,
+                 checker=None, converter=None):
         """ Create a ConfigOption object.
 
-            @param name: identifier of the option in the configuration file
-            @param default: default value for the case that the option is not set
-                in the config file
-            @param var_name: name of the variable inside a running module. Only set this
-                if you know what you are doing!
-            @param missing: action to take when the option is not set. 'nothing' does nothing,
-                'warn' logs a warning, 'error' logs an error and prevents the module from loading
-            @param constructor: constructor function for complex config option behaviour
-            @param checker: static function that checks if value is ok
-            @param converter: static function that forces type interpretation
+        @param name: identifier of the option in the configuration file
+        @param default: default value for the case that the option is not set in the config file
+        @param missing: action to take when the option is not set. 'nothing' does nothing, 'warn'
+                        logs a warning, 'error' logs an error and prevents the module from loading
+        @param constructor: constructor function for complex config option behaviour
+        @param checker: static function that checks if value is ok
+        @param converter: static function that forces type interpretation
         """
         self.missing = MissingOption[missing]
-        self.var_name = var_name
-        if name is None:
-            self.name = var_name
-        else:
-            self.name = name
 
+        self.name = name
         self.default = default
         self.constructor_function = constructor
         self.checker = checker
@@ -69,11 +62,14 @@ class ConfigOption:
     def copy(self, **kwargs):
         """ Create a new instance of ConfigOption with copied values and update
 
-            @param kwargs: extra arguments or overrides for the constructor of this class
+        @param kwargs: extra arguments or overrides for the constructor of this class
         """
-        newargs = {'name': copy.copy(self.name), 'default': copy.copy(self.default),
-                   'var_name': copy.copy(self.var_name), 'missing': copy.copy(self.missing.name),
-                   'constructor': self.constructor_function, 'checker': self.checker, 'converter': self.converter}
+        newargs = {'name': copy.copy(self.name),
+                   'default': copy.copy(self.default),
+                   'missing': copy.copy(self.missing.name),
+                   'constructor': self.constructor_function,
+                   'checker': self.checker,
+                   'converter': self.converter}
         newargs.update(kwargs)
         return ConfigOption(**newargs)
 
@@ -82,26 +78,24 @@ class ConfigOption:
         """
         if callable(self.checker):
             return self.checker(value)
-        else:
-            return True
+        return True
 
     def convert(self, value):
         """ If converter function set, convert value. Needs to raise exception on error.
 
-            @param value: value to convert (or not)
+        @param value: value to convert (or not)
 
-            @return: converted value (or passthrough)
+        @return: converted value (or pass-through)
         """
         if callable(self.converter):
             return self.converter(value)
-        else:
-            return value
+        return value
 
     def constructor(self, func):
         """ This is the decorator for declaring a constructor function for this ConfigOption.
 
-            @param func: constructor function for this ConfigOption
-            @return: return the original function so this can be used as a decorator
+        @param func: constructor function for this ConfigOption
+        @return: return the original function so this can be used as a decorator
         """
         if callable(func):
             self.constructor_function = func

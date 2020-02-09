@@ -19,7 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger
 import logging
 import numpy as np
 import os
@@ -62,10 +61,10 @@ class ManagerGui(GuiBase):
 
     # signals
     sigStartAll = QtCore.Signal()
-    sigStartModule = QtCore.Signal(str, str)
-    sigReloadModule = QtCore.Signal(str, str)
-    sigCleanupStatus = QtCore.Signal(str, str)
-    sigStopModule = QtCore.Signal(str, str)
+    sigStartModule = QtCore.Signal(str)
+    sigReloadModule = QtCore.Signal(str)
+    sigCleanupStatus = QtCore.Signal(str)
+    sigStopModule = QtCore.Signal(str)
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
     sigRealQuit = QtCore.Signal()
@@ -84,7 +83,6 @@ class ManagerGui(GuiBase):
         self._kernel_manager = None
         self._kernel = None
         self._namespace = None
-        self._check_timer = None
         self._mw = None
 
     def on_activate(self):
@@ -102,8 +100,9 @@ class ManagerGui(GuiBase):
             pg.setConfigOption('background', bgcolor)
 
             # experimental opengl usage
-            if 'useOpenGL' in self._manager.tree['global']:
-                pg.setConfigOption('useOpenGL', self._manager.tree['global']['useOpenGL'])
+            manager_global = self._manager.global_config
+            if 'useOpenGL' in manager_global:
+                pg.setConfigOption('useOpenGL', manager_global['useOpenGL'])
 
         # Create main window and restore position
         self._mw = ManagerMainWindow()
@@ -120,7 +119,7 @@ class ManagerGui(GuiBase):
         self.version_label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0} '
             '</a>, on branch {1}, configured from {2}'
-            ''.format(version[0], version[1], self._manager.config_file))
+            ''.format(version[0], version[1], self._manager.config_file_path))
         self.version_label.setOpenExternalLinks(True)
         self._mw.statusbar.addWidget(self.version_label)
 
@@ -134,13 +133,9 @@ class ManagerGui(GuiBase):
         # Connect signals from manager
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.update_config_widgets)
-        self._manager.sigModulesChanged.connect(self.update_config_widgets)
+        self._manager.sigModulesChanged.connect(self.update_gui_module_list)
+        self._manager.sigModuleStateChanged.connect(self.update_module_state)
         self._manager.sigShutdownAcknowledge.connect(self.prompt_shutdown)
-
-        # Log widget
-        # for loghandler in logging.getLogger().handlers:
-        #     if isinstance(loghandler, core.logger.QtLogHandler):
-        #         loghandler.sigLoggedMessage.connect(self.handle_log_entry)
 
         # Console settings
         self._mw.console_settings_dialog.accepted.connect(self.console_apply_settings)
@@ -149,7 +144,7 @@ class ManagerGui(GuiBase):
 
         # Connect signals
         self.sigStartModule.connect(self._manager.start_module)
-        self.sigReloadModule.connect(self._manager.restart_module_recursive)
+        self.sigReloadModule.connect(self._manager.restart_module)
         self.sigCleanupStatus.connect(self._manager.remove_module_status_file)
         self.sigStopModule.connect(self._manager.stop_module)
         self.sigLoadConfig.connect(self._manager.set_load_config)
@@ -158,21 +153,15 @@ class ManagerGui(GuiBase):
 
         # Init module lists
         self.update_gui_module_list()
-        self.update_module_states()
+        self.update_config_widgets()
         for base, widget in self._mw.module_scroll_widgets.items():
-            widget.sigActivateModule.connect(lambda mod, b=base: self.sigStartModule.emit(b, mod))
-            widget.sigReloadModule.connect(lambda mod, b=base: self.sigReloadModule.emit(b, mod))
-            widget.sigDeactivateModule.connect(lambda mod, b=base: self.sigStopModule.emit(b, mod))
-            widget.sigCleanupModule.connect(lambda mod, b=base: self.sigCleanupStatus.emit(b, mod))
-
-        # Timer for module state display
-        self._check_timer = QtCore.QTimer()
-        self._check_timer.start(1000)
-        self._check_timer.timeout.connect(self.update_module_states)
+            widget.sigActivateModule.connect(self.sigStartModule)
+            widget.sigReloadModule.connect(self.sigReloadModule)
+            widget.sigDeactivateModule.connect(self.sigStopModule)
+            widget.sigCleanupModule.connect(self.sigCleanupStatus)
 
         # IPython console widget
         self.start_ipython()
-        self.update_ipython_module_list()
         self.start_ipython_widget()
 
         # Configure thread widget
@@ -183,7 +172,7 @@ class ManagerGui(GuiBase):
         if self._manager.remote_manager is not None:
             self._mw.remote_widget.remote_module_listview.setModel(
                 self._manager.remote_manager.remoteModules)
-            if self._manager.remote_server:
+            if self._manager.has_remote_server:
                 self._mw.remote_widget.host_label.setText('Server URL:')
                 self._mw.remote_widget.port_label.setText('rpyc://{0}:{1}/'.format(
                     self._manager.remote_manager.server.host,
@@ -205,8 +194,6 @@ class ManagerGui(GuiBase):
         """
         self.stop_ipython_widget()
         self.stop_ipython()
-        self._check_timer.stop()
-        self._check_timer.timeout.disconnect()
         self.sigStartModule.disconnect()
         self.sigReloadModule.disconnect()
         self.sigStopModule.disconnect()
@@ -293,7 +280,7 @@ class ManagerGui(GuiBase):
         self._kernel = self._kernel_manager.kernel
         self._namespace = self._kernel.shell.user_ns
         self._namespace.update({'np': np,
-                                'config': self._manager.tree['defined'],
+                                'config': self._manager.config_dict,
                                 'manager': self._manager})
         if has_pyqtgraph:
             self._namespace['pg'] = pg
@@ -301,6 +288,7 @@ class ManagerGui(GuiBase):
         self._kernel.gui = 'qt4'
         self.log.info('IPython has kernel {0}'.format(self._kernel_manager.has_kernel))
         self.log.info('IPython kernel alive {0}'.format(self._kernel_manager.is_alive()))
+        self._manager.sigModuleStateChanged.connect(self.update_ipython_single_module)
         self._manager.sigModulesChanged.connect(self.update_ipython_module_list)
 
     def start_ipython_widget(self):
@@ -332,28 +320,38 @@ class ManagerGui(GuiBase):
         """
         self.log.debug('IPython deactivation: {0}'.format(QtCore.QThread.currentThread()))
         self._kernel_manager.shutdown_kernel()
+        self._manager.sigModuleStateChanged.disconnect(self.update_ipython_single_module)
+        self._manager.sigModulesChanged.disconnect(self.update_ipython_module_list)
 
     def stop_ipython_widget(self):
         """ Disconnect the IPython widget from the kernel.
         """
         self._mw.console_widget.kernel_client.stop_channels()
 
+    @QtCore.Slot(str, str, str)
+    def update_ipython_single_module(self, base, name, state):
+        """Remove deactivated module from namespace or add it if activated.
+        """
+        if state in ('deactivated', 'not loaded', 'BROKEN'):
+            self._namespace.pop(name, None)
+        else:
+            self._namespace.update({name: self._manager.get_module_instance(name)})
+        return
+
+    @QtCore.Slot()
     def update_ipython_module_list(self):
         """
         Remove non-existing modules from namespace, add new modules to namespace,
         update reloaded modules
         """
-        current_modules = set()
-        new_namespace = dict()
-        for base in ('hardware', 'logic', 'gui'):
-            for module in self._manager.tree['loaded'][base]:
-                current_modules.add(module)
-                new_namespace[module] = self._manager.tree['loaded'][base][module]
-        discard = self.modules - current_modules
+        current_modules = self._manager.configured_modules
+        new_namespace = {mod_name: mod.instance for mod_name, mod in current_modules.items() if
+                         mod.is_active and mod.instance is not None}
+        discard = self.modules - set(new_namespace)
         self._namespace.update(new_namespace)
         for module in discard:
             self._namespace.pop(module, None)
-        self.modules = current_modules
+        self.modules = set(current_modules)
 
     def console_keep_settings(self):
         """ Write old values into config dialog.
@@ -368,11 +366,15 @@ class ManagerGui(GuiBase):
         self._console_font_size = fontsize
         self._mw.console_widget.reset_font()
 
-    def update_config_widgets(self):
+    @QtCore.Slot()
+    @QtCore.Slot(dict)
+    def update_config_widgets(self, config=None):
         """ Clear and refill the tree widget showing the configuration.
         """
+        if config is None:
+            config = self._manager.config_dict
         self._mw.config_widget.clear()
-        self.fill_tree_item(self._mw.config_widget.invisibleRootItem(), self._manager.tree)
+        self.fill_tree_item(self._mw.config_widget.invisibleRootItem(), config)
 
     def fill_tree_item(self, item, value):
         """
@@ -410,38 +412,46 @@ class ManagerGui(GuiBase):
             item.addChild(child)
 
     @QtCore.Slot()
-    def update_gui_module_list(self):
+    @QtCore.Slot(dict)
+    def update_gui_module_list(self, modules=None):
         """ Clear and refill the module list widget
         """
-        for base, widget in self._mw.module_scroll_widgets.items():
-            self.fill_module_list(widget, base)
+        if modules is None:
+            modules = {'gui': self._manager.gui_module_states,
+                       'logic': self._manager.logic_module_states,
+                       'hardware': self._manager.hardware_module_states}
+        for base, state_dict in modules.items():
+            self.fill_module_list(base, state_dict)
 
-    def fill_module_list(self, scroll_widget, base):
+    def fill_module_list(self, base, module_states):
         """
         Fill the module list widget with module widgets for defined gui modules.
 
-        @param ModuleScrollWidget scroll_widget: QScrollWidget subclass showing module controls for
-                                                 a certain module category
         @param str base: module category to fill
+        @param dict module_states: The module states in a dictionary {name: state}
         """
-        if self._manager.tree['defined'].get(base) is None:
+        if base not in ('gui', 'logic', 'hardware'):
             self.log.error('Unable to initialize module list for base "{0}". Base not found in '
                            'module tree.'.format(base))
             return
-        module_names = [mod for mod in self._manager.tree['defined'][base] if
-                        mod not in self._manager.tree['global']['startup']]
-        scroll_widget.create_module_frames(module_names)
-        pass
 
-    @QtCore.Slot()
-    def update_module_states(self):
-        for base, widget in self._mw.module_scroll_widgets.items():
-            if base in self._manager.tree['loaded']:
-                widget.set_module_states(self._manager.tree['loaded'][base])
-        pass
+        for startup_mod in self._manager.startup_modules:
+            module_states.pop(startup_mod, None)
 
-    @staticmethod
-    def get_qudi_version():
+        self._mw.module_scroll_widgets[base].create_module_frames(list(module_states))
+        self._mw.module_scroll_widgets[base].set_module_states(module_states)
+        return
+
+    @QtCore.Slot(str, str, str)
+    def update_module_state(self, base, name, state):
+        if base not in self._mw.module_scroll_widgets:
+            self.log.error('Invalid module base "{0}". Unable to set state for module "{1}".'
+                           ''.format(base, name))
+            return
+        self._mw.module_scroll_widgets[base].set_module_state(name, state)
+        return
+
+    def get_qudi_version(self):
         """ Try to determine the software version in case the program is in
             a git repository.
         """
@@ -450,8 +460,8 @@ class ManagerGui(GuiBase):
             branch = repo.active_branch
             rev = str(repo.head.commit)
             return rev, str(branch)
-        except Exception as e:
-            print('Could not get git repo because:', e)
+        except:
+            self.log.exception('Error while trying to get git repo:')
             return 'unknown', -1
 
     def reload_qudi(self):
@@ -465,7 +475,7 @@ class ManagerGui(GuiBase):
         )
 
         restart = reply == QtWidgets.QMessageBox.Yes
-        self.sigLoadConfig.emit(self._manager.config_file, restart)
+        self.sigLoadConfig.emit(self._manager.config_file_path, restart)
 
     def get_load_file(self):
         """ Ask the user for a file where the configuration should be loaded from
