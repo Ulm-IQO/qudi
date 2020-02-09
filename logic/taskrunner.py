@@ -153,7 +153,7 @@ class TaskRunner(LogicBase):
             try:
                 ref = dict()
                 for mod_def, mod in t['needsmodules'].items():
-                    if self._manager.is_module_defined('logic', mod) and not self._manager.is_module_loaded('logic', mod):
+                    if self._manager.is_module_configured(mod) and not self._manager.is_module_active(mod):
                         if self._manager.start_module('logic', mod) < 0:
                             raise Exception('Loading module {0} failed.'.format(mod))
                     ref[mod_def] = self._manager.tree['loaded']['logic'][mod]
@@ -242,12 +242,11 @@ class TaskRunner(LogicBase):
                 modules_ok = True
             else:
                 for moddef, mod in task['needsmodules'].items():
-                    if self._manager.is_module_defined('logic', mod):
-                        if self._manager.is_module_loaded('logic', mod):
-                            if self._manager.is_module_active('logic', mod):
-                                modules_ok = True
+                    if self._manager.is_module_configured(mod):
+                        if self._manager.is_module_active(mod):
+                            modules_ok = True
                         else:
-                            self._manager.start_module('logic', mod)
+                            self._manager.start_module(mod)
 
             task['ok'] = prepost_ok and pause_ok and modules_ok
 

@@ -27,9 +27,13 @@ from collections import OrderedDict
 
 from qtpy import QtCore
 from .meta import ModuleMeta
-from .configoption import MissingOption
+from .configoption import MissingOption, ConfigOption
 from .connector import Connector
+from .statusvariable import StatusVar
 from core.util.mutex import Mutex
+from .config import load, save
+
+import os
 
 
 class ModuleStateMachine(Fysom, QtCore.QObject):
@@ -136,7 +140,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
     * Reload module data (from saved variables)
     """
     _threaded = False
-    _connectors = dict()
+    _module_meta = {'base': 'hardware'}  # can be overwritten by subclasses of Base
 
     _sigPopUpMessage = QtCore.Signal(str, str)
     _sigBalloonMessage = QtCore.Signal(str, str, object)
@@ -147,7 +151,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
         @param object self: the object being initialised
         @param object manager: the manager object that
-        @param str name: unique name for this object
+        @param str name: unique name for this module instance
         @param dict configuration: parameters from the configuration file
         @param dict callbacks: dict specifying functions to be run on state machine transitions
         """
@@ -161,41 +165,38 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         default_callbacks = {'onbeforeactivate': self.__load_status_vars_activate,
                              'ondeactivate': self.__save_status_vars_deactivate}
         default_callbacks.update(callbacks)
-
         self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
 
-        # add connectors
-        self.connectors = OrderedDict()
-        for cname, con in self._conn.items():
-            self.connectors[con.name] = con
+        # add module meta objects to avoid cluttering namespace
+        self._module_meta['name'] = name
+        # self._module_meta['base'] = 'hardware'
+        self._module_meta['configuration'] = copy.deepcopy(config)
 
-        # add connection base (legacy)
-        for con in self._connectors:
-            self.connectors[con] = OrderedDict()
-            self.connectors[con]['class'] = self._connectors[con]
-            self.connectors[con]['object'] = None
-
-        # add config options
-        for oname, opt in self._config_options.items():
-            if opt.name in config:
-                cfg_val = config[opt.name]
+        # set instance attributes according to config_option meta objects
+        for attr_name, cfg_opt in self._module_meta.get('config_options', dict()).items():
+            if cfg_opt.name in config:
+                cfg_val = config[cfg_opt.name]
             else:
-                if opt.missing == MissingOption.error:
-                    raise Exception('Required variable >> {0} << not given in configuration.\n'
-                                    'Configuration is: {1}'.format(opt.name, config))
-                elif opt.missing == MissingOption.warn:
-                    self.log.warning('No variable >> {0} << configured, using default value {1} '
-                                     'instead.'.format(opt.name, opt.default))
-                elif opt.missing == MissingOption.info:
-                    self.log.info('No variable >> {0} << configured, using default value {1} '
-                                  'instead.'.format(opt.name, opt.default))
-                cfg_val = opt.default
-            if opt.check(cfg_val):
-                converted_val = opt.convert(cfg_val)
-                if opt.constructor_function is None:
-                    setattr(self, opt.var_name, converted_val)
+                if cfg_opt.missing == MissingOption.error:
+                    raise Exception('Required variable >>{0}<< not given in configuration.\n'
+                                    'Configuration is: {1}'.format(cfg_opt.name, config))
+                msg = 'No variable >>{0}<< configured, using default value "{1}" instead.'.format(
+                    cfg_opt.name, cfg_opt.default)
+                cfg_val = cfg_opt.default
+                if cfg_opt.missing == MissingOption.warn:
+                    self.log.warning(msg)
+                elif cfg_opt.missing == MissingOption.info:
+                    self.log.info(msg)
+            if cfg_opt.check(cfg_val):
+                converted_val = cfg_opt.convert(cfg_val)
+                if cfg_opt.constructor_function is None:
+                    setattr(self, attr_name, converted_val)
                 else:
-                    setattr(self, opt.var_name, opt.constructor_function(self, converted_val))
+                    setattr(self, attr_name, cfg_opt.constructor_function(self, converted_val))
+
+        # set instance attributes according to connector meta objects
+        for attr_name, conn in self._module_meta.get('connectors', dict()).items():
+            setattr(self, attr_name, conn)
 
         # Enable pop-up and balloon messages by establishing a queued connection to manager if qudi
         # runs in headless mode (pop-up must run in main thread)
@@ -204,15 +205,11 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
             self._sigBalloonMessage.connect(manager.balloon_message, QtCore.Qt.QueuedConnection)
 
         self._manager = manager
-        self._name = name
-        self._configuration = config
-        self._status_variables = OrderedDict()
+        return
 
     @QtCore.Slot()
     def move_to_manager_thread(self):
-        """
-
-        @return:
+        """ Method that will move this module into the main/manager thread.
         """
         if QtCore.QThread.currentThread() != self.thread():
             QtCore.QMetaObject.invokeMethod(self,
@@ -223,6 +220,11 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
     @property
     def module_thread(self):
+        """ Read-only property returning the current module QThread instance if the module is
+        threaded. Returns None otherwise.
+
+        @return QThread: The thread of this module. If module is not threaded: None
+        """
         if self._threaded:
             return self.thread()
         return None
@@ -233,15 +235,25 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
         @param object event: Fysom event object
         """
-        # add status vars
-        for vname, var in self._stat_vars.items():
-            sv = self._status_variables
-            svar = sv[var.name] if var.name in sv else var.default
+        # Load status variables from disk only if this module is one of gui, logic or hardware base
+        file_path = self.module_status_file_path
+        if file_path is not None:
+            try:
+                variables = load(file_path) if os.path.isfile(file_path) else dict()
+            except:
+                self.log.exception('Failed to load status variables for module "{0}_{1}_{2}".'
+                                   ''.format(self.__class__.__name__,
+                                             self._module_meta['base'],
+                                             self._module_meta['name']))
+                variables = dict()
 
-            if var.constructor_function is None:
-                setattr(self, var.var_name, svar)
-            else:
-                setattr(self, var.var_name, var.constructor_function(self, svar))
+            # add StatusVar values to instance attributes
+            for attr_name, var in self._module_meta['status_variables'].items():
+                value = variables.get(var.name, var.default)
+                if var.constructor_function is None:
+                    setattr(self, attr_name, value)
+                else:
+                    setattr(self, attr_name, var.constructor_function(self, value))
 
         # activate
         self.on_activate()
@@ -254,18 +266,30 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         """
         try:
             self.on_deactivate()
-        except Exception as e:
-            raise e
+        except:
+            raise
         finally:
             # save status vars even if deactivation failed
-            for vname, var in self._stat_vars.items():
-                if hasattr(self, var.var_name):
-                    if var.representer_function is None:
-                        self._status_variables[var.name] = getattr(self, var.var_name)
-                    else:
-                        self._status_variables[var.name] = var.representer_function(
-                                                            self,
-                                                            getattr(self, var.var_name))
+            file_path = self.module_status_file_path
+            if file_path is not None:
+                # collect StatusVar values into dictionary
+                variables = dict()
+                for attr_name, var in self._module_meta['status_variables'].items():
+                    if hasattr(self, attr_name):
+                        value = getattr(self, attr_name)
+                        if var.representer_function is None:
+                            variables[var.name] = value
+                        else:
+                            variables[var.name] = var.representer_function(self, value)
+                # Save to file if any StatusVars have been found
+                if variables:
+                    try:
+                        save(file_path, variables)
+                    except:
+                        self.log.exception('Failed to save status variables for module '
+                                           '"{0}.{1}.{2}".'.format(self.__class__.__name__,
+                                                                   self._module_meta['base'],
+                                                                   self._module_meta['name']))
 
     @property
     def log(self):
@@ -282,35 +306,13 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         return self._threaded
 
     @property
-    def status_variables(self):
-        """
-        Returns a deepcopy of the protected status_variable dict with variable names and data
-        representing the module state for saving.
-
-        DO NOT try to use this property to alter or set status variables.
-        Use StatusVar instances from inside the module and do not alter status variables from any
-        external module.
-
-        @return dict: dict with variable names and contents
-        """
-        return copy.deepcopy(self._status_variables)
-
-    @status_variables.setter
-    def status_variables(self, var_dict):
-        """
-        Give the module a dict of variable names and their content representing the module state.
-
-        DO NOT try to use this property to alter or set status variables.
-        Use StatusVar instances from inside the module and do not alter status variables from any
-        external module.
-
-        @param OrderedDict var_dict: variable names and contents
-        """
-        if not isinstance(var_dict, dict):
-            self.log.error('Did not pass a dict or OrderedDict to setStatusVariables in {0}.'
-                           ''.format(self.__class__.__name__))
-            return
-        self._status_variables = var_dict
+    def module_status_file_path(self):
+        if self._module_meta.get('base', None) not in ('gui', 'logic', 'hardware'):
+            return None
+        file_name = 'status-{0}_{1}_{2}.cfg'.format(self.__class__.__name__,
+                                                    self._module_meta['base'],
+                                                    self._module_meta['name'])
+        return os.path.join(self._manager.get_status_dir(), file_name)
 
     def on_activate(self):
         """
@@ -349,7 +351,6 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
 class LogicBase(Base):
     """
-
     """
     _threaded = True
 
@@ -358,6 +359,8 @@ class LogicBase(Base):
         Initialize a logic module.
         """
         super().__init__(*args, **kwargs)
+        self._module_meta['base'] = 'logic'
+
         self.task_lock = Mutex()  # FIXME: What's this? Is it needed?
 
     # FIXME: exposing this seems like a great opportunity to shoot yourself in the foot.
@@ -380,14 +383,27 @@ class LogicBase(Base):
 class GuiBase(Base):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._module_meta['base'] = 'gui'
+
+        # Add windows position StatusVar to module
+        stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
+        if stat_var_name not in self._module_meta['status_variables']:
+            stat_var = StatusVar(stat_var_name, None)
+            self._module_meta['status_variables'][stat_var_name] = stat_var
+            setattr(self, stat_var_name, stat_var)
+
     def show(self):
-        warnings.warn('Every GUI module needs to re-implement the show() function!')
+        self.log.error('Every GUI module needs to implement the show() method!')
 
     def save_window_pos(self, window):
-        self._status_variables['__win_pos_x'] = window.pos().x()
-        self._status_variables['__win_pos_y'] = window.pos().y()
+        stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
+        if hasattr(self, stat_var_name):
+            setattr(self, stat_var_name, (window.pos().x(), window.pos().y()))
 
     def restore_window_pos(self, window):
-        if '__win_pos_x' in self._status_variables and '__win_pos_y' in self._status_variables:
-            window.move(self._status_variables['__win_pos_x'],
-                        self._status_variables['__win_pos_y'])
+        stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
+        win_pos = getattr(self, stat_var_name, None)
+        if win_pos is not None:
+            window.move(*win_pos)

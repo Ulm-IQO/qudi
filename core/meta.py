@@ -20,14 +20,11 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
-import copy
 from abc import ABCMeta
 from qtpy.QtCore import QObject
-from collections import OrderedDict
 from .connector import Connector
 from .statusvariable import StatusVar
 from .configoption import ConfigOption
-
 
 QObjectMeta = type(QObject)
 
@@ -38,51 +35,48 @@ class ModuleMeta(QObjectMeta):
     """
 
     def __new__(cls, name, bases, attrs):
+        """ Collect declared Connectors, ConfigOptions and StatusVars into dictionaries.
+
+        @param class cls: class
+        @param str name: name of class
+        @param list bases: list of base classes of class
+        @param dict attrs: attributes of class
+
+        @return class: new class with collected connectors
         """
-        Collect declared Connectors, ConfigOptions and StatusVars into dictionaries.
+        new_obj = super().__new__(cls, name, bases, attrs)
+        if not hasattr(new_obj, '_module_meta'):
+            return new_obj
 
-            @param mcs: class
-            @param name: name of class
-            @param bases: list of base classes of class
-            @param attrs: attributes of class
+        # collect meta objects into dicts
+        connectors = dict()
+        config_options = dict()
+        status_vars = dict()
 
-            @return: new class with collected connectors
-        """
+        # First collect all meta objects already present in the _module_meta dict (from bases)
+        for attr_name, conn in new_obj._module_meta.pop('connectors', dict()).items():
+            connectors[attr_name] = conn.copy() if conn.name else conn.copy(name=attr_name)
+        for attr_name, svar in new_obj._module_meta.pop('status_variables', dict()).items():
+            status_vars[attr_name] = svar.copy() if svar.name else svar.copy(name=attr_name)
+        for attr_name, copt in new_obj._module_meta.pop('config_options', dict()).items():
+            config_options[attr_name] = copt.copy() if copt.name else copt.copy(name=attr_name)
 
-        # collect meta info in dicts
-        connectors = OrderedDict()
-        config_options = OrderedDict()
-        status_vars = OrderedDict()
+        # Then we add the new meta objects introduced in this class
+        for attr_name, attr in attrs.items():
+            if isinstance(attr, Connector):
+                connectors[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
+            elif isinstance(attr, StatusVar):
+                status_vars[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
+            elif isinstance(attr, ConfigOption):
+                config_options[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
 
-        # Accumulate Connector, ConfigOption and StatusVar info from parent classes
-        for base in reversed(bases):
-            if hasattr(base, '_connectors'):
-                connectors.update(copy.deepcopy(base._connectors))
-            if hasattr(base, '_config_options'):
-                config_options.update(copy.deepcopy(base._config_options))
-            if hasattr(base, '_stat_var'):
-                status_vars.update(copy.deepcopy(base._stat_var))
-
-        # Collect this classes Connector and ConfigOption and StatusVar into dictionaries
-        for key, value in attrs.items():
-            if isinstance(value, Connector):
-                connectors[key] = value.copy(name=key)
-            elif isinstance(value, ConfigOption):
-                config_options[key] = value.copy(var_name=key)
-            elif isinstance(value, StatusVar):
-                status_vars[key] = value.copy(var_name=key)
-
-        attrs.update(connectors)
-        attrs.update(config_options)
-        attrs.update(status_vars)
-
-        # create a new class with the new dictionaries
-        new_class = QObjectMeta.__new__(cls, name, bases, attrs)
-        new_class._conn = connectors
-        new_class._config_options = config_options
-        new_class._stat_vars = status_vars
-
-        return new_class
+        # At last the collected meta objects are combined into a new _module_meta dict and attached
+        # to the returned object
+        meta_attr = {'connectors': connectors,
+                     'status_variables': status_vars,
+                     'config_options': config_options}
+        new_obj._module_meta = meta_attr
+        return new_obj
 
 
 class TaskMetaclass(QObjectMeta, ABCMeta):

@@ -48,40 +48,18 @@ class MyMainWindow(QtWidgets.QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
-        # ToDo: The below code can be used instead to load a .ui file that has been created by
-        #  QtDesigner. Just replace <myfilename> with the actual .ui filename.
-        # super().__init__(**kwargs)
-        # this_dir = os.path.dirname(__file__)
-        # ui_file = os.path.join(this_dir, '<myfilename>.ui')
-        # uic.loadUi(ui_file, self)
-
 
 class TemplateGui(GuiBase):
     """Description of this qudi module goes here.
     """
 
-    # ToDo: Declare connections to other qudi logic modules. Since this is a GUI module, you should
-    #  only ever connect it to logic modules.
-    # my_first_logic_connector = Connector(interface='FirstLogicClassName')
-    # my_second_logic_connector = Connector(interface='SecondLogicClassName')
+    my_first_logic_connector = Connector(interface='TemplateLogic')
+    my_second_logic_connector = Connector(interface='TemplateLogic')
 
-    # ToDo: Declare configuration options. These are variables that can/must be declared for this
-    #  module in the configuration file and as such should be static during runtime. Consider
-    #  making them private (leading underscore) since this value should not be changed during
-    #  runtime. In this example the config option is optional (has a default value), will throw a
-    #  warning if it is not declared in the config file and can be declared using the name
-    #  "display_string".
-    _display_str = ConfigOption(
-        name='display_string', default='No string given in config...', missing='warn')
+    _display_str = ConfigOption(name='display_string', default='No string given in config...', missing='warn')
 
-    # ToDo: Declare Qt signals owned by this GUI module. Every signal name should start with the
-    #  prefix "sig" and be named in CamelCase convention. Add a leading underscore (private) if it
-    #  should not be connected from outside this module.
     sigStuffDone = QtCore.Signal()
 
-    # ToDo: Declare status variables. Those are variables that can be used by the module like
-    #  normal attributes but their value will be saved to disk upon deactivation of the module and
-    #  loaded back in upon activation. Consider making these variables private (leading underscore).
     _my_status_variable = StatusVar(name='my_status_variable', default=42)
 
     def __init__(self, *args, **kwargs):
@@ -105,6 +83,9 @@ class TemplateGui(GuiBase):
         self.sigStuffDone.connect(self.my_slot_for_stuff)
         self._mw.button_down.clicked.connect(self.count_down)
         self._mw.button_up.clicked.connect(self.count_up)
+
+        self.my_first_logic_connector().sigStuffDone.connect(self.my_slot_for_stuff)
+        self.my_second_logic_connector().sigStuffDone.connect(self.my_slot_for_stuff)
 
         # Show main window
         self.show()
@@ -149,8 +130,9 @@ class TemplateGui(GuiBase):
         self._mw.spinbox.setValue(self._my_status_variable)
 
     @QtCore.Slot()
-    def my_slot_for_stuff(self):
+    @QtCore.Slot(object)
+    def my_slot_for_stuff(self, val=None):
         """Dummy slot that gets called every time sigStuffDone is emitted and connected.
         """
-        print('my_slot_for_stuff has been called!')
+        print('my_slot_for_stuff has been called!', val)
         return

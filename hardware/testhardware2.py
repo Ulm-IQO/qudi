@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+
 """
-This file contains a qudi logic module template
+This file contains a qudi hardware module template
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,20 +23,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.connector import Connector
 from core.statusvariable import StatusVar
 from core.configoption import ConfigOption
-from core.module import LogicBase
+from core.module import Base
 from qtpy import QtCore
 
 
-class TemplateLogic(LogicBase):
+class TestHardware2(Base):
     """Description of this qudi module goes here.
     """
 
-    my_logic_connector = Connector(interface='TestLogic2', optional=True)
-    my_hardware_connector = Connector(interface='TemplateHardware')
-
     _my_config_var = ConfigOption(name='my_config_var', default=None, missing='warn')
 
-    sigStuffDone = QtCore.Signal(object)
+    sigStuffDone = QtCore.Signal()
 
     _my_status_variable = StatusVar(name='my_status_variable', default=42)
 
@@ -45,8 +43,7 @@ class TemplateLogic(LogicBase):
     def on_activate(self):
         """Everything that should be done when activating the module must go in here.
         """
-        # Establish Qt signal-slot connections if needed. Also connect to logic/hardware signals
-        # and slots, preferably through QtCore.Qt.QueuedConnection
+        # Establish Qt signal-slot connections if needed.
         self.sigStuffDone.connect(self.my_slot_for_stuff)
         return
 
@@ -54,6 +51,7 @@ class TemplateLogic(LogicBase):
         """Undo everything that has been done in on_activate. In other words clean up after
         yourself and ensure there are no lingering connections, references to outside objects, open
         file handles etc. etc.
+        For hardware modules you should leave the device it is controlling in a safe state.
         """
         # disconnect all signals connected in on_activate
         self.sigStuffDone.disconnect(self.my_slot_for_stuff)
@@ -71,7 +69,6 @@ class TemplateLogic(LogicBase):
         """
         print('StatusVar is: {0}\nConfigOption is: {1}'.format(
             self._my_status_variable, self._my_config_var))
-        self.sigStuffDone.emit(self._my_config_var)
         return
 
     @QtCore.Slot()
