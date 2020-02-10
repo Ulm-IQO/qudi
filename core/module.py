@@ -162,14 +162,13 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         if callbacks is None:
             callbacks = dict()
 
-        default_callbacks = {'onbeforeactivate': self.__load_status_vars_activate,
-                             'ondeactivate': self.__save_status_vars_deactivate}
+        default_callbacks = {'onbeforeactivate': self.__activation_callback,
+                             'ondeactivate': self.__deactivation_callback}
         default_callbacks.update(callbacks)
         self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
 
         # add module meta objects to avoid cluttering namespace
         self._module_meta['name'] = name
-        # self._module_meta['base'] = 'hardware'
         self._module_meta['configuration'] = copy.deepcopy(config)
 
         # set instance attributes according to config_option meta objects
@@ -229,7 +228,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
             return self.thread()
         return None
 
-    def __load_status_vars_activate(self, event=None):
+    def __activation_callback(self, event=None):
         """
         Restore status variables before activation and invoke on_activate method.
 
@@ -254,11 +253,10 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
                     setattr(self, attr_name, value)
                 else:
                     setattr(self, attr_name, var.constructor_function(self, value))
-
         # activate
         self.on_activate()
 
-    def __save_status_vars_deactivate(self, event=None):
+    def __deactivation_callback(self, event=None):
         """
         Invoke on_deactivate method and save status variables afterwards even if deactivation fails.
 
