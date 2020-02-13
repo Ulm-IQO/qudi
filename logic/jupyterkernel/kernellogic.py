@@ -54,7 +54,7 @@ class QudiKernelLogic(LogicBase):
         """
         self.kernellist = dict()
         self.modules = set()
-        self._manager.sigModulesChanged.connect(self.updateModuleList)
+        self._manager.sigManagedModulesChanged.connect(self.updateModuleList)
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):

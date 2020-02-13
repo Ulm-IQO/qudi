@@ -146,13 +146,14 @@ class ModuleScrollWidget(QtWidgets.QScrollArea):
             self.create_module_frames(module_names)
         return
 
-    @property
-    def module_names(self):
-        return tuple(self._frames)
+    def __contains__(self, item):
+        return self._frames.__contains__(item)
 
-    @QtCore.Slot(list)
-    @QtCore.Slot(tuple)
-    def create_module_frames(self, module_names):
+    def __len__(self):
+        return self._frames.__len__()
+
+    def clear(self):
+        # Remove old connections and module frame widgets
         for frame in self._frames.values():
             frame.sigLoadClicked.disconnect()
             frame.sigReloadClicked.disconnect()
@@ -160,16 +161,36 @@ class ModuleScrollWidget(QtWidgets.QScrollArea):
             frame.sigCleanupClicked.disconnect()
             frame.setParent(None)
         self._frames = dict()
-        self.setLayout(QtWidgets.QVBoxLayout())
-        for name in module_names:
-            if name in self._frames:
+
+    @property
+    def module_names(self):
+        return tuple(self._frames)
+
+    @property
+    def module_frames(self):
+        return self._frames.copy()
+
+    @QtCore.Slot(dict)
+    def create_module_frames(self, modules):
+        # Create new frame widgets and connect them
+        frames = dict()
+        for name, mod in modules.items():
+            if name in frames:
                 raise NameError('Module with name "{0}" occurs twice in module list.')
-            self._frames[name] = ModuleFrameWidget(parent=self, module_name=name)
-            self.layout().addWidget(self._frames[name])
-            self._frames[name].sigLoadClicked.connect(self.sigActivateModule)
-            self._frames[name].sigReloadClicked.connect(self.sigReloadModule)
-            self._frames[name].sigDeactivateClicked.connect(self.sigDeactivateModule)
-            self._frames[name].sigCleanupClicked.connect(self.sigCleanupModule)
+            frames[name] = ModuleFrameWidget(parent=self, module_name=name)
+            frames[name].sigLoadClicked.connect(self.sigActivateModule)
+            frames[name].sigReloadClicked.connect(self.sigReloadModule)
+            frames[name].sigDeactivateClicked.connect(self.sigDeactivateModule)
+            frames[name].sigCleanupClicked.connect(self.sigCleanupModule)
+            frames[name].set_module_state(mod.state)
+
+        # delete old frame widgets and disconnect them
+        self.clear()
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self._frames = frames
+        for frame in frames.values():
+            self.layout().addWidget(frame)
         return
 
     @QtCore.Slot(dict)
@@ -183,3 +204,49 @@ class ModuleScrollWidget(QtWidgets.QScrollArea):
     def set_module_state(self, name, state):
         if name in self._frames:
             self._frames[name].set_module_state(state)
+
+
+class ModuleWidget(QtWidgets.QTabWidget):
+    """
+
+    """
+    sigActivateModule = QtCore.Signal(str)
+    sigDeactivateModule = QtCore.Signal(str)
+    sigCleanupModule = QtCore.Signal(str)
+    sigReloadModule = QtCore.Signal(str)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.module_scroll_widgets = {'gui': ModuleScrollWidget(),
+                                      'logic': ModuleScrollWidget(),
+                                      'hardware': ModuleScrollWidget()}
+        self.addTab(self.module_scroll_widgets['gui'], 'GUI')
+        self.addTab(self.module_scroll_widgets['logic'], 'Logic')
+        self.addTab(self.module_scroll_widgets['hardware'], 'Hardware')
+        self.module_scroll_widgets['gui'].sigActivateModule.connect(self.sigActivateModule)
+        self.module_scroll_widgets['logic'].sigActivateModule.connect(self.sigActivateModule)
+        self.module_scroll_widgets['hardware'].sigActivateModule.connect(self.sigActivateModule)
+        self.module_scroll_widgets['gui'].sigDeactivateModule.connect(self.sigDeactivateModule)
+        self.module_scroll_widgets['logic'].sigDeactivateModule.connect(self.sigDeactivateModule)
+        self.module_scroll_widgets['hardware'].sigDeactivateModule.connect(self.sigDeactivateModule)
+        self.module_scroll_widgets['gui'].sigCleanupModule.connect(self.sigCleanupModule)
+        self.module_scroll_widgets['logic'].sigCleanupModule.connect(self.sigCleanupModule)
+        self.module_scroll_widgets['hardware'].sigCleanupModule.connect(self.sigCleanupModule)
+        self.module_scroll_widgets['gui'].sigReloadModule.connect(self.sigReloadModule)
+        self.module_scroll_widgets['logic'].sigReloadModule.connect(self.sigReloadModule)
+        self.module_scroll_widgets['hardware'].sigReloadModule.connect(self.sigReloadModule)
+
+    @QtCore.Slot(dict)
+    def update_modules(self, modules_dict):
+        self.module_scroll_widgets['gui'].create_module_frames(
+            {name: mod for name, mod in modules_dict.items() if mod.module_base == 'gui'})
+        self.module_scroll_widgets['logic'].create_module_frames(
+            {name: mod for name, mod in modules_dict.items() if mod.module_base == 'logic'})
+        self.module_scroll_widgets['hardware'].create_module_frames(
+            {name: mod for name, mod in modules_dict.items() if mod.module_base == 'hardware'})
+        return
+
+    @QtCore.Slot(str, str, str)
+    def update_module_state(self, base, name, state):
+        self.module_scroll_widgets[base].set_module_state(name, state)

@@ -28,7 +28,9 @@ import os
 import sys
 import importlib
 import copy
-from weakref import WeakValueDictionary, ref
+import weakref
+import warnings
+from functools import partial
 
 from qtpy import QtCore
 from . import config
@@ -51,26 +53,39 @@ logger = logging.getLogger(__name__)
 class ManagedModulesSingleton(QtCore.QObject):
     """
     """
-    __instance = None
-    _lock = RecursiveMutex()
+    __instance = None  # Only class instance created will be stored here as weakref
 
+    _lock = RecursiveMutex()
     _manager = None
     _modules = dict()
 
     sigModuleStateChanged = QtCore.Signal(str, str, str)
+    sigManagedModulesChanged = QtCore.Signal(dict)
 
     def __new__(cls, *args, **kwargs):
         with cls._lock:
-            if cls.__instance is None:
-                cls.__instance = super().__new__(cls, *args, **kwargs)
+            if cls.__instance is None or cls.__instance() is None:
+                obj = super().__new__(cls, *args, **kwargs)
                 cls._modules = dict()
                 cls._manager = lambda: None
-            return cls.__instance
+                cls.__instance = None
+                return obj
+            return cls.__instance()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, manager=None, **kwargs):
         with self._lock:
-            if self.__instance is None:
+            if ManagedModulesSingleton.__instance is None:
+                if not isinstance(manager, Manager):
+                    raise Exception('First initialization of ManagedModulesSingleton requires the '
+                                    'manager argument to be a Manager instance.')
                 super().__init__(*args, **kwargs)
+                ManagedModulesSingleton._manager = weakref.ref(
+                    manager, partial(self._manager_ref_dead_callback))
+                ManagedModulesSingleton.__instance = weakref.ref(self)
+
+    def __del__(self):
+        ManagedModulesSingleton.__instance = None
+        ManagedModulesSingleton._manager = None
 
     def __len__(self):
         with self._lock:
@@ -96,61 +111,125 @@ class ManagedModulesSingleton(QtCore.QObject):
     def clear(self):
         with self._lock:
             for module_name in tuple(self._modules):
-                self.remove_module(module_name, ignore_missing=True)
+                self.remove_module(module_name, ignore_missing=True, emit_change=False)
+            self.sigManagedModulesChanged.emit(self.modules)
 
     def get(self, *args):
         with self._lock:
             return self._modules.get(*args)
 
-    def pop(self, *args):
-        with self._lock:
-            obj = self._modules.get(*args)
-            self.remove_module(args[0], ignore_missing=True)
-            return obj
+    def items(self):
+        return self._modules.copy().items()
 
-    def update(self, *args, **kwargs):
-        if len(args) > 1:
-            raise TypeError('update expected at most 1 arguments, got {0:d}'.format(len(args)))
-        with self._lock:
-            if args:
-                if isinstance(args[0], dict):
-                    for module in args[0].values():
-                        self.add_module(module, allow_overwrite=True)
-                else:
-                    for _, module in args[0]:
-                        self.add_module(module, allow_overwrite=True)
-            for module in kwargs.values():
-                self.add_module(module, allow_overwrite=True)
+    def values(self):
+        return self._modules.copy().values()
 
-    def remove_module(self, module_name, ignore_missing=False):
+    def keys(self):
+        return self._modules.copy().keys()
+
+    @property
+    def module_names(self):
+        with self._lock:
+            return tuple(self._modules)
+
+    @property
+    def module_states(self):
+        with self._lock:
+            return {name: mod.state for name, mod in self._modules.items()}
+
+    @property
+    def module_instances(self):
+        with self._lock:
+            return {name: mod.instance for name, mod in self._modules.items() if
+                    mod.instance is not None}
+
+    @property
+    def modules(self):
+        return self._modules.copy()
+
+    def remove_module(self, module_name, ignore_missing=False, emit_change=True):
         with self._lock:
             if module_name not in self._modules:
                 if not ignore_missing:
                     logger.error('No module with name "{0}" registered. Unable to remove module.'
                                  ''.format(module_name))
                 return
+            base = self._modules[module_name].module_base
             self._modules[module_name].deactivate()
             self._modules[module_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
             del self._modules[module_name]
-            self.link_module_dependencies()
+            self.refresh_module_links()
+            if emit_change:
+                self.sigManagedModulesChanged.emit(self.modules)
 
-    def add_module(self, module, allow_overwrite=False):
+    def add_module(self, name, base, configuration, allow_overwrite=False, emit_change=True):
         with self._lock:
-            if not isinstance(module, ManagedModule):
-                raise TypeError('add_module expects a ManagedModule instance.')
+            if not isinstance(name, str) or not name:
+                raise TypeError('module name must be non-empty str type')
+            if base not in ('gui', 'logic', 'hardware'):
+                logger.error('No valid module base "{0}". Unable to create qudi module "{1}".'
+                             ''.format(base, name))
+                return
             if allow_overwrite:
-                self.remove_module(module.name, ignore_missing=True)
-            elif module.name in self._modules:
+                self.remove_module(name, ignore_missing=True)
+            elif name in self._modules:
                 logger.error(
                     'Module with name "{0}" already registered. Unable to add module of same name.')
                 return
-            self._modules[module.name] = module
-            self.link_module_dependencies()
+            module = ManagedModule(name, base, configuration, self._manager)
+            module.sigStateChanged.connect(self.sigModuleStateChanged)
+            self._modules[name] = module
+            self.refresh_module_links()
+            if emit_change:
+                self.sigManagedModulesChanged.emit(self.modules)
 
-    def link_module_dependencies(self):
+    def refresh_module_links(self):
         with self._lock:
-            # ToDo: implement
-            pass
+            weak_refs = {
+                name: weakref.ref(mod, partial(self._module_ref_dead_callback, module_name=name))
+                for name, mod in self._modules.items()}
+            for module_name, module in self._modules.items():
+                # Add required module references
+                required = set(module.connection_cfg.values())
+                module.required_modules = set(
+                    mod_ref for name, mod_ref in weak_refs.items() if name in required)
+                # Add dependent module references
+                module.dependent_modules = set(mod_ref for mod_ref in weak_refs.values() if
+                                               module_name in mod_ref().connection_cfg.values())
+            return
+
+    def activate_module(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Module activation aborted.'.format(module_name))
+                return
+            return self._modules[module_name].activate()
+
+    def deactivate_module(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Module deactivation aborted.'.format(module_name))
+                return
+            return self._modules[module_name].deactivate()
+
+    def reload_module(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Module reload aborted.'.format(module_name))
+                return
+            return self._modules[module_name].reload()
+
+    def _module_ref_dead_callback(self, dead_ref, module_name):
+        with self._lock:
+            self.remove_module(module_name, ignore_missing=True)
+
+    def _manager_ref_dead_callback(self, dead_ref):
+        with self._lock:
+            logger.error('Unexpected dead Manager weakref encountered in ManagedModulesSingleton.')
+            self.clear()
 
 
 class ManagedModule(QtCore.QObject):
@@ -158,30 +237,29 @@ class ManagedModule(QtCore.QObject):
      object. Contains status properties and handles initialization, state transitions and
      connection of the module.
     """
-    # ToDO: Properly handle (i.e. test) optional connectors
-
     # ToDo: Handle remote connection/(de)activation
     sigStateChanged = QtCore.Signal(str, str, str)
 
-    _manager = None
-    _lock = RecursiveMutex()
-    __managed_modules = WeakValueDictionary()
+    _lock = RecursiveMutex()  # Single mutex shared across all ManagedModule instances
 
-    def __init__(self, name, base, configuration):
-        if not name or name in ManagedModule.__managed_modules:
-            raise NameError('Module name must be a unique and non-empty string.')
+    def __init__(self, name, base, configuration, manager_ref):
+        if not name or not isinstance(name, str):
+            raise NameError('Module name must be a non-empty string.')
         if base not in ('gui', 'logic', 'hardware'):
             raise NameError('Module base must be one of ("gui", "logic", "hardware").')
         if 'module.Class' not in configuration:
             raise KeyError('Mandatory config entry "module.Class" not found in config for module '
                            '"{0}".'.format(name))
+        if not isinstance(manager_ref, weakref.ref) or not isinstance(manager_ref(), Manager):
+            raise TypeError(
+                'manager_ref parameter is expected to be a weak reference to Manager instance.')
 
         super().__init__()
 
+        self._manager = manager_ref
         self._name = name  # Each qudi module needs a unique string identifier
         self._base = base  # Remember qudi module base
         self._instance = None  # Store the module instance later on
-        self._reverse_dependencies = set()
 
         # Sort out configuration dict
         cfg = copy.deepcopy(configuration)
@@ -191,40 +269,13 @@ class ManagedModule(QtCore.QObject):
         self._connect_cfg = cfg.pop('connect', dict())
         # The rest are config options
         self._options = cfg
-        # Store weak reference to new instance
-        ManagedModule.__managed_modules[name] = self
+
+        self._required_modules = set()
+        self._dependent_modules = set()
         return
 
     def __call__(self):
         return self.instance
-
-    @classmethod
-    def set_manager(cls, manager):
-        with cls._lock:
-            if not isinstance(manager, Manager):
-                raise TypeError('ManagedModule.set_manager is expecting a Manager object instance.')
-            if cls._manager is not None and cls._manager() is not None:
-                raise Exception('Can not set new manager reference in ManagedModule class. Old '
-                                'manager reference is still valid (something is preventing it from '
-                                'garbage collection).')
-            cls._manager = ref(manager)
-
-    @classmethod
-    def build_reverse_dependencies(cls):
-        with cls._lock:
-            # This should ensure the weak references are not garbage collected during iteration
-            module_list = [mod_ref() for mod_ref in cls.__managed_modules.itervaluerefs()]
-            for module in module_list:
-                if module is None:
-                    continue
-                mod_name = module.name
-                reverse_deps = set()
-                for inspect_module in module_list:
-                    if (inspect_module is module) or (inspect_module is None):
-                        continue
-                    if mod_name in inspect_module.dependencies:
-                        reverse_deps.add(inspect_module.name)
-                module.reverse_dependencies = reverse_deps
 
     @property
     def name(self):
@@ -248,34 +299,34 @@ class ManagedModule(QtCore.QObject):
 
     @property
     def instance(self):
-        with ManagedModule._lock:
+        with self._lock:
             return self._instance
 
     @property
     def status_file_path(self):
-        with ManagedModule._lock:
+        with self._lock:
             if self._instance is not None:
                 return self._instance.module_status_file_path
             return None
 
     @property
     def is_loaded(self):
-        with ManagedModule._lock:
+        with self._lock:
             return self._instance is not None
 
     @property
     def is_active(self):
-        with ManagedModule._lock:
+        with self._lock:
             return self._instance is not None and self._instance.module_state() != 'deactivated'
 
     @property
     def is_busy(self):
-        with ManagedModule._lock:
+        with self._lock:
             return self.is_active and self._instance.module_state() != 'idle'
 
     @property
     def state(self):
-        with ManagedModule._lock:
+        with self._lock:
             if self._instance is None:
                 return 'not loaded'
             try:
@@ -288,93 +339,103 @@ class ManagedModule(QtCore.QObject):
         return self._connect_cfg.copy()
 
     @property
-    def dependencies(self):
-        return set(self._connect_cfg.values())
+    def required_modules(self):
+        with self._lock:
+            self._required_modules.copy()
+
+    @required_modules.setter
+    def required_modules(self, module_iter):
+        for module in module_iter:
+            if not isinstance(module, weakref.ref):
+                raise TypeError('items in required_modules must be weakref.ref instances.')
+            if not isinstance(module(), ManagedModule):
+                if module() is None:
+                    logger.error('Dead weakref passed as required module to ManagedModule "{0}"'
+                                 ''.format(self._name))
+                    return
+                raise TypeError('required_modules must be iterable of ManagedModule instances '
+                                '(or weakref to same instances)')
+        self._required_modules = set(module_iter)
 
     @property
-    def reverse_dependencies(self):
-        with ManagedModule._lock:
-            return self._reverse_dependencies.copy()
+    def dependent_modules(self):
+        with self._lock:
+            self._dependent_modules.copy()
 
-    @reverse_dependencies.setter
-    def reverse_dependencies(self, dependency_set):
-        with ManagedModule._lock:
-            self._reverse_dependencies = set(dependency_set)
+    @dependent_modules.setter
+    def dependent_modules(self, module_iter):
+        dep_modules = set()
+        for module in module_iter:
+            if not isinstance(module, weakref.ref):
+                raise TypeError('items in dependent_modules must be weakref.ref instances.')
+            if not isinstance(module(), ManagedModule):
+                if module() is None:
+                    logger.error('Dead weakref passed as dependent module to ManagedModule "{0}"'
+                                 ''.format(self._name))
+                    return
+                raise TypeError('dependent_modules must be iterable of ManagedModule instances '
+                                '(or weakref to same instances)')
+            dep_modules.add(module)
+        self._dependent_modules = dep_modules
 
     @property
     def ranking_active_dependent_modules(self):
-        with ManagedModule._lock:
+        with self._lock:
             active_dependent_modules = set()
-            for mod_name in self._reverse_dependencies:
-                dep_module = ManagedModule.__managed_modules.get(mod_name, None)
-                if dep_module is None:
+            for module_ref in self._dependent_modules:
+                module = module_ref()
+                if module is None:
+                    logger.warning('Dead dependent module weakref encountered in ManagedModule '
+                                   '"{0}".'.format(self._name))
                     continue
-                if dep_module.is_active:
-                    active_modules = dep_module.ranking_active_dependent_modules
+                if module.is_active:
+                    active_modules = module.ranking_active_dependent_modules
                     if active_modules:
                         active_dependent_modules.update(active_modules)
                     else:
-                        active_dependent_modules.add(mod_name)
+                        active_dependent_modules.add(module_ref)
             return active_dependent_modules
 
-    def reload(self):
-        with ManagedModule._lock:
-            # Deactivate if active
-            was_active = self.is_active
-            if was_active:
-                mod_to_activate = self.ranking_active_dependent_modules
-                if not self.deactivate():
-                    return False
-
-            # reload module
-            if not self._load(reload=True):
-                return False
-
-            # re-activate all modules that have been active before
-            if was_active:
-                if mod_to_activate:
-                    for mod_name in mod_to_activate:
-                        module = ManagedModule.__managed_modules.get(mod_name, None)
-                        if module is None:
-                            continue
-                        if not module.activate():
-                            return False
-                else:
-                    if not self.activate():
-                        return False
-            return True
+    @property
+    def module_thread_name(self):
+        return 'mod-{0}-{1}'.format(self._base, self._name)
 
     def activate(self):
         print('starting to activate:', self._name)
-        with ManagedModule._lock:
+        with self._lock:
             if self.is_active:
+                if self._base == 'gui':
+                    self._instance.show()
                 return True
 
             if not self.is_loaded:
                 if not self._load():
                     return False
 
-            # Recursive activation of dependencies. Map dependency modules to connector names.
-            connect_dict = dict()
-            for connector_name, mod_name in self._connect_cfg.items():
-                dep_module = ManagedModule.__managed_modules.get(mod_name, None)
-                if not dep_module.activate():
+            # Recursive activation of required modules
+            for module_ref in self._required_modules:
+                module = module_ref()
+                if module is None:
+                    logger.error('Dead required module weakref encountered in ManagedModule "{0}".'
+                                 ''.format(self._name))
                     return False
-                connect_dict[connector_name] = dep_module
-            if not self._connect(connect_dict):
+                if not module.is_active:
+                    if not module.activate():
+                        return False
+
+            # Establish module interconnections via Connector meta object in qudi module instance
+            if not self._connect():
                 return False
 
             # check if manager reference is set
-            manager = None if self._manager is None else self._manager()
+            manager = self._get_manager()
             if manager is None:
-                logger.error('Unable to activate ManagedModule instances. Weak reference to Manager'
-                             ' instance is not set or has been garbage collected.')
                 return False
 
             print('activating:', self._name)
             try:
                 if self._instance.is_module_threaded:
-                    thread_name = 'mod-{0}-{1}'.format(self._base, self._name)
+                    thread_name = self.module_thread_name
                     thread = manager.thread_manager.get_new_thread(thread_name)
                     self._instance.moveToThread(thread)
                     thread.start()
@@ -402,32 +463,32 @@ class ManagedModule(QtCore.QObject):
 
     def deactivate(self):
         print('starting to deactivate:', self._name)
-        with ManagedModule._lock:
+        with self._lock:
             if not self.is_active:
                 return True
 
             success = True  # error flag to return
 
             # Recursively deactivate dependent modules
-            for mod_name in self._reverse_dependencies:
-                dep_module = ManagedModule.__managed_modules.get(mod_name, None)
-                if dep_module is None:
-                    continue
-                success = success and dep_module.deactivate()
+            for module_ref in self._dependent_modules:
+                module = module_ref()
+                if module is None:
+                    logger.error('Dead dependent module weakref encountered in ManagedModule "{0}".'
+                                 ''.format(self._name))
+                    return False
+                if module.is_active:
+                    success = success and module.deactivate()
 
             # check if manager reference is set
-            manager = None if self._manager is None else self._manager()
+            manager = self._get_manager()
             if manager is None:
-                logger.error('Unable to properly deactivate ManagedModule instances. Weak reference'
-                             ' to Manager instance is not set or has been garbage collected. Thread'
-                             ' management can not take place.')
                 success = False
 
             print('deactivating:', self._name)
             # Actual deactivation of this module
             try:
                 if self._instance.is_module_threaded:
-                    thread_name = self._instance.thread().objectName()
+                    thread_name = self.module_thread_name
                     QtCore.QMetaObject.invokeMethod(self._instance.module_state,
                                                     'deactivate',
                                                     QtCore.Qt.BlockingQueuedConnection)
@@ -449,30 +510,47 @@ class ManagedModule(QtCore.QObject):
             self.sigStateChanged.emit(self._base, self._name, self.state)
             return success
 
-    def remove(self):
-        """Explicitly remove this ManagedModule instance from internal bookkeeping not relying on
-        garbage collection.
-        This process is irreversible and renders this instance non-functional.
-        """
-        with ManagedModule._lock:
-            if self._name in ManagedModule.__managed_modules:
-                del ManagedModule.__managed_modules[self._name]
+    def reload(self):
+        with self._lock:
+            # Deactivate if active
+            was_active = self.is_active
+            mod_to_activate = None
+            if was_active:
+                mod_to_activate = self.ranking_active_dependent_modules
+                if not self.deactivate():
+                    return False
+
+            # reload module
+            if not self._load(reload=True):
+                return False
+
+            # re-activate all modules that have been active before
+            if was_active:
+                if mod_to_activate:
+                    for module_ref in mod_to_activate:
+                        module = module_ref()
+                        if module is None:
+                            continue
+                        if not module.activate():
+                            return False
+                else:
+                    if not self.activate():
+                        return False
+            return True
 
     def _load(self, reload=False):
         """
         """
-        with ManagedModule._lock:
+        with self._lock:
             # Do nothing if already loaded and not reload
             if self.is_loaded and not reload:
                 return True
 
-            # check if manager reference is set
-            manager = None if self._manager is None else self._manager()
+            manager = self._get_manager()
             if manager is None:
-                logger.error('Unable to load ManagedModule instances. Weak reference to Manager '
-                             'instance is not set or has been garbage collected.')
                 return False
 
+            # Try qudi module import
             try:
                 mod = importlib.import_module('{0}.{1}'.format(self._base, self._module))
                 importlib.reload(mod)
@@ -480,15 +558,21 @@ class ManagedModule(QtCore.QObject):
                 logger.exception(
                     'Error during import of module "{0}.{1}"'.format(self._base, self._module))
                 return False
+
+            # Try getting qudi module class from imported module
             try:
                 mod_class = getattr(mod, self._class)
             except:
                 logger.exception('Error getting module class "{0}" from module "{1}.{2}"'
                                  ''.format(self._class, self._base, self._module))
                 return False
+
+            # Check if imported class is a valid qudi module class
             if not issubclass(mod_class, Base):
                 logger.error('Qudi module main class must be subclass of core.module.Base')
                 return False
+
+            # Try to instantiate the imported qudi module class
             try:
                 self._instance = mod_class(manager=manager,
                                            name=self._name,
@@ -500,27 +584,39 @@ class ManagedModule(QtCore.QObject):
                 return False
             return True
 
-    def _connect(self, connect_dict):
-        with ManagedModule._lock:
-            # Sanity checking
+    def _connect(self):
+        with self._lock:
+            # Check if module has already been loaded/instantiated
             if not self.is_loaded:
-                print('Connection failed. No module instance found.')
+                logger.error('Connection failed. No module instance found or module "{0}.{1}".'
+                             ''.format(self._base, self._name))
                 return False
-            module_connectors = self._instance._module_meta['connectors']
-            mandatory_connector_names = set(
-                conn.name for conn in module_connectors.values() if not conn.optional)
-            if not mandatory_connector_names.issubset(connect_dict):
+
+            # Get Connector meta objects for this module
+            conn_objects = getattr(self._instance, '_module_meta', dict()).get('connectors', dict())
+            conn_names = set(conn.name for conn in conn_objects.values())
+            mandatory_conn = set(conn.name for conn in conn_objects.values() if not conn.optional)
+            configured_conn = set(self._connect_cfg)
+            if not configured_conn.issubset(conn_names):
+                logger.error('Connection of module "{0}.{1}" failed. Encountered mismatch of '
+                             'connectors in configuration {2} and module Connector meta objects '
+                             '{3}.'.format(self._base, self._name, configured_conn, conn_names))
+                return False
+            if not mandatory_conn.issubset(configured_conn):
                 logger.error('Connection of module "{0}.{1}" failed. Not all mandatory connectors '
                              'are specified in config.\nMandatory connectors are: {2}'
-                             ''.format(self._base, self._name, mandatory_connector_names))
+                             ''.format(self._base, self._name, mandatory_conn))
                 return False
 
             # Iterate through module connectors and try to connect them
             try:
-                for connector in module_connectors.values():
-                    if connector.name not in connect_dict:
+                for connector in conn_objects.values():
+                    if connector.name not in configured_conn:
                         continue
-                    connector.connect(connect_dict[connector.name].instance)
+                    for module_ref in self._required_modules:
+                        if module_ref().name == self._connect_cfg[connector.name]:
+                            break
+                    connector.connect(module_ref().instance)
             except:
                 logger.exception('Something went wrong while trying to connect module "{0}.{1}".'
                                  ''.format(self._base, self._name))
@@ -528,9 +624,10 @@ class ManagedModule(QtCore.QObject):
             return True
 
     def _disconnect(self):
-        with ManagedModule._lock:
+        with self._lock:
             try:
-                for connector in self._instance._module_meta['connectors'].values():
+                conn_obj = getattr(self._instance, '_module_meta', dict()).get('connectors', dict())
+                for connector in conn_obj.values():
                     connector.disconnect()
             except:
                 logger.exception('Something went wrong while trying to disconnect module "{0}.{1}".'
@@ -538,398 +635,14 @@ class ManagedModule(QtCore.QObject):
                 return False
             return True
 
-
-# class ManagedModule(QtCore.QObject):
-#     """ Object representing a qudi module (gui, logic or hardware) to be managed by the qudi Manager
-#      object. Contains status properties and handles initialization, state transitions and
-#      connection of the module.
-#     """
-#     # ToDO: Each ManagedModule instance should hold references instead of names for each dependent
-#     #  and required module. Take special care with gc and weakrefs to collect obsolete qudi module
-#     #  class instances.
-#
-#     # ToDO: Properly handle (i.e. test) optional connectors
-#
-#     # ToDo: Handle remote connection/(de)activation
-#     sigStateChanged = QtCore.Signal(str, str, str)
-#
-#     _manager = None
-#     _lock = RecursiveMutex()
-#     __managed_modules = WeakValueDictionary()
-#
-#     def __init__(self, name, base, configuration):
-#         if not name or name in ManagedModule.__managed_modules:
-#             raise NameError('Module name must be a unique and non-empty string.')
-#         if base not in ('gui', 'logic', 'hardware'):
-#             raise NameError('Module base must be one of ("gui", "logic", "hardware").')
-#         if 'module.Class' not in configuration:
-#             raise KeyError('Mandatory config entry "module.Class" not found in config for module '
-#                            '"{0}".'.format(name))
-#
-#         super().__init__()
-#
-#         self._name = name  # Each qudi module needs a unique string identifier
-#         self._base = base  # Remember qudi module base
-#         self._instance = None  # Store the module instance later on
-#         self._reverse_dependencies = set()
-#
-#         # Sort out configuration dict
-#         cfg = copy.deepcopy(configuration)
-#         # Extract module and class name
-#         self._module, self._class = cfg.pop('module.Class').rsplit('.', 1)
-#         # Remember connections by name
-#         self._connect_cfg = cfg.pop('connect', dict())
-#         # The rest are config options
-#         self._options = cfg
-#         # Store weak reference to new instance
-#         ManagedModule.__managed_modules[name] = self
-#         return
-#
-#     def __call__(self):
-#         return self.instance
-#
-#     @classmethod
-#     def set_manager(cls, manager):
-#         with cls._lock:
-#             if not isinstance(manager, Manager):
-#                 raise TypeError('ManagedModule.set_manager is expecting a Manager object instance.')
-#             if cls._manager is not None and cls._manager() is not None:
-#                 raise Exception('Can not set new manager reference in ManagedModule class. Old '
-#                                 'manager reference is still valid (something is preventing it from '
-#                                 'garbage collection).')
-#             cls._manager = ref(manager)
-#
-#     @classmethod
-#     def build_reverse_dependencies(cls):
-#         with cls._lock:
-#             # This should ensure the weak references are not garbage collected during iteration
-#             module_list = [mod_ref() for mod_ref in cls.__managed_modules.itervaluerefs()]
-#             for module in module_list:
-#                 if module is None:
-#                     continue
-#                 mod_name = module.name
-#                 reverse_deps = set()
-#                 for inspect_module in module_list:
-#                     if (inspect_module is module) or (inspect_module is None):
-#                         continue
-#                     if mod_name in inspect_module.dependencies:
-#                         reverse_deps.add(inspect_module.name)
-#                 module.reverse_dependencies = reverse_deps
-#
-#     @property
-#     def name(self):
-#         return self._name
-#
-#     @property
-#     def module_base(self):
-#         return self._base
-#
-#     @property
-#     def class_name(self):
-#         return self._class
-#
-#     @property
-#     def module_name(self):
-#         return self._module
-#
-#     @property
-#     def options(self):
-#         return copy.deepcopy(self._options)
-#
-#     @property
-#     def instance(self):
-#         with ManagedModule._lock:
-#             return self._instance
-#
-#     @property
-#     def status_file_path(self):
-#         with ManagedModule._lock:
-#             if self._instance is not None:
-#                 return self._instance.module_status_file_path
-#             return None
-#
-#     @property
-#     def is_loaded(self):
-#         with ManagedModule._lock:
-#             return self._instance is not None
-#
-#     @property
-#     def is_active(self):
-#         with ManagedModule._lock:
-#             return self._instance is not None and self._instance.module_state() != 'deactivated'
-#
-#     @property
-#     def is_busy(self):
-#         with ManagedModule._lock:
-#             return self.is_active and self._instance.module_state() != 'idle'
-#
-#     @property
-#     def state(self):
-#         with ManagedModule._lock:
-#             if self._instance is None:
-#                 return 'not loaded'
-#             try:
-#                 return self._instance.module_state()
-#             except:
-#                 return 'BROKEN'
-#
-#     @property
-#     def connection_cfg(self):
-#         return self._connect_cfg.copy()
-#
-#     @property
-#     def dependencies(self):
-#         return set(self._connect_cfg.values())
-#
-#     @property
-#     def reverse_dependencies(self):
-#         with ManagedModule._lock:
-#             return self._reverse_dependencies.copy()
-#
-#     @reverse_dependencies.setter
-#     def reverse_dependencies(self, dependency_set):
-#         with ManagedModule._lock:
-#             self._reverse_dependencies = set(dependency_set)
-#
-#     @property
-#     def ranking_active_dependent_modules(self):
-#         with ManagedModule._lock:
-#             active_dependent_modules = set()
-#             for mod_name in self._reverse_dependencies:
-#                 dep_module = ManagedModule.__managed_modules.get(mod_name, None)
-#                 if dep_module is None:
-#                     continue
-#                 if dep_module.is_active:
-#                     active_modules = dep_module.ranking_active_dependent_modules
-#                     if active_modules:
-#                         active_dependent_modules.update(active_modules)
-#                     else:
-#                         active_dependent_modules.add(mod_name)
-#             return active_dependent_modules
-#
-#     def reload(self):
-#         with ManagedModule._lock:
-#             # Deactivate if active
-#             was_active = self.is_active
-#             if was_active:
-#                 mod_to_activate = self.ranking_active_dependent_modules
-#                 if not self.deactivate():
-#                     return False
-#
-#             # reload module
-#             if not self._load(reload=True):
-#                 return False
-#
-#             # re-activate all modules that have been active before
-#             if was_active:
-#                 if mod_to_activate:
-#                     for mod_name in mod_to_activate:
-#                         module = ManagedModule.__managed_modules.get(mod_name, None)
-#                         if module is None:
-#                             continue
-#                         if not module.activate():
-#                             return False
-#                 else:
-#                     if not self.activate():
-#                         return False
-#             return True
-#
-#     def activate(self):
-#         print('starting to activate:', self._name)
-#         with ManagedModule._lock:
-#             if self.is_active:
-#                 return True
-#
-#             if not self.is_loaded:
-#                 if not self._load():
-#                     return False
-#
-#             # Recursive activation of dependencies. Map dependency modules to connector names.
-#             connect_dict = dict()
-#             for connector_name, mod_name in self._connect_cfg.items():
-#                 dep_module = ManagedModule.__managed_modules.get(mod_name, None)
-#                 if not dep_module.activate():
-#                     return False
-#                 connect_dict[connector_name] = dep_module
-#             if not self._connect(connect_dict):
-#                 return False
-#
-#             # check if manager reference is set
-#             manager = None if self._manager is None else self._manager()
-#             if manager is None:
-#                 logger.error('Unable to activate ManagedModule instances. Weak reference to Manager'
-#                              ' instance is not set or has been garbage collected.')
-#                 return False
-#
-#             print('activating:', self._name)
-#             try:
-#                 if self._instance.is_module_threaded:
-#                     thread_name = 'mod-{0}-{1}'.format(self._base, self._name)
-#                     thread = manager.thread_manager.get_new_thread(thread_name)
-#                     self._instance.moveToThread(thread)
-#                     thread.start()
-#                     QtCore.QMetaObject.invokeMethod(self._instance.module_state,
-#                                                     'activate',
-#                                                     QtCore.Qt.BlockingQueuedConnection)
-#                     # Cleanup if activation was not successful
-#                     if not self.is_active:
-#                         QtCore.QMetaObject.invokeMethod(self._instance,
-#                                                         'move_to_manager_thread',
-#                                                         QtCore.Qt.BlockingQueuedConnection)
-#                         manager.thread_manager.quit_thread(thread_name)
-#                         manager.thread_manager.join_thread(thread_name)
-#                 else:
-#                     self._instance.module_state.activate()
-#                 QtCore.QCoreApplication.instance().processEvents()
-#                 if not self.is_active:
-#                     return False
-#             except:
-#                 logger.exception('Massive error during activation of module "{0}.{1}"'
-#                                  ''.format(self._base, self._name))
-#                 return False
-#             self.__emit_state_change()
-#             return True
-#
-#     def deactivate(self):
-#         print('starting to deactivate:', self._name)
-#         with ManagedModule._lock:
-#             if not self.is_active:
-#                 return True
-#
-#             success = True  # error flag to return
-#
-#             # Recursively deactivate dependent modules
-#             for mod_name in self._reverse_dependencies:
-#                 dep_module = ManagedModule.__managed_modules.get(mod_name, None)
-#                 if dep_module is None:
-#                     continue
-#                 success = success and dep_module.deactivate()
-#
-#             # check if manager reference is set
-#             manager = None if self._manager is None else self._manager()
-#             if manager is None:
-#                 logger.error('Unable to properly deactivate ManagedModule instances. Weak reference'
-#                              ' to Manager instance is not set or has been garbage collected. Thread'
-#                              ' management can not take place.')
-#                 success = False
-#
-#             print('deactivating:', self._name)
-#             # Actual deactivation of this module
-#             try:
-#                 if self._instance.is_module_threaded:
-#                     thread_name = self._instance.thread().objectName()
-#                     QtCore.QMetaObject.invokeMethod(self._instance.module_state,
-#                                                     'deactivate',
-#                                                     QtCore.Qt.BlockingQueuedConnection)
-#                     QtCore.QMetaObject.invokeMethod(self._instance,
-#                                                     'move_to_manager_thread',
-#                                                     QtCore.Qt.BlockingQueuedConnection)
-#                     if manager is not None:
-#                         manager.thread_manager.quit_thread(thread_name)
-#                         manager.thread_manager.join_thread(thread_name)
-#                 else:
-#                     self._instance.module_state.deactivate()
-#                 QtCore.QCoreApplication.instance().processEvents()
-#                 success = success and not self.is_active
-#             except:
-#                 logger.exception('Massive error during deactivation of module "{0}.{1}"'
-#                                  ''.format(self._base, self._name))
-#                 success = False
-#             success = success and self._disconnect()
-#             self.__emit_state_change()
-#             return success
-#
-#     def remove(self):
-#         """Explicitly remove this ManagedModule instance from internal bookkeeping not relying on
-#         garbage collection.
-#         This process is irreversible and renders this instance non-functional.
-#         """
-#         with ManagedModule._lock:
-#             if self._name in ManagedModule.__managed_modules:
-#                 del ManagedModule.__managed_modules[self._name]
-#
-#     def _load(self, reload=False):
-#         """
-#         """
-#         with ManagedModule._lock:
-#             # Do nothing if already loaded and not reload
-#             if self.is_loaded and not reload:
-#                 return True
-#
-#             # check if manager reference is set
-#             manager = None if self._manager is None else self._manager()
-#             if manager is None:
-#                 logger.error('Unable to load ManagedModule instances. Weak reference to Manager '
-#                              'instance is not set or has been garbage collected.')
-#                 return False
-#
-#             try:
-#                 mod = importlib.import_module('{0}.{1}'.format(self._base, self._module))
-#                 importlib.reload(mod)
-#             except ImportError:
-#                 logger.exception(
-#                     'Error during import of module "{0}.{1}"'.format(self._base, self._module))
-#                 return False
-#             try:
-#                 mod_class = getattr(mod, self._class)
-#             except:
-#                 logger.exception('Error getting module class "{0}" from module "{1}.{2}"'
-#                                  ''.format(self._class, self._base, self._module))
-#                 return False
-#             if not issubclass(mod_class, Base):
-#                 logger.error('Qudi module main class must be subclass of core.module.Base')
-#                 return False
-#             try:
-#                 self._instance = mod_class(manager=manager,
-#                                            name=self._name,
-#                                            config=self._options)
-#             except:
-#                 logger.exception('Error during initialization of qudi module "{0}.{1}.{2}"'
-#                                  ''.format(self._class, self._base, self._module))
-#                 self._instance = None
-#                 return False
-#             return True
-#
-#     def _connect(self, connect_dict):
-#         with ManagedModule._lock:
-#             # Sanity checking
-#             if not self.is_loaded:
-#                 print('Connection failed. No module instance found.')
-#                 return False
-#             module_connectors = self._instance._module_meta['connectors']
-#             mandatory_connector_names = set(
-#                 conn.name for conn in module_connectors.values() if not conn.optional)
-#             if not mandatory_connector_names.issubset(connect_dict):
-#                 logger.error('Connection of module "{0}.{1}" failed. Not all mandatory connectors '
-#                              'are specified in config.\nMandatory connectors are: {2}'
-#                              ''.format(self._base, self._name, mandatory_connector_names))
-#                 return False
-#
-#             # Iterate through module connectors and try to connect them
-#             try:
-#                 for connector in module_connectors.values():
-#                     if connector.name not in connect_dict:
-#                         continue
-#                     connector.connect(connect_dict[connector.name].instance)
-#             except:
-#                 logger.exception('Something went wrong while trying to connect module "{0}.{1}".'
-#                                  ''.format(self._base, self._name))
-#                 return False
-#             return True
-#
-#     def _disconnect(self):
-#         with ManagedModule._lock:
-#             try:
-#                 for connector in self._instance._module_meta['connectors'].values():
-#                     connector.disconnect()
-#             except:
-#                 logger.exception('Something went wrong while trying to disconnect module "{0}.{1}".'
-#                                  ''.format(self._base, self._name))
-#                 return False
-#             return True
-#
-#     def __emit_state_change(self):
-#         self.sigStateChanged.emit(self._base, self._name, self.state)
+    def _get_manager(self):
+        # check if manager reference is set
+        manager = self._manager()
+        if manager is None:
+            logger.error('Unable to activate/deactivate ManagedModule instance with name "{0}". '
+                         'Weak reference to Manager instance is not set or has been garbage '
+                         'collected.'.format(self._name))
+        return manager
 
 
 class Manager(QtCore.QObject):
@@ -939,7 +652,7 @@ class Manager(QtCore.QObject):
       - Making sure all devices/modules are properly shut down at the end of the program
 
     @signal sigConfigChanged: the configuration has changed, please reread your configuration
-    @signal sigModulesChanged: the available modules have changed
+    @signal sigManagedModulesChanged: the available modules have changed
     @signal (str, str, str) sigModuleStateChanged: the module state has changed (base, name, state)
     @signal sigManagerQuit: the manager is quitting
     @signal sigShowManager: show whatever part of the GUI is important
@@ -947,10 +660,9 @@ class Manager(QtCore.QObject):
 
     # Signal declarations for Qt
     sigConfigChanged = QtCore.Signal(dict)
-    sigModulesChanged = QtCore.Signal(dict)
+    sigManagedModulesChanged = QtCore.Signal(dict)
     sigModuleStateChanged = QtCore.Signal(str, str, str)
     sigManagerQuit = QtCore.Signal(bool)
-    sigShutdownAcknowledge = QtCore.Signal(bool, bool)
     sigShowManager = QtCore.Signal()
 
     def __init__(self, args, **kwargs):
@@ -967,8 +679,10 @@ class Manager(QtCore.QObject):
 
         self.remote_manager = None  # Reference to RemoteObjectManager instance if possible
         self.task_runner = None  # Task runner reference
-
-        self.managed_modules = dict()  # container for all qudi modules (as defined by config)
+        # Singleton container for all qudi modules
+        self.managed_modules = ManagedModulesSingleton(manager=self)
+        self.managed_modules.sigModuleStateChanged.connect(self.sigModuleStateChanged)
+        self.managed_modules.sigManagedModulesChanged.connect(self.sigManagedModulesChanged)
 
         # Known global config parameters
         self._startup_modules = list()
@@ -1029,7 +743,7 @@ class Manager(QtCore.QObject):
             if module_name not in self.managed_modules:
                 logger.error('Startup module "{0}" not found in configuration'.format(module_name))
             else:
-                self.start_module(module_name)
+                self.activate_module(module_name)
 
         # Gui setup if we have gui
         if self._has_gui:
@@ -1099,35 +813,30 @@ class Manager(QtCore.QObject):
                 config_tree['global']['extensions'] = self._extension_paths.copy()
 
             # Add module declarations
-            for module_name, module in self.managed_modules.items():
+            for mod_name, module in self.managed_modules.items():
                 mod_dict = dict()
                 mod_dict['module.Class'] = '{0}.{1}'.format(module.module_name, module.class_name)
                 mod_dict.update(module.options)
                 mod_dict['connect'] = module.connection_cfg
-                config_tree[module.module_base][module_name] = mod_dict
+                config_tree[module.module_base][mod_name] = mod_dict
             return config_tree
 
     @property
     def configured_modules(self):
-        return self.managed_modules.copy()
+        return self.managed_modules.module_names
 
     @property
-    def active_modules(self):
-        return tuple(mod_name for mod_name, mod in self.managed_modules.items() if mod.is_active)
+    def activated_modules(self):
+        return tuple(name for name, mod in self.managed_modules.items() if mod.is_active)
 
     @property
-    def hardware_module_states(self):
-        return {name: m.state for name, m in self.managed_modules.items() if
-                m.module_base == 'hardware'}
+    def deactivated_modules(self):
+        return tuple(name for name, mod in self.managed_modules.items() if
+                     mod.is_loaded and not mod.is_active)
 
     @property
-    def logic_module_states(self):
-        return {name: m.state for name, m in self.managed_modules.items() if
-                m.module_base == 'logic'}
-
-    @property
-    def gui_module_states(self):
-        return {name: m.state for name, m in self.managed_modules.items() if m.module_base == 'gui'}
+    def module_states(self):
+        return {name: mod.state for name, mod in self.managed_modules.items()}
 
     def get_module_instance(self, module_name):
         """Returns the qudi module class instance associated with module_name.
@@ -1182,10 +891,7 @@ class Manager(QtCore.QObject):
         for ext_path in self._extension_paths:
             if ext_path in sys.path:
                 sys.path.remove(ext_path)
-        for module_name, module in self.managed_modules.items():
-            module.deactivate()
-            module.sigStateChanged.disconnect()
-        self.managed_modules = dict()
+        self.managed_modules.clear()
 
         # Read config file
         cfg = config.load(self.config_file_path)
@@ -1234,25 +940,19 @@ class Manager(QtCore.QObject):
         # Extract module declarations from config
         for base in ('gui', 'logic', 'hardware'):
             # Skip module base category if not present in config or empty
-            if not cfg.get(base, None):
+            modules_dict = cfg.pop(base, None)
+            if not modules_dict:
                 continue
-            # Create ManagedModule instance for each defined module
-            modules_dict = cfg.pop(base)
+            # Create ManagedModule instance by adding each module to ManagedModulesSingleton
             for module_name, module_cfg in modules_dict.items():
                 try:
-                    self.managed_modules[module_name] = ManagedModule(name=module_name,
-                                                                      base=base,
-                                                                      configuration=module_cfg)
-                    self.managed_modules[module_name].sigStateChanged.connect(
-                        self.sigModuleStateChanged)
+                    self.managed_modules.add_module(name=module_name,
+                                                    base=base,
+                                                    configuration=module_cfg)
                 except:
-                    self.managed_modules.pop(module_name, None)
+                    self.managed_modules.remove_module(module_name, ignore_missing=True)
                     logger.exception('Unable to create ManagedModule instance for module '
                                      '"{0}.{1}"'.format(base, module_name))
-
-        # Configure ManagedModule class and build reverse dependencies
-        ManagedModule.set_manager(self)
-        ManagedModule.build_reverse_dependencies()
 
         # Check if there is still a part of the config unprocessed
         if cfg:
@@ -1260,9 +960,6 @@ class Manager(QtCore.QObject):
                            '{0}\nThe following part will be ignored:\n{1}'
                            ''.format(('global', 'gui', 'logic', 'hardware'), cfg))
         self.sigConfigChanged.emit(self.config_dict)
-        self.sigModulesChanged.emit({'gui': self.gui_module_states,
-                                     'logic': self.logic_module_states,
-                                     'hardware': self.hardware_module_states})
 
     @QtCore.Slot(str)
     def save_config_to_file(self, file_path):
@@ -1314,24 +1011,17 @@ class Manager(QtCore.QObject):
                 if module_cfg is not None:
                     break
             if module_cfg is None:
-                logger.error('Module "{0}" not declared in config file. Unable to reload module config.'
-                             ''.format(module_name))
+                logger.error('Module "{0}" not declared in config file. Unable to reload module '
+                             'config.'.format(module_name))
                 return
 
-            # deactivate module first if needed
+            # remember if module was active
             was_active = self.is_module_active(module_name)
-            if was_active:
-                self.deactivate_module(module_name)
-
-            self.managed_modules[module_name].sigStateChanged.disconnect()
-            self.managed_modules[module_name].remove()
-            del self.managed_modules[module_name]
-
-            self.managed_modules[module_name] = ManagedModule(name=module_name,
-                                                              base=base,
-                                                              configuration=module_cfg)
-            ManagedModule.build_reverse_dependencies()
-            self.managed_modules[module_name].sigStateChanged.connect(self.sigModuleStateChanged)
+            # Deactivate and remove module from managed modules
+            self.managed_modules.remove_module(module_name)
+            # Add module again to managed modules with new config
+            self.managed_modules.add_module(name=module_name, base=base, configuration=module_cfg)
+            # Re-activate module if it was active before
             if was_active:
                 self.activate_module(module_name)
             self.sigConfigChanged.emit(self.config_dict)
@@ -1357,8 +1047,8 @@ class Manager(QtCore.QObject):
         @return bool: module is active flag
         """
         if not self.is_module_configured(module_name):
-            logger.error('No module by the name "{0}" configured. Unable to poll activation status.'
-                         ''.format(module_name))
+            logger.warning('No module by the name "{0}" configured. Unable to poll activation '
+                           'status.'.format(module_name))
             return False
         return self.managed_modules[module_name].is_active
 
@@ -1380,21 +1070,12 @@ class Manager(QtCore.QObject):
 
         @param str module_name: module which is going to be activated.
         """
-        if not self.is_module_configured(module_name):
-            logger.error('No module by the name "{0}" configured. Unable to activate module.'
-                         ''.format(module_name))
-            return
-
-        if self.is_module_active(module_name):
-            if self.find_module_base(module_name) == 'gui':
-                self.managed_modules[module_name].instance.show()
-            return
-
         logger.info('Activating qudi module "{0}"'.format(module_name))
-        if not self.managed_modules[module_name].activate():
+        if not self.managed_modules.activate_module(module_name):
             logger.error('Unable to activate qudi module "{0}"'.format(module_name))
-        else:
-            logger.debug('Activation success of qudi module "{0}"'.format(module_name))
+            return False
+        logger.debug('Activation success of qudi module "{0}"'.format(module_name))
+        return True
 
     @QtCore.Slot(str)
     def deactivate_module(self, module_name):
@@ -1402,35 +1083,12 @@ class Manager(QtCore.QObject):
 
         @param str module_name: module which is going to be activated.
         """
-        if not self.is_module_configured(module_name):
-            logger.error('No module by the name "{0}" configured. Unable to deactivate module.'
-                         ''.format(module_name))
-            return
-
-        if not self.is_module_active(module_name):
-            return
-
         logger.info('Deactivating qudi module "{0}"'.format(module_name))
-        if not self.managed_modules[module_name].deactivate():
+        if not self.managed_modules.deactivate_module(module_name):
             logger.error('Unable to deactivate qudi module "{0}"'.format(module_name))
-        else:
-            logger.debug('Deactivation success of qudi module "{0}"'.format(module_name))
-
-    @QtCore.Slot(str)
-    def start_module(self, module_name):
-        """Redirects to Manager.activate_module for backwards compatibility.
-
-        @param str module_name: Unique module name as defined in config
-        """
-        return self.activate_module(module_name)
-
-    @QtCore.Slot(str)
-    def stop_module(self, module_name):
-        """Redirects to Manager.deactivate_module for backwards compatibility.
-
-        @param str module_name: Unique module name as defined in config
-        """
-        return self.deactivate_module(module_name)
+            return False
+        logger.debug('Deactivation success of qudi module "{0}"'.format(module_name))
+        return True
 
     @QtCore.Slot(str)
     def restart_module(self, module_name):
@@ -1438,13 +1096,8 @@ class Manager(QtCore.QObject):
 
         @param str module_name: Unique module name as defined in config
         """
-        if not self.is_module_configured(module_name):
-            logger.error('No module by the name "{0}" configured. Unable to restart module.'
-                         ''.format(module_name))
-            return
-
         logger.info('Restarting/reloading qudi module "{0}"'.format(module_name))
-        if not self.managed_modules[module_name].reload():
+        if not self.managed_modules.reload_module(module_name):
             logger.error('Unable to restart/reload qudi module "{0}"'.format(module_name))
         else:
             logger.debug('Restart/reload success of qudi module "{0}"'.format(module_name))
@@ -1454,24 +1107,22 @@ class Manager(QtCore.QObject):
         """Configure, connect and activate all qudi modules from the currently loaded configuration.
         """
         logger.info('Starting all qudi modules...')
-        for module_name, module in self.managed_modules.items():
-            if not module.activate():
+        for module_name in self.managed_modules.module_names:
+            if not self.managed_modules.activate_module(module_name):
                 logger.warning(
                     'Activating module "{0}" failed while loading all modules.'.format(module_name))
         logger.info('Start all qudi modules finished.')
-        QtCore.QCoreApplication.processEvents()
 
     @QtCore.Slot()
     def stop_all_modules(self):
         """Deactivate all qudi modules from the currently loaded configuration.
         """
         logger.info('Stopping all qudi modules...')
-        for module_name, module in self.managed_modules.items():
-            if not module.deactivate():
+        for module_name in self.managed_modules.module_names:
+            if not self.managed_modules.deactivate_module(module_name):
                 logger.warning('Deactivating module "{0}" failed while loading all modules.'
                                ''.format(module_name))
         logger.info('Stopping all qudi modules finished.')
-        QtCore.QCoreApplication.processEvents()
 
     def get_status_dir(self):
         """Get the directory where the app state is saved, create it if necessary.
@@ -1504,22 +1155,19 @@ class Manager(QtCore.QObject):
         """ Nicely request that all modules shut down. """
         locked_modules = False
         broken_modules = False
-        for module_name, module in self.managed_modules.items():
-            try:
-                if module.is_busy:
-                    locked_modules = True
-            except:
+        for module in self.managed_modules.values():
+            if module.is_busy:
+                locked_modules = True
+            elif module.state == 'BROKEN':
                 broken_modules = True
             if broken_modules and locked_modules:
                 break
 
-        if locked_modules:
-            if self._has_gui:
-                self.sigShutdownAcknowledge.emit(locked_modules, broken_modules)
-            else:
-                # FIXME: console prompt here
+        if self._has_gui:
+            if self.gui.prompt_shutdown(locked_modules):
                 self.force_quit()
         else:
+            # FIXME: console prompt here
             self.force_quit()
 
     @QtCore.Slot()
@@ -1528,6 +1176,7 @@ class Manager(QtCore.QObject):
         self.stop_all_modules()
         if self.remote_manager is not None:
             self.remote_manager.stopServer()
+        self.managed_modules.clear()
         self.sigManagerQuit.emit(False)
 
     @QtCore.Slot()
@@ -1536,6 +1185,7 @@ class Manager(QtCore.QObject):
         self.stop_all_modules()
         if self.remote_manager is not None:
             self.remote_manager.stopServer()
+        self.managed_modules.clear()
         self.sigManagerQuit.emit(True)
 
     @QtCore.Slot(object)
