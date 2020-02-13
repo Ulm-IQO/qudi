@@ -707,14 +707,7 @@ class Manager(QtCore.QObject):
             args.config) else self.find_default_config_file()
         # Process configuration file
         try:
-            print('============= Starting Manager configuration from {0} ============='
-                  ''.format(self.config_file_path))
-            logger.info('Starting Manager configuration from {0}'.format(self.config_file_path))
-
             self.__load_and_process_config()
-
-            print("\n============= Manager configuration complete =================\n")
-            logger.info('Manager configuration complete.')
         except:
             logger.error('Error encountered while processing config file.')
             raise
@@ -747,27 +740,29 @@ class Manager(QtCore.QObject):
 
         # Gui setup if we have gui
         if self._has_gui:
-            try:
-                from .gui.gui import Gui
-                self.gui = Gui(artwork_dir=os.path.join(get_main_dir(), 'artwork'))
-                self.gui.system_tray_icon.quitAction.triggered.connect(self.quit)
-                self.gui.system_tray_icon.managerAction.triggered.connect(
-                    self.sigShowManager)
-                self.gui.set_theme('qudiTheme')
-            except:
-                logger.error('Error during GUI setup.')
-                raise
             if self._stylesheet:
                 style_path = os.path.join(get_main_dir(),
                                           'artwork',
                                           'styles',
                                           'application',
                                           self._stylesheet)
-                if os.path.isfile(style_path):
-                    self.gui.set_style_sheet(style_path)
-                else:
+                if not os.path.isfile(style_path):
                     logger.warning('Stylesheet not found at "{0}"'.format(style_path))
                     self._stylesheet = None
+                    style_path = None
+            else:
+                style_path = None
+
+            try:
+                from .gui.gui import Gui
+                self.gui = Gui(artwork_dir=os.path.join(get_main_dir(), 'artwork'),
+                               stylesheet_path=style_path)
+                self.gui.system_tray_icon.quitAction.triggered.connect(self.quit)
+                self.gui.system_tray_icon.managerAction.triggered.connect(self.sigShowManager)
+                self.gui.set_theme('qudiTheme')
+            except:
+                logger.error('Error during GUI setup.')
+                raise
 
         logger.info('qudi started.')
         return
@@ -887,6 +882,10 @@ class Manager(QtCore.QObject):
         raise Exception('Could not find any config file.')
 
     def __load_and_process_config(self):
+        print('============= Starting Manager configuration from {0} ============='
+              ''.format(self.config_file_path))
+        logger.info('Starting Manager configuration from {0}'.format(self.config_file_path))
+
         # Clean up previous config settings
         for ext_path in self._extension_paths:
             if ext_path in sys.path:
@@ -959,6 +958,8 @@ class Manager(QtCore.QObject):
             logger.warning('Unknown config file sections encountered.\nAllowed sections are: '
                            '{0}\nThe following part will be ignored:\n{1}'
                            ''.format(('global', 'gui', 'logic', 'hardware'), cfg))
+        print("\n============= Manager configuration complete =================\n")
+        logger.info('Manager configuration complete.')
         self.sigConfigChanged.emit(self.config_dict)
 
     @QtCore.Slot(str)
