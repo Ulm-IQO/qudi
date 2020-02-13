@@ -26,7 +26,6 @@ from fysom import Fysom  # provides a finite state machine
 from collections import OrderedDict
 
 from qtpy import QtCore
-from .meta import ModuleMeta
 from .configoption import MissingOption, ConfigOption
 from .connector import Connector
 from .statusvariable import StatusVar
@@ -123,7 +122,7 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
         super().deactivate()
 
 
-class Base(QtCore.QObject, metaclass=ModuleMeta):
+class Base(QtCore.QObject):
     """
     Base class for all loadable modules
 
@@ -157,6 +156,30 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         """
         super().__init__(**kwargs)
 
+        # add module meta objects to avoid cluttering namespace
+        print(self._module_meta)
+        self._module_meta = copy.deepcopy(self._module_meta)
+        self._module_meta['name'] = name
+        self._module_meta['configuration'] = copy.deepcopy(config)
+        # Collect meta objects of class and create copies for this instance
+        connectors = dict()
+        status_vars = dict()
+        config_opt = dict()
+        for cls in reversed(self.__class__.mro()):
+            # Those classes don't have the meta objects we are searching for
+            if not issubclass(cls, Base):
+                continue
+            for attr_name, attr in vars(cls).items():
+                if isinstance(attr, Connector):
+                    connectors[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
+                elif isinstance(attr, StatusVar):
+                    status_vars[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
+                elif isinstance(attr, ConfigOption):
+                    config_opt[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
+        self._module_meta['connectors'] = connectors
+        self._module_meta['status_variables'] = status_vars
+        self._module_meta['config_options'] = config_opt
+
         if config is None:
             config = dict()
         if callbacks is None:
@@ -166,10 +189,6 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
                              'ondeactivate': self.__deactivation_callback}
         default_callbacks.update(callbacks)
         self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
-
-        # add module meta objects to avoid cluttering namespace
-        self._module_meta['name'] = name
-        self._module_meta['configuration'] = copy.deepcopy(config)
 
         # set instance attributes according to config_option meta objects
         for attr_name, cfg_opt in self._module_meta.get('config_options', dict()).items():
@@ -351,6 +370,7 @@ class LogicBase(Base):
     """
     """
     _threaded = True
+    _module_meta = {'base': 'logic'}  # can be overwritten by subclasses
 
     def __init__(self, *args, **kwargs):
         """
@@ -381,9 +401,11 @@ class LogicBase(Base):
 class GuiBase(Base):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
+    _threaded = False
+    _module_meta = {'base': 'gui'}  # can be overwritten by subclasses
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._module_meta['base'] = 'gui'
 
         # Add windows position StatusVar to module
         stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)

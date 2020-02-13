@@ -164,3 +164,19 @@ class Gui(QtCore.QObject):
         if time is None:
             time = 15
         self.system_tray_icon.showMessage(title, message, icon, int(round(time * 1000)))
+
+    def prompt_shutdown(self, modules_locked=True):
+        """
+        Display a dialog, asking the user to confirm shutdown.
+        """
+        if modules_locked:
+            msg = 'Some qudi modules are locked right now.\n' \
+                  'Do you really want to quit and force modules to deactivate?'
+        else:
+            msg = 'Do you really want to quit?'
+        result = QtWidgets.QMessageBox.question(None,
+                                                'Qudi: Shutdown?',
+                                                msg,
+                                                QtWidgets.QMessageBox.Yes,
+                                                QtWidgets.QMessageBox.No)
+        return result == QtWidgets.QMessageBox.Yes

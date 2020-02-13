@@ -25,7 +25,7 @@ from .logwidget import LogWidget
 from .remotewidget import RemoteWidget
 from .aboutqudidialog import AboutQudiDialog
 from .consolesettingsdialog import ConsoleSettingsDialog
-from .modulewidget import ModuleScrollWidget
+from .modulewidget import ModuleWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 
@@ -41,18 +41,9 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         height = (screen_size.height() * 3) // 4
         self.resize(width, height)
 
-        # Create central widget
-        self.module_tabs = QtWidgets.QTabWidget()
-        self.module_tabs.setObjectName('moduleTabWidget')
-        self.module_tabs.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                       QtWidgets.QSizePolicy.Preferred)
-        self.module_scroll_widgets = {'gui': ModuleScrollWidget(),
-                                      'logic': ModuleScrollWidget(),
-                                      'hardware': ModuleScrollWidget()}
-        self.module_tabs.addTab(self.module_scroll_widgets['gui'], 'GUI')
-        self.module_tabs.addTab(self.module_scroll_widgets['logic'], 'Logic')
-        self.module_tabs.addTab(self.module_scroll_widgets['hardware'], 'Hardware')
-        self.setCentralWidget(self.module_tabs)
+        self.module_widget = ModuleWidget()
+        self.module_widget.setObjectName('moduleTabWidget')
+        self.setCentralWidget(self.module_widget)
 
         # Create actions
         # Toolbar actions
