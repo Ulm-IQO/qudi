@@ -157,7 +157,6 @@ class Base(QtCore.QObject):
         super().__init__(**kwargs)
 
         # add module meta objects to avoid cluttering namespace
-        print(self._module_meta)
         self._module_meta = copy.deepcopy(self._module_meta)
         self._module_meta['name'] = name
         self._module_meta['configuration'] = copy.deepcopy(config)

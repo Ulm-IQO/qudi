@@ -63,7 +63,7 @@ class Gui(QtCore.QObject):
     """ Set up all necessary GUI elements, like application icons, themes, etc.
     """
 
-    def __init__(self, artwork_dir):
+    def __init__(self, artwork_dir, stylesheet_path=None):
         super().__init__()
         QtWidgets.QApplication.instance().setQuitOnLastWindowClosed(False)
 
@@ -71,6 +71,8 @@ class Gui(QtCore.QObject):
         self._init_app_icon()
         self.system_tray_icon = SystemTrayIcon(artwork_dir)
         self.show_system_tray_icon()
+        if stylesheet_path is not None:
+            self.set_style_sheet(stylesheet_path)
 
     def _init_app_icon(self):
         """ Set up the Qudi application icon.
@@ -165,7 +167,8 @@ class Gui(QtCore.QObject):
             time = 15
         self.system_tray_icon.showMessage(title, message, icon, int(round(time * 1000)))
 
-    def prompt_shutdown(self, modules_locked=True):
+    @staticmethod
+    def prompt_shutdown(modules_locked=True):
         """
         Display a dialog, asking the user to confirm shutdown.
         """
