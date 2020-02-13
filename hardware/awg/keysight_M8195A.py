@@ -28,7 +28,8 @@ import numpy as np
 from fnmatch import fnmatch
 from collections import OrderedDict
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
