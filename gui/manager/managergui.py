@@ -156,14 +156,14 @@ class ManagerGui(GuiBase):
         # hide remote menu item if rpyc is not available
         if self._manager.remote_manager is not None:
             self._mw.remote_widget.remote_module_listview.setModel(
-                self._manager.remote_manager.remoteModules)
+                self._manager.remote_manager.remote_modules)
             if self._manager.has_remote_server:
                 self._mw.remote_widget.host_label.setText('Server URL:')
                 self._mw.remote_widget.port_label.setText('rpyc://{0}:{1}/'.format(
                     self._manager.remote_manager.server.host,
                     self._manager.remote_manager.server.port))
                 self._mw.remote_widget.shared_module_listview.setModel(
-                    self._manager.remote_manager.sharedModules)
+                    self._manager.remote_manager.shared_modules)
             else:
                 self._mw.remote_widget.host_label.setVisible(False)
                 self._mw.remote_widget.port_label.setVisible(False)

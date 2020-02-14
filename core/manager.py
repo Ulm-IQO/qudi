@@ -17,10 +17,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-Derived form ACQ4:
-Copyright 2010  Luke Campagnola
-Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
 import logging
@@ -249,6 +245,17 @@ class ManagedModule(QtCore.QObject):
         if 'module.Class' not in configuration:
             raise KeyError('Mandatory config entry "module.Class" not found in config for module '
                            '"{0}".'.format(name))
+        if not isinstance(configuration.get('remote', ''), str):
+            raise TypeError('remote URL of module "{0}" must be of str type.'.format(name))
+        if not isinstance(configuration.get('certfile', ''), str):
+            raise TypeError(
+                'certfile config option of remote module "{0}" must be of str type.'.format(name))
+        if not isinstance(configuration.get('keyfile', ''), str):
+            raise TypeError(
+                'keyfile config option of remote module "{0}" must be of str type.'.format(name))
+        if not isinstance(configuration.get('remoteaccess', False), bool):
+            raise TypeError('remoteaccess config option of remote module "{0}" must be of bool '
+                            'type.'.format(name))
         if not isinstance(manager_ref, weakref.ref) or not isinstance(manager_ref(), Manager):
             raise TypeError(
                 'manager_ref parameter is expected to be a weak reference to Manager instance.')
@@ -266,6 +273,16 @@ class ManagedModule(QtCore.QObject):
         self._module, self._class = cfg.pop('module.Class').rsplit('.', 1)
         # Remember connections by name
         self._connect_cfg = cfg.pop('connect', dict())
+        # See if remote access to this module is allowed
+        self._allow_remote_access = cfg.pop('remoteaccess', False)
+        # Extract remote URL and certificates if this module is run on a remote machine
+        self._remote_url = cfg.pop('remote', None)
+        self._remote_certfile = cfg.pop('certfile', None)
+        self._remote_keyfile = cfg.pop('keyfile', None)
+        # Do no propagate remote access
+        if self._remote_url:
+            self._allow_remote_access = False
+
         # The rest are config options
         self._options = cfg
 
@@ -322,6 +339,26 @@ class ManagedModule(QtCore.QObject):
     def is_busy(self):
         with self._lock:
             return self.is_active and self._instance.module_state() != 'idle'
+
+    @property
+    def is_remote(self):
+        return bool(self._remote_url)
+
+    @property
+    def allow_remote_access(self):
+        return self._allow_remote_access
+
+    @property
+    def remote_url(self):
+        return self._remote_url
+
+    @property
+    def remote_key_path(self):
+        return self._remote_keyfile
+
+    @property
+    def remote_cert_path(self):
+        return self._remote_certfile
 
     @property
     def state(self):
@@ -549,38 +586,63 @@ class ManagedModule(QtCore.QObject):
             if manager is None:
                 return False
 
-            # Try qudi module import
-            try:
-                mod = importlib.import_module('{0}.{1}'.format(self._base, self._module))
-                importlib.reload(mod)
-            except ImportError:
-                logger.exception(
-                    'Error during import of module "{0}.{1}"'.format(self._base, self._module))
+            if manager.remote_manager is None and (self.allow_remote_access or self.is_remote):
+                logger.error('Remote module functionality not available. No remote manager '
+                             'initialized in Manager.')
                 return False
 
-            # Try getting qudi module class from imported module
-            try:
-                mod_class = getattr(mod, self._class)
-            except:
-                logger.exception('Error getting module class "{0}" from module "{1}.{2}"'
-                                 ''.format(self._class, self._base, self._module))
-                return False
+            if self.is_remote:
+                try:
+                    self._instance = manager.remote_manager.get_remote_module_from_url(
+                        self._remote_url,
+                        certfile=self._remote_certfile,
+                        keyfile=self._remote_keyfile)
+                except:
+                    logger.exception('Error during initialization of remote qudi module '
+                                     '"{0}.{1}.{2}"'.format(self._class, self._base, self._module))
+                    self._instance = None
+                    return False
+            else:
+                # Try qudi module import
+                try:
+                    mod = importlib.import_module('{0}.{1}'.format(self._base, self._module))
+                    importlib.reload(mod)
+                except ImportError:
+                    logger.exception(
+                        'Error during import of module "{0}.{1}"'.format(self._base, self._module))
+                    return False
 
-            # Check if imported class is a valid qudi module class
-            if not issubclass(mod_class, Base):
-                logger.error('Qudi module main class must be subclass of core.module.Base')
-                return False
+                # Try getting qudi module class from imported module
+                try:
+                    mod_class = getattr(mod, self._class)
+                except:
+                    logger.exception('Error getting module class "{0}" from module "{1}.{2}"'
+                                     ''.format(self._class, self._base, self._module))
+                    return False
 
-            # Try to instantiate the imported qudi module class
-            try:
-                self._instance = mod_class(manager=manager,
-                                           name=self._name,
-                                           config=self._options)
-            except:
-                logger.exception('Error during initialization of qudi module "{0}.{1}.{2}"'
-                                 ''.format(self._class, self._base, self._module))
-                self._instance = None
-                return False
+                # Check if imported class is a valid qudi module class
+                if not issubclass(mod_class, Base):
+                    logger.error('Qudi module main class must be subclass of core.module.Base')
+                    return False
+
+                # Try to instantiate the imported qudi module class
+                try:
+                    self._instance = mod_class(manager=manager,
+                                               name=self._name,
+                                               config=self._options)
+                except:
+                    logger.exception('Error during initialization of qudi module "{0}.{1}.{2}"'
+                                     ''.format(self._class, self._base, self._module))
+                    self._instance = None
+                    return False
+
+                # Register module in remote manager if module should be shared
+                if self._allow_remote_access:
+                    if not manager.has_remote_server:
+                        logger.error('Unable to share qudi module "{0}" as remote module. No remote'
+                                     ' server running in Manager.'.format(self._name))
+                        return False
+                    manager.remote_manager.share_module(self._name, None)
             return True
 
     def _connect(self):
@@ -724,7 +786,8 @@ class Manager(QtCore.QObject):
                     server_port = self._module_server.get('port', 12345)
                     certfile = self._module_server.get('certfile', None)
                     keyfile = self._module_server.get('keyfile', None)
-                    self.remote_manager.createServer(server_address, server_port, certfile, keyfile)
+                    self.remote_manager.create_server(
+                        server_address, server_port, certfile, keyfile)
                     # successfully started remote server
                     logger.info('Started server rpyc://{0}:{1}'.format(server_address, server_port))
                 except:
@@ -1175,7 +1238,7 @@ class Manager(QtCore.QObject):
         """ Stop all modules, no questions asked. """
         self.stop_all_modules()
         if self.remote_manager is not None:
-            self.remote_manager.stopServer()
+            self.remote_manager.stop_server()
         self.managed_modules.clear()
         self.sigManagerQuit.emit(False)
 
@@ -1184,7 +1247,7 @@ class Manager(QtCore.QObject):
         """ Nicely request that all modules shut down for application restart. """
         self.stop_all_modules()
         if self.remote_manager is not None:
-            self.remote_manager.stopServer()
+            self.remote_manager.stop_server()
         self.managed_modules.clear()
         self.sigManagerQuit.emit(True)
 
