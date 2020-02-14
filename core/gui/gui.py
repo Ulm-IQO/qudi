@@ -22,6 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import platform
 from qtpy import QtCore, QtGui, QtWidgets
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
@@ -63,6 +66,9 @@ class Gui(QtCore.QObject):
     """ Set up all necessary GUI elements, like application icons, themes, etc.
     """
 
+    _sigPopUpMessage = QtCore.Signal(str, str)
+    _sigBalloonMessage = QtCore.Signal(str, str, object, object)
+
     def __init__(self, artwork_dir, stylesheet_path=None):
         super().__init__()
         QtWidgets.QApplication.instance().setQuitOnLastWindowClosed(False)
@@ -73,6 +79,8 @@ class Gui(QtCore.QObject):
         self.show_system_tray_icon()
         if stylesheet_path is not None:
             self.set_style_sheet(stylesheet_path)
+        self._sigPopUpMessage.connect(self.pop_up_message, QtCore.Qt.QueuedConnection)
+        self._sigBalloonMessage.connect(self.balloon_message, QtCore.Qt.QueuedConnection)
 
     def _init_app_icon(self):
         """ Set up the Qudi application icon.
@@ -183,3 +191,42 @@ class Gui(QtCore.QObject):
                                                 QtWidgets.QMessageBox.Yes,
                                                 QtWidgets.QMessageBox.No)
         return result == QtWidgets.QMessageBox.Yes
+
+    @QtCore.Slot(str, str)
+    def pop_up_message(self, title, message):
+        """
+        Slot prompting a dialog window with a message and an OK button to dismiss it.
+
+        @param str title: The window title of the dialog
+        @param str message: The message to be shown in the dialog window
+        """
+        if not isinstance(title, str):
+            logger.error('pop-up message title must be str type')
+            return
+        if not isinstance(message, str):
+            logger.error('pop-up message must be str type')
+            return
+        if self.thread() is not QtCore.QThread.currentThread():
+            self._sigPopUpMessage.emit(title, message)
+            return
+        QtWidgets.QMessageBox.information(None, title, message, QtWidgets.QMessageBox.Ok)
+        return
+
+    @QtCore.Slot(str, str, object, object)
+    def balloon_message(self, title, message, time=None, icon=None):
+        """
+        Slot prompting a balloon notification from the system tray icon.
+
+        @param str title: The notification title of the balloon
+        @param str message: The message to be shown in the balloon
+        @param float time: optional, The lingering time of the balloon in seconds
+        @param QIcon icon: optional, an icon to be used in the balloon. "None" will use OS default.
+        """
+        if not self.system_tray_icon.supportsMessages():
+            logger.warning('{0}:\n{1}'.format(title, message))
+            return
+        if self.thread() is not QtCore.QThread.currentThread():
+            self._sigBalloonMessage.emit(title, message, time, icon)
+            return
+        self.system_tray_notification_bubble(title, message, time=time, icon=icon)
+        return

@@ -54,7 +54,7 @@ class TaskGui(GuiBase):
         self.sigPauseTaskFromList.connect(self.tasklogic().pause_task_by_index)
         self.sigStopTaskFromList.connect(self.tasklogic().stop_task_by_index)
         self.tasklogic().model.dataChanged.connect(lambda i1, i2: self.set_run_tool_state(None, i1))
-        self.restore_window_pos(self._mw)
+        self._restore_window_pos(self._mw)
         self.show()
 
     def show(self):
@@ -68,7 +68,7 @@ class TaskGui(GuiBase):
         self.sigRunTaskFromList.disconnect()
         self.sigPauseTaskFromList.disconnect()
         self.sigStopTaskFromList.disconnect()
-        self.save_window_pos(self._mw)
+        self._save_window_pos(self._mw)
         self._mw.close()
 
     def manual_start(self):

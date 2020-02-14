@@ -215,12 +215,6 @@ class Base(QtCore.QObject):
         for attr_name, conn in self._module_meta.get('connectors', dict()).items():
             setattr(self, attr_name, conn)
 
-        # Enable pop-up and balloon messages by establishing a queued connection to manager if qudi
-        # runs in headless mode (pop-up must run in main thread)
-        if manager.has_gui:
-            self._sigPopUpMessage.connect(manager.pop_up_message, QtCore.Qt.QueuedConnection)
-            self._sigBalloonMessage.connect(manager.balloon_message, QtCore.Qt.QueuedConnection)
-
         self._manager = manager
         return
 
@@ -344,26 +338,6 @@ class Base(QtCore.QObject):
         self.log.error('Please implement and specify the deactivation method {0}.'
                        ''.format(self.__class__.__name__))
 
-    def pop_up_message(self, title, message):
-        if not isinstance(title, str) or not isinstance(message, str):
-            self.log.error('Pop-Up notifications require str type title and message parameters.')
-            return
-        if self._manager.has_gui:
-            self._sigPopUpMessage.emit(title, message)
-        else:
-            self.log.warning('{0}:\n{1}'.format(title, message))
-        return
-
-    def balloon_message(self, title, message, time=None):
-        if not isinstance(title, str) or not isinstance(message, str):
-            self.log.error('Balloon notifications require str type title and message parameters.')
-            return
-        if self._manager.has_gui:
-            self._sigBalloonMessage.emit(title, message, time)
-        else:
-            self.log.warning('{0}:\n{1}'.format(title, message))
-        return
-
 
 class LogicBase(Base):
     """
@@ -416,12 +390,12 @@ class GuiBase(Base):
     def show(self):
         self.log.error('Every GUI module needs to implement the show() method!')
 
-    def save_window_pos(self, window):
+    def _save_window_pos(self, window):
         stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
         if hasattr(self, stat_var_name):
             setattr(self, stat_var_name, (window.pos().x(), window.pos().y()))
 
-    def restore_window_pos(self, window):
+    def _restore_window_pos(self, window):
         stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
         win_pos = getattr(self, stat_var_name, None)
         if win_pos is not None:

@@ -45,7 +45,6 @@ try:
 except ImportError:
     RemoteObjectManager = None
 from .module import Base
-from .gui.popup_dialog import PopUpMessage
 
 logger = logging.getLogger(__name__)
 
@@ -1221,14 +1220,8 @@ class Manager(QtCore.QObject):
         """
         if not self._has_gui:
             logger.warning('{0}:\n{1}'.format(title, message))
-            return
-
-        if self.thread() is not QtCore.QThread.currentThread():
-            logger.error('Pop-up notifications can only be invoked from GUI/main thread or via '
-                         'queued connection.')
-            return
-        dialog = PopUpMessage(title=title, message=message)
-        dialog.exec_()
+        else:
+            self.gui.pop_up_message(title, message)
         return
 
     @QtCore.Slot(str, str)
@@ -1243,16 +1236,8 @@ class Manager(QtCore.QObject):
         @param float time: optional, The lingering time of the balloon in seconds
         @param QIcon icon: optional, an icon to be used in the balloon. "None" will use OS default.
         """
-        if not self._has_gui or not self.gui.system_tray_icon.supportsMessages():
+        if self._has_gui:
+            self.gui.balloon_message(title, message, time, icon)
+        else:
             logger.warning('{0}:\n{1}'.format(title, message))
-            return
-        if self.thread() is not QtCore.QThread.currentThread():
-            logger.error('Pop-up notifications can only be invoked from GUI/main thread or via '
-                         'queued connection.')
-            return
-        self.gui.system_tray_notification_bubble(title, message, time=time, icon=icon)
         return
-
-
-
-
