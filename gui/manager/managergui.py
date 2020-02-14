@@ -99,7 +99,7 @@ class ManagerGui(GuiBase):
 
         # Create main window and restore position
         self._mw = ManagerMainWindow()
-        self.restore_window_pos(self._mw)
+        self._restore_window_pos(self._mw)
         # Create error dialog for error message popups
         self.error_dialog = ErrorDialog(self)
 
@@ -194,7 +194,7 @@ class ManagerGui(GuiBase):
         self._mw.module_widget.sigReloadModule.disconnect()
         self._mw.module_widget.sigDeactivateModule.disconnect()
         self._mw.module_widget.sigCleanupModule.disconnect()
-        self.save_window_pos(self._mw)
+        self._save_window_pos(self._mw)
         self._mw.close()
 
     def show(self):
@@ -272,7 +272,7 @@ class ManagerGui(GuiBase):
             banner_modules = 'The numpy module has already been imported as "np".'
         banner = 'This is an interactive IPython console. {0} Configuration is in "config", the ' \
                  'manager is "manager" and all loaded modules are in this namespace with their ' \
-                 'configured name. View the current namespace with dir(). Go, play.' \
+                 'configured name. View the current namespace with dir(). Go, play.\n' \
                  ''.format(banner_modules)
         self._mw.console_widget.banner = banner
         # font size

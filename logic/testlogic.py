@@ -48,6 +48,12 @@ class TemplateLogic(LogicBase):
         # Establish Qt signal-slot connections if needed. Also connect to logic/hardware signals
         # and slots, preferably through QtCore.Qt.QueuedConnection
         self.sigStuffDone.connect(self.my_slot_for_stuff)
+        self._manager.balloon_message(
+            'Hello World!',
+            'You wouldn\'t believe what\'s possible now to notify the user of random stuff.')
+        self._manager.pop_up_message(
+            'Hello World!',
+            'You wouldn\'t believe what\'s possible now to notify the user of random stuff.')
         return
 
     def on_deactivate(self):
