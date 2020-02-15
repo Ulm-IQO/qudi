@@ -261,6 +261,8 @@ class ManagedModule(QtCore.QObject):
                 'manager_ref parameter is expected to be a weak reference to Manager instance.')
 
         super().__init__()
+        if self.thread() is not QtCore.QCoreApplication.instance().thread():
+            raise Exception('ManagedModules can only be owned by the application main thread.')
 
         self._manager = manager_ref
         self._name = name  # Each qudi module needs a unique string identifier
@@ -437,6 +439,8 @@ class ManagedModule(QtCore.QObject):
         return 'mod-{0}-{1}'.format(self._base, self._name)
 
     def activate(self):
+        if QtCore.QThread.currentThread() is not self.thread():
+            QtCore.QMetaObject.invokeMethod(self, 'activate', QtCore.Qt.BlockingQueuedConnection)
         print('starting to activate:', self._name)
         with self._lock:
             if self.is_active:
@@ -498,6 +502,8 @@ class ManagedModule(QtCore.QObject):
             return True
 
     def deactivate(self):
+        if QtCore.QThread.currentThread() is not self.thread():
+            QtCore.QMetaObject.invokeMethod(self, 'deactivate', QtCore.Qt.BlockingQueuedConnection)
         print('starting to deactivate:', self._name)
         with self._lock:
             if not self.is_active:
@@ -547,6 +553,8 @@ class ManagedModule(QtCore.QObject):
             return success
 
     def reload(self):
+        if QtCore.QThread.currentThread() is not self.thread():
+            QtCore.QMetaObject.invokeMethod(self, 'reload', QtCore.Qt.BlockingQueuedConnection)
         with self._lock:
             # Deactivate if active
             was_active = self.is_active
