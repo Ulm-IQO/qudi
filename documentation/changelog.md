@@ -4,7 +4,6 @@
 
 Changes/New features:
 
-* Bug fix to qudikernel.py kernel installer for Python 3.7.6
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
@@ -62,7 +61,8 @@ The potential sequence_options are:
 * remove debug prints for flags in dummy pulser that were filling up the log
 * wider first column for ensemble and sequence editors to see long names and fixing header of first column in table of sequence editor
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
-*
+* Saving data in confocal GUI no longer freezes other GUI modules
+* Added save_pdf and save_png config options for save_logic
 
 
 Config changes:
