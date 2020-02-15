@@ -441,6 +441,7 @@ class ManagedModule(QtCore.QObject):
     def activate(self):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'activate', QtCore.Qt.BlockingQueuedConnection)
+            return self.is_active
         print('starting to activate:', self._name)
         with self._lock:
             if self.is_active:
@@ -504,6 +505,7 @@ class ManagedModule(QtCore.QObject):
     def deactivate(self):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'deactivate', QtCore.Qt.BlockingQueuedConnection)
+            return not self.is_active
         print('starting to deactivate:', self._name)
         with self._lock:
             if not self.is_active:
