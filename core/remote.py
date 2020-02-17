@@ -27,7 +27,6 @@ from .util.models import DictTableModel, ListTableModel
 import rpyc
 from rpyc.utils.server import ThreadedServer
 from rpyc.utils.authenticators import SSLAuthenticator
-from .manager import Manager
 
 logger = logging.getLogger(__name__)
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
@@ -41,13 +40,9 @@ class RemoteObjectManager(QObject):
         """ Handle sharing and getting shared modules.
         """
         super().__init__(**kwargs)
-        if not isinstance(manager, Manager):
-            raise TypeError('manager argument must be Manager class instance.')
-        self.__manager = manager
-        self.remote_modules = ListTableModel()
-        self.remote_modules.headers[0] = 'Remote Modules'
-        self.shared_modules = DictTableModel()
-        self.shared_modules.headers[0] = 'Shared Modules'
+        self._manager = manager
+        self.remote_modules = ListTableModel('Remote Modules')
+        self.shared_modules = DictTableModel('Shared Modules')
         self.server = None
 
     def make_remote_service(self):
@@ -58,7 +53,7 @@ class RemoteObjectManager(QObject):
             """ An RPyC service that has a module list.
             """
             modules = self.shared_modules
-            _manager = self.__manager
+            _manager = self._manager
 
             @staticmethod
             def get_service_name():
@@ -84,8 +79,8 @@ class RemoteObjectManager(QObject):
                 @return object: reference to the module
                 """
                 name = str(name)
-                if name in self.modules.storage:
-                    return self.modules.storage[name]
+                if name in self.modules:
+                    return self.modules[name]
                 else:
                     logger.info('remotesearch: {0}'.format(name))
                     if name in self._manager.managed_modules:
@@ -93,8 +88,8 @@ class RemoteObjectManager(QObject):
                         if module.allow_remote_access:
                             self._manager.activate_module(name)
                             logger.info('remote load: {0}.{1}'.format(module.module_base, name))
-                    if name in self.modules.storage:
-                        return self.modules.storage[name]
+                    if name in self.modules:
+                        return self.modules[name]
                     else:
                         logger.error('Client requested a module that is not shared.')
                         return None
@@ -108,7 +103,7 @@ class RemoteObjectManager(QObject):
         @param str certfile:
         @param str keyfile:
         """
-        thread = self.__manager.thread_manager.get_new_thread('rpyc-server')
+        thread = self._manager.thread_manager.get_new_thread('rpyc-server')
         if certfile is not None and keyfile is not None:
             self.server = RPyCServer(self.make_remote_service(),
                                      hostname,
@@ -136,9 +131,9 @@ class RemoteObjectManager(QObject):
         @param str name: unique name that is used to access the module
         @param object obj: a reference to the module
         """
-        if name in self.shared_modules.storage:
+        if name in self.shared_modules:
             logger.warning('Module "{0}" already shared.'.format(name))
-        self.shared_modules.add(name, obj)
+        self.shared_modules[name] = obj
         logger.info('Shared module "{0}".'.format(name))
 
     def remove_shared_module(self, name):
@@ -146,7 +141,7 @@ class RemoteObjectManager(QObject):
 
         @param str name: unique name of the module that should not be accessible any more
         """
-        if name not in self.shared_modules.storage:
+        if name not in self.shared_modules:
             logger.error('Module "{0}" was not shared.'.format(name))
             return
         self.shared_modules.pop(name)
