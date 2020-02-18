@@ -56,7 +56,13 @@ The potential sequence_options are:
 * added the option to do a purely analog ODMR scan.
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
-* 
+* added a hardware file for power supply  Teledyne T3PS3000
+* added pulse generator constraints to predefined
+* remove debug prints for flags in dummy pulser that were filling up the log
+* wider first column for ensemble and sequence editors to see long names and fixing header of first column in table of sequence editor
+* Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
+* Saving data in confocal GUI no longer freezes other GUI modules
+* Added save_pdf and save_png config options for save_logic
 
 
 Config changes:
