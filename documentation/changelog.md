@@ -63,6 +63,7 @@ The potential sequence_options are:
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
+* Added a config option to fastcomtec7887 module to support 7889 model
 
 
 Config changes:
