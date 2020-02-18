@@ -63,7 +63,14 @@ The potential sequence_options are:
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
-
+* Updated PID logic and GUI :
+    * GUI only update values when editing is finished
+    * GUI shows units
+    * logic module uses Qudi's conventions for variable names
+    * added optional auto saving of all pid setpoint, measured, control value and timestamp of last update
+    * **Interface change** added *get_process_unit* and *get_control_unit* to *PIDControllerInterface* to match processes interfaces
+* Added PID interface to Cryocon temperature controller
+*
 
 Config changes:
 
