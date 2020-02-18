@@ -1022,24 +1022,24 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # Let's treat the short pulses we created
         delta_time = 0
         for pulse in corrected_sequence:
-            if pulse['length'] == 0 or pulse['length'] < self.GRAN_MIN/1e3:  # is zero with rounding error
+            if pulse['length'] == 0 or pulse['length'] < self.LEN_MIN/1e3:  # is zero with rounding error
                 corrected_sequence.remove(pulse)
-            elif pulse['length'] < self.GRAN_MIN/2:
+            elif pulse['length'] < self.LEN_MIN/2:
                 corrected_sequence.remove(pulse)
                 self.log.info("Delay correction of the pulse blaster has created a pulse too short."
                               "The pulse is {0} ns with a minimum of {1} ns in th state {2}."
                                "Pulses shorter than half the minimum are dropped.".format(
-                    pulse['length']*1e9, self.GRAN_MIN*1e9, pulse['active_channels']
+                    pulse['length']*1e9, self.LEN_MIN*1e9, pulse['active_channels']
                 ))
                 delta_time -= pulse['length']
-            elif self.GRAN_MIN/2 <= pulse['length'] < self.GRAN_MIN:
+            elif self.LEN_MIN/2 <= pulse['length'] < self.LEN_MIN:
                 self.log.info("Delay correction of the pulse blaster has created a pulse too short."
                           "The pulse is {0} ns with a minimum of {1} ns in th state {2}."
                           "This pulse has been rounded to {1} ns.".format(
-                    pulse['length'] * 1e9, self.GRAN_MIN * 1e9, pulse['active_channels']
+                    pulse['length'] * 1e9, self.LEN_MIN * 1e9, pulse['active_channels']
                 ))
-                delta_time += self.GRAN_MIN - pulse['length']
-                pulse['length'] = self.GRAN_MIN
+                delta_time += self.LEN_MIN - pulse['length']
+                pulse['length'] = self.LEN_MIN
         if delta_time > 0:
             self.log.warning("Delay correction has induced an overtime of {0} ns. The total length is now"
                                 " {1} s. This may need to be accounted in the acquisition.".format(
