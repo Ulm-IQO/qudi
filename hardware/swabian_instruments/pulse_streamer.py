@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
+
 """
-Use Swabian Instruments PulseStreamer8/2 as a pulse generator.
-
-Protobuf (pb2) and grpc files generated from pulse_streamer.proto
-file available at https://www.swabianinstruments.com/static/documentation/PulseStreamer/sections/interface.html#grpc-interface.
-
-Regenerate files for an update proto file using the following:
-python3 -m grpc_tools.protoc -I=./ --python_out=. --grpc_python_out=. ./pulse_streamer.proto
+This file contains the Qudi hardware interface for pulsing devices.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,105 +22,174 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.module import Base
 from core.configoption import ConfigOption
+from core.statusvariable import  StatusVar
 from core.util.modules import get_home_dir
 from interface.pulser_interface import PulserInterface, PulserConstraints
 from collections import OrderedDict
+import numpy as np
 
-import grpc
-import os
-import hardware.swabian_instruments.pulse_streamer_pb2 as pulse_streamer_pb2
-import dill
+import pulsestreamer as ps
 
 
 class PulseStreamer(Base, PulserInterface):
-    """ Methods to control PulseStreamer.
+    """ Methods to control the Swabian Instruments Pulse Streamer 8/2
 
     Example config for copy-paste:
 
-    pulse_streamer:
+    pulsestreamer:
         module.Class: 'swabian_instruments.pulse_streamer.PulseStreamer'
         pulsestreamer_ip: '192.168.1.100'
+        #pulsed_file_dir: 'C:\\Software\\pulsed_files'
         laser_channel: 0
-        uw_x_channel: 2
-
+        uw_x_channel: 1
+        use_external_clock: False
+        external_clock_option: 0
     """
 
     _pulsestreamer_ip = ConfigOption('pulsestreamer_ip', '192.168.1.100', missing='warn')
-    _laser_channel = ConfigOption('laser_channel', 0, missing='warn')
-    _uw_x_channel = ConfigOption('uw_x_channel', 2, missing='warn')
+    _laser_channel = ConfigOption('laser_channel', 1, missing='warn')
+    _uw_x_channel = ConfigOption('uw_x_channel', 3, missing='warn')
+    _use_external_clock = ConfigOption('use_external_clock', False, missing='info')
+    _external_clock_option = ConfigOption('external_clock_option', 0, missing='info')
+    # 0: Internal (default), 1: External 125 MHz, 2: External 10 MHz
+
+    __current_waveform = StatusVar(name='current_waveform', default={})
+    __current_waveform_name = StatusVar(name='current_waveform_name', default='')
+    __sample_rate = StatusVar(name='sample_rate', default=1e9)
+
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
-
-            if not os.path.exists(self.pulsed_file_dir):
-                homedir = get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directory defined in parameter '
-                            '"pulsed_file_dir" in the config for '
-                            'PulseStreamer does not exist!\n'
-                            'The default home directory\n{0}\n will be taken '
-                            'instead.'.format(self.pulsed_file_dir))
-        else:
-            homedir = get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
-                             'PulseStreamer as directory for the pulsed files!\nThe default home '
-                             'directory\n{0}\nwill be taken instead.'.format(self.pulsed_file_dir))
-
-        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
-
-        self.current_status = -1
-        self.sample_rate = 1e9
-        self.current_loaded_asset = None
-
-        self._channel = grpc.insecure_channel(self._pulsestreamer_ip + ':50051')
+        self.__current_status = -1
+        self.__currently_loaded_waveform = ''  # loaded and armed waveform name
+        self.__samples_written = 0
+        self._trigger = ps.TriggerStart.SOFTWARE
+        self._laser_mw_on_state = ps.OutputState([self._laser_channel, self._uw_x_channel], 0, 0)
 
     def on_activate(self):
         """ Establish connection to pulse streamer and tell it to cancel all operations """
-        self.pulse_streamer = pulse_streamer_pb2.PulseStreamerStub(self._channel)
-        self.pulser_off()
+        self.pulse_streamer = ps.PulseStreamer(self._pulsestreamer_ip)
+        if self._use_external_clock:
+            if int(self._external_clock_option) is 2:
+                self.pulse_streamer.selectClock(ps.ClockSource.EXT_10MHZ)
+            elif int(self._external_clock_option) is 1:
+                self.pulse_streamer.selectClock(ps.ClockSource.EXT_125MHZ)
+            elif int(self._external_clock_option) is 0:
+                self.pulse_streamer.selectClock(ps.ClockSource.INTERNAL)
+            else:
+                self.log.error('pulsestreamer external clock selection not allowed')
+        self.__samples_written = 0
+        self.__currently_loaded_waveform = ''
         self.current_status = 0
 
     def on_deactivate(self):
+        self.reset()
         del self.pulse_streamer
 
+    
     def get_constraints(self):
-        """ Retrieve the hardware constrains from the Pulsing device.
+        """
+        Retrieve the hardware constrains from the Pulsing device.
 
-        @return dict: dict with constraints for the sequence generation and GUI
+        @return constraints object: object with pulser constraints as attributes.
 
-        Provides all the constraints (e.g. sample_rate, amplitude,
-        total_length_bins, channel_config, ...) related to the pulse generator
-        hardware to the caller.
-        The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method). No other keys should be invented. If you
-        are not sure about the meaning, look in other hardware files to get an
-        impression. If still additional constraints are needed, then they have
-        to be add to all files containing this interface.
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
+        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
+        channel_config, ...) related to the pulse generator hardware to the caller.
 
-        Only the keys 'activation_config' and differs, since it contain the
-        channel configuration/activation information.
+            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
 
-        If the constraints cannot be set in the pulsing hardware (because it
-        might e.g. has no sequence mode) then write just zero to each generic
-        dict. Note that there is a difference between float input (0.0) and
-        integer input (0).
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+        If you are not sure about the meaning, look in other hardware files to get an impression.
+        If still additional constraints are needed, then they have to be added to the
+        PulserConstraints class.
+
+        Each scalar parameter is an ScalarConstraints object defined in core.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
+
+        PulserConstraints.activation_config differs, since it contain the channel
+        configuration/activation information of the form:
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
+             ...}
+
+        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
+        sequence mode) just leave it out so that the default is used (only zeros).
+
+        # Example for configuration with default values:
+        constraints = PulserConstraints()
+
+        constraints.sample_rate.min = 10.0e6
+        constraints.sample_rate.max = 12.0e9
+        constraints.sample_rate.step = 10.0e6
+        constraints.sample_rate.default = 12.0e9
+
+        constraints.a_ch_amplitude.min = 0.02
+        constraints.a_ch_amplitude.max = 2.0
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 2.0
+
+        constraints.a_ch_offset.min = -1.0
+        constraints.a_ch_offset.max = 1.0
+        constraints.a_ch_offset.step = 0.001
+        constraints.a_ch_offset.default = 0.0
+
+        constraints.d_ch_low.min = -1.0
+        constraints.d_ch_low.max = 4.0
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = 0.0
+        constraints.d_ch_high.max = 5.0
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 5.0
+
+        constraints.waveform_length.min = 80
+        constraints.waveform_length.max = 64800000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 8000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 4000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
+
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65539
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = ['A', 'B', 'C', 'D']
+
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
+
+        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
+        # channels. Here all possible channel configurations are stated, where only the generic
+        # names should be used. The names for the different configurations can be customary chosen.
+        activation_conf = OrderedDict()
+        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        constraints.activation_config = activation_conf
         """
         constraints = PulserConstraints()
 
         # The file formats are hardware specific.
-        constraints.waveform_format = ['pstream']
-        constraints.sequence_format = []
 
         constraints.sample_rate.min = 1e9
         constraints.sample_rate.max = 1e9
@@ -153,120 +217,173 @@ class PulseStreamer(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7',
-                                    'd_ch8']
+        activation_config['all'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
         constraints.activation_config = activation_config
 
         return constraints
 
+    
     def pulser_on(self):
         """ Switches the pulsing device on.
 
         @return int: error code (0:OK, -1:error)
         """
-        # start the pulse sequence
-        self.pulse_streamer.stream(self._sequence)
-        self.log.info('Asset uploaded to PulseStreamer')
-        self.pulse_streamer.startNow(pulse_streamer_pb2.VoidMessage())
-        self.current_status = 1
-        return 0
+        if self._seq:
+            self.pulse_streamer.stream(self._seq)
+            self.pulse_streamer.startNow()
+            self.__current_status = 1
+            return 0
+        else:
+            self.log.error('no sequence/pulse pattern prepared for the pulse streamer')
+            self.pulser_off()
+            self.__current_status = -1
+            return -1
 
+    
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        # stop the pulse sequence
-        channels = self._convert_to_bitmask([self._laser_channel, self._uw_x_channel])
-        self.pulse_streamer.constant(pulse_streamer_pb2.PulseMessage(ticks=0, digi=channels, ao0=0, ao1=0))
-        self.current_status = 0
+
+        self.__current_status = 0
+        self.pulse_streamer.constant(self._laser_mw_on_state)
         return 0
 
-    def upload_asset(self, asset_name=None):
-        """ Upload an already hardware conform file to the device.
-            Does NOT load it into channels.
+    
+    def load_waveform(self, load_dict):
+        """ Loads a waveform to the specified channel of the pulsing device.
 
-        @param name: string, name of the ensemble/seqeunce to be uploaded
+        @param dict|list load_dict: a dictionary with keys being one of the available channel
+                                    index and values being the name of the already written
+                                    waveform to load into the channel.
+                                    Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                {1: rabi_ch2, 2: rabi_ch1}
+                                    If just a list of waveform names if given, the channel
+                                    association will be invoked from the channel
+                                    suffix '_ch1', '_ch2' etc.
 
-        @return int: error code (0:OK, -1:error)
+                                        {1: rabi_ch1, 2: rabi_ch2}
+                                    or
+                                        {1: rabi_ch2, 2: rabi_ch1}
+
+                                    If just a list of waveform names if given,
+                                    the channel association will be invoked from
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
+
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
+
+        @return dict: Dictionary containing the actually loaded waveforms per
+                      channel.
+
+        For devices that have a workspace (i.e. AWG) this will load the waveform
+        from the device workspace into the channel. For a device without mass
+        memory, this will make the waveform/pattern that has been previously
+        written with self.write_waveform ready to play.
+
+        Please note that the channel index used here is not to be confused with the number suffix
+        in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
+        highly hardware specific and corresponds to a collection of digital and analog channels
+        being associated to a SINGLE wavfeorm asset.
         """
-        self.log.debug('PulseStreamer has no own storage capability.\n"upload_asset" call ignored.')
-        return 0
+        if isinstance(load_dict, list):
+            waveforms = list(set(load_dict))
+        elif isinstance(load_dict, dict):
+            waveforms = list(set(load_dict.values()))
+        else:
+            self.log.error('Method load_waveform expects a list of waveform names or a dict.')
+            return self.get_loaded_assets()[0]
 
-    def load_asset(self, asset_name, load_dict=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing
-            device.
+        if len(waveforms) != 1:
+            self.log.error('pulsestreamer pulser expects exactly one waveform name for load_waveform.')
+            return self.get_loaded_assets()[0]
 
-        @param str asset_name: The name of the asset to be loaded
+        waveform = waveforms[0]
+        if waveform != self.__current_waveform_name:
+            self.log.error('No waveform by the name "{0}" generated for pulsestreamer pulser.\n'
+                           'Only one waveform at a time can be held.'.format(waveform))
+            return self.get_loaded_assets()[0]
 
-        @param dict load_dict:  a dictionary with keys being one of the
-                                available channel numbers and items being the
-                                name of the already sampled
-                                waveform/sequence files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given
-                                then the channel association is invoked from
-                                the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
+        self._seq = self.pulse_streamer.createSequence()
+        for channel_number, pulse_pattern in self.__current_waveform.items():
+            #print(pulse_pattern)
+            swabian_channel_number = int(channel_number[-1])-1
+            self._seq.setDigital(swabian_channel_number,pulse_pattern)
 
-        @return int: error code (0:OK, -1:error)
+        self.__currently_loaded_waveform = self.__current_waveform_name
+        return self.get_loaded_assets()[0]
+
+
+    def get_loaded_assets(self):
         """
-        # ignore if no asset_name is given
-        if asset_name is None:
-            self.log.warning('"load_asset" called with asset_name = None.')
-            return 0
+        Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
 
-        # check if asset exists
-        saved_assets = self.get_saved_asset_names()
-        if asset_name not in saved_assets:
-            self.log.error('No asset with name "{0}" found for PulseStreamer.\n'
-                           '"load_asset" call ignored.'.format(asset_name))
-            return -1
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
+        """
+        asset_type = 'waveform' if self.__currently_loaded_waveform else None
+        asset_dict = {chnl_num: self.__currently_loaded_waveform for chnl_num in range(1, 9)}
+        return asset_dict, asset_type
 
-        # get samples from file
-        filepath = os.path.join(self.host_waveform_directory, asset_name + '.pstream')
-        pulse_sequence_raw = dill.load(open(filepath, 'rb'))
 
-        pulse_sequence = []
-        for pulse in pulse_sequence_raw:
-            pulse_sequence.append(pulse_streamer_pb2.PulseMessage(ticks=pulse[0], digi=pulse[1], ao0=0, ao1=1))
+    
+    def load_sequence(self, sequence_name):
+        """ Loads a sequence to the channels of the device in order to be ready for playback.
+        For devices that have a workspace (i.e. AWG) this will load the sequence from the device
+        workspace into the channels.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
 
-        blank_pulse = pulse_streamer_pb2.PulseMessage(ticks=0, digi=0, ao0=0, ao1=0)
-        laser_on = pulse_streamer_pb2.PulseMessage(ticks=0, digi=self._convert_to_bitmask([self._laser_channel]), ao0=0, ao1=0)
-        laser_and_uw_channels = self._convert_to_bitmask([self._laser_channel, self._uw_x_channel])
-        laser_and_uw_on = pulse_streamer_pb2.PulseMessage(ticks=0, digi=laser_and_uw_channels, ao0=0, ao1=0)
-        self._sequence = pulse_streamer_pb2.SequenceMessage(pulse=pulse_sequence, n_runs=0, initial=laser_on,
-            final=laser_and_uw_on, underflow=blank_pulse, start=1)
+        @param dict|list sequence_name: a dictionary with keys being one of the available channel
+                                        index and values being the name of the already written
+                                        waveform to load into the channel.
+                                        Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                    {1: rabi_ch2, 2: rabi_ch1}
+                                        If just a list of waveform names if given, the channel
+                                        association will be invoked from the channel
+                                        suffix '_ch1', '_ch2' etc.
 
-        self.current_loaded_asset = asset_name
-        return 0
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
+        """
+        self.log.debug('sequencing not implemented for pulsestreamer')
+        return dict()
 
+
+    
     def clear_all(self):
-        """ Clears all loaded waveforms from the pulse generators RAM.
+        """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
         @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without storage capability
-        (PulseBlaster, FPGA).
         """
-        return 0
+        self.pulser_off()
+        self.__currently_loaded_waveform = ''
+        self.__current_waveform_name = ''
+        self._seq = dict()
+        self.__current_waveform = dict()
 
+
+    
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return (int, dict): tuple with an interger value of the current status
-                             and a corresponding dictionary containing status
-                             description for all the possible status variables
-                             of the pulse generator hardware.
+        @return (int, dict): tuple with an integer value of the current status and a corresponding
+                             dictionary containing status description for all the possible status
+                             variables of the pulse generator hardware.
         """
         status_dic = dict()
         status_dic[-1] = 'Failed Request or Failed Communication with device.'
         status_dic[0] = 'Device has stopped, but can receive commands.'
         status_dic[1] = 'Device is active and running.'
 
-        return self.current_status, status_dic
+        return self.__current_status, status_dic
 
+    
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
 
@@ -275,7 +392,7 @@ class PulseStreamer(Base, PulserInterface):
         Do not return a saved sample rate in a class variable, but instead
         retrieve the current sample rate directly from the device.
         """
-        return self.sample_rate
+        return self.__sample_rate
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
@@ -289,42 +406,57 @@ class PulseStreamer(Base, PulserInterface):
               further processing.
         """
         self.log.debug('PulseStreamer sample rate cannot be configured')
-        return self.sample_rate
+        return self.__sample_rate
 
+    
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
-        @param list amplitude: optional, if a specific amplitude value (in Volt
-                               peak to peak, i.e. the full amplitude) of a
-                               channel is desired.
-        @param list offset: optional, if a specific high value (in Volt) of a
-                            channel is desired.
+        @param list amplitude: optional, if the amplitude value (in Volt peak to peak, i.e. the
+                               full amplitude) of a specific channel is desired.
+        @param list offset: optional, if the offset value (in Volt) of a specific channel is
+                            desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Amplitude is always denoted in
-                               Volt-peak-to-peak and Offset in (absolute)
-                               Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel descriptor string
+                               (i.e. 'a_ch1') and items being the values for those channels.
+                               Amplitude is always denoted in Volt-peak-to-peak and Offset in volts.
+
+        Note: Do not return a saved amplitude and/or offset value but instead retrieve the current
+              amplitude and/or offset directly from the device.
+
+        If nothing (or None) is passed then the levels of all channels will be returned. If no
+        analog channels are present in the device, return just empty dicts.
+
+        Example of a possible input:
+            amplitude = ['a_ch1', 'a_ch4'], offset = None
+        to obtain the amplitude of channel 1 and 4 and the offset of all channels
+            {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
         """
-        return {}, {}
+        return {},{}
 
+    
     def set_analog_level(self, amplitude=None, offset=None):
-        """ Set amplitude and/or offset value of the provided analog channel.
+        """ Set amplitude and/or offset value of the provided analog channel(s).
 
-        @param dict amplitude: dictionary, with key being the channel and items
-                               being the amplitude values (in Volt peak to peak,
-                               i.e. the full amplitude) for the desired channel.
-        @param dict offset: dictionary, with key being the channel and items
-                            being the offset values (in absolute volt) for the
-                            desired channel.
+        @param dict amplitude: dictionary, with key being the channel descriptor string
+                               (i.e. 'a_ch1', 'a_ch2') and items being the amplitude values
+                               (in Volt peak to peak, i.e. the full amplitude) for the desired
+                               channel.
+        @param dict offset: dictionary, with key being the channel descriptor string
+                            (i.e. 'a_ch1', 'a_ch2') and items being the offset values
+                            (in absolute volt) for the desired channel.
 
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                              amplitude and offset.
+        @return (dict, dict): tuple of two dicts with the actual set values for amplitude and
+                              offset for ALL channels.
 
-        If nothing is passed then the command will return two empty dicts.
+        If nothing is passed then the command will return the current amplitudes/offsets.
+
+        Note: After setting the amplitude and/or offset values of the device, use the actual set
+              return values for further processing.
         """
-        return {}, {}
+        return {},{}
 
+    
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
@@ -409,9 +541,25 @@ class PulseStreamer(Base, PulserInterface):
         if high is None:
             high = {}
         self.log.warning('PulseStreamer logic level cannot be adjusted!')
-        return 0
+        return self.get_digital_level()
 
-    def get_active_channels(self,  ch=None):
+    
+    def get_active_channels(self, ch=None):
+        """ Get the active channels of the pulse generator hardware.
+
+        @param list ch: optional, if specific analog or digital channels are needed to be asked
+                        without obtaining all the channels.
+
+        @return dict:  where keys denoting the channel string and items boolean expressions whether
+                       channel are active or not.
+
+        Example for an possible input (order is not important):
+            ch = ['a_ch2', 'd_ch2', 'a_ch1', 'd_ch5', 'd_ch1']
+        then the output might look like
+            {'a_ch2': True, 'd_ch2': False, 'a_ch1': False, 'd_ch5': True, 'd_ch1': False}
+
+        If no parameter (or None) is passed to this method all channel states will be returned.
+        """
         if ch is None:
             ch = {}
         d_ch_dict = {}
@@ -423,7 +571,35 @@ class PulseStreamer(Base, PulserInterface):
                 d_ch_dict[channel] = True
         return d_ch_dict
 
+    
     def set_active_channels(self, ch=None):
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
+
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
+
+        @return dict: with the actual set values for ALL active analog and digital channels
+
+        If nothing is passed then the command will simply return the unchanged current state.
+
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
+
+        Example for possible input:
+            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1. All other available channels will remain unchanged.
+        """
         if ch is None:
             ch = {}
         d_ch_dict = {
@@ -437,85 +613,125 @@ class PulseStreamer(Base, PulserInterface):
             'd_ch8': True}
         return d_ch_dict
 
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
-
-        @return str: Name of the current asset, that can be either a filename
-                     a waveform, a sequence ect.
+    
+    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
+                       total_number_of_samples):
         """
-        return self.current_loaded_asset
+        Write a new waveform or append samples to an already existing waveform on the device memory.
+        The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
+        be created or if the write process to a waveform should be terminated.
 
-    def get_uploaded_asset_names(self):
-        """ Retrieve the names of all uploaded assets on the device.
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
 
-        @return list: List of all uploaded asset name strings in the current
-                      device directory. This is no list of the file names.
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
 
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
+                             created waveform names
         """
-        names = []
-        return names
 
-    def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC.
-        This is no list of the file names.
+        if analog_samples:
+            self.log.debug('Analog not yet implemented for pulse streamer')
+            return -1, list()
 
-        @return list: List of all saved asset name strings in the current
-                      directory of the host PC.
+        if is_first_chunk:
+            self.__current_waveform_name = name
+            self.__samples_written = 0
+            # initalise to a dict of lists that describe pulse pattern in swabian language
+            self.__current_waveform = {key:[] for key in digital_samples.keys()}
+
+        for channel_number, samples in digital_samples.items():
+            new_channel_indices = np.where(samples[:-1] != samples[1:])[0]
+            new_channel_indices = np.unique(new_channel_indices)
+
+            # add in indices for the start and end of the sequence to simplify iteration
+            new_channel_indices = np.insert(new_channel_indices, 0, [-1])
+            new_channel_indices = np.insert(new_channel_indices, new_channel_indices.size, [samples.shape[0] - 1])
+            pulses = []
+            for new_channel_index in range(1, new_channel_indices.size):
+                pulse = [new_channel_indices[new_channel_index] - new_channel_indices[new_channel_index - 1],
+                         samples[new_channel_indices[new_channel_index - 1] + 1].astype(np.byte)]
+                pulses.append(pulse)
+
+            # extend (as opposed to rewrite) for chunky business
+            #print(pulses)
+            self.__current_waveform[channel_number].extend(pulses)
+
+        return len(samples), [self.__current_waveform_name]
+
+
+    
+    def write_sequence(self, name, sequence_parameters):
         """
-        file_list = self._get_filenames_on_host()
+        Write a new sequence on the device memory.
 
-        saved_assets = []
-        for filename in file_list:
-            if filename.endswith('.pstream'):
-                asset_name = filename.rsplit('.', 1)[0]
-                if asset_name not in saved_assets:
-                    saved_assets.append(asset_name)
-        return saved_assets
+        @param str name: the name of the waveform to be created/append to
+        @param list sequence_parameters: List containing tuples of length 2. Each tuple represents
+                                         a sequence step. The first entry of the tuple is a list of
+                                         waveform names (str); one for each channel. The second
+                                         tuple element is a SequenceStep instance containing the
+                                         sequencing parameters for this step.
 
-    def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device memory.
-
-        @param str asset_name: The name of the asset to be deleted
-                               Optionally a list of asset names can be passed.
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        @return: int, number of sequence steps written (-1 indicates failed process)
         """
-        return 0
+        self.log.debug('Sequencing not yet implemented for pulse streamer')
+        return -1
 
-    def set_asset_dir_on_device(self, dir_path):
-        """ Change the directory where the assets are stored on the device.
+    def get_waveform_names(self):
+        """ Retrieve the names of all uploaded waveforms on the device.
 
-        @param str dir_path: The target directory
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
+        @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return 0
+        waveform_names = list()
+        if self.__current_waveform_name != '' and self.__current_waveform_name is not None:
+            waveform_names = [self.__current_waveform_name]
+        return waveform_names
 
-    def get_asset_dir_on_device(self):
-        """ Ask for the directory where the hardware conform files are stored on
-            the device.
+    def get_sequence_names(self):
+        """ Retrieve the names of all uploaded sequence on the device.
 
-        @return str: The current file directory
-
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
+        @return list: List of all uploaded sequence name strings in the device workspace.
         """
-        return ''
+        return list()
+
+    def delete_waveform(self, waveform_name):
+        """ Delete the waveform with name "waveform_name" from the device memory.
+
+        @param str waveform_name: The name of the waveform to be deleted
+                                  Optionally a list of waveform names can be passed.
+
+        @return list: a list of deleted waveform names.
+        """
+        return list()
+
+    def delete_sequence(self, sequence_name):
+        """ Delete the sequence with name "sequence_name" from the device memory.
+
+        @param str sequence_name: The name of the sequence to be deleted
+                                  Optionally a list of sequence names can be passed.
+
+        @return list: a list of deleted sequence names.
+        """
+        return list()
 
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
         @return bool: True: ON, False: OFF
 
-        Unused for pulse generator hardware other than an AWG.
+        Will always return False for pulse generator hardware without interleave.
         """
         return False
 
@@ -532,94 +748,25 @@ class PulseStreamer(Base, PulserInterface):
 
         Unused for pulse generator hardware other than an AWG.
         """
+        if state:
+            self.log.error('No interleave functionality available in FPGA pulser.\n'
+                           'Interleave state is always False.')
         return False
 
-    def tell(self, command):
-        """ Sends a command string to the device.
-
-        @param string command: string containing the command
-
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
-
-    def ask(self, question):
-        """ Asks the device a 'question' and receive and return an answer from it.
-a
-        @param string question: string containing the command
-
-        @return string: the answer of the device to the 'question' in a string
-        """
-        return ''
-
+    
     def reset(self):
         """ Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """
-        channels = self._convert_to_bitmask([self._laser_channel, self._uw_x_channel])
-        self.pulse_streamer.constant(pulse_streamer_pb2.PulseMessage(ticks=0, digi=channels, ao0=0, ao1=0))
-        self.pulse_streamer.constant(laser_on)
-        return 0
 
+        self.pulse_streamer.reset()
+        self.__currently_loaded_waveform = ''
+
+    
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
         @return: bool, True for yes, False for no.
         """
         return False
-
-    def _get_dir_for_name(self, name):
-        """ Get the path to the pulsed sub-directory 'name'.
-
-        @param name: string, name of the folder
-        @return: string, absolute path to the directory with folder 'name'.
-        """
-        path = os.path.join(self.pulsed_file_dir, name)
-        if not os.path.exists(path):
-            os.makedirs(os.path.abspath(path))
-        return os.path.abspath(path)
-
-    def _get_filenames_on_host(self):
-        """ Get the full filenames of all assets saved on the host PC.
-
-        @return: list, The full filenames of all assets saved on the host PC.
-        """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.pstream')]
-        return filename_list
-
-    def _convert_to_bitmask(self, active_channels):
-        """ Convert a list of channels into a bitmask.
-        @param numpy.array active_channels: the list of active channels like
-                            e.g. [0,4,7]. Note that the channels start from 0.
-        @return int: The channel-list is converted into a bitmask (an sequence
-                     of 1 and 0). The returned integer corresponds to such a
-                     bitmask.
-        Note that you can get a binary representation of an integer in python
-        if you use the command bin(<integer-value>). All higher unneeded digits
-        will be dropped, i.e. 0b00100 is turned into 0b100. Examples are
-            bin(0) =    0b0
-            bin(1) =    0b1
-            bin(8) = 0b1000
-        Each bit value (read from right to left) corresponds to the fact that a
-        channel is on or off. I.e. if you have
-            0b001011
-        then it would mean that only channel 0, 1 and 3 are switched to on, the
-        others are off.
-        Helper method for write_pulse_form.
-        """
-        bits = 0     # that corresponds to: 0b0
-        for channel in active_channels:
-            # go through each list element and create the digital word out of
-            # 0 and 1 that represents the channel configuration. In order to do
-            # that a bitwise shift to the left (<< operator) is performed and
-            # the current channel configuration is compared with a bitwise OR
-            # to check whether the bit was already set. E.g.:
-            #   0b1001 | 0b0110: compare elementwise:
-            #           1 | 0 => 1
-            #           0 | 1 => 1
-            #           0 | 1 => 1
-            #           1 | 1 => 1
-            #                   => 0b1111
-            bits = bits | (1<< channel)
-        return bits
