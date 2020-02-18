@@ -183,7 +183,7 @@ class FastComtec(Base, FastCounterInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.dll = ctypes.windll.LoadLibrary('dp7889.dll')
+        self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
         if self.gated:
             self.change_sweep_mode(gated=True)
         else:
