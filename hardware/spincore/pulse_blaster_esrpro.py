@@ -716,7 +716,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         for pulse in sequence_list[1:-1]:
             num = self._convert_pulse_to_inst(pulse['active_channels'],
                                               pulse['length'])
-            if num > 4094: # =(2**12 -2)
+            if num > 4094:# =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
                                'the maximal number of commands'.format(num))
 
@@ -728,8 +728,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # connect the end with the beginning of the pulse.
 
         bitmask = self._convert_to_bitmask(active_channels)
+
+        # For some old models, long delay is not an option so smart_pulse_creation is needed
+        # Let's cut the last pulse in two if it's too long.
+        if self._use_smart_pulse_creation and length > 256*self.GRAN_MIN:
+            self._convert_pulse_to_inst(active_channels, length-128*self.GRAN_MIN)
+            length -= 128*self.GRAN_MIN
+        length = np.round(np.round(length / self.GRAN_MIN + 0.01) * self.GRAN_MIN, 12)
         # with the branch or the stop command
-        length = np.round(np.round(length/self.GRAN_MIN+0.01) * self.GRAN_MIN, 12)
         if loop:
             num = self._write_pulse(flags=self.ON | bitmask,
                                     inst=self.BRANCH,
