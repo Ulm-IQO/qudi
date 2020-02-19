@@ -1329,7 +1329,8 @@ class NonAdaptive_PGH(qi.Heuristic):
                  tau_0=20e-9,
                  tau_short_to_long=True,
                  n_taus=10,
-                 fix_readout_phase_rad=0
+                 fix_readout_phase_rad=0,
+                 exp_base=2
                  ):
         super().__init__(updater)
         self._x_ = inv_field
@@ -1340,6 +1341,7 @@ class NonAdaptive_PGH(qi.Heuristic):
         self._other_fields = other_fields if other_fields is not None else {}
         self.tau_0 = tau_0
         self.n_taus = n_taus
+        self.exp_base = exp_base
 
         self.readout_phase_rad = fix_readout_phase_rad
         self.tau_short_to_long = tau_short_to_long
@@ -1356,9 +1358,9 @@ class NonAdaptive_PGH(qi.Heuristic):
             i_tau = n_taus - 1
 
         if not self.tau_short_to_long:
-            next_tau = tau_0 * 2**(n_taus - (i_tau+1))     # tau from long to short, as in paper
+            next_tau = tau_0 * self.exp_base**(n_taus - (i_tau+1))     # tau from long to short, as in paper
         else:
-            next_tau = tau_0 * 2**i_tau
+            next_tau = tau_0 * self.exp_base**i_tau
 
         next_tau_s = next_tau
 
