@@ -1163,8 +1163,15 @@ class PulsedMeasurementLogic(GenericLogic):
         # analyze pulses and get data points for signal array. Also check if extraction
         # worked (non-zero array returned).
         if self.laser_data.any():
-            tmp_signal, tmp_error = self._pulseanalyzer.analyse_laser_pulses(
-                self.laser_data)
+            analyser_result = self._pulseanalyzer.analyse_laser_pulses(self.laser_data)
+            if len(analyser_result) == 2:
+                tmp_signal, tmp_error = analyser_result
+            elif len(analyser_result) == 3:
+                tmp_signal, tmp_error, controlled_variable = analyser_result
+                self._controlled_variable = controlled_variable
+                self._initialize_signal_data_arrays()
+            else:
+                self.log.error('Analyser error : The analysis method return {} arguments.'.format(len(analyser_result)))
         else:
             tmp_signal = np.zeros(self.laser_data.shape[0])
             tmp_error = np.zeros(self.laser_data.shape[0])
@@ -1217,13 +1224,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
         return fc_data, {'elapsed_sweeps': elapsed_sweeps, 'elapsed_time': elapsed_time}
 
-    def _initialize_data_arrays(self):
-        """
-        Initializing the signal, error, laser and raw data arrays.
-        """
+    def _initialize_signal_data_arrays(self):
+        """ Initialize just the signal and error raw data array """
         # Determine signal array dimensions
         signal_dim = 3 if self._alternating else 2
-
         self.signal_data = np.zeros((signal_dim, len(self._controlled_variable)), dtype=float)
         self.signal_data[0] = self._controlled_variable
 
@@ -1232,6 +1236,12 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self.measurement_error = np.zeros((signal_dim, len(self._controlled_variable)), dtype=float)
         self.measurement_error[0] = self._controlled_variable
+
+    def _initialize_data_arrays(self):
+        """
+        Initializing the signal, error, laser and raw data arrays.
+        """
+        self._initialize_signal_data_arrays()
 
         number_of_bins = int(self.__fast_counter_record_length / self.__fast_counter_binwidth)
         laser_length = number_of_bins if self.__fast_counter_gates > 0 else 500
