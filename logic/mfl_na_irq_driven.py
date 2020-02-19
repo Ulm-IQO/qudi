@@ -47,6 +47,8 @@ class MFL_NonAdapt_IRQ_Driven(MFL_IRQ_Driven):
         mfl_na_f = kwargs.get('na_f', 0)
         mfl_n_taus = kwargs.get('na_n_taus', 10)
         mfl_opt_phase = kwargs.get('na_opt_phase', False)
+        mfl_exp_base = kwargs.get('na_exp_base', 2)
+        #mfl_exp_base = 2**(0.25)
         mfl_na_tau_short_to_long = kwargs.get('tau_short_to_long', True)
 
         n_particles = 1000
@@ -69,6 +71,7 @@ class MFL_NonAdapt_IRQ_Driven(MFL_IRQ_Driven):
         self.mfl_na_g = mfl_na_g
         self.mfl_na_f = mfl_na_f
         self.mfl_n_taus = mfl_n_taus
+        self.mfl_exp_base = mfl_exp_base
         self.mfl_opt_phase = mfl_opt_phase
         self.mfl_na_tau_short_to_long = mfl_na_tau_short_to_long
 
@@ -87,8 +90,8 @@ class MFL_NonAdapt_IRQ_Driven(MFL_IRQ_Driven):
         self.mfl_tau_from_heuristic = mfl_lib.NonAdaptive_PGH(self.mfl_updater, inv_field='w_',
                                                               tau_0=self.mfl_tau_0, n_taus=self.mfl_n_taus,
                                                               fix_readout_phase_rad=0 if not self.mfl_opt_phase else None,
-                                                              tau_short_to_long=mfl_na_tau_short_to_long
-                                                              )
+                                                              tau_short_to_long=mfl_na_tau_short_to_long,
+                                                              exp_base=self.mfl_exp_base)
 
     def _reset_epoch_counters(self):
         self.i_epoch = 0
@@ -142,6 +145,9 @@ class MFL_NonAdapt_IRQ_Driven(MFL_IRQ_Driven):
         if (self.mfl_n_taus - (self.i_tau+1)) < 0:
             # repeat tau when hitting n_tau limit
             i_tau_limited = self.mfl_n_taus - 1
+            # start over from beginning (for comparing with fit)
+            self.i_tau = 0
+            i_tau_limited = self.i_tau
         else:
             i_tau_limited = self.i_tau
 

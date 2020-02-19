@@ -89,6 +89,8 @@ class MFL_Multi_IRQ_Driven(MFL_IRQ_Driven):
         # first estimate from flat prior stored in self.data_before_first_epcoh
         self.taus = np.zeros((n_epochs, 1))
         self.taus_requested = np.zeros((n_epochs, 1))
+        self.read_phases = np.zeros((n_epochs, 1))
+        self.read_phases_requested = np.zeros((n_epochs, 1))
         self.t_seqs = np.zeros((n_epochs, 1))
         self.bs = np.zeros((n_epochs,  self.n_est_ws))  # MHz
         self.dbs = np.zeros((n_epochs,  self.n_est_ws))

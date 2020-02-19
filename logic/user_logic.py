@@ -1,4 +1,5 @@
 from logic.generic_logic import GenericLogic
+from core.module import Connector
 import threading
 
 class UserGlobals(GenericLogic):
@@ -44,6 +45,9 @@ class UserCommands(GenericLogic):
     _modclass = 'usercommands'
     _modtype = 'logic'
 
+    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
+    poimanagerlogic = Connector(interface='poimanagerlogic')
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
@@ -53,7 +57,7 @@ class UserCommands(GenericLogic):
         """ """
         pass
 
-    def send_ttl_pulse(self, channel_name='/dev1/PFI9', n=1, t_wait=0.2):
+    def send_ttl_pulse(self, channel_name='/dev1/PFI9', n=1, t_wait=0.02):
         import PyDAQmx as daq
         import time
         import numpy as np
@@ -82,7 +86,7 @@ class UserCommands(GenericLogic):
                                          0, daq.DAQmx_Val_GroupByChannel,
                                          np.array(digital_data), digital_read, None)
 
-                print("i {}: {}".format(i, val))
+                #print("i {}: {}".format(i, val))
                 time.sleep(t_wait)
                 i += 1
 
@@ -98,4 +102,11 @@ class UserCommands(GenericLogic):
 
     def reset_pulsedgui(self):
         # after fancy stuff from jupyter, invoking loads settings from predefined methods
-        pulsedmeasurementlogic.measurement_settings = {'invoke_settings': True}
+        self.pulsedmasterlogic().pulsedmeasurementlogic().measurement_settings = {'invoke_settings': True}
+        self.pulsedmasterlogic().pulsedmeasurementlogic().timer_interval = 2
+
+    def reset_poi_history(self):
+        n_hist =  len(self.poimanagerlogic()._roi._pos_history)
+
+        for i in range(0, n_hist):
+            self.poimanagerlogic().delete_history_entry()

@@ -20,7 +20,7 @@ mfl_lib = imp.load_source('packages', path_mfl_lib)
 import line_profiler
 profile = line_profiler.LineProfiler()
 
-ARRAY_SIZE_MAX = 200000
+ARRAY_SIZE_MAX = int(5e4)
 GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
 
 
@@ -202,7 +202,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.i_epoch = 0
         self.is_running = False
         self.is_calibmode_lintau = calibmode_lintau
-        self.n_epochs = n_epochs
+        self.n_epochs = int(n_epochs)
         self.nolog_callback = nolog_callback
         self.nowait_callback = nowait_callback
         self.sequence_name = name
@@ -468,7 +468,9 @@ class MFL_IRQ_Driven(GenericLogic):
                 faxes = 2*np.pi * np.linspace(self.mfl_frq_min_mhz, self.mfl_frq_max_mhz, 500)
                 self.likelihoods.append([faxes / (2*np.pi), self.get_likelihood(faxes)[1]])
             else:
-                raise NotImplementedError
+                # todo: likelihoods are not saved!
+                pass
+
 
             # needed?
             #particle_loc = self.mfl_updater.particle_locations / (2*np.pi)
@@ -1090,7 +1092,7 @@ class MFL_IRQ_Driven(GenericLogic):
             self.start_first_epoch()
 
         self.timestamp(self.i_epoch, TimestampEvent.irq_start)
-
+        #"""
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result(wait_for_data=not self.nowait_callback)
         z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
@@ -1112,6 +1114,9 @@ class MFL_IRQ_Driven(GenericLogic):
         # after update: save next taus, current est(B)
         self.save_after_update(real_tau, tau_new_req, t_seq,
                                read_phase=real_phase, read_phase_req=phase_new_req)
+        #"""
+        #addr = 66
+
         self.iterate_mfl()  # iterates i_epoch
 
         self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
