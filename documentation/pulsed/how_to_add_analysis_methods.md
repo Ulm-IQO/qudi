@@ -8,6 +8,8 @@ the time bin index of the corresponding time trace.
 
 Based on these inputs it will calculate a certain numeric value for each laser pulse provided. 
 So the returned object will be a 1D float numpy array of length `laser_data.shape[0]`.
+The method can also return optionally an additional 1D array to rewrite controlled value used as x axis of 
+signal data.
 
 ## Architecture
 Each analysis method is a bound method of a child class of `PulseAnalyzerBase`. 
