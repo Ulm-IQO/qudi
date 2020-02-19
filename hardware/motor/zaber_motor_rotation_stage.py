@@ -28,7 +28,7 @@ from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
 class MotorRotationZaber(Base, MotorInterface):
-    """unstable: Christoph Müller, Simon Schmitt
+    """unstable: Christoph Müller, from_Simon Schmitt
     This is the Interface class to define the controls for the simple
     microwave hardware.
 
