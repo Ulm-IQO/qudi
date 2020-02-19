@@ -433,6 +433,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @param kwargs:
         @return:
         """
+
         # Check if microwave is running and do nothing if that is the case
         if self.microwave().get_status()[1]:
             self.log.warning('Microwave device is running.\nUnable to apply new settings.')
@@ -1243,7 +1244,7 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     @QtCore.Slot(str, bool)
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
+                              save_figure=True, subdir=None):
         """
         Prepare data to be saved and create a proper plot of the data
 
@@ -1256,6 +1257,8 @@ class PulsedMeasurementLogic(GenericLogic):
         @return str: filepath where data were saved
         """
         filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
+        if subdir is not None:
+            filepath = filepath + '/' + subdir + '/'
         timestamp = datetime.datetime.now()
 
         #####################################################################

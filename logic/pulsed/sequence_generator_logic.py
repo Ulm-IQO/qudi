@@ -1064,9 +1064,9 @@ class SequenceGeneratorLogic(GenericLogic):
                            '{1}'.format(predefined_sequence_name, thrown_out_params))
         try:
             blocks, ensembles, sequences = gen_method(**kwargs_dict)
-        except:
-            self.log.error('Generation of predefined sequence "{0}" failed.'
-                           ''.format(predefined_sequence_name))
+        except Exception as e:
+            self.log.error('Generation of predefined sequence "{0}" failed:'
+                           ' {1}'.format(predefined_sequence_name, str(e)))
             self.sigPredefinedSequenceGenerated.emit(None, False)
             raise
         # Save objects
