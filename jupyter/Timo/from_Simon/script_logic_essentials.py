@@ -133,6 +133,7 @@ def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, 
     global qm_dict_final
     qm_dict_final = {}
     # add information necessary for measurement type
+    logger.debug("Measrument info of type {}".format(str(meas_info)))
     qm_dict = meas_info(experiment, qm_dict)
 
     # perform sanity checks
@@ -216,6 +217,15 @@ def add_conventional_information(experiment, qm_dict):
     if 'ctr_n_cycles' not in qm_dict:
         qm_dict['ctr_n_cycles'] = 0
 
+    if 'measurement_time' not in qm_dict:
+        qm_dict['measurement_time'] = None
+    if 'optimize_time' not in qm_dict:
+        qm_dict['optimize_time'] = None
+    if 'freq_optimize_time' not in qm_dict:
+        qm_dict['freq_optimize_time'] = None
+    if 'analysis_interval' not in qm_dict:
+        qm_dict['analysis_interval'] = None
+
     return qm_dict
 
 
@@ -232,6 +242,15 @@ def add_sequence_mode_info(experiment, qm_dict):
         qm_dict['ctr_n_sweeps'] = 0
     if 'ctr_n_cycles' not in qm_dict:
         qm_dict['ctr_n_cycles'] = 0
+
+    if 'measurement_time' not in qm_dict:
+        qm_dict['measurement_time'] = None
+    if 'optimize_time' not in qm_dict:
+        qm_dict['optimize_time'] = None
+    if 'freq_optimize_time' not in qm_dict:
+        qm_dict['freq_optimize_time'] = None
+    if 'analysis_interval' not in qm_dict:
+        qm_dict['analysis_interval'] = None
 
     return qm_dict
 
@@ -366,7 +385,9 @@ def generate_sample_upload(experiment, qm_dict):
             if qm_dict['name'] not in pulsedmasterlogic.saved_pulse_sequences:
                 pulsedmasterlogic.log.error("Couldn't find sequence {} in pulsedmafterlogic".format(qm_dict['name']))
                 raise RuntimeError("Couldn't find sequence {} in pulsedmafterlogic".format(qm_dict['name']))
+
             pulsedmasterlogic.sample_sequence(qm_dict['name'], True)
+
         else:
             # get the sequence information
             #sequence = pulsedmasterlogic.saved_pulse_sequences.get(qm_dict['name'])
@@ -471,12 +492,12 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     """
 
     ################ Start and perform the measurement #################
-    if not uglobals.abort.is_set() and not uglobals.next.is_set():
+    if handle_abort() is 0:
         user_terminated = meas_type(qm_dict)
 
     ########################## Save data ###############################
     # save and fit depending on abort signals
-    if uglobals.abort.is_set():
+    if handle_abort() is 2:
         user_terminated = True
         return user_terminated
 
@@ -833,9 +854,41 @@ def save_parameters(save_tag='', save_dict=None):
 
 ######################################## Position optimize and laser functions #########################################
 
+def wait_for_cts(min_cts=10e3, timeout_s=2):
+
+    # todo: waiting like this freezes qudi manager
+
+    high_cts = False
+    t_start = time.time()
+    while time.time() - t_start < timeout_s:
+        # will stop on calling .save_data()
+        counterlogic.start_saving()
+        time.sleep(0.1)
+
+        data_array, parameters = counterlogic.save_data(to_file=False)
+        try:
+            data_array = np.array(data_array)[:, 1]
+            last_cts = data_array[-1]
+
+            if last_cts > min_cts:
+                high_cts = True
+                logger.debug("Waited {:.2f} s for {}>{} counts".format(time.time() - t_start,
+                                                                   last_cts, min_cts))
+                break
+        except Exception as e:
+            logger.warning("Couln't read from counter: {}".format(str(e)))
+            return
+
+    if not high_cts:
+        logger.warning("Timed out while waiting for high counts.")
+
 def optimize_position():
     # FIXME: Add the option to pause pulsed measurement during position optimization
+    # add: check if counts
+
     time_start_optimize = time.time()
+
+    wait_for_cts()
     #pulsedmeasurementlogic.fast_counter_pause()
     nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
     # perform refocus
@@ -879,6 +932,8 @@ def optimize_poi(poi):
     time_start_optimize = time.time()
     #pulsedmeasurementlogic.fast_counter_pause()
     laser_on()
+    wait_for_cts()
+
     # perform refocus
     poimanagerlogic.optimise_poi_position(poi)
 
@@ -1074,44 +1129,64 @@ def do_automized_measurements(qm_dict, autoexp):
             break       # next is handled in inner loop
         # move to current poi and optimize position
         logger.info("Autopilot moving to poi {}".format(poi))
-        poimanagerlogic.go_to_poi(poi)
-        optimize_poi(poi)
+        poi_name = poi
+        poimanagerlogic.go_to_poi(poi_name)
+        optimize_poi(poi_name)
 
         # perform all experiments
         for experiment in autoexp:
+            cur_exp_dict = autoexp[experiment]
             if handle_abort() is 1:
                 break
             if handle_abort() is 2:
                 continue
             # perform the measurement
-            save_prefix_nv = autoexp[experiment]['name'] + "_nv_" + poi
+            save_prefix_nv = cur_exp_dict['name'] + "_nv_" + poi
             save_subdir_nv = "nv_" + poi
             if first_poi:
-                do_experiment(experiment=autoexp[experiment]['type'], qm_dict=autoexp[experiment],
-                              meas_type=autoexp[experiment]['meas_type'], meas_info=autoexp[experiment]['meas_info'],
+                do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
+                              meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
                               generate_new=True, save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
             else:
-                do_experiment(experiment=autoexp[experiment]['type'], qm_dict=autoexp[experiment],
-                              meas_type=autoexp[experiment]['meas_type'], meas_info=autoexp[experiment]['meas_info'],
-                              generate_new=autoexp[experiment]['generate_new'],
-                              save_tag=save_prefix_nv, save_subdr=save_subdir_nv)
+                do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
+                              meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
+                              generate_new=cur_exp_dict['generate_new'],
+                              save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
 
             # fit and update parameters
-            if 'fit_experiment' in autoexp[experiment]:
-                if autoexp[experiment]['fit_experiment'] != '':
-                    fit_data, fit_result = pulsedmeasurementlogic.do_fit(autoexp[experiment]['fit_experiment'])
-                    #pulsedmasterlogic.do_fit(autoexp[experiment]['fit_experiment'])
-                   # while pulsedmasterlogic.status_dict['fitting_busy']: time.sleep(0.2)
+            if 'fit_experiment' in cur_exp_dict:
+                if cur_exp_dict['fit_experiment'] != '':
+                    fit_data, fit_result = pulsedmeasurementlogic.do_fit(cur_exp_dict['fit_experiment'])
+                    #pulsedmasterlogic.do_fit(cur_exp_dict['fit_experiment'])
+                    # while pulsedmasterlogic.status_dict['fitting_busy']: time.sleep(0.2)
                     #time.sleep(1)
-                    if 'fit_parameter' in autoexp[experiment]:
-                        #fit_dict = pulsedmasterlogic.fit_container.current_fit_result.result_str_dict
-                        #fit_para = fit_dict[autoexp[experiment]['fit_parameter']]['value']
-                        #fit_para = fit_result.best_values[autoexp[experiment]['fit_parameter']]
-                        fit_para = fit_result.result_str_dict[autoexp[experiment]['fit_parameter']]['value']
-                        if 'update_parameters' in autoexp[experiment]:
-                            for key in autoexp[experiment]['update_parameters']:
-                                autoexp[key][autoexp[experiment]['update_parameters'][key]] = fit_para
+                    #fit_dict = pulsedmasterlogic.fit_container.current_fit_result.result_str_dict
+                    #fit_para = fit_dict[cur_exp_dict['fit_parameter']]['value']
+                    #fit_para = fit_result.best_values[cur_exp_dict['fit_parameter']]
+                    try:
+                        fit_para = fit_result.result_str_dict[cur_exp_dict['fit_parameter']]['value']
+                    except Exception as e:
+                        logger.warning("Couldn't get fit_parameter: {}".format(str(e)))
 
+                    if 'update_parameters' in cur_exp_dict:
+                        for key_nextexp in cur_exp_dict['update_parameters']:
+                            try:
+                                offset = cur_exp_dict['fit_offset'][key_nextexp]
+                            except:  offset = 0
+                            try:
+                                fact = cur_exp_dict['fit_factor'][key_nextexp]
+                            except: fact = 1
+
+                            fit_para = (fact * fit_para) + offset
+
+                            try:
+                                key_param = cur_exp_dict['update_parameters'][key_nextexp]
+                                autoexp[key_nextexp][key_param] = fit_para
+                                logger.info("Updating {}= {} for next exp {}".format(key_param, fit_para, key_nextexp))
+                            except Exception as e:
+                                logger.warning("Failed to update next parameter for {}: {}".format(key_nextexp, str(e)))
+                    else:
+                        logger.debug("Didn't find any update parameters in {}".format(cur_exp_dict['name']))
             if qm_dict['optimize_between_experiments']:
                 optimize_poi(poi)
         first_poi = False
