@@ -81,7 +81,7 @@ class AWG70K(Base, PulserInterface):
         self.awg_model = ''  # String describing the model
 
         self.ftp_working_dir = 'waves'  # subfolder of FTP root dir on AWG disk to work in
-        return
+        self._skip_available_file = False
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -378,8 +378,7 @@ class AWG70K(Base, PulserInterface):
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
 
             # Check if waveform already exists and delete if necessary.
-            if wfm_name in self.get_waveform_names():
-                self.delete_waveform(wfm_name)
+            self.delete_waveform(wfm_name)
 
             # Write WFMX file for waveform
             start = time.time()
@@ -397,19 +396,24 @@ class AWG70K(Base, PulserInterface):
             self.log.debug('Send WFMX file: {0:.3f}'.format(time.time() - start))
 
             start = time.time()
-            self.write('MMEM:OPEN "{0}"'.format(os.path.join(
-                self._ftp_dir, self.ftp_working_dir, wfm_name + '.wfmx')))
+            self._load_file(wfm_name)
+
+            self.log.debug("Query OPC...")
             # Wait for everything to complete
             timeout_old = self.awg.timeout
             # increase this time so that there is no timeout for loading longer sequences
             # which might take some minutes
             self.awg.timeout = 5e6
+
             # the answer of the *opc-query is received as soon as the loading is finished
             opc = int(self.query('*OPC?'))
+            self.log.debug("Received.")
             # Just to make sure
+            self.log.debug("Checking waveform list...")
             while wfm_name not in self.get_waveform_names():
                 time.sleep(0.25)
 
+            self.log.debug("Done.")
             # reset the timeout
             self.awg.timeout = timeout_old
             self.log.debug('Load WFMX file into workspace: {0:.3f} s'.format(time.time() - start))
@@ -522,6 +526,7 @@ class AWG70K(Base, PulserInterface):
                 sequence_list.append(self.query('SLIS:NAME? {0:d}'.format(ii + 1)))
         except visa.VisaIOError:
             self.log.error('Unable to read sequence list from device. VisaIOError occurred.')
+            raise IOError('Unable to read sequence list from device. VisaIOError occurred.')
         return sequence_list
 
     def delete_waveform(self, waveform_name):
@@ -539,8 +544,9 @@ class AWG70K(Base, PulserInterface):
         deleted_waveforms = list()
         for waveform in waveform_name:
             if waveform in avail_waveforms:
-                self.write('WLIS:WAV:DEL "{0}"'.format(waveform))
-                deleted_waveforms.append(waveform)
+                if not self._skip_available_file:
+                    self.write('WLIS:WAV:DEL "{0}"'.format(waveform))
+                    deleted_waveforms.append(waveform)
         return deleted_waveforms
 
     def delete_sequence(self, sequence_name):
@@ -1502,7 +1508,7 @@ class AWG70K(Base, PulserInterface):
         @return list: filenames found in <ftproot>\\waves
         """
         filename_list = list()
-        with FTP(self._ip_address) as ftp:
+        with FTP(self._ip_address, timeout=5) as ftp:   # timeout in s
             ftp.login(user=self._username, passwd=self._password)
             ftp.cwd(self.ftp_working_dir)
             # get only the files from the dir and skip possible directories
@@ -1527,12 +1533,30 @@ class AWG70K(Base, PulserInterface):
 
         @param str filename:
         """
+
+        file_skipped = False
+
         if filename in self._get_filenames_on_device():
-            with FTP(self._ip_address) as ftp:
-                ftp.login(user=self._username, passwd=self._password)
-                ftp.cwd(self.ftp_working_dir)
-                ftp.delete(filename)
-        return
+            if not self._skip_available_file:
+                self.log.debug("Deleting old file...")
+                with FTP(self._ip_address) as ftp:
+                    ftp.login(user=self._username, passwd=self._password)
+                    ftp.cwd(self.ftp_working_dir)
+                    ftp.delete(filename)
+            else:
+                file_skipped = True
+                self.log.info("Skipping file {}, already on device.".format(filename))
+
+        return file_skipped
+
+    def set_skip_available_file(self, is_skip):
+        """
+        If set, waveform files present on the device with same same will not be replaced.
+        Instead, the new waveform is discarded.
+        :param is_skip:
+        :return:
+        """
+        self._skip_available_file = is_skip
 
     def _send_file(self, filename):
         """
@@ -1552,15 +1576,33 @@ class AWG70K(Base, PulserInterface):
             return -1
 
         # Delete old file on AWG by the same filename
-        self._delete_file(filename)
+        skip_file = self._delete_file(filename)
 
-        # Transfer file
-        with FTP(self._ip_address) as ftp:
-            ftp.login(user=self._username, passwd=self._password)
-            ftp.cwd(self.ftp_working_dir)
-            with open(filepath, 'rb') as file:
-                ftp.storbinary('STOR ' + filename, file)
+        if not skip_file:
+            self.log.debug("Sending wave file {} to FTP {}...".format(filename, self._ip_address))
+
+            # Transfer file
+            with FTP(self._ip_address) as ftp:
+                ftp.login(user=self._username, passwd=self._password)
+                ftp.cwd(self.ftp_working_dir)
+                with open(filepath, 'rb') as file:
+                    ftp.storbinary('STOR ' + filename, file)
+
+        self.log.debug("Upload done.")
         return 0
+
+    def _load_file(self, wfm_name):
+        self.log.debug("Issuing Write command for loading file...")
+
+        waveform_list = self.get_waveform_names()
+
+        if wfm_name in waveform_list and self._skip_available_file:
+            self.log.info("Skipping write command for existing file: {}".format(wfm_name))
+            return
+
+        self.write('MMEM:OPEN "{0}"'.format(os.path.join(
+            self._ftp_dir, self.ftp_working_dir, wfm_name + '.wfmx')))
+
 
     def _write_wfmx(self, filename, analog_samples, marker_bytes, is_first_chunk, is_last_chunk,
                     total_number_of_samples):
