@@ -184,6 +184,28 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
             data = np.ravel(laser_data)
         return data, np.zeros_like(length)
 
+    def analyse_timetrace(self, laser_data):
+        """
+        This method does not actually analyze anything. It returns the input with the time axis as control variable.
+        For 1 D data the output is raveled: for 2 D data, the output is the mean along the second axis.
+
+        @param 2D numpy.ndarray laser_data: the raw timetrace data from a gated fast counter
+                                            dim 0: gate number; dim 1: time bin
+
+        @return numpy.ndarray, numpy.ndarray, numpy.ndarray: counts per bin, error (sqrt of signal), and time axis
+        """
+        if len(np.shape(laser_data)) > 1:
+            data = np.mean(laser_data, axis=1)
+            data_sum = np.sum(laser_data, axis=1)
+            error = data/np.sqrt(data_sum)
+        else:
+            data = np.ravel(laser_data)
+            error = data / np.sqrt(data)
+
+        bin_number = self.fast_counter_settings['record_length'] / self.fast_counter_settings['bin_width']
+        controlled_variable = np.arange(bin_number)*self.fast_counter_settings['bin_width']
+        return data, error, controlled_variable
+
     def analyse_mean_reference(self, laser_data, signal_start=0.0, signal_end=200e-9, norm_start=300e-9,
                           norm_end=500e-9):
         """
