@@ -63,6 +63,8 @@ The potential sequence_options are:
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
+* Added the possibility for pulsed measurement analysis method to rewrite controlled variable
+* Added a pulsed measurement analysis method to use the timetrace as signal data 
 
 
 Config changes:
