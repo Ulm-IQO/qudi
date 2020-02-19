@@ -15,17 +15,17 @@ Authors
 # name is in the stdlib and name collisions with the stdlib tend to produce
 # weird problems (often with third-party tools).
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Copyright (C) 2010-2011 The IPython Development Team.
 #
 #  Distributed under the terms of the BSD License.
 #
 #  The full license is in the file documentation/BSDLicense_IPython.md, distributed with this software.
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Imports
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 from __future__ import print_function
 
 # Stdlib imports
@@ -38,9 +38,9 @@ import linecache
 import operator
 import time
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Constants
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 # Roughtly equal to PyCF_MASK | PyCF_MASK_OBSOLETE as defined in pythonrun.h,
 # this is used as a bitmask to extract future-related code flags.
@@ -48,9 +48,10 @@ PyCF_MASK = functools.reduce(operator.or_,
                              (getattr(__future__, fname).compiler_flag
                               for fname in __future__.all_feature_names))
 
-#-----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Local utilities
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 def code_name(code, number=0):
     """ Compute a (probably) unique name for code for caching.
@@ -63,9 +64,10 @@ def code_name(code, number=0):
     # even with truncated hashes, and the full one makes tracebacks too long
     return '<ipython-input-{0}-{1}>'.format(number, hash_digest[:12])
 
-#-----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Classes and functions
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 class CachingCompiler(codeop.Compile):
     """A compiler that caches code compiled from interactive statements.
@@ -73,7 +75,7 @@ class CachingCompiler(codeop.Compile):
 
     def __init__(self):
         codeop.Compile.__init__(self)
-        
+
         # This is ugly, but it must be done this way to allow multiple
         # simultaneous ipython instances to coexist.  Since Python itself
         # directly accesses the data structures in the linecache module, and
@@ -92,14 +94,14 @@ class CachingCompiler(codeop.Compile):
         # stdlib that call it outside our control go through our codepath
         # (otherwise we'd lose our tracebacks).
         linecache.checkcache = check_linecache_ipython
-        
+
     def ast_parse(self, source, filename='<unknown>', symbol='exec'):
         """Parse code to an AST with the current compiler flags active.
         
         Arguments are exactly the same as ast.parse (in the standard library),
         and are passed to the built-in compile function."""
         return compile(source, filename, symbol, self.flags | PyCF_ONLY_AST, 1)
-    
+
     def reset_compiler_flags(self):
         """Reset compiler flags to default state."""
         # This value is copied from codeop.Compile.__init__, so if that ever
@@ -111,7 +113,7 @@ class CachingCompiler(codeop.Compile):
         """Flags currently active in the compilation process.
         """
         return self.flags
-        
+
     def cache(self, code, number=0):
         """Make a name for a block of code, and cache the code.
         
@@ -130,10 +132,11 @@ class CachingCompiler(codeop.Compile):
         """
         name = code_name(code, number)
         entry = (len(code), time.time(),
-                 [line+'\n' for line in code.splitlines()], name)
+                 [line + '\n' for line in code.splitlines()], name)
         linecache.cache[name] = entry
         linecache._ipython_cache[name] = entry
         return name
+
 
 def check_linecache_ipython(*args):
     """Call linecache.checkcache() safely protecting our cached values.

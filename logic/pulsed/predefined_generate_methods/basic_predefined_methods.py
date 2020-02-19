@@ -188,11 +188,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((rabi_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -246,11 +242,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((pulsedodmr_block.name, 0))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -326,11 +318,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((ramsey_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -434,11 +422,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((ramsey_block.name, 0))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
         # add metadata to invoke settings later on
         number_of_lasers = 2 * len(tau_array) if alternating else len(tau_array)
         block_ensemble.measurement_information['alternating'] = alternating
@@ -522,11 +507,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((hahn_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -617,11 +598,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((hahn_block.name, 0))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -681,11 +658,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((t1_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -749,11 +722,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((t1_block.name, 0))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -832,11 +801,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((hhamp_block.name, 0))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = True
@@ -914,11 +879,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((hhtau_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = True
@@ -1000,11 +961,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((down_block.name, polarization_steps - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -1129,11 +1086,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((xy8_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
@@ -1265,11 +1218,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.append((xy8_block.name, 0))
 
         # Create and append sync trigger block if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            block_ensemble.append((sync_block.name, 0))
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points

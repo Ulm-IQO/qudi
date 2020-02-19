@@ -23,8 +23,9 @@ from qtpy import QtCore
 from collections import OrderedDict
 from .mutex import Mutex
 
+
 class DictTableModel(QtCore.QAbstractTableModel):
-    """ Qt model storing a tabel in dictionaries
+    """ Qt model storing a table in dictionaries
     """
 
     def __init__(self):
@@ -36,7 +37,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
     def getKeyByNumber(self, n):
         """ Get a dict key by index number
 
-            @param n int: index number for element
+            @param int n: index number for element
 
             @return key: key at index
         """
@@ -45,7 +46,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
             raise IndexError
         it = iter(self.storage)
         key = next(it)
-        while i<n:
+        while i < n:
             key = next(it)
             i += 1
         return key
@@ -67,14 +68,14 @@ class DictTableModel(QtCore.QAbstractTableModel):
             i += 1
         return i
 
-    def rowCount(self, parent = QtCore.QModelIndex()):
+    def rowCount(self, parent=QtCore.QModelIndex()):
         """ Gives the number of stored items.
 
           @return int: number of items
         """
         return len(self.storage)
 
-    def columnCount(self, parent = QtCore.QModelIndex()):
+    def columnCount(self, parent=QtCore.QModelIndex()):
         """ Gives the number of data fields.
 
           @return int: number of data fields
@@ -88,7 +89,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
 
           @return Qt.ItemFlags: actins allowed fotr this cell
         """
-        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
     def data(self, index, role):
         """ Get data from model for a given cell. Data can have a role that affects display.
@@ -103,7 +104,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.DisplayRole:
             key = self.getKeyByNumber(index.row())
             if index.column() == 0:
-               return key
+                return key
             elif index.column() == 1:
                 return self.storage[key]
             else:
@@ -111,12 +112,12 @@ class DictTableModel(QtCore.QAbstractTableModel):
         else:
             return None
 
-    def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
 
           @param int section: number of the column to get header data for
-          @param Qt.Orientation: orientation of header (horizontal or vertical)
-          @param ItemDataRole: role for which to get data
+          @param Qt.Orientation orientation: orientation of header (horizontal or vertical)
+          @param ItemDataRole role: role for which to get data
 
           @return QVariant: header data for given column and role
         """
@@ -172,7 +173,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
         self.headers = ['Name']
         self.storage = list()
 
-    def rowCount(self, parent = QtCore.QModelIndex()):
+    def rowCount(self, parent=QtCore.QModelIndex()):
         """ Gives the number of stored items.
 
           @return int: number of items
@@ -207,9 +208,9 @@ class ListTableModel(QtCore.QAbstractTableModel):
             return None
         elif role == QtCore.Qt.DisplayRole:
             if index.column() == 0:
-               return self.storage[index.row()]
-            #elif index.column() == 1:
-            #    return item[1].thread
+                return self.storage[index.row()]
+            # elif index.column() == 1:
+            #     return item[1].thread
             else:
                 return None
         else:
@@ -219,8 +220,8 @@ class ListTableModel(QtCore.QAbstractTableModel):
         """ Data for the table view headers.
 
           @param int section: number of the column to get header data for
-          @param Qt.Orientation: orientation of header (horizontal or vertical)
-          @param ItemDataRole: role for which to get data
+          @param Qt.Orientation orientation: orientation of header (horizontal or vertical)
+          @param ItemDataRole role: role for which to get data
 
           @return QVariant: header data for given column and role
         """
@@ -236,7 +237,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
     def insert(self, n, data):
         """ Insert a row into table.
 
-            @param n int: insert before nth element
+            @param int n: insert before nth element
             @param data: row to insert
         """
         with self.lock:
@@ -259,7 +260,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
     def pop(self, n):
         """ Remove nth row from table.
 
-            @param n int: index of row to remove
+            @param int n: index of row to remove
 
             @return data: removed row
         """
@@ -269,4 +270,3 @@ class ListTableModel(QtCore.QAbstractTableModel):
                 ret = self.storage.pop(n)
                 self.endRemoveRows()
                 return ret
-

@@ -30,7 +30,7 @@ import sys
 import time
 
 from collections import OrderedDict
-from core.module import ConfigOption
+from core.configoption import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
 from core.util.network import netobtain
@@ -120,9 +120,6 @@ class SaveLogic(GenericLogic):
     """
     A general class which saves all kinds of data in a general sense.
     """
-
-    _modclass = 'savelogic'
-    _modtype = 'logic'
 
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')

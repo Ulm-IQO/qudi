@@ -29,7 +29,8 @@ import datetime
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from core.module import Connector, ConfigOption
+from core.connector import Connector
+from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -99,9 +100,6 @@ class WavemeterLoggerLogic(GenericLogic):
     sig_handle_timer = QtCore.Signal(bool)
     sig_new_data_point = QtCore.Signal(list)
     sig_fit_updated = QtCore.Signal()
-
-    _modclass = 'laserscanninglogic'
-    _modtype = 'logic'
 
     # declare connectors
     wavemeter1 = Connector(interface='WavemeterInterface')

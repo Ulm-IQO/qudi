@@ -28,7 +28,8 @@ import visa
 import numpy as np
 import time
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -48,9 +49,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         usb_timeout: 100 # in seconds
 
     """
-
-    _modclass = 'MicrowaveAgilent'
-    _modtype = 'hardware'
 
     _usb_address = ConfigOption('usb_address', missing='error')
     _usb_timeout = ConfigOption('usb_timeout', 100, missing='warn')

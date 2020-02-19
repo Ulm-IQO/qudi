@@ -23,9 +23,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 from collections import OrderedDict
 
-from core.module import Base, StatusVar, ConfigOption
+from core.module import Base
+from core.statusvariable import StatusVar
+from core.configoption import ConfigOption
 from core.util.helpers import natural_sort
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class PulserDummy(Base, PulserInterface):
@@ -41,10 +43,9 @@ class PulserDummy(Base, PulserInterface):
         module.Class: 'pulser_dummy.PulserDummy'
 
     """
-    _modclass = 'PulserDummy'
-    _modtype = 'hardware'
 
     activation_config = StatusVar(default=None)
+    force_sequence_option = ConfigOption('force_sequence_option', default=False)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -200,24 +201,28 @@ class PulserDummy(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['config0'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
-        activation_config['config1'] = {'a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4'}
+        activation_config['config0'] = frozenset(
+            {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
+        activation_config['config1'] = frozenset(
+            {'a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4'})
         # Usage of channel 1 only:
-        activation_config['config2'] = {'a_ch2', 'd_ch1', 'd_ch2'}
+        activation_config['config2'] = frozenset({'a_ch2', 'd_ch1', 'd_ch2'})
         # Usage of channel 2 only:
-        activation_config['config3'] = {'a_ch3', 'd_ch3', 'd_ch4'}
+        activation_config['config3'] = frozenset({'a_ch3', 'd_ch3', 'd_ch4'})
         # Usage of Interleave mode:
-        activation_config['config4'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_config['config4'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
         # Usage of only digital channels:
-        activation_config['config5'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6',
-                                        'd_ch7', 'd_ch8'}
+        activation_config['config5'] = frozenset(
+            {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
         # Usage of only one analog channel:
-        activation_config['config6'] = {'a_ch1'}
-        activation_config['config7'] = {'a_ch2'}
-        activation_config['config8'] = {'a_ch3'}
+        activation_config['config6'] = frozenset({'a_ch1'})
+        activation_config['config7'] = frozenset({'a_ch2'})
+        activation_config['config8'] = frozenset({'a_ch3'})
         # Usage of only the analog channels:
-        activation_config['config9'] = {'a_ch2', 'a_ch3'}
+        activation_config['config9'] = frozenset({'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
+
+        constraints.sequence_option = SequenceOption.FORCED if self.force_sequence_option else SequenceOption.OPTIONAL
 
         return constraints
 
@@ -915,10 +920,3 @@ class PulserDummy(Base, PulserInterface):
         self.connected = True
         self.log.info('Dummy reset!')
         return 0
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return True

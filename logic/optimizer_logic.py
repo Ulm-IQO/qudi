@@ -24,7 +24,8 @@ import numpy as np
 import time
 
 from logic.generic_logic import GenericLogic
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 
 
@@ -32,9 +33,6 @@ class OptimizerLogic(GenericLogic):
 
     """This is the Logic class for optimizing scanner position on bright features.
     """
-
-    _modclass = 'optimizerlogic'
-    _modtype = 'logic'
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')

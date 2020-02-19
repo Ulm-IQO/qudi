@@ -12,6 +12,9 @@ new POIs will be named after this tag together with a consecutive integer index.
 * If using the POI manager, the currently selected active POI name will be added to savelogic as 
 global parameter. All saved data files will include this POI name in the header.
 * bug fix to how the flags are set for AWG70k
+* New POI automatic search tool added. If you click on the 'Auto POIs' tool button, POIs will be 
+automatically added in your scan image. This makes fluorescent emitter selections much faster and
+more accurately.
 * Replaced the old `pg.PlotWidget` subclass `PlotWidgetModified` with new subclasses 
 `ScanPlotWidget`, `ScanViewBox` (`pg.ViewBox`) and `ScanImageItem` (`pg.ImageItem`) to handle 
 coordinate transformations upon mouse click/drag and zooming internally. Also integrates the 
@@ -23,11 +26,41 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * analyze functions can be called either with the appropriate objects or with the object name
 * while sampling a sequence, the ensembles are only sampled if they weren't already sampled before
 * Add `natural_sort` utility function to `core.util.helpers`
+* Bug fix to the gated extractor: now all the function parameters are loaded
+* Added a hardware file for power supply Keysight E3631A with a process control interface
+* Updated powermeter PM100D module to add ProcessInterface and wavelength support
+* Added two interfuses for interfaces process value and process control to modify the values based
+on an interpolated function
+* Changed ProcessInterface and ProcessControlInterface to use underscore case instead of CamelCase
+* Added hardware module to interface temperature controller Cryocon 22C
+* Added an optional parameter to connectors so that dependencies can be optional
+* Made ODMR logic an optional dependency in SpectrumLogic
+* Made some changes in the AWG7k file for sorting integers without natural sort
+* Removed additional scaling from sampling functions. They now return samples as as expected. 
+The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Introduced support of interface sensitive overloading of interface methods. This resolves 
+namespace conflicts within a hardware module inheriting multiple interfaces. See 
+_how_to_hardware_with_multiple_interfaces.md_ for detailed documentation.
+* Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
+* Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
+* Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* Adding Ocean optics spectrometer hardware module.
+* Removed the method `has_sequence_mode` from the `PulserInterface` 
+and rather added a `sequence_option` to the `PulserConstraints`.
+In `FORCED` mode the `SequenceGeneratorLogic` will create a default sequence around each stand-alone Ensemble.
+The potential sequence_options are: 
+  * `NON` (no sequence mode)
+  * `OPTIONAL` (sequence mode possible)
+  * `FORCED` (only output as sequence possible)
 * 
+
+
 
 Config changes:
 
-* 
+* The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
+of the `SequenceGeneratorLogic` can now either be a string for a single path 
+or a list of strings for multiple paths.
 
 ## Release 0.10
 Released on 14 Mar 2019

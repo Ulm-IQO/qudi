@@ -28,23 +28,21 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
-import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 
 
 class ODMRLogic(GenericLogic):
-
     """This is the Logic class for ODMR."""
-    _modclass = 'odmrlogic'
-    _modtype = 'logic'
 
     # declare connectors
     odmrcounter = Connector(interface='ODMRCounterInterface')
     fitlogic = Connector(interface='FitLogic')
-    microwave1 = Connector(interface='mwsourceinterface')
+    microwave1 = Connector(interface='MicrowaveInterface')
     savelogic = Connector(interface='SaveLogic')
     taskrunner = Connector(interface='TaskRunner')
 
@@ -996,7 +994,7 @@ class ODMRLogic(GenericLogic):
 
         return fig
 
-    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, runtime,
+    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, channel, runtime,
                                  fit_function='No Fit', save_after_meas=True, name_tag=''):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
@@ -1011,11 +1009,10 @@ class ODMRLogic(GenericLogic):
             if timeout <= 0:
                 self.log.error('perform_odmr_measurement failed. Logic module was still locked '
                                'and 30 sec timeout has been reached.')
-                return {}
+                return tuple()
 
         # set all relevant parameter:
-        self.set_power(power)
-        self.set_sweep_frequencies(freq_start, freq_stop, freq_step)
+        self.set_sweep_parameters(freq_start, freq_stop, freq_step, power)
         self.set_runtime(runtime)
 
         # start the scan
@@ -1030,7 +1027,7 @@ class ODMRLogic(GenericLogic):
 
         # Perform fit if requested
         if fit_function != 'No Fit':
-            self.do_fit(fit_function)
+            self.do_fit(fit_function, channel_index=channel)
             fit_params = self.fc.current_fit_param
         else:
             fit_params = None
