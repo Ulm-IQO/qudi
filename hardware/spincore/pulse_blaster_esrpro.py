@@ -1669,16 +1669,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         """
 
         if ch is None:
-            ch = []
+            ch = list(self.channel_states.keys())
 
         active_ch = {}
-
-        if not ch:
-            active_ch = self.channel_states
-
-        else:
-            for channel in ch:
-                active_ch[channel] = self.channel_states[channel]
+        for channel in ch:
+            active_ch[channel] = channel in self._current_activation_config
 
         return active_ch
 
