@@ -64,6 +64,7 @@ The potential sequence_options are:
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
 * Added a config option to fastcomtec7887 module to support 7889 model
+* Added fastcomec 7887/9 support of dma mode through config option
 
 
 Config changes:
