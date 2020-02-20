@@ -618,6 +618,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         """
 
         # the function call expects nanoseconds as units
+        #print("Length : {} ns - Channels : {:b} - Inst data : {}".format(int(length*1e9), int(flags), inst_data))
         length = ctypes.c_double(length*1e9)
 
         self._lib.pb_inst_pbonly.argtype = [ctypes.c_int, ctypes.c_int,
