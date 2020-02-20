@@ -65,6 +65,7 @@ The potential sequence_options are:
 * Added save_pdf and save_png config options for save_logic
 * Added the possibility for pulsed measurement analysis method to rewrite controlled variable
 * Added a pulsed measurement analysis method to use the timetrace as signal data 
+* Added curve method library in core.util to store general curve manipulation methods
 
 
 Config changes:
