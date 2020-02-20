@@ -317,10 +317,14 @@ class FastComtec(Base, FastCounterInterface):
         """
         Returns the current sweeps.
         @return int sweeps: in sweeps
+
+        The fastcomtec has "start" and "sweep" parameters that are generally equal but might differ depending on the
+        configuration. Here the number of trigger events is called "start". This is what is meant by the "sweep"
+        parameter of the fast_counter interface.
         """
         status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
-        return status.sweeps
+        return status.stevents  # the number of trigger is named "stevents".
 
     def start_measure(self):
         """Start the measurement. """
