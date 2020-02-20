@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 from core.module import LogicBase
+from core.threadmanager import ThreadManager
 from qtpy import QtCore
 from core.util.helpers import has_pyqtgraph
 if has_pyqtgraph:
@@ -80,8 +81,7 @@ class QudiKernelLogic(LogicBase):
         realconfig = netobtain(config)
         self.log.debug('Start {0}'.format(realconfig))
         kernel = QZMQKernel(realconfig)
-        kernelthread = self._manager.thread_manager.get_new_thread(
-            'kernel-{0}'.format(kernel.engine_id))
+        kernelthread = ThreadManager().get_new_thread('kernel-{0}'.format(kernel.engine_id))
         kernel.moveToThread(kernelthread)
         kernel.user_global_ns.update({'np': np,
                                       'config': self._manager.tree['defined'],
@@ -114,7 +114,7 @@ class QudiKernelLogic(LogicBase):
           @param callable external: reference to rpyc client exit function
         """
         self.log.info('Cleanup kernel {0}'.format(kernelid))
-        self._manager.thread_manager.quit_thread('kernel-{0}'.format(kernelid))
+        ThreadManager().quit_thread('kernel-{0}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:
