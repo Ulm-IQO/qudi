@@ -185,7 +185,7 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
             data = np.ravel(laser_data)
         return data, np.zeros_like(length)
 
-    def analyse_timetrace(self, laser_data, rebinning=1, norm=True):
+    def analyse_timetrace(self, laser_data, rebinning=1, norm=False):
         """
         This method does not actually analyze anything. It returns the input with the time axis as control variable.
         For 1 D data the output is raveled: for 2 D data, the output is the mean along the second axis.
