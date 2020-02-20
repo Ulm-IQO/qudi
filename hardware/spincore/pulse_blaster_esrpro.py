@@ -733,7 +733,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # Let's cut the last pulse in two if it's too long.
         if self._use_smart_pulse_creation and length > 256*self.GRAN_MIN:
             self._convert_pulse_to_inst(active_channels, length-128*self.GRAN_MIN)
-            length -= 128*self.GRAN_MIN
+            length = 128*self.GRAN_MIN
         length = np.round(np.round(length / self.GRAN_MIN + 0.01) * self.GRAN_MIN, 12)
         # with the branch or the stop command
         if loop:
