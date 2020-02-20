@@ -202,7 +202,7 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
             data = np.ravel(laser_data)
             error = data / np.sqrt(data)
 
-        bin_number = self.fast_counter_settings['record_length'] / self.fast_counter_settings['bin_width']
+        bin_number = len(laser_data)
         controlled_variable = np.arange(bin_number)*self.fast_counter_settings['bin_width']
         return data, error, controlled_variable
 
