@@ -167,6 +167,7 @@ class FastComtec(Base, FastCounterInterface):
     aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')
     minimal_binwidth = ConfigOption('minimal_binwidth', 0.25e-9, missing='warn')
     model = ConfigOption('model', '7887')
+    use_dma = ConfigOption('use_dma', False)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -525,7 +526,9 @@ class FastComtec(Base, FastCounterInterface):
 
     def change_sweep_mode(self, gated):
         if gated:
-            cmd = 'sweepmode={0}'.format(hex(1978500))
+            number = 1978500
+            number = number + 32 if self.use_dma else number
+            cmd = 'sweepmode={0}'.format(hex(number))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
             cmd = 'prena={0}'.format(hex(16)) #To select starts preset
             # cmd = 'prena={0}'.format(hex(4)) #To select sweeps preset
@@ -533,7 +536,9 @@ class FastComtec(Base, FastCounterInterface):
             self.gated = True
         else:
             # fastcomtch standard settings for ungated acquisition (check manual)
-            cmd = 'sweepmode={0}'.format(hex(1978496))
+            number = 1978496
+            number = number + 32 if self.use_dma else number
+            cmd = 'sweepmode={0}'.format(hex(number))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
             cmd = 'prena={0}'.format(hex(0))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
