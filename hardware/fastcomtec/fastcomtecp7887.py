@@ -149,7 +149,9 @@ class ACQDATA(ctypes.Structure):
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
-    unstable: Jochen Scheuer, Simon Schmitt
+    Jochen Scheuer, Simon Schmitt
+
+    This module is also compatible with model 7889 by specifying the model config option.
 
     Example config for copy-paste:
 
