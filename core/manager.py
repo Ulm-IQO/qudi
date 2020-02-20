@@ -35,11 +35,11 @@ from .util.paths import get_main_dir
 from .util.mutex import Mutex, RecursiveMutex   # provides access serialization between threads
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
-# try to import RemoteObjectManager. Might fail if rpyc is not installed.
+# try to import remotemodules. Might fail if rpyc is not installed.
 try:
-    from .remote import RemoteObjectManager
+    from . import remotemodules
 except ImportError:
-    RemoteObjectManager = None
+    remotemodules = None
 from .module import Base
 
 logger = logging.getLogger(__name__)
@@ -232,7 +232,7 @@ class ManagedModule(QtCore.QObject):
      object. Contains status properties and handles initialization, state transitions and
      connection of the module.
     """
-    # ToDo: Handle remote connection/(de)activation
+    # ToDo: Handle remotemodules connection/(de)activation
     sigStateChanged = QtCore.Signal(str, str, str)
 
     _lock = RecursiveMutex()  # Single mutex shared across all ManagedModule instances
@@ -245,16 +245,16 @@ class ManagedModule(QtCore.QObject):
         if 'module.Class' not in configuration:
             raise KeyError('Mandatory config entry "module.Class" not found in config for module '
                            '"{0}".'.format(name))
-        if not isinstance(configuration.get('remote', ''), str):
-            raise TypeError('remote URL of module "{0}" must be of str type.'.format(name))
+        if not isinstance(configuration.get('remotemodules', ''), str):
+            raise TypeError('remotemodules URL of module "{0}" must be of str type.'.format(name))
         if not isinstance(configuration.get('certfile', ''), str):
             raise TypeError(
-                'certfile config option of remote module "{0}" must be of str type.'.format(name))
+                'certfile config option of remotemodules module "{0}" must be of str type.'.format(name))
         if not isinstance(configuration.get('keyfile', ''), str):
             raise TypeError(
-                'keyfile config option of remote module "{0}" must be of str type.'.format(name))
+                'keyfile config option of remotemodules module "{0}" must be of str type.'.format(name))
         if not isinstance(configuration.get('remoteaccess', False), bool):
-            raise TypeError('remoteaccess config option of remote module "{0}" must be of bool '
+            raise TypeError('remoteaccess config option of remotemodules module "{0}" must be of bool '
                             'type.'.format(name))
         if not isinstance(manager_ref, weakref.ref) or not isinstance(manager_ref(), Manager):
             raise TypeError(
@@ -275,21 +275,22 @@ class ManagedModule(QtCore.QObject):
         self._module, self._class = cfg.pop('module.Class').rsplit('.', 1)
         # Remember connections by name
         self._connect_cfg = cfg.pop('connect', dict())
-        # See if remote access to this module is allowed
+        # See if remotemodules access to this module is allowed
         self._allow_remote_access = cfg.pop('remoteaccess', False)
-        # Extract remote URL and certificates if this module is run on a remote machine
-        self._remote_url = cfg.pop('remote', None)
+        # Extract remotemodules URL and certificates if this module is run on a remotemodules machine
+        self._remote_url = cfg.pop('remotemodules', None)
         self._remote_certfile = cfg.pop('certfile', None)
         self._remote_keyfile = cfg.pop('keyfile', None)
-        # Do no propagate remote access
+        # Do not propagate remotemodules access
         if self._remote_url:
             self._allow_remote_access = False
-
         # The rest are config options
         self._options = cfg
 
         self._required_modules = set()
         self._dependent_modules = set()
+
+        # register module in module manager
         return
 
     def __call__(self):
@@ -596,19 +597,22 @@ class ManagedModule(QtCore.QObject):
             if manager is None:
                 return False
 
-            if manager.remote_manager is None and (self.allow_remote_access or self.is_remote):
-                logger.error('Remote module functionality not available. No remote manager '
-                             'initialized in Manager.')
-                return False
+            if remotemodules is None:
+                if self.is_remote:
+                    logger.error('Can not access remotemodules module. core.remotemodules has not been '
+                                 'successfully imported.')
+                    return False
+            elif reload and self._allow_remote_access:
+                remotemodules.remove_shared_module(self)
 
             if self.is_remote:
                 try:
-                    self._instance = manager.remote_manager.get_remote_module_from_url(
-                        self._remote_url,
+                    self._instance = remotemodules.get_remote_module_instance(
+                        url=self._remote_url,
                         certfile=self._remote_certfile,
                         keyfile=self._remote_keyfile)
                 except:
-                    logger.exception('Error during initialization of remote qudi module '
+                    logger.exception('Error during initialization of remotemodules qudi module '
                                      '"{0}.{1}.{2}"'.format(self._class, self._base, self._module))
                     self._instance = None
                     return False
@@ -646,13 +650,17 @@ class ManagedModule(QtCore.QObject):
                     self._instance = None
                     return False
 
-                # Register module in remote manager if module should be shared
+                # Register module in remotemodules manager if module should be shared
                 if self._allow_remote_access:
-                    if not manager.has_remote_server:
+                    if remotemodules is None:
+                        logger.warning(
+                            'Unable to share qudi module "{0}" as remote module. core.remotemodules'
+                            ' has not been successfully imported.'.format(self._name))
+                    elif remotemodules.remote_server is None:
                         logger.error('Unable to share qudi module "{0}" as remote module. No remote'
-                                     ' server running in Manager.'.format(self._name))
-                        return False
-                    manager.remote_manager.share_module(self._name, self._instance)
+                                     ' server running in this qudi process.'.format(self._name))
+                    else:
+                        remotemodules.share_module(self)
             return True
 
     def _connect(self):
@@ -748,7 +756,6 @@ class Manager(QtCore.QObject):
         self.lock = Mutex(recursive=True)  # used for keeping some basic methods thread-safe
         self._has_gui = not args.no_gui  # flag indicating GUI or command line mode
 
-        self.remote_manager = None  # Reference to RemoteObjectManager instance if possible
         self.task_runner = None  # Task runner reference
         # Singleton container for all qudi modules
         self.managed_modules = ManagedModulesSingleton(manager=self)
@@ -783,25 +790,27 @@ class Manager(QtCore.QObject):
             logger.error('Error encountered while processing config file.')
             raise
 
-        # check first if remote support is enabled and if so create RemoteObjectManager
-        if RemoteObjectManager is None:
-            logger.warning('Remote modules disabled. Rpyc not installed.')
+        # check first if remotemodules support is enabled
+        if remotemodules is None:
+            logger.warning('Remote modules disabled. core.remotemodules was not successfully '
+                           'imported. RPyC package may not be installed.')
         else:
-            self.remote_manager = RemoteObjectManager(self)
             # Create remote module server if specified in config file
             if self._module_server:
                 # new style
                 try:
-                    server_address = self._module_server.get('address', 'localhost')
+                    server_host = self._module_server.get('address', 'localhost')
                     server_port = self._module_server.get('port', 12345)
-                    certfile = self._module_server.get('certfile', None)
-                    keyfile = self._module_server.get('keyfile', None)
-                    self.remote_manager.create_server(
-                        server_address, server_port, certfile, keyfile)
-                    # successfully started remote server
-                    logger.info('Started server rpyc://{0}:{1}'.format(server_address, server_port))
+                    remotemodules.start_remote_server(
+                        host=server_host,
+                        port=server_port,
+                        certfile=self._module_server.get('certfile', None),
+                        keyfile=self._module_server.get('keyfile', None))
+                    # successfully started remotemodules server
+                    logger.info(
+                        'Started RemoteServer rpyc://{0}:{1}'.format(server_host, server_port))
                 except:
-                    logger.exception('Rpyc server could not be started.')
+                    logger.exception('RemoteServer could not be started.')
 
         # walk through the list of modules to be loaded on startup and load them if appropriate
         for module_name in self._startup_modules:
@@ -853,7 +862,7 @@ class Manager(QtCore.QObject):
 
     @property
     def has_remote_server(self):
-        return self.remote_manager is not None
+        return remotemodules is not None and remotemodules.remote_server is not None
 
     @property
     def startup_modules(self):
@@ -1247,8 +1256,8 @@ class Manager(QtCore.QObject):
     def force_quit(self):
         """ Stop all modules, no questions asked. """
         self.stop_all_modules()
-        if self.remote_manager is not None:
-            self.remote_manager.stop_server()
+        if remotemodules is not None:
+            remotemodules.stop_remote_server()
         self.managed_modules.clear()
         self.sigManagerQuit.emit(False)
 
@@ -1256,8 +1265,8 @@ class Manager(QtCore.QObject):
     def restart(self):
         """ Nicely request that all modules shut down for application restart. """
         self.stop_all_modules()
-        if self.remote_manager is not None:
-            self.remote_manager.stop_server()
+        if remotemodules is not None:
+            remotemodules.stop_remote_server()
         self.managed_modules.clear()
         self.sigManagerQuit.emit(True)
 

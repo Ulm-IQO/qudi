@@ -343,7 +343,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
         @param int n: insert before nth element
         @param data: row to insert
         """
-        with self.lock:
+        with self._lock:
             if 0 <= n <= len(self._storage):
                 self.beginInsertRows(QtCore.QModelIndex(), n, n)
                 self._storage.insert(n, data)
@@ -356,7 +356,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
             
         @param data: row to append
         """
-        with self.lock:
+        with self._lock:
             n = len(self._storage)
             self.beginInsertRows(QtCore.QModelIndex(), n, n)
             self._storage.append(data)
@@ -369,7 +369,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
 
         @return data: removed row
         """
-        with self.lock:
+        with self._lock:
             if 0 <= n < len(self._storage):
                 self.beginRemoveRows(QtCore.QModelIndex(), n, n)
                 ret = self.storage.pop(n)

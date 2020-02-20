@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Check if something is a rpyc remote object and transfer it
+Check if something is a rpyc remotemodules object and transfer it
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

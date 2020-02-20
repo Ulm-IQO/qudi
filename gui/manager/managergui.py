@@ -25,6 +25,11 @@ import os
 
 from collections import OrderedDict
 from core.statusvariable import StatusVar
+from core.threadmanager import ThreadManager
+try:
+    import core.remotemodules as remotemodules
+except ImportError:
+    remotemodules = None
 from core.util.paths import get_main_dir
 from core.util.helpers import has_pyqtgraph
 from gui.manager.widgets.errordialog import ErrorDialog
@@ -150,26 +155,26 @@ class ManagerGui(GuiBase):
         self.start_ipython_widget()
 
         # Configure thread widget
-        self._mw.threads_widget.setModel(self._manager.thread_manager)
+        self._mw.threads_widget.setModel(ThreadManager())
 
-        # Configure remote widget
-        # hide remote menu item if rpyc is not available
-        if self._manager.remote_manager is not None:
-            self._mw.remote_widget.remote_module_listview.setModel(
-                self._manager.remote_manager.remote_modules)
-            if self._manager.has_remote_server:
-                self._mw.remote_widget.host_label.setText('Server URL:')
-                self._mw.remote_widget.port_label.setText('rpyc://{0}:{1}/'.format(
-                    self._manager.remote_manager.server.host,
-                    self._manager.remote_manager.server.port))
-                self._mw.remote_widget.shared_module_listview.setModel(
-                    self._manager.remote_manager.shared_modules)
-            else:
+        # Configure remotemodules widget
+        # hide remotemodules menu item if rpyc is not available
+        if remotemodules is None:
+            self._mw.action_view_remote.setVisible(False)
+        else:
+            # self._mw.remote_widget.remote_module_listview.setModel(
+            #     self._manager.remote_manager.remote_modules)
+            if remotemodules.remote_server is None:
                 self._mw.remote_widget.host_label.setVisible(False)
                 self._mw.remote_widget.port_label.setVisible(False)
                 self._mw.remote_widget.shared_module_listview.setVisible(False)
-        else:
-            self._mw.action_view_remote.setVisible(False)
+            else:
+                self._mw.remote_widget.host_label.setText('Server URL:')
+                self._mw.remote_widget.port_label.setText(
+                    'rpyc://{0}:{1}/'
+                    ''.format(remotemodules.remote_server.host, remotemodules.remote_server.port))
+                self._mw.remote_widget.shared_module_listview.setModel(
+                    remotemodules.SharedModulesModel())
 
         self.reset_default_layout()
         self._mw.show()
