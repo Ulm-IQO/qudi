@@ -34,6 +34,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 from core.util.modules import get_home_dir
+from core.util.helpers import natural_sort
 
 class AWGM8190A(Base, PulserInterface):
     """ A hardware module for the Keysight M8190A series for generating
@@ -1136,7 +1137,7 @@ class AWGM8190A(Base, PulserInterface):
             self.log.error('No analog samples passed to write_waveform method in M8190A.')
             return -1, waveforms
 
-        min_samples = 1280
+        min_samples = self.get_constraints().waveform_length.min
         if total_number_of_samples < min_samples:
             self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
                            'smaller than the allowed minimum waveform length ({1:d}).'

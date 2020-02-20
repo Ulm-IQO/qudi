@@ -1,5 +1,6 @@
 from logic.generic_logic import GenericLogic
-from core.module import Connector, StatusVar, Base
+from core.module import Connector
+from core.statusvariable import StatusVar
 
 from threading import Lock
 import time
@@ -1200,7 +1201,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
 
 import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.meta import InterfaceMetaclass
 class SerialInterface(metaclass=InterfaceMetaclass):
     """defines a device that can output bit patterns via a serial line"""
     _modtype = 'SerialInterface'

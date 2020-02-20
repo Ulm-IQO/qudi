@@ -1,5 +1,6 @@
 from logic.mfl_irq_driven import MFL_IRQ_Driven
-from core.module import Connector, StatusVar, Base
+from core.module import Connector
+from core.statusvariable import StatusVar
 
 import numpy as np
 import time
