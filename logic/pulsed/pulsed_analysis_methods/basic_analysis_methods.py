@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 
 from logic.pulsed.pulse_analyzer import PulseAnalyzerBase
+from core.util.curve_methods import rebin
 
 
 class BasicPulseAnalyzer(PulseAnalyzerBase):
@@ -184,7 +185,7 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
             data = np.ravel(laser_data)
         return data, np.zeros_like(length)
 
-    def analyse_timetrace(self, laser_data):
+    def analyse_timetrace(self, laser_data, rebinning=1):
         """
         This method does not actually analyze anything. It returns the input with the time axis as control variable.
         For 1 D data the output is raveled: for 2 D data, the output is the mean along the second axis.
@@ -194,16 +195,22 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
 
         @return numpy.ndarray, numpy.ndarray, numpy.ndarray: counts per bin, error (sqrt of signal), and time axis
         """
+        rebinning = int(rebinning)
+        if rebinning < 1:
+            rebinning = 1
+
         if len(np.shape(laser_data)) > 1:
             data = np.mean(laser_data, axis=1)
             data_sum = np.sum(laser_data, axis=1)
+            data = rebin(data, rebinning)
+            data_sum = rebin(data_sum, rebinning)
             error = data/np.sqrt(data_sum)
         else:
             data = np.ravel(laser_data)
+            data = rebin(data, rebinning)
             error = data / np.sqrt(data)
 
-        bin_number = len(laser_data)
-        controlled_variable = np.arange(bin_number)*self.fast_counter_settings['bin_width']
+        controlled_variable = np.arange(len(data))*self.fast_counter_settings['bin_width']*rebinning
         return data, error, controlled_variable
 
     def analyse_mean_reference(self, laser_data, signal_start=0.0, signal_end=200e-9, norm_start=300e-9,
