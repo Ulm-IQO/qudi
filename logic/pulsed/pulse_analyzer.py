@@ -56,6 +56,10 @@ class PulseAnalyzerBase:
         return self.__pulsedmeasurementlogic.fast_counter_settings
 
     @property
+    def elapsed_sweeps(self):
+        return self.__pulsedmeasurementlogic.elapsed_sweeps
+
+    @property
     def log(self):
         return self.__pulsedmeasurementlogic.log
 
