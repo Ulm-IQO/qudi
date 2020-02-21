@@ -29,7 +29,10 @@ import atexit
 import shutil
 import tempfile
 
-import config
+try:
+    from . import config
+except ImportError:
+    import config
 
 try:
     from .parentpoller import ParentPollerUnix, ParentPollerWindows
