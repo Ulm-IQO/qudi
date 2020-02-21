@@ -178,7 +178,7 @@ def is_complex(test_value):
     @return: bool, True if the passed value is a complex value, otherwise false.
     """
 
-    return type(test_value) in [np.complex, np.complex64, np.complex128]
+    return np.iscomplexobj(test_value)
 
 
 def in_range(value, lower_limit, upper_limit):
@@ -190,16 +190,12 @@ def in_range(value, lower_limit, upper_limit):
     @param upper_limit: highest allowed value
     @return: value closest to value in range
     """
-    if upper_limit > lower_limit:
-        u_limit = upper_limit
-        l_limit = lower_limit
-    else:
-        l_limit = upper_limit
-        u_limit = lower_limit
+    if upper_limit < lower_limit:
+        lower_limit, upper_limit = upper_limit, lower_limit
 
-    if value > u_limit:
+    if value > upper_limit:
         return upper_limit
-    if value < l_limit:
+    if value < lower_limit:
         return lower_limit
     return value
 

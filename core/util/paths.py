@@ -20,38 +20,55 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import sys
 
-__all__ = ('get_appdata_dir', 'get_home_dir', 'get_main_dir')
+__all__ = ('get_appdata_dir', 'get_home_dir', 'get_main_dir', 'get_userdata_dir')
 
 
 def get_main_dir():
     """ Returns the absolut path to the directory of the main software.
 
-         @return string: path to the main tree of the software
-
+    @return string: path to the main tree of the software
     """
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 
 
 def get_home_dir():
-    """
-    Returns the path to the home directory, which should definitely exist.
+    """ Returns the path to the home directory, which should definitely exist.
 
     @return str: absolute path to the home directory
     """
     return os.path.abspath(os.path.expanduser('~'))
 
 
-def get_appdata_dir():
+def get_userdata_dir(create_missing=False):
+    """ Returns the path to the qudi subfolder in the user home directory. This path should be used
+     for exposed user data like config files etc.
+
+    @return str: absolute path to the home directory
     """
-    Get the system specific application data directory.
+    path = os.path.join(get_home_dir(), 'qudi')
+    # Create directory if desired. Will throw an exception if path returned by get_home_dir() is
+    # non-existent (which should never happen).
+    if create_missing and not os.path.exists(path):
+        os.mkdir(path)
+    return path
+
+
+def get_appdata_dir(create_missing=False):
+    """ Get the system specific application data directory.
 
     @return str: path to appdata directory
     """
     if sys.platform == 'win32':
         # resolves to "C:\Documents and Settings\<UserName>\Application Data" on XP and
         # "C:\Users\<UserName>\AppData\Roaming" on win7 and newer
-        return os.path.join(os.environ['APPDATA'], 'qudi')
+        path = os.path.join(os.environ['APPDATA'], 'qudi')
     elif sys.platform == 'darwin':
-        return os.path.abspath(os.path.expanduser('~/Library/Preferences/qudi'))
+        path = os.path.abspath(os.path.expanduser('~/Library/Preferences/qudi'))
     else:
-        return os.path.abspath(os.path.expanduser('~/.local/qudi'))
+        path = os.path.abspath(os.path.expanduser('~/.local/qudi'))
+
+    # Create path if desired.
+    if create_missing and not os.path.exists(path):
+        os.makedirs(path)
+    return path
+
