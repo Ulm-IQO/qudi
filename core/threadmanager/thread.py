@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi thread manager class.
+This file contains the Qudi remotemodules object manager class.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,23 +19,44 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-from .util.mutex import RecursiveMutex
-from functools import partial
 import logging
+import weakref
+from functools import partial
+from core.util.mutex import RecursiveMutex
+from qtpy import QtCore
+
 logger = logging.getLogger(__name__)
 
 
-class ThreadManager(QtCore.QAbstractTableModel):
+class ThreadManagerSingleton(QtCore.QAbstractListModel):
     """ This class keeps track of all the QThreads that are needed somewhere. The registered
     threads are stored in a static variable and thus are shared across all instances of this class.
 
     Using this class is thread-safe.
     """
-
+    _instance = None
     _lock = RecursiveMutex()
     _threads = list()
     _thread_names = list()
+
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None or cls._instance() is None:
+                obj = super().__new__(cls, *args, **kwargs)
+                cls._threads = list()
+                cls._thread_names = list()
+                cls._instance = None
+                return obj
+            return cls._instance()
+
+    def __init__(self, *args, **kwargs):
+        with self._lock:
+            if ThreadManagerSingleton._instance is None:
+                if QtCore.QCoreApplication.instance().thread() is not QtCore.QThread.currentThread():
+                    raise Exception(
+                        'ThreadManagerSingleton can only be initialized by Qt main thread.')
+                super().__init__(*args, **kwargs)
+                ThreadManagerSingleton._instance = weakref.ref(self)
 
     @property
     def thread_names(self):
@@ -163,13 +184,14 @@ class ThreadManager(QtCore.QAbstractTableModel):
         @return QThread: The registered thread object
         """
         with cls._lock:
-            if name in cls._thread_names:
+            try:
                 index = cls._thread_names.index(name)
                 return cls._threads[index]
-            return None
+            except ValueError:
+                return None
 
-    # QAbstractTableModel interface methods follow below
-    def rowCount(self, parent=None):
+    # QAbstractListModel interface methods follow below
+    def rowCount(self, parent=None, *args, **kwargs):
         """
         Gives the number of threads registered.
 
@@ -178,17 +200,9 @@ class ThreadManager(QtCore.QAbstractTableModel):
         with self._lock:
             return len(self._threads)
 
-    def columnCount(self, parent=None):
-        """
-        Gives the number of data fields of a thread.
-
-        @return int: number of thread data fields
-        """
-        return 2
-
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         """
-        Data for the table view headers.
+        Data for the list view header.
 
         @param int section: column/row index to get header data for
         @param QtCore.Qt.Orientation orientation: orientation of header (horizontal or vertical)
@@ -196,13 +210,9 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
         @return str: header data for given column/row and role
         """
-        with self._lock:
-            if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-                if section == 0:
-                    return 'Name'
-                elif section == 1:
-                    return 'Thread'
-            return None
+        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal and section == 0:
+            return 'Thread Name'
+        return None
 
     def data(self, index, role):
         """
@@ -214,11 +224,10 @@ class ThreadManager(QtCore.QAbstractTableModel):
         @return QVariant: data for given cell and role
         """
         with self._lock:
-            if index.isValid() and role == QtCore.Qt.DisplayRole and 0 <= index.row() < self.rowCount():
+            row = index.row()
+            if index.isValid() and role == QtCore.Qt.DisplayRole and 0 <= row < len(self._threads):
                 if index.column() == 0:
-                    return self._thread_names[index.row()]
-                elif index.column() == 1:
-                    return self._threads[index.row()]
+                    return self._thread_names[row]
             return None
 
     def flags(self, index):

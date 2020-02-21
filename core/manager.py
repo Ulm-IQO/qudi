@@ -34,7 +34,7 @@ from . import config
 from .util.paths import get_main_dir
 from .util.mutex import Mutex, RecursiveMutex   # provides access serialization between threads
 from .logger import register_exception_handler
-from .threadmanager import ThreadManager
+from .threadmanager import thread_manager
 # try to import remotemodules. Might fail if rpyc is not installed.
 try:
     from . import remotemodules
@@ -478,7 +478,7 @@ class ManagedModule(QtCore.QObject):
             try:
                 if self._instance.is_module_threaded:
                     thread_name = self.module_thread_name
-                    thread = manager.thread_manager.get_new_thread(thread_name)
+                    thread = thread_manager.get_new_thread(thread_name)
                     self._instance.moveToThread(thread)
                     thread.start()
                     QtCore.QMetaObject.invokeMethod(self._instance.module_state,
@@ -489,8 +489,8 @@ class ManagedModule(QtCore.QObject):
                         QtCore.QMetaObject.invokeMethod(self._instance,
                                                         'move_to_manager_thread',
                                                         QtCore.Qt.BlockingQueuedConnection)
-                        manager.thread_manager.quit_thread(thread_name)
-                        manager.thread_manager.join_thread(thread_name)
+                        thread_manager.quit_thread(thread_name)
+                        thread_manager.join_thread(thread_name)
                 else:
                     self._instance.module_state.activate()
                 QtCore.QCoreApplication.instance().processEvents()
@@ -541,8 +541,8 @@ class ManagedModule(QtCore.QObject):
                                                     'move_to_manager_thread',
                                                     QtCore.Qt.BlockingQueuedConnection)
                     if manager is not None:
-                        manager.thread_manager.quit_thread(thread_name)
-                        manager.thread_manager.join_thread(thread_name)
+                        thread_manager.quit_thread(thread_name)
+                        thread_manager.join_thread(thread_name)
                 else:
                     self._instance.module_state.deactivate()
                 QtCore.QCoreApplication.instance().processEvents()
@@ -773,12 +773,7 @@ class Manager(QtCore.QObject):
         register_exception_handler(self)
 
         # Thread management
-        try:
-            self.thread_manager = ThreadManager()
-            logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThread()))
-        except:
-            logger.error('Error while instantiating thread manager.')
-            raise
+        logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThread()))
 
         # Find config file path
         self.config_file_path = args.config if os.path.isfile(

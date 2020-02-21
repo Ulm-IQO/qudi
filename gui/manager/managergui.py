@@ -25,7 +25,7 @@ import os
 
 from collections import OrderedDict
 from core.statusvariable import StatusVar
-from core.threadmanager import ThreadManager
+from core.threadmanager import thread_manager
 try:
     import core.remotemodules as remotemodules
 except ImportError:
@@ -155,7 +155,7 @@ class ManagerGui(GuiBase):
         self.start_ipython_widget()
 
         # Configure thread widget
-        self._mw.threads_widget.setModel(ThreadManager())
+        self._mw.threads_widget.setModel(thread_manager)
 
         # Configure remotemodules widget
         # hide remotemodules menu item if rpyc is not available

@@ -25,7 +25,6 @@ from core.util.models import ListTableModel
 from qtpy.QtCore import QObject
 import rpyc
 from rpyc.utils.authenticators import SSLAuthenticator
-from core.threadmanager import ThreadManager
 from weakref import WeakValueDictionary, WeakSet
 
 logger = logging.getLogger(__name__)
@@ -134,10 +133,12 @@ class _RemoteServer(QObject):
                                            protocol_config=self.protocol_config,
                                            authenticator=authenticator)
         try:
+            logger.info('Starting module server at "{0}" on port {1}'.format(self.host, self.port))
             self._server.start()
         except:
             logger.exception('Error during start of RemoteServer:')
             self._server = None
+            return
 
     def stop(self):
         """ Stop the RPyC server
@@ -145,6 +146,7 @@ class _RemoteServer(QObject):
         if self._server is not None:
             self._server.close()
             self._server = None
+            logger.info('Stopped module server at "{0}" on port {1}'.format(self.host, self.port))
 
 
 class SharedModulesModel(ListTableModel):
