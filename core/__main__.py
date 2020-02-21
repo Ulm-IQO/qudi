@@ -89,7 +89,8 @@ except:
 from .manager import Manager
 from .watchdog import AppWatchdog
 man = Manager(args=args)
-watchdog = AppWatchdog(man)
+watchdog = AppWatchdog()
+man.sigManagerQuit.connect(watchdog.quit_application)
 
 # manhole for debugging stuff inside the app from outside
 # if args.manhole:

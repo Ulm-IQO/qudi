@@ -1259,6 +1259,11 @@ class Manager(QtCore.QObject):
         if remotemodules is not None:
             remotemodules.stop_remote_server()
         self.managed_modules.clear()
+        if self._has_gui:
+            logger.info('Closing windows...')
+            print('Closing windows...')
+            self.gui.close_windows()
+            self.gui.close_system_tray_icon()
         self.sigManagerQuit.emit(False)
 
     @QtCore.Slot()
@@ -1268,6 +1273,11 @@ class Manager(QtCore.QObject):
         if remotemodules is not None:
             remotemodules.stop_remote_server()
         self.managed_modules.clear()
+        if self._has_gui:
+            logger.info('Closing windows...')
+            print('Closing windows...')
+            self.gui.close_windows()
+            self.gui.close_system_tray_icon()
         self.sigManagerQuit.emit(True)
 
     @QtCore.Slot(object)

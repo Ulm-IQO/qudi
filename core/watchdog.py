@@ -39,9 +39,8 @@ class AppWatchdog(QtCore.QObject):
     """
     _sigDoQuit = QtCore.Signal(object)
 
-    def __init__(self, manager):
+    def __init__(self):
         super().__init__()
-        self.__manager = manager
         self._quit_in_progress = False
         self.exitcode = 0
         # Run python code periodically to allow interactive debuggers to interrupt the qt event loop
@@ -54,7 +53,6 @@ class AppWatchdog(QtCore.QObject):
         self.interrupt = None
         self.parent_poller = None
         self.setup_parent_poller()
-        self.__manager.sigManagerQuit.connect(self.quit_application)
         return
 
     @QtCore.Slot()
@@ -100,11 +98,6 @@ class AppWatchdog(QtCore.QObject):
         if not self._quit_in_progress:
             self._quit_in_progress = True
             self.__timer.stop()
-            if self.__manager.has_gui:
-                logger.info('Closing windows...')
-                print('Closing windows...')
-                self.__manager.gui.close_windows()
-                self.__manager.gui.close_system_tray_icon()
             QtCore.QCoreApplication.instance().processEvents()
             logger.info('Stopping threads...')
             print('Stopping threads...')
