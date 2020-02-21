@@ -31,6 +31,16 @@ import faulthandler
 # if __package__ is None:
 #     __package__ = 'core'
 
+# Make icons work on non-X11 platforms, import a custom theme
+if sys.platform == 'win32':
+    try:
+        import ctypes
+        myappid = 'quantumoptics.quantumdiamond.mainapp'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except:
+        print('SetCurrentProcessExplicitAppUserModelID failed! This is probably not Microsoft '
+              'Windows!')
+
 # Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
 # -> e.g. for segmentation faults
 faulthandler.disable()

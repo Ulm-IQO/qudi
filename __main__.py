@@ -32,7 +32,7 @@ myenv = os.environ.copy()
 os.chdir(os.path.dirname(__file__))
 
 if sys.platform == 'win32':
-    from core.util.win_interrupt import create_interrupt_event
+    from win_interrupt import create_interrupt_event
     # Create a Win32 event for interrupting the kernel and store it in an environment variable.
     interrupt_event = create_interrupt_event()
     myenv["QUDI_INTERRUPT_EVENT"] = str(interrupt_event)
