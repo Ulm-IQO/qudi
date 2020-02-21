@@ -78,10 +78,6 @@ class ManagedModulesSingleton(QtCore.QObject):
                     manager, partial(self._manager_ref_dead_callback))
                 ManagedModulesSingleton.__instance = weakref.ref(self)
 
-    def __del__(self):
-        ManagedModulesSingleton.__instance = None
-        ManagedModulesSingleton._manager = None
-
     def __len__(self):
         with self._lock:
             return len(self._modules)
@@ -232,7 +228,6 @@ class ManagedModule(QtCore.QObject):
      object. Contains status properties and handles initialization, state transitions and
      connection of the module.
     """
-    # ToDo: Handle remotemodules connection/(de)activation
     sigStateChanged = QtCore.Signal(str, str, str)
 
     _lock = RecursiveMutex()  # Single mutex shared across all ManagedModule instances

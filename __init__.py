@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi Manager class.
-
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -17,15 +15,8 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+
+Contains code that used to be distributed under the terms of the Modified BSD License.
+See documentation/BSDLicense_IPython.md for details.
+Copyright (c) 2015, IPython Development Team
 """
-
-__version__ = '0.1'
-
-import os
-import sys
-
-# import PySide2
-# dirname = os.path.dirname(PySide2.__file__)
-# plugin_path = os.path.join(dirname, 'plugins', 'platforms')
-# os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
-os.environ['QT_API'] = 'pyside2'
