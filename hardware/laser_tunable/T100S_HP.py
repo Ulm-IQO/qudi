@@ -18,6 +18,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+import time
 import visa
 from core.module import Base
 from core.configoption import ConfigOption
@@ -40,6 +41,9 @@ class TunableLaser(Base, SimpleLaserInterface):
     _connection_type = ConfigOption('connection_type', 'GPIB', missing='warn')
     _physical_interface = ConfigOption('physical_interface')
     _timeout = ConfigOption('timeout', 2)
+    _wavelength = None
+    _wavelength_range = None
+    _active_cavity_control = None
 
     def __init__(self, **kwargs):
         """ """
@@ -66,8 +70,14 @@ class TunableLaser(Base, SimpleLaserInterface):
                 self.log.error('Hardware connection through GPIB '
                                'address >>{}<< failed.'.format(self._gpib_address))
                 raise
-            self.model = self._gpib_connection.query('*IDN?').split(',')[1]
-            self.log.info('T100S_HP connected.')
+
+        self.model = self._query('*IDN?').split(',')[1]
+        self.log.info('T100S_HP connected.')
+
+        self.set_active_cavity_control()
+        self.get_wavelength_range()
+        self.get_wavelength()
+        self.log.info('T100S_HP initialized.')
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -202,7 +212,7 @@ class TunableLaser(Base, SimpleLaserInterface):
             @return LaserState: actual laser state
         """
         self._enabled = True
-        self._write('ENABLE')
+        self._write('DISABLE')
         return LaserState.OFF
 
     def get_laser_state(self):
@@ -210,7 +220,7 @@ class TunableLaser(Base, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        return self.lstate
+        return LaserState.ON if self._enabled else LaserState.OFF
 
     def set_laser_state(self, state):
         """ Set laser state.
@@ -219,16 +229,18 @@ class TunableLaser(Base, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        time.sleep(1)
-        self.lstate = state
-        return self.lstate
+        if state == LaserState.ON:
+            self.on()
+        else:
+            self.off()
+        return self.get_laser_state()
 
     def get_shutter_state(self):
         """ Get laser shutter state
 
             @return ShutterState: actual laser shutter state
         """
-        return self.shutter
+        return ShutterState.NOSHUTTER
 
     def set_shutter_state(self, state):
         """ Set laser shutter state.
@@ -237,19 +249,14 @@ class TunableLaser(Base, SimpleLaserInterface):
 
             @return ShutterState: actual laser shutter state
         """
-        time.sleep(1)
-        self.shutter = state
-        return self.shutter
+        return self.get_shutter_state()
 
     def get_temperatures(self):
         """ Get all available temperatures.
 
             @return dict: dict of temperature namce and value in degrees Celsius
         """
-        return {
-            'psu': 32.2 * random.gauss(1, 0.1),
-            'head': 42.0 * random.gauss(1, 0.2)
-            }
+        return {}
 
     def set_temperatures(self, temps):
         """ Set temperatures for lasers with tunable temperatures.
@@ -263,23 +270,25 @@ class TunableLaser(Base, SimpleLaserInterface):
 
             @return dict: temperature setpoints for temperature tunable lasers
         """
-        return {'psu': 32.2, 'head': 42.0}
+        return {}
 
     def get_extra_info(self):
         """ Multiple lines of dignostic information
 
             @return str: much laser, very useful
         """
-        return "Dummy laser v0.9.9\nnot used very much\nvery cheap price very good quality"
+        return "T100S-HP"
 
 # Define general read write function
 
-    def _write(self, text):
+    def _write(self, text, wait_for_ready=True):
         """ Write to the hardware
 
         @param (str) text: The text to send """
         if self._connection_type == 'GPIB':
             self._gpib_connection.write(text)
+            if wait_for_ready:
+                self._wait_for_ready()
         else:
             self.log.error('Serial connection not implemented.')
 
@@ -299,23 +308,109 @@ class TunableLaser(Base, SimpleLaserInterface):
 
         @return (str): Readable message from the hardware """
         if self._connection_type == 'GPIB':
-            output = self._gpib_connection.query(text)
+            self._write(text)
+            output = self._gpib_connection.read()
             return output
         else:
             self.log.error('Serial connection not implemented.')
 
+    def _wait_for_ready(self, time_step=0.1, retry=100):
+        """ GPIB specific function that returns only when device is ready for next command
 
-# Define hardware getters and setters
-
-    def _get_power(self):
-        """ Query the power to the hardware
-
-        @return float: Power in Watts
+        @return (bool): True of everything is ok.
         """
-        output = self._query('MW;P?')
-        if output =='DISABLED':
-            return 0
+        for i in range(retry):
+            status = self.get_status_byte()
+            if status['ERRC']:
+                self.log.error('Laser T100S-HP command error.')
+                return False
+            if status['ERRV']:
+                self.log.error('Laser T100S-HP value error.')
+                return False
+            if status['MAV']:
+                return True
+            time.sleep(time_step)
+        self.log.error('Laser T100S-HP timeout error.')
+        return False
+
+# Wavelength specific function
+
+    def get_wavelength_range(self, cached=True):
+        """ Return the wavelength range in m
+
+            @param (bool) cached: Do not query hardware if not necessary
+        """
+        if not cached or self._wavelength_range is None:
+            mini = self._query('L? MIN')
+            maxi = self._query('L? MAX')
+            self._wavelength_range = (float(mini)*1e-9, float(maxi)*1e-9)
+        return self._wavelength_range
+
+    def get_wavelength(self, cached=True):
+        """ Return laser wavelength
+
+            @param (bool) cached: Do not query hardware if not necessary
+
+            @return float: Laser wavelength in m
+        """
+        if not cached or self._wavelength is None:
+            response = self._query('L?')
+            self._wavelength = float(response[2:])*1e-9
+        return self._wavelength
+
+    def set_wavelength(self, value):
+        """ Set laser wavelength
+
+            @param float value: laser wavelength
+
+            @return float: new wavelength
+        """
+        mini, maxi = self.get_wavelength_range()
+        if mini <= value <= maxi:
+            self._wavelength = value
+            self._write("L={}".format(value*1e9))
         else:
-            return float(output.split('=')[1])/1e3
+            self.log.error('Wavelength value {} nm out of range'.format(value*1e9))
+        return self._power_setpoint
+
+    # GPIB specific
+
+    def get_status_byte(self):
+        """ Return the status byte parsed for GPIB connexion
+
+        @return dict: Dict containing boolean for each status indicator
+
+        """
+
+        def get_bit(byteval, idx):
+            return (byteval & (1 << idx)) != 0
+
+        response = self._query('*STB?')
+        response = int(response)
+        status = {
+            'OPC':  get_bit(response, 0),  # Operation complete
+            'ERRC': get_bit(response, 1),  # Error command
+            'ERRV': get_bit(response, 2),  # Error value
+            'LIM':  get_bit(response, 3),
+            'MAV':  get_bit(response, 4),   # Message available
+        }
+        return status
+
+    def get_active_cavity_control(self):
+        """ Return active cavity control state
+
+        @return (bool): True if active """
+        return self._active_cavity_control
+
+    def set_active_cavity_control(self, value):
+        """ Set active cavity control state
+
+        @param (bool) value: State to set """
+        self._active_cavity_control = bool(value)
+        if value:
+            self._write('ACTCTRLON')
+        else:
+            self._write('ACTCTRLOFF')
+
 
 
