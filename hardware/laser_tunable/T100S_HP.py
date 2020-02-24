@@ -74,7 +74,7 @@ class TunableLaser(Base, SimpleLaserInterface):
         self.model = self._query('*IDN?').split(',')[1]
         self.log.info('T100S_HP connected.')
 
-        self.set_active_cavity_control()
+        self.set_active_cavity_control(True)
         self.get_wavelength_range()
         self.get_wavelength()
         self.log.info('T100S_HP initialized.')
