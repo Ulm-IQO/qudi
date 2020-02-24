@@ -68,7 +68,7 @@ class TunableLaser(Base, SimpleLaserInterface):
                     timeout=self._timeout * 1000)
             except:
                 self.log.error('Hardware connection through GPIB '
-                               'address >>{}<< failed.'.format(self._gpib_address))
+                               'address >>{}<< failed.'.format(self._physical_interface))
                 raise
 
         self.model = self._query('*IDN?').split(',')[1]
@@ -281,7 +281,7 @@ class TunableLaser(Base, SimpleLaserInterface):
 
 # Define general read write function
 
-    def _write(self, text, wait_for_ready=True):
+    def _write(self, text, wait_for_ready=False):
         """ Write to the hardware
 
         @param (str) text: The text to send """
