@@ -61,7 +61,7 @@ The potential sequence_options are:
 * remove debug prints for flags in dummy pulser that were filling up the log
 * wider first column for ensemble and sequence editors to see long names and fixing header of first column in table of sequence editor
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
-* Saving data in confocal GUI no longer freezes other GUI modules	*
+* Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
 
