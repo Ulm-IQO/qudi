@@ -343,7 +343,7 @@ class TunableLaser(Base, SimpleLaserInterface):
         if not cached or self._wavelength_range is None:
             mini = self._query('L? MIN')
             maxi = self._query('L? MAX')
-            self._wavelength_range = (float(mini)*1e-9, float(maxi)*1e-9)
+            self._wavelength_range = (float(mini[2:-1])*1e-9, float(maxi[2:-1])*1e-9)
         return self._wavelength_range
 
     def get_wavelength(self, cached=True):
