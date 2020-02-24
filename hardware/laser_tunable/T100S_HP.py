@@ -281,14 +281,12 @@ class TunableLaser(Base, SimpleLaserInterface):
 
 # Define general read write function
 
-    def _write(self, text, wait_for_ready=False):
+    def _write(self, text):
         """ Write to the hardware
 
         @param (str) text: The text to send """
         if self._connection_type == 'GPIB':
             self._gpib_connection.write(text)
-            if wait_for_ready:
-                self._wait_for_ready()
         else:
             self.log.error('Serial connection not implemented.')
 
@@ -359,9 +357,9 @@ class TunableLaser(Base, SimpleLaserInterface):
         return self._wavelength
 
     def set_wavelength(self, value):
-        """ Set laser wavelength
+        """ Set laser wavelength in meter (m)
 
-            @param float value: laser wavelength
+            @param float value: laser wavelength in meter (m)
 
             @return float: new wavelength
         """
