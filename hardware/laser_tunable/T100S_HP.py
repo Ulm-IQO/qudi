@@ -44,6 +44,7 @@ class TunableLaser(Base, SimpleLaserInterface):
     _wavelength = None
     _wavelength_range = None
     _active_cavity_control = None
+    _coherence_control = None
 
     def __init__(self, **kwargs):
         """ """
@@ -77,6 +78,7 @@ class TunableLaser(Base, SimpleLaserInterface):
         self.set_active_cavity_control(True)
         self.get_wavelength_range()
         self.get_wavelength()
+        self.set_coherence_control(False)
         self.log.info('T100S_HP initialized.')
 
     def on_deactivate(self):
@@ -403,12 +405,32 @@ class TunableLaser(Base, SimpleLaserInterface):
     def set_active_cavity_control(self, value):
         """ Set active cavity control state
 
+        This feature is supposed to prevent mode hop while activated
+
         @param (bool) value: State to set """
         self._active_cavity_control = bool(value)
         if value:
             self._write('ACTCTRLON')
         else:
             self._write('ACTCTRLOFF')
+
+    def get_coherence_control(self):
+        """ Return coherence control state
+
+        @return (bool): True if active """
+        return self._coherence_control
+
+    def set_coherence_control(self, value):
+        """ Set coherence control state
+
+        This feature introduce a large broadening of the laser spectral width (from 400 kHz to > 100 MHz if activated)
+
+        @param (bool) value: State to set """
+        self._coherence_control = bool(value)
+        if value:
+            self._write('CTRLON')
+        else:
+            self._write('CTRLOFF')
 
 
 
