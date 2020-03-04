@@ -628,6 +628,12 @@ class NiXSeriesAnalogScanner(Base):
         self.terminate_image_scan()
         self._sig_start_scan.disconnect()
 
+    @property
+    def estimated_scan_time(self):
+        if self._scan_image is None:
+            return -1
+        return self._scan_image.complete_scan_time
+
     def terminate_image_scan(self):
         with self._lock:
             # Terminate clock task
