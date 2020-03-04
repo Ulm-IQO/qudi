@@ -626,7 +626,6 @@ class NiXSeriesAnalogScanner(Base):
 
     def on_deactivate(self):
         self.terminate_image_scan()
-        self._sig_start_scan.disconnect()
 
     @property
     def estimated_scan_time(self):

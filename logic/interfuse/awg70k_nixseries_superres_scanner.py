@@ -139,6 +139,9 @@ class Awg70kNiXSeriesSuperresScanner(GenericLogic):
         analog_channels = tuple(ch for ch in active_channels if ch.startswith('a'))
         # query current sample rate
         sample_rate = self._awg.get_sample_rate()
+        # query current peak-to-peak voltages
+        pp_voltages, _ = self._awg.get_analog_level(amplitude=analog_channels, offset=())
+        # Check necessary channel activity
         if self._mw_channel not in analog_channels:
             self.log.error('MW channel specified as ConfigOption not present in currently active '
                            'analog channels.')
@@ -151,14 +154,14 @@ class Awg70kNiXSeriesSuperresScanner(GenericLogic):
         # Create waveforms
         created_waveforms = list()
         for ii, mw_freq in enumerate(mw_frequencies):
-            mw_amp = mw_amplitudes[ii]
             wfm_name = wfm_names[ii]
             analog_samples = dict()
             digital_sampels = dict()
             wfm_length = int(round(sample_rate * 100 / mw_freq))
             for ch in analog_channels:
                 if ch == self._mw_channel:
-                    analog_samples[ch] = mw_amp * np.sin(
+                    amp = 2 * mw_amplitudes[ii] / pp_voltages[ch]
+                    analog_samples[ch] = amp * np.sin(
                         2 * np.pi * mw_freq * np.arange(wfm_length, dtype=np.float32) / sample_rate)
                 else:
                     analog_samples[ch] = np.zeros(wfm_length, dtype=np.float32)
