@@ -30,6 +30,7 @@ from logic.pulsed.pulse_objects import SequenceStep
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.connector import Connector
+from core.util.mutex import Mutex
 
 
 class Awg70kNiXSeriesSuperresScanner(GenericLogic):
@@ -53,6 +54,8 @@ class Awg70kNiXSeriesSuperresScanner(GenericLogic):
         self.current_estimated_time = 0.0
         self._current_scan_params = dict()
         self._current_scan_timestamp = None
+        self._lock = Mutex()
+        self._stop_requested = True
 
     def on_activate(self):
         self._awg = self.awg_connector()
@@ -60,41 +63,95 @@ class Awg70kNiXSeriesSuperresScanner(GenericLogic):
         self.current_estimated_time = 0.0
         self._current_scan_params = dict()
         self._current_scan_timestamp = None
+        self._stop_requested = True
 
     def on_deactivate(self):
         self._awg = None
         self._nicard = None
+        self._stop_requested = True
 
-    def set_up_scan(self, size, extent, axes, sample_frequency, mw_frequencies, mw_amplitudes):
+    @property
+    def stop_requested(self):
+        with self._lock:
+            return self._stop_requested
+
+    @stop_requested.setter
+    def stop_requested(self, val):
+        with self._lock:
+            self._stop_requested = bool(val)
+
+    def loop_scan(self, save_dir, count, size, extent, axes, sample_frequency, mw_frequencies, mw_amplitudes):
+        if self.set_up_awg(mw_frequencies, mw_amplitudes):
+            self.log.error('Loop scan aborted after AWG setup failed.')
+            return True
+        while count > 0:
+            if self.stop_requested:
+                self.log.warning('Loop scan aborted by user.')
+                return False
+            if self.set_up_scanner(size, extent, axes, sample_frequency):
+                self.log.error('Loop scan aborted after NI scanner setup failed.')
+                return True
+            if self.scan_image():
+                self.log.error('Loop scan aborted after image scan failed.')
+                return True
+            if self.save_scan(save_dir=save_dir):
+                self.log.error('Loop scan aborted after image scan failed to save.')
+                return True
+            count -= 1
+        return False
+
+    def single_scan(self, save_dir, size, extent, axes, sample_frequency, mw_frequencies, mw_amplitudes):
+        if self.set_up_awg(mw_frequencies, mw_amplitudes):
+            self.log.error('Image scan aborted after AWG setup failed.')
+            return True
+        if self.set_up_scanner(size, extent, axes, sample_frequency):
+            self.log.error('Image scan aborted after NI scanner setup failed.')
+            return True
+        if self.scan_image():
+            self.log.error('Image scan failed.')
+            return True
+        if self.save_scan(save_dir=save_dir):
+            self.log.error('Image scan failed to save.')
+            return True
+        return False
+
+    def set_up_scanner(self, size, extent, axes, sample_frequency):
         new_size = (size[0] * 3, size[1])
+        # TODO: Move to start position
+        if self._nicard.set_up_image_scan(self, new_size, extent, axes, sample_frequency):
+            return True
+        self.current_estimated_time = self._nicard.estimated_scan_time
+        self._current_scan_params['size'] = tuple(size)
+        self._current_scan_params['extent'] = tuple(extent)
+        self._current_scan_params['axes'] = tuple(axes)
+        self._current_scan_params['sample_frequency'] = float(sample_frequency)
+        return False
+
+    def set_up_awg(self, mw_frequencies, mw_amplitudes):
+        self._awg.pulser_off()
+        time.sleep(1)
         if len(mw_frequencies) != 3 or len(mw_amplitudes) != 3:
             self.log.error('mw_frequencies and mw_amplitudes must be iterables of len 3')
             return True
-        # TODO: Move to start position
-        self._nicard.set_up_image_scan(self, new_size, extent, axes, sample_frequency)
-        self.current_estimated_time = self._nicard.estimated_scan_time
         if self.create_superres_sequence(mw_frequencies, mw_amplitudes):
             return True
         self._awg.load_sequence(self.__sequence_name)
         self._awg.pulser_on()
         self._awg.pulser_off()
-        self._current_scan_params['size'] = tuple(size)
-        self._current_scan_params['extent'] = tuple(extent)
-        self._current_scan_params['axes'] = tuple(axes)
-        self._current_scan_params['sample_frequency'] = float(sample_frequency)
         self._current_scan_params['mw_frequencies'] = tuple(mw_frequencies)
         self._current_scan_params['mw_amplitudes'] = tuple(mw_amplitudes)
         return False
 
     def scan_image(self):
         self._current_scan_timestamp = datetime.datetime.now()
+        err_flag = False
+        timeout = 1.5 * self.current_estimated_time
+
         self._awg.pulser_on()
-        time.sleep(0.1)
+        time.sleep(0.5)
         if self._nicard.start_image_scan():
             return True
 
-        err_flag = False
-        timeout = 1.5 * self.current_estimated_time
         start = time.time()
         while self._nicard.module_state() != 'idle':
             if time.time() - start > timeout:
@@ -103,7 +160,7 @@ class Awg70kNiXSeriesSuperresScanner(GenericLogic):
                 break
             time.sleep(1.0)
         self._awg.pulser_off()
-        time.sleep(0.1)
+        time.sleep(0.5)
         return err_flag
 
     def get_scan_images(self):
