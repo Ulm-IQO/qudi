@@ -47,6 +47,7 @@ except ImportError:
     RemoteObjectManager = None
 from .module import BaseMixin
 from .connector import Connector
+from .gamepad import GamepadEventHandler
 
 
 class Manager(QtCore.QObject):
@@ -134,7 +135,19 @@ class Manager(QtCore.QObject):
             self.configDir = os.path.dirname(config_file)
             self.readConfig(config_file)
 
-            # check first if remote support is enabled and if so create RemoteObjectManager
+            # Enable gamepad/joystick support if requested and OS is suitable
+            if self.hasGui and 'gamepad' in self.tree['global']:
+                kwargs = {key: value for key, value in self.tree['global']['gamepad'].items() if
+                          key in ('fps', 'map_to_keyboard')}
+                self.gamepad_handler = GamepadEventHandler(**kwargs)
+                gamepad_thread = self.tm.newThread('GamepadEventHandler')
+                self.gamepad_handler.moveToThread(gamepad_thread)
+                gamepad_thread.started.connect(self.gamepad_handler.start)
+                gamepad_thread.start()
+            else:
+                self.gamepad_handler = None
+
+                # check first if remote support is enabled and if so create RemoteObjectManager
             if RemoteObjectManager is None:
                 logger.error('Remote modules disabled. Rpyc not installed.')
                 self.rm = None

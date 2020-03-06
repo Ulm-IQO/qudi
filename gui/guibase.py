@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy.QtCore import QObject
+from qtpy.QtCore import QObject, Signal, Qt
 from core.module import BaseMixin
 import warnings
 
@@ -43,4 +43,12 @@ class GUIBaseMixin(BaseMixin):
 
 
 class GUIBase(QObject, GUIBaseMixin):
-    pass
+
+    _sigGamepadEvent = Signal(object)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self._manager.gamepad_handler is not None:
+            self._manager.gamepad_handler.sigGamepadEvent.connect(self._sigGamepadEvent,
+                                                                  Qt.QueuedConnection)
+

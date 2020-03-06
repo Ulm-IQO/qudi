@@ -28,6 +28,10 @@ import time
 from core.connector import Connector
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
+try:
+    from core.gamepad import GamepadEvent, GamepadButton, GamepadStick, GamepadTrigger
+except ImportError:
+    pass
 from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -107,6 +111,7 @@ class SaveDialog(QtWidgets.QDialog):
         self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
         self.setLayout(self.hbox)
 
+
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
     """
@@ -155,6 +160,10 @@ class ConfocalGui(GUIBase):
         self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
 
         self._save_dialog = SaveDialog(self._mw)
+
+        # Connect gamepad event handler if present
+        self._gamepad_interlock = False
+        self._sigGamepadEvent.connect(self.__handle_gamepad_event)
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -648,6 +657,7 @@ class ConfocalGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
+        self._sigGamepadEvent.disconnect()
         self._mw.close()
         return 0
 
@@ -1893,3 +1903,43 @@ class ConfocalGui(GUIBase):
     def logic_finished_save(self):
         """ Hides modal dialog when save process done """
         self._save_dialog.hide()
+
+    @QtCore.Slot(object)
+    def __handle_gamepad_event(self, event):
+        # Do nothing if window is not active
+        if not self._mw.isActiveWindow():
+            return
+        # Check interlock. Do not move anything if interlock is not pressed and held.
+        if self._gamepad_interlock:
+            if event.type == GamepadEvent.BUTTON_PRESSED:
+                if event.button_id == GamepadButton.DPAD_RIGHT:
+                    pos = self._scanning_logic.get_position()[0]
+                    self.update_from_key(x=float(round(pos + self.slider_small_step, 15)))
+                elif event.button_id == GamepadButton.DPAD_LEFT:
+                    pos = self._scanning_logic.get_position()[0]
+                    self.update_from_key(x=float(round(pos - self.slider_small_step, 15)))
+                elif event.button_id == GamepadButton.DPAD_UP:
+                    pos = self._scanning_logic.get_position()[1]
+                    self.update_from_key(y=float(round(pos + self.slider_small_step, 15)))
+                elif event.button_id == GamepadButton.DPAD_DOWN:
+                    pos = self._scanning_logic.get_position()[1]
+                    self.update_from_key(y=float(round(pos - self.slider_small_step, 15)))
+            elif event.type == GamepadEvent.BUTTON_RELEASED:
+                if event.button_id == GamepadButton.SHOULDER_RIGHT:
+                    self._gamepad_interlock = False
+            elif event.type == GamepadEvent.STICK_MOVED:
+                pos = self._scanning_logic.get_position()
+                if event.stick == GamepadStick.LEFT:
+                    x_pos = pos[0] + event.dir[0] * self.slider_big_step
+                    y_pos = pos[1] + event.dir[1] * self.slider_big_step
+                    self._scanning_logic.set_position('gamepad', x=x_pos, y=y_pos)
+                elif event.stick == GamepadStick.RIGHT:
+                    xy_pos = pos[0] + event.dir[0] * self.slider_big_step
+                    z_pos = pos[2] + event.dir[1] * self.slider_big_step
+                    self._scanning_logic.set_position('gamepad', x=xy_pos, z=z_pos)
+        else:
+            if event.type == GamepadEvent.BUTTON_PRESSED:
+                if event.button_id == GamepadButton.SHOULDER_RIGHT:
+                    self._gamepad_interlock = True
+
+
