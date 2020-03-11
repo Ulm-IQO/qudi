@@ -1914,16 +1914,16 @@ class ConfocalGui(GUIBase):
             if event.type == GamepadEvent.BUTTON_PRESSED:
                 if event.button_id == GamepadButton.DPAD_RIGHT:
                     pos = self._scanning_logic.get_position()[0]
-                    self.update_from_key(x=float(round(pos + self.slider_small_step, 15)))
+                    self.update_from_key(x=pos + self.slider_small_step)
                 elif event.button_id == GamepadButton.DPAD_LEFT:
                     pos = self._scanning_logic.get_position()[0]
-                    self.update_from_key(x=float(round(pos - self.slider_small_step, 15)))
+                    self.update_from_key(x=pos - self.slider_small_step)
                 elif event.button_id == GamepadButton.DPAD_UP:
                     pos = self._scanning_logic.get_position()[1]
-                    self.update_from_key(y=float(round(pos + self.slider_small_step, 15)))
+                    self.update_from_key(y=pos + self.slider_small_step)
                 elif event.button_id == GamepadButton.DPAD_DOWN:
                     pos = self._scanning_logic.get_position()[1]
-                    self.update_from_key(y=float(round(pos - self.slider_small_step, 15)))
+                    self.update_from_key(y=pos - self.slider_small_step)
             elif event.type == GamepadEvent.BUTTON_RELEASED:
                 if event.button_id == GamepadButton.SHOULDER_RIGHT:
                     self._gamepad_interlock = False
