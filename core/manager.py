@@ -739,7 +739,7 @@ class Manager(QtCore.QObject):
     sigManagerQuit = QtCore.Signal(bool)
     sigShowManager = QtCore.Signal()
 
-    def __init__(self, args, **kwargs):
+    def __init__(self, no_gui=False, config_path='', **kwargs):
         """
         Constructor for Qudi main management class
 
@@ -749,7 +749,7 @@ class Manager(QtCore.QObject):
         super().__init__()
 
         self.lock = Mutex(recursive=True)  # used for keeping some basic methods thread-safe
-        self._has_gui = not args.no_gui  # flag indicating GUI or command line mode
+        self._has_gui = not no_gui  # flag indicating GUI or command line mode
 
         self.task_runner = None  # Task runner reference
         # Singleton container for all qudi modules
@@ -771,8 +771,8 @@ class Manager(QtCore.QObject):
         logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThread()))
 
         # Find config file path
-        self.config_file_path = args.config if os.path.isfile(
-            args.config) else self.find_default_config_file()
+        self.config_file_path = config_path if os.path.isfile(
+            config_path) else self.find_default_config_file()
         # Process configuration file
         try:
             self.__load_and_process_config()

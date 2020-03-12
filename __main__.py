@@ -24,66 +24,6 @@ See documentation/BSDLicense_IPython.md for details.
 Copyright (c) 2015, IPython Development Team
 """
 
-import subprocess
-import sys
-import os
+from .runnable import main
 
-myenv = os.environ.copy()
-os.chdir(os.path.dirname(__file__))
-
-if sys.platform == 'win32':
-    from win_interrupt import create_interrupt_event
-    # Create a Win32 event for interrupting the kernel and store it in an environment variable.
-    interrupt_event = create_interrupt_event()
-    myenv["QUDI_INTERRUPT_EVENT"] = str(interrupt_event)
-    try:
-        from _winapi import DuplicateHandle, GetCurrentProcess
-        from _winapi import DUPLICATE_SAME_ACCESS, CREATE_NEW_PROCESS_GROUP
-    except ImportError:
-        from _subprocess import DuplicateHandle, GetCurrentProcess
-        from _subprocess import DUPLICATE_SAME_ACCESS, CREATE_NEW_PROCESS_GROUP
-    pid = GetCurrentProcess()
-    handle = DuplicateHandle(pid, pid, pid, 0, True, DUPLICATE_SAME_ACCESS)
-    myenv['QUDI_PARENT_PID'] = str(int(handle))
-else:
-    myenv['QUDI_PARENT_PID'] = str(os.getpid())
-
-argv = [sys.executable, '-m', 'core'] + sys.argv[1:]
-
-while True:
-    process = subprocess.Popen(argv,
-                               close_fds=False,
-                               env=myenv,
-                               stdin=sys.stdin,
-                               stdout=sys.stdout,
-                               stderr=sys.stderr,
-                               shell=False)
-    if sys.platform == 'win32':
-        # Attach the interrupt event to the Popen object so it can be used later.
-        process.win32_interrupt_event = interrupt_event
-    try:
-        retval = process.wait()
-        if retval == 0:
-            break
-        elif retval == 42:
-            print('Restarting...')
-            continue
-        elif retval == 2:
-            # invalid commandline argument
-            break
-        elif retval == -6:
-            # called if QFatal occurs
-            break
-        elif retval == 4:
-            print('Import Error: Qudi could not be started due to missing packages.')
-            sys.exit(retval)
-        else:
-            print('Unexpected return value {0}. Exiting.'.format(retval))
-            sys.exit(retval)
-    except KeyboardInterrupt:
-        print('Keyboard Interrupt, quitting!')
-        break
-    except:
-        process.kill()
-        process.wait()
-        raise
+main()
