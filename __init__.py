@@ -20,3 +20,5 @@ Contains code that used to be distributed under the terms of the Modified BSD Li
 See documentation/BSDLicense_IPython.md for details.
 Copyright (c) 2015, IPython Development Team
 """
+
+__version__ = '1.0'
