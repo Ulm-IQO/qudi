@@ -30,6 +30,7 @@ from .configoption import MissingOption, ConfigOption
 from .connector import Connector
 from .statusvariable import StatusVar
 from core.util.mutex import Mutex
+from core.util.paths import get_appdata_dir
 from .config import load, save
 
 import os
@@ -144,12 +145,11 @@ class Base(QtCore.QObject):
     _sigPopUpMessage = QtCore.Signal(str, str)
     _sigBalloonMessage = QtCore.Signal(str, str, object)
 
-    def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
+    def __init__(self, name, config=None, callbacks=None, **kwargs):
         """
         Initialise Base class object and set up its state machine.
 
         @param object self: the object being initialised
-        @param object manager: the manager object that
         @param str name: unique name for this module instance
         @param dict configuration: parameters from the configuration file
         @param dict callbacks: dict specifying functions to be run on state machine transitions
@@ -214,12 +214,10 @@ class Base(QtCore.QObject):
         # set instance attributes according to connector meta objects
         for attr_name, conn in self._module_meta.get('connectors', dict()).items():
             setattr(self, attr_name, conn)
-
-        self._manager = manager
         return
 
     @QtCore.Slot()
-    def move_to_manager_thread(self):
+    def move_to_main_thread(self):
         """ Method that will move this module into the main/manager thread.
         """
         if QtCore.QThread.currentThread() != self.thread():
@@ -227,7 +225,7 @@ class Base(QtCore.QObject):
                                             'move_to_manager_thread',
                                             QtCore.Qt.BlockingQueuedConnection)
         else:
-            self.moveToThread(self._manager.thread())
+            self.moveToThread(QtCore.QCoreApplication.instance().thread())
 
     @property
     def module_thread(self):
@@ -322,7 +320,7 @@ class Base(QtCore.QObject):
         file_name = 'status-{0}_{1}_{2}.cfg'.format(self.__class__.__name__,
                                                     self._module_meta['base'],
                                                     self._module_meta['name'])
-        return os.path.join(self._manager.get_status_dir(), file_name)
+        return os.path.join(get_appdata_dir(), file_name)
 
     def on_activate(self):
         """

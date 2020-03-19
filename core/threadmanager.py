@@ -28,35 +28,35 @@ from qtpy import QtCore
 logger = logging.getLogger(__name__)
 
 
-class ThreadManagerSingleton(QtCore.QAbstractListModel):
-    """ This class keeps track of all the QThreads that are needed somewhere. The registered
-    threads are stored in a static variable and thus are shared across all instances of this class.
+class ThreadManager(QtCore.QAbstractListModel):
+    """ This class keeps track of all the QThreads that are needed somewhere.
 
     Using this class is thread-safe.
     """
     _instance = None
     _lock = RecursiveMutex()
-    _threads = list()
-    _thread_names = list()
 
     def __new__(cls, *args, **kwargs):
         with cls._lock:
             if cls._instance is None or cls._instance() is None:
                 obj = super().__new__(cls, *args, **kwargs)
-                cls._threads = list()
-                cls._thread_names = list()
-                cls._instance = None
+                cls._instance = weakref.ref(obj)
                 return obj
-            return cls._instance()
+            raise Exception('Only one ThreadManager instance per process possible (Singleton). '
+                            'Please use ThreadManager.instance() to get a reference to the already '
+                            'created instance.')
 
     def __init__(self, *args, **kwargs):
-        with self._lock:
-            if ThreadManagerSingleton._instance is None:
-                if QtCore.QCoreApplication.instance().thread() is not QtCore.QThread.currentThread():
-                    raise Exception(
-                        'ThreadManagerSingleton can only be initialized by Qt main thread.')
-                super().__init__(*args, **kwargs)
-                ThreadManagerSingleton._instance = weakref.ref(self)
+        super().__init__(*args, **kwargs)
+        self._threads = list()
+        self._thread_names = list()
+
+    @classmethod
+    def instance(cls):
+        with cls._lock:
+            if cls._instance is None:
+                return None
+            return cls._instance()
 
     @property
     def thread_names(self):
@@ -77,7 +77,7 @@ class ThreadManagerSingleton(QtCore.QAbstractListModel):
             thread = QtCore.QThread()
             thread.setObjectName(name)
             self.register_thread(thread)
-        return thread
+            return thread
 
     @QtCore.Slot(QtCore.QThread)
     def register_thread(self, thread):
@@ -176,17 +176,16 @@ class ThreadManagerSingleton(QtCore.QAbstractListModel):
                 if not thread.wait(int(thread_timeout)):
                     logger.error('Waiting for thread {0} timed out.'.format(thread.objectName()))
 
-    @classmethod
-    def get_thread_by_name(cls, name):
+    def get_thread_by_name(self, name):
         """ Get registered QThread instance by its objectName
 
         @param str name: objectName of the QThread to return
         @return QThread: The registered thread object
         """
-        with cls._lock:
+        with self._lock:
             try:
-                index = cls._thread_names.index(name)
-                return cls._threads[index]
+                index = self._thread_names.index(name)
+                return self._threads[index]
             except ValueError:
                 return None
 

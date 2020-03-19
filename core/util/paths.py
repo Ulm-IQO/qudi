@@ -20,7 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import sys
 
-__all__ = ('get_appdata_dir', 'get_home_dir', 'get_main_dir', 'get_userdata_dir')
+__all__ = ('get_appdata_dir', 'get_default_config_dir', 'get_default_log_dir', 'get_home_dir',
+           'get_main_dir', 'get_userdata_dir')
 
 
 def get_main_dir():
@@ -72,3 +73,27 @@ def get_appdata_dir(create_missing=False):
         os.makedirs(path)
     return path
 
+
+def get_default_config_dir(create_missing=False):
+    """ Get the system specific application data directory.
+
+    @return str: path to appdata directory
+    """
+    path = os.path.join(get_userdata_dir(create_missing), 'config')
+    # Create path if desired.
+    if create_missing and not os.path.exists(path):
+        os.mkdir(path)
+    return path
+
+
+def get_default_log_dir(create_missing=False):
+    """ Get the system specific application log directory.
+
+    @return str: path to default logging directory
+    """
+    # FIXME: This needs to be properly done for linux systems
+    path = os.path.join(get_userdata_dir(create_missing), 'log')
+    # Create path if desired.
+    if create_missing and not os.path.exists(path):
+        os.mkdir(path)
+    return path

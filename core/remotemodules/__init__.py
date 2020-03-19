@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from urllib.parse import urlparse
 import rpyc
 
-from core.threadmanager import thread_manager
+from core.threadmanager import ThreadManager
 from ._config import config
 from .remote import share_module, remove_shared_module
 from .remote import _RemoteServer, _RemoteModulesService, SharedModulesModel
@@ -50,6 +50,9 @@ def start_remote_server(**kwargs):
     global remote_server
     if kwargs:
         config.configure(**kwargs)
+    thread_manager = ThreadManager.instance()
+    if thread_manager is None:
+        raise Exception('Thread manager has not been initialized by qudi.')
     server_thread = thread_manager.get_new_thread('remote-server')
     remote_server = _RemoteServer(_RemoteModulesService(), config=config.configuration)
     remote_server.moveToThread(server_thread)
@@ -62,9 +65,11 @@ def stop_remote_server():
     if remote_server is not None:
         try:
             remote_server.stop()
-            thread_manager.quit_thread('remote-server')
-            thread_manager.join_thread('remote-server', time=5)
-        except Exception:
+            thread_manager = ThreadManager.instance()
+            if thread_manager is not None:
+                thread_manager.quit_thread('remote-server')
+                thread_manager.join_thread('remote-server', time=5)
+        except:
             raise
         finally:
             remote_server = None

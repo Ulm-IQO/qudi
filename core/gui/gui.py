@@ -20,9 +20,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import weakref
+import logging
 import platform
 from qtpy import QtCore, QtGui, QtWidgets
-import logging
+from core.util.helpers import has_pyqtgraph
+from .main_gui.main_gui import QudiMainGui
+
+if has_pyqtgraph:
+    import pyqtgraph as pg
 
 logger = logging.getLogger(__name__)
 
@@ -66,26 +72,60 @@ class Gui(QtCore.QObject):
     """ Set up all necessary GUI elements, like application icons, themes, etc.
     """
 
+    _instance = None
+
     _sigPopUpMessage = QtCore.Signal(str, str)
     _sigBalloonMessage = QtCore.Signal(str, str, object, object)
 
-    def __init__(self, artwork_dir, stylesheet_path=None):
-        super().__init__()
-        QtWidgets.QApplication.instance().setQuitOnLastWindowClosed(False)
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None or cls._instance() is None:
+            obj = super().__new__(cls, *args, **kwargs)
+            cls._instance = weakref.ref(obj)
+            return obj
+        raise Exception('Gui is a singleton. Please use Gui.instance() to get a reference to the '
+                        'already created instance.')
 
-        self._artwork_dir = artwork_dir
-        self._init_app_icon()
-        self.system_tray_icon = SystemTrayIcon(artwork_dir)
-        self.show_system_tray_icon()
+    def __init__(self, qudi_instance, artwork_dir, stylesheet_path=None, theme=None,
+                 use_opengl=False):
+        if not os.path.isdir(artwork_dir):
+            raise NotADirectoryError('artwork_dir path "{0}" not found.'.format(artwork_dir))
+        if stylesheet_path is not None and not os.path.isfile(stylesheet_path):
+            raise FileNotFoundError('stylesheet_path "{0}" not found.'.format(stylesheet_path))
+        if theme is None:
+            theme = 'qudiTheme'
+
+        super().__init__()
+
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            raise Exception('No Qt GUI app running (no QApplication instance).')
+
+        app.setQuitOnLastWindowClosed(False)
+
+        self._init_app_icon(artwork_dir)
+        self.set_theme(theme, artwork_dir)
         if stylesheet_path is not None:
             self.set_style_sheet(stylesheet_path)
+        self.system_tray_icon = SystemTrayIcon(artwork_dir)
+        self.show_system_tray_icon()
+
         self._sigPopUpMessage.connect(self.pop_up_message, QtCore.Qt.QueuedConnection)
         self._sigBalloonMessage.connect(self.balloon_message, QtCore.Qt.QueuedConnection)
 
-    def _init_app_icon(self):
+        self._configure_pyqtgraph(use_opengl)
+        self.main_gui_module = QudiMainGui(name='qudi_main_gui', qudi_main=qudi_instance)
+
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            return None
+        return cls._instance()
+
+    @staticmethod
+    def _init_app_icon(artwork_dir):
         """ Set up the Qudi application icon.
         """
-        iconpath = os.path.join(self._artwork_dir, 'logo')
+        iconpath = os.path.join(artwork_dir, 'logo')
         app_icon = QtGui.QIcon()
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
@@ -94,11 +134,26 @@ class Gui(QtCore.QObject):
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-256x256.png'), QtCore.QSize(256, 256))
         QtWidgets.QApplication.instance().setWindowIcon(app_icon)
 
-    def set_theme(self, theme):
+    @staticmethod
+    def _configure_pyqtgraph(use_opengl=False):
+        # Configure pyqtgraph (if present)
+        if has_pyqtgraph:
+            # test setting background of pyqtgraph
+            testwidget = QtWidgets.QWidget()
+            testwidget.ensurePolished()
+            bgcolor = testwidget.palette().color(QtGui.QPalette.Normal, testwidget.backgroundRole())
+            # set manually the background color in hex code according to our color scheme:
+            pg.setConfigOption('background', bgcolor)
+            # experimental opengl usage
+            pg.setConfigOption('useOpenGL', use_opengl)
+
+    @staticmethod
+    def set_theme(theme, artwork_dir):
         """
         Set icon theme for qudi app.
 
         @param str theme: qudi theme name
+        @param str artwork_dir: qudi artwork directory
         """
         # Make icons work on non-X11 platforms, set custom theme
         # if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
@@ -107,22 +162,22 @@ class Gui(QtCore.QObject):
         # removed and the QT theme is being set to our artwork/icons folder for
         # all OSs.
         themepaths = QtGui.QIcon.themeSearchPaths()
-        themepaths.append(os.path.join(self._artwork_dir, 'icons'))
+        themepaths.append(os.path.join(artwork_dir, 'icons'))
         QtGui.QIcon.setThemeSearchPaths(themepaths)
         QtGui.QIcon.setThemeName(theme)
 
     @staticmethod
-    def set_style_sheet(stylesheetpath):
+    def set_style_sheet(stylesheet_path):
         """
         Set qss style sheet for application.
 
-        @param str stylesheetpath: path to style sheet file
+        @param str stylesheet_path: path to style sheet file
         """
-        with open(stylesheetpath, 'r') as stylesheetfile:
+        with open(stylesheet_path, 'r') as stylesheetfile:
             stylesheet = stylesheetfile.read()
 
         # see issue #12 on qdarkstyle github
-        if platform.system().lower() == 'darwin' and stylesheetpath.endswith('qdark.qss'):
+        if platform.system().lower() == 'darwin' and stylesheet_path.endswith('qdark.qss'):
             mac_fix = '''
             QDockWidget::title
             {
@@ -139,6 +194,33 @@ class Gui(QtCore.QObject):
         """ Close all application windows.
         """
         QtWidgets.QApplication.instance().closeAllWindows()
+
+    def activate_main_gui(self):
+        if QtCore.QThread.currentThread() is not self.thread():
+            QtCore.QMetaObject.invokeMethod(self,
+                                            'activate_main_gui',
+                                            QtCore.Qt.BlockingQueuedConnection)
+            return
+
+        if self.main_gui_module.module_state() != 'deactivated':
+            self.main_gui_module.show()
+            return
+
+        self.main_gui_module.module_state.activate()
+        QtWidgets.QApplication.instance().processEvents()
+
+    def deactivate_main_gui(self):
+        if QtCore.QThread.currentThread() is not self.thread():
+            QtCore.QMetaObject.invokeMethod(self,
+                                            'deactivate_main_gui',
+                                            QtCore.Qt.BlockingQueuedConnection)
+            return
+
+        if self.main_gui_module.module_state() == 'deactivated':
+            return
+
+        self.main_gui_module.module_state.deactivate()
+        QtCore.QApplication.instance().processEvents()
 
     def show_system_tray_icon(self):
         """ Show system tray icon
@@ -175,18 +257,33 @@ class Gui(QtCore.QObject):
             time = 15
         self.system_tray_icon.showMessage(title, message, icon, int(round(time * 1000)))
 
-    @staticmethod
-    def prompt_shutdown(modules_locked=True):
-        """
-        Display a dialog, asking the user to confirm shutdown.
+    def prompt_shutdown(self, modules_locked=True):
+        """ Display a dialog, asking the user to confirm shutdown.
         """
         if modules_locked:
             msg = 'Some qudi modules are locked right now.\n' \
                   'Do you really want to quit and force modules to deactivate?'
         else:
             msg = 'Do you really want to quit?'
-        result = QtWidgets.QMessageBox.question(None,
-                                                'Qudi: Shutdown?',
+
+        result = QtWidgets.QMessageBox.question(self.main_gui_module.mw,
+                                                'Qudi: Quit?',
+                                                msg,
+                                                QtWidgets.QMessageBox.Yes,
+                                                QtWidgets.QMessageBox.No)
+        return result == QtWidgets.QMessageBox.Yes
+
+    def prompt_restart(self, modules_locked=True):
+        """ Display a dialog, asking the user to confirm restart.
+        """
+        if modules_locked:
+            msg = 'Some qudi modules are locked right now.\n' \
+                  'Do you really want to restart and force modules to deactivate?'
+        else:
+            msg = 'Do you really want to restart?'
+
+        result = QtWidgets.QMessageBox.question(self.main_gui_module.mw,
+                                                'Qudi: Restart?',
                                                 msg,
                                                 QtWidgets.QMessageBox.Yes,
                                                 QtWidgets.QMessageBox.No)

@@ -25,6 +25,7 @@ import ctypes
 import sys
 import os
 
+
 if sys.platform == 'win32':
     def create_interrupt_event():
         """Create an interrupt event handle.
