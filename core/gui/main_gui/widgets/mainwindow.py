@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QMainWindow class for the manager GUI.
+This file contains the QMainWindow class for the Qudi main GUI.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ from .modulewidget import ModuleWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 
-class ManagerMainWindow(QtWidgets.QMainWindow):
+class QudiMainWindow(QtWidgets.QMainWindow):
     """
     Main Window definition for the manager GUI.
     """
@@ -162,6 +162,9 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         # Create status bar
         self.statusbar = QtWidgets.QStatusBar()
         self.setStatusBar(self.statusbar)
+        self.version_label = QtWidgets.QLabel()
+        self.version_label.setOpenExternalLinks(True)
+        self.statusbar.addWidget(self.version_label)
 
         # Create dialogues
         self.about_qudi_dialog = AboutQudiDialog()

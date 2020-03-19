@@ -29,7 +29,7 @@ import sys
 from qtpy import QtCore
 from .parentpoller import ParentPollerWindows, ParentPollerUnix
 from .logger import get_logger
-from .threadmanager import thread_manager
+from .threadmanager import ThreadManager
 
 logger = get_logger(__name__)
 
@@ -101,7 +101,9 @@ class AppWatchdog(QtCore.QObject):
             QtCore.QCoreApplication.instance().processEvents()
             logger.info('Stopping threads...')
             print('Stopping threads...')
-            thread_manager.quit_all_threads()
+            thread_manager = ThreadManager.instance()
+            if thread_manager is not None:
+                thread_manager.quit_all_threads()
             QtCore.QCoreApplication.instance().processEvents()
             logger.info('Qudi is closed!  Ciao.')
             print('\n  Qudi is closed!  Ciao.')

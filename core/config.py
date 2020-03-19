@@ -13,7 +13,6 @@ The idea of the implementation of the OrderedDict was taken from
 http://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
 
 
-
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -33,10 +32,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from collections import OrderedDict
 import numpy
-import re
 import os
+import copy
 import ruamel.yaml as yaml
 from io import BytesIO
+from qtpy import QtCore
+from .util.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
+from warnings import warn
 
 
 def ordered_load(stream, loader_base=yaml.Loader):
@@ -238,3 +240,156 @@ def save(file_path, data):
         os.makedirs(file_dir)
     with open(file_path, 'w') as f:
         ordered_dump(data, stream=f, dumper_base=yaml.SafeDumper, default_flow_style=False)
+
+
+class Configuration(QtCore.QObject):
+    """
+    """
+
+    sigConfigChanged = QtCore.Signal(object)
+
+    def __init__(self, file_path=None):
+        super().__init__()
+        # determine and check path for config file
+        if isinstance(file_path, str) and os.path.isfile(file_path) and file_path.endswith('.cfg'):
+            self._file_path = file_path
+        else:
+            self._file_path = self.get_default_config()
+            warn('No valid config file path given. Using default config file path: {0}'
+                 ''.format(self._file_path))
+        # extracted fields from config file
+        self._global_config = dict()
+        self._module_config = {'hardware': dict(), 'logic': dict(), 'gui': dict()}
+        self.unknown_config = dict()
+
+    @property
+    def config_file(self):
+        return self._file_path
+
+    @property
+    def global_config(self):
+        return copy.deepcopy(self._global_config)
+
+    @property
+    def module_config(self):
+        return copy.deepcopy(self._module_config)
+
+    @property
+    def config_dict(self):
+        conf_dict = dict()
+        if self._global_config:
+            conf_dict['global'] = self.global_config
+        conf_dict.update(self.module_config)
+        return conf_dict
+
+    @property
+    def startup_modules(self):
+        return self._global_config.get('startup', list()).copy()
+
+    @property
+    def module_server(self):
+        if 'module_server' not in self._global_config:
+            return None
+        return copy.deepcopy(self._global_config['module_server'])
+
+    @property
+    def stylesheet(self):
+        return self._global_config.get('stylesheet', None)
+
+    @property
+    def extension_paths(self):
+        return self._global_config.get('extensions', list()).copy()
+
+    def load_config(self, file_path=None):
+        if file_path is None:
+            file_path = self._file_path
+        config = load(file_path)
+        self._global_config = config.pop('global', dict())
+        self._module_config = dict()
+        for base in ('hardware', 'logic', 'gui'):
+            self._module_config[base] = config.pop(base, dict())
+            # Remove empty module config entries
+            for mod_name in tuple(self._module_config[base]):
+                if not self._module_config[base][mod_name]:
+                    del self._module_config[base][mod_name]
+        if config:
+            warn('Unknown config file section(s) encountered:\n{0}'.format(config))
+            self.unknown_config = config
+        else:
+            self.unknown_config = dict()
+
+        # Clean up global config
+        for key in tuple(self._global_config):
+            if not self._global_config[key] and not isinstance(self._global_config[key], bool):
+                del self._global_config[key]
+                continue
+            if key == 'startup':
+                if isinstance(self._global_config[key], str):
+                    self._global_config[key] = [self._global_config[key]]
+            elif key == 'stylesheet':
+                # FIXME: How should stylesheets be declared in config?
+                self._global_config[key] = os.path.join(get_main_dir(),
+                                                        'artwork',
+                                                        'styles',
+                                                        'application',
+                                                        self._global_config[key])
+                if not os.path.isfile(self._global_config[key]):
+                    warn('Stylesheet file not found in specified path: {0}'
+                         ''.format(self._global_config[key]))
+                    del self._global_config[key]
+            elif key == 'extensions':
+                if isinstance(self._global_config[key], str):
+                    self._global_config[key] = [self._global_config[key]]
+
+                # Convert all relative paths into absolute paths and ignore if path is non-existent
+                abs_paths = list()
+                for path in self._global_config[key]:
+                    # absolute or relative path? Existing?
+                    if os.path.isabs(path) and os.path.isdir(path):
+                        abs_paths.append(path)
+                    else:
+                        # relative path? Try relative to user home dir and relative to main dir
+                        new_path = os.path.abspath(os.path.join(get_home_dir(), path))
+                        if not os.path.isdir(new_path):
+                            new_path = os.path.abspath(os.path.join(get_main_dir(), path))
+                            if not os.path.isdir(new_path):
+                                warn('Qudi extension path "{0}" does not exist.'.format(path))
+                                continue
+                        abs_paths.append(new_path)
+                if abs_paths:
+                    self._global_config[key] = abs_paths
+                else:
+                    del self._global_config[key]
+
+        self._file_path = file_path
+        # Write current config file path to load.cfg
+        save(file_path=os.path.join(get_appdata_dir(create_missing=True), 'load.cfg'),
+             data={'last_loaded_config': file_path})
+        self.sigConfigChanged.emit(self)
+
+    def save_config(self, file_path):
+        save(file_path, self.config_dict)
+
+    @staticmethod
+    def get_default_config():
+        # Try loading config file path from last session
+        try:
+            load_cfg = load(os.path.join(get_appdata_dir(), 'load.cfg'), ignore_missing=True)
+        except:
+            load_cfg = dict()
+        file_path = load_cfg.get('last_loaded_config', '')
+        if os.path.isfile(file_path) and file_path.endswith('.cfg'):
+            return file_path
+
+        # Try default.cfg in user home directory
+        file_path = os.path.join(get_default_config_dir(), 'default.cfg')
+        if os.path.isfile(file_path):
+            return file_path
+
+        # Fall back to default.cfg in qudi directory
+        file_path = os.path.join(get_main_dir(), 'config', 'default.cfg')
+        if os.path.isfile(file_path):
+            return file_path
+
+        # Raise error if no config file could be found
+        raise FileNotFoundError('No config file could be found in default directories.')
