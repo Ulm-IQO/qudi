@@ -129,9 +129,10 @@ class QudiMainGui(GuiBase):
     def _connect_signals(self):
         qudi_main = self._qudi_main
         # Connect up the main windows actions
-        self.mw.action_quit.triggered.connect(qudi_main.quit, QtCore.Qt.QueuedConnection)
+        self.mw.action_quit.triggered.connect(qudi_main.prompt_quit, QtCore.Qt.QueuedConnection)
         self.mw.action_load_configuration.triggered.connect(self.load_configuration)
-        self.mw.action_reload_qudi.triggered.connect(qudi_main.restart, QtCore.Qt.QueuedConnection)
+        self.mw.action_reload_qudi.triggered.connect(
+            qudi_main.prompt_restart, QtCore.Qt.QueuedConnection)
         self.mw.action_save_configuration.triggered.connect(self.save_configuration)
         self.mw.action_load_all_modules.triggered.connect(
             qudi_main.module_manager.start_all_modules)
