@@ -36,3 +36,35 @@ The trailing ElementType also increases readability when using functions of thes
 ~~~~~~~~~~~~~{.py}
 roi_cb_manual_RadioButton.setChecked(True)
 ~~~~~~~~~~~~~
+
+## GUI model and view
+
+A very frequent need when building UI is the need to have a Spinbox matching a variable of the logic.
+One feature from the core.gui can help reduce the number of line to achieve it. One example use is :
+
+~~~~~~~~~~~~~{.py}
+connect_view_to_model(self, self._mw.a_spinbox, self.logic(), 'get_variable', 'set_variable)
+~~~~~~~~~~~~~
+
+Here the spinbox state will be linked to a variable so that any update on the GUI or the logic update the other.
+For the update to work, the logic has to call
+
+~~~~~~~~~~~~~{.py}
+self.model_has_changed.emit(['get_variable'])
+~~~~~~~~~~~~~
+
+The signal *model_has_changed* exiting in all logic module can be used to signal to listeners that a model have changed.
+For that, the signal is emitted with a list of all the variable getters that have changed.
+
+If the logic model is implemented as a @property, it even easier :
+
+~~~~~~~~~~~~~{.py}
+connect_view_to_model(self, self._mw.a_spinbox, self.logic(), 'variable')
+~~~~~~~~~~~~~
+
+~~~~~~~~~~~~~{.py}
+self.model_has_changed.emit(['variable'])
+~~~~~~~~~~~~~
+
+
+

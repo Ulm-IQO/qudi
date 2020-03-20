@@ -64,6 +64,8 @@ The potential sequence_options are:
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
+* Added a model/view connection feature to connect logic and GUI model and view to simplify GUI code
+* Updated counter GUI to demonstrate the new model/view connection and cleaned its code
 
 
 
