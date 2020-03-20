@@ -157,7 +157,7 @@ def connect_view_to_model(caller, view, model_holder, model_getter, model_setter
 
     model_holder.model_has_changed.connect(on_module_change)
 
-    caller.add_deactivation_callback(lambda: model_holder.model_has_changed.disconnect())
+    caller.add_deactivation_callback(lambda: model_holder.model_has_changed.disconnect(on_module_change))
     caller.add_deactivation_callback(lambda: view.editingFinished.disconnect())
 
     update_view()
