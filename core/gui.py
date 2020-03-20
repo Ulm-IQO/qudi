@@ -92,13 +92,13 @@ class Gui(QObject):
         QApplication.instance().closeAllWindows()
 
 
-def connect_trigger_to_function(caller, trigger, event, function, connection_type=None):
+def connect_trigger_to_function(caller, trigger, function, event=None, connection_type=None):
     """" Safely connect a GUI action to a logic/gui method
 
     @param (module) caller: A reference to the calling module (self) to catch a deactivation event and clean up properly
     @param (QtObject) trigger : the object that generate the trigger
-    @param (str) event : the type of event to listen to
     @param (function) function: The function to call when triggered
+    @param (str) event : the type of event to listen to
     @param (PyQt5.QtCore.Qt.ConnectionType) connection_type: The connection type passed to connect()
 
     The connection type can be blocking or queued, more info here : https://doc.qt.io/qt-5/qt.html
