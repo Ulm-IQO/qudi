@@ -118,7 +118,7 @@ class CounterGui(GUIBase):
         )
 
         #####################
-        # Setting default parameters
+        # Connection views to models
         connect_view_to_model(self, self._mw.count_length_SpinBox, self._counting_logic, 'get_count_length',
                               'set_count_length')
         connect_view_to_model(self, self._mw.count_freq_SpinBox, self._counting_logic, 'get_count_frequency',
@@ -132,55 +132,32 @@ class CounterGui(GUIBase):
 
         #####################
         # Connecting user interactions
-        connect_trigger_to_function(self, self._mw.start_counter_Action, 'triggered', self.start_clicked)
-        connect_trigger_to_function(self, self._mw.record_counts_Action, 'triggered', self.save_clicked)
+        connect_trigger_to_function(self, self._mw.start_counter_Action, self.start_clicked, 'triggered')
+        connect_trigger_to_function(self, self._mw.record_counts_Action, self.save_clicked, 'triggered')
 
-        if len(self.curves) >= 2:
-            self._mw.trace_1_checkbox.setChecked(True)
-        else:
-            self._mw.trace_1_checkbox.setEnabled(False)
-            self._mw.trace_1_radiobutton.setEnabled(False)
+        for i in range(1, 4):
+            if len(self.curves) >= 2*i:
+                getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(True)
+            else:
+                getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(False)
+                getattr(self._mw, 'trace_{}_radiobutton'.format(i)).setChecked(False)
 
-        if len(self.curves) >= 4:
-            self._mw.trace_2_checkbox.setChecked(True)
-        else:
-            self._mw.trace_2_checkbox.setEnabled(False)
-            self._mw.trace_2_radiobutton.setEnabled(False)
-
-        if len(self.curves) >= 6:
-            self._mw.trace_3_checkbox.setChecked(True)
-        else:
-            self._mw.trace_3_checkbox.setEnabled(False)
-            self._mw.trace_3_radiobutton.setEnabled(False)
-
-        if len(self.curves) >= 8:
-            self._mw.trace_4_checkbox.setChecked(True)
-        else:
-            self._mw.trace_4_checkbox.setEnabled(False)
-            self._mw.trace_4_radiobutton.setEnabled(False)
-
-        self._mw.trace_1_checkbox.stateChanged.connect(self.trace_selection_changed)
-        self._mw.trace_2_checkbox.stateChanged.connect(self.trace_selection_changed)
-        self._mw.trace_3_checkbox.stateChanged.connect(self.trace_selection_changed)
-        self._mw.trace_4_checkbox.stateChanged.connect(self.trace_selection_changed)
+            getattr(self._mw, 'trace_{}_checkbox'.format(i)).stateChanged.connect(self.trace_selection_changed)
+            getattr(self._mw, 'trace_{}_radiobutton'.format(i)).released.connect(self.trace_display_changed)
 
         self._mw.trace_1_radiobutton.setChecked(True)
-        self._mw.trace_1_radiobutton.released.connect(self.trace_display_changed)
-        self._mw.trace_2_radiobutton.released.connect(self.trace_display_changed)
-        self._mw.trace_3_radiobutton.released.connect(self.trace_display_changed)
-        self._mw.trace_4_radiobutton.released.connect(self.trace_display_changed)
 
         # Connect the default view action
-        connect_trigger_to_function(self, self._mw.restore_default_view_Action, 'triggered', self.restore_default_view)
+        connect_trigger_to_function(self, self._mw.restore_default_view_Action, self.restore_default_view, 'triggered')
 
         #####################
         # starting the physical measurement
-        connect_trigger_to_function(self, self.sigStartCounter, None, self._counting_logic.startCount)
-        connect_trigger_to_function(self, self.sigStopCounter, None, self._counting_logic.stopCount)
+        connect_trigger_to_function(self, self.sigStartCounter, self._counting_logic.startCount)
+        connect_trigger_to_function(self, self.sigStopCounter, self._counting_logic.stopCount)
 
         ##################
         # Handling signals from the logic
-        self._counting_logic.sigCounterUpdated.connect(self.updateData)
+        connect_trigger_to_function(self, self._counting_logic.sigCounterUpdated, self.updateData)
 
         # ToDo:
         # self._counting_logic.sigCountContinuousNext.connect()
@@ -189,11 +166,9 @@ class CounterGui(GUIBase):
         # self._counting_logic.sigGatedCounterFinished.connect()
         # self._counting_logic.sigGatedCounterContinue.connect()
 
-        self._counting_logic.sigSavingStatusChanged.connect(self.update_saving_Action)
-        self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
-        self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
-
-        return 0
+        connect_trigger_to_function(self, self._counting_logic.sigSavingStatusChanged, self.update_saving_Action)
+        connect_trigger_to_function(self, self._counting_logic.sigCountingModeChanged, self.update_counting_mode_ComboBox)
+        connect_trigger_to_function(self, self._counting_logic.sigCountStatusChanged, self.update_count_status_Action)
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -212,11 +187,6 @@ class CounterGui(GUIBase):
         self._mw.trace_2_checkbox.stateChanged.disconnect()
         self._mw.trace_3_checkbox.stateChanged.disconnect()
         self._mw.trace_4_checkbox.stateChanged.disconnect()
-        self._counting_logic.sigCounterUpdated.disconnect()
-        self._counting_logic.sigSavingStatusChanged.disconnect()
-        self._counting_logic.sigCountingModeChanged.disconnect()
-        self._counting_logic.sigCountStatusChanged.disconnect()
-
         self._mw.close()
         return
 
