@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import logging
 import numpy as np
-import weakref
 
 from collections import OrderedDict
 from core.statusvariable import StatusVar
@@ -57,7 +56,7 @@ class QudiMainGui(GuiBase):
     # status vars
     _console_font_size = StatusVar('console_font_size', 10)
 
-    def __init__(self, *args, qudi_main, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Create an instance of the module.
 
           @param object manager:
@@ -65,7 +64,6 @@ class QudiMainGui(GuiBase):
           @param dict config:
         """
         super().__init__(*args, **kwargs)
-        self.__qudi_main = weakref.ref(qudi_main)
         self._ipython_module_names = set()
         self.error_dialog = None
         self._kernel_manager = None
@@ -122,7 +120,7 @@ class QudiMainGui(GuiBase):
 
     @property
     def _qudi_main(self):
-        qudi_main = self.__qudi_main()
+        qudi_main = super()._qudi_main
         if qudi_main is None:
             raise Exception('Unexpected missing qudi main instance. It has either been deleted or '
                             'garbage collected.')
