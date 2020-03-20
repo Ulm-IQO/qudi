@@ -113,7 +113,8 @@ class Gui(QtCore.QObject):
         self._sigBalloonMessage.connect(self.balloon_message, QtCore.Qt.QueuedConnection)
 
         self._configure_pyqtgraph(use_opengl)
-        self.main_gui_module = QudiMainGui(name='qudi_main_gui', qudi_main=qudi_instance)
+        self.main_gui_module = QudiMainGui(qudi_main_weakref=weakref.ref(qudi_instance),
+                                           name='qudi_main_gui')
 
     @classmethod
     def instance(cls):

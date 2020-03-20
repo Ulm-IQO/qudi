@@ -20,10 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import logging
-import warnings
 import copy
 from fysom import Fysom  # provides a finite state machine
-from collections import OrderedDict
 
 from qtpy import QtCore
 from .configoption import MissingOption, ConfigOption
@@ -142,10 +140,7 @@ class Base(QtCore.QObject):
     _threaded = False
     _module_meta = {'base': 'hardware'}  # can be overwritten by subclasses of Base
 
-    _sigPopUpMessage = QtCore.Signal(str, str)
-    _sigBalloonMessage = QtCore.Signal(str, str, object)
-
-    def __init__(self, name, config=None, callbacks=None, **kwargs):
+    def __init__(self, qudi_main_weakref, name, config=None, callbacks=None, **kwargs):
         """
         Initialise Base class object and set up its state machine.
 
@@ -155,6 +150,9 @@ class Base(QtCore.QObject):
         @param dict callbacks: dict specifying functions to be run on state machine transitions
         """
         super().__init__(**kwargs)
+
+        # Keep weak reference to qudi main instance
+        self.__qudi_main_weakref = qudi_main_weakref
 
         # add module meta objects to avoid cluttering namespace
         self._module_meta = copy.deepcopy(self._module_meta)
@@ -237,6 +235,10 @@ class Base(QtCore.QObject):
         if self._threaded:
             return self.thread()
         return None
+
+    @property
+    def _qudi_main(self):
+        return self.__qudi_main_weakref()
 
     def __activation_callback(self, event=None):
         """
@@ -321,6 +323,26 @@ class Base(QtCore.QObject):
                                                     self._module_meta['base'],
                                                     self._module_meta['name'])
         return os.path.join(get_appdata_dir(), file_name)
+
+    def _send_balloon_message(self, title, message, time=None, icon=None):
+        qudi_main = self.__qudi_main_weakref()
+        if qudi_main is None:
+            return
+        if qudi_main.gui is None:
+            log = logging.getLogger('balloon-message')
+            log.warning('{0}:\n{1}'.format(title, message))
+            return
+        qudi_main.gui.balloon_message(title, message, time, icon)
+
+    def _send_pop_up_message(self, title, message):
+        qudi_main = self.__qudi_main_weakref()
+        if qudi_main is None:
+            return
+        if qudi_main.gui is None:
+            log = logging.getLogger('pop-up-message')
+            log.warning('{0}:\n{1}'.format(title, message))
+            return
+        qudi_main.gui.pop_up_message(title, message)
 
     def on_activate(self):
         """

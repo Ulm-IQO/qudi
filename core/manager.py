@@ -57,8 +57,9 @@ class ModuleManager(QtCore.QObject):
             raise Exception('ModuleManager is a singleton. An instance has already been created in '
                             'this process. Please use ModuleManager.instance() instead.')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, qudi_main, **kwargs):
         super().__init__(*args, **kwargs)
+        self._qudi_main_ref = weakref.ref(qudi_main, self._qudi_main_ref_dead_callback)
         self._modules = dict()
 
     @classmethod
@@ -157,7 +158,7 @@ class ModuleManager(QtCore.QObject):
                 logger.error(
                     'Module with name "{0}" already registered. Unable to add module of same name.')
                 return
-            module = ManagedModule(name, base, configuration)
+            module = ManagedModule(self._qudi_main_ref, name, base, configuration)
             module.sigStateChanged.connect(self.sigModuleStateChanged)
             self._modules[name] = module
             self.refresh_module_links()
@@ -220,6 +221,11 @@ class ModuleManager(QtCore.QObject):
         with self._lock:
             self.remove_module(module_name, ignore_missing=True)
 
+    def _qudi_main_ref_dead_callback(self):
+        logger.error('Qudi main reference no longer valid. This should never happen. Tearing down '
+                     'ModuleManager.')
+        self.clear()
+
 
 class ManagedModule(QtCore.QObject):
     """ Object representing a qudi module (gui, logic or hardware) to be managed by the qudi Manager
@@ -230,7 +236,9 @@ class ManagedModule(QtCore.QObject):
 
     _lock = RecursiveMutex()  # Single mutex shared across all ManagedModule instances
 
-    def __init__(self, name, base, configuration):
+    def __init__(self, qudi_main_ref, name, base, configuration):
+        if not isinstance(qudi_main_ref, weakref.ref):
+            raise TypeError('qudi_main_ref must be weakref to qudi main instance.')
         if not name or not isinstance(name, str):
             raise NameError('Module name must be a non-empty string.')
         if base not in ('gui', 'logic', 'hardware'):
@@ -241,19 +249,20 @@ class ManagedModule(QtCore.QObject):
         if not isinstance(configuration.get('remotemodules', ''), str):
             raise TypeError('remotemodules URL of module "{0}" must be of str type.'.format(name))
         if not isinstance(configuration.get('certfile', ''), str):
-            raise TypeError(
-                'certfile config option of remotemodules module "{0}" must be of str type.'.format(name))
-        if not isinstance(configuration.get('keyfile', ''), str):
-            raise TypeError(
-                'keyfile config option of remotemodules module "{0}" must be of str type.'.format(name))
-        if not isinstance(configuration.get('remoteaccess', False), bool):
-            raise TypeError('remoteaccess config option of remotemodules module "{0}" must be of bool '
+            raise TypeError('certfile config option of remotemodules module "{0}" must be of str '
                             'type.'.format(name))
+        if not isinstance(configuration.get('keyfile', ''), str):
+            raise TypeError('keyfile config option of remotemodules module "{0}" must be of str '
+                            'type.'.format(name))
+        if not isinstance(configuration.get('remoteaccess', False), bool):
+            raise TypeError('remoteaccess config option of remotemodules module "{0}" must be of '
+                            'bool type.'.format(name))
 
         super().__init__()
         if self.thread() is not QtCore.QCoreApplication.instance().thread():
             raise Exception('ManagedModules can only be owned by the application main thread.')
 
+        self._qudi_main_ref = qudi_main_ref  # Weak reference to qudi main instance
         self._name = name  # Each qudi module needs a unique string identifier
         self._base = base  # Remember qudi module base
         self._instance = None  # Store the module instance later on
@@ -621,7 +630,8 @@ class ManagedModule(QtCore.QObject):
 
                 # Try to instantiate the imported qudi module class
                 try:
-                    self._instance = mod_class(name=self._name,
+                    self._instance = mod_class(qudi_main_weakref=self._qudi_main_ref,
+                                               name=self._name,
                                                config=self._options)
                 except:
                     logger.exception('Error during initialization of qudi module "{0}.{1}.{2}"'

@@ -67,7 +67,7 @@ class Qudi(QtCore.QObject):
 
         self.log = get_logger(__name__)
         self.thread_manager = ThreadManager()
-        self.module_manager = ModuleManager()
+        self.module_manager = ModuleManager(qudi_main=self)
         self.configuration = Configuration(config_file)
         self.watchdog = None
         self.gui = None
