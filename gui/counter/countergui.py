@@ -93,7 +93,7 @@ class CounterGui(GUIBase):
 
         number_channel = len(self._counting_logic.get_channels())
         for i in range(1, 5):
-            if number_channel >= 2*i:
+            if number_channel >= i:
                 getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(True)
             else:
                 getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(False)
