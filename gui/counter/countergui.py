@@ -35,7 +35,6 @@ from core.gui import connect_trigger_to_function
 from core.gui import connect_view_to_model
 
 
-
 class CounterMainWindow(QtWidgets.QMainWindow):
 
     """ Create the Main Window based on the *.ui file. """
@@ -58,21 +57,13 @@ class CounterGui(GUIBase):
     # declare connectors
     counterlogic1 = Connector(interface='CounterLogic')
 
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-
         self._counting_logic = self.counterlogic1()
-
-        #####################
-        # Configuring the dock widgets
-        # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = CounterMainWindow()
 
         # Setup dock widgets
@@ -80,44 +71,8 @@ class CounterGui(GUIBase):
         self._mw.trace_selection_DockWidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        self.init_plot()
 
-        # Plot labels.
-        self._pw = self._mw.counter_trace_PlotWidget
-
-        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
-        self._pw.setLabel('bottom', 'Time', units='s')
-
-        self.curves = []
-
-        for i, ch in enumerate(self._counting_logic.get_channels()):
-            if i % 2 == 0:
-                # Create an empty plot curve to be filled later, set its pen
-                self.curves.append(
-                    pg.PlotDataItem(pen=pg.mkPen(palette.c1), symbol=None))
-                self._pw.addItem(self.curves[-1])
-                self.curves.append(
-                    pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None))
-                self._pw.addItem(self.curves[-1])
-            else:
-                self.curves.append(
-                    pg.PlotDataItem(
-                        pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-                        symbol='s',
-                        symbolPen=palette.c3,
-                        symbolBrush=palette.c3,
-                        symbolSize=5))
-                self._pw.addItem(self.curves[-1])
-                self.curves.append(
-                    pg.PlotDataItem(pen=pg.mkPen(palette.c4, width=3), symbol=None))
-                self._pw.addItem(self.curves[-1])
-
-        # setting the x axis length correctly
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-
-        #####################
         # Connection views to models
         connect_view_to_model(self, self._mw.count_length_SpinBox, self._counting_logic, 'get_count_length',
                               'set_count_length')
@@ -127,16 +82,18 @@ class CounterGui(GUIBase):
         connect_view_to_model(self, self._mw.oversampling_SpinBox, self._counting_logic, 'get_counting_samples',
                               'set_counting_samples')
 
+        self._counting_logic.model_has_changed.connect(self.update_range)
+
         self._display_trace = 1
         self._trace_selection = [True, True, True, True]
 
-        #####################
         # Connecting user interactions
         connect_trigger_to_function(self, self._mw.start_counter_Action, self.start_clicked, 'triggered')
         connect_trigger_to_function(self, self._mw.record_counts_Action, self.save_clicked, 'triggered')
 
-        for i in range(1, 4):
-            if len(self.curves) >= 2*i:
+        number_channel = len(self._counting_logic.get_channels())
+        for i in range(1, 5):
+            if number_channel >= 2*i:
                 getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(True)
             else:
                 getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(False)
@@ -150,14 +107,9 @@ class CounterGui(GUIBase):
         # Connect the default view action
         connect_trigger_to_function(self, self._mw.restore_default_view_Action, self.restore_default_view, 'triggered')
 
-        #####################
-        # starting the physical measurement
-        connect_trigger_to_function(self, self.sigStartCounter, self._counting_logic.startCount)
-        connect_trigger_to_function(self, self.sigStopCounter, self._counting_logic.stopCount)
-
         ##################
         # Handling signals from the logic
-        connect_trigger_to_function(self, self._counting_logic.sigCounterUpdated, self.updateData)
+        connect_trigger_to_function(self, self._counting_logic.sigCounterUpdated, self.update_data)
 
         # ToDo:
         # self._counting_logic.sigCountContinuousNext.connect()
@@ -167,32 +119,54 @@ class CounterGui(GUIBase):
         # self._counting_logic.sigGatedCounterContinue.connect()
 
         connect_trigger_to_function(self, self._counting_logic.sigSavingStatusChanged, self.update_saving_Action)
-        connect_trigger_to_function(self, self._counting_logic.sigCountingModeChanged, self.update_counting_mode_ComboBox)
+        connect_trigger_to_function(self, self._counting_logic.sigCountingModeChanged,
+                                    self.update_counting_mode_ComboBox)
         connect_trigger_to_function(self, self._counting_logic.sigCountStatusChanged, self.update_count_status_Action)
 
+    def init_plot(self):
+        """ Initialize the plot at activation """
+        # Plot labels.
+        self._pw = self._mw.counter_trace_PlotWidget
+
+        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
+        self._pw.setLabel('bottom', 'Time', units='s')
+
+        self.curves = []
+
+        for i, ch in enumerate(self._counting_logic.get_channels()):
+            # Create an empty plot curve to be filled later, set its pen
+            if i % 2 == 0:  # Change style every two line to see better
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c1), symbol=None))
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None))
+            else:
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                                                   symbol='s', symbolPen=palette.c3, symbolBrush=palette.c3,
+                                                   symbolSize=5))
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c4, width=3), symbol=None))
+            self._pw.addItem(self.curves[-2])
+            self._pw.addItem(self.curves[-1])
+
+        self.update_range()
+
+    def update_range(self):
+        """ Set the x range of the plot to show correctly """
+        # setting the x axis length correctly
+        self._pw.setXRange(0, self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency())
+
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
+        """ Make window visible and put it above all other windows. """
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
         return
 
     def on_deactivate(self):
-        # FIXME: !
-        """ Deactivate the module
-        """
-        # disconnect signals
-        self._mw.trace_1_checkbox.stateChanged.disconnect()
-        self._mw.trace_2_checkbox.stateChanged.disconnect()
-        self._mw.trace_3_checkbox.stateChanged.disconnect()
-        self._mw.trace_4_checkbox.stateChanged.disconnect()
+        """ Deactivate the module """
         self._mw.close()
         return
 
-    def updateData(self):
-        """ The function that grabs the data and sends it to the plot.
-        """
+    def update_data(self):
+        """ The function that grabs the data and sends it to the plot """
 
         if self._counting_logic.module_state() == 'locked':
             if 0 < self._counting_logic.countdata_smoothed[(self._display_trace-1), -1] < 10:
@@ -244,10 +218,10 @@ class CounterGui(GUIBase):
         """
         if self._counting_logic.module_state() == 'locked':
             self._mw.start_counter_Action.setText('Start counter')
-            self.sigStopCounter.emit()
+            self._counting_logic.stopCount()
         else:
             self._mw.start_counter_Action.setText('Stop counter')
-            self.sigStartCounter.emit()
+            self._counting_logic.startCount()
         return self._counting_logic.module_state()
 
     def save_clicked(self):
@@ -271,24 +245,10 @@ class CounterGui(GUIBase):
     def trace_selection_changed(self):
         """ Handling any change to the selection of the traces to display.
         """
-        if self._mw.trace_1_checkbox.isChecked():
-            self._trace_selection[0] = True
-        else:
-            self._trace_selection[0] = False
-        if self._mw.trace_2_checkbox.isChecked():
-            self._trace_selection[1] = True
-        else:
-            self._trace_selection[1] = False
-        if self._mw.trace_3_checkbox.isChecked():
-            self._trace_selection[2] = True
-        else:
-            self._trace_selection[2] = False
-        if self._mw.trace_4_checkbox.isChecked():
-            self._trace_selection[3] = True
-        else:
-            self._trace_selection[3] = False
+        for i in range(4):
+            self._trace_selection[i] = getattr(self._mw, 'trace_{}_checkbox'.format(i+1)).isChecked()
 
-        for i, ch in enumerate(self._counting_logic.get_channels()):
+        for i in range(len(self._counting_logic.get_channels())):
             if self._trace_selection[i]:
                 self._pw.addItem(self.curves[2*i])
                 self._pw.addItem(self.curves[2*i + 1])
@@ -297,19 +257,13 @@ class CounterGui(GUIBase):
                 self._pw.removeItem(self.curves[2*i + 1])
 
     def trace_display_changed(self):
-        """ Handling of a change in teh selection of which counts should be shown.
+        """ Handling of a change in the selection of which counts should be shown.
         """
-
-        if self._mw.trace_1_radiobutton.isChecked():
-            self._display_trace = 1
-        elif self._mw.trace_2_radiobutton.isChecked():
-            self._display_trace = 2
-        elif self._mw.trace_3_radiobutton.isChecked():
-            self._display_trace = 3
-        elif self._mw.trace_4_radiobutton.isChecked():
-            self._display_trace = 4
-        else:
-            self._display_trace = 1
+        display_trace = None
+        for i in range(1, 5):
+            if getattr(self._mw, 'trace_{}_radiobutton'.format(i)).isChecked():
+                display_trace = i
+        self._display_trace = display_trace if display_trace is not None else 1
 
     ########
     # Restore default values
@@ -329,15 +283,10 @@ class CounterGui(GUIBase):
         self._mw.trace_selection_DockWidget.setFloating(True)
 
         # Arrange docks widgets
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
-                               self._mw.counter_trace_DockWidget
-                               )
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
-                               self._mw.slow_counter_parameters_DockWidget
-                               )
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.counter_trace_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_parameters_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(QtCore.Qt.LeftDockWidgetArea),
-                               self._mw.trace_selection_DockWidget
-                               )
+                               self._mw.trace_selection_DockWidget)
 
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
