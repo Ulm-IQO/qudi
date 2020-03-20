@@ -37,17 +37,15 @@ if sys.platform == 'win32':
 # parse commandline parameters
 parser = argparse.ArgumentParser(prog='python -m qudi')
 group = parser.add_mutually_exclusive_group()
-group.add_argument('-p', '--profile', action='store_true', help='enables profiler')
-group.add_argument('-cg',
-                   '--callgraph',
-                   action='store_true',
-                   help='display dependencies between the methods/modules')
-parser.add_argument('-m', '--manhole', action='store_true', help='manhole for debugging purposes')
 parser.add_argument(
     '-g', '--no-gui', action='store_true', help='does not load the manager gui module')
-parser.add_argument('-c', '--config', default='', help='configuration file')
+parser.add_argument('-c', '--config', default=None, help='configuration file')
 parser.add_argument('-l', '--logdir', default='', help='log directory')
+# group.add_argument('-p', '--profile', action='store_true', help='enables profiler')
+# parser.add_argument('-m', '--manhole', action='store_true', help='manhole for debugging purposes')
+# group.add_argument(
+#     '-cg', '--callgraph', action='store_true', help='display methods/modules dependency graph')
 args = parser.parse_args()
 
-app = Qudi()
+app = Qudi(no_gui=args.no_gui, log_dir=args.logdir, config_file=args.config)
 app.run()
