@@ -150,6 +150,7 @@ class BaseMixin(metaclass=ModuleMeta):
 
         default_callbacks = {
             'onactivate': self.__load_status_vars_activate,
+            'on_before_deactivate': self.__call_deactivate_callback,
             'ondeactivate': self.__save_status_vars_deactivate
             }
         default_callbacks.update(callbacks)
@@ -196,6 +197,7 @@ class BaseMixin(metaclass=ModuleMeta):
         self._name = name
         self._configuration = config
         self._statusVariables = OrderedDict()
+        self._callbacks_before_deactivate = []
 
     def __load_status_vars_activate(self, event):
         """ Restore status variables before activation.
@@ -234,6 +236,15 @@ class BaseMixin(metaclass=ModuleMeta):
                         self._statusVariables[var.name] = var.representer_function(
                                                             self,
                                                             getattr(self, var.var_name))
+
+    def add_deactivation_callback(self, cb):
+        """ Method to properly add a callback that will be called before deactivation """
+        self._callbacks_before_deactivate.append(cb)
+
+    def __call_deactivate_callback(self, event):
+        """ Method called before deactivation to call cleanup callbacks of the module"""
+        for cb in self._callbacks_before_deactivate:
+            cb()
 
     @property
     def log(self):

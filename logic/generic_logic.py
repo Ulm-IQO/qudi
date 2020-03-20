@@ -27,6 +27,7 @@ class GenericLogic(Base):
     """A generic logic interface class.
     """
     _threaded = True
+    model_has_changed = QtCore.Signal(list)
 
     def __init__(self, **kwargs):
         """ Initialzize a logic module.
