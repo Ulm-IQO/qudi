@@ -31,6 +31,9 @@ from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
 
+from core.gui import connect_trigger_to_function
+from core.gui import connect_view_to_model
+
 
 
 class CounterMainWindow(QtWidgets.QMainWindow):
@@ -116,20 +119,21 @@ class CounterGui(GUIBase):
 
         #####################
         # Setting default parameters
-        self._mw.count_length_SpinBox.setValue(self._counting_logic.get_count_length())
-        self._mw.count_freq_SpinBox.setValue(self._counting_logic.get_count_frequency())
-        self._mw.oversampling_SpinBox.setValue(self._counting_logic.get_counting_samples())
+        connect_view_to_model(self, self._mw.count_length_SpinBox, self._counting_logic, 'get_count_length',
+                              'set_count_length')
+        connect_view_to_model(self, self._mw.count_freq_SpinBox, self._counting_logic, 'get_count_frequency',
+                              'set_count_frequency')
+
+        connect_view_to_model(self, self._mw.oversampling_SpinBox, self._counting_logic, 'get_counting_samples',
+                              'set_counting_samples')
+
         self._display_trace = 1
         self._trace_selection = [True, True, True, True]
 
         #####################
         # Connecting user interactions
-        self._mw.start_counter_Action.triggered.connect(self.start_clicked)
-        self._mw.record_counts_Action.triggered.connect(self.save_clicked)
-
-        self._mw.count_length_SpinBox.valueChanged.connect(self.count_length_changed)
-        self._mw.count_freq_SpinBox.valueChanged.connect(self.count_frequency_changed)
-        self._mw.oversampling_SpinBox.valueChanged.connect(self.oversampling_changed)
+        connect_trigger_to_function(self, self._mw.start_counter_Action, 'triggered', self.start_clicked)
+        connect_trigger_to_function(self, self._mw.record_counts_Action, 'triggered', self.save_clicked)
 
         if len(self.curves) >= 2:
             self._mw.trace_1_checkbox.setChecked(True)
@@ -167,16 +171,15 @@ class CounterGui(GUIBase):
         self._mw.trace_4_radiobutton.released.connect(self.trace_display_changed)
 
         # Connect the default view action
-        self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+        connect_trigger_to_function(self, self._mw.restore_default_view_Action, 'triggered', self.restore_default_view)
 
         #####################
         # starting the physical measurement
-        self.sigStartCounter.connect(self._counting_logic.startCount)
-        self.sigStopCounter.connect(self._counting_logic.stopCount)
+        connect_trigger_to_function(self, self.sigStartCounter, None, self._counting_logic.startCount)
+        connect_trigger_to_function(self, self.sigStopCounter, None, self._counting_logic.stopCount)
 
         ##################
         # Handling signals from the logic
-
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
 
         # ToDo:
@@ -186,9 +189,6 @@ class CounterGui(GUIBase):
         # self._counting_logic.sigGatedCounterFinished.connect()
         # self._counting_logic.sigGatedCounterContinue.connect()
 
-        self._counting_logic.sigCountingSamplesChanged.connect(self.update_oversampling_SpinBox)
-        self._counting_logic.sigCountLengthChanged.connect(self.update_count_length_SpinBox)
-        self._counting_logic.sigCountFrequencyChanged.connect(self.update_count_freq_SpinBox)
         self._counting_logic.sigSavingStatusChanged.connect(self.update_saving_Action)
         self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
         self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
@@ -208,22 +208,11 @@ class CounterGui(GUIBase):
         """ Deactivate the module
         """
         # disconnect signals
-        self._mw.start_counter_Action.triggered.disconnect()
-        self._mw.record_counts_Action.triggered.disconnect()
-        self._mw.count_length_SpinBox.valueChanged.disconnect()
-        self._mw.count_freq_SpinBox.valueChanged.disconnect()
-        self._mw.oversampling_SpinBox.valueChanged.disconnect()
         self._mw.trace_1_checkbox.stateChanged.disconnect()
         self._mw.trace_2_checkbox.stateChanged.disconnect()
         self._mw.trace_3_checkbox.stateChanged.disconnect()
         self._mw.trace_4_checkbox.stateChanged.disconnect()
-        self._mw.restore_default_view_Action.triggered.disconnect()
-        self.sigStartCounter.disconnect()
-        self.sigStopCounter.disconnect()
         self._counting_logic.sigCounterUpdated.disconnect()
-        self._counting_logic.sigCountingSamplesChanged.disconnect()
-        self._counting_logic.sigCountLengthChanged.disconnect()
-        self._counting_logic.sigCountFrequencyChanged.disconnect()
         self._counting_logic.sigSavingStatusChanged.disconnect()
         self._counting_logic.sigCountingModeChanged.disconnect()
         self._counting_logic.sigCountStatusChanged.disconnect()
@@ -352,36 +341,6 @@ class CounterGui(GUIBase):
         else:
             self._display_trace = 1
 
-    def count_length_changed(self):
-        """ Handling the change of the count_length and sending it to the measurement.
-        """
-        self._counting_logic.set_count_length(self._mw.count_length_SpinBox.value())
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-        return self._mw.count_length_SpinBox.value()
-
-    def count_frequency_changed(self):
-        """ Handling the change of the count_frequency and sending it to the measurement.
-        """
-        self._counting_logic.set_count_frequency(self._mw.count_freq_SpinBox.value())
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-        return self._mw.count_freq_SpinBox.value()
-
-    def oversampling_changed(self):
-        """ Handling the change of the oversampling and sending it to the measurement.
-        """
-        self._counting_logic.set_counting_samples(samples=self._mw.oversampling_SpinBox.value())
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-        return self._mw.oversampling_SpinBox.value()
-
     ########
     # Restore default values
 
@@ -417,42 +376,6 @@ class CounterGui(GUIBase):
 
     ##########
     # Handle signals from logic
-
-    def update_oversampling_SpinBox(self, oversampling):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param int oversampling: adjusted oversampling to update in the GUI in bins
-        @return int oversampling: see above
-        """
-        self._mw.oversampling_SpinBox.blockSignals(True)
-        self._mw.oversampling_SpinBox.setValue(oversampling)
-        self._mw.oversampling_SpinBox.blockSignals(False)
-        return oversampling
-
-    def update_count_freq_SpinBox(self, count_freq):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param float count_freq: adjusted count frequency in Hz
-        @return float count_freq: see above
-        """
-        self._mw.count_freq_SpinBox.blockSignals(True)
-        self._mw.count_freq_SpinBox.setValue(count_freq)
-        self._pw.setXRange(0, self._counting_logic.get_count_length() / count_freq)
-        self._mw.count_freq_SpinBox.blockSignals(False)
-        return count_freq
-
-    def update_count_length_SpinBox(self, count_length):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param int count_length: adjusted count length in bins
-        @return int count_length: see above
-        """
-        self._mw.count_length_SpinBox.blockSignals(True)
-        self._mw.count_length_SpinBox.setValue(count_length)
-        self._pw.setXRange(0, count_length / self._counting_logic.get_count_frequency())
-        self._mw.count_length_SpinBox.blockSignals(False)
-        return count_length
-
     def update_saving_Action(self, start):
         """Function to ensure that the GUI-save_action displays the current status
 

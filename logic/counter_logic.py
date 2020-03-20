@@ -48,9 +48,6 @@ class CounterLogic(GenericLogic):
 
     sigGatedCounterFinished = QtCore.Signal()
     sigGatedCounterContinue = QtCore.Signal(bool)
-    sigCountingSamplesChanged = QtCore.Signal(int)
-    sigCountLengthChanged = QtCore.Signal(int)
-    sigCountFrequencyChanged = QtCore.Signal(float)
     sigSavingStatusChanged = QtCore.Signal(bool)
     sigCountStatusChanged = QtCore.Signal(bool)
     sigCountingModeChanged = QtCore.Signal(CountingMode)
@@ -171,7 +168,7 @@ class CounterLogic(GenericLogic):
                 self.startCount()
         else:
             self.log.warning('counting_samples has to be larger than 0! Command ignored!')
-        self.sigCountingSamplesChanged.emit(self._counting_samples)
+        self.model_has_changed.emit(['get_counting_samples'])
         return self._counting_samples
 
     def set_count_length(self, length=300):
@@ -196,7 +193,7 @@ class CounterLogic(GenericLogic):
                 self.startCount()
         else:
             self.log.warning('count_length has to be larger than 0! Command ignored!')
-        self.sigCountLengthChanged.emit(self._count_length)
+        self.model_has_changed.emit(['get_count_length'])
         return self._count_length
 
     def set_count_frequency(self, frequency=50):
@@ -223,7 +220,7 @@ class CounterLogic(GenericLogic):
                 self.startCount()
         else:
             self.log.warning('count_frequency not in range! Command ignored!')
-        self.sigCountFrequencyChanged.emit(self._count_frequency)
+        self.model_has_changed.emit(['get_count_frequency'])
         return self._count_frequency
 
     def get_count_length(self):
