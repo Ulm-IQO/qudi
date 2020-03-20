@@ -245,6 +245,7 @@ class BaseMixin(metaclass=ModuleMeta):
         """ Method called before deactivation to call cleanup callbacks of the module"""
         for cb in self._callbacks_before_deactivate:
             cb()
+        self._callbacks_before_deactivate = []  # clean the callback list
 
     @property
     def log(self):
