@@ -32,7 +32,7 @@ from .util.helpers import import_check
 from .util.mutex import RecursiveMutex, Mutex
 from .config import Configuration
 from .watchdog import AppWatchdog
-from .manager import ModuleManager
+from .modulemanager import ModuleManager
 from .threadmanager import ThreadManager
 from .gui.gui import Gui
 from . import remotemodules
@@ -132,7 +132,7 @@ class Qudi(QtCore.QObject):
                         self.log.exception('Unable to create ManagedModule instance for module '
                                            '"{0}.{1}"'.format(base, module_name))
 
-            print("\n================= Qudi configuration complete =================\n")
+            print("================= Qudi configuration complete =================\n")
             self.log.info('Qudi configuration complete.')
 
     def _start_gui(self):
@@ -240,6 +240,9 @@ class Qudi(QtCore.QObject):
                     except OSError:
                         pass
 
+            self.log.info('Shutdown complete! Ciao')
+            print('\nShutdown complete! Ciao.')
+
             # Exit application
             sys.exit(exit_code)
 
@@ -284,13 +287,27 @@ class Qudi(QtCore.QObject):
                         if not self.gui.prompt_shutdown(locked_modules):
                             return
 
+            QtCore.QCoreApplication.instance().processEvents()
+            self.log.info('Qudi shutting down...')
+            print('Qudi shutting down...')
+            self.log.info('Stopping remote modules...')
+            print('Stopping remote modules...')
             remotemodules.stop_remote_server()
+            QtCore.QCoreApplication.instance().processEvents()
+            self.log.info('Stopping local modules...')
+            print('Stopping local modules...')
             self.module_manager.clear()
+            QtCore.QCoreApplication.instance().processEvents()
             if not self.no_gui:
                 self.log.info('Closing windows...')
                 print('Closing windows...')
                 self.gui.close_windows()
                 self.gui.close_system_tray_icon()
+            QtCore.QCoreApplication.instance().processEvents()
+            self.log.info('Stopping threads...')
+            print('Stopping threads...')
+            self.thread_manager.quit_all_threads()
+            QtCore.QCoreApplication.instance().processEvents()
             if restart:
                 QtCore.QCoreApplication.exit(42)
             else:

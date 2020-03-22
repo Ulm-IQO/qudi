@@ -32,6 +32,7 @@ from threading import Thread
 import logging
 logger = logging.getLogger(__name__)
 
+
 def waitForClose():
     """ Wait for program to close on its own and print some old school meme in the meantime.
     """
@@ -81,9 +82,8 @@ class ParentPollerUnix(Thread):
 
 
 class ParentPollerWindows(Thread):
-    """ A Windows-specific daemon thread that listens for a special event that
-    signals an interrupt and, optionally, terminates the program immediately
-    when the parent process no longer exists.
+    """ A Windows-specific daemon thread that listens for a special event that signals an interrupt
+    and, optionally, terminates the program immediately when the parent process no longer exists.
     """
 
     def __init__(self, quitfunction=None, interrupt_handle=None, parent_handle=None):

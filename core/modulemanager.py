@@ -441,7 +441,6 @@ class ManagedModule(QtCore.QObject):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'activate', QtCore.Qt.BlockingQueuedConnection)
             return self.is_active
-        print('starting to activate:', self._name)
         with self._lock:
             if self.is_active:
                 if self._base == 'gui':
@@ -467,7 +466,6 @@ class ManagedModule(QtCore.QObject):
             if not self._connect():
                 return False
 
-            print('activating:', self._name)
             try:
                 if self._instance.is_module_threaded:
                     thread_name = self.module_thread_name
@@ -503,7 +501,6 @@ class ManagedModule(QtCore.QObject):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'deactivate', QtCore.Qt.BlockingQueuedConnection)
             return not self.is_active
-        print('starting to deactivate:', self._name)
         with self._lock:
             if not self.is_active:
                 return True
@@ -520,7 +517,6 @@ class ManagedModule(QtCore.QObject):
                 if module.is_active:
                     success = success and module.deactivate()
 
-            print('deactivating:', self._name)
             # Actual deactivation of this module
             try:
                 if self._instance.is_module_threaded:

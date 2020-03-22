@@ -362,13 +362,17 @@ class Configuration(QtCore.QObject):
                     del self._global_config[key]
 
         self._file_path = file_path
-        # Write current config file path to load.cfg
-        save(file_path=os.path.join(get_appdata_dir(create_missing=True), 'load.cfg'),
-             data={'last_loaded_config': file_path})
+        self.set_default_config_path(file_path)  # Write current config file path to load.cfg
         self.sigConfigChanged.emit(self)
 
     def save_config(self, file_path):
         save(file_path, self.config_dict)
+
+    @staticmethod
+    def set_default_config_path(path):
+        # Write current config file path to load.cfg
+        save(file_path=os.path.join(get_appdata_dir(create_missing=True), 'load.cfg'),
+             data={'load_config_path': path})
 
     @staticmethod
     def get_default_config():
@@ -377,7 +381,7 @@ class Configuration(QtCore.QObject):
             load_cfg = load(os.path.join(get_appdata_dir(), 'load.cfg'), ignore_missing=True)
         except:
             load_cfg = dict()
-        file_path = load_cfg.get('last_loaded_config', '')
+        file_path = load_cfg.get('load_config_path', '')
         if os.path.isfile(file_path) and file_path.endswith('.cfg'):
             return file_path
 
