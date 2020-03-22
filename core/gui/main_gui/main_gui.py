@@ -416,29 +416,34 @@ class QudiMainGui(GuiBase):
         """ Ask the user for a file where the configuration should be loaded from
         """
         filename = QtWidgets.QFileDialog.getOpenFileName(self.mw,
-                                                         'Load Configration',
-                                                         get_default_config_dir(),
+                                                         'Load Configuration',
+                                                         get_default_config_dir(True),
                                                          'Configuration files (*.cfg)')[0]
         if filename:
             reply = QtWidgets.QMessageBox.question(
                 self.mw,
                 'Restart',
-                'Do you want to restart to use the configuration?',
-                QtWidgets.QMessageBox.Yes,
+                'Do you want to restart to use the configuration?\n'
+                'Choosing "No" will use the selected config file for the next start of Qudi.',
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel,
                 QtWidgets.QMessageBox.No
             )
-            restart = reply == QtWidgets.QMessageBox.Yes
-            self.sigLoadConfig.emit(filename, restart)
+            if reply == QtWidgets.QMessageBox.Cancel:
+                return
+            self._qudi_main.configuration.set_default_config_path(filename)
+            if reply == QtWidgets.QMessageBox.Yes:
+                self._qudi_main.restart
 
     def save_configuration(self):
         """ Ask the user for a file where the configuration should be saved
             to.
         """
+        print(get_default_config_dir())
         filename = QtWidgets.QFileDialog.getSaveFileName(self.mw,
-                                                         'Save Configration',
-                                                         get_default_config_dir(),
+                                                         'Save Configuration',
+                                                         get_default_config_dir(True),
                                                          'Configuration files (*.cfg)')[0]
-        if not filename.endswith('.cfg'):
-            print('FILENAME APPENDED!!!')
-            filename += '.cfg'
-        self._qudi_main.configuration.save_config(filename)
+        if filename:
+            if not filename.endswith('.cfg'):
+                filename += '.cfg'
+            self._qudi_main.configuration.save_config(filename)
