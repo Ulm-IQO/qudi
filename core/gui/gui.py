@@ -221,7 +221,7 @@ class Gui(QtCore.QObject):
             return
 
         self.main_gui_module.module_state.deactivate()
-        QtCore.QApplication.instance().processEvents()
+        QtWidgets.QApplication.instance().processEvents()
 
     def show_system_tray_icon(self):
         """ Show system tray icon

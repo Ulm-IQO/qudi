@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import sys
 import os
+import signal
 import faulthandler
 import weakref
 
@@ -211,7 +212,7 @@ class Qudi(QtCore.QObject):
             #     pass
 
             # Install app watchdog
-            self.watchdog = AppWatchdog()
+            self.watchdog = AppWatchdog(self.interrupt_quit)
 
             # Start GUI if needed
             self._start_gui()
@@ -246,7 +247,7 @@ class Qudi(QtCore.QObject):
             # Exit application
             sys.exit(exit_code)
 
-    def exit(self, prompt=True, restart=False):
+    def _exit(self, prompt=True, restart=False):
         """ Shutdown Qudi. Nicely request that all modules shut down if prompt is True.
         Signal restart to parent process (if present) via exitcode 42 if restart is True.
         """
@@ -301,9 +302,10 @@ class Qudi(QtCore.QObject):
             if not self.no_gui:
                 self.log.info('Closing windows...')
                 print('Closing windows...')
+                self.gui.deactivate_main_gui()
                 self.gui.close_windows()
                 self.gui.close_system_tray_icon()
-            QtCore.QCoreApplication.instance().processEvents()
+                QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Stopping threads...')
             print('Stopping threads...')
             self.thread_manager.quit_all_threads()
@@ -315,17 +317,22 @@ class Qudi(QtCore.QObject):
 
     @QtCore.Slot()
     def quit(self):
-        self.exit(prompt=False, restart=False)
+        self._exit(prompt=False, restart=False)
 
     @QtCore.Slot()
     def prompt_quit(self):
-        self.exit(prompt=True, restart=False)
+        self._exit(prompt=True, restart=False)
 
     @QtCore.Slot()
     def restart(self):
-        self.exit(prompt=False, restart=True)
+        self._exit(prompt=False, restart=True)
 
     @QtCore.Slot()
     def prompt_restart(self):
-        self.exit(prompt=True, restart=True)
+        self._exit(prompt=True, restart=True)
 
+    def interrupt_quit(self):
+        if not self._shutting_down:
+            self.quit()
+            return
+        QtCore.QCoreApplication.exit(1)
