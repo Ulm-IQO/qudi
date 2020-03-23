@@ -21,7 +21,6 @@ top-level directory of this distribution and at
 """
 
 import copy
-import sys
 from .interface import InterfaceMethod
 
 
