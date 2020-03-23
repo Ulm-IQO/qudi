@@ -27,8 +27,8 @@ from qtpy import QtCore
 from .configoption import MissingOption, ConfigOption
 from .connector import Connector
 from .statusvariable import StatusVar
-from core.util.mutex import Mutex
-from core.util.paths import get_appdata_dir
+from .util.mutex import Mutex
+from .util.paths import get_appdata_dir
 from .config import load, save
 
 import os
