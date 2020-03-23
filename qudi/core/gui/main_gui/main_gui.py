@@ -18,6 +18,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import os
 import logging
 import numpy as np
 
@@ -404,7 +405,7 @@ class QudiMainGui(GuiBase):
             a git repository.
         """
         try:
-            repo = Repo(get_main_dir())
+            repo = Repo(os.path.dirname(get_main_dir()))
             branch = repo.active_branch
             rev = str(repo.head.commit)
             return rev, str(branch)
