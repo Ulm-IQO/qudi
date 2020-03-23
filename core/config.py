@@ -251,12 +251,19 @@ class Configuration(QtCore.QObject):
     def __init__(self, file_path=None):
         super().__init__()
         # determine and check path for config file
-        if isinstance(file_path, str) and os.path.isfile(file_path) and file_path.endswith('.cfg'):
-            self._file_path = file_path
+        if file_path is None:
+            self._file_path = self.get_saved_config()
         else:
+            if os.path.isfile(file_path) and file_path.endswith('.cfg'):
+                self._file_path = file_path
+            else:
+                self._file_path = None
+        # Fall back to default config if no valid config file could be found
+        if self._file_path is None:
             self._file_path = self.get_default_config()
             warn('No valid config file path given. Using default config file path: {0}'
                  ''.format(self._file_path))
+
         # extracted fields from config file
         self._global_config = dict()
         self._module_config = {'hardware': dict(), 'logic': dict(), 'gui': dict()}
@@ -375,7 +382,7 @@ class Configuration(QtCore.QObject):
              data={'load_config_path': path})
 
     @staticmethod
-    def get_default_config():
+    def get_saved_config():
         # Try loading config file path from last session
         try:
             load_cfg = load(os.path.join(get_appdata_dir(), 'load.cfg'), ignore_missing=True)
@@ -384,7 +391,10 @@ class Configuration(QtCore.QObject):
         file_path = load_cfg.get('load_config_path', '')
         if os.path.isfile(file_path) and file_path.endswith('.cfg'):
             return file_path
+        return None
 
+    @staticmethod
+    def get_default_config():
         # Try default.cfg in user home directory
         file_path = os.path.join(get_default_config_dir(), 'default.cfg')
         if os.path.isfile(file_path):
