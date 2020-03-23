@@ -242,7 +242,7 @@ class Qudi(QtCore.QObject):
                         pass
 
             self.log.info('Shutdown complete! Ciao')
-            print('\nShutdown complete! Ciao.')
+            print('\n  Shutdown complete! Ciao.\n')
 
             # Exit application
             sys.exit(exit_code)

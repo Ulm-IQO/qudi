@@ -432,7 +432,7 @@ class QudiMainGui(GuiBase):
                 return
             self._qudi_main.configuration.set_default_config_path(filename)
             if reply == QtWidgets.QMessageBox.Yes:
-                self._qudi_main.restart
+                self._qudi_main.restart()
 
     def save_configuration(self):
         """ Ask the user for a file where the configuration should be saved
