@@ -219,7 +219,8 @@ class Qudi(QtCore.QObject):
 
             # Start Qt event loop unless running in interactive mode
             self._is_running = True
-            print('Starting event loop...')
+            self.log.info('Starting Qt event loop...')
+            print('Starting Qt event loop...')
             exit_code = app.exec_()
             self._shutting_down = False
             self._is_running = False
