@@ -198,6 +198,7 @@ class Gui(QtCore.QObject):
 
     def activate_main_gui(self):
         if QtCore.QThread.currentThread() is not self.thread():
+            print('Switching thread while starting main GUI')
             QtCore.QMetaObject.invokeMethod(self,
                                             'activate_main_gui',
                                             QtCore.Qt.BlockingQueuedConnection)
@@ -207,8 +208,10 @@ class Gui(QtCore.QObject):
             self.main_gui_module.show()
             return
 
+        print('Activating main GUI module')
         self.main_gui_module.module_state.activate()
         QtWidgets.QApplication.instance().processEvents()
+        print('Activating main GUI complete')
 
     def deactivate_main_gui(self):
         if QtCore.QThread.currentThread() is not self.thread():
