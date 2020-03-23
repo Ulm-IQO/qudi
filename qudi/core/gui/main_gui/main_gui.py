@@ -22,17 +22,17 @@ import logging
 import numpy as np
 
 from collections import OrderedDict
-from core.statusvariable import StatusVar
-from core.threadmanager import ThreadManager
+from ...statusvariable import StatusVar
+from ...threadmanager import ThreadManager
 try:
     import core.remotemodules as remotemodules
 except ImportError:
     remotemodules = None
-from core.util.paths import get_main_dir, get_default_config_dir
-from core.util.helpers import has_pyqtgraph
+from ...util.paths import get_main_dir, get_default_config_dir
+from ...util.helpers import has_pyqtgraph
 from .widgets.errordialog import ErrorDialog
 from .widgets.mainwindow import QudiMainWindow
-from core.module import GuiBase
+from ...module import GuiBase
 from qtpy import QtCore, QtWidgets, QtGui
 
 try:

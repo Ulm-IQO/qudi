@@ -24,7 +24,7 @@ import weakref
 import logging
 import platform
 from qtpy import QtCore, QtGui, QtWidgets
-from core.util.helpers import has_pyqtgraph
+from ..util.helpers import has_pyqtgraph
 from .main_gui.main_gui import QudiMainGui
 
 if has_pyqtgraph:

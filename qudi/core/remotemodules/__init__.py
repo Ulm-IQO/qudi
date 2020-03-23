@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from urllib.parse import urlparse
 import rpyc
 
-from core.threadmanager import ThreadManager
+from ..threadmanager import ThreadManager
 from ._config import config
 from .remote import share_module, remove_shared_module
 from .remote import _RemoteServer, _RemoteModulesService, SharedModulesModel
