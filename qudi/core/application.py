@@ -108,10 +108,9 @@ class Qudi(QtCore.QObject):
         """
         """
         with self._run_lock:
-            print('\n================= Starting Qudi configuration from "{0}" ================='
-                  '\n'.format(self.configuration.config_file))
+            print('> Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
             self.log.info(
-                'Starting Qudi configuration from "{0}"...'.format(self.configuration.config_file))
+                'Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
 
             # Clear all qudi modules
             self.module_manager.clear()
@@ -133,7 +132,7 @@ class Qudi(QtCore.QObject):
                         self.log.exception('Unable to create ManagedModule instance for module '
                                            '"{0}.{1}"'.format(base, module_name))
 
-            print("================= Qudi configuration complete =================\n")
+            print('> Qudi configuration complete')
             self.log.info('Qudi configuration complete.')
 
     def _start_gui(self):
@@ -166,11 +165,11 @@ class Qudi(QtCore.QObject):
             # install logging facility
             init_rotating_file_handler(path=self.log_dir)
             self.log.info('Loading Qudi...')
-            print('Loading Qudi...')
+            print('> Loading Qudi...')
 
             # Check Qt API
             self.log.info('Used Qt API: {0}'.format(API_NAME))
-            print('Used Qt API: {0}'.format(API_NAME))
+            print('> Used Qt API: {0}'.format(API_NAME))
 
             # Check vital packages for qudi, otherwise qudi will not even start.
             err_code = import_check()
@@ -220,7 +219,7 @@ class Qudi(QtCore.QObject):
             # Start Qt event loop unless running in interactive mode
             self._is_running = True
             self.log.info('Starting Qt event loop...')
-            print('Starting Qt event loop...')
+            print('> Starting Qt event loop...\n>')
             exit_code = app.exec_()
             self._shutting_down = False
             self._is_running = False
@@ -244,7 +243,7 @@ class Qudi(QtCore.QObject):
             #            pass
 
             self.log.info('Shutdown complete! Ciao')
-            print('\n  Shutdown complete! Ciao.\n')
+            print('>\n>   Shutdown complete! Ciao.\n>')
 
             # Exit application
             sys.exit(exit_code)
@@ -292,24 +291,24 @@ class Qudi(QtCore.QObject):
 
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Qudi shutting down...')
-            print('Qudi shutting down...')
+            print('> Qudi shutting down...')
             self.log.info('Stopping remote modules...')
-            print('Stopping remote modules...')
+            print('> Stopping remote modules...')
             remotemodules.stop_remote_server()
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Stopping local modules...')
-            print('Stopping local modules...')
+            print('> Stopping local modules...')
             self.module_manager.clear()
             QtCore.QCoreApplication.instance().processEvents()
             if not self.no_gui:
                 self.log.info('Closing windows...')
-                print('Closing windows...')
+                print('> Closing windows...')
                 self.gui.deactivate_main_gui()
                 self.gui.close_windows()
                 self.gui.close_system_tray_icon()
                 QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Stopping threads...')
-            print('Stopping threads...')
+            print('> Stopping threads...')
             self.thread_manager.quit_all_threads()
             QtCore.QCoreApplication.instance().processEvents()
             if restart:
