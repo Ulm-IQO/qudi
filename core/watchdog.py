@@ -49,16 +49,17 @@ class AppWatchdog(QtCore.QObject):
         if sys.platform == 'win32':
             signal.signal(signal.SIGINT, lambda *args: quit_function())
 
-        self.parent_handle = int(os.environ.get('QUDI_PARENT_PID', 0))
-        if self.parent_handle == 0:
+        if 'QUDI_PARENT_PID' not in os.environ:
+            self.parent_handle = None
             self.parent_poller = None
             logger.warning('Qudi running unsupervised. Restart will not work. Instead Qudi will '
                            'exit with exitcode 42.')
-        elif sys.platform == 'win32':
-            self.parent_poller = ParentPollerWindows(quit_function, self.parent_handle)
-            self.parent_poller.start()
         else:
-            self.parent_poller = ParentPollerUnix(quit_function)
+            self.parent_handle = int(os.environ['QUDI_PARENT_PID'])
+            if sys.platform == 'win32':
+                self.parent_poller = ParentPollerWindows(quit_function, self.parent_handle)
+            else:
+                self.parent_poller = ParentPollerUnix(quit_function)
             self.parent_poller.start()
         return
 

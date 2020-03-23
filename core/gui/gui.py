@@ -203,6 +203,8 @@ class Gui(QtCore.QObject):
                                             QtCore.Qt.BlockingQueuedConnection)
             return
 
+        logger.info('Activating main GUI module...')
+        print('Activating main GUI module...')
         if self.main_gui_module.module_state() != 'deactivated':
             self.main_gui_module.show()
             return
