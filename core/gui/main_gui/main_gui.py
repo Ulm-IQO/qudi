@@ -438,7 +438,6 @@ class QudiMainGui(GuiBase):
         """ Ask the user for a file where the configuration should be saved
             to.
         """
-        print(get_default_config_dir())
         filename = QtWidgets.QFileDialog.getSaveFileName(self.mw,
                                                          'Save Configuration',
                                                          get_default_config_dir(True),

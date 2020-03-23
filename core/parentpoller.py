@@ -26,7 +26,7 @@ import ctypes
 import os
 import platform
 # import signal
-# import time
+import time
 # from _thread import interrupt_main
 from threading import Thread
 import logging
@@ -79,6 +79,7 @@ class ParentPollerUnix(Thread):
                 if e.errno == EINTR:
                     continue
                 raise
+            time.sleep(1)
 
 
 class ParentPollerWindows(Thread):
