@@ -84,6 +84,7 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     while True:
+        print('Open subprocess...')
         process = subprocess.Popen(argv,
                                    close_fds=False,
                                    env=myenv,
@@ -92,7 +93,9 @@ def main():
                                    stderr=sys.stderr,
                                    shell=False)
         try:
+            print('subprocess opened...')
             retval = process.wait()
+            print('subprocess finished!')
             if retval == 0:
                 break
             elif retval == 42:
@@ -112,6 +115,11 @@ def main():
                 sys.exit(retval)
         except KeyboardInterrupt:
             print('\nQudi terminated by keyboard interrupt event!')
+            try:
+                process.kill()
+                process.wait()
+            except:
+                pass
             sys.exit(1)
         except:
             process.kill()
