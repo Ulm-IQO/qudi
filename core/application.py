@@ -226,20 +226,20 @@ class Qudi(QtCore.QObject):
             # ToDo: Is the following issue still a thing with qudi?
             # in this subprocess we redefine the stdout, therefore on Unix systems we need to handle
             # the opened file descriptors, see PEP 446: https://www.python.org/dev/peps/pep-0446/
-            if sys.platform in ('linux', 'darwin'):
-                fd_min, fd_max = 3, 4096
-                fd_set = set(range(fd_min, fd_max))
+            #if sys.platform in ('linux', 'darwin'):
+            #    fd_min, fd_max = 3, 4096
+            #    fd_set = set(range(fd_min, fd_max))
 
-                if sys.platform == 'darwin':
-                    # trying to close 7 produces an illegal instruction on the Mac.
-                    fd_set.remove(7)
+            #    if sys.platform == 'darwin':
+            #        # trying to close 7 produces an illegal instruction on the Mac.
+            #        fd_set.remove(7)
 
                 # remove specified file descriptor
-                for fd in fd_set:
-                    try:
-                        os.close(fd)
-                    except OSError:
-                        pass
+            #    for fd in fd_set:
+            #        try:
+            #            os.close(fd)
+            #        except OSError:
+            #            pass
 
             self.log.info('Shutdown complete! Ciao')
             print('\n  Shutdown complete! Ciao.\n')

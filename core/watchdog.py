@@ -46,7 +46,8 @@ class AppWatchdog(QtCore.QObject):
         self.__timer.start(1000)
 
         # Listen to SIGINT and terminate
-        signal.signal(signal.SIGINT, lambda *args: quit_function())
+        if sys.platform == 'win32':
+            signal.signal(signal.SIGINT, lambda *args: quit_function())
 
         self.parent_handle = int(os.environ.get('QUDI_PARENT_PID', 0))
         if self.parent_handle == 0:
