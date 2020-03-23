@@ -25,27 +25,27 @@ Also distributable under the terms of the Modified BSD License.
 import ctypes
 import os
 import platform
-import signal
-import time
-from _thread import interrupt_main
+# import signal
+# import time
+# from _thread import interrupt_main
 from threading import Thread
 import logging
 logger = logging.getLogger(__name__)
 
 
-def waitForClose():
-    """ Wait for program to close on its own and print some old school meme in the meantime.
-    """
-    time.sleep(1)
-    print('> Mechanic: Somebody set us up the bomb.')
-    time.sleep(2)
-    print('> CATS: All your base are belong to us.')
-    time.sleep(2)
-    print('> CATS: You have no chance to survive make your time.')
-    time.sleep(2)
-    print('> Captain: Take off every \'ZIG\'.')
-    time.sleep(2)
-    print('> Captain: For great justice.')
+# def waitForClose():
+#     """ Wait for program to close on its own and print some old school meme in the meantime.
+#     """
+#     time.sleep(1)
+#     print('> Mechanic: Somebody set us up the bomb.')
+#     time.sleep(2)
+#     print('> CATS: All your base are belong to us.')
+#     time.sleep(2)
+#     print('> CATS: You have no chance to survive make your time.')
+#     time.sleep(2)
+#     print('> Captain: Take off every \'ZIG\'.')
+#     time.sleep(2)
+#     print('> Captain: For great justice.')
 
 
 class ParentPollerUnix(Thread):
@@ -53,14 +53,16 @@ class ParentPollerUnix(Thread):
     when the parent process no longer exists.
     """
 
-    def __init__(self, quitfunction=None):
+    def __init__(self, quit_function=None):
         """ Create the parentpoller.
 
             @param callable quitfunction: function to run before exiting
         """
+        if not callable(quit_function):
+            raise Exception('argument quit_function must be a callable.')
         super().__init__()
         self.daemon = True
-        self.quitfunction = quitfunction
+        self.quit_function = quit_function
 
     def run(self):
         """ Run the parentpoller.
@@ -70,11 +72,9 @@ class ParentPollerUnix(Thread):
         while True:
             try:
                 if os.getppid() == 1:
-                    if hasattr(self.quitfunction, '__call__'):
-                        self.quitfunction()
-                    waitForClose()
-                    os._exit(1)
-                time.sleep(1.0)
+                    logger.critical('Parent process died! Qudi shutting down...')
+                    self.quit_function()
+                    return
             except OSError as e:
                 if e.errno == EINTR:
                     continue
@@ -86,24 +86,18 @@ class ParentPollerWindows(Thread):
     and, optionally, terminates the program immediately when the parent process no longer exists.
     """
 
-    def __init__(self, quitfunction=None, interrupt_handle=None, parent_handle=None):
-        """ Create the poller. At least one of the optional parameters must be
-        provided.
+    def __init__(self, quit_function, parent_handle):
+        """ Create the parent poller.
 
-        Parameters
-        ----------
-        interrupt_handle : HANDLE (int), optional
-            If provided, the program will generate a Ctrl+C event when this
-            handle is signaled.
-
-        parent_handle : HANDLE (int), optional
-            If provided, the program will terminate immediately when this
-            handle is signaled.
+        @param callable quit_function: Function to call for shutdown if parent process is dead.
+        @param int parent_handle: The program will terminate immediately when this handle is
+                                  signaled.
         """
-        assert(interrupt_handle or parent_handle)
+        if not callable(quit_function):
+            raise Exception('argument quit_function must be a callable.')
         super().__init__()
         self.daemon = True
-        self.interrupt_handle = interrupt_handle
+        self.quit_function = quit_function
         self.parent_handle = parent_handle
 
     def run(self):
@@ -115,37 +109,29 @@ class ParentPollerWindows(Thread):
             from _subprocess import WAIT_OBJECT_0, INFINITE
 
         # Build the list of handle to listen on.
-        handles = []
-        if self.interrupt_handle:
-            handles.append(self.interrupt_handle)
-        if self.parent_handle:
-            handles.append(self.parent_handle)
+        handle_list = [self.parent_handle]
         arch = platform.architecture()[0]
         c_int = ctypes.c_int64 if arch.startswith('64') else ctypes.c_int
 
         # Listen forever.
         while True:
             result = ctypes.windll.kernel32.WaitForMultipleObjects(
-                len(handles),                            # nCount
-                (c_int * len(handles))(*handles),        # lpHandles
-                False,                                   # bWaitAll
-                INFINITE)                                # dwMilliseconds
+                len(handle_list),                           # nCount
+                (c_int * len(handle_list))(*handle_list),   # lpHandles
+                False,                                      # bWaitAll
+                10000)                                      # dwMilliseconds
 
-            if WAIT_OBJECT_0 <= result < len(handles):
-                handle = handles[result - WAIT_OBJECT_0]
-
-                if handle == self.interrupt_handle:
-                    # check if signal handler is callable
-                    # to avoid 'int not callable' error (Python issue #23395)
-                    if callable(signal.getsignal(signal.SIGINT)):
-                        interrupt_main()
-
-                elif handle == self.parent_handle:
-                    if hasattr(self.quitfunction, '__call__'):
-                        self.quitfunction()
-                    waitForClose()
-                    os._exit(1)
-            elif result < 0:
+            if result >= len(handle_list):
+                # Nothing happened. Probably timed out.
+                continue
+            elif result < WAIT_OBJECT_0:
                 # wait failed, just give up and stop polling.
                 logger.critical("Parent poll failed!!!!!")
                 return
+            else:
+                handle = handle_list[result - WAIT_OBJECT_0]
+                if handle == self.parent_handle:
+                    logger.critical('Parent process died! Qudi shutting down...')
+                    self.quit_function()
+                    return
+

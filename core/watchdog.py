@@ -26,10 +26,10 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 import os
 import sys
+import signal
 from qtpy import QtCore
 from .parentpoller import ParentPollerWindows, ParentPollerUnix
 from .logger import get_logger
-from .threadmanager import ThreadManager
 
 logger = get_logger(__name__)
 
@@ -37,22 +37,27 @@ logger = get_logger(__name__)
 class AppWatchdog(QtCore.QObject):
     """This class periodically runs a function for debugging and handles application exit.
     """
-    _sigDoQuit = QtCore.Signal(object)
 
-    def __init__(self):
+    def __init__(self, quit_function):
         super().__init__()
-        self._quit_in_progress = False
-        self.exitcode = 0
         # Run python code periodically to allow interactive debuggers to interrupt the qt event loop
         self.__timer = QtCore.QTimer()
         self.__timer.timeout.connect(self.do_nothing)
         self.__timer.start(1000)
-        self._sigDoQuit.connect(self.quit_application)
 
-        self.parent_handle = None
-        self.interrupt = None
-        self.parent_poller = None
-        self.setup_parent_poller()
+        # Listen to SIGINT and terminate
+        signal.signal(signal.SIGINT, lambda *args: quit_function())
+
+        self.parent_handle = int(os.environ.get('QUDI_PARENT_PID', 0))
+        if self.parent_handle == 0:
+            self.parent_poller = None
+            logger.warning('Qudi running unsupervised. Restart will not work.')
+        elif sys.platform == 'win32':
+            self.parent_poller = ParentPollerWindows(quit_function, self.parent_handle)
+            self.parent_poller.start()
+        else:
+            self.parent_poller = ParentPollerUnix(quit_function)
+            self.parent_poller.start()
         return
 
     @QtCore.Slot()
@@ -63,48 +68,3 @@ class AppWatchdog(QtCore.QObject):
         for i in range(100):
             x += i
         return
-
-    def setup_parent_poller(self):
-        """Set up parent poller to find out when parent process is killed.
-        """
-        self.parent_handle = int(os.environ.get('QUDI_PARENT_PID') or 0)
-        self.interrupt = int(os.environ.get('QUDI_INTERRUPT_EVENT') or 0)
-        if sys.platform == 'win32':
-            if self.interrupt or self.parent_handle:
-                self.parent_poller = ParentPollerWindows(
-                    self.quit_proxy, self.interrupt, self.parent_handle)
-                self.parent_poller.start()
-        elif self.parent_handle:
-            self.parent_poller = ParentPollerUnix(self.quit_proxy)
-            self.parent_poller.start()
-        else:
-            logger.warning('Qudi running unsupervised. Restart will not work.')
-
-    def quit_proxy(self):
-        """Helper function to emit doQuit signal
-        """
-        print('Parent process is dead, committing sudoku...')
-        self._sigDoQuit.emit()
-
-    def quit_application(self, restart=False):
-        """Clean up threads and windows, quit application.
-
-        @param bool restart: flag indicating if the exitcode should indicate a restart
-        """
-        if restart:
-            # exitcode of 42 signals to start.py that this should be restarted
-            self.exitcode = 42
-        # Need this flag because multiple triggers can call this function during quit.
-        if not self._quit_in_progress:
-            self._quit_in_progress = True
-            self.__timer.stop()
-            QtCore.QCoreApplication.instance().processEvents()
-            logger.info('Stopping threads...')
-            print('Stopping threads...')
-            thread_manager = ThreadManager.instance()
-            if thread_manager is not None:
-                thread_manager.quit_all_threads()
-            QtCore.QCoreApplication.instance().processEvents()
-            logger.info('Qudi is closed!  Ciao.')
-            print('\n  Qudi is closed!  Ciao.')
-            QtCore.QCoreApplication.instance().quit()
