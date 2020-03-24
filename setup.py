@@ -130,7 +130,7 @@ windows_pkg = ['attrs==19.3.0',
 
 setup(name='qudi',
       version='1.0.dev',
-      # packages=['qudi'],
+      packages=['qudi'],
       description='A modular laboratory experiment management suite',
       long_description=long_description,
       long_description_content_type='text/markdown',
