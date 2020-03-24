@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from setuptools import setup, find_namespace_packages
+from setuptools import setup
 
 with open("README.md", "r") as file:
     long_description = file.read()
@@ -130,7 +130,13 @@ windows_pkg = ['attrs==19.3.0',
 
 setup(name='qudi',
       version='1.0.dev',
-      packages=find_namespace_packages(include=['qudi.*']),
+      packages=['qudi',
+                'qudi.core',
+                'qudi.core.util',
+                'qudi.core.logger',
+                'qudi.core.gui',
+                'qudi.core.remotemodules',
+                'qudi.qtwidgets'],
       description='A modular laboratory experiment management suite',
       long_description=long_description,
       long_description_content_type='text/markdown',
