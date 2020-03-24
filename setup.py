@@ -130,7 +130,7 @@ windows_pkg = ['attrs==19.3.0',
 
 setup(name='qudi',
       version='1.0.dev',
-      packages=['qudi'],
+      # packages=['qudi'],
       description='A modular laboratory experiment management suite',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -143,6 +143,7 @@ setup(name='qudi',
                 'instrument',
                 'modular'
                 ],
+      license='GPLv3',
       install_requires=windows_pkg if sys.platform == 'win32' else unix_pkg,
       python_requires='~=3.7',
       entry_points={'console_scripts': ['qudi=qudi.runnable:main']}
