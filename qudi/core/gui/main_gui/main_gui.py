@@ -84,9 +84,11 @@ class QudiMainGui(GuiBase):
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
         if isinstance(version, str):
-            self.mw.about_qudi_dialog.version_label.setText('Qudi version: {0}'.format(version))
-            self.mw.version_label.setText('Qudi version: {0} ; configured from {1}'.format(
-                version, self._qudi_main.configuration.config_file))
+            self.mw.about_qudi_dialog.version_label.setText('version {0}'.format(version))
+            self.mw.version_label.setText(
+                '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> '
+                'version {0} </a>  configured from {1}'
+                ''.format(version, self._qudi_main.configuration.config_file))
         else:
             self.mw.about_qudi_dialog.version_label.setText(
                 '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0}'
