@@ -129,12 +129,13 @@ windows_pkg = ['attrs==19.3.0',
                ]
 
 packages = find_packages()
-print('==================\n{0}\n=================='.format(packages))
+print('==================\n{0}\n=================='.format(packages), file=sys.stderr)
 packages.extend(['qudi.qtwidgets'])
 
 setup(name='qudi',
       version='1.0.dev',
       packages=packages,
+      package_data={'qudi': ['artwork/*', 'config/default.cfg']},
       description='A modular laboratory experiment management suite',
       long_description=long_description,
       long_description_content_type='text/markdown',
