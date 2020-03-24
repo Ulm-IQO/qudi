@@ -42,9 +42,9 @@ except ImportError:
     from IPython.qt.inprocess import QtInProcessKernelManager
 
 try:
-    from git import Repo
+    from git import Repo, InvalidGitRepositoryError
 except ImportError:
-    pass
+    Repo = None
 
 if has_pyqtgraph:
     import pyqtgraph as pg
@@ -83,13 +83,18 @@ class QudiMainGui(GuiBase):
 
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
-        self.mw.about_qudi_dialog.version_label.setText(
-            '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0} '
-            '</a>, on branch {1}.'.format(version[0], version[1]))
-        self.mw.version_label.setText(
-            '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0} '
-            '</a>, on branch {1}, configured from {2}'
-            ''.format(version[0], version[1], self._qudi_main.configuration.config_file))
+        if isinstance(version, str):
+            self.mw.about_qudi_dialog.version_label.setText('Qudi version: {0}'.format(version))
+            self.mw.version_label.setText('Qudi version: {0} ; configured from {1}'.format(
+                version, self._qudi_main.configuration.config_file))
+        else:
+            self.mw.about_qudi_dialog.version_label.setText(
+                '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0}'
+                ' </a>, on branch {1}.'.format(version[0], version[1]))
+            self.mw.version_label.setText(
+                '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0}'
+                ' </a>, on branch {1}, configured from {2}'
+                ''.format(version[0], version[1], self._qudi_main.configuration.config_file))
 
         self._connect_signals()
 
@@ -401,17 +406,27 @@ class QudiMainGui(GuiBase):
         return
 
     def get_qudi_version(self):
-        """ Try to determine the software version in case the program is in
-            a git repository.
+        """ Try to determine the software version in case the program is in a git repository.
         """
+        # Try to get repository information if qudi has been checked out as git repo
+        if Repo is not None:
+            try:
+                repo = Repo(os.path.dirname(get_main_dir()))
+                branch = repo.active_branch
+                rev = str(repo.head.commit)
+                return rev, str(branch)
+            except InvalidGitRepositoryError:
+                pass
+            except:
+                self.log.exception('Unexpected error while trying to get git repo:')
+
+        # Get version number from VERSION.txt
         try:
-            repo = Repo(os.path.dirname(get_main_dir()))
-            branch = repo.active_branch
-            rev = str(repo.head.commit)
-            return rev, str(branch)
+            with open(os.path.join(get_main_dir(), 'VERSION.txt'), 'r') as file:
+                return file.read().strip()
         except:
-            self.log.exception('Error while trying to get git repo:')
-            return 'unknown', -1
+            self.log.exception('Unexpected error while trying to get qudi version:')
+        return 'unknown'
 
     def load_configuration(self):
         """ Ask the user for a file where the configuration should be loaded from

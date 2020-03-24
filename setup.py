@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as file:
     long_description = file.read()
+
+with open(os.path.join(os.getcwd(), 'qudi', 'VERSION.txt'), 'r') as file:
+    version = file.read().strip()
+
+packages = find_packages()
+packages.extend(['qudi.qtwidgets'])
 
 unix_pkg = ['attrs==19.3.0',
             'backcall==0.1.0',
@@ -128,14 +135,11 @@ windows_pkg = ['attrs==19.3.0',
                'zipp==3.1.0'
                ]
 
-packages = find_packages()
-print('==================\n{0}\n=================='.format(packages), file=sys.stderr)
-packages.extend(['qudi.qtwidgets'])
-
 setup(name='qudi',
-      version='1.0.dev',
+      version=version,
       packages=packages,
-      package_data={'qudi': ['artwork/logo/*',
+      package_data={'': ['README.md', 'LICENSE.txt', 'COPYRIGHT.txt'],
+                    'qudi': ['artwork/logo/*',
                              'artwork/icons/oxygen/*',
                              'artwork/icons/oxygen/**/*.png',
                              'artwork/icons/qudiTheme/*',
@@ -151,7 +155,8 @@ setup(name='qudi',
                              'artwork/styles/console/*.txt',
                              'artwork/styles/log/*.qss',
                              'artwork/styles/log/*.txt',
-                             'config/default.cfg']},
+                             'config/default.cfg']
+                    },
       description='A modular laboratory experiment management suite',
       long_description=long_description,
       long_description_content_type='text/markdown',
