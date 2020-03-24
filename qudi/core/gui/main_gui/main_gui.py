@@ -31,8 +31,8 @@ except ImportError:
     remotemodules = None
 from ...util.paths import get_main_dir, get_default_config_dir
 from ...util.helpers import has_pyqtgraph
-from .widgets.errordialog import ErrorDialog
-from .widgets.mainwindow import QudiMainWindow
+from .errordialog import ErrorDialog
+from .mainwindow import QudiMainWindow
 from ...module import GuiBase
 from qtpy import QtCore, QtWidgets, QtGui
 
