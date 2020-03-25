@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import traceback
 from datetime import datetime
-from ...logger import get_logger, signal_handler
+from qudi.core.logger import get_logger, signal_handler
 from qtpy import QtCore, QtGui, QtWidgets
 
 

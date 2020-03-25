@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-from .main_gui import QudiMainGui
+from qudi.core.gui.main_gui.main_gui import QudiMainGui

@@ -36,8 +36,8 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from qtpy import QtCore
-from .qt_handler import LogSignalHandler, qt_message_handler
-from .excepion_handler import original_excepthook, register_exception_handler
+from qudi.core.logger.qt_handler import LogSignalHandler, qt_message_handler
+from qudi.core.logger.excepion_handler import original_excepthook, register_exception_handler
 
 # global variables
 _handlers = dict()

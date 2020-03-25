@@ -24,8 +24,9 @@ import weakref
 import logging
 import platform
 from qtpy import QtCore, QtGui, QtWidgets
-from ..util.helpers import has_pyqtgraph
-from .main_gui.main_gui import QudiMainGui
+from qudi.core.util.helpers import has_pyqtgraph
+from qudi.core.gui.main_gui.main_gui import QudiMainGui
+from qudi.core.util.paths import get_main_dir
 
 if has_pyqtgraph:
     import pyqtgraph as pg
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray icon class subclassing QSystemTrayIcon for custom functionality.
     """
-    def __init__(self, artwork_dir):
+    def __init__(self):
         """Tray icon constructor.
         Adds all the appropriate menus and actions.
         """
@@ -44,7 +45,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.setIcon(QtWidgets.QApplication.instance().windowIcon())
         self.right_menu = QtWidgets.QMenu('Quit')
         self.left_menu = QtWidgets.QMenu('Manager')
-        iconpath = os.path.join(artwork_dir, 'icons', 'oxygen', '22x22')
+        iconpath = os.path.join(get_main_dir(), 'core', 'artwork', 'icons', 'oxygen', '22x22')
         self.managericon = QtGui.QIcon()
         self.managericon.addFile(os.path.join(iconpath, 'go-home.png'), QtCore.QSize(16, 16))
         self.exiticon = QtGui.QIcon()
@@ -85,10 +86,7 @@ class Gui(QtCore.QObject):
         raise Exception('Gui is a singleton. Please use Gui.instance() to get a reference to the '
                         'already created instance.')
 
-    def __init__(self, qudi_instance, artwork_dir, stylesheet_path=None, theme=None,
-                 use_opengl=False):
-        if not os.path.isdir(artwork_dir):
-            raise NotADirectoryError('artwork_dir path "{0}" not found.'.format(artwork_dir))
+    def __init__(self, qudi_instance, stylesheet_path=None, theme=None, use_opengl=False):
         if stylesheet_path is not None and not os.path.isfile(stylesheet_path):
             raise FileNotFoundError('stylesheet_path "{0}" not found.'.format(stylesheet_path))
         if theme is None:
@@ -102,11 +100,11 @@ class Gui(QtCore.QObject):
 
         app.setQuitOnLastWindowClosed(False)
 
-        self._init_app_icon(artwork_dir)
-        self.set_theme(theme, artwork_dir)
+        self._init_app_icon()
+        self.set_theme(theme)
         if stylesheet_path is not None:
             self.set_style_sheet(stylesheet_path)
-        self.system_tray_icon = SystemTrayIcon(artwork_dir)
+        self.system_tray_icon = SystemTrayIcon()
         self.show_system_tray_icon()
 
         self._sigPopUpMessage.connect(self.pop_up_message, QtCore.Qt.QueuedConnection)
@@ -123,10 +121,10 @@ class Gui(QtCore.QObject):
         return cls._instance()
 
     @staticmethod
-    def _init_app_icon(artwork_dir):
+    def _init_app_icon():
         """ Set up the Qudi application icon.
         """
-        iconpath = os.path.join(artwork_dir, 'logo')
+        iconpath = os.path.join(get_main_dir(), 'core', 'artwork', 'logo')
         app_icon = QtGui.QIcon()
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
@@ -149,12 +147,11 @@ class Gui(QtCore.QObject):
             pg.setConfigOption('useOpenGL', use_opengl)
 
     @staticmethod
-    def set_theme(theme, artwork_dir):
+    def set_theme(theme):
         """
         Set icon theme for qudi app.
 
         @param str theme: qudi theme name
-        @param str artwork_dir: qudi artwork directory
         """
         # Make icons work on non-X11 platforms, set custom theme
         # if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
@@ -163,7 +160,7 @@ class Gui(QtCore.QObject):
         # removed and the QT theme is being set to our artwork/icons folder for
         # all OSs.
         themepaths = QtGui.QIcon.themeSearchPaths()
-        themepaths.append(os.path.join(artwork_dir, 'icons'))
+        themepaths.append(os.path.join(get_main_dir(), 'core', 'artwork', 'icons'))
         QtGui.QIcon.setThemeSearchPaths(themepaths)
         QtGui.QIcon.setThemeName(theme)
 
@@ -176,6 +173,10 @@ class Gui(QtCore.QObject):
         """
         with open(stylesheet_path, 'r') as stylesheetfile:
             stylesheet = stylesheetfile.read()
+
+        if stylesheet_path.endswith('qdark.qss'):
+            path = os.path.join(os.path.dirname(stylesheet_path), 'qdark').replace('\\', '/')
+            stylesheet = stylesheet.replace('{qdark}', path)
 
         # see issue #12 on qdarkstyle github
         if platform.system().lower() == 'darwin' and stylesheet_path.endswith('qdark.qss'):

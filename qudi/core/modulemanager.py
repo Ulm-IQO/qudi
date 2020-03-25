@@ -27,14 +27,14 @@ from functools import partial
 
 from qtpy import QtCore
 
-from .util.mutex import RecursiveMutex   # provides access serialization between threads
-from .threadmanager import ThreadManager
+from qudi.core.util.mutex import RecursiveMutex   # provides access serialization between threads
+from qudi.core.threadmanager import ThreadManager
 # try to import remotemodules. Might fail if rpyc is not installed.
 try:
-    from . import remotemodules
+    from qudi.core import remotemodules
 except ImportError:
     remotemodules = None
-from .module import Base
+from qudi.core.module import Base
 
 logger = logging.getLogger(__name__)
 
@@ -447,6 +447,9 @@ class ManagedModule(QtCore.QObject):
                     self._instance.show()
                 return True
 
+            logger.info(
+                'Activating module {0}.{1}.{2}'.format(self._base, self._module, self._class))
+
             if not self.is_loaded:
                 if not self._load():
                     return False
@@ -504,6 +507,9 @@ class ManagedModule(QtCore.QObject):
         with self._lock:
             if not self.is_active:
                 return True
+
+            logger.info(
+                'Deactivating module {0}.{1}.{2}'.format(self._base, self._module, self._class))
 
             success = True  # error flag to return
 

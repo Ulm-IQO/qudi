@@ -19,7 +19,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import sys
 import argparse
-from .application import Qudi
+from qudi.core.application import Qudi
 
 
 # Make icons work on non-X11 platforms, import a custom theme

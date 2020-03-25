@@ -2,18 +2,24 @@
 
 import os
 import sys
-from setuptools import setup, find_packages
+from setuptools import setup
 
-with open("README.md", "r") as file:
+with open('README.md', 'r') as file:
     long_description = file.read()
 
-with open(os.path.join(os.getcwd(), 'qudi', 'VERSION.txt'), 'r') as file:
+with open(os.path.join('.', 'qudi', 'core', 'VERSION.txt'), 'r') as file:
     version = file.read().strip()
 
-packages = find_packages()
-packages.extend(['qudi.qtwidgets'])
+packages = ['qudi',
+            'qudi.core',
+            'qudi.core.gui',
+            'qudi.core.gui.main_gui',
+            'qudi.core.gui.qtwidgets',
+            'qudi.core.logger',
+            'qudi.core.remotemodules',
+            'qudi.core.util']
 
-unix_pkg = ['attrs==19.3.0',
+unix_dep = ['attrs==19.3.0',
             'backcall==0.1.0',
             'bleach==3.1.3',
             'decorator==4.4.2',
@@ -73,7 +79,7 @@ unix_pkg = ['attrs==19.3.0',
             'zipp==3.1.0'
             ]
 
-windows_pkg = ['attrs==19.3.0',
+windows_dep = ['attrs==19.3.0',
                'backcall==0.1.0',
                'bleach==3.1.3',
                'certifi==2019.11.28',
@@ -138,31 +144,33 @@ windows_pkg = ['attrs==19.3.0',
 setup(name='qudi',
       version=version,
       packages=packages,
-      package_data={'': ['README.md', 'LICENSE.txt', 'COPYRIGHT.txt'],
-                    'qudi': ['VERSION.txt',
-                             'artwork/logo/*',
-                             'artwork/icons/oxygen/*',
-                             'artwork/icons/oxygen/**/*.png',
-                             'artwork/icons/qudiTheme/*',
-                             'artwork/icons/qudiTheme/**/*.png',
-                             'artwork/logo/*.png',
-                             'artwork/logo/*.ico',
-                             'artwork/logo/*.txt',
-                             'artwork/styles/application/*.qss',
-                             'artwork/styles/application/*.txt',
-                             'artwork/styles/application/**/*.png',
-                             'artwork/styles/application/**/*.txt',
-                             'artwork/styles/console/*.qss',
-                             'artwork/styles/console/*.txt',
-                             'artwork/styles/log/*.qss',
-                             'artwork/styles/log/*.txt',
-                             'config/default.cfg']
+      package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt'],
+                    'qudi.core': ['VERSION.txt', 
+                                  'default.cfg'
+                                  'artwork/logo/*',
+                                  'artwork/icons/oxygen/*',
+                                  'artwork/icons/oxygen/**/*.png',
+                                  'artwork/icons/qudiTheme/*',
+                                  'artwork/icons/qudiTheme/**/*.png',
+                                  'artwork/logo/*.png',
+                                  'artwork/logo/*.ico',
+                                  'artwork/logo/*.txt',
+                                  'artwork/styles/application/*.qss',
+                                  'artwork/styles/application/*.txt',
+                                  'artwork/styles/application/**/*.png',
+                                  'artwork/styles/application/**/*.txt',
+                                  'artwork/styles/console/*.qss',
+                                  'artwork/styles/console/*.txt',
+                                  'artwork/styles/log/*.qss',
+                                  'artwork/styles/log/*.txt']
                     },
       description='A modular laboratory experiment management suite',
       long_description=long_description,
       long_description_content_type='text/markdown',
       url='https://github.com/Ulm-IQO/qudi',
-      keywords=['qudi',
+      keywords=['diamond',
+                'quantum',
+                'confocal',
                 'experiment',
                 'lab',
                 'laboratory',
@@ -171,7 +179,8 @@ setup(name='qudi',
                 'modular'
                 ],
       license='GPLv3',
-      install_requires=windows_pkg if sys.platform == 'win32' else unix_pkg,
+      install_requires=windows_dep if sys.platform == 'win32' else unix_dep,
       python_requires='~=3.7',
-      entry_points={'console_scripts': ['qudi=qudi.runnable:main']}
+      entry_points={'console_scripts': ['qudi=qudi.runnable:main']},
+      zip_safe=False
       )

@@ -21,11 +21,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 from qtpy import QtCore, QtGui, QtWidgets
-from .logwidget import LogWidget
-from .remotewidget import RemoteWidget
-from .aboutqudidialog import AboutQudiDialog
-from .consolesettingsdialog import ConsoleSettingsDialog
-from .modulewidget import ModuleWidget
+from qudi.core.gui.main_gui.logwidget import LogWidget
+from qudi.core.gui.main_gui.remotewidget import RemoteWidget
+from qudi.core.gui.main_gui.aboutqudidialog import AboutQudiDialog
+from qudi.core.gui.main_gui.consolesettingsdialog import ConsoleSettingsDialog
+from qudi.core.gui.main_gui.modulewidget import ModuleWidget
+from qudi.core.util.paths import get_main_dir
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 
@@ -47,7 +48,7 @@ class QudiMainWindow(QtWidgets.QMainWindow):
 
         # Create actions
         # Toolbar actions
-        icon_path = os.path.join(os.getcwd(), 'artwork', 'icons', 'oxygen', '22x22')
+        icon_path = os.path.join(get_main_dir(), 'core', 'artwork', 'icons', 'oxygen', '22x22')
         self.action_load_configuration = QtWidgets.QAction()
         self.action_load_configuration.setIcon(
             QtGui.QIcon(os.path.join(icon_path, 'document-open.png')))

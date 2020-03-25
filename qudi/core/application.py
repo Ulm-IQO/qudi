@@ -27,16 +27,16 @@ import weakref
 
 from qtpy import QtCore, QtWidgets, API_NAME
 
-from .logger import init_rotating_file_handler, get_logger
-from .util.paths import get_main_dir, get_default_log_dir
-from .util.helpers import import_check
-from .util.mutex import RecursiveMutex, Mutex
-from .config import Configuration
-from .watchdog import AppWatchdog
-from .modulemanager import ModuleManager
-from .threadmanager import ThreadManager
-from .gui.gui import Gui
-from . import remotemodules
+from qudi.core.logger import init_rotating_file_handler, get_logger
+from qudi.core.util.paths import get_main_dir, get_default_log_dir
+from qudi.core.util.helpers import import_check
+from qudi.core.util.mutex import RecursiveMutex, Mutex
+from qudi.core.config import Configuration
+from qudi.core.watchdog import AppWatchdog
+from qudi.core.modulemanager import ModuleManager
+from qudi.core.threadmanager import ThreadManager
+from qudi.core.gui.gui import Gui
+from qudi.core import remotemodules
 
 try:
     from zmq.eventloop import ioloop
@@ -62,6 +62,7 @@ class Qudi(QtCore.QObject):
                             'Qudi.instance() to get a reference to the already created instance.')
 
     def __init__(self, no_gui=False, log_dir='', config_file=None):
+        super().__init__()
         # CLI arguments
         self.no_gui = bool(no_gui)
         self.log_dir = str(log_dir) if os.path.isdir(log_dir) else get_default_log_dir(
@@ -138,9 +139,7 @@ class Qudi(QtCore.QObject):
     def _start_gui(self):
         if self.no_gui:
             return
-        self.gui = Gui(qudi_instance=self,
-                       artwork_dir=os.path.join(get_main_dir(), 'artwork'),
-                       stylesheet_path=self.configuration.stylesheet)
+        self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
     def run(self):

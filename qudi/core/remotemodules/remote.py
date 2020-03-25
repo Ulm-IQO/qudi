@@ -20,8 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import logging
-from ..util.mutex import Mutex
-from ..util.models import ListTableModel
+from qudi.core.util.mutex import Mutex
+from qudi.core.util.models import ListTableModel
 from qtpy.QtCore import QObject
 import rpyc
 from rpyc.utils.authenticators import SSLAuthenticator

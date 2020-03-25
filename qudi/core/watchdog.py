@@ -28,8 +28,8 @@ import os
 import sys
 import signal
 from qtpy import QtCore
-from .parentpoller import ParentPollerWindows, ParentPollerUnix
-from .logger import get_logger
+from qudi.core.parentpoller import ParentPollerWindows, ParentPollerUnix
+from qudi.core.logger import get_logger
 
 logger = get_logger(__name__)
 

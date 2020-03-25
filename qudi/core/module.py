@@ -24,12 +24,12 @@ import copy
 from fysom import Fysom  # provides a finite state machine
 
 from qtpy import QtCore
-from .configoption import MissingOption, ConfigOption
-from .connector import Connector
-from .statusvariable import StatusVar
-from .util.mutex import Mutex
-from .util.paths import get_appdata_dir
-from .config import load, save
+from qudi.core.configoption import MissingOption, ConfigOption
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.util.mutex import Mutex
+from qudi.core.util.paths import get_appdata_dir
+from qudi.core.config import load, save
 
 import os
 
