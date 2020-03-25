@@ -66,7 +66,7 @@ class HardwarePull(QtCore.QObject):
         """
 
         hardware = self._parentclass._wavemeter_device
-        self._parentclass.current_wavelength = 1.0 * hardware.get_current_wavelength()
+        self._parentclass.current_wavelength = 1.0 * hardware.get_current_wavelength2()
 
         time_stamp = time.time() - self._parentclass._acqusition_start_time
 

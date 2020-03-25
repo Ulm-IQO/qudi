@@ -141,6 +141,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        <property name="toolTip">
         <string>Scan frequency in Hz</string>
        </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
        <property name="maximum">
         <double>100.000000000000000</double>
        </property>
