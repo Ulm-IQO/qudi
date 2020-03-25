@@ -21,7 +21,7 @@ top-level directory of this distribution and at
 """
 
 import copy
-from .interface import InterfaceMethod
+from qudi.core.interface import InterfaceMethod
 
 
 class Connector:

@@ -37,7 +37,7 @@ import copy
 import ruamel.yaml as yaml
 from io import BytesIO
 from qtpy import QtCore
-from .util.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
+from qudi.core.util.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
 from warnings import warn
 
 
@@ -336,6 +336,7 @@ class Configuration(QtCore.QObject):
             elif key == 'stylesheet':
                 # FIXME: How should stylesheets be declared in config?
                 self._global_config[key] = os.path.join(get_main_dir(),
+                                                        'core',
                                                         'artwork',
                                                         'styles',
                                                         'application',
@@ -400,8 +401,8 @@ class Configuration(QtCore.QObject):
         if os.path.isfile(file_path):
             return file_path
 
-        # Fall back to default.cfg in qudi directory
-        file_path = os.path.join(get_main_dir(), 'config', 'default.cfg')
+        # Fall back to default.cfg in qudi core directory
+        file_path = os.path.join(get_main_dir(), 'core', 'default.cfg')
         if os.path.isfile(file_path):
             return file_path
 

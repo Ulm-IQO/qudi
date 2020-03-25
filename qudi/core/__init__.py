@@ -27,7 +27,7 @@ import os
 # os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 os.environ['QT_API'] = 'pyside2'
 
-from .statusvariable import StatusVar
-from .configoption import ConfigOption
-from .connector import Connector
-from .module import Base, LogicBase, GuiBase
+from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
+from qudi.core.connector import Connector
+from qudi.core.module import Base, LogicBase, GuiBase

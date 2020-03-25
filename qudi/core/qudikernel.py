@@ -30,12 +30,12 @@ import shutil
 import tempfile
 
 try:
-    from . import config
+    from qudi.core import config
 except ImportError:
     import config
 
 try:
-    from .parentpoller import ParentPollerUnix, ParentPollerWindows
+    from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 except ImportError:
     from parentpoller import ParentPollerUnix, ParentPollerWindows
 

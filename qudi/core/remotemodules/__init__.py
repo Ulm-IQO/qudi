@@ -22,10 +22,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from urllib.parse import urlparse
 import rpyc
 
-from ..threadmanager import ThreadManager
-from ._config import config
-from .remote import share_module, remove_shared_module
-from .remote import _RemoteServer, _RemoteModulesService, SharedModulesModel
+from qudi.core.threadmanager import ThreadManager
+from qudi.core.remotemodules._config import config
+from qudi.core.remotemodules.remote import share_module, remove_shared_module
+from qudi.core.remotemodules.remote import _RemoteServer, _RemoteModulesService, SharedModulesModel
 
 __all__ = ('config', 'get_remote_module_instance', 'remote_server', 'remove_shared_module',
            'share_module', 'start_remote_server', 'stop_remote_server', 'SharedModulesModel')

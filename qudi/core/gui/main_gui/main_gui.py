@@ -23,17 +23,17 @@ import logging
 import numpy as np
 
 from collections import OrderedDict
-from ...statusvariable import StatusVar
-from ...threadmanager import ThreadManager
+from qudi.core.statusvariable import StatusVar
+from qudi.core.threadmanager import ThreadManager
 try:
     import core.remotemodules as remotemodules
 except ImportError:
     remotemodules = None
-from ...util.paths import get_main_dir, get_default_config_dir
-from ...util.helpers import has_pyqtgraph
-from .errordialog import ErrorDialog
-from .mainwindow import QudiMainWindow
-from ...module import GuiBase
+from qudi.core.util.paths import get_main_dir, get_default_config_dir
+from qudi.core.util.helpers import has_pyqtgraph
+from qudi.core.gui.main_gui.errordialog import ErrorDialog
+from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
+from qudi.core.module import GuiBase
 from qtpy import QtCore, QtWidgets, QtGui
 
 try:
@@ -421,9 +421,9 @@ class QudiMainGui(GuiBase):
             except:
                 self.log.exception('Unexpected error while trying to get git repo:')
 
-        # Get version number from VERSION.txt
+        # Get core version number from VERSION.txt
         try:
-            with open(os.path.join(get_main_dir(), 'VERSION.txt'), 'r') as file:
+            with open(os.path.join(get_main_dir(), 'core', 'VERSION.txt'), 'r') as file:
                 return file.read().strip()
         except:
             self.log.exception('Unexpected error while trying to get qudi version:')

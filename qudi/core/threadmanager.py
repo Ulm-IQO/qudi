@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 import weakref
 from functools import partial
-from .util.mutex import RecursiveMutex
+from qudi.core.util.mutex import RecursiveMutex
 from qtpy import QtCore
 
 logger = logging.getLogger(__name__)
