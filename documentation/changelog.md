@@ -52,8 +52,18 @@ The potential sequence_options are:
   * `NON` (no sequence mode)
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
+* Added interfuse to correct geometrical aberration on scanner via polynomial transformations
 * added the option to do a purely analog ODMR scan.
-*
+* added multi channel option to process_interface and process_control_interface
+* added the option of an additional path for fit methods
+* added a hardware file for power supply  Teledyne T3PS3000
+* added pulse generator constraints to predefined
+* remove debug prints for flags in dummy pulser that were filling up the log
+* wider first column for ensemble and sequence editors to see long names and fixing header of first column in table of sequence editor
+* Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
+* Saving data in confocal GUI no longer freezes other GUI modules
+* Added save_pdf and save_png config options for save_logic
+* Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
 
 
 
@@ -62,6 +72,7 @@ Config changes:
 * The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
 of the `SequenceGeneratorLogic` can now either be a string for a single path 
 or a list of strings for multiple paths.
+* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`  
 
 ## Release 0.10
 Released on 14 Mar 2019
