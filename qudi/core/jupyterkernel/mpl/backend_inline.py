@@ -25,7 +25,7 @@ from matplotlib._pylab_helpers import Gcf
 from io import BytesIO
 import struct
 
-from .config import InlineBackend
+from qudi.core.jupyterkernel.mpl.config import InlineBackend
 
 # You really have to monkeypatch this for the backend to work
 qudikernel = None

@@ -216,7 +216,7 @@ def setup_matplotlib(kernel):
     from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg  # analysis: ignore
     from matplotlib._pylab_helpers import Gcf
 
-    from .mpl.backend_inline import InlineBackend
+    from qudi.core.jupyterkernel.mpl.backend_inline import InlineBackend
 
     cfg = InlineBackend.instance()
     matplotlib.pyplot.rcParams.update(cfg.rc)
@@ -227,6 +227,6 @@ def setup_matplotlib(kernel):
     # kernel.user_ns['display'] = display_data
     # kernel.user_ns['getfigs'] = getfigs
 
-    from .mpl import backend_inline as bi
+    from qudi.core.jupyterkernel.mpl import backend_inline as bi
     bi.qudikernel = kernel
     kernel.events.register('post_execute', bi.flush_figures)

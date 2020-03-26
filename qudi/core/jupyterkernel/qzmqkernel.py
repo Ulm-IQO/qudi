@@ -60,13 +60,13 @@ import zmq
 from io import StringIO
 from zmq.error import ZMQError
 
-from .compilerop import CachingCompiler, check_linecache_ipython
-from .display_trap import DisplayTrap
-from .builtin_trap import BuiltinTrap
-from .redirect import RedirectedStdOut, RedirectedStdErr
-from .stream import NetworkStream, IOStdoutNetworkStream, IOStderrNetworkStream, QZMQHeartbeat
-from .helpers import *
-from .events import EventManager, available_events
+from qudi.core.jupyterkernel.compilerop import CachingCompiler, check_linecache_ipython
+from qudi.core.jupyterkernel.display_trap import DisplayTrap
+from qudi.core.jupyterkernel.builtin_trap import BuiltinTrap
+from qudi.core.jupyterkernel.redirect import RedirectedStdOut, RedirectedStdErr
+from qudi.core.jupyterkernel.stream import NetworkStream, IOStdoutNetworkStream, IOStderrNetworkStream, QZMQHeartbeat
+from qudi.core.jupyterkernel.helpers import *
+from qudi.core.jupyterkernel.events import EventManager, available_events
 from IPython.core.error import InputRejected
 
 from qtpy import QtCore
