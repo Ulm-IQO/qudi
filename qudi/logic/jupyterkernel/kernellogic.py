@@ -18,12 +18,9 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from core.module import LogicBase
-from core.threadmanager import ThreadManager
+from logic.generic_logic import GenericLogic
 from qtpy import QtCore
-from core.util.helpers import has_pyqtgraph
-if has_pyqtgraph:
-    import pyqtgraph as pg
+import pyqtgraph as pg
 import numpy as np
 import time
 
@@ -36,7 +33,7 @@ from core.util.network import netobtain
 # -----------------------------------------------------------------------------
 
 
-class QudiKernelLogic(LogicBase):
+class QudiKernelLogic(GenericLogic):
     """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
 
     sigStartKernel = QtCore.Signal(str)
@@ -55,7 +52,7 @@ class QudiKernelLogic(LogicBase):
         """
         self.kernellist = dict()
         self.modules = set()
-        self._manager.sigManagedModulesChanged.connect(self.updateModuleList)
+        self._manager.sigModulesChanged.connect(self.updateModuleList)
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
@@ -81,13 +78,14 @@ class QudiKernelLogic(LogicBase):
         realconfig = netobtain(config)
         self.log.debug('Start {0}'.format(realconfig))
         kernel = QZMQKernel(realconfig)
-        kernelthread = ThreadManager.instance().get_new_thread('kernel-{0}'.format(kernel.engine_id))
+        kernelthread = self._manager.tm.newThread('kernel-{0}'.format(kernel.engine_id))
         kernel.moveToThread(kernelthread)
-        kernel.user_global_ns.update({'np': np,
-                                      'config': self._manager.tree['defined'],
-                                      'manager': self._manager})
-        if has_pyqtgraph:
-            kernel.user_global_ns.update({'pg': pg})
+        kernel.user_global_ns.update({
+            'pg': pg,
+            'np': np,
+            'config': self._manager.tree['defined'],
+            'manager': self._manager
+        })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.log.debug('Kernel is {0}'.format(kernel.engine_id))
         kernelthread.start()
@@ -114,7 +112,7 @@ class QudiKernelLogic(LogicBase):
           @param callable external: reference to rpyc client exit function
         """
         self.log.info('Cleanup kernel {0}'.format(kernelid))
-        ThreadManager.instance().quit_thread('kernel-{0}'.format(kernelid))
+        self._manager.tm.quitThread('kernel-{0}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:
