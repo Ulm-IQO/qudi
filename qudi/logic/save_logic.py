@@ -31,9 +31,10 @@ import time
 
 from collections import OrderedDict
 from core.configoption import ConfigOption
+from core.util import units
 from core.util.mutex import Mutex
 from core.util.network import netobtain
-from core.module import LogicBase
+from logic.generic_logic import GenericLogic
 from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
 from PIL import PngImagePlugin
@@ -114,7 +115,8 @@ class FunctionImplementationError(Exception):
         return repr(self.value)
 
 
-class SaveLogic(LogicBase):
+class SaveLogic(GenericLogic):
+
     """
     A general class which saves all kinds of data in a general sense.
 
@@ -136,10 +138,17 @@ class SaveLogic(LogicBase):
     save_png = ConfigOption('save_png', True)
 
     # Matplotlib style definition for saving plots
-    __mpl_colors = ['#1f17f4', '#ffa40e', '#ff3487', '#008b00', '#17becf', '#850085']
-    __mpl_markers = ['o', 's', '^', 'v', 'D', 'd']
     mpl_qd_style = {
-        'axes.prop_cycle': cycler('color', __mpl_colors) + cycler('marker', __mpl_markers),
+        'axes.prop_cycle': cycler(
+            'color',
+            ['#1f17f4',
+            '#ffa40e',
+            '#ff3487',
+            '#008b00',
+            '#17becf',
+            '#850085'
+            ]
+            ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
         'axes.edgecolor': '0.3',
         'xtick.color': '0.3',
         'ytick.color': '0.3',
@@ -153,9 +162,10 @@ class SaveLogic(LogicBase):
         'axes.spines.top': True,
         'xtick.minor.visible': True,
         'ytick.minor.visible': True,
-        'savefig.dpi': '180'}
+        'savefig.dpi': '180'
+        }
 
-    _additional_parameters = dict()
+    _additional_parameters = {}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
