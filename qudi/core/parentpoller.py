@@ -101,7 +101,7 @@ class ParentPollerWindows(Thread):
         """
         if quit_function is None:
             pass
-        if not callable(quit_function):
+        elif not callable(quit_function):
             raise Exception('argument quit_function must be a callable.')
         super().__init__()
         self.daemon = True
