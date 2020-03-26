@@ -17,6 +17,8 @@ packages = ['qudi',
             'qudi.core.gui.qtwidgets',
             'qudi.core.logger',
             'qudi.core.remotemodules',
+            'qudi.core.jupyterkernel',
+            'qudi.core.jupyterkernel.mpl',
             'qudi.core.util']
 
 unix_dep = ['attrs==19.3.0',
