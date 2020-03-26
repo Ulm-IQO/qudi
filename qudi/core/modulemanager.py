@@ -211,6 +211,7 @@ class ModuleManager(QtCore.QObject):
             return self._modules[module_name].reload()
 
     def clear_module_status(self, module_name):
+        # ToDo: implement together with module Base class
         pass
 
     def start_all_modules(self):
