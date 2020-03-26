@@ -202,15 +202,16 @@ class Qudi(QtCore.QObject):
             #     import manhole
             #     manhole.install()
 
-            # first disable our pyqtgraph's cleanup function; won't be needing it.
-            # try:
-            #     import pyqtgraph
-            #     pyqtgraph.setConfigOptions(exitCleanup=False)
-            # except ImportError:
-            #     pass
-
             # Install app watchdog
             self.watchdog = AppWatchdog(self.interrupt_quit)
+
+            # Start remote server
+            server_config = self.configuration.module_server
+            if server_config:
+                remotemodules.start_remote_server(host=server_config['address'],
+                                                  port=server_config['port'],
+                                                  certfile=server_config.get('certfile', None),
+                                                  keyfile=server_config.get('keyfile', None))
 
             # Start GUI if needed
             self._start_gui()
