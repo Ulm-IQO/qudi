@@ -58,7 +58,9 @@ class ParentPollerUnix(Thread):
 
             @param callable quitfunction: function to run before exiting
         """
-        if not callable(quit_function):
+        if quit_function is None:
+            pass
+        elif not callable(quit_function):
             raise Exception('argument quit_function must be a callable.')
         super().__init__()
         self.daemon = True
@@ -72,8 +74,11 @@ class ParentPollerUnix(Thread):
         while True:
             try:
                 if os.getppid() == 1:
-                    logger.critical('Parent process died! Qudi shutting down...')
-                    self.quit_function()
+                    if self.quit_function is None:
+                        logger.critical('Parent process died!')
+                    else:
+                        logger.critical('Parent process died! Qudi shutting down...')
+                        self.quit_function()
                     return
             except OSError as e:
                 if e.errno == EINTR:
@@ -87,13 +92,15 @@ class ParentPollerWindows(Thread):
     and, optionally, terminates the program immediately when the parent process no longer exists.
     """
 
-    def __init__(self, quit_function, parent_handle):
+    def __init__(self, parent_handle, quit_function=None):
         """ Create the parent poller.
 
         @param callable quit_function: Function to call for shutdown if parent process is dead.
         @param int parent_handle: The program will terminate immediately when this handle is
                                   signaled.
         """
+        if quit_function is None:
+            pass
         if not callable(quit_function):
             raise Exception('argument quit_function must be a callable.')
         super().__init__()
@@ -132,7 +139,10 @@ class ParentPollerWindows(Thread):
             else:
                 handle = handle_list[result - WAIT_OBJECT_0]
                 if handle == self.parent_handle:
-                    logger.critical('Parent process died! Qudi shutting down...')
-                    self.quit_function()
+                    if self.quit_function is None:
+                        logger.critical('Parent process died!')
+                    else:
+                        logger.critical('Parent process died! Qudi shutting down...')
+                        self.quit_function()
                     return
 

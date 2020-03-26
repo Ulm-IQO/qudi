@@ -30,9 +30,14 @@ import shutil
 import tempfile
 
 try:
-    from qudi.core import config
+    from qudi.core.config import Configuration
 except ImportError:
-    import config
+    from config import Configuration
+
+try:
+    from qudi.core.util.paths import get_main_dir
+except ImportError:
+    from util.paths import get_main_dir
 
 try:
     from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
@@ -42,120 +47,62 @@ except ImportError:
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
-class Qudi:
+class QudiInterface:
 
     def __init__(self):
-        conf = self.getConfigFromFile(self.getConfigFile())
-        self.host, self.port, self.certfile, self.keyfile = conf
+        config = Configuration()
+        config.load_config(set_default=False)
+        server_config = config.module_server
+        if not server_config:
+            raise Exception('No module_server config found in configuration file {0}'
+                            ''.format(config.config_file))
+        if 'address' not in server_config or 'port' not in server_config:
+            raise Exception(
+                'module_server configuration must contain mandatory entries "address" and "port".')
+        self.host = server_config['address']
+        self.port = server_config['port']
+        self.certfile = server_config.get('certfile', None)
+        self.keyfile = server_config.get('keyfile', None)
         self.conn_config = {'allow_all_attrs': True}
-        self.parent_handle = int(os.environ.get('JPY_PARENT_PID') or 0)
-        self.interrupt = int(os.environ.get('JPY_INTERRUPT_EVENT') or 0)
-        self.kernelid = None
 
-    def connect(self, **kwargs):
+        self.parent_handle = int(os.environ.get('JPY_PARENT_PID', 0))
+        # self.interrupt = int(os.environ.get('JPY_INTERRUPT_EVENT', 0))
+        self.kernel_id = None
+        self.connection = None
+        self.parent_poller = None
+
+    def connect(self, *args, **kwargs):
         logging.info('Connecting to {}:{}'.format(self.host, self.port))
         self.connection = rpyc.connect(self.host, self.port, config=self.conn_config)
 
-    def getModule(self, name):
-        return self.connection.root.getModule(name)
+    def get_module(self, name):
+        return self.connection.root.get_module_instance(name)
 
-    def startKernel(self, connfile):
-        m = self.getModule('kernellogic')
-        cfg = json.loads("".join(open(connfile).readlines()))
-        self.kernelid = m.startKernel(cfg, self)
-        logging.info('Kernel up: {}'.format(self.kernelid))
+    def start_kernel(self, connfile):
+        module = self.get_module('kernellogic')
+        cfg = json.loads(''.join(open(connfile).readlines()))
+        self.kernel_id = module.start_kernel(cfg, self)
 
-    def stopKernel(self):
-        logging.info('Shutting down: {}'.format(self.kernelid))
+    def stop_kernel(self):
+        logging.info('Shutting down: {}'.format(self.kernel_id))
         sys.stdout.flush()
-        m = self.getModule('kernellogic')
-        if self.kernelid is not None:
-            m.stopKernel(self.kernelid)
-            logging.info('Down!')
+        module = self.get_module('kernellogic')
+        if self.kernel_id is not None:
+            module.stop_kernel(self.kernel_id, blocking=True)
             sys.stdout.flush()
 
-    def initSignal(self):
+    def init_signal(self):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-    def initPoller(self):
-        if sys.platform == 'win32':
-            if self.interrupt or self.parent_handle:
-                self.poller = ParentPollerWindows(self.interrupt, self.parent_handle)
-        elif self.parent_handle:
-            self.poller = ParentPollerUnix()
+    def init_poller(self):
+        if self.parent_handle:
+            if sys.platform == 'win32':
+                self.parent_poller = ParentPollerWindows(self.parent_handle)
+            else:
+                self.parent_poller = ParentPollerUnix()
 
     def exit(self):
         sys.exit()
-
-    def getMainDir(self):
-        """Returns the absolut path to the directory of the main software.
-
-             @return string: path to the main tree of the software
-
-        """
-        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
-    def getConfigFile(self):
-        """ Search all the default locations to find a configuration file.
-
-          @return sting: path to configuration file
-        """
-        path = self.getMainDir()
-        # we first look for config/load.cfg which can point to another
-        # config file using the "configfile" key
-        loadConfigFile = os.path.join(path, 'config', 'load.cfg')
-        if os.path.isfile(loadConfigFile):
-            logging.info('load.cfg config file found at {0}'.format(loadConfigFile))
-            try:
-                confDict = config.load(loadConfigFile)
-                if 'configfile' in confDict and isinstance(confDict['configfile'], str):
-                    # check if this config file is existing
-                    # try relative filenames
-                    configFile = os.path.join(path, 'config', confDict['configfile'])
-                    if os.path.isfile(configFile):
-                        logging.info('Config file found at {0}'.format(configFile))
-                        return configFile
-                    # try absolute filename or relative to pwd
-                    if os.path.isfile(confDict['configfile']):
-                        logging.info('Config file found at {0}'.format(confDict['configfile']))
-                        return confDict['configfile']
-                    else:
-                        logging.critical('Couldn\'t find config file specified in load.cfg: {0}'
-                                         ''.format(confDict['configfile']))
-            except Exception:
-                logging.exception('Error while handling load.cfg.')
-        # try config/example/custom.cfg next
-        cf = os.path.join(path, 'config', 'example', 'custom.cfg')
-        if os.path.isfile(cf):
-            return cf
-        # try config/example/default.cfg
-        cf = os.path.join(path, 'config', 'example', 'default.cfg')
-        if os.path.isfile(cf):
-            return cf
-        raise Exception('Could not find any config file.')
-
-    def getConfigFromFile(self, configfile):
-        cfg = config.load(configfile)
-        if 'module_server' in cfg['global']:
-            if not isinstance(cfg['global']['module_server'], dict):
-                raise Exception('"module_server" entry in "global" section of configuration'
-                                ' file is not a dictionary.')
-            else:
-                # new style
-                server_address = cfg['global']['module_server'].get('address', 'localhost')
-                server_port = cfg['global']['module_server'].get('port', 12345)
-                certfile = cfg['global']['module_server'].get('certfile', None)
-                keyfile = cfg['global']['module_server'].get('keyfile', None)
-
-        elif 'serveraddress' in cfg['global']:
-            logging.warning('Deprecated remote server settings. Please update to new style.'
-                            ' See documentation.')
-            server_address = cfg['global'].get('serveraddress', 'localhost')
-            server_port = cfg['global'].get('serverport', 12345)
-            certfile = cfg['global'].get('certfile', None)
-            keyfile = cfg['global'].get('keyfile', None)
-
-        return server_address, server_port, certfile, keyfile
 
 
 def install_kernel():
@@ -166,31 +113,33 @@ def install_kernel():
         # prepare temporary kernelspec folder
         tempdir = tempfile.mkdtemp(suffix='_kernels')
         path = os.path.join(tempdir, 'qudi')
-        resourcepath = os.path.join(path, 'resources')
-        kernelpath = os.path.abspath(__file__)
+        resource_path = os.path.join(path, 'resources')
+        kernel_path = os.path.abspath(__file__)
         os.mkdir(path)
-        os.mkdir(resourcepath)
+        os.mkdir(resource_path)
 
-        kernel_dict = {
-            'argv': [sys.executable, kernelpath, '{connection_file}'],
-            'display_name': 'Qudi',
-            'language': 'python',
-        }
-        # write the kernelspe file
+        kernel_dict = {'argv': [sys.executable, kernel_path, '{connection_file}'],
+                       'display_name': 'Qudi',
+                       'language': 'python'
+                       }
+        # write the kernelspec file
         with open(os.path.join(path, 'kernel.json'), 'w') as f:
             json.dump(kernel_dict, f, indent=1)
 
         # copy logo
-        logopath = os.path.abspath(os.path.join(os.path.dirname(kernelpath), '..', 'artwork', 'logo'))
-        shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
-        shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
+        logo_path = os.path.join(get_main_dir(), 'core', 'artwork', 'logo')
+        shutil.copy(os.path.join(logo_path, 'logo-qudi-32x32.png'),
+                    os.path.join(resource_path, 'logo-32x32.png'))
+        shutil.copy(os.path.join(logo_path, 'logo-qudi-32x32.png'),
+                    os.path.join(resource_path, 'logo-32x32.png'))
 
         # install kernelspec folder
         kernel_spec_manager = KernelSpecManager()
         dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
         logging.info('Installed kernelspec qudi in {}'.format(dest))
+        Exception.errno
     except OSError as e:
-        if e.errno == errno.EACCES:
+        if e.errno == e.errno.EACCES:
             print(e, file=sys.stderr)
             sys.exit(1)
     finally:
@@ -199,23 +148,22 @@ def install_kernel():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO,
+                        format='[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s')
     if len(sys.argv) > 1:
         if sys.argv[1] == 'install':
             install_kernel()
         else:
-            q = Qudi()
-            q.initSignal()
-            q.initPoller()
+            q = QudiInterface()
+            q.init_signal()
+            q.init_poller()
             q.connect()
-            q.startKernel(sys.argv[1])
-            atexit.register(q.stopKernel)
+            q.start_kernel(sys.argv[1])
+            atexit.register(q.stop_kernel)
             logging.info('Sleeping.')
             q.poller.run()
             logging.info('Quitting.')
             sys.stdout.flush()
     else:
-        print('qudikernel usage is {0} <connectionfile> or {0} install'.format(sys.argv[0]), file=sys.stderr)
+        print('qudikernel usage is {0} <connectionfile> or {0} install'.format(sys.argv[0]),
+              file=sys.stderr)

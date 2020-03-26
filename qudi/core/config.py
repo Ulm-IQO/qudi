@@ -307,7 +307,7 @@ class Configuration(QtCore.QObject):
     def extension_paths(self):
         return self._global_config.get('extensions', list()).copy()
 
-    def load_config(self, file_path=None):
+    def load_config(self, file_path=None, set_default=True):
         if file_path is None:
             file_path = self._file_path
         config = load(file_path)
@@ -370,7 +370,8 @@ class Configuration(QtCore.QObject):
                     del self._global_config[key]
 
         self._file_path = file_path
-        self.set_default_config_path(file_path)  # Write current config file path to load.cfg
+        if set_default:
+            self.set_default_config_path(file_path)  # Write current config file path to load.cfg
         self.sigConfigChanged.emit(self)
 
     def save_config(self, file_path):

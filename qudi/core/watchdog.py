@@ -57,7 +57,7 @@ class AppWatchdog(QtCore.QObject):
         else:
             self.parent_handle = int(os.environ['QUDI_PARENT_PID'])
             if sys.platform == 'win32':
-                self.parent_poller = ParentPollerWindows(quit_function, self.parent_handle)
+                self.parent_poller = ParentPollerWindows(self.parent_handle, quit_function)
             else:
                 self.parent_poller = ParentPollerUnix(quit_function)
             self.parent_poller.start()
