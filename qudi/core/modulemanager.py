@@ -23,17 +23,13 @@ import logging
 import importlib
 import copy
 import weakref
-from functools import partial
 
+from functools import partial
 from qtpy import QtCore
 
 from qudi.core.util.mutex import RecursiveMutex   # provides access serialization between threads
 from qudi.core.threadmanager import ThreadManager
-# try to import remotemodules. Might fail if rpyc is not installed.
-try:
-    from qudi.core import remotemodules
-except ImportError:
-    remotemodules = None
+from qudi.core.remote import start_sharing_module, stop_sharing_module, get_remote_module_instance
 from qudi.core.module import Base
 
 logger = logging.getLogger(__name__)
@@ -136,11 +132,12 @@ class ModuleManager(QtCore.QObject):
                     logger.error('No module with name "{0}" registered. Unable to remove module.'
                                  ''.format(module_name))
                 return
-            base = self._modules[module_name].module_base
             self._modules[module_name].deactivate()
             self._modules[module_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
-            del self._modules[module_name]
             self.refresh_module_links()
+            if self._modules[module_name].allow_remote_access:
+                remotemodules.remove_shared_module(module_name)
+            del self._modules[module_name]
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
 
@@ -162,6 +159,15 @@ class ModuleManager(QtCore.QObject):
             module.sigStateChanged.connect(self.sigModuleStateChanged)
             self._modules[name] = module
             self.refresh_module_links()
+            # Register module in remotemodules manager if module should be shared
+            if module.allow_remote_access:
+                if remotemodules.remote_server is None:
+                    logger.error('Unable to share qudi module "{0}" as remote module. No remote'
+                                 ' server running in this qudi process.'.format(module.name))
+                else:
+                    logger.info('Start sharing qudi module "{0}" on remote module server.'
+                                ''.format(module.name))
+                    remotemodules.share_module(module)
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
 
@@ -588,22 +594,13 @@ class ManagedModule(QtCore.QObject):
             if self.is_loaded and not reload:
                 return True
 
-            if remotemodules is None:
-                if self.is_remote:
-                    logger.error('Can not access remotemodules module. core.remotemodules has not been '
-                                 'successfully imported.')
-                    return False
-            elif reload and self._allow_remote_access:
-                remotemodules.remove_shared_module(self)
-
             if self.is_remote:
                 try:
-                    self._instance = remotemodules.get_remote_module_instance(
-                        url=self._remote_url,
-                        certfile=self._remote_certfile,
-                        keyfile=self._remote_keyfile)
+                    self._instance = get_remote_module_instance(self._remote_url,
+                                                                certfile=self._remote_certfile,
+                                                                keyfile=self._remote_keyfile)
                 except:
-                    logger.exception('Error during initialization of remotemodules qudi module '
+                    logger.exception('Error during initialization of remote qudi module '
                                      '"{0}.{1}.{2}"'.format(self._class, self._base, self._module))
                     self._instance = None
                     return False
@@ -640,20 +637,6 @@ class ManagedModule(QtCore.QObject):
                                      ''.format(self._class, self._base, self._module))
                     self._instance = None
                     return False
-
-                # Register module in remotemodules manager if module should be shared
-                if self._allow_remote_access:
-                    if remotemodules is None:
-                        logger.warning(
-                            'Unable to share qudi module "{0}" as remote module. core.remotemodules'
-                            ' has not been successfully imported.'.format(self._name))
-                    elif remotemodules.remote_server is None:
-                        logger.error('Unable to share qudi module "{0}" as remote module. No remote'
-                                     ' server running in this qudi process.'.format(self._name))
-                    else:
-                        logger.info('Start sharing qudi module "{0}" on remote module server.'
-                                    ''.format(self._name))
-                        remotemodules.share_module(self)
             return True
 
     def _connect(self):

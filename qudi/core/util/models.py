@@ -201,20 +201,32 @@ class DictTableModel(QtCore.QAbstractTableModel):
             for key, value in update_dict.items():
                 self.__setitem__(key, value)
 
-    def pop(self, key):
+    def pop(self, *args):
         """ Remove key from dictionary.
 
-        @param key: dict key to remove
+        @param args: dict key to remove, optional default return value
 
         @return value: value removed from dict
         """
         with self._lock:
-            if key in self._storage:
-                row = self.get_index_by_key(key)
+            if args[0] in self._storage:
+                row = self.get_index_by_key(args[0])
                 self.beginRemoveRows(QtCore.QModelIndex(), row, row)
-                ret = self._storage.pop(key)
+                ret = self._storage.pop(args[0])
                 self.endRemoveRows()
                 return ret
+            elif len(args) > 1:
+                return args[1]
+
+    def get(self, *args):
+        """ Get value for key from dictionary.
+
+        @param args: value for key, optional default return value
+
+        @return value: value for key from dict
+        """
+        with self._lock:
+            return self._storage.get(*args)
 
     def values(self):
         with self._lock:

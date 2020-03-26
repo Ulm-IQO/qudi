@@ -25,9 +25,9 @@ import numpy as np
 from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
-from qudi.core import remotemodules
 from qudi.core.util.paths import get_main_dir, get_default_config_dir
 from qudi.core.util.helpers import has_pyqtgraph
+from qudi.core.remote import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
@@ -178,24 +178,18 @@ class QudiMainGui(GuiBase):
         self.mw.module_widget.sigCleanupModule.disconnect()
 
     def _init_remote_modules_widget(self):
-        # hide remotemodules menu item if rpyc is not available
-        if remotemodules is None:
+        remote_server = self._qudi_main.remote_server
+        # hide remote modules menu action if RemoteModuleServer is not available
+        if remote_server is None:
             self.mw.action_view_remote.setVisible(False)
             self.mw.remote_widget.host_label.setVisible(False)
             self.mw.remote_widget.port_label.setVisible(False)
             self.mw.remote_widget.shared_module_listview.setVisible(False)
         else:
-            if remotemodules.remote_server is None:
-                self.mw.remote_widget.host_label.setVisible(False)
-                self.mw.remote_widget.port_label.setVisible(False)
-                self.mw.remote_widget.shared_module_listview.setVisible(False)
-            else:
-                self.mw.remote_widget.host_label.setText('Server URL:')
-                self.mw.remote_widget.port_label.setText(
-                    'rpyc://{0}:{1}/'
-                    ''.format(remotemodules.remote_server.host, remotemodules.remote_server.port))
-                self.mw.remote_widget.shared_module_listview.setModel(
-                    remotemodules.SharedModulesModel())
+            self.mw.remote_widget.host_label.setText('Server URL:')
+            self.mw.remote_widget.port_label.setText('rpyc://{0}:{1}/'.format(remote_server.host,
+                                                                              remote_server.port))
+            self.mw.remote_widget.shared_module_listview.setModel(get_remote_modules_model())
 
     def show(self):
         """Show the window and bring it t the top.
