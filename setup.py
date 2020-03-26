@@ -16,7 +16,6 @@ packages = ['qudi',
             'qudi.core.gui.main_gui',
             'qudi.core.gui.qtwidgets',
             'qudi.core.logger',
-            'qudi.core.remotemodules',
             'qudi.core.jupyterkernel',
             'qudi.core.jupyterkernel.mpl',
             'qudi.core.util']

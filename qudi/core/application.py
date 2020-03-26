@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import sys
 import os
-import signal
 import faulthandler
 import weakref
 
@@ -36,7 +35,7 @@ from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.gui.gui import Gui
-from qudi.core import remotemodules
+from qudi.core.remote import RemoteModuleServer
 
 try:
     from zmq.eventloop import ioloop
@@ -72,6 +71,21 @@ class Qudi(QtCore.QObject):
         self.thread_manager = ThreadManager()
         self.module_manager = ModuleManager(qudi_main=self)
         self.configuration = Configuration(config_file)
+        self.configuration.load_config()
+        server_config = self.configuration.module_server
+        if server_config:
+            self.remote_server = RemoteModuleServer(
+                host=server_config.get('address', None),
+                port=server_config.get('port', None),
+                certfile=server_config.get('certfile', None),
+                keyfile=server_config.get('certfile', None),
+                protocol_config=server_config.get('protocol_config', None),
+                ssl_version=server_config.get('ssl_version', None),
+                cert_reqs=server_config.get('cert_reqs', None),
+                ciphers=server_config.get('ciphers', None),
+                allow_pickle=server_config.get('allow_pickle', None))
+        else:
+            self.remote_server = None
         self.watchdog = None
         self.gui = None
 
@@ -142,6 +156,25 @@ class Qudi(QtCore.QObject):
         self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
+    def _start_remote_server(self):
+        if self.remote_server is None or self.remote_server.is_running:
+            return
+        server_thread = self.thread_manager.get_new_thread('remote-server')
+        self.remote_server.moveToThread(server_thread)
+        server_thread.started.connect(self.remote_server.run)
+        server_thread.start()
+
+    def _stop_remote_server(self):
+        if self.remote_server is None or not self.remote_server.is_running:
+            return
+        try:
+            QtCore.QMetaObject.invokeMethod(
+                self.remote_server, 'stop', QtCore.Qt.BlockingQueuedConnection)
+            self.thread_manager.quit_thread('remote-server')
+            self.thread_manager.join_thread('remote-server', time=5)
+        except:
+            self.log.exception('Error during shutdown of remote module server:')
+
     def run(self):
         """
 
@@ -187,8 +220,7 @@ class Qudi(QtCore.QObject):
                     app = QtWidgets.QApplication(sys.argv)
 
             # configure qudi
-            self.configuration.load_config()
-            self._configure_qudi()
+            # self.configuration.load_config()
 
             # Install the pyzmq ioloop.
             # This has to be done before anything else from tornado is imported.
@@ -206,20 +238,18 @@ class Qudi(QtCore.QObject):
             self.watchdog = AppWatchdog(self.interrupt_quit)
 
             # Start remote server
-            server_config = self.configuration.module_server
-            if server_config:
-                remotemodules.start_remote_server(host=server_config['address'],
-                                                  port=server_config['port'],
-                                                  certfile=server_config.get('certfile', None),
-                                                  keyfile=server_config.get('keyfile', None))
+            self._start_remote_server()
+
+            # Apply configuration to the rest of qudi
+            self._configure_qudi()
 
             # Start GUI if needed
             self._start_gui()
 
             # Start Qt event loop unless running in interactive mode
             self._is_running = True
-            self.log.info('Starting Qt event loop...')
-            print('> Starting Qt event loop...\n>')
+            self.log.info('Startup complete! Starting Qt event loop...')
+            print('> Startup complete! Starting Qt event loop...\n>')
             exit_code = app.exec_()
             self._shutting_down = False
             self._is_running = False
@@ -292,23 +322,26 @@ class Qudi(QtCore.QObject):
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Qudi shutting down...')
             print('> Qudi shutting down...')
-            self.log.info('Stopping remote modules...')
-            print('> Stopping remote modules...')
-            remotemodules.stop_remote_server()
-            QtCore.QCoreApplication.instance().processEvents()
-            self.log.info('Stopping local modules...')
-            print('> Stopping local modules...')
+            if self.remote_server is not None:
+                self.log.info('Stopping remote server...')
+                print('> Stopping remote server...')
+                self._stop_remote_server()
+                QtCore.QCoreApplication.instance().processEvents()
+            self.log.info('Deactivating modules...')
+            print('> Deactivating modules...')
             self.module_manager.clear()
             QtCore.QCoreApplication.instance().processEvents()
             if not self.no_gui:
-                self.log.info('Closing windows...')
-                print('> Closing windows...')
+                self.log.info('Closing main GUI...')
+                print('> Closing main GUI...')
                 self.gui.deactivate_main_gui()
+                self.log.info('Closing remaining windows...')
+                print('> Closing remaining windows...')
                 self.gui.close_windows()
                 self.gui.close_system_tray_icon()
                 QtCore.QCoreApplication.instance().processEvents()
-            self.log.info('Stopping threads...')
-            print('> Stopping threads...')
+            self.log.info('Stopping remaining threads...')
+            print('> Stopping remaining threads...')
             self.thread_manager.quit_all_threads()
             QtCore.QCoreApplication.instance().processEvents()
             if restart:
