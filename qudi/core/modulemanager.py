@@ -273,8 +273,8 @@ class ManagedModule(QtCore.QObject):
         self._module, self._class = cfg.pop('module.Class').rsplit('.', 1)
         # Remember connections by name
         self._connect_cfg = cfg.pop('connect', dict())
-        # See if remotemodules access to this module is allowed
-        self._allow_remote_access = cfg.pop('remoteaccess', False)
+        # See if remotemodules access to this module is allowed (allowed by default)
+        self._allow_remote_access = cfg.pop('remoteaccess', True)
         # Extract remotemodules URL and certificates if this module is run on a remotemodules machine
         self._remote_url = cfg.pop('remotemodules', None)
         self._remote_certfile = cfg.pop('certfile', None)
