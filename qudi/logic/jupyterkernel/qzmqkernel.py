@@ -72,7 +72,8 @@ from IPython.core.error import InputRejected
 from qtpy import QtCore
 
 
-# TODO: When executing two cells at the same time (the second before first is finished) the notebook hangs
+# TODO: When executing two cells at the same time (the second before first is finished)
+#  the notebook hangs
 
 
 class QZMQKernel(QtCore.QObject):
