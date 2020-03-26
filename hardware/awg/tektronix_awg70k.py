@@ -124,6 +124,8 @@ class AWG70K(Base, PulserInterface):
         self.__max_waveform_length = int(self.query('WLIS:WAV:LMAX?'))
 
         self.__installed_options = self.query('*OPT?').split(',')
+
+        self._skip_available_file = False
         return
 
     def on_deactivate(self):
