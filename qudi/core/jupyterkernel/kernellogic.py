@@ -27,7 +27,7 @@ from qudi.core.module import LogicBase
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.network import netobtain
 
-from .qzmqkernel import QZMQKernel
+from qudi.core.jupyterkernel.qzmqkernel import QZMQKernel
 
 
 class QudiKernelLogic(LogicBase):
