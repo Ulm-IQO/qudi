@@ -29,20 +29,9 @@ import atexit
 import shutil
 import tempfile
 
-try:
-    from qudi.core.config import Configuration
-except ImportError:
-    from config import Configuration
-
-try:
-    from qudi.core.util.paths import get_main_dir
-except ImportError:
-    from util.paths import get_main_dir
-
-try:
-    from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
-except ImportError:
-    from parentpoller import ParentPollerUnix, ParentPollerWindows
+from qudi.core.config import Configuration
+from qudi.core.util.paths import get_main_dir
+from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
