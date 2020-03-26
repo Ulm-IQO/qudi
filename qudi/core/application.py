@@ -168,8 +168,9 @@ class Qudi(QtCore.QObject):
         if self.remote_server is None or not self.remote_server.is_running:
             return
         try:
-            QtCore.QMetaObject.invokeMethod(
-                self.remote_server, 'stop', QtCore.Qt.BlockingQueuedConnection)
+            # QtCore.QMetaObject.invokeMethod(
+            #     self.remote_server, 'stop', QtCore.Qt.BlockingQueuedConnection)
+            self.remote_server.stop()
             self.thread_manager.quit_thread('remote-server')
             self.thread_manager.join_thread('remote-server', time=5)
         except:
@@ -329,6 +330,7 @@ class Qudi(QtCore.QObject):
                 QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Deactivating modules...')
             print('> Deactivating modules...')
+            self.module_manager.stop_all_modules()
             self.module_manager.clear()
             QtCore.QCoreApplication.instance().processEvents()
             if not self.no_gui:

@@ -181,14 +181,13 @@ class QudiMainGui(GuiBase):
         remote_server = self._qudi_main.remote_server
         # hide remote modules menu action if RemoteModuleServer is not available
         if remote_server is None:
+            self.mw.remote_widget.setVisible(False)
+            self.mw.remote_dockwidget.setVisible(False)
             self.mw.action_view_remote.setVisible(False)
-            self.mw.remote_widget.host_label.setVisible(False)
-            self.mw.remote_widget.port_label.setVisible(False)
-            self.mw.remote_widget.shared_module_listview.setVisible(False)
         else:
-            self.mw.remote_widget.host_label.setText('Server URL:')
-            self.mw.remote_widget.port_label.setText('rpyc://{0}:{1}/'.format(remote_server.host,
-                                                                              remote_server.port))
+            self.mw.remote_widget.setVisible(True)
+            self.mw.remote_widget.server_label.setText(
+                'Server URL: rpyc://{0}:{1}/'.format(remote_server.host, remote_server.port))
             self.mw.remote_widget.shared_module_listview.setModel(get_remote_modules_model())
 
     def show(self):

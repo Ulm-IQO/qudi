@@ -122,7 +122,6 @@ class RemoteModuleServer(QtCore.QObject):
         @param dict config: port that hte RPyC server should listen on
         """
         super().__init__()
-        self._lock = Mutex()
         self.service_instance = _RemoteModulesService()
         self.host = self._host if host is None else str(host)
         self.port = self._port if port is None else int(port)
@@ -154,43 +153,41 @@ class RemoteModuleServer(QtCore.QObject):
     def run(self):
         """ Start the RPyC server
         """
-        with self._lock:
-            if self.is_running:
-                logger.error('Server is already running. Stop it first. Call to '
-                             'RemoteModuleServer.run ignored.')
-                return
+        if self.is_running:
+            logger.error('Server is already running. Stop it first. Call to '
+                         'RemoteModuleServer.run ignored.')
+            return
 
-            if self.certfile is not None and self.keyfile is not None:
-                authenticator = SSLAuthenticator(certfile=self.certfile,
-                                                 keyfile=self.keyfile,
-                                                 cert_reqs=self.cert_reqs,
-                                                 ssl_version=self.ssl_version,
-                                                 ciphers=self.ciphers)
-            else:
-                authenticator = None
+        if self.certfile is not None and self.keyfile is not None:
+            authenticator = SSLAuthenticator(certfile=self.certfile,
+                                             keyfile=self.keyfile,
+                                             cert_reqs=self.cert_reqs,
+                                             ssl_version=self.ssl_version,
+                                             ciphers=self.ciphers)
+        else:
+            authenticator = None
 
-            try:
-                self._server = rpyc.ThreadedServer(self.service_instance,
-                                                   hostname=self.host,
-                                                   port=self.port,
-                                                   protocol_config=self.protocol_config,
-                                                   authenticator=authenticator)
-                logger.info('Starting module server at "{0}" on port {1}'.format(self.host,
-                                                                                 self.port))
-                self._server.start()
-            except:
-                logger.exception('Error during start of RemoteServer:')
-                self._server = None
+        try:
+            self._server = rpyc.ThreadedServer(self.service_instance,
+                                               hostname=self.host,
+                                               port=self.port,
+                                               protocol_config=self.protocol_config,
+                                               authenticator=authenticator)
+            logger.info('Starting module server at "{0}" on port {1}'.format(self.host,
+                                                                             self.port))
+            self._server.start()
+        except:
+            logger.exception('Error during start of RemoteServer:')
+            self._server = None
 
     @QtCore.Slot()
     def stop(self):
         """ Stop the RPyC server
         """
-        with self._lock:
-            if self.is_running:
-                self._server.close()
-                self._server = None
-                logger.info('Stopped module server at "{0}" on port {1}'.format(self.host,
+        if self.is_running:
+            self._server.close()
+            self._server = None
+            logger.info('Stopped module server at "{0}" on port {1}'.format(self.host,
                                                                                 self.port))
 
 
