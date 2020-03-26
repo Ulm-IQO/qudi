@@ -92,10 +92,6 @@ def convert_ui_to_absolute_paths(file_path):
     # Iterate over odd indices. Remember if changes were needed
     has_changed = False
     for ii in range(1, len(chunks), 2):
-        # Do nothing if path already is absolute
-        if os.path.isabs(chunks[ii]):
-            chunks[ii] = '>{0}</'.format(chunks[ii])
-            continue
         path_suffix = chunks[ii].split('/artwork/', 1)[-1]
         chunks[ii] = '>{0}</'.format(os.path.join(path_prefix, path_suffix).replace('\\', '/'))
         has_changed = True
