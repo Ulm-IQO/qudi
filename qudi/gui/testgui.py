@@ -19,10 +19,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.configoption import ConfigOption
-from core.module import GuiBase
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
+from qudi.core.module import GuiBase
 from qtpy import QtCore, QtWidgets, QtGui
 
 
