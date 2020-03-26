@@ -28,6 +28,7 @@ import signal
 import atexit
 import shutil
 import tempfile
+import errno
 
 from qudi.core.config import Configuration
 from qudi.core.util.paths import get_main_dir
@@ -37,7 +38,8 @@ rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
 class QudiInterface:
-
+    """
+    """
     def __init__(self):
         config = Configuration()
         config.load_config(set_default=False)
@@ -96,7 +98,7 @@ class QudiInterface:
 
 def install_kernel():
     from jupyter_client.kernelspec import KernelSpecManager
-    logging.info('Installing Qudi kernel.')
+    print('Installing Qudi kernel.')
 
     try:
         # prepare temporary kernelspec folder
@@ -125,10 +127,9 @@ def install_kernel():
         # install kernelspec folder
         kernel_spec_manager = KernelSpecManager()
         dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
-        logging.info('Installed kernelspec qudi in {}'.format(dest))
-        Exception.errno
+        print('Installed kernelspec qudi in {}'.format(dest))
     except OSError as e:
-        if e.errno == e.errno.EACCES:
+        if e.errno == errno.EACCES:
             print(e, file=sys.stderr)
             sys.exit(1)
     finally:
