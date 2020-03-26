@@ -82,7 +82,7 @@ class _SharedModulesModel(DictTableModel):
     """ Derived dict model for GUI display elements
     """
     def __init__(self):
-        super().__init__(header='Shared Module')
+        super().__init__(headers='Shared Module')
 
     def data(self, index, role):
         """ Get data from model for a given cell. Data can have a role that affects display.
