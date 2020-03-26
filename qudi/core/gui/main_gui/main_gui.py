@@ -25,7 +25,7 @@ import numpy as np
 from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
-import qudi.core.remotemodules as remotemodules
+from qudi.core import remotemodules
 from qudi.core.util.paths import get_main_dir, get_default_config_dir
 from qudi.core.util.helpers import has_pyqtgraph
 from qudi.core.gui.main_gui.errordialog import ErrorDialog

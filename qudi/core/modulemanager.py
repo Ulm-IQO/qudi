@@ -651,6 +651,8 @@ class ManagedModule(QtCore.QObject):
                         logger.error('Unable to share qudi module "{0}" as remote module. No remote'
                                      ' server running in this qudi process.'.format(self._name))
                     else:
+                        logger.info('Start sharing qudi module "{0}" on remote module server.'
+                                    ''.format(self._name))
                         remotemodules.share_module(self)
             return True
 
