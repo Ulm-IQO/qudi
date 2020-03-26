@@ -136,7 +136,7 @@ class ModuleManager(QtCore.QObject):
             self._modules[module_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
             self.refresh_module_links()
             if self._modules[module_name].allow_remote_access:
-                remotemodules.remove_shared_module(module_name)
+                stop_sharing_module(module_name)
             del self._modules[module_name]
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
@@ -159,15 +159,15 @@ class ModuleManager(QtCore.QObject):
             module.sigStateChanged.connect(self.sigModuleStateChanged)
             self._modules[name] = module
             self.refresh_module_links()
-            # Register module in remotemodules manager if module should be shared
+            # Register module in remote module service if module should be shared
             if module.allow_remote_access:
-                if remotemodules.remote_server is None:
+                if self._qudi_main_ref().remote_server is None:
                     logger.error('Unable to share qudi module "{0}" as remote module. No remote'
                                  ' server running in this qudi process.'.format(module.name))
                 else:
                     logger.info('Start sharing qudi module "{0}" on remote module server.'
                                 ''.format(module.name))
-                    remotemodules.share_module(module)
+                    start_sharing_module(module)
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
 
@@ -281,7 +281,7 @@ class ManagedModule(QtCore.QObject):
         self._connect_cfg = cfg.pop('connect', dict())
         # See if remotemodules access to this module is allowed (allowed by default)
         self._allow_remote_access = cfg.pop('remoteaccess', True)
-        # Extract remotemodules URL and certificates if this module is run on a remotemodules machine
+        # Extract remote modules URL and certificate if this module is run on a remote machine
         self._remote_url = cfg.pop('remotemodules', None)
         self._remote_certfile = cfg.pop('certfile', None)
         self._remote_keyfile = cfg.pop('keyfile', None)

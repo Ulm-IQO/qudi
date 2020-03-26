@@ -30,8 +30,9 @@ class RemoteWidget(QtWidgets.QWidget):
         super().__init__(parent, **kwargs)
 
         # Create widgets
-        self.host_label = QtWidgets.QLabel('host')
-        self.port_label = QtWidgets.QLabel('port')
+        local_label = QtWidgets.QLabel('shared modules')
+        remote_label = QtWidgets.QLabel('remote modules')
+        self.server_label = QtWidgets.QLabel('Server URL')
         self.shared_module_listview = QtWidgets.QListView()
         self.shared_module_listview.setUniformItemSizes(True)
         self.shared_module_listview.setAlternatingRowColors(True)
@@ -41,8 +42,9 @@ class RemoteWidget(QtWidgets.QWidget):
 
         # Group widgets in a layout and set as main layout
         layout = QtWidgets.QGridLayout()
-        layout.addWidget(self.host_label, 0, 0)
-        layout.addWidget(self.shared_module_listview, 1, 0)
-        layout.addWidget(self.port_label, 0, 1)
-        layout.addWidget(self.remote_module_listview, 1, 1)
+        layout.addWidget(self.server_label, 0, 0, 1, 2)
+        layout.addWidget(local_label, 1, 0)
+        layout.addWidget(self.shared_module_listview, 2, 0)
+        layout.addWidget(remote_label, 1, 1)
+        layout.addWidget(self.remote_module_listview, 2, 1)
         self.setLayout(layout)
