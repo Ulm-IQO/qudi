@@ -146,9 +146,20 @@ class PrePostDevelopCommands(develop):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         try:
             from .qudi.core.qudikernel import install_kernel
-            install_kernel()
         except ImportError:
-            print('qudi package can not be imported in post-install script', file=sys.stderr)
+            with open('relative_import_failed.txt', 'w') as f:
+                f.write()
+            try:
+                from qudi.core.qudikernel import install_kernel
+            except ImportError:
+                with open('package_import_failed.txt', 'w') as f:
+                    f.write()
+        finally:
+            try:
+                install_kernel()
+            except Exception as e:
+                with open('install_error.txt', 'w') as f:
+                    f.write(str(e))
 
 
 class PrePostInstallCommands(install):
@@ -158,11 +169,10 @@ class PrePostInstallCommands(install):
         # PUT YOUR PRE-INSTALL SCRIPT HERE or CALL A FUNCTION
         install.run(self)
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
-        try:
-            from .qudi.core.qudikernel import install_kernel
-            install_kernel()
-        except ImportError:
-            print('qudi package can not be imported in post-install script', file=sys.stderr)
+        from .qudi.core.qudikernel import install_kernel
+        install_kernel()
+        from qudi.core.qudikernel import install_kernel
+        install_kernel()
 
 
 setup(name='qudi',
