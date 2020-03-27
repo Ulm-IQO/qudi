@@ -34,6 +34,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 from core.util.modules import get_home_dir
+from core.util.helpers import natural_sort
 
 class AWGM8190A(Base, PulserInterface):
     """ A hardware module for the Keysight M8190A series for generating
@@ -45,8 +46,8 @@ class AWGM8190A(Base, PulserInterface):
             module.Class: 'awg.keysight_M8195A.AWGM8195A'
             awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
             awg_timeout: 20
-            pulsed_file_dir: 'C:\\Software\\pulsed_files'
-
+            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
+            assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
     """
     _modclass = 'awgm8190a'
     _modtype = 'hardware'
@@ -54,7 +55,10 @@ class AWGM8190A(Base, PulserInterface):
     # config options
     _visa_address = ConfigOption(name='awg_visa_address', default='TCPIP0::localhost::hislip0::INSTR', missing='warn')
     _awg_timeout = ConfigOption(name='awg_timeout', default=20, missing='warn')
-    _pulsed_file_dir = ConfigOption(name='pulsed_file_dir', missing='warn')
+    _pulsed_file_dir = ConfigOption(name='pulsed_file_dir', default=os.path.join(get_home_dir(), 'pulsed_file_dir'),
+                                        missing='warn')
+    _assets_storage_path = ConfigOption(name='assets_storage_path', default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
+                                       missing='warn')
     _sample_rate_div = ConfigOption(name='sample_rate_div', default=1, missing='warn')
     _dac_resolution = 14        # 8190 supports 12 (speed) or 14 (precision)
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
@@ -71,44 +75,21 @@ class AWGM8190A(Base, PulserInterface):
         self._SERIALNUMBER = ''
         self._FIRMWARE_VERSION = ''
 
-        self._sequence_mode = False
+        self._sequence_mode = False         # set in on_activate()
         self.current_loaded_asset = ''
+        self._segment_table = {}            # key: waveform name, value: corresponding segment id
         self.active_channel = dict()
         self._debug_check_all_commands = True       # for development purpose, might slow down
 
     def on_activate(self):
         """Initialisation performed during activation of the module.
         """
-        config = self.getConfiguration()
         self._rm = visa.ResourceManager()
 
-        use_default_dir = True
-        if 'pulsed_file_dir' in config.keys():
-            if os.path.exists(config['pulsed_file_dir']):
-                use_default_dir = False
-                self._pulsed_file_dir = config['pulsed_file_dir']
-            else:
-                self.log.warning("Specified pulse file dir {} does not exist, falling back to default.".format(
-                                config['pulsed_file_dir']
-                ))
-
-        if use_default_dir:
-            self.log.warning('Either no config parameter "pulsed_file_dir" was '
-                             'specified in the config for AWGM8195A class as '
-                             'directory for the pulsed files or the directory '
-                             'does not exist.\nThe default home directory\n'
-                             '{0}\nfor pulsed files will be taken instead.'
-                             ''.format(self._pulsed_file_dir))
-
-            homedir = get_home_dir()
-            self._pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            if not os.path.exists(self._pulsed_file_dir):
-                try:
-                    os.mkdir(self._pulsed_file_dir)
-                    self.log.info("Created folder: {}".format(self._pulsed_file_dir))
-                except Exception as e:
-                    self.log.warning("Couldn't create folder: {}. {}".format(self._pulsed_file_dir,
-                                                                             str(e)))
+        self._pulsed_file_dir = self._pulsed_file_dir.replace('/', '\\')    # as expected from awg drier
+        self._assets_storage_path = self._assets_storage_path.replace('/', '\\')
+        self._create_dir(self._pulsed_file_dir)
+        self._create_dir(self._assets_storage_path)
 
         # connect to awg using PyVISA
         try:
@@ -142,10 +123,11 @@ class AWGM8190A(Base, PulserInterface):
 
         try:
             self.awg.close()
+            self.connected = False
         except:
             self.log.warning('Closing AWG connection using pyvisa failed.')
         self.log.info('Closed connection to AWG')
-        self.connected = False
+
 
     def _init_device(self):
         """ Run those methods during the initialization process."""
@@ -164,7 +146,7 @@ class AWGM8190A(Base, PulserInterface):
             self.write(':TRAC1:DWID WPR')
             self.write(':TRAC2:DWID WPR')
         else:
-            self.log.error("Unsported DAC resolution: {}.".format(self._dac_resolution))
+            self.log.error("Unsupported DAC resolution: {}.".format(self._dac_resolution))
         # 2. Define one or multiple segments using the various forms of TRAC:DEF
         # done in load_waveform
 
@@ -179,7 +161,7 @@ class AWGM8190A(Base, PulserInterface):
 
         constr = self.get_constraints()
 
-        self.sample_rate =  constr.sample_rate.default
+        self.sample_rate = constr.sample_rate.default
         self.set_sample_rate(self.sample_rate)
 
         # todo: implement choosing AMP
@@ -378,7 +360,7 @@ class AWGM8190A(Base, PulserInterface):
         self.is_output_enabled = False
         return self.current_status
 
-    def load_waveform(self, load_dict):
+    def load_waveform(self, load_dict, to_nextfree_segment=False):
         """ Loads a waveform to the specified channel of the pulsing device.
 
         @param dict|list load_dict: a dictionary with keys being one of the available channel
@@ -418,7 +400,7 @@ class AWGM8190A(Base, PulserInterface):
         if isinstance(load_dict, list):
             new_dict = dict()
             for waveform in load_dict:
-                channel = int(waveform[-5])
+                channel = int(waveform.rsplit('_ch', 1)[1][0])
                 new_dict[channel] = waveform
             load_dict = new_dict
 
@@ -439,7 +421,7 @@ class AWGM8190A(Base, PulserInterface):
         # Check if all waveforms to load are present on device memory
         if not set(load_dict.values()).issubset(self.get_waveform_names()):
             self.log.error('Unable to load waveforms into channels.\n'
-                           'One or more waveforms to load are missing on device memory.')
+                           'One or more waveforms to load are missing on pc memory.')
             return self.get_loaded_assets()
 
         if load_dict == {}:
@@ -447,7 +429,8 @@ class AWGM8190A(Base, PulserInterface):
                              'Correct that!\nCommand will be ignored.')
             return self.get_loaded_assets()
 
-        self.clear_all()
+        if not to_nextfree_segment:
+            self.clear_all()
         path = self._pulsed_file_dir
         offset = 0
 
@@ -456,12 +439,15 @@ class AWGM8190A(Base, PulserInterface):
             filepath = os.path.join(path, waveform)
             data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
             samples = len(data)
-            segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, samples))
-            self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id, offset), data)
-            self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id, name))
+            segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, samples)) \
+                        + '_ch{:d}'.format(chnl_num)
+            segment_id_per_ch = segment_id.rsplit("_ch",1)[0]
+            self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
+            self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id_per_ch, name))
 
             self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
-                name, samples, chnl_num, segment_id))
+                name, samples, chnl_num, segment_id_per_ch))
+            self._segment_table[name] = segment_id
 
         self.check_dev_error()
         return self.get_loaded_assets()
@@ -486,57 +472,31 @@ class AWGM8190A(Base, PulserInterface):
         """
 
 
-        # # set the waveform directory:
-        # self.write(':MMEM:CDIR {0}'.format(r"C:\Users\Name\Documents"))
-        #
-        # # Get the waveform directory:
-        # dir = self.ask(':MMEM:CDIR?')
+        # Get all active channels
+        chnl_activation = self.get_active_channels()
+        analog_channels = sorted(
+            chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
-        path = self._pulsed_file_dir + self.sequence_dir
+        # Number of channels that have this sequence set
+        n_ready_ch = list(self.get_loaded_assets()[0].values()).count('mfl_ramsey_pjump')
+        if n_ready_ch != len(analog_channels):
+            self.log.error('Unable to load sequence.\nNumber of tracks in sequence to load does '
+                           'not match the number of active analog channels.')
+            return self.get_loaded_assets()
 
-        # Find all files associated with the specified asset name
-        file_list = self._get_filenames_on_device()
-        filename = []
+        if not (set(self.get_loaded_assets()[0].values())).issubset(set([sequence_name])):
+            self.log.error('Unable to load sequence into channels.\n'
+                           'Make sure to call write_sequence() first.')
+            return self.get_loaded_assets()
 
-        self.clear_all()
+        """
+        select the first segment in your sequence, before any dynamic sequence selecion.
+        """
+        self.write(":STAB1:SEQ:SEL 0")
+        self.write(":STAB2:SEQ:SEL 0")
+        self.write(":STAB1:DYN ON")
+        self.write(":STAB2:DYN ON")
 
-        # Be careful which asset_name to specify as the current_loaded_asset
-        # because a loaded sequence contains also individual waveforms, which
-        # should not be used as the current asset!!
-
-        segment = 1     # the id in the external memory
-        form = 'BIN'   # the file format used
-        data_type = 'IONLY'
-        marker_flag = 'OFF'
-        mem_mode = 'ALEN'   # specify how the samples are allocated in memory
-
-        for file in file_list:
-
-            if file == sequence_name+'_ch1.bin':
-                filepath = os.path.join(path, sequence_name + '_ch1.bin')
-                self.log.info(filepath)
-                self.write(':TRAC1:IMP {0}, "{1}", {2}, {3}, {4}, {5}'
-                          ''.format(segment,
-                                    filepath,
-                                    form,
-                                    data_type,
-                                    marker_flag,
-                                    mem_mode))
-                self.current_loaded_asset = sequence_name
-                filename.append(file)
-
-            elif file == sequence_name+'_ch2.bin':
-                filepath = os.path.join(path, sequence_name + '_ch2.bin')
-                self.log.info(filepath)
-                self.write(':TRAC2:IMP {0}, "{1}", {2}, {3}, {4}, {5}'
-                          ''.format(segment,
-                                    filepath,
-                                    form,
-                                    data_type,
-                                    marker_flag,
-                                    mem_mode))
-                self.current_loaded_asset = sequence_name
-                filename.append(file)
         return 0
 
     def check_dev_error(self):
@@ -544,7 +504,7 @@ class AWGM8190A(Base, PulserInterface):
         has_error_occured = False
 
         for i in range(30):  # error buffer of device is 30
-            raw_str = self.query(':SYST:ERR?')
+            raw_str = self.query(':SYST:ERR?', force_no_check=True)
             is_error = not ('0' in raw_str[0])
             if is_error:
                 self.log.warn("AWG issued error: {}".format(raw_str))
@@ -566,7 +526,6 @@ class AWGM8190A(Base, PulserInterface):
                              respective asset loaded into the channel,
                              string describing the asset type ('waveform' or 'sequence')
         """
-        #TODO check if works for sequences
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
@@ -575,32 +534,51 @@ class AWGM8190A(Base, PulserInterface):
 
         # Get assets per channel
         loaded_assets = dict()
-        current_type = None
-        for chnl_num in channel_numbers:
-            # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will
-            # look like '"waveformname"\n' and for a sequence '"sequencename,1"\n'
-            # (where the number is the current track)
-            if not self.query(':TRAC:CAT?') == '0,0':
-                asset_name = self.query(':TRAC{:d}:NAME? 1'.format(chnl_num))
-            # # Figure out if a sequence or just a waveform is loaded by splitting after the comma
-            # splitted = asset_name.rsplit(',', 1)
-            # # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
-            # asset_name = splitted[0]
-            # if len(splitted) > 1:
-            #     if current_type is not None and current_type != 'sequence':
-            #         self.log.error('Unable to determine loaded assets.')
-            #         return dict(), ''
-            #     current_type = 'sequence'
-            #     asset_name += '_' + splitted[1]
-            # else:
-            #     if current_type is not None and current_type != 'waveform':
-            #         self.log.error('Unable to determine loaded assets.')
-            #         return dict(), ''
-            #     current_type = 'waveform'
-                current_type = 'waveform'
-                loaded_assets[chnl_num] = asset_name
+        type_per_ch = []
+        is_err = False
 
-        return loaded_assets, current_type
+        for chnl_num in channel_numbers:
+
+            asset_name = 'ERROR_NAME'
+
+            if self.get_loaded_assets_num(chnl_num, mode='segment') == 1 \
+                and self.get_loaded_assets_num(chnl_num, mode='sequence') == 0:
+
+                type_per_ch.append('waveform')
+                asset_name = self.get_loaded_assets_name(chnl_num, mode='segment')[0]
+
+            elif self.get_loaded_assets_num(chnl_num, mode='segment') >= 1 \
+                and self.get_loaded_assets_num(chnl_num, mode='sequence') == 1:
+
+                type_per_ch.append('sequence')
+                asset_name = self.get_loaded_assets_name(chnl_num, mode='sequence')[0]
+            elif self.get_loaded_assets_num(chnl_num, mode='segment') == 0 \
+                and self.get_loaded_assets_num(chnl_num, mode='sequence') == 0:
+
+                type_per_ch.append('waveform')
+                asset_name = ''
+
+            else:
+                is_err = True
+
+            if self.get_loaded_assets_num(chnl_num, mode='segment') > 1 \
+                and self.get_loaded_assets_num(chnl_num, mode='sequence') == 0:
+
+                self.log.error("Multiple segments, but no sequence defined")
+
+            if self.get_loaded_assets_num(chnl_num, mode='sequence') > 1:
+                self.log.error("Multiple sequences defined. Should only be 1.")
+                # todo: implement more than 1 sequence
+
+            loaded_assets[chnl_num] = asset_name
+
+        if not all(x == type_per_ch[0] for x in type_per_ch):
+            is_err = True
+        if is_err:
+            self.log.error('Unable to determine loaded assets.')
+            return dict(), ''
+
+        return loaded_assets, type_per_ch[0]
 
     def clear_all(self):
         """ Clears all loaded waveforms from the pulse generators RAM/workspace.
@@ -614,6 +592,7 @@ class AWGM8190A(Base, PulserInterface):
         self.write(':TRAC1:DEL:ALL')
         self.write(':TRAC2:DEL:ALL')
         self.current_loaded_asset = ''
+        self._segment_table = {}
         return
 
     def get_status(self):
@@ -1104,7 +1083,8 @@ class AWGM8190A(Base, PulserInterface):
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
         """
-        Write a new waveform or append samples to an already existing waveform on the device memory.
+        Write a new waveform or append samples to an already existing waveform.
+        Keysight AWG doesn't have own mass memory, so waveforms are sampled to local computer dir.
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
@@ -1136,7 +1116,7 @@ class AWGM8190A(Base, PulserInterface):
             self.log.error('No analog samples passed to write_waveform method in M8190A.')
             return -1, waveforms
 
-        min_samples = 1280
+        min_samples = self.get_constraints().waveform_length.min
         if total_number_of_samples < min_samples:
             self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
                            'smaller than the allowed minimum waveform length ({1:d}).'
@@ -1203,25 +1183,91 @@ class AWGM8190A(Base, PulserInterface):
         for waveform_tuple, param_dict in sequence_parameters:
             if not avail_waveforms.issuperset(waveform_tuple):
                 self.log.error('Failed to create sequence "{0}" due to waveforms "{1}" not '
-                               'present in device memory.'.format(name, waveform_tuple))
+                               'present in pc memory.'.format(name, waveform_tuple))
                 return -1
 
         active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameters)
 
+        # define new sequence
+        self.write(':FUNC1:MODE STS')  # activate the sequence mode
+        self.write(':FUNC2:MODE STS')
+        self.write(':STAB1:RES')  # Reset all sequence table entries to default values
+        self.write(':STAB2:RES')
+        self.write(':SEQ1:DEL:ALL')
+        self.write(':SEQ2:DEL:ALL')
+        seq_id_ch1 = int(self.query(":SEQ1:DEF:NEW? {:d}".format(num_steps)))
+        seq_id_ch2 = int(self.query(":SEQ2:DEF:NEW? {:d}".format(num_steps)))
+        if seq_id_ch1 != seq_id_ch2:
+            self.log.warning("Sequence tables for channels seem not aligned.")
+        self.write(":SEQ1:NAME {:d}, '{}'".format(seq_id_ch1, name))
+        self.write(":SEQ2:NAME {:d}, '{}'".format(seq_id_ch2, name))
 
+        # transfer waveforms in sequence from local pc to segments in awg mem
+        for waveform_tuple, param_dict in sequence_parameters:
+            waveform_list = []
+            waveform_list.append(waveform_tuple[0])
+            waveform_list.append(waveform_tuple[1])
+            self.load_waveform(waveform_list, to_nextfree_segment=True)
 
+        """
+        Manual: When using dynamic sequencing, the arm mode must be set to self-armed 
+        and all advancement modes must be set to Auto. 
+        Additionally, the trigger mode Gated is not allowed.
+        """
 
+        ctr_steps_written = 0
+        for step, (wfm_tuple, seq_step) in enumerate(sequence_parameters, 1):
+            index = step - 1
+            control = 0
 
+            if index == 0:
+                control = 2 ** 28   # (=0x10000000) mark as start
+            if index + 1 == num_steps:
+                control = 2 ** 30   # (=0x40000000) todo: any effect?
 
+            seq_loop_count = 1
+            if seq_step.repetitions == -1:
+                # this is ugly, limits maximal waiting time. 1 Sa -> approx. 0.3 s
+                seg_loop_count = 4294967295  # max value, todo: from constraints
+            else:
+                seg_loop_count = seq_step.repetitions + 1  # if repetitions = 0 then do it once
+            seg_start_offset = 0    # play whole segement from start...
+            seg_end_offset = 0xFFFFFFFF     # to end
+            segment_id_ch1, _, _ = self.get_segment_id(wfm_tuple[0].rsplit('.',1)[0])
+            segment_id_ch2, _, _ = self.get_segment_id(wfm_tuple[1].rsplit('.', 1)[0])
 
+            try:
+                # creates all segments as data entries
+                self.write(':STAB1:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
+                           .format(index,
+                                   control,
+                                   seq_loop_count,
+                                   seg_loop_count,
+                                   segment_id_ch2,
+                                   seg_start_offset,
+                                   seg_end_offset))
 
-        pass
+                self.write(':STAB2:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
+                           .format(index,
+                                   control,
+                                   seq_loop_count,
+                                   seg_loop_count,
+                                   segment_id_ch2,
+                                   seg_start_offset,
+                                   seg_end_offset))
+                ctr_steps_written += 1
+
+            except Exception as e:
+                self.log.warning("Unknown error occured while writing to seq table: {}".format(str(e)))
+
+        return ctr_steps_written
 
 
     def get_waveform_names(self):
-        """ Retrieve the names of all uploaded waveforms on the device.
+        """ Retrieve the names of all uploaded waveforms on the device incl. file extension.
+        Keysight doesn't have mass memory, so name of sampled waveforms on pc.
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
@@ -1240,7 +1286,8 @@ class AWGM8190A(Base, PulserInterface):
 
 
     def get_sequence_names(self):
-        """ Retrieve the names of all uploaded sequence on the device.
+        """ Retrieve the names (without file extension) of all uploaded sequence on the device.
+        Since Keysight has no mass storage: files on local pc.
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
@@ -1250,15 +1297,13 @@ class AWGM8190A(Base, PulserInterface):
             return sequence_list
 
         # get only the files from the dir and skip possible directories
-        log = os.listdir(self._pulsed_file_dir)
-        file_list = list()
+        log = os.listdir(self._assets_storage_path)
+        file_list = [line for line in log if not os.path.isdir(line)]
 
-        for line in log:
-            file_list.append(line)
         for filename in file_list:
-            if filename.endswith(('.seq', '.seqx')):
+            if filename.endswith(('.seq', '.seqx', '.sequence')):
                 if filename not in sequence_list:
-                    sequence_list.append(filename)
+                    sequence_list.append(filename.rsplit('.',1)[0])
         return sequence_list
 
 
@@ -1301,11 +1346,13 @@ class AWGM8190A(Base, PulserInterface):
         avail_sequences = self.get_sequence_names()
         deleted_sequences = list()
 
-        for sequence in sequence_name:
+        for name in sequence_name:
             for sequence in avail_sequences:
                 if fnmatch(sequence, name+'_ch?.bin'):
                     deleted_sequences.append(sequence)
 
+        # todo: get_sequence_names return no extension
+        # todo: actually delete
 
         # clear the AWG if the deleted asset is the currently loaded asset
         if self.current_loaded_asset == sequence_name:
@@ -1390,14 +1437,19 @@ class AWGM8190A(Base, PulserInterface):
         self.awg.timeout = self._awg_timeout * 1000
         return int(enum_status_code)
 
-    def query(self, question):
+    def query(self, question, force_no_check=False):
         """ Asks the device a 'question' and receive and return an answer from it.
 
         @param string question: string containing the command
 
         @return string: the answer of the device to the 'question' in a string
         """
-        return self.awg.query(question).strip().strip('"')
+        ret = self.awg.query(question).strip().strip('"')
+        if self._debug_check_all_commands and not force_no_check:
+            if 0 != self.check_dev_error():
+                self.log.warn("Check failed after query: {}".format(question))
+
+        return ret
 
     def query_bin(self, question):
 
@@ -1473,3 +1525,110 @@ class AWGM8190A(Base, PulserInterface):
         @return list: Sorted list of digital channels
         """
         return [chnl for chnl in self._get_all_channels() if chnl.startswith('d')]
+
+    def get_segment_name(self, seg_id, ch_num):
+        # awg 8190a has 2 separate sequencer per channel!
+        try:
+            name = list(self._segment_table.keys())[list(self._segment_table.values()).index(
+                str(seg_id) + "_ch{:d}".format(ch_num))]
+        except ValueError:
+            self.log.error("Couldn't find segment id {} in ch {}".format(seg_id, ch_num))
+            return ''
+        return name
+
+    def get_segment_id(self, segment_waveform_name):
+        full_id_str = self._segment_table[segment_waveform_name]
+        id_per_ch = full_id_str.rsplit('_ch', 1)[0]
+        ch = full_id_str.rsplit('_ch', 1)[1]
+
+        return id_per_ch, ch, full_id_str
+
+    def get_loaded_assets_num(self, ch_num, mode='segment'):
+        if mode == 'segment':
+            raw_str = self.query(':TRAC{:d}:CAT?'.format(ch_num))
+        elif mode == 'sequence':
+            raw_str = self.query(':SEQ{:d}:CAT?'.format(ch_num))
+        else:
+            self.log.warn("Unknown assets mode: {}".format(mode))
+            return 0
+
+        if raw_str == "0,0":
+            return 0
+        else:
+            splitted = raw_str.rsplit(',')
+
+            return int(len(splitted)/2)
+
+    def get_loaded_assets_name(self, ch_num, mode='segment'):
+
+        n_assets = self.get_loaded_assets_num(ch_num, mode)
+        names = []
+        for i in range(0, n_assets):
+
+            if mode == 'segment':
+                names.append(self.query(':TRAC{:d}:NAME? {:d}'.format(ch_num, i+1)))
+            elif mode == 'sequence':
+                names.append(self.query(':SEQ{:d}:NAME? {:d}'.format(ch_num, i)))
+            else:
+                self.log.warn("Unknown assets mode: {}".format(mode))
+                return 0
+
+        if n_assets == 0:
+            return []
+        else:
+            return names
+
+    def get_loaded_assets_id(self, ch_num, mode='segment'):
+
+        if mode == 'segment':
+            raw_str = self.query(':TRAC{:d}:CAT?'.format(ch_num))
+        elif mode == 'sequence':
+            raw_str = self.query(':SEQ{:d}:CAT?'.format(ch_num))
+        else:
+            self.log.warn("Unknown assets mode: {}".format(mode))
+            return []
+        n_assets = self.get_loaded_assets_num(ch_num, mode)
+
+        if n_assets == 0:
+            return []
+        else:
+            splitted = raw_str.rsplit(',')
+            ids = splitted[0::2]
+
+            return ids
+
+    def get_sequencer_state(self, ch_num):
+        """
+        Queries the state of the sequencer.
+        :param ch_num:
+        :return: state, sequence table id
+                 state:
+                 0: idle
+                 1: waiting for trigger
+                 2: running
+                 3: waiting for advancement event
+        """
+
+        awg_mode = self.query("FUNC{:d}:MODE?".format(ch_num))
+        if awg_mode =='ARB':
+            self.log.warning("Sequencer state is undefined in arb mode")
+            return 0, 0
+
+        bin_str = "{:b}".format(int(self.query("STAB{:d}:SEQ:STAT?".format(ch_num))))
+        state = int(bin_str[0:2], 2)
+        if state != 0:
+            seq_table_id = int(bin_str[2:], 2)
+        else:
+            seq_table_id = 0
+
+        return state, seq_table_id
+
+    def _create_dir(self, path):
+        if not os.path.exists(path):
+            try:
+                os.mkdir(path)
+                self.log.info("Folder was missing, so created: {}".format(path))
+            except Exception as e:
+                self.log.warning("Couldn't create folder: {}. {}".format(path, str(e)))
+
+
