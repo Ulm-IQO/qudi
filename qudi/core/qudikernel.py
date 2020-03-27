@@ -102,7 +102,7 @@ class QudiInterface:
 
 def install_kernel():
     from jupyter_client.kernelspec import KernelSpecManager
-    print('Installing Qudi kernel.')
+    print('Installing Qudi kernel...')
 
     try:
         # prepare temporary kernelspec folder
@@ -131,7 +131,7 @@ def install_kernel():
         # install kernelspec folder
         kernel_spec_manager = KernelSpecManager()
         dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
-        print('Installed kernelspec qudi in {}'.format(dest))
+        print('Successfully installed kernelspec "qudi" in {}'.format(dest))
     except OSError as e:
         if e.errno == errno.EACCES:
             print(e, file=sys.stderr)
@@ -141,12 +141,21 @@ def install_kernel():
             shutil.rmtree(tempdir)
 
 
+def uninstall_kernel():
+    from jupyter_client.kernelspec import KernelSpecManager
+    print('Uninstalling Qudi kernel...')
+    KernelSpecManager().remove_kernel_spec('qudi')
+    print('Successfully uninstalled kernelspec "qudi"')
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
                         format='[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s')
     if len(sys.argv) > 1:
         if sys.argv[1] == 'install':
             install_kernel()
+        elif sys.argv[1] == 'uninstall':
+            uninstall_kernel()
         else:
             q = QudiInterface()
             q.init_signal()
@@ -159,5 +168,5 @@ if __name__ == '__main__':
             logging.info('Quitting.')
             sys.stdout.flush()
     else:
-        print('qudikernel usage is {0} <connectionfile> or {0} install'.format(sys.argv[0]),
+        print('qudikernel usage is {0} <connectionfile> or {0} [un]install'.format(sys.argv[0]),
               file=sys.stderr)
