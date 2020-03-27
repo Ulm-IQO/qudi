@@ -115,14 +115,15 @@ class RemoteModuleServer(QtCore.QObject):
     _keyfile = None
     _allow_pickle = True
 
-    def __init__(self, host=None, port=None, certfile=None, keyfile=None, protocol_config=None,
-                 ssl_version=None, cert_reqs=None, ciphers=None, allow_pickle=None):
+    def __init__(self, kernel_manager, host=None, port=None, certfile=None, keyfile=None,
+                 protocol_config=None, ssl_version=None, cert_reqs=None, ciphers=None,
+                 allow_pickle=None):
         """
         @param object service_instance: class instance that represents an RPyC service
         @param dict config: port that hte RPyC server should listen on
         """
         super().__init__()
-        self.service_instance = _RemoteModulesService()
+        self.service_instance = _RemoteModulesService(kernel_manager=kernel_manager)
         self.host = self._host if host is None else str(host)
         self.port = self._port if port is None else int(port)
         self.certfile = self._certfile if certfile is None else certfile
@@ -199,6 +200,10 @@ class _RemoteModulesService(rpyc.Service):
     shared_modules = _SharedModulesModel()
     _lock = Mutex()
 
+    def __init__(self, *args, kernel_manager, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.kernel_manager = weakref.ref(kernel_manager)
+
     @classmethod
     def share_module(cls, module):
         with cls._lock:
@@ -253,3 +258,6 @@ class _RemoteModulesService(rpyc.Service):
         """
         with self._lock:
             return tuple(name for name, ref in self.shared_modules.items() if ref() is not None)
+
+    def exposed_get_kernel_manager(self):
+        return self.kernel_manager()
