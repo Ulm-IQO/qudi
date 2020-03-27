@@ -36,6 +36,7 @@ from qudi.core.modulemanager import ModuleManager
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.gui.gui import Gui
 from qudi.core.remote import RemoteModuleServer
+from qudi.core.jupyterkernel.kernelmanager import JupyterKernelManager
 
 try:
     from zmq.eventloop import ioloop
@@ -52,13 +53,13 @@ class Qudi(QtCore.QObject):
     _quit_lock = Mutex()
 
     def __new__(cls, *args, **kwargs):
-        with cls._run_lock:
-            if cls._instance is None or cls._instance() is None:
-                obj = super().__new__(cls, *args, **kwargs)
-                cls._instance = weakref.ref(obj)
-                return obj
-            raise Exception('Only one Qudi instance per process possible (Singleton). Please use '
-                            'Qudi.instance() to get a reference to the already created instance.')
+        if cls._instance is None or cls._instance() is None:
+            obj = super().__new__(cls, *args, **kwargs)
+            cls._instance = weakref.ref(obj)
+            return obj
+        raise Exception(
+            'Only one Qudi instance per process possible (Singleton). Please use '
+            'Qudi.instance() to get a reference to the already created instance.')
 
     def __init__(self, no_gui=False, log_dir='', config_file=None):
         super().__init__()
@@ -67,9 +68,14 @@ class Qudi(QtCore.QObject):
         self.log_dir = str(log_dir) if os.path.isdir(log_dir) else get_default_log_dir(
             create_missing=True)
 
+        # Check vital packages for qudi, otherwise qudi will not even start.
+        if import_check() != 0:
+            raise Exception('Vital python packages missing. Unable to use Qudi.')
+
         self.log = get_logger(__name__)
         self.thread_manager = ThreadManager()
         self.module_manager = ModuleManager(qudi_main=self)
+        self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
         self.configuration = Configuration(config_file)
         self.configuration.load_config()
         server_config = self.configuration.module_server
@@ -174,16 +180,25 @@ class Qudi(QtCore.QObject):
         except:
             self.log.exception('Error during shutdown of remote module server:')
 
+    def _init_juypter_kernel_manager(self):
+        thread = self.thread_manager.get_new_thread('jupyter-kernel-manager')
+        self.jupyter_kernel_manager.moveToThread(thread)
+        thread.finished.connect(self.jupyter_kernel_manager.terminate)
+        thread.start()
+
+    def _terminate_jupyter_kernel_manager(self):
+        self.thread_manager.quit_thread('jupyter-kernel-manager')
+        self.thread_manager.join_thread('jupyter-kernel-manager', time=5)
+        return
+
     def run(self):
         """
-
-        @return:
         """
         with self._run_lock:
             if self._is_running:
                 raise Exception('Qudi is already running!')
 
-            # add qudi to PATH
+            # add qudi main directory to PATH
             qudi_path = get_main_dir()
             if qudi_path not in sys.path:
                 sys.path.insert(1, qudi_path)
@@ -202,11 +217,6 @@ class Qudi(QtCore.QObject):
             self.log.info('Used Qt API: {0}'.format(API_NAME))
             print('> Used Qt API: {0}'.format(API_NAME))
 
-            # Check vital packages for qudi, otherwise qudi will not even start.
-            err_code = import_check()
-            if err_code != 0:
-                sys.exit(err_code)
-
             # Get QApplication instance
             if self.no_gui:
                 app = QtCore.QCoreApplication.instance()
@@ -217,9 +227,6 @@ class Qudi(QtCore.QObject):
                     app = QtCore.QCoreApplication(sys.argv)
                 else:
                     app = QtWidgets.QApplication(sys.argv)
-
-            # configure qudi
-            # self.configuration.load_config()
 
             # Install the pyzmq ioloop.
             # This has to be done before anything else from tornado is imported.
@@ -238,8 +245,10 @@ class Qudi(QtCore.QObject):
 
             # Start remote server
             self._start_remote_server()
+            # Init jupyter kernel manager
+            self._init_juypter_kernel_manager()
 
-            # Apply configuration to the rest of qudi
+            # Apply configuration to qudi
             self._configure_qudi()
 
             # Start GUI if needed
@@ -326,6 +335,10 @@ class Qudi(QtCore.QObject):
                 print('> Stopping remote server...')
                 self._stop_remote_server()
                 QtCore.QCoreApplication.instance().processEvents()
+            self.log.info('Stopping Jupyter kernels...')
+            print('> Stopping Jupyter kernels...')
+            self._terminate_jupyter_kernel_manager()
+            QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Deactivating modules...')
             print('> Deactivating modules...')
             self.module_manager.stop_all_modules()
