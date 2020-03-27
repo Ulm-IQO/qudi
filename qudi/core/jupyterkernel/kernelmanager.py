@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 import weakref
+import logging
 import numpy as np
 
 from qtpy import QtCore
@@ -57,6 +58,7 @@ class JupyterKernelManager(QtCore.QObject):
         """ Create logic object
         """
         super().__init__(*args, **kwargs)
+        self.log = logging.getLogger(__file__)
         self.kernels = dict()
         self.namespace_modules = set()
         self._qudi_main = weakref.ref(qudi_main, self.terminate)
@@ -101,6 +103,10 @@ class JupyterKernelManager(QtCore.QObject):
         @return str: uuid of the started kernel
         """
         with self._lock:
+            qudi_main = self._qudi_main()
+            if qudi_main is None:
+                self.log.critical('Unexpected Qudi main instance weakref.')
+                return
             config = netobtain(config)
             self.log.debug('Starting new kernel with config: {0}'.format(config))
             kernel = QZMQKernel(config)
@@ -108,21 +114,22 @@ class JupyterKernelManager(QtCore.QObject):
                 self.log.error('Kernel with ID {0} already created in QudiKernelLogic. '
                                'Ignoring call to start_kernel.')
                 return
-            kernel_thread = self._qudi_main.thread_manager.get_new_thread(
+            kernel_thread = qudi_main.thread_manager.get_new_thread(
                 'kernel-{0}'.format(kernel.engine_id))
             kernel.moveToThread(kernel_thread)
             kernel.user_global_ns.update({'np': np,
-                                          'config': self._qudi_main.configuration.config_dict,
-                                          'qudi': self._qudi_main})
-            kernel.sigShutdownFinished.connect(self.cleanup_kernel, QtCore.Qt.QueuedConnection)
+                                          'config': qudi_main.configuration.config_dict,
+                                          'qudi': qudi_main})
+            kernel.sigShutdownFinished.connect(self.cleanup_kernel)
             kernel_thread.start()
             QtCore.QMetaObject.invokeMethod(
                 kernel, 'connect_kernel', QtCore.Qt.BlockingQueuedConnection)
             self.kernels[kernel.engine_id] = kernel
-            modules = self._qudi_main.module_manager
-            module_namespace = {name: modules[name].instance for name in self.namespace_modules}
-            self._update_kernel_module_namespace(kernel.engine_id, module_namespace)
+            modules = qudi_main.module_manager
+            # self._update_kernel_module_namespace(kernel.engine_id, module_namespace)
+            self.update_module_namespace()
             self.log.info('Finished starting Kernel {0}'.format(kernel.engine_id))
+            self.update_module_namespace()
             return kernel.engine_id
 
     def stop_kernel(self, kernel_id, blocking=False):
