@@ -148,12 +148,12 @@ class PrePostDevelopCommands(develop):
             from .qudi.core.qudikernel import install_kernel
         except ImportError:
             with open('relative_import_failed.txt', 'w') as f:
-                f.write()
+                f.write('')
             try:
                 from qudi.core.qudikernel import install_kernel
             except ImportError:
                 with open('package_import_failed.txt', 'w') as f:
-                    f.write()
+                    f.write('')
         finally:
             try:
                 install_kernel()
