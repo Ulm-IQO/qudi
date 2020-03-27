@@ -66,20 +66,24 @@ class QudiInterface:
         logging.info('Connecting to {}:{}'.format(self.host, self.port))
         self.connection = rpyc.connect(self.host, self.port, config=self.conn_config)
 
-    def get_module(self, name):
-        return self.connection.root.get_module_instance(name)
+    def get_kernel_manager(self):
+        return self.connection.root.get_kernel_manager()
 
     def start_kernel(self, connfile):
-        module = self.get_module('kernellogic')
+        kernel_manager = self.get_kernel_manager()
+        if kernel_manager is None:
+            raise Exception('Unable to retrieve kernel manager from Qudi remote server')
         cfg = json.loads(''.join(open(connfile).readlines()))
-        self.kernel_id = module.start_kernel(cfg, self)
+        self.kernel_id = kernel_manager.start_kernel(cfg, self)
 
     def stop_kernel(self):
         logging.info('Shutting down: {}'.format(self.kernel_id))
         sys.stdout.flush()
-        module = self.get_module('kernellogic')
+        kernel_manager = self.get_kernel_manager()
+        if kernel_manager is None:
+            raise Exception('Unable to retrieve kernel manager from Qudi remote server')
         if self.kernel_id is not None:
-            module.stop_kernel(self.kernel_id, blocking=True)
+            kernel_manager.stop_kernel(self.kernel_id, blocking=True)
             sys.stdout.flush()
 
     def init_signal(self):
