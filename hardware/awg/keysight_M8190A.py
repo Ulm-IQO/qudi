@@ -32,7 +32,7 @@ from collections import OrderedDict
 
 from core.module import Base
 from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption, SequenceOrderOption
 from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
 
@@ -278,6 +278,9 @@ class AWGM8190A(Base, PulserInterface):
         constraints.sequence_num.max = 4000
         constraints.sequence_num.step = 1
         constraints.sequence_num.default = 1
+
+        constraints.sequence_option = SequenceOption.OPTIONAL
+        constraints.sequence_order = SequenceOrderOption.LINONLY
 
         # If sequencer mode is available then these should be specified
         constraints.repetitions.min = 0
@@ -1218,7 +1221,11 @@ class AWGM8190A(Base, PulserInterface):
         """
 
         ctr_steps_written = 0
+        goto_in_sequence = False
         for step, (wfm_tuple, seq_step) in enumerate(sequence_parameters, 1):
+            if seq_step['go_to'] != -1:
+                goto_in_sequence = True
+
             index = step - 1
             control = 0
 
@@ -1261,6 +1268,9 @@ class AWGM8190A(Base, PulserInterface):
 
             except Exception as e:
                 self.log.warning("Unknown error occured while writing to seq table: {}".format(str(e)))
+
+        if goto_in_sequence and self.get_constraints().sequence_order == SequenceOrderOption.LINONLY:
+            self.log.warning("Found go_to in step of sequence {}. Not supported and ignored.".format(name))
 
         return ctr_steps_written
 
@@ -1610,7 +1620,7 @@ class AWGM8190A(Base, PulserInterface):
         """
 
         awg_mode = self.query("FUNC{:d}:MODE?".format(ch_num))
-        if awg_mode =='ARB':
+        if awg_mode == 'ARB':
             self.log.warning("Sequencer state is undefined in arb mode")
             return 0, 0
 

@@ -541,6 +541,9 @@ class SequenceOption(Enum):
     OPTIONAL = 1  # Pulser can either work with waveforms directly or use sequences for the output
     FORCED = 2  # Output is only allowed for sequences. Waveforms might still be uploaded but not played.
 
+class SequenceOrderOption(Enum):
+    ARB = 0     # arbitrary order possible
+    LINONLY = 1 # sequencer doesn't support <go_to> attribute, only linear sequences
 
 class PulserConstraints:
     def __init__(self):
@@ -566,3 +569,4 @@ class PulserConstraints:
 
         self.activation_config = dict()
         self.sequence_option = SequenceOption.OPTIONAL
+        self.sequence_order = SequenceOrderOption.ARB
