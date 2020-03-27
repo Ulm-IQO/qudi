@@ -81,6 +81,7 @@ class Qudi(QtCore.QObject):
         server_config = self.configuration.module_server
         if server_config:
             self.remote_server = RemoteModuleServer(
+                kernel_manager=self.jupyter_kernel_manager,
                 host=server_config.get('address', None),
                 port=server_config.get('port', None),
                 certfile=server_config.get('certfile', None),
@@ -184,9 +185,13 @@ class Qudi(QtCore.QObject):
         thread = self.thread_manager.get_new_thread('jupyter-kernel-manager')
         self.jupyter_kernel_manager.moveToThread(thread)
         thread.finished.connect(self.jupyter_kernel_manager.terminate)
+        self.module_manager.sigManagedModulesChanged.connect(
+            self.jupyter_kernel_manager.update_module_namespace, QtCore.Qt.QueuedConnection)
         thread.start()
 
     def _terminate_jupyter_kernel_manager(self):
+        self.module_manager.sigManagedModulesChanged.disconnect(
+            self.jupyter_kernel_manager.update_module_namespace)
         self.thread_manager.quit_thread('jupyter-kernel-manager')
         self.thread_manager.join_thread('jupyter-kernel-manager', time=5)
         return
