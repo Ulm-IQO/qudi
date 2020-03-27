@@ -3,6 +3,8 @@
 import os
 import sys
 from setuptools import setup
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
 with open('README.md', 'r') as file:
     long_description = file.read()
@@ -10,15 +12,7 @@ with open('README.md', 'r') as file:
 with open(os.path.join('.', 'qudi', 'core', 'VERSION.txt'), 'r') as file:
     version = file.read().strip()
 
-packages = ['qudi',
-            'qudi.core',
-            'qudi.core.gui',
-            'qudi.core.gui.main_gui',
-            'qudi.core.gui.qtwidgets',
-            'qudi.core.logger',
-            'qudi.core.jupyterkernel',
-            'qudi.core.jupyterkernel.mpl',
-            'qudi.core.util']
+packages =
 
 unix_dep = ['attrs==19.3.0',
             'backcall==0.1.0',
@@ -144,9 +138,47 @@ windows_dep = ['attrs==19.3.0',
                'zipp==3.1.0'
                ]
 
+
+class PrePostDevelopCommands(develop):
+    """ Pre- and Post-installation script for development mode.
+    """
+    def run(self):
+        # PUT YOUR PRE-INSTALL SCRIPT HERE or CALL A FUNCTION
+        develop.run(self)
+        # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        try:
+            from qudi.core.qudikernel import install_kernel
+            install_kernel()
+        except ImportError:
+            print('qudi package can not be imported in post-install script')
+
+
+class PrePostInstallCommands(install):
+    """ Pre- and Post-installation for installation mode.
+    """
+    def run(self):
+        # PUT YOUR PRE-INSTALL SCRIPT HERE or CALL A FUNCTION
+        install.run(self)
+        # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        try:
+            from qudi.core.qudikernel import install_kernel
+            install_kernel()
+        except ImportError:
+            print('qudi package can not be imported in post-install script')
+
+
 setup(name='qudi',
       version=version,
-      packages=packages,
+      packages=['qudi',
+                'qudi.core',
+                'qudi.core.gui',
+                'qudi.core.gui.main_gui',
+                'qudi.core.gui.qtwidgets',
+                'qudi.core.logger',
+                'qudi.core.jupyterkernel',
+                'qudi.core.jupyterkernel.mpl',
+                'qudi.core.util'
+                ],
       package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt'],
                     'qudi.core': ['VERSION.txt', 
                                   'default.cfg'
@@ -165,7 +197,8 @@ setup(name='qudi',
                                   'artwork/styles/console/*.qss',
                                   'artwork/styles/console/*.txt',
                                   'artwork/styles/log/*.qss',
-                                  'artwork/styles/log/*.txt']
+                                  'artwork/styles/log/*.txt'
+                                  ]
                     },
       description='A modular laboratory experiment management suite',
       long_description=long_description,
@@ -184,6 +217,7 @@ setup(name='qudi',
       license='GPLv3',
       install_requires=windows_dep if sys.platform == 'win32' else unix_dep,
       python_requires='~=3.7',
+      cmdclass={'develop': PrePostDevelopCommands, 'install': PrePostInstallCommands},
       entry_points={'console_scripts': ['qudi=qudi.runnable:main']},
       zip_safe=False
       )
