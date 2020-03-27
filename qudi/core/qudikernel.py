@@ -44,7 +44,6 @@ class QudiInterface:
         config = Configuration()
         config.load_config(set_default=False)
         server_config = config.module_server
-        print(server_config)
         if not server_config:
             raise Exception('No module_server config found in configuration file {0}'
                             ''.format(config.config_file))
@@ -76,7 +75,6 @@ class QudiInterface:
             raise Exception('Unable to retrieve kernel manager from Qudi remote server')
         cfg = json.loads(''.join(open(connfile).readlines()))
         self.kernel_id = kernel_manager.start_kernel(cfg, self)
-        print('======================== KERNEL ID:', self.kernel_id)
 
     def stop_kernel(self):
         logging.info('Shutting down: {}'.format(self.kernel_id))
