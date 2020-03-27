@@ -43,6 +43,10 @@ def main():
         myenv['QUDI_PARENT_PID'] = str(int(handle))
     else:
         myenv['QUDI_PARENT_PID'] = str(os.getpid())
+        # The following will prevent Qt to spam the logs on X11 systems with enough messages 
+        # to significantly slow the program down. Most of those warnings should have been
+        # notice level or lower. This is a known problem since Qt does not fully comply to X11. 
+        myenv['QT_LOGGING_RULES'] = '*.debug=false;*.info=false;*.notice=false;*.warning=false'
 
     argv = [sys.executable, '-m', 'core'] + sys.argv[1:]
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
