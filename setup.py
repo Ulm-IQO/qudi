@@ -179,7 +179,7 @@ setup(name='qudi',
                 ],
       package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt'],
                     'qudi.core': ['VERSION.txt', 
-                                  'default.cfg'
+                                  'default.cfg',
                                   'artwork/logo/*',
                                   'artwork/icons/oxygen/*',
                                   'artwork/icons/oxygen/**/*.png',
