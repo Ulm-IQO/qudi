@@ -12,8 +12,6 @@ with open('README.md', 'r') as file:
 with open(os.path.join('.', 'qudi', 'core', 'VERSION.txt'), 'r') as file:
     version = file.read().strip()
 
-packages =
-
 unix_dep = ['attrs==19.3.0',
             'backcall==0.1.0',
             'bleach==3.1.3',
