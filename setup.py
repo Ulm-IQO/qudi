@@ -145,21 +145,10 @@ class PrePostDevelopCommands(develop):
         develop.run(self)
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         try:
-            from .qudi.core.qudikernel import install_kernel
-        except ImportError:
-            with open('relative_import_failed.txt', 'w') as f:
-                f.write('')
-            try:
-                from qudi.core.qudikernel import install_kernel
-            except ImportError:
-                with open('package_import_failed.txt', 'w') as f:
-                    f.write('')
-        finally:
-            try:
-                install_kernel()
-            except Exception as e:
-                with open('install_error.txt', 'w') as f:
-                    f.write(str(e))
+            from qudi.core.qudikernel import install_kernel
+            install_kernel()
+        except:
+            pass
 
 
 class PrePostInstallCommands(install):
@@ -169,10 +158,11 @@ class PrePostInstallCommands(install):
         # PUT YOUR PRE-INSTALL SCRIPT HERE or CALL A FUNCTION
         install.run(self)
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
-        from .qudi.core.qudikernel import install_kernel
-        install_kernel()
-        from qudi.core.qudikernel import install_kernel
-        install_kernel()
+        try:
+            from qudi.core.qudikernel import install_kernel
+            install_kernel()
+        except:
+            pass
 
 
 setup(name='qudi',
@@ -226,6 +216,11 @@ setup(name='qudi',
       install_requires=windows_dep if sys.platform == 'win32' else unix_dep,
       python_requires='~=3.7',
       cmdclass={'develop': PrePostDevelopCommands, 'install': PrePostInstallCommands},
-      entry_points={'console_scripts': ['qudi=qudi.runnable:main']},
+      entry_points={
+          'console_scripts': ['qudi=qudi.runnable:main',
+                              'qudi-uninstall-kernel=qudi.core.qudikernel:uninstall_kernel',
+                              'qudi-install-kernel=qudi.core.qudikernel:install_kernel'
+                              ]
+      },
       zip_safe=False
       )
