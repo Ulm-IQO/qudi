@@ -26,8 +26,6 @@ import numpy as np
 
 from qtpy import QtCore
 from qudi.core.util.mutex import RecursiveMutex
-from qudi.core.module import LogicBase
-from qudi.core.configoption import ConfigOption
 from qudi.core.util.network import netobtain
 
 from qudi.core.jupyterkernel.qzmqkernel import QZMQKernel
@@ -40,9 +38,6 @@ class JupyterKernelManager(QtCore.QObject):
     _lock = RecursiveMutex()
 
     # _kernel_shutdown_timeout = 5
-
-    sigStartKernel = QtCore.Signal(str)
-    sigStopKernel = QtCore.Signal(int)
 
     def __new__(cls, *args, **kwargs):
         with cls._lock:
@@ -58,11 +53,13 @@ class JupyterKernelManager(QtCore.QObject):
         """ Create logic object
         """
         super().__init__(*args, **kwargs)
-        self.log = logging.getLogger(__file__)
+        self.log = logging.getLogger('jupyter-kernel-manager')
         self.kernels = dict()
         self.namespace_modules = set()
         self._qudi_main = weakref.ref(qudi_main, self.terminate)
         qudi_main.module_manager.sigManagedModulesChanged.connect(self.update_module_namespace)
+        qudi_main.module_manager.sigModuleStateChanged.connect(
+            self.update_namespace_on_module_state_change)
 
     @classmethod
     def instance(cls):
@@ -91,6 +88,8 @@ class JupyterKernelManager(QtCore.QObject):
                     return
                 qudi_main.module_manager.sigManagedModulesChanged.disconnect(
                     self.update_module_namespace)
+                qudi_main.module_manager.sigModuleStateChanged.disconnect(
+                    self.update_namespace_on_module_state_change)
             except:
                 pass
 
@@ -125,11 +124,8 @@ class JupyterKernelManager(QtCore.QObject):
             QtCore.QMetaObject.invokeMethod(
                 kernel, 'connect_kernel', QtCore.Qt.BlockingQueuedConnection)
             self.kernels[kernel.engine_id] = kernel
-            modules = qudi_main.module_manager
-            # self._update_kernel_module_namespace(kernel.engine_id, module_namespace)
             self.update_module_namespace()
             self.log.info('Finished starting Kernel {0}'.format(kernel.engine_id))
-            self.update_module_namespace()
             return kernel.engine_id
 
     def stop_kernel(self, kernel_id, blocking=False):
@@ -179,20 +175,23 @@ class JupyterKernelManager(QtCore.QObject):
         @param dict managed_modules: configured module names with their respective ManagedModule
                                      instances
         """
-        if managed_modules is None:
-            managed_modules = self._qudi_main().module_manager.modules
+        with self._lock:
+            if managed_modules is None:
+                managed_modules = self._qudi_main().module_manager.modules
 
-        # Collect all active module instances in a dict with their respective configured names
-        new_namespace = {mod_name: mod.instance for mod_name, mod in managed_modules.items() if
-                         mod.is_active}
-        new_namespace_set = set(new_namespace)
-        # Determine modules to discard from namespace
-        discard = self.namespace_modules - new_namespace_set
-        # iterate through all kernels and update namespace
-        for kernel_name in self.kernels:
-            self._update_kernel_module_namespace(kernel_name, new_namespace, discard)
-        # Remember module names of new namespace
-        self.namespace_modules = new_namespace_set
+            # Collect all active module instances in a dict with their respective configured names
+            new_namespace = {mod_name: mod.instance for mod_name, mod in managed_modules.items() if
+                             mod.is_active}
+            new_namespace_set = set(new_namespace)
+            # Determine modules to discard from namespace
+            discard = self.namespace_modules - new_namespace_set
+            if not new_namespace_set and not discard:
+                return
+            # iterate through all kernels and update namespace
+            for kernel_id in self.kernels:
+                self._update_kernel_module_namespace(kernel_id, new_namespace, discard)
+            # Remember module names of new namespace
+            self.namespace_modules = new_namespace_set
 
     def _update_kernel_module_namespace(self, kernel_id, new_namespace, discard=None):
         """ Helper method to update the namespace of a single kernel
@@ -208,3 +207,31 @@ class JupyterKernelManager(QtCore.QObject):
         for name in discard:
             kernel.user_global_ns.pop(name, None)
         return
+
+    @QtCore.Slot(str, str, str)
+    def update_namespace_on_module_state_change(self, base, name, state):
+        with self._lock:
+            if state in ('deactivated', 'BROKEN'):
+                instance = None
+                if name in self.namespace_modules:
+                    self.namespace_modules.remove(name)
+            else:
+                qudi_main = self._qudi_main()
+                if qudi_main is None:
+                    return
+                instance = qudi_main.module_manager[name].instance
+                self.namespace_modules.add(name)
+            for kernel_id in self.kernels:
+                self._update_kernel_module_state(kernel_id, name, instance)
+
+    def _update_kernel_module_state(self, kernel_id, module_name, instance):
+        """ Helper method to update the namespace of a single kernel
+        """
+        kernel = self.kernels.get(kernel_id, None)
+        if kernel is None:
+            self.log.error('No kernel with ID {0} registered.'.format(kernel_id))
+            return
+        if instance is None:
+            kernel.user_global_ns.pop(module_name, None)
+        else:
+            kernel.user_global_ns[module_name] = instance
