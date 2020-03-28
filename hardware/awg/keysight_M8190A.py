@@ -77,7 +77,6 @@ class AWGM8190A(Base, PulserInterface):
 
         self._sequence_mode = False         # set in on_activate()
         self.current_loaded_asset = ''
-        self._segment_table = {}            # key: waveform name, value: corresponding segment id
         self.active_channel = dict()
         self._debug_check_all_commands = True       # for development purpose, might slow down
 
@@ -450,7 +449,7 @@ class AWGM8190A(Base, PulserInterface):
 
             self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
                 name, samples, chnl_num, segment_id_per_ch))
-            self._segment_table[name] = segment_id
+
 
         self.check_dev_error()
         return self.get_loaded_assets()
@@ -595,7 +594,7 @@ class AWGM8190A(Base, PulserInterface):
         self.write(':TRAC1:DEL:ALL')
         self.write(':TRAC2:DEL:ALL')
         self.current_loaded_asset = ''
-        self._segment_table = {}
+
         return
 
     def get_status(self):
@@ -1189,11 +1188,14 @@ class AWGM8190A(Base, PulserInterface):
                                'present in pc memory.'.format(name, waveform_tuple))
                 return -1
 
+        # todo: check sequence mathces num_tracks
+
         active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameters)
 
         # define new sequence
+        self.clear_all()
         self.write(':FUNC1:MODE STS')  # activate the sequence mode
         self.write(':FUNC2:MODE STS')
         self.write(':STAB1:RES')  # Reset all sequence table entries to default values
@@ -1209,10 +1211,13 @@ class AWGM8190A(Base, PulserInterface):
 
         # transfer waveforms in sequence from local pc to segments in awg mem
         for waveform_tuple, param_dict in sequence_parameters:
+            # todo: handle other than 2 chanels
             waveform_list = []
             waveform_list.append(waveform_tuple[0])
             waveform_list.append(waveform_tuple[1])
-            self.load_waveform(waveform_list, to_nextfree_segment=True)
+            if not (self._remove_file_extension(waveform_tuple[0]) in self.get_loaded_assets_name(1, mode='segment') and
+                    self._remove_file_extension(waveform_tuple[1]) in self.get_loaded_assets_name(2, mode='segment')):
+                self.load_waveform(waveform_list, to_nextfree_segment=True)
 
         """
         Manual: When using dynamic sequencing, the arm mode must be set to self-armed 
@@ -1242,8 +1247,8 @@ class AWGM8190A(Base, PulserInterface):
                 seg_loop_count = seq_step.repetitions + 1  # if repetitions = 0 then do it once
             seg_start_offset = 0    # play whole segement from start...
             seg_end_offset = 0xFFFFFFFF     # to end
-            segment_id_ch1, _, _ = self.get_segment_id(wfm_tuple[0].rsplit('.',1)[0])
-            segment_id_ch2, _, _ = self.get_segment_id(wfm_tuple[1].rsplit('.', 1)[0])
+            segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1)
+            segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2)
 
             try:
                 # creates all segments as data entries
@@ -1252,7 +1257,7 @@ class AWGM8190A(Base, PulserInterface):
                                    control,
                                    seq_loop_count,
                                    seg_loop_count,
-                                   segment_id_ch2,
+                                   segment_id_ch1,
                                    seg_start_offset,
                                    seg_end_offset))
 
@@ -1313,7 +1318,7 @@ class AWGM8190A(Base, PulserInterface):
         for filename in file_list:
             if filename.endswith(('.seq', '.seqx', '.sequence')):
                 if filename not in sequence_list:
-                    sequence_list.append(filename.rsplit('.',1)[0])
+                    sequence_list.append(self._remove_file_extension(filename))
         return sequence_list
 
 
@@ -1536,22 +1541,55 @@ class AWGM8190A(Base, PulserInterface):
         """
         return [chnl for chnl in self._get_all_channels() if chnl.startswith('d')]
 
+    def read_segment_table(self, ch_num):
+        names = self.get_loaded_assets_name(ch_num, mode='segment')
+        ids = self.get_loaded_assets_id(ch_num, mode='segment')
+
+        zipped = zip(ids, names)
+        segment_table = []
+
+        if len(names) != len(ids):
+            self.log.error("Segment table on device seems unaligned.")
+            return segment_table
+
+        segment_table = [[x,y] for x,y in sorted(zipped)]
+
+        return segment_table
+
     def get_segment_name(self, seg_id, ch_num):
         # awg 8190a has 2 separate sequencer per channel!
+
+        segment_table = self.read_segment_table(ch_num)
+
         try:
-            name = list(self._segment_table.keys())[list(self._segment_table.values()).index(
-                str(seg_id) + "_ch{:d}".format(ch_num))]
+            idx_id = [row[0] for row in segment_table].index(seg_id)
+            name = [row[1] for row in segment_table][idx_id]
+
         except ValueError:
-            self.log.error("Couldn't find segment id {} in ch {}".format(seg_id, ch_num))
+            self.log.warning("Couldn't find segment id {} in ch {}".format(seg_id, ch_num))
             return ''
         return name
 
-    def get_segment_id(self, segment_waveform_name):
-        full_id_str = self._segment_table[segment_waveform_name]
-        id_per_ch = full_id_str.rsplit('_ch', 1)[0]
-        ch = full_id_str.rsplit('_ch', 1)[1]
+    def get_segment_id(self, segment_waveform_name, ch_num):
+        """
+        Finds id of a given waveform name.
+        :param segment_waveform_name: waveform name without (eg. .bin) extension
+        :param ch_num: analog awg channel
+        :return: -1 if not found
+        """
 
-        return id_per_ch, ch, full_id_str
+        segment_table = self.read_segment_table(ch_num)
+
+        try:
+            # np.array would allow slicing, but list comprehension probably better performance
+            idx_id = [row[1] for row in segment_table].index(segment_waveform_name)
+            id = [row[0] for row in segment_table][idx_id]
+
+        except ValueError:
+            self.log.warning("Couldn't find waveform {} in ch {}".format(segment_waveform_name, ch_num))
+            return -1
+        return id
+
 
     def get_loaded_assets_num(self, ch_num, mode='segment'):
         if mode == 'segment':
@@ -1603,7 +1641,7 @@ class AWGM8190A(Base, PulserInterface):
             return []
         else:
             splitted = raw_str.rsplit(',')
-            ids = splitted[0::2]
+            ids = [int(x) for x in splitted[0::2]]
 
             return ids
 
@@ -1633,6 +1671,17 @@ class AWGM8190A(Base, PulserInterface):
 
         return state, seq_table_id
 
+    def _remove_file_extension(self, filename):
+        """
+        Removes filename, even if dot in filename.
+        eg. rabi.1.bin -> rabi.1
+            rabi.1 -> rabi
+            rabi -> rabi
+        :param filename:
+        :return:
+        """
+        return filename.rsplit('.', 1)[0]
+
     def _create_dir(self, path):
         if not os.path.exists(path):
             try:
@@ -1642,3 +1691,6 @@ class AWGM8190A(Base, PulserInterface):
                 self.log.warning("Couldn't create folder: {}. {}".format(path, str(e)))
 
 
+    def sequence_set_start_segment(self, seqtable_id):
+        # todo: need to implement? alernatively shuffle sequuence while generating
+        pass
