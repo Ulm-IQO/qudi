@@ -25,9 +25,9 @@ from qudi.core.util.paths import get_main_dir
 from qudi.core.util.mutex import Mutex
 
 
-class ModuleFrameWidget(QtWidgets.QFrame):
+class ModuleFrameWidget(QtWidgets.QWidget):
     """
-    Custom module QFrame widget for the Qudi manager GUI
+    Custom module QWidget for the Qudi main GUI
     """
     sigActivateClicked = QtCore.Signal(str)
     sigDeactivateClicked = QtCore.Signal(str)
@@ -154,7 +154,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return name, state
 
     def flags(self, index):
-        return QtCore.Qt.ItemNeverHasChildren | QtCore.Qt.ItemIsEnabled# | QtCore.Qt.ItemIsEditable
+        return QtCore.Qt.ItemNeverHasChildren | QtCore.Qt.ItemIsEnabled
 
     def append_module(self, name, state):
         with self._lock:
@@ -210,6 +210,8 @@ class ModuleListItemDelegate(QtWidgets.QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
         widget = ModuleFrameWidget(parent=parent)
+        # Found no other way to pefectly match editor and rendered item view (using paint())
+        widget.setContentsMargins(2, 2, 2, 2)
         widget.sigActivateClicked.connect(self.sigActivateClicked)
         widget.sigDeactivateClicked.connect(self.sigDeactivateClicked)
         widget.sigReloadClicked.connect(self.sigReloadClicked)
@@ -251,6 +253,7 @@ class ModuleListView(QtWidgets.QListView):
         self.setItemDelegate(delegate)
         self.setMinimumWidth(delegate.sizeHint().width())
         self.setUniformItemSizes(True)
+        self.setContentsMargins(0, 0, 0, 0)
         self.setSpacing(1)
         self.previous_index = QtCore.QModelIndex()
 
