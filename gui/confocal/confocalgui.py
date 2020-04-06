@@ -161,8 +161,8 @@ class ConfocalGui(GUIBase):
         self.opt_channel = 0
 
         # Get the image for the display from the logic
-        raw_data_xy = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
-        raw_data_depth = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
+        raw_data_xy = self._scanning_logic.xy_image[:, :, 4 + self.xy_channel]
+        raw_data_depth = self._scanning_logic.depth_image[:, :, 4 + self.depth_channel]
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
@@ -196,7 +196,7 @@ class ConfocalGui(GUIBase):
         ###################################################################
         # Load the image for the optimizer tab
         self.xy_refocus_image = ScanImageItem(
-            image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
+            image=self._optimizer_logic.xy_refocus_image[:, :, 4 + self.opt_channel],
             axisOrder='row-major')
         self.xy_refocus_image.set_image_extent(((self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
                                                  self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
@@ -835,7 +835,7 @@ class ConfocalGui(GUIBase):
                 x=optimal_pos[0],
                 y=optimal_pos[1],
                 z=optimal_pos[2],
-                a=0.0
+                a=optimal_pos[3]
             )
         self.enable_scan_actions()
 
@@ -1360,7 +1360,7 @@ class ConfocalGui(GUIBase):
         """
         self.xy_image.getViewBox().updateAutoRange()
 
-        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
+        xy_image_data = self._scanning_logic.xy_image[:, :, 4 + self.xy_channel]
 
         cb_range = self.get_xy_cb_range()
 
@@ -1381,7 +1381,7 @@ class ConfocalGui(GUIBase):
 
         self.depth_image.getViewBox().enableAutoRange()
 
-        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
+        depth_image_data = self._scanning_logic.depth_image[:, :, 4 + self.depth_channel]
         cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -1396,7 +1396,7 @@ class ConfocalGui(GUIBase):
         """Refreshes the xy image, the crosshair and the colorbar. """
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
-        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel]
+        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 4 + self._optimizer_logic.opt_channel]
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
         if np.count_nonzero(xy_optimizer_image) > 0:
