@@ -25,7 +25,10 @@ from core.meta import InterfaceMetaclass
 
 
 class SimpleDataInterface(metaclass=InterfaceMetaclass):
-    """
+    """ An interface to get read one or multiple values from a device.
+
+    Deprecated : This interface is redundant with process_interface. Please use the other if possible?
+    TODO: Remove in future versions ?
     """
 
     @abstract_interface_method
