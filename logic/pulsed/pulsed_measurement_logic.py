@@ -1385,7 +1385,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                  label='data trace 2')
 
                 # Do not include fit curve if there is no fit calculated.
-                if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
+                if self.signal_fit_data.size != 0 and np.sum(np.abs(self.signal_fit_data[1])) > 0:
                     x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
                     ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
                              color=colors[2], marker='None', linewidth=1.5,
@@ -1488,7 +1488,8 @@ class PulsedMeasurementLogic(GenericLogic):
                     ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                                mode="expand", borderaxespad=0.)
 
-                    if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
+                    if (self.signal_fit_alt_data.size != 0
+                            and np.sum(np.abs(self.signal_fit_alt_data[1])) > 0):
                         x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
                         ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
                                  color=colors[2], marker='None', linewidth=1.5,
