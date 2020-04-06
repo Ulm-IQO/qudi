@@ -26,6 +26,10 @@ from core.meta import InterfaceMetaclass
 
 class ProcessControlInterface(metaclass=InterfaceMetaclass):
     """ A simple interface to control one or multiple process value.
+
+    This interface is in fact a very general/universal interface that can be used for a lot of things.
+    It can be used to interface any hardware where one to control one or multiple control value, like a temperature
+    or how much a PhD student get paid.
     """
 
     @abstract_interface_method
