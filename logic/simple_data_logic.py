@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
@@ -29,8 +29,6 @@ from qtpy import QtCore
 class SimpleDataLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
-    _modclass = 'smple_data'
-    _modtype = 'logic'
 
     simpledata = Connector(interface='SimpleDataInterface')
 

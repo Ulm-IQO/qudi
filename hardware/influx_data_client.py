@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from influxdb import InfluxDBClient
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.process_interface import ProcessInterface
 
 
@@ -42,9 +43,6 @@ class InfluxDataClient(Base, ProcessInterface):
         criterion: 'criterion_name'
 
     """
-
-    _modclass = 'InfluxDataClient'
-    _modtype = 'hardware'
 
     user = ConfigOption('user', missing='error')
     pw = ConfigOption('password', missing='error')
@@ -69,13 +67,13 @@ class InfluxDataClient(Base, ProcessInterface):
         """ Connect to Influx database """
         self.conn = InfluxDBClient(self.host, self.port, self.user, self.pw, self.dbname)
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Return a measured value """
         q = 'SELECT last({0}) FROM {1} WHERE (time > now() - 10m AND {2})'.format(self.field, self.series, self.cr)
         res = self.conn.query(q)
         return list(res[('{0}'.format(self.series), None)])[0]['last']
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Return the unit that the value is measured in
 
             @return (str, str): a tuple of ('abreviation', 'full unit name')

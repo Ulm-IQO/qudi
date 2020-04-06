@@ -24,7 +24,8 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
@@ -33,14 +34,21 @@ from logic.generic_logic import GenericLogic
 class SpectrumLogic(GenericLogic):
 
     """This logic module gathers data from the spectrometer.
-    """
 
-    _modclass = 'spectrumlogic'
-    _modtype = 'logic'
+    Demo config:
+
+    spectrumlogic:
+        module.Class: 'spectrum.SpectrumLogic'
+        connect:
+            spectrometer: 'myspectrometer'
+            savelogic: 'savelogic'
+            odmrlogic: 'odmrlogic' # optional
+            fitlogic: 'fitlogic'
+    """
 
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
-    odmrlogic = Connector(interface='ODMRLogic')
+    odmrlogic = Connector(interface='ODMRLogic', optional=True)
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')
 
@@ -247,7 +255,8 @@ class SpectrumLogic(GenericLogic):
     def toggle_modulation(self, on):
         """ Toggle the modulation.
         """
-
+        if self._odmr_logic is None:
+            return
         if on:
             self._odmr_logic.mw_cw_on()
         elif not on:

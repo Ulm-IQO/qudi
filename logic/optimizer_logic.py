@@ -24,7 +24,8 @@ import numpy as np
 import time
 
 from logic.generic_logic import GenericLogic
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 
 
@@ -32,9 +33,6 @@ class OptimizerLogic(GenericLogic):
 
     """This is the Logic class for optimizing scanner position on bright features.
     """
-
-    _modclass = 'optimizerlogic'
-    _modtype = 'logic'
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
@@ -392,7 +390,7 @@ class OptimizerLogic(GenericLogic):
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
-        xy_fit_data = self.xy_refocus_image[:, :, 4].ravel()
+        xy_fit_data = self.xy_refocus_image[:, :, 4+self.opt_channel].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(

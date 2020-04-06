@@ -20,17 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class SwitchInterface(metaclass=InterfaceMetaclass):
     """ Methods to control slow (mechaincal) laser switching devices. """
 
-    _modtype = 'SwitchInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
 
@@ -38,7 +35,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getSwitchState(self, switchNumber):
         """ Gives state of switch.
 
@@ -48,7 +45,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
 
@@ -61,7 +58,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def setCalibration(self, switchNumber, state, value):
         """ Set calibration parameter for switch.
 
@@ -75,7 +72,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def switchOn(self, switchNumber):
         """ Switch on.
 
@@ -85,7 +82,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def switchOff(self, switchNumber):
         """ Switch off.
 
@@ -95,7 +92,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getSwitchTime(self, switchNumber):
         """ Give switching time for switch.
 

@@ -32,7 +32,7 @@ class BasicPulseExtractor(PulseExtractorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def gated_conv_deriv(self, count_data, conv_std_dev=20.0):
+    def gated_conv_deriv(self, count_data, conv_std_dev=20.0, flank_width=0):
         """
         Detects the rising flank in the gated timetrace data and extracts just the laser pulses.
         The flank detection is based on an image edge detection technique performed in 1D.
@@ -42,6 +42,7 @@ class BasicPulseExtractor(PulseExtractorBase):
         @param 2D numpy.ndarray count_data: the raw timetrace data from a gated fast counter
                                             dim 0: gate number; dim 1: time bin
         @param float conv_std_dev: The standard deviation of the gaussian filter used for smoothing
+        @param int flank_width: The width of the flank in pixel to include/exclude additionally from the found position
 
         @return dict: The extracted laser pulses of the timetrace as well as the indices for rising
                       and falling flanks.
@@ -65,8 +66,9 @@ class BasicPulseExtractor(PulseExtractorBase):
             conv_deriv = np.zeros(conv.size)
 
         # get indices of rising and falling flank
-        rising_ind = conv_deriv.argmax()
-        falling_ind = conv_deriv.argmin()
+        rising_ind, falling_ind = sorted([int(np.clip(conv_deriv.argmax() - flank_width, 0, len(timetrace_sum))),
+                                          int(np.clip(conv_deriv.argmin() + flank_width, 0, len(timetrace_sum)))
+                                          ])
 
         # If gaussian smoothing or derivative failed, the returned array only contains zeros.
         # Check for that and return also only zeros to indicate a failed pulse extraction.
@@ -387,4 +389,41 @@ class BasicPulseExtractor(PulseExtractorBase):
                           laser_rising_bins[ii] + delay_bins + safety_bins + max_laser_length)]
         # use the gated extraction method
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
+        return return_dict
+
+    def ungated_pass_through(self, count_data):
+        """
+        This method does not actually extract anything. It takes the 1D array from the hardware and reshapes it
+        into a 2D array, where the length of the second dimension is 1. The data itself is handed through.
+        This function is useful, if the extraction and analysis are performed in hardware.
+
+        @param numpy.ndarray count_data: 1D array the raw timetrace data from an ungated fast
+                                         counter
+
+        @return dict: The extracted laser pulses of the timetrace as well as the indices for rising
+                      and falling flanks.
+        """
+        # Create return dictionary
+        return_dict = {'laser_counts_arr': np.reshape(count_data, (-1, 1)),
+                       'laser_indices_rising': np.arange(len(count_data)),
+                       'laser_indices_falling': np.arange(len(count_data))}
+
+        return return_dict
+
+    def gated_pass_through(self, count_data):
+        """
+        This method does not actually extract anything. It just passes through the data from the hardware.
+        This function is useful, if the extraction is performed in hardware.
+
+        @param 2D numpy.ndarray count_data: the raw timetrace data from a gated fast counter
+                                            dim 0: gate number; dim 1: time bin
+
+        @return dict: The extracted laser pulses of the timetrace as well as the indices for rising
+                      and falling flanks.
+        """
+        # Create return dictionary
+        return_dict = {'laser_counts_arr': np.array(count_data),
+                       'laser_indices_rising': np.arange(len(count_data)),
+                       'laser_indices_falling': np.arange(len(count_data))}
+
         return return_dict

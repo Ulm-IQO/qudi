@@ -30,7 +30,7 @@ import sys
 import time
 
 from collections import OrderedDict
-from core.module import ConfigOption
+from core.configoption import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
 from core.util.network import netobtain
@@ -120,9 +120,6 @@ class SaveLogic(GenericLogic):
     """
     A general class which saves all kinds of data in a general sense.
     """
-
-    _modclass = 'savelogic'
-    _modtype = 'logic'
 
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
@@ -655,7 +652,8 @@ class SaveLogic(GenericLogic):
         if len(args) == 0:
             param_dict = kwargs
         elif len(args) == 1 and isinstance(args[0], dict):
-            param_dict = args[0].update(kwargs)
+            param_dict = args[0]
+            param_dict.update(kwargs)
         else:
             raise TypeError('"update_additional_parameters" takes exactly 0 or 1 positional '
                             'argument of type dict.')
