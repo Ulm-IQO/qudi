@@ -175,7 +175,9 @@ setup(name='qudi',
                 'qudi.core.logger',
                 'qudi.core.jupyterkernel',
                 'qudi.core.jupyterkernel.mpl',
-                'qudi.core.util'
+                'qudi.core.util',
+                'qudi.tools',
+                'qudi.tools.config_editor'
                 ],
       package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt'],
                     'qudi.core': ['VERSION.txt', 
