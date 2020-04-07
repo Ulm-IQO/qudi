@@ -155,8 +155,18 @@ class Manager(QtCore.QObject):
                                 'port', 12345)
                             certfile = self.tree['global']['module_server'].get(
                                 'certfile', None)
+                            if (certfile is not None) and not os.path.isabs(certfile):
+                                certfile = os.path.abspath(os.path.join(self.configDir, certfile))
                             keyfile = self.tree['global']['module_server'].get('keyfile', None)
-                            self.rm.createServer(server_address, server_port, certfile, keyfile)
+                            if (keyfile is not None) and not os.path.isabs(keyfile):
+                                keyfile = os.path.abspath(os.path.join(self.configDir, keyfile))
+                            cacertfile = self.tree['global']['module_server'].get('cacertfile',
+                                                                                  None)
+                            if (cacertfile is not None) and not os.path.isabs(cacertfile):
+                                cacertfile = os.path.abspath(os.path.join(self.configDir,
+                                                                          cacertfile))
+                            self.rm.createServer(server_address, server_port, certfile, keyfile,
+                                                 cacertfile)
                             # successfully started remote server
                             logger.info('Started server rpyc://{0}:{1}'.format(server_address,
                                                                                server_port))
@@ -166,27 +176,6 @@ class Manager(QtCore.QObject):
                 elif 'serveraddress' in self.tree['global']:
                     logger.warning('Deprecated remote server settings. Please update to new '
                                    'style. See documentation.')
-                    server_address = self.tree['global']['serveraddress']
-                    try:
-                        if 'serverport' in self.tree['global']:
-                            remote_port = self.tree['global']['serverport']
-                            logger.info('Remote port is configured to {0}'.format(remote_port))
-                        else:
-                            remote_port = 12345
-                            logger.info('Remote port is the standard {0}'.format(remote_port))
-                        if 'certfile' in self.tree['global']:
-                            certfile = self.tree['global']['certfile']
-                        else:
-                            certfile = None
-                        if 'keyfile' in self.tree['global']:
-                            keyfile = self.tree['global']['keyfile']
-                        else:
-                            keyfile = None
-                        self.rm.createServer(server_address, remote_port, certfile, keyfile)
-                        # successfully started remote server
-                        self.remote_server = True
-                    except:
-                        logger.exception('Remote server could not be started.')
 
             logger.info('Qudi started.')
 
@@ -765,10 +754,12 @@ class Manager(QtCore.QObject):
                 try:
                     certfile = defined_module.get('certfile', None)
                     keyfile = defined_module.get('keyfile', None)
+                    cacertsfile = defined_module.get('cacerts', None)
                     instance = self.rm.getRemoteModuleUrl(
                         defined_module['remote'],
                         certfile=certfile,
-                        keyfile=keyfile)
+                        keyfile=keyfile,
+                        cacertsfile=cacertsfile)
                     logger.info('Remote module {0} loaded as {1}.{2}.'
                                 ''.format(defined_module['remote'], base, key))
                     with self.lock:
