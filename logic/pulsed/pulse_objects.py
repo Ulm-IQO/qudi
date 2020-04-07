@@ -999,6 +999,10 @@ class PredefinedGeneratorBase:
         return self.__sequencegeneratorlogic.log
 
     @property
+    def pulse_generator_constraints(self):
+        return self.__sequencegeneratorlogic.pulse_generator_constraints
+
+    @property
     def analyze_block_ensemble(self):
         return self.__sequencegeneratorlogic.analyze_block_ensemble
 
