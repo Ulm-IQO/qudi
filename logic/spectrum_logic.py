@@ -199,6 +199,11 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def grating(self):
+        """
+        Getter method returning the grating number used by the spectrometer.
+
+        :return: @int active grating number or 0 if error
+        """
         grating_number = self.spectrometer_device.get_grating()
         is_int = isinstance(grating_number, int)
         if is_int:
@@ -211,6 +216,12 @@ class SpectrumLogic(GenericLogic):
 
     @grating.setter
     def grating(self, grating_number):
+        """
+        Setter method setting the grating number to use by the spectrometer.
+
+        :param grating_number: @int gating number to set active
+        :return: nothing
+        """
         number_gratings = self.spectrometer_device.get_number_gratings()
         is_int = isinstance(grating_number, int)
         is_in_range = 0 < grating_number < number_gratings
@@ -230,6 +241,12 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def grating_offset(self, grating_number):
+        """
+        Getter method returning the grating offset of the grating selected by the grating_number parameter.
+
+        :param grating_number: @int grating number which correspond the offset
+        :return: @int the corresponding grating offset or 0 if error
+        """
         number_gratings = self.spectrometer_device.get_number_gratings()
         var_is_int = isinstance(grating_number, int)
         var_is_in_range = 0 < grating_number < number_gratings
@@ -255,6 +272,13 @@ class SpectrumLogic(GenericLogic):
 
     @grating_offset.setter
     def grating_offset(self, grating_number, grating_offset):
+        """
+        Setter method setting the grating offset of the grating selected by the grating_number parameter.
+
+        :param grating_number: @int grating number which correspond the offset
+        :param grating_offset:  @int grating offset
+        :return: nothing
+        """
         number_gratings = self.spectrometer_device.get_number_gratings()
         grating_is_int = isinstance(grating_number, int)
         grating_is_in_range = -1 < grating_number < number_gratings
@@ -293,6 +317,11 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def center_wavelength(self):
+        """
+        Getter method returning the center wavelength of the measured spectral range.
+
+        :return: @float the spectrum center wavelength or 0 if error
+        """
         wavelength = self.spectrometer_device.get_wavelength()
         is_float = isinstance(wavelength, float)
         if is_float:
@@ -304,6 +333,12 @@ class SpectrumLogic(GenericLogic):
 
     @center_wavelength.setter
     def center_wavelength(self, wavelength):
+        """
+        Setter method setting the center wavelength of the measured spectral range.
+
+        :param wavelength: @float center wavelength
+        :return: nothing
+        """
         wavelength_min, wavelength_max = self.spectrometer_device.get_wavelength_limit(self._grating)
         is_float = isinstance(wavelength, float)
         is_in_range = wavelength_min < wavelength < wavelength_max
@@ -323,6 +358,12 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def wavelength_range(self):
+        """
+        Getter method returning the wavelength array of the full measured spectral range.
+        (used for plotting spectrum with the spectral range)
+
+        :return: @ndarray measured wavelength array or 0 if error
+        """
         wavelength_min, wavelength_max = self.spectrometer_device.get_wavelength_limit(self._grating)
         wavelength_range = self.spectrometer_device.get_calibration(self._number_of_pixels)
         is_ndarray = isinstance(wavelength_range, np.ndarray)
@@ -340,6 +381,12 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def number_of_pixels(self):
+        """
+        Getter method returning the number of pixels used by the spectrometer DLLs calibration function.
+        (the value return by this function must match with the real pixel number of the camera)
+
+        :return: @int number of pixels or 0 if error
+        """
         number_pixels = self.spectrometer_device.get_number_of_pixels()
         is_int = isinstance(number_pixels, int)
         is_positive = 0 < number_pixels
@@ -356,6 +403,13 @@ class SpectrumLogic(GenericLogic):
 
     @number_of_pixels.setter
     def number_of_pixels(self, number_pixels):
+        """
+        Setter method setting the number of pixels used by the spectrometer DLLs calibration function.
+        (the value set by this function must be the real pixel number of the camera)
+
+        :param number_pixels: @int number of pixels
+        :return: nothing
+        """
         is_int = isinstance(number_pixels, int)
         is_positive = 0 < number_pixels
         is_change = number_pixels != self._number_of_pixels
@@ -373,6 +427,12 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def pixel_width(self):
+        """
+        Getter method returning the pixel width used by the spectrometer DLLs calibration function.
+        (the value returned by this function must match the real pixel width of the camera)
+
+        :return: @int pixel width or 0 if error
+        """
         pixel_width = self.spectrometer_device.get_pixel_width()
         is_float = isinstance(pixel_width, float)
         is_positive = 0 < pixel_width
@@ -389,6 +449,13 @@ class SpectrumLogic(GenericLogic):
 
     @pixel_width.setter
     def pixel_width(self, pixel_width):
+        """
+        Setter method setting the pixel width used by the spectrometer DLLs calibration function.
+        (the value set by this function must be the real pixel width of the camera)
+
+        :param pixel_width: @int pixel width
+        :return: nothing
+        """
         is_float = isinstance(pixel_width, float)
         is_positive = 0 < pixel_width
         is_change = pixel_width != self._pixel_width
@@ -410,6 +477,12 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def detector_offset(self):
+        """
+        Getter method returning the detector offset used by the spectrometer DLLs calibration function.
+        (the value returned by this function must match the real detector offset value of the camera)
+
+        :return: @int detector offset or 0 error
+        """
         offset = self.spectrometer_device.get_detector_offset()
         is_int = isinstance(offset, int)
         if is_int:
@@ -421,6 +494,13 @@ class SpectrumLogic(GenericLogic):
 
     @detector_offset.setter
     def detector_offset(self, detector_offset):
+        """
+        Setter method returning the detector offset used by the spectrometer DLLs calibration function.
+        (the value returned by this function must be the real detector offset value of the camera)
+
+        :param detector_offset: @int detetcor offset
+        :return: nothing
+        """
         number_pixels = 514 #TODO : add the Newton funtion returning the number of pixels (Hardcoding)
         offset_min = -number_pixels//2 - 1
         offset_max = number_pixels//2
@@ -446,6 +526,11 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def input_port(self):
+        """
+        Getter method returning the active current input port of the spectrometer.
+
+        :return: @int active input port (0 front and 1 side) or 0 if error
+        """
         input_port = self.spectrometer_device.get_input_port()
         is_int = isinstance(input_port, int)
         is_in_range = -1 < input_port < 2
@@ -461,6 +546,12 @@ class SpectrumLogic(GenericLogic):
 
     @input_port.setter
     def input_port(self, input_port):
+        """
+        Setter method setting the active current input port of the spectrometer.
+
+        :param input_port: input port
+        :return: nothing
+        """
         side_port_possible = self.spectrometer_device.flipper_mirror_is_present(1)
         is_int = isinstance(input_port, int)
         is_in_range = -1 < input_port < 2
@@ -482,6 +573,11 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def output_port(self):
+        """
+        Getter method returning the active current output port of the spectrometer.
+
+        :return: @int active output port (0 front and 1 side) or 0 if error
+        """
         output_port = self.spectrometer_device.get_output_port()
         is_int = isinstance(output_port, int)
         is_in_range = -1 < output_port < 2
@@ -497,6 +593,12 @@ class SpectrumLogic(GenericLogic):
 
     @output_port.setter
     def output_port(self, output_port):
+        """
+        Setter method setting the active current output port of the spectrometer.
+
+        :param output_port: output port
+        :return: nothing
+        """
         side_port_possible = self.spectrometer_device.flipper_mirror_is_present(2)
         is_int = isinstance(output_port, int)
         is_in_range = -1 < output_port < 2
@@ -518,6 +620,11 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def input_slit_width(self):
+        """
+        Getter method returning the active input port slit width of the spectrometer.
+
+        :return: @float input port slit width or 0 if error
+        """
         slit_width = self.spectrometer_device.get_auto_slit_width('input', self._input_port)
         is_float = isinstance(slit_width, float)
         if is_float:
@@ -529,6 +636,12 @@ class SpectrumLogic(GenericLogic):
 
     @input_slit_width.setter
     def input_slit_width(self, slit_width):
+        """
+        Setter method setting the active input port slit width of the spectrometer.
+
+        :param slit_width: @float input port slit width
+        :return: nothing
+        """
         slit_is_present = self.spectrometer_device.auto_slit_is_present('input', self._input_port)
         is_float = isinstance(slit_width, float)
         if is_float:
@@ -544,6 +657,11 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def output_slit_width(self):
+        """
+        Getter method returning the active output port slit width of the spectrometer.
+
+        :return: @float output port slit width or 0 if error
+        """
         slit_width = self.spectrometer_device.get_auto_slit_width('output', self._output_port)
         is_float = isinstance(slit_width, float)
         if is_float:
@@ -554,6 +672,12 @@ class SpectrumLogic(GenericLogic):
 
     @output_slit_width.setter
     def output_slit_width(self, slit_width):
+        """
+        Setter method setting the active output port slit width of the spectrometer.
+
+        :param slit_width: @float output port slit width
+        :return: nothing
+        """
         slit_is_present = self.spectrometer_device.auto_slit_is_present('output', self._output_port)
         is_float = isinstance(slit_width, float)
         if is_float:
@@ -569,6 +693,12 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
     #                            Camera functions
     ##############################################################################
+    # All functions defined in this part should be used to
+    #
+    #
+    ##############################################################################
+    #                            Gratings functions
+    ##############################################################################
 
-    def set_read_mode(self, mode):
+    def read_mode(self, mode):
         self.camera_device.set_read_mode(mode)
