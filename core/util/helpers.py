@@ -128,7 +128,7 @@ def import_check():
     # encode like: (python-package-name, repository-name, version)
     vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
                  ('fysom', 'fysom', '2.1.4')]
-    opt_pkg = [('rpyc', 'rpyc', '4.1.0'),
+    opt_pkg = [('rpyc', 'rpyc', '4.0.2'),
                ('pyqtgraph', 'pyqtgraph', None),
                ('git', 'gitpython', None)]
 
