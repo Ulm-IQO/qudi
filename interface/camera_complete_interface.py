@@ -98,12 +98,55 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_read_mode(self, read_mode, **kwargs):
+    def set_read_mode(self, read_mode):
         """
         Setter method setting the read mode used by the camera.
 
         :param read_mode: @str read mode (must be compared to a dict)
-        :param kwargs: packed @dict which contain a series of arguments used by the differents read modes
+        :return: nothing
+        """
+        pass
+
+    @abstract_interface_method
+    def get_track_parameters(self):
+        """
+        Getter method returning the read mode tracks parameters of the camera.
+
+        :return: @tuple (@int number of track, @int track height, @int track offset) or 0 if error
+        """
+        pass
+
+    @abstract_interface_method
+    def set_track_parameters(self, number_of_track, track_heigth, track_offset):
+        """
+        Setter method setting the read mode tracks parameters of the camera.
+
+        :param number_of_track: @int number of track
+        :param track_heigth: @int track height
+        :param track_offset: @int track offset
+        :return: nothing
+        """
+        pass
+
+    @abstract_interface_method
+    def get_image_parameters(self):
+        """
+        Getter method returning the read mode image parameters of the camera.
+
+        :return: @tuple (@int pixel height, @int pixel width, @tuple (@int start raw, @int end raw),
+        @tuple (@int start column, @int end column)) or 0 if error
+        """
+        pass
+
+    @abstract_interface_method
+    def set_image_parameters(self, pixel_height, pixel_width, raw_range, column_range):
+        """
+        Setter method setting the read mode image parameters of the camera.
+
+        :param pixel_height: @int pixel height
+        :param pixel_width: @int pixel width
+        :param raw_range: @tuple (@int start raw, @int end raw)
+        :param column_range: @tuple (@int start column, @int end column)
         :return: nothing
         """
         pass
@@ -143,7 +186,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_accumulation_time(self, accumulation_time):
+    def set_accumulation_time(self, accumulation_time):
         """
         Setter method setting the accumulation cycle time scan carry out during an accumulate acquisition mode
         by the camera.
