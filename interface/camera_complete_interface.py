@@ -122,7 +122,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_acquisition_mode(self, acquisition_mode, **kwargs):
+    def set_acquisition_mode(self, acquisition_mode):
         """
         Setter method setting the acquisition mode used by the camera.
 
@@ -133,7 +133,49 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_exposure(self):
+    def get_accumulation_time(self):
+        """
+        Getter method returning the accumulation cycle time scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :return: @int accumulation cycle time or 0 if error
+        """
+        pass
+
+    @abstract_interface_method
+    def get_accumulation_time(self, accumulation_time):
+        """
+        Setter method setting the accumulation cycle time scan carry out during an accumulate acquisition mode
+        by the camera.
+
+        :param accumulation_time: @int accumulation cycle time
+        :return: nothing
+        """
+        pass
+
+    @abstract_interface_method
+    def get_number_accumulated_scan(self):
+        """
+        Getter method returning the number of accumulated scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :return: @int number of accumulated scan or 0 if error
+        """
+        pass
+
+    @abstract_interface_method
+    def set_number_accumulated_scan(self, number_scan):
+        """
+        Setter method setting the number of accumulated scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :param number_scan: @int number of accumulated scan
+        :return: nothing
+        """
+        pass
+
+    @abstract_interface_method
+    def get_exposure_time(self):
         """ Get the exposure time in seconds
 
         @return float exposure time
@@ -141,7 +183,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_exposure(self, exposure):
+    def set_exposure_time(self, exposure_time):
         """ Set the exposure time in seconds
 
         @param float time: desired new exposure time
@@ -182,13 +224,80 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_trigger_mode(self, trigger_mode, **kwargs):
+    def set_trigger_mode(self, trigger_mode):
         """
         Setter method setting the trigger mode used by the camera.
 
         :param trigger_mode: @str trigger mode (must be compared to a dict)
-        :param kwargs: packed @dict which contain a series of arguments specific to the differents trigger modes
         :return: nothing
         """
         pass
 
+    ##############################################################################
+    #                           Shutter mode functions
+    ##############################################################################
+
+    @abstract_interface_method
+    def get_shutter_mode(self):
+        """
+        Getter method returning the shutter mode and all its related parameters.
+
+        :return: @tuple (@str shutter mode, @bool TTL low, @float closing time, @float opening time)
+        """
+        pass
+
+    @abstract_interface_method
+    def set_shutter_mode(self, shutter_mode, closing_time, opening_mode, TTL_low = True):
+        """
+        Setter method setting the shutter mode and all its related parameters.
+
+        :param shutter_mode: @str shutter mode
+        :param closing_time: @float closing time
+        :param opening_mode: @float opening time
+        :param TTL_low: @bool TTL low ?
+        :return: nothing
+        """
+        pass
+
+    ##############################################################################
+    #                           Temperature functions
+    ##############################################################################
+
+    @abstract_interface_method
+    def get_cooler_status(self):
+        """
+        Getter method returning the cooler status if ON or OFF.
+
+        :return: @bool True if ON or False if OFF or 0 if error
+        """
+        pass
+
+    @abstract_interface_method
+    def set_cooler_status(self, cooler_ON = True):
+        """
+        Setter method setting the cooler status ON or OFF of the camera.
+
+        :param cooler_ON: @bool True if ON or False if OFF
+        :return: nothing
+        """
+        pass
+
+
+    @abstract_interface_method
+    def get_temperature(self):
+        """
+        Getter method returning the temperature of the camera.
+
+        :return: @float temperature or 0 if error
+        """
+        pass
+
+    @abstract_interface_method
+    def set_temperature(self, temperature):
+        """
+        Getter method returning the temperature of the camera.
+
+        :param temperature: @float temperature or 0 if error
+        :return: nothing
+        """
+        pass
