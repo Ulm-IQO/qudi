@@ -50,6 +50,14 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def get_pixel_size(self):
+        """ Retrieve the pixel size (unit is meter)
+
+        @return tuple: pixel_size (x,y)
+        """
+        pass
+
+    @abstract_interface_method
     def start_acquisition(self):
         """ Start a single acquisition
 
