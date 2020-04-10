@@ -174,7 +174,6 @@ class CounterLogic(GenericLogic):
             # if the counter was running, restart it
             if restart:
                 self.startCount()
-
         self.sigCountingSamplesChanged.emit(self._counting_samples)
         self.sigRangeChanged.emit()
         return self._counting_samples
@@ -203,7 +202,6 @@ class CounterLogic(GenericLogic):
             # if the counter was running, restart it
             if restart:
                 self.startCount()
-
         self.sigCountLengthChanged.emit(self._count_length)
         self.sigRangeChanged.emit()
         return self._count_length

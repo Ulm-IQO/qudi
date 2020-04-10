@@ -55,9 +55,7 @@ class CounterGui(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-        self._counting_logic = self.counterlogic1()
         self._mw = CounterMainWindow()
-
         # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.trace_selection_DockWidget.hide()
@@ -65,7 +63,7 @@ class CounterGui(GUIBase):
 
         self.init_plot()
 
-        # Map views to models
+        # Map views to models - This map the value of the logic attribute to the the value of the GUI view
         self.mapper = Mapper()
         self.mapper.add_mapping(self._mw.count_length_SpinBox, self.counterlogic1(), 'get_count_length',
                                 model_property_notifier=self.counterlogic1().sigCountLengthChanged,
