@@ -147,14 +147,13 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_image_parameters(self, pixel_height, pixel_width, raw_range, column_range):
+    def set_image_parameters(self, superpixel_size, superimage_size, superimage_position):
         """
         Setter method setting the read mode image parameters of the camera.
 
-        :param pixel_height: @int pixel height
-        :param pixel_width: @int pixel width
-        :param raw_range: @tuple (@int start raw, @int end raw)
-        :param column_range: @tuple (@int start column, @int end column)
+        :param superpixel_size: @tuple (@int start raw, @int end raw)
+        :param superimage_size: @tuple (@int number of raw, @int number of column)
+        :param superimage_position: @tuple (@int bottom left corner raw, @int bottom left corner column)
         :return: nothing
         """
         pass
@@ -312,7 +311,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def cooler_ON(self):
+    def get_cooler_ON(self):
         """
         Getter method returning the cooler status if ON or OFF.
 
@@ -321,7 +320,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def cooler_ON(self, cooler_ON):
+    def get_cooler_ON(self, cooler_ON):
         """
         Getter method returning the cooler status if ON or OFF.
 
