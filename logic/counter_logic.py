@@ -51,6 +51,7 @@ class CounterLogic(GenericLogic):
     sigCountingSamplesChanged = QtCore.Signal(int)
     sigCountLengthChanged = QtCore.Signal(int)
     sigCountFrequencyChanged = QtCore.Signal(float)
+    sigRangeChanged = QtCore.Signal()
     sigSavingStatusChanged = QtCore.Signal(bool)
     sigCountStatusChanged = QtCore.Signal(bool)
     sigCountingModeChanged = QtCore.Signal(CountingMode)
@@ -163,15 +164,19 @@ class CounterLogic(GenericLogic):
         else:
             restart = False
 
-        if samples > 0:
+        if samples < 0:
+            self.log.warning('counting_samples has to be larger than 0! Command ignored!')
+        elif self._counting_samples == int(samples):  # No change
+            pass
+        else:
             self._stopCount_wait()
             self._counting_samples = int(samples)
             # if the counter was running, restart it
             if restart:
                 self.startCount()
-        else:
-            self.log.warning('counting_samples has to be larger than 0! Command ignored!')
+
         self.sigCountingSamplesChanged.emit(self._counting_samples)
+        self.sigRangeChanged.emit()
         return self._counting_samples
 
     def set_count_length(self, length=300):
@@ -188,15 +193,19 @@ class CounterLogic(GenericLogic):
         else:
             restart = False
 
-        if length > 0:
+        if length < 0:
+            self.log.warning('count_length has to be larger than 0! Command ignored!')
+        elif self._count_length == int(length):  # No change
+            pass
+        else:
             self._stopCount_wait()
             self._count_length = int(length)
             # if the counter was running, restart it
             if restart:
                 self.startCount()
-        else:
-            self.log.warning('count_length has to be larger than 0! Command ignored!')
+
         self.sigCountLengthChanged.emit(self._count_length)
+        self.sigRangeChanged.emit()
         return self._count_length
 
     def set_count_frequency(self, frequency=50):
@@ -215,15 +224,18 @@ class CounterLogic(GenericLogic):
         else:
             restart = False
 
-        if constraints.min_count_frequency <= frequency <= constraints.max_count_frequency:
+        if not (constraints.min_count_frequency <= frequency <= constraints.max_count_frequency):
+            self.log.warning('count_frequency not in range! Command ignored!')
+        elif self._count_frequency == frequency:  # No change
+            pass
+        else:
             self._stopCount_wait()
             self._count_frequency = frequency
             # if the counter was running, restart it
             if restart:
                 self.startCount()
-        else:
-            self.log.warning('count_frequency not in range! Command ignored!')
         self.sigCountFrequencyChanged.emit(self._count_frequency)
+        self.sigRangeChanged.emit()
         return self._count_frequency
 
     def get_count_length(self):

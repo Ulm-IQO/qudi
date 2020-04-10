@@ -25,6 +25,7 @@ import os
 import pyqtgraph as pg
 
 from core.connector import Connector
+from core.mapper import Mapper
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from qtpy import QtCore
@@ -32,9 +33,7 @@ from qtpy import QtWidgets
 from qtpy import uic
 
 
-
 class CounterMainWindow(QtWidgets.QMainWindow):
-
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self, **kwargs):
@@ -49,27 +48,14 @@ class CounterMainWindow(QtWidgets.QMainWindow):
 
 
 class CounterGui(GUIBase):
-    """ FIXME: Please document
-    """
+    """ Module class of the GUI  """
 
-    # declare connectors
     counterlogic1 = Connector(interface='CounterLogic')
-
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
-
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-
         self._counting_logic = self.counterlogic1()
-
-        #####################
-        # Configuring the dock widgets
-        # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = CounterMainWindow()
 
         # Setup dock widgets
@@ -77,107 +63,51 @@ class CounterGui(GUIBase):
         self._mw.trace_selection_DockWidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        self.init_plot()
 
-        # Plot labels.
-        self._pw = self._mw.counter_trace_PlotWidget
+        # Map views to models
+        self.mapper = Mapper()
+        self.mapper.add_mapping(self._mw.count_length_SpinBox, self.counterlogic1(), 'get_count_length',
+                                model_property_notifier=self.counterlogic1().sigCountLengthChanged,
+                                model_setter='set_count_length',
+                                widget_property_notifier='editingFinished')
 
-        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
-        self._pw.setLabel('bottom', 'Time', units='s')
+        self.mapper.add_mapping(self._mw.count_freq_SpinBox, self.counterlogic1(), 'get_count_frequency',
+                                model_property_notifier=self.counterlogic1().sigCountFrequencyChanged,
+                                model_setter='set_count_frequency', widget_property_notifier='editingFinished')
 
-        self.curves = []
+        self.mapper.add_mapping(self._mw.oversampling_SpinBox, self.counterlogic1(), 'get_counting_samples',
+                                model_property_notifier=self.counterlogic1().sigCountingSamplesChanged,
+                                model_setter='set_counting_samples', widget_property_notifier='editingFinished')
 
-        for i, ch in enumerate(self._counting_logic.get_channels()):
-            if i % 2 == 0:
-                # Create an empty plot curve to be filled later, set its pen
-                self.curves.append(
-                    pg.PlotDataItem(pen=pg.mkPen(palette.c1), symbol=None))
-                self._pw.addItem(self.curves[-1])
-                self.curves.append(
-                    pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None))
-                self._pw.addItem(self.curves[-1])
-            else:
-                self.curves.append(
-                    pg.PlotDataItem(
-                        pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-                        symbol='s',
-                        symbolPen=palette.c3,
-                        symbolBrush=palette.c3,
-                        symbolSize=5))
-                self._pw.addItem(self.curves[-1])
-                self.curves.append(
-                    pg.PlotDataItem(pen=pg.mkPen(palette.c4, width=3), symbol=None))
-                self._pw.addItem(self.curves[-1])
+        self.counterlogic1().sigRangeChanged.connect(self.update_range)
 
-        # setting the x axis length correctly
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-
-        #####################
-        # Setting default parameters
-        self._mw.count_length_SpinBox.setValue(self._counting_logic.get_count_length())
-        self._mw.count_freq_SpinBox.setValue(self._counting_logic.get_count_frequency())
-        self._mw.oversampling_SpinBox.setValue(self._counting_logic.get_counting_samples())
         self._display_trace = 1
         self._trace_selection = [True, True, True, True]
 
-        #####################
         # Connecting user interactions
         self._mw.start_counter_Action.triggered.connect(self.start_clicked)
         self._mw.record_counts_Action.triggered.connect(self.save_clicked)
 
-        self._mw.count_length_SpinBox.valueChanged.connect(self.count_length_changed)
-        self._mw.count_freq_SpinBox.valueChanged.connect(self.count_frequency_changed)
-        self._mw.oversampling_SpinBox.valueChanged.connect(self.oversampling_changed)
+        number_channel = len(self._counting_logic.get_channels())
+        for i in range(1, 5):
+            if number_channel >= i:
+                getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(True)
+            else:
+                getattr(self._mw, 'trace_{}_checkbox'.format(i)).setChecked(False)
+                getattr(self._mw, 'trace_{}_radiobutton'.format(i)).setChecked(False)
 
-        if len(self.curves) >= 2:
-            self._mw.trace_1_checkbox.setChecked(True)
-        else:
-            self._mw.trace_1_checkbox.setEnabled(False)
-            self._mw.trace_1_radiobutton.setEnabled(False)
-
-        if len(self.curves) >= 4:
-            self._mw.trace_2_checkbox.setChecked(True)
-        else:
-            self._mw.trace_2_checkbox.setEnabled(False)
-            self._mw.trace_2_radiobutton.setEnabled(False)
-
-        if len(self.curves) >= 6:
-            self._mw.trace_3_checkbox.setChecked(True)
-        else:
-            self._mw.trace_3_checkbox.setEnabled(False)
-            self._mw.trace_3_radiobutton.setEnabled(False)
-
-        if len(self.curves) >= 8:
-            self._mw.trace_4_checkbox.setChecked(True)
-        else:
-            self._mw.trace_4_checkbox.setEnabled(False)
-            self._mw.trace_4_radiobutton.setEnabled(False)
-
-        self._mw.trace_1_checkbox.stateChanged.connect(self.trace_selection_changed)
-        self._mw.trace_2_checkbox.stateChanged.connect(self.trace_selection_changed)
-        self._mw.trace_3_checkbox.stateChanged.connect(self.trace_selection_changed)
-        self._mw.trace_4_checkbox.stateChanged.connect(self.trace_selection_changed)
+            getattr(self._mw, 'trace_{}_checkbox'.format(i)).stateChanged.connect(self.trace_selection_changed)
+            getattr(self._mw, 'trace_{}_radiobutton'.format(i)).released.connect(self.trace_display_changed)
 
         self._mw.trace_1_radiobutton.setChecked(True)
-        self._mw.trace_1_radiobutton.released.connect(self.trace_display_changed)
-        self._mw.trace_2_radiobutton.released.connect(self.trace_display_changed)
-        self._mw.trace_3_radiobutton.released.connect(self.trace_display_changed)
-        self._mw.trace_4_radiobutton.released.connect(self.trace_display_changed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
 
-        #####################
-        # starting the physical measurement
-        self.sigStartCounter.connect(self._counting_logic.startCount)
-        self.sigStopCounter.connect(self._counting_logic.stopCount)
-
         ##################
         # Handling signals from the logic
-
-        self._counting_logic.sigCounterUpdated.connect(self.updateData)
+        self._counting_logic.sigCounterUpdated.connect(self.update_data)
 
         # ToDo:
         # self._counting_logic.sigCountContinuousNext.connect()
@@ -186,84 +116,88 @@ class CounterGui(GUIBase):
         # self._counting_logic.sigGatedCounterFinished.connect()
         # self._counting_logic.sigGatedCounterContinue.connect()
 
-        self._counting_logic.sigCountingSamplesChanged.connect(self.update_oversampling_SpinBox)
-        self._counting_logic.sigCountLengthChanged.connect(self.update_count_length_SpinBox)
-        self._counting_logic.sigCountFrequencyChanged.connect(self.update_count_freq_SpinBox)
-        self._counting_logic.sigSavingStatusChanged.connect(self.update_saving_Action)
-        self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
-        self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
+        self.counterlogic1().sigSavingStatusChanged.connect(self.update_saving_Action)
+        self.counterlogic1().sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
+        self.counterlogic1().sigCountStatusChanged.connect(self.update_count_status_Action)
 
-        return 0
+    def init_plot(self):
+        """ Initialize the plot at activation """
+        self._pw = self._mw.counter_trace_PlotWidget
+
+        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
+        self._pw.setLabel('bottom', 'Time', units='s')
+
+        self.curves = []
+
+        for i, ch in enumerate(self._counting_logic.get_channels()):
+            # Create an empty plot curve to be filled later, set its pen
+            if i % 2 == 0:  # Change style every two line to see better
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c1), symbol=None))
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None))
+            else:
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                                                   symbol='s', symbolPen=palette.c3, symbolBrush=palette.c3,
+                                                   symbolSize=5))
+                self.curves.append(pg.PlotDataItem(pen=pg.mkPen(palette.c4, width=3), symbol=None))
+            self._pw.addItem(self.curves[-2])
+            self._pw.addItem(self.curves[-1])
+
+        self.update_range()
+
+    def update_range(self):
+        """ Set the x range of the plot to show correctly """
+        self._pw.setXRange(0, self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency())
 
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
+        """ Make window visible and put it above all other windows. """
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
-        return
 
     def on_deactivate(self):
-        # FIXME: !
-        """ Deactivate the module
-        """
-        # disconnect signals
-        self._mw.start_counter_Action.triggered.disconnect()
-        self._mw.record_counts_Action.triggered.disconnect()
-        self._mw.count_length_SpinBox.valueChanged.disconnect()
-        self._mw.count_freq_SpinBox.valueChanged.disconnect()
-        self._mw.oversampling_SpinBox.valueChanged.disconnect()
-        self._mw.trace_1_checkbox.stateChanged.disconnect()
-        self._mw.trace_2_checkbox.stateChanged.disconnect()
-        self._mw.trace_3_checkbox.stateChanged.disconnect()
-        self._mw.trace_4_checkbox.stateChanged.disconnect()
-        self._mw.restore_default_view_Action.triggered.disconnect()
-        self.sigStartCounter.disconnect()
-        self.sigStopCounter.disconnect()
-        self._counting_logic.sigCounterUpdated.disconnect()
-        self._counting_logic.sigCountingSamplesChanged.disconnect()
-        self._counting_logic.sigCountLengthChanged.disconnect()
-        self._counting_logic.sigCountFrequencyChanged.disconnect()
-        self._counting_logic.sigSavingStatusChanged.disconnect()
-        self._counting_logic.sigCountingModeChanged.disconnect()
-        self._counting_logic.sigCountStatusChanged.disconnect()
-
+        """ Deactivate the module """
         self._mw.close()
-        return
+        self.mapper.clear_mapping()
 
-    def updateData(self):
-        """ The function that grabs the data and sends it to the plot.
-        """
+        # Disconnect listeners from logic properly
+        self.counterlogic1().sigRangeChanged.disconnect(self.update_range)
+        self.counterlogic1().sigCounterUpdated.disconnect(self.update_data)
+        self.counterlogic1().sigSavingStatusChanged.disconnect(self.update_saving_Action)
+        self.counterlogic1().sigCountingModeChanged.disconnect(self.update_counting_mode_ComboBox)
+        self.counterlogic1().sigCountStatusChanged.disconnect(self.update_count_status_Action)
 
-        if self._counting_logic.module_state() == 'locked':
-            if 0 < self._counting_logic.countdata_smoothed[(self._display_trace-1), -1] < 10:
+    def update_data(self):
+        """ The function that grabs the data and sends it to the plot """
+
+        if self.counterlogic1().module_state() == 'locked':
+            if 0 < self.counterlogic1().countdata_smoothed[(self._display_trace-1), -1] < 10:
                 self._mw.count_value_Label.setText(
-                    '{0:,.6f}'.format(self._counting_logic.countdata_smoothed[(self._display_trace-1), -1]))
+                    '{0:,.6f}'.format(self.counterlogic1().countdata_smoothed[(self._display_trace-1), -1]))
             else:
                 self._mw.count_value_Label.setText(
-                    '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[(self._display_trace-1), -1]))
+                    '{0:,.0f}'.format(self.counterlogic1().countdata_smoothed[(self._display_trace-1), -1]))
 
             x_vals = (
-                np.arange(0, self._counting_logic.get_count_length())
-                / self._counting_logic.get_count_frequency())
+                np.arange(0, self.counterlogic1().get_count_length())
+                / self.counterlogic1().get_count_frequency())
 
             ymax = -1
             ymin = 2000000000
-            for i, ch in enumerate(self._counting_logic.get_channels()):
-                self.curves[2 * i].setData(y=self._counting_logic.countdata[i], x=x_vals)
-                self.curves[2 * i + 1].setData(y=self._counting_logic.countdata_smoothed[i],
+            for i, ch in enumerate(self.counterlogic1().get_channels()):
+                self.curves[2 * i].setData(y=self.counterlogic1().countdata[i], x=x_vals)
+                self.curves[2 * i + 1].setData(y=self.counterlogic1().countdata_smoothed[i],
                                                x=x_vals
                                                )
-                if ymax < self._counting_logic.countdata[i].max() and self._trace_selection[i]:
-                    ymax = self._counting_logic.countdata[i].max()
-                if ymin > self._counting_logic.countdata[i].min() and self._trace_selection[i]:
-                    ymin = self._counting_logic.countdata[i].min()
+                if ymax < self.counterlogic1().countdata[i].max() and self._trace_selection[i]:
+                    ymax = self.counterlogic1().countdata[i].max()
+                if ymin > self.counterlogic1().countdata[i].min() and self._trace_selection[i]:
+                    ymin = self.counterlogic1().countdata[i].min()
 
             if ymin == ymax:
                 ymax += 0.1
             self._pw.setYRange(0.95*ymin, 1.05*ymax)
 
-        if self._counting_logic.get_saving_state():
+        if self.counterlogic1().get_saving_state():
             self._mw.record_counts_Action.setText('Save')
             self._mw.count_freq_SpinBox.setEnabled(False)
             self._mw.oversampling_SpinBox.setEnabled(False)
@@ -281,55 +215,38 @@ class CounterGui(GUIBase):
         return 0
 
     def start_clicked(self):
-        """ Handling the Start button to stop and restart the counter.
-        """
-        if self._counting_logic.module_state() == 'locked':
+        """ Handling the Start button to stop and restart the counter.  """
+        if self.counterlogic1().module_state() == 'locked':
             self._mw.start_counter_Action.setText('Start counter')
-            self.sigStopCounter.emit()
+            self.counterlogic1().stopCount()
         else:
             self._mw.start_counter_Action.setText('Stop counter')
-            self.sigStartCounter.emit()
-        return self._counting_logic.module_state()
+            self.counterlogic1().startCount()
+        return self.counterlogic1().module_state()
 
     def save_clicked(self):
-        """ Handling the save button to save the data into a file.
-        """
-        if self._counting_logic.get_saving_state():
+        """ Handling the save button to save the data into a file. """
+        if self.counterlogic1().get_saving_state():
             self._mw.record_counts_Action.setText('Start Saving Data')
             self._mw.count_freq_SpinBox.setEnabled(True)
             self._mw.oversampling_SpinBox.setEnabled(True)
-            self._counting_logic.save_data()
+            self.counterlogic1().save_data()
         else:
             self._mw.record_counts_Action.setText('Save')
             self._mw.count_freq_SpinBox.setEnabled(False)
             self._mw.oversampling_SpinBox.setEnabled(False)
-            self._counting_logic.start_saving()
-        return self._counting_logic.get_saving_state()
+            self.counterlogic1().start_saving()
+        return self.counterlogic1().get_saving_state()
 
     ########
     # Input parameters changed via GUI
 
     def trace_selection_changed(self):
-        """ Handling any change to the selection of the traces to display.
-        """
-        if self._mw.trace_1_checkbox.isChecked():
-            self._trace_selection[0] = True
-        else:
-            self._trace_selection[0] = False
-        if self._mw.trace_2_checkbox.isChecked():
-            self._trace_selection[1] = True
-        else:
-            self._trace_selection[1] = False
-        if self._mw.trace_3_checkbox.isChecked():
-            self._trace_selection[2] = True
-        else:
-            self._trace_selection[2] = False
-        if self._mw.trace_4_checkbox.isChecked():
-            self._trace_selection[3] = True
-        else:
-            self._trace_selection[3] = False
+        """ Handling any change to the selection of the traces to display. """
+        for i in range(4):
+            self._trace_selection[i] = getattr(self._mw, 'trace_{}_checkbox'.format(i+1)).isChecked()
 
-        for i, ch in enumerate(self._counting_logic.get_channels()):
+        for i in range(len(self.counterlogic1().get_channels())):
             if self._trace_selection[i]:
                 self._pw.addItem(self.curves[2*i])
                 self._pw.addItem(self.curves[2*i + 1])
@@ -338,52 +255,12 @@ class CounterGui(GUIBase):
                 self._pw.removeItem(self.curves[2*i + 1])
 
     def trace_display_changed(self):
-        """ Handling of a change in teh selection of which counts should be shown.
-        """
-
-        if self._mw.trace_1_radiobutton.isChecked():
-            self._display_trace = 1
-        elif self._mw.trace_2_radiobutton.isChecked():
-            self._display_trace = 2
-        elif self._mw.trace_3_radiobutton.isChecked():
-            self._display_trace = 3
-        elif self._mw.trace_4_radiobutton.isChecked():
-            self._display_trace = 4
-        else:
-            self._display_trace = 1
-
-    def count_length_changed(self):
-        """ Handling the change of the count_length and sending it to the measurement.
-        """
-        self._counting_logic.set_count_length(self._mw.count_length_SpinBox.value())
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-        return self._mw.count_length_SpinBox.value()
-
-    def count_frequency_changed(self):
-        """ Handling the change of the count_frequency and sending it to the measurement.
-        """
-        self._counting_logic.set_count_frequency(self._mw.count_freq_SpinBox.value())
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-        return self._mw.count_freq_SpinBox.value()
-
-    def oversampling_changed(self):
-        """ Handling the change of the oversampling and sending it to the measurement.
-        """
-        self._counting_logic.set_counting_samples(samples=self._mw.oversampling_SpinBox.value())
-        self._pw.setXRange(
-            0,
-            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
-        )
-        return self._mw.oversampling_SpinBox.value()
-
-    ########
-    # Restore default values
+        """ Handling of a change in the selection of which counts should be shown. """
+        display_trace = None
+        for i in range(1, 5):
+            if getattr(self._mw, 'trace_{}_radiobutton'.format(i)).isChecked():
+                display_trace = i
+        self._display_trace = display_trace if display_trace is not None else 1
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -400,61 +277,18 @@ class CounterGui(GUIBase):
         self._mw.trace_selection_DockWidget.setFloating(True)
 
         # Arrange docks widgets
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
-                               self._mw.counter_trace_DockWidget
-                               )
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
-                               self._mw.slow_counter_parameters_DockWidget
-                               )
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.counter_trace_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_parameters_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(QtCore.Qt.LeftDockWidgetArea),
-                               self._mw.trace_selection_DockWidget
-                               )
+                               self._mw.trace_selection_DockWidget)
 
         # Set the toolbar to its initial top area
-        self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
-                            self._mw.counting_control_ToolBar)
-        return 0
+        self._mw.addToolBar(QtCore.Qt.TopToolBarArea, self._mw.counting_control_ToolBar)
 
     ##########
     # Handle signals from logic
-
-    def update_oversampling_SpinBox(self, oversampling):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param int oversampling: adjusted oversampling to update in the GUI in bins
-        @return int oversampling: see above
-        """
-        self._mw.oversampling_SpinBox.blockSignals(True)
-        self._mw.oversampling_SpinBox.setValue(oversampling)
-        self._mw.oversampling_SpinBox.blockSignals(False)
-        return oversampling
-
-    def update_count_freq_SpinBox(self, count_freq):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param float count_freq: adjusted count frequency in Hz
-        @return float count_freq: see above
-        """
-        self._mw.count_freq_SpinBox.blockSignals(True)
-        self._mw.count_freq_SpinBox.setValue(count_freq)
-        self._pw.setXRange(0, self._counting_logic.get_count_length() / count_freq)
-        self._mw.count_freq_SpinBox.blockSignals(False)
-        return count_freq
-
-    def update_count_length_SpinBox(self, count_length):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param int count_length: adjusted count length in bins
-        @return int count_length: see above
-        """
-        self._mw.count_length_SpinBox.blockSignals(True)
-        self._mw.count_length_SpinBox.setValue(count_length)
-        self._pw.setXRange(0, count_length / self._counting_logic.get_count_frequency())
-        self._mw.count_length_SpinBox.blockSignals(False)
-        return count_length
-
     def update_saving_Action(self, start):
-        """Function to ensure that the GUI-save_action displays the current status
+        """ Function to ensure that the GUI-save_action displays the current status
 
         @param bool start: True if the measurment saving is started
         @return bool start: see above
