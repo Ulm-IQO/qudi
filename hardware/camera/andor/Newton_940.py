@@ -27,12 +27,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from enum import Enum
 from ctypes import *
 import numpy as np
+import ctypes as ct
 
 from core.module import Base
 from core.configoption import ConfigOption
 
-
-from interface.camera_interface import CameraInterface
+from interface.camera_complete_interface import CameraInterface
 
 
 class ReadMode(Enum):
@@ -103,7 +103,6 @@ class Newton940(Base, CameraInterface):
     """
     Hardware class for Andors Newton940
     """
-
     _modtype = 'camera'
     _modclass = 'hardware'
 
@@ -113,8 +112,12 @@ class Newton940(Base, CameraInterface):
     _default_cooler_on = ConfigOption('default_cooler_on', True)
     _default_acquisition_mode = ConfigOption('default_acquisition_mode', 'SINGLE_SCAN')
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
-    #_dll_location = ConfigOption('dll_location', missing='error')
+    _dll_location = ConfigOption('dll_location', missing='error')
     #_dll_location = 'ATMCD32D.dll'
+
+    _camera_name = 'Newton940'
+
+
 
     _exposure = _default_exposure
     _temperature = _default_temperature
@@ -126,55 +129,196 @@ class Newton940(Base, CameraInterface):
     _height = 0
     _last_acquisition_mode = None  # useful if config changes during acq
     _supported_read_mode = ReadMode # TODO: read this from camera, all readmodes are available for iXon Ultra
-    _max_cooling = -100
+    _max_cooling = -85
     _live = False
-    _camera_name = 'iXon Ultra 897'
     _shutter = "closed"
     _trigger_mode = _default_trigger_mode
     _scans = 1 #TODO get from camera
     _acquiring = False
 
+###################################################################################################
+#                            Basic module activation/deactivation
+###################################################################################################
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-         """
-        # self.cam.SetAcquisitionMode(1)  # single
-        # self.cam.SetTriggerMode(0)  # internal
-        # self.cam.SetCoolerMode(0)  # Returns to ambient temperature on ShutDown
-        # self.set_cooler_on_state(self._cooler_on)
-        # self.set_exposure(self._exposure)
-        # self.set_setpoint_temperature(self._temperature)
-        #self.dll = cdll.LoadLibrary(self._dll_location)
-        self.dll = cdll.LoadLibrary('C:/temp/atmcd64d.dll')
+        """ Initialization performed during activation of the module.
 
-        self.dll.Initialize()
+        """
+
+        self.dll = ct.cdll.LoadLibrary(self._dll_location)
+        self.errorcode = self._create_errorcode()
+
+        code = self.dll.Initialize()
+
+        if code != 20002:
+            self.log.info('Problem during camera (Andor/Newton) initialization')
+            self.on_deactivate()
+        else:
         nx_px, ny_px = c_int(), c_int()
-        self._get_detector(nx_px, ny_px)
+        nx_px, ny_py = self._get_size()
         self._width, self._height = nx_px.value, ny_px.value
+
         self._set_read_mode(self._read_mode)
         self._set_trigger_mode(self._trigger_mode)
         self._set_exposuretime(self._exposure)
         self._set_acquisition_mode(self._acquisition_mode)
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
+        """
+        Deinitialisation performed during deactivation of the module.
+
         """
         self.stop_acquisition()
         self._set_shutter(0, 0, 0.1, 0.1)
         self._shut_down()
 
+###################################################################################################
+#                                     Error management
+###################################################################################################
+
+    def check(self, func_val):
+        """ Check routine for the received error codes.
+         :return: the dll function error code
+        Tested : no
+        """
+
+        if not func_val == 20002:
+            self.log.error('Error in Shamrock with errorcode {0}:\n'
+                           '{1}'.format(func_val, self.errorcode[func_val]))
+        return func_val
+
+    def _create_errorcode(self):
+        """ Create a dictionary with the errorcode for the device.
+        """
+
+        maindir = get_main_dir()
+
+        filename = os.path.join(maindir, 'hardware', 'camera', 'andor', 'errorcodes_newton.h')
+        try:
+            with open(filename) as f:
+                content = f.readlines()
+        except:
+            self.log.error('No file "errorcodes_newton.h" could be found in the '
+                        'hardware/spectrometer directory!')
+        errorcode = {}
+        for line in content:
+            if '#define NEWTON940' in line:
+                errorstring, errorvalue = line.split()[-2:]
+                errorcode[int(errorvalue)] = errorstring
+
+        return errorcode
+
+###################################################################################################
+#                                     Basic functions
+###################################################################################################
+
     def get_name(self):
-        """ Retrieve an identifier of the camera that the GUI can print
-
-        @return string: name for the camera
         """
-        return self._camera_name
+        :return: string local camera name with serial number
 
-    def get_size(self):
-        """ Retrieve size of the image in pixel
-
-        @return tuple: Size (width, height)
         """
-        return self._width, self._height
+        serial = ct.c_int()
+        self.check(self.dll.GetCameraSerialNumber(byref(serial)))
+        name = self._camera_name + " serial number " + str(serial.value)
+        return name
+
+    def get_image_size(self):
+        """
+        Returns the sensor size in pixels (x;y)
+
+        :return: tuple (nw_px, ny_px) : int number of pixel along x and y axis
+
+        Tested : no
+        SI check : ok
+        """
+        nx_px = ct.c_int()
+        ny_px = ct.c_int()
+        self.check(self.dll.GetDetector(byref(nx_px), byref(ny_px)))
+        return nx_px.value, ny_px.value
+
+    def get_pixel_size(self):
+        """
+
+        :return:
+        """
+        x_px = ct.c_float()
+        y_py = ct.c_float()
+        self.check(self.dll.GetPixelSize(byref(x_px), byref(y_px)))
+        return x_px.value*1E-6, y_py.value*1E-6
+
+    def get_ready_state(self):
+        code = ct.c_int()
+        self.check(self.dll.GetStatus(byref(code)))
+        if code.value==2073:
+            return True
+        else:
+            return False
+
+    def start_acquisition(self):
+        """
+        Starts a single acquisition
+        :return: nothing
+        Tested : no
+
+        """
+        self.check(self.dll.StartAcquisition())
+        self.dll.WaitForAcquisition()
+        return
+
+    def stop_acquisition(self):
+        """
+        Stops/aborts live or single acquisition
+
+        @return nothing
+        """
+        self.check(self.dll.AbortAcquisition())
+        return
+
+    def set_acquisition_mode(self, acquisition_mode, **kwargs):
+        """
+        Setter method setting the acquisition mode used by the camera.
+
+        :param acquisition_mode: @str read mode (must be compared to a dict)
+        :param kwargs: packed @dict which contain a series of arguments specific to the differents acquisition modes
+        :return: nothing
+        """
+
+
+        check_val = 0
+        if hasattr(AcquisitionMode, mode):
+            n_mode = c_int(getattr(AcquisitionMode, mode).value)
+            error_code = self.dll.SetAcquisitionMode(n_mode)
+        else:
+            self.log.warning('{0} mode is not supported'.format(mode))
+            check_val = -1
+        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
+            check_val = -1
+        else:
+            self._acquisition_mode = mode
+
+        return check_val
+
+##############################################################################
+#                           Read mode functions
+##############################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def support_live_acquisition(self):
         """ Return whether or not the camera can take care of live acquisition
@@ -194,41 +338,9 @@ class Newton940(Base, CameraInterface):
 
         return False
 
-    def start_single_acquisition(self):
-        """ Start a single acquisition
 
-        @return bool: Success ?
-        """
-        if self._shutter == 'closed':
-            msg = self._set_shutter(0, 1, 0.1, 0.1)
-            if msg == 'DRV_SUCCESS':
-                self._shutter = 'open'
-            else:
-                self.log.error('shutter did not open.{0}'.format(msg))
 
-        if self._live:
-            return -1
-        else:
-            self._acquiring = True  # do we need this here?
-            msg = self._start_acquisition()
-            if msg != "DRV_SUCCESS":
-                return False
 
-            self._acquiring = False
-            return True
-
-    def stop_acquisition(self):
-        """ Stop/abort live or single acquisition
-
-        @return bool: Success ?
-        """
-        msg = self._abort_acquisition()
-        if msg == "DRV_SUCCESS":
-            self._live = False
-            self._acquiring = False
-            return True
-        else:
-            return False
 
     def get_acquired_data(self):
         """ Return an array of last acquired image.
@@ -589,9 +701,7 @@ class Newton940(Base, CameraInterface):
         error_code = self.dll.GetStatus(byref(status))
         return ERROR_DICT[error_code]
 
-    def _get_detector(self, nx_px, ny_px):
-        error_code = self.dll.GetDetector(byref(nx_px), byref(ny_px))
-        return ERROR_DICT[error_code]
+
 
     def _get_camera_serialnumber(self, number):
         """
