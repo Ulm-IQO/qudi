@@ -42,7 +42,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_size(self):
+    def get_image_size(self):
         """ Retrieve size of the image in pixel
 
         @return tuple: Size (width, height)
@@ -281,23 +281,20 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_shutter_mode(self):
+    def shutter_is_open(self):
         """
-        Getter method returning the shutter mode and all its related parameters.
+        Getter method returning if the shutter is open.
 
-        :return: @tuple (@str shutter mode, @bool TTL low, @float closing time, @float opening time)
+        :return: @bool shutter open ?
         """
         pass
 
     @abstract_interface_method
-    def set_shutter_mode(self, shutter_mode, closing_time, opening_mode, TTL_low = True):
+    def shutter_is_open(self, shutter_open):
         """
-        Setter method setting the shutter mode and all its related parameters.
+        Setter method setting if the shutter is open.
 
-        :param shutter_mode: @str shutter mode
-        :param closing_time: @float closing time
-        :param opening_mode: @float opening time
-        :param TTL_low: @bool TTL low ?
+        :param shutter_mode: @bool shutter open
         :return: nothing
         """
         pass
@@ -307,7 +304,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_cooler_status(self):
+    def cooler_ON(self):
         """
         Getter method returning the cooler status if ON or OFF.
 
@@ -316,11 +313,11 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_cooler_status(self, cooler_ON = True):
+    def cooler_ON(self, cooler_ON):
         """
-        Setter method setting the cooler status ON or OFF of the camera.
+        Getter method returning the cooler status if ON or OFF.
 
-        :param cooler_ON: @bool True if ON or False if OFF
+        :cooler_ON: @bool True if ON or False if OFF
         :return: nothing
         """
         pass
