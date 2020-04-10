@@ -109,7 +109,7 @@ class SpectrumLogic(GenericLogic):
         self._pixel_size = self.pixel_size
         self._superpixel_size, self._superimage_size, self._superimage_position = self.image_parameters
 
-        self._shutter_is_open = self.shutter_is_open
+        self._shutter_mode = self.shutter_mode
         self._cooler_ON = self.cooler_ON
         self._camera_temperature = self.camera_temperature
 
@@ -162,34 +162,55 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
 
     def acquire_spectrum(self):
-        for i in range(0, self._number_of_scan):
-            self.camera_device.start_acquisition()
-            self._spectrum_data[i] = self.camera_device.get_acquired_data()
-            sleep(self._scan_delay)
-        self.log.info("Spectrum acquisition succeed ! Number of acquired scan : {} "
-                      "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
+        if self._acquistion_mode == 'LIVE_ACQUISITION':
+            self.module_state = 'running'
+            while self.module_state == 'running':
+                self.shutter_mode(1)
+                self.camera_device.start_acquisition()
+                self.shutter_mode(0)
+                self._spectrum_data = self.acquired_data()
+                sleep(self._scan_delay)
+            self.module_state = 'idle'
+        else:
+            scans = np.empty(self._number_of_scan)
+            self.module_state = 'running'
+            for i in range(0, self._number_of_scan):
+                self.shutter_mode(1)
+                self.camera_device.start_acquisition()
+                self.shutter_mode(0)
+                scans[i] = self.acquired_data()
+                sleep(self._scan_delay)
+            self.module_state = 'idle'
+            self._spectrum_data = scans
+            self.log.info("Spectrum acquisition succeed ! Number of acquired scan : {} "
+                          "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
 
     def acquire_background(self):
-        if self.get_shutter_mode()[0] != 0:
-            self.set_shutter_mode(0)
+        scans = np.empty(self._number_of_scan)
+        self.shutter_mode(0) # Force the shutter to be close during background acquisition process
+        self.module_state = 'running'
         for i in range(0, self._number_of_scan):
             self.camera_device.start_acquisition()
-            self._background_data[i] = self.camera_device.get_acquired_data()
+            scans[i] = self.acquired_data()
             sleep(self._scan_delay)
+        self.module_state = 'idle'
+        self._background_data = scans
         self.log.info("Background acquisition succeed ! Number of acquired scan : {} "
                       "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
-        self.set_shutter_mode(*self._shutter_mode)
 
     def acquire_image(self):
-        if self.get_shutter_mode()[0] != 0:
-            self.set_shutter_mode(0)
+        scans = np.empty(self._number_of_scan)
+        self.module_state = 'running'
         for i in range(0, self._number_of_scan):
+            self.shutter_mode(1)
             self.camera_device.start_acquisition()
-            self._background_data[i] = self.camera_device.get_acquired_data()
+            self.shutter_mode(0)
+            scans[i] = self.acquired_data()
             sleep(self._scan_delay)
-        self.log.info("Background acquisition succeed ! Number of acquired scan : {} "
+        self.module_state = 'idle'
+        self._image_data = scans
+        self.log.info("Image acquisition succeed ! Number of acquired scan : {} "
                       "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
-        self.set_shutter_mode(*self._shutter_mode)
 
     @property
     def spectrum_data(self):
@@ -453,7 +474,6 @@ class SpectrumLogic(GenericLogic):
         is_float = isinstance(pixel_width, float)
         is_positive = 0 < pixel_width
         if is_float and is_positive:
-            self._pixel_width = pixel_width
             return pixel_width
         else:
             if not is_float:
@@ -474,11 +494,10 @@ class SpectrumLogic(GenericLogic):
         """
         is_float = isinstance(pixel_width, float)
         is_positive = 0 < pixel_width
-        is_change = pixel_width != self._pixel_width
+        is_change = pixel_width != self._pixel_size[0]
         if is_float and is_positive and is_change:
             self.spectrometer_device.set_pixel_width(pixel_width)
             self.log.info('Pixel width has been changed correctly ')
-            self._pixel_width = pixel_width
         else:
             if not is_float:
                 self.log.debug('Pixel width parameter is not correct : it must be a float ')
@@ -517,7 +536,7 @@ class SpectrumLogic(GenericLogic):
         :param detector_offset: @int detetcor offset
         :return: nothing
         """
-        number_pixels = 514 #TODO : add the Newton funtion returning the number of pixels (Hardcoding)
+        number_pixels = self._image_size[0]
         offset_min = -number_pixels//2 - 1
         offset_max = number_pixels//2
         is_int = isinstance(detector_offset, int)
@@ -717,6 +736,14 @@ class SpectrumLogic(GenericLogic):
     #                           Basic functions
     ##############################################################################
 
+    def start_acquisition(self):
+        self.camera_device.start_acquisition()
+
+    def stop_acquisition(self):
+        self.camera_device.stop_acquisition()
+        self.module_state = 'idle'
+        self.log.info("Stop acquisition : module state is 'idle' ")
+
     @property
     def image_size(self):
         image_size = self.camera_device.get_image_size()
@@ -761,6 +788,38 @@ class SpectrumLogic(GenericLogic):
         @return numpy array: image data in format [[row],[row]...]
         Each pixel might be a float, integer or sub pixels
         """
+        data = self.camera_device.get_acquired_data()
+        data = np.array(data) # Data are forced to be a ndarray
+        is_ndarray = isinstance(data, np.ndarray)
+        is_float = isinstance(data.dtype, float)
+        if is_ndarray and is_float:
+            if self._read_mode == 'IMAGE':
+                is_correct_dim = np.shape(data)[0, 2] == self._superimage_size
+                if not is_correct_dim:
+                    data = data[::-1]
+                    is_correct_dim = np.shape(data)[0, 2] == self._superimage_size
+            elif self._read_mode == 'MULTI_TRACK':
+                is_correct_dim = np.shape(data)[0, 2] == (self._image_size[1], self._number_of_track)
+                if not is_correct_dim:
+                    data = data[::-1]
+                    is_correct_dim = np.shape(data)[0, 2] == (self._image_size[1], self._number_of_track)
+            else:
+                is_correct_dim = np.shape(data)[0, 2] == (self._image_size[1], self._number_of_track)
+                if not is_correct_dim:
+                    data = data[::-1]
+                    is_correct_dim = np.shape(data)[0, 2] == (self._image_size[1], self._number_of_track)
+            if is_correct_dim:
+                return data
+            else:
+                self.log.error("Your hardware function 'get_acquired_data()'"
+                                " is not returning a numpy array with the expected dimension ")
+        if not is_float :
+            self.log.debug("Your hardware function 'get_acquired_data()'"
+                           " is not returning a numpy array with dtype float ")
+        else:
+            self.log.debug("Your hardware function 'get_acquired_data()' is not returning a numpy array ")
+        return np.empty((2, 0))
+
 
     @property
     def ready_state(self):
@@ -1180,35 +1239,35 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
 
     @property
-    def shutter_is_open(self):
+    def shutter_mode(self):
         """
         Getter method returning if the shutter is open.
 
-        :return: @bool shutter open ? or 0 if error
+        :return: @int shutter mode (0 permanently closed, 1 permanently open, 2 mode auto) or 4 if error
         """
         shutter_open = self.camera_device.get_shutter_is_open()
-        is_bool = isinstance(shutter_open, bool)
-        if is_bool:
-            self._shutter_is_open = shutter_open
+        is_int = isinstance(shutter_open, int)
+        if is_int:
+            self._shutter_mode = shutter_open
             return shutter_open
         else:
-            self.log.error("Your hardware method 'get_shutter_is_open()' is not returning a boolean ")
-            return 0
+            self.log.error("Your hardware method 'get_shutter_is_open()' is not returning an int ")
+            return 4
 
-    @shutter_is_open.setter
-    def shutter_is_open(self, shutter_open):
+    @shutter_mode.setter
+    def shutter_mode(self, shutter_mode):
         """
         Setter method setting if the shutter is open.
 
-        :param shutter_mode: @bool shutter open
+        :param shutter_mode: @int shutter mode (0 permanently closed, 1 permanently open, 2 mode auto)
         :return: nothing
         """
-        is_bool = isinstance(shutter_open, str)
-        if is_bool:
-            self._shutter_is_open = shutter_open
-            self.camera_device.set_shutter_is_open(shutter_open)
+        is_int = isinstance(shutter_mode, int)
+        if is_int:
+            self._shutter_mode = shutter_mode
+            self.camera_device.set_shutter_is_open(shutter_mode)
         else:
-            self.log.debug("Shutter open mode parameter must be a boolean ")
+            self.log.debug("Shutter open mode parameter must be an int ")
 
     ##############################################################################
     #                           Temperature functions
