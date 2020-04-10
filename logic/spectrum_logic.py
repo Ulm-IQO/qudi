@@ -32,6 +32,7 @@ from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from core.configoption import ConfigOption
 
+from time import sleep
 from datetime import date
 
 
@@ -44,30 +45,32 @@ class SpectrumLogic(GenericLogic):
     camera = Connector(interface='CameraInterface')
     savelogic = Connector(interface='SaveLogic', optional=True)
 
-    # declare status variables
+    # declare status variables (logic attribute) :
     _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
     _background_data = StatusVar('background_data', np.empty((2, 0)))
     _image_data = StatusVar('image_data', np.empty((2, 0)))
-
-    _grating = StatusVar('grating', 1)
-    _grating_offset = StatusVar('grating_offset', 0)
-
-    _center_wavelength = StatusVar('center_wavelength', 400)
-    _wavelength_range = StatusVar('wavelength_range', np.empty((2, 0)))
-    _number_of_pixels = StatusVar('number_of_pixels', 512)
-    _pixel_width = StatusVar('pixel_width', 1e-4)
-
-    _detector_offset = StatusVar('detector_offset', 0)
-
-    _input_port = StatusVar('input_port', 1)
-    _output_port = StatusVar('output_port', 0)
-    _input_slit_width = StatusVar('input_slit_width', 100)
-    _output_slit_width = StatusVar('output_slit_width', 100)
 
     # Allow to set a default save directory in the config file :
     _default_save_file_path = ConfigOption('default_save_file_path')
     _save_file_path = StatusVar('save_file_path', _default_save_file_path)
 
+    # declare status variables (camera attribute) :
+    _read_mode = StatusVar('read_mode', 'FVB')
+    _number_of_track = StatusVar('number_of_track', 1)
+    _track_height = StatusVar('track_height', 50)
+    _track_offset = StatusVar('track_offset', 0)
+    _pixel_height = StatusVar('pixel_height', 1e-4)
+    _pixel_width = StatusVar('pixel_width', 1e-4)
+
+    _acquistion_mode = StatusVar('acquistion_mode', 'SINGLESCAN')
+    _number_accumulated_scan = StatusVar('number_accumulated_scan', 1)
+    _accumulation_time = StatusVar('number_accumulated_scan', 1e-3)
+    _number_of_scan = StatusVar('number_of_scan', 1)
+    _scan_delay = StatusVar('scan_delay', 1e-2)
+    _exposure_time = StatusVar('exposure_time', 1e-4)
+    _camera_gain = StatusVar('camera_gain', 1)
+
+    _shutter_mode = StatusVar('shutter_mode', (1, 1e-4, 1e-4, True))
     ##############################################################################
     #                            Basic functions
     ##############################################################################
@@ -87,6 +90,23 @@ class SpectrumLogic(GenericLogic):
         """
         self.spectrometer_device = self.spectrometer()
         self.camera_device = self.camera()
+
+        # declare spectrometer attributes :
+        self._grating = self.grating
+        self._grating_offset = self.grating_offset
+
+        self._center_wavelength = self.center_wavelength
+        self._wavelength_range = self.wavelength_range
+
+        self._detector_offset = self.detector_offset
+
+        self._input_port = self.input_port
+        self._output_port = self.output_port
+        self._input_slit_width = self.input_slit_width
+        self._output_slit_width = self.output_slit_width
+
+        # declare camera attributes :
+        self._camera_size = self.camera_device.size()
 
         self._save_logic = self.savelogic()
 
@@ -138,42 +158,35 @@ class SpectrumLogic(GenericLogic):
     #                            Acquisition functions
     ##############################################################################
 
-    def start_acquisition(self):
-        """
-        Method proceeding to data acquisition.
-
-        :return: 1 if succeed or 0 if failed
-        """
-
-        if self.camera_device.start_single_acquisition():
-            data = self.camera_device.get_acquired_data()
-            self.log.info('Single spectrum acquisition achieved with success ')
-            return data
-        else:
-            self.log.info('Single spectrum acquisition aborted ')
-            return 0
-
-    def stop_acquisition(self):
-        """
-        Method aborting data acquisition and all the related procedures
-        :return: 1 if succeed or 0 if failed
-        """
-
-        if self.camera_device.stop_acquisition():
-            self.log.info('Acquisition aborted with success ')
-            return 1
-        else:
-            self.log.error('Acquisition can\'t be aborted : try again or disconnect the device ')
-            return 0
-
     def acquire_spectrum(self):
-        pass
+        for i in range(0, self._number_of_scan):
+            self.camera_device.start_acquisition()
+            self._spectrum_data[i] = self.camera_device.get_acquired_data()
+            sleep(self._scan_delay)
+        self.log.info("Spectrum acquisition succeed ! Number of acquired scan : {} "
+                      "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
 
     def acquire_background(self):
-        pass
+        if self.get_shutter_mode()[0] != 0:
+            self.set_shutter_mode(0)
+        for i in range(0, self._number_of_scan):
+            self.camera_device.start_acquisition()
+            self._background_data[i] = self.camera_device.get_acquired_data()
+            sleep(self._scan_delay)
+        self.log.info("Background acquisition succeed ! Number of acquired scan : {} "
+                      "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
+        self.set_shutter_mode(*self._shutter_mode)
 
     def acquire_image(self):
-        pass
+        if self.get_shutter_mode()[0] != 0:
+            self.set_shutter_mode(0)
+        for i in range(0, self._number_of_scan):
+            self.camera_device.start_acquisition()
+            self._background_data[i] = self.camera_device.get_acquired_data()
+            sleep(self._scan_delay)
+        self.log.info("Background acquisition succeed ! Number of acquired scan : {} "
+                      "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
+        self.set_shutter_mode(*self._shutter_mode)
 
     @property
     def spectrum_data(self):
@@ -365,7 +378,7 @@ class SpectrumLogic(GenericLogic):
         :return: @ndarray measured wavelength array or 0 if error
         """
         wavelength_min, wavelength_max = self.spectrometer_device.get_wavelength_limit(self._grating)
-        wavelength_range = self.spectrometer_device.get_calibration(self._number_of_pixels)
+        wavelength_range = self.spectrometer_device.get_calibration(self._pixel_matrix_dimension[0])
         is_ndarray = isinstance(wavelength_range, np.ndarray)
         is_in_range = np.min(wavelength_range) > wavelength_min and np.max(wavelength_range) > wavelength_max
         if is_ndarray and is_in_range:
@@ -391,7 +404,7 @@ class SpectrumLogic(GenericLogic):
         is_int = isinstance(number_pixels, int)
         is_positive = 0 < number_pixels
         if is_int and is_positive:
-            self._number_of_pixels = number_pixels
+            self._pixel_matrix_dimension[0] = number_pixels
             return number_pixels
         else:
             if is_int:
@@ -412,11 +425,11 @@ class SpectrumLogic(GenericLogic):
         """
         is_int = isinstance(number_pixels, int)
         is_positive = 0 < number_pixels
-        is_change = number_pixels != self._number_of_pixels
+        is_change = number_pixels != self._pixel_matrix_dimension[0]
         if is_int and is_positive and is_change:
             self.spectrometer_device.get_pixel_width(number_pixels)
             self.log.info('Number of pixels has been changed correctly ')
-            self._number_of_pixels = number_pixels
+            self._pixel_matrix_dimension[0] = number_pixels
         else:
             if is_int:
                 self.log.debug('Number of pixels parameter is not correct : it must be a int ')
@@ -697,8 +710,274 @@ class SpectrumLogic(GenericLogic):
     #
     #
     ##############################################################################
-    #                            Gratings functions
+    #                           Basic functions
     ##############################################################################
 
-    def read_mode(self, mode):
-        self.camera_device.set_read_mode(mode)
+    @property
+    def acquired_data(self):
+        """ Return an array of last acquired image.
+
+        @return numpy array: image data in format [[row],[row]...]
+        Each pixel might be a float, integer or sub pixels
+        """
+
+    @property
+    def ready_state(self):
+        """ Is the camera ready for an acquisition ?
+
+        @return bool: ready ?
+        """
+        pass
+
+    ##############################################################################
+    #                           Read mode functions
+    ##############################################################################
+
+    @property
+    def read_mode(self):
+        """
+        Getter method returning the current read mode used by the camera.
+
+        :return: @str read mode (must be compared to a dict)
+        """
+        pass
+
+    @read_mode.setter
+    def read_mode(self, read_mode):
+        """
+        Setter method setting the read mode used by the camera.
+
+        :param read_mode: @str read mode (must be compared to a dict)
+        :return: nothing
+        """
+        pass
+
+    def get_track_parameters(self):
+        """
+        Getter method returning the read mode tracks parameters of the camera.
+
+        :return: @tuple (@int number of track, @int track height, @int track offset) or 0 if error
+        """
+        pass
+
+    def set_track_parameters(self, number_of_track, track_heigth, track_offset):
+        """
+        Setter method setting the read mode tracks parameters of the camera.
+
+        :param number_of_track: @int number of track
+        :param track_heigth: @int track height
+        :param track_offset: @int track offset
+        :return: nothing
+        """
+        pass
+
+    def get_image_parameters(self):
+        """
+        Getter method returning the read mode image parameters of the camera.
+
+        :return: @tuple (@int pixel height, @int pixel width, @tuple (@int start raw, @int end raw),
+        @tuple (@int start column, @int end column)) or 0 if error
+        """
+        pass
+
+    def set_image_parameters(self, pixel_height, pixel_width, raw_range, column_range):
+        """
+        Setter method setting the read mode image parameters of the camera.
+
+        :param pixel_height: @int pixel height
+        :param pixel_width: @int pixel width
+        :param raw_range: @tuple (@int start raw, @int end raw)
+        :param column_range: @tuple (@int start column, @int end column)
+        :return: nothing
+        """
+        pass
+
+    ##############################################################################
+    #                           Acquisition mode functions
+    ##############################################################################
+
+    @property
+    def acquisition_mode(self):
+        """
+        Getter method returning the current acquisition mode used by the camera.
+
+        :return: @str acquisition mode (must be compared to a dict)
+        """
+        pass
+
+    @acquisition_mode.setter
+    def acquisition_mode(self, acquisition_mode):
+        """
+        Setter method setting the acquisition mode used by the camera.
+
+        :param read_mode: @str read mode (must be compared to a dict)
+        :param kwargs: packed @dict which contain a series of arguments specific to the differents acquisition modes
+        :return: nothing
+        """
+        pass
+
+    @property
+    def accumulation_time(self):
+        """
+        Getter method returning the accumulation cycle time scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :return: @int accumulation cycle time or 0 if error
+        """
+        pass
+
+    @accumulation_time.setter
+    def accumulation_time(self, accumulation_time):
+        """
+        Setter method setting the accumulation cycle time scan carry out during an accumulate acquisition mode
+        by the camera.
+
+        :param accumulation_time: @int accumulation cycle time
+        :return: nothing
+        """
+        pass
+
+    @property
+    def number_accumulated_scan(self):
+        """
+        Getter method returning the number of accumulated scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :return: @int number of accumulated scan or 0 if error
+        """
+        pass
+
+    @number_accumulated_scan.setter
+    def number_accumulated_scan(self, number_scan):
+        """
+        Setter method setting the number of accumulated scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :param number_scan: @int number of accumulated scan
+        :return: nothing
+        """
+        pass
+
+    @property
+    def exposure_time(self):
+        """ Get the exposure time in seconds
+
+        @return float exposure time
+        """
+        pass
+
+    @exposure_time.setter
+    def exposure_time(self, exposure_time):
+        """ Set the exposure time in seconds
+
+        @param float time: desired new exposure time
+
+        @return float: setted new exposure time
+        """
+        pass
+
+    @property
+    def camera_gain(self):
+        """ Get the gain
+
+        @return float: exposure gain
+        """
+        pass
+
+    @camera_gain.setter
+    def camera_gain(self, gain):
+        """ Set the gain
+
+        @param float gain: desired new gain
+
+        @return float: new exposure gain
+        """
+        pass
+
+    ##############################################################################
+    #                           Trigger mode functions
+    ##############################################################################
+
+    @property
+    def trigger_mode(self):
+        """
+        Getter method returning the current trigger mode used by the camera.
+
+        :return: @str trigger mode (must be compared to a dict)
+        """
+        pass
+
+    @trigger_mode.setter
+    def trigger_mode(self, trigger_mode):
+        """
+        Setter method setting the trigger mode used by the camera.
+
+        :param trigger_mode: @str trigger mode (must be compared to a dict)
+        :return: nothing
+        """
+        pass
+
+    ##############################################################################
+    #                           Shutter mode functions
+    ##############################################################################
+
+    @property
+    def shutter_is_open(self):
+        """
+        Getter method returning if the shutter is open.
+
+        :return: @bool shutter open ?
+        """
+        pass
+
+    @shutter_is_open.setter
+    def shutter_is_open(self, shutter_open):
+        """
+        Setter method setting if the shutter is open.
+
+        :param shutter_mode: @bool shutter open
+        :return: nothing
+        """
+        pass
+
+    ##############################################################################
+    #                           Temperature functions
+    ##############################################################################
+
+    @property
+    def cooler_ON(self):
+        """
+        Getter method returning the cooler status if ON or OFF.
+
+        :return: @bool True if ON or False if OFF or 0 if error
+        """
+        pass
+
+    @cooler_ON.setter
+    def cooler_ON(self, cooler_ON):
+        """
+        Getter method returning the cooler status if ON or OFF.
+
+        :cooler_ON: @bool True if ON or False if OFF
+        :return: nothing
+        """
+        pass
+
+    @property
+    def temperature(self):
+        """
+        Getter method returning the temperature of the camera.
+
+        :return: @float temperature or 0 if error
+        """
+        pass
+
+    @temperature.setter
+    def temperature(self, temperature):
+        """
+        Getter method returning the temperature of the camera.
+
+        :param temperature: @float temperature or 0 if error
+        :return: nothing
+        """
+        pass
