@@ -176,7 +176,7 @@ class Mapper:
                                  Default: ''
                                  If it is an empty string the relevant
                                  property is guessed from the widget's type.
-        widget_property_notifier Signal Notifier signal which is fired by the
+        widget_property_notifier Signal/str Notifier signal which is fired by the
                                         widget when the data changed. If None
                                         this is determined directly from the
                                         property.
@@ -220,6 +220,14 @@ class Mapper:
             widget_property_notifier = getattr(
                 widget,
                 meta_property.notifySignal().name().data().decode('utf8'))
+        elif isinstance(widget_property_notifier, str):
+            # look for signal attribute if passed object is a string
+            if not hasattr(widget, widget_property_notifier):
+                raise Exception('Widget ''{0}'' has no property ''{1}'''
+                                ''.format(widget.__class__.__name__,
+                                          widget_property_name))
+            widget_property_notifier = getattr(widget,
+                                               widget_property_notifier)
 
         # check that widget property is readable
         if not meta_property.isReadable():
