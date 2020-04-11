@@ -183,22 +183,22 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_accumulation_time(self):
+    def get_accumulation_delay(self):
         """
-        Getter method returning the accumulation cycle time scan carry out during an accumulate acquisition mode
+        Getter method returning the accumulation cycle delay scan carry out during an accumulate acquisition mode
          by the camera.
 
-        :return: @int accumulation cycle time or 0 if error
+        :return: @int accumulation cycle delay or 0 if error
         """
         pass
 
     @abstract_interface_method
-    def set_accumulation_time(self, accumulation_time):
+    def set_accumulation_delay(self, accumulation_delay):
         """
-        Setter method setting the accumulation cycle time scan carry out during an accumulate acquisition mode
+        Setter method setting the accumulation cycle delay scan carry out during an accumulate acquisition mode
         by the camera.
 
-        :param accumulation_time: @int accumulation cycle time
+        :param accumulation_time: @int accumulation cycle delay
         :return: nothing
         """
         pass
