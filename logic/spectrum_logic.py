@@ -60,14 +60,15 @@ class SpectrumLogic(GenericLogic):
     _track_height = StatusVar('track_height', 50)
     _track_offset = StatusVar('track_offset', 0)
 
-
     _acquistion_mode = StatusVar('acquistion_mode', 'SINGLE_SCAN')
     _exposure_time = StatusVar('exposure_time', 1e-4)
     _camera_gain = StatusVar('camera_gain', 1)
-    _number_accumulated_scan = StatusVar('number_accumulated_scan', 1)
-    _accumulation_time = StatusVar('accumulation_time', 1e-3)
     _number_of_scan = StatusVar('number_of_scan', 1)
     _scan_delay = StatusVar('scan_delay', 1e-2)
+    _number_accumulated_scan = StatusVar('number_accumulated_scan', 1)
+    _accumulation_delay = StatusVar('accumulation_delay', 1e-3)
+
+    _trigger_mode = StatusVar('trigger_mode', 'INTERNAL')
 
     ##############################################################################
     #                            Basic functions
@@ -95,9 +96,10 @@ class SpectrumLogic(GenericLogic):
         self._grating_offset = self.grating_offset
 
         self._center_wavelength = self.center_wavelength
+        self._wavelength_limit = self.wavelength_limit
         self._wavelength_range = self.wavelength_range
 
-        self._detector_offset = self.detector_offset
+        self.detector_offset = self._track_offset
 
         self._input_port = self.input_port
         self._output_port = self.output_port
@@ -161,26 +163,45 @@ class SpectrumLogic(GenericLogic):
     #                            Acquisition functions
     ##############################################################################
 
+    def start_acquisition(self):
+        """
+        Start acquisition method calling the start acquisition method from the hardware module and changing the
+        logic module state to 'locked'.
+
+        :return: nothing
+        """
+        self.camera_device.start_acquisition()
+        self.module_state.lock()
+
+    def stop_acquisition(self):
+        """
+        Stop acquisition method calling the stop acquisition method from the hardware module and changing the
+        logic module state to 'unlocked'.
+
+        :return: nothing
+        """
+        self.camera_device.stop_acquisition()
+        self.module_state.unlock()
+        self.log.info("Stop acquisition : module state is 'idle' ")
+
     def acquire_spectrum(self):
+        self.module_state.lock()
         if self._acquistion_mode == 'LIVE_ACQUISITION':
-            self.module_state = 'running'
-            while self.module_state == 'running':
+            while self.module_state() == 'locked':
                 self.shutter_mode(1)
                 self.camera_device.start_acquisition()
                 self.shutter_mode(0)
                 self._spectrum_data = self.acquired_data()
                 sleep(self._scan_delay)
-            self.module_state = 'idle'
         else:
             scans = np.empty(self._number_of_scan)
-            self.module_state = 'running'
             for i in range(0, self._number_of_scan):
                 self.shutter_mode(1)
                 self.camera_device.start_acquisition()
                 self.shutter_mode(0)
                 scans[i] = self.acquired_data()
                 sleep(self._scan_delay)
-            self.module_state = 'idle'
+            self.module_state.unlock()
             self._spectrum_data = scans
             self.log.info("Spectrum acquisition succeed ! Number of acquired scan : {} "
                           "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
@@ -188,26 +209,26 @@ class SpectrumLogic(GenericLogic):
     def acquire_background(self):
         scans = np.empty(self._number_of_scan)
         self.shutter_mode(0) # Force the shutter to be close during background acquisition process
-        self.module_state = 'running'
+        self.module_state.lock()
         for i in range(0, self._number_of_scan):
             self.camera_device.start_acquisition()
             scans[i] = self.acquired_data()
             sleep(self._scan_delay)
-        self.module_state = 'idle'
+        self.module_state.unlock()
         self._background_data = scans
         self.log.info("Background acquisition succeed ! Number of acquired scan : {} "
                       "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
 
     def acquire_image(self):
         scans = np.empty(self._number_of_scan)
-        self.module_state = 'running'
+        self.module_state.lock()
         for i in range(0, self._number_of_scan):
             self.shutter_mode(1)
             self.camera_device.start_acquisition()
             self.shutter_mode(0)
             scans[i] = self.acquired_data()
             sleep(self._scan_delay)
-        self.module_state = 'idle'
+        self.module_state.unlock()
         self._image_data = scans
         self.log.info("Image acquisition succeed ! Number of acquired scan : {} "
                       "/ Delay between each scan : {}".format(self._number_of_scan, self._scan_delay))
@@ -394,6 +415,22 @@ class SpectrumLogic(GenericLogic):
                 self.log.info('Wavelength parameter has not been changed')
 
     @property
+    def wavelength_limit(self):
+        wavelength_min, wavelength_max = self.spectrometer_device.get_wavelength_limit(self._grating)
+        is_float = isinstance(wavelength_min, float) and isinstance(wavelength_max, float)
+        is_sort = 0 < wavelength_min < wavelength_max
+        if is_float and is_sort:
+            self._wavelength_limit = (wavelength_min, wavelength_max)
+            return (wavelength_min, wavelength_max)
+        else:
+            if not is_float:
+                self.log.error("Your hardware getter function 'get_wavelength_limit()' is not returning a "
+                               "float type tuple ")
+            if is_sort:
+                self.log.error("Your hardware getter function 'get_wavelength_limit()' is not returning a "
+                               "sorted values or negative values ")
+
+    @property
     def wavelength_range(self):
         """
         Getter method returning the wavelength array of the full measured spectral range.
@@ -521,7 +558,7 @@ class SpectrumLogic(GenericLogic):
         offset = self.spectrometer_device.get_detector_offset()
         is_int = isinstance(offset, int)
         if is_int:
-            self._detector_offset = offset
+            self._track_offset = offset
             return offset
         else:
             self.log.error('Your hardware getter function \'get_detector_offset()\' is not returning a int ')
@@ -541,11 +578,11 @@ class SpectrumLogic(GenericLogic):
         offset_max = number_pixels//2
         is_int = isinstance(detector_offset, int)
         is_in_range = offset_min - 1 < detector_offset < offset_max + 1
-        is_change = detector_offset != self._detector_offset
+        is_change = detector_offset != self._track_offset
         if is_int and is_in_range and is_change:
             self.spectrometer_device.set_detector_offset(detector_offset)
             self.log.info('Detector offset has been changed correctly ')
-            self._detector_offset = detector_offset
+            self._track_offset = detector_offset
         else:
             if not is_int:
                 self.log.debug('Detector offset parameter is not correct : it must be a int ')
@@ -679,7 +716,8 @@ class SpectrumLogic(GenericLogic):
         """
         slit_is_present = self.spectrometer_device.auto_slit_is_present('input', self._input_port)
         is_float = isinstance(slit_width, float)
-        if is_float:
+        is_change = slit_width == self._input_slit_width
+        if is_float and is_change:
             if slit_is_present:
                 self.spectrometer_device.set_auto_slit_width('input', self._input_port, slit_width)
                 self.log.info('Output slit width has been changed correctly ')
@@ -687,7 +725,10 @@ class SpectrumLogic(GenericLogic):
             else:
                 self.log.debug('Your hardware do not have any auto slit present at the selected input port ')
         else:
-            self.log.debug('Input slit width parameter is not correct : it must be a float ')
+            if not is_float:
+                self.log.debug('Input slit width parameter is not correct : it must be a float ')
+            else:
+                self.log.info("Input slit width parameter has not be changed ")
 
 
     @property
@@ -716,7 +757,8 @@ class SpectrumLogic(GenericLogic):
         """
         slit_is_present = self.spectrometer_device.auto_slit_is_present('output', self._output_port)
         is_float = isinstance(slit_width, float)
-        if is_float:
+        is_change = slit_width == self._output_slit_width
+        if is_float and is_change:
             if slit_is_present:
                 self.spectrometer_device.set_auto_slit_width('output', self._output_port, slit_width)
                 self.log.info('Output slit width has been changed correctly ')
@@ -724,7 +766,11 @@ class SpectrumLogic(GenericLogic):
             else:
                 self.log.debug('Your hardware do not have any auto slit present at the selected output port ')
         else:
-            self.log.debug('Output slit width parameter is not correct : it must be a float ')
+            if not is_float:
+                self.log.debug('Output slit width parameter is not correct : it must be a float ')
+            else:
+                self.log.info("Output slit width parameter has not be changed ")
+
 
     ##############################################################################
     #                            Camera functions
@@ -735,14 +781,6 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
     #                           Basic functions
     ##############################################################################
-
-    def start_acquisition(self):
-        self.camera_device.start_acquisition()
-
-    def stop_acquisition(self):
-        self.camera_device.stop_acquisition()
-        self.module_state = 'idle'
-        self.log.info("Stop acquisition : module state is 'idle' ")
 
     @property
     def image_size(self):
@@ -859,10 +897,14 @@ class SpectrumLogic(GenericLogic):
         :return: nothing
         """
         is_str = isinstance(read_mode, str)
-        if is_str:
+        is_change = read_mode == self._read_mode
+        if is_str and is_change:
             self.camera_device.set_read_mode(read_mode)
         else:
-            self.log.debug("Read mode parameter must be a string ")
+            if not is_str:
+                self.log.debug("Read mode parameter must be a string ")
+            else:
+                self.log.info("Read mode parameter has not be changed ")
 
     @property
     def track_parameters(self):
@@ -903,9 +945,12 @@ class SpectrumLogic(GenericLogic):
         """
         are_int = isinstance(number_of_track, int) and isinstance(track_height, int) and isinstance(track_offset, int)
         are_pos = number_of_track>0 and track_height>0
-        if are_int and are_pos :
+        number_is_change = number_of_track == self._number_of_track
+        height_is_change = track_height == self._track_height
+        offset_is_change = track_offset == self._track_offset
+        if are_int and are_pos and (number_is_change or height_is_change or offset_is_change):
             track_spacing = self._image_size[0]/(number_of_track + 2 - number_of_track%2)
-            number_is_correct = number_of_track<=self._image_size[0]
+            number_is_correct = number_of_track <= self._image_size[0]
             height_is_correct = track_height <= track_spacing
             offset_is_correct = (number_of_track*track_spacing+track_height)/2 < self._image_size[0]-abs(track_offset)
             if number_is_correct and height_is_correct and offset_is_correct:
@@ -926,8 +971,10 @@ class SpectrumLogic(GenericLogic):
         else:
             if not are_int:
                 self.log.debug("Track parameters must be integers ")
-            else:
+            if not are_pos:
                 self.log.debug("Number of track and track height parameters must be positive ")
+            else:
+                self.log.info("Track parameters has not be changed ")
 
     @property
     def image_parameters(self):
@@ -971,7 +1018,10 @@ class SpectrumLogic(GenericLogic):
         image_parameters = ( superpixel_size, superimage_size, superimage_position)
         are_int = all([isinstance(image_parameter, int) for image_parameter in image_parameters])
         are_pos = all([image_parameter > 0 for image_parameter in image_parameters])
-        if are_int and are_pos:
+        pixel_is_change = superpixel_size == self._superpixel_size
+        image_is_change = superimage_size == self._superimage_size
+        image_pos_is_change = superimage_position == self._superimage_position
+        if are_int and are_pos and (pixel_is_change or image_is_change or image_pos_is_change):
             superraw_is_correct = superpixel_size[0]*superimage_size[0]<self._image_size[0]-superimage_position[0]
             supercolumn_is_correct = superpixel_size[1] * superimage_size[1]<self._image_size[1]-superimage_position[1]
             if superraw_is_correct and supercolumn_is_correct:
@@ -986,8 +1036,10 @@ class SpectrumLogic(GenericLogic):
         else:
             if not are_int:
                 self.log.debug("Image parameters must all be integers ")
-            else:
+            if not are_pos:
                 self.log.debug("Image parameters must all be positive ")
+            else:
+                self.log.info("Image parameters has not be changed ")
 
     ##############################################################################
     #                           Acquisition mode functions
@@ -1019,60 +1071,67 @@ class SpectrumLogic(GenericLogic):
         :return: nothing
         """
         is_str = isinstance(acquisition_mode, str)
-        if is_str:
+        is_change = acquisition_mode == self._acquistion_mode
+        if is_str and is_change:
             self._acquisition_mode = acquisition_mode
             self.camera_device.set_acquisition_mode(acquisition_mode)
         else:
-            self.log.debug("Acquisition mode parameter must be a string ")
+            if not is_str:
+                self.log.debug("Acquisition mode parameter must be a string ")
+            else:
+                self.log.info("Acquisition mode parameter has not be changed ")
 
     @property
-    def accumulation_time(self):
+    def accumulation_delay(self):
         """
         Getter method returning the accumulation cycle time scan carry out during an accumulate acquisition mode
          by the camera.
 
         :return: @int accumulation cycle time or 0 if error
         """
-        accumulation_time = self.camera_device.get_accumulation_time()
-        is_float = isinstance(accumulation_time, float)
-        is_pos = accumulation_time>0
-        is_in_range = self._exposure_time < accumulation_time < self._scan_delay
+        accumulation_delay = self.camera_device.get_accumulation_delay()
+        is_float = isinstance(accumulation_delay, float)
+        is_pos = accumulation_delay>0
+        is_in_range = self._exposure_time < accumulation_delay < self._scan_delay
         if is_float and is_pos and is_in_range:
-            self._accumulation_time = accumulation_time
-            return accumulation_time
+            self._accumulation_delay = accumulation_delay
+            return accumulation_delay
         else:
             if not is_float:
-                self.log.error("Your hardware method 'get_accumulation_time()' is not returning a float ")
+                self.log.error("Your hardware method 'get_accumulation_delay()' is not returning a float ")
             if not is_pos:
-                self.log.error("Your hardware method 'get_accumulation_time()' is not returning a positive number ")
+                self.log.error("Your hardware method 'get_accumulation_delay()' is not returning a positive number ")
             else:
-                self.log.error("Your hardware method 'get_accumulation_time()' is not returning a value between"
+                self.log.error("Your hardware method 'get_accumulation_delay()' is not returning a value between"
                                "the current exposure time and scan delay values ")
             return 0
 
-    @accumulation_time.setter
-    def accumulation_time(self, accumulation_time):
+    @accumulation_delay.setter
+    def accumulation_delay(self, accumulation_delay):
         """
         Setter method setting the accumulation cycle time scan carry out during an accumulate acquisition mode
         by the camera.
 
-        :param accumulation_time: @int accumulation cycle time
+        :param accumulation_delay: @int accumulation cycle time
         :return: nothing
         """
-        is_float = isinstance(accumulation_time, float)
-        is_pos = accumulation_time > 0
-        is_in_range = self._exposure_time < accumulation_time < self._scan_delay
-        if is_float and is_pos and is_in_range:
-            self._accumulation_time = accumulation_time
-            self.camera_device.set_accumulation_time(accumulation_time)
+        is_float = isinstance(accumulation_delay, float)
+        is_pos = accumulation_delay > 0
+        is_in_range = self._exposure_time < accumulation_delay < self._scan_delay
+        is_change = accumulation_delay == self._accumulation_delay
+        if is_float and is_pos and is_in_range and is_change:
+            self._accumulation_delay = accumulation_delay
+            self.camera_device.set_accumulation_delay(accumulation_delay)
         else:
             if not is_float:
                 self.log.debug("Accumulation time parameter must be a float ")
             if not is_pos:
                 self.log.debug("Accumulation time parameter must be a positive number ")
-            else:
+            if not is_in_range:
                 self.log.debug("Accumulation time parameter must be a value between"
                                "the current exposure time and scan delay values ")
+            else:
+                self.log.info("Accumulation time parameter has not be changed ")
 
     @property
     def number_accumulated_scan(self):
@@ -1106,14 +1165,17 @@ class SpectrumLogic(GenericLogic):
         """
         is_int = isinstance(number_scan, int)
         is_pos = number_scan > 0
-        if is_int and is_pos:
+        is_change = number_scan == self._number_of_scan
+        if is_int and is_pos and is_change:
             self._number_accumulated_scan = number_scan
             self.camera_device.set_number_accumulated_scan(number_scan)
         else:
             if not is_int:
                 self.log.debug("Number of accumulated scan parameter must be an integer ")
-            else:
+            if not is_pos:
                 self.log.debug("Number of accumulated scan parameter must be positive ")
+            else:
+                self.log.info("Number of scan parameter has not be changed ")
 
     @property
     def exposure_time(self):
@@ -1124,7 +1186,7 @@ class SpectrumLogic(GenericLogic):
         exposure_time = self.camera_device.get_exposure_time()
         is_float = isinstance(exposure_time, float)
         is_pos = exposure_time > 0
-        is_in_range = exposure_time < self._accumulation_time
+        is_in_range = exposure_time < self._accumulation_delay
         if is_float and is_pos and is_in_range:
             self._exposure_time = exposure_time
             return exposure_time
@@ -1148,8 +1210,9 @@ class SpectrumLogic(GenericLogic):
         """
         is_float = isinstance(exposure_time, float)
         is_pos = exposure_time > 0
-        is_in_range = exposure_time < self._accumulation_time
-        if is_float and is_pos and is_in_range:
+        is_in_range = exposure_time < self._accumulation_delay
+        is_change = exposure_time == self._exposure_time
+        if is_float and is_pos and is_in_range and is_change:
             self._exposure_time = exposure_time
             self.camera_device.set_exposure_time(exposure_time)
         else:
@@ -1157,9 +1220,11 @@ class SpectrumLogic(GenericLogic):
                 self.log.debug("Exposure time parameter must be a float ")
             if not is_pos:
                 self.log.debug("Exposure time parameter must be a positive number ")
-            else:
+            if not is_in_range:
                 self.log.debug("Exposure time parameter must be a value lower"
                                "that the current accumulation time values ")
+            else:
+                self.log.info("Exposure time parameter has not be changed ")
 
     @property
     def camera_gain(self):
@@ -1190,14 +1255,17 @@ class SpectrumLogic(GenericLogic):
         """
         is_float = isinstance(camera_gain, float)
         is_pos = camera_gain > 0
-        if is_float and is_pos:
+        is_change = camera_gain == self._camera_gain
+        if is_float and is_pos and is_change:
             self._camera_gain = camera_gain
             self.camera_device.set_camera_gain(camera_gain)
         else:
             if not is_float:
                 self.log.debug("Camera gain parameter must be a float ")
-            else:
+            if not is_pos:
                 self.log.debug("Camera gain parameter must be a positive number ")
+            else:
+                self.log.info("Camera gain parameter has not be changed ")
 
     ##############################################################################
     #                           Trigger mode functions
@@ -1228,11 +1296,15 @@ class SpectrumLogic(GenericLogic):
         :return: nothing
         """
         is_str = isinstance(trigger_mode, str)
-        if is_str:
+        is_change = trigger_mode == self._trigger_mode
+        if is_str and is_change:
             self._trigger_mode = trigger_mode
             self.camera_device.set_trigger_mode(trigger_mode)
         else:
-            self.log.debug("Trigger mode parameter must be a string ")
+            if not is_str:
+                self.log.debug("Trigger mode parameter must be a string ")
+            else:
+                self.log.info("Trigger mode parameter has not be changed ")
 
     ##############################################################################
     #                           Shutter mode functions
@@ -1263,11 +1335,15 @@ class SpectrumLogic(GenericLogic):
         :return: nothing
         """
         is_int = isinstance(shutter_mode, int)
-        if is_int:
+        is_change = shutter_mode == self._shutter_mode
+        if is_int and is_change:
             self._shutter_mode = shutter_mode
             self.camera_device.set_shutter_is_open(shutter_mode)
         else:
-            self.log.debug("Shutter open mode parameter must be an int ")
+            if not is_int:
+                self.log.debug("Shutter open mode parameter must be an int ")
+            else:
+                self.log.info("Shutter mode parameter has not be changed ")
 
     ##############################################################################
     #                           Temperature functions
@@ -1298,11 +1374,15 @@ class SpectrumLogic(GenericLogic):
         :return: nothing
         """
         is_bool = isinstance(cooler_ON, str)
-        if is_bool:
+        is_change = cooler_ON == self._cooler_ON
+        if is_bool and is_change:
             self._cooler_ON = cooler_ON
             self.camera_device.set_cooler_ON(cooler_ON)
         else:
-            self.log.debug("Cooler status parameter must be a boolean ")
+            if not is_bool:
+                self.log.debug("Cooler status parameter must be a boolean ")
+            else:
+                self.log.info("Cooler status parameter has not be changed ")
 
     @property
     def camera_temperature(self):
@@ -1334,11 +1414,14 @@ class SpectrumLogic(GenericLogic):
         """
         is_float = isinstance(camera_temperature, float)
         is_pos = camera_temperature > 0
-        if is_float and is_pos:
+        is_change = camera_temperature == self._camera_temperature
+        if is_float and is_pos and is_change:
             self._camera_temperature = camera_temperature
             self.camera_device.set_temperature(camera_temperature)
         else:
             if not is_float:
                 self.log.debug("Camera temperature parameter must be a float ")
-            else:
+            if not is_pos:
                 self.log.debug("Camera temperature parameter must be a positive number ")
+            else:
+                self.log.info("Camera temperature parameter has not be changed ")
