@@ -64,7 +64,7 @@ The potential sequence_options are:
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
-
+* Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
 
 
 Config changes:
