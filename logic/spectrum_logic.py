@@ -92,6 +92,8 @@ class SpectrumLogic(GenericLogic):
         spectro_constraints = self.spectrometer_device.get_constraints()
         self._number_of_gratings = spectro_constraints['number_of_gratings']
         self._wavelength_limits = spectro_constraints['wavelength_limits']
+        self._auto_slit_installed = spectro_constraints['auto_slit_installed']
+        self._flipper_mirror_installed = spectro_constraints['flipper_mirror_installed']
 
         camera_constraints = self.camera_device.get_constraints()
         self._read_mode_list = camera_constraints['read_mode_list']
@@ -358,7 +360,7 @@ class SpectrumLogic(GenericLogic):
 
         @return: (ndarray) measured wavelength array
         """
-        self._wavelength_range = self.spectrometer_device.get_calibration(self._pixel_matrix_dimension[0])
+        self._wavelength_range = self.spectrometer_device.get_calibration()
         return self._wavelength_range
 
     ##############################################################################
@@ -418,7 +420,7 @@ class SpectrumLogic(GenericLogic):
         @param input_port: (int) active input port (0 front and 1 side)
         @return: nothing
         """
-        if input_port==1 and not self.spectrometer_device.flipper_mirror_is_present(1):
+        if input_port==1 and not self._flipper_mirror_installed[0]:
             self.log.debug('Your hardware do not have any flipper mirror present at the input port ')
             break
         if not isinstance(input_port, int):
@@ -451,7 +453,7 @@ class SpectrumLogic(GenericLogic):
         @param output_port: (int) active output port (0 front and 1 side)
         @return: nothing
         """
-        if output_port==1 and not self.spectrometer_device.flipper_mirror_is_present(1):
+        if output_port==1 and not self._flipper_mirror_installed[1]:
             self.log.debug('Your hardware do not have any flipper mirror present at the output port ')
             break
         if not isinstance(output_port, int):
@@ -483,6 +485,9 @@ class SpectrumLogic(GenericLogic):
         @param slit_width: (float) input port slit width
         @return: nothing
         """
+        if not self._auto_slit_installed[0, self._input_port]:
+            self.log.debug('Input auto slit is not installed at this input port ')
+            break
         if not isinstance(slit_width, float):
             self.log.debug('Input slit width parameter is not correct : it must be a float ')
             break
@@ -509,6 +514,9 @@ class SpectrumLogic(GenericLogic):
         @param slit_width: (float) output port slit width
         @return: nothing
         """
+        if not self._auto_slit_installed[1, self._output_port]:
+            self.log.debug('Output auto slit is not installed at this output port ')
+            break
         if not isinstance(slit_width, float):
             self.log.debug('Output slit width parameter is not correct : it must be a float ')
             break
@@ -529,20 +537,6 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
     #                           Basic functions
     ##############################################################################
-
-    @property
-    def image_size(self):
-        """Getter method returning the real pixel matrix dimensions of the camera.
-        """
-        self._image_size = self.camera_device.get_image_size()
-        return self._image_size
-
-    @property
-    def pixel_size(self):
-        """Getter method returning the real pixel dimensions of the camera.
-        """
-        self._pixel_size = self.camera_device.get_pixel_size()
-        return self._pixel_size
 
     @property
     def acquired_data(self):
@@ -905,7 +899,7 @@ class SpectrumLogic(GenericLogic):
 
     @cooler_status.setter
     def cooler_status(self, cooler_status):
-        """Getter method returning the cooler status if ON or OFF.
+        """Setter method returning the cooler status if ON or OFF.
 
         @param cooler_status: (bool) 1 if ON or 0 if OFF
         @return: nothing
@@ -931,7 +925,7 @@ class SpectrumLogic(GenericLogic):
 
     @camera_temperature.setter
     def camera_temperature(self, camera_temperature):
-        """Getter method returning the temperature of the camera.
+        """Setter method returning the temperature of the camera.
 
         @param temperature: (float) temperature
         @return: nothing
