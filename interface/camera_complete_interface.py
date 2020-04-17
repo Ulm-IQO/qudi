@@ -29,39 +29,29 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     """ This interface is used to manage and visualize a simple camera
     """
 
+    @abstract_interface_method
+    def get_constraint(self):
+        """Returns all the fixed parameters of the hardware which can be used by the logic.
+
+        @return: (dict) constraint dict : {'read_mode_list' : ['FVB', 'MULTI_TRACK'...],
+                                    'acquistion_mode_list' : ['SINGLE_SCAN', 'MULTI_SCAN'...],
+                                     'trigger_mode_list' : ['INTERNAL', 'EXTERNAL'...],
+                                     'shutter_mode_list' : ['CLOSE', 'OPEN'...]
+                                     'image_size' : (512, 2048),
+                                     'pixiel_size' : (1e-4, 1e-4),
+                                     'name' : 'Newton940'}
+        """
+        pass
+
     ##############################################################################
     #                           Basic functions
     ##############################################################################
 
     @abstract_interface_method
-    def get_name(self):
-        """ Retrieve an identifier of the camera that the GUI can print
-
-        @return string: name for the camera
-        """
-        pass
-
-    @abstract_interface_method
-    def get_image_size(self):
-        """ Retrieve size of the image in pixel
-
-        @return tuple: Size (width, height)
-        """
-        pass
-
-    @abstract_interface_method
-    def get_pixel_size(self):
-        """ Retrieve the pixel size (unit is meter)
-
-        @return tuple: pixel_size (x,y)
-        """
-        pass
-
-    @abstract_interface_method
     def start_acquisition(self):
         """ Start a single acquisition
 
-        @return bool: Success ?
+        @return: nothing
         """
         pass
 
@@ -69,7 +59,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def stop_acquisition(self):
         """ Stop/abort live or single acquisition
 
-        @return bool: Success ?
+        @return: nothing
         """
         pass
 
@@ -77,18 +67,8 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_acquired_data(self):
         """ Return an array of last acquired image.
 
-        @return numpy array: image data in format [[row],[row]...]
-
+        @return: (ndarray) image data in format [[row],[row]...]
         Each pixel might be a float, integer or sub pixels
-        """
-        pass
-
-
-    @abstract_interface_method
-    def get_ready_state(self):
-        """ Is the camera ready for an acquisition ?
-
-        @return bool: ready ?
         """
         pass
 
@@ -98,63 +78,58 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def get_read_mode(self):
-        """
-        Getter method returning the current read mode used by the camera.
+        """Getter method returning the current read mode used by the camera.
 
-        :return: @str read mode (must be compared to a dict)
+        @return: (str) read mode
         """
         pass
 
     @abstract_interface_method
     def set_read_mode(self, read_mode):
-        """
-        Setter method setting the read mode used by the camera.
+        """Setter method setting the read mode used by the camera.
 
-        :param read_mode: @str read mode (must be compared to a dict)
-        :return: nothing
-        """
-        pass
-
-    @abstract_interface_method
-    def get_track_parameters(self):
-        """
-        Getter method returning the read mode tracks parameters of the camera.
-
-        :return: @tuple (@int number of track, @int track height, @int track offset) or 0 if error
+        @param read_mode: (str) read mode
+        @return: nothing
         """
         pass
 
     @abstract_interface_method
-    def set_track_parameters(self, number_of_track, track_heigth, track_offset):
+    def get_active_tracks(self):
+        """Getter method returning the read mode tracks parameters of the camera.
+
+        @return: (ndarray) active tracks positions [1st track start, 1st track end, ... ]
+        """
+        pass
+
+    @abstract_interface_method
+    def set_active_tracks(self, active_tracks):
         """
         Setter method setting the read mode tracks parameters of the camera.
 
-        :param number_of_track: @int number of track
-        :param track_heigth: @int track height
-        :param track_offset: @int track offset
-        :return: nothing
+        @param active_tracks: (ndarray) active tracks positions [1st track start, 1st track end, ... ]
+        @return: nothing
         """
         pass
 
     @abstract_interface_method
-    def get_image_parameters(self):
-        """
-        Getter method returning the read mode image parameters of the camera.
+    def get_active_image(self):
+        """Getter method returning the read mode image parameters of the camera.
 
-        :return: @tuple (@int pixel height, @int pixel width, @tuple (@int start raw, @int end raw),
-        @tuple (@int start column, @int end column)) or 0 if error
+        @return: (ndarray) active image parameters [hbin, vbin, hstart, hend, vstart, vend]
         """
         pass
 
     @abstract_interface_method
-    def set_image_parameters(self, superpixel_size, superimage_size, superimage_position):
-        """
-        Setter method setting the read mode image parameters of the camera.
+    def set_active_image(self,hbin, vbin, hstart, hend, vstart, vend):
+        """Setter method setting the read mode image parameters of the camera.
 
-        :param superpixel_size: @tuple (@int start raw, @int end raw)
-        :param superimage_size: @tuple (@int number of raw, @int number of column)
-        :param superimage_position: @tuple (@int bottom left corner raw, @int bottom left corner column)
-        :return: nothing
+        @param hbin: (int) horizontal pixel binning
+        @param vbin: (int) vertical pixel binning
+        @param hstart: (int) image starting row
+        @param hend: (int) image ending row
+        @param vstart: (int) image starting column
+        @param vend: (int) image ending column
+        @return: nothing
         """
         pass
 
@@ -167,60 +142,50 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         Getter method returning the current acquisition mode used by the camera.
 
-        :return: @str acquisition mode (must be compared to a dict)
+        @return: (str) acquisition mode
         """
         pass
 
     @abstract_interface_method
     def set_acquisition_mode(self, acquisition_mode):
-        """
-        Setter method setting the acquisition mode used by the camera.
+        """Setter method setting the acquisition mode used by the camera.
 
-        :param read_mode: @str read mode (must be compared to a dict)
-        :param kwargs: packed @dict which contain a series of arguments specific to the differents acquisition modes
-        :return: nothing
+        @param acquisition_mode: (str) acquistion mode
+        @return: nothing
         """
         pass
 
     @abstract_interface_method
     def get_accumulation_delay(self):
-        """
-        Getter method returning the accumulation cycle delay scan carry out during an accumulate acquisition mode
-         by the camera.
+        """Getter method returning the accumulation delay between consecutive scan during accumulate acquisition mode.
 
-        :return: @int accumulation cycle delay or 0 if error
+        @return: (float) accumulation delay
         """
         pass
 
     @abstract_interface_method
     def set_accumulation_delay(self, accumulation_delay):
-        """
-        Setter method setting the accumulation cycle delay scan carry out during an accumulate acquisition mode
-        by the camera.
+        """Setter method setting the accumulation delay between consecutive scan during an accumulate acquisition mode.
 
-        :param accumulation_time: @int accumulation cycle delay
-        :return: nothing
+        @param accumulation_delay: (float) accumulation delay
+        @return: nothing
         """
         pass
 
     @abstract_interface_method
     def get_number_accumulated_scan(self):
-        """
-        Getter method returning the number of accumulated scan carry out during an accumulate acquisition mode
-         by the camera.
+        """Getter method returning the number of accumulated scan during accumulate acquisition mode.
 
-        :return: @int number of accumulated scan or 0 if error
+        @return: (int) number of accumulated scan
         """
         pass
 
     @abstract_interface_method
     def set_number_accumulated_scan(self, number_scan):
-        """
-        Setter method setting the number of accumulated scan carry out during an accumulate acquisition mode
-         by the camera.
+        """Setter method setting the number of accumulated scan during accumulate acquisition mode.
 
-        :param number_scan: @int number of accumulated scan
-        :return: nothing
+        @param number_scan: (int) number of accumulated scan
+        @return: nothing
         """
         pass
 
@@ -228,35 +193,35 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_exposure_time(self):
         """ Get the exposure time in seconds
 
-        @return float exposure time
+        @return: (float) exposure time
         """
         pass
 
     @abstract_interface_method
     def set_exposure_time(self, exposure_time):
-        """ Set the exposure time in seconds
+        """ Set the exposure time in seconds.
 
-        @param float time: desired new exposure time
+        @param exposure_time: (float) desired new exposure time
 
-        @return float: setted new exposure time
+        @return: nothing
         """
         pass
 
     @abstract_interface_method
     def get_gain(self):
-        """ Get the gain
+        """ Get the gain.
 
-        @return float: exposure gain
+        @return: (float) exposure gain
         """
         pass
 
     @abstract_interface_method
     def set_gain(self, gain):
-        """ Set the gain
+        """ Set the gain.
 
-        @param float gain: desired new gain
+        @param camera_gain: (float) desired new gain
 
-        @return float: new exposure gain
+        @return: nothing
         """
         pass
 
@@ -266,20 +231,18 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def get_trigger_mode(self):
-        """
-        Getter method returning the current trigger mode used by the camera.
+        """Getter method returning the current trigger mode used by the camera.
 
-        :return: @str trigger mode (must be compared to a dict)
+        @return: (str) trigger mode (must be compared to the list)
         """
         pass
 
     @abstract_interface_method
     def set_trigger_mode(self, trigger_mode):
-        """
-        Setter method setting the trigger mode used by the camera.
+        """Setter method setting the trigger mode used by the camera.
 
-        :param trigger_mode: @str trigger mode (must be compared to a dict)
-        :return: nothing
+        @param trigger_mode: (str) trigger mode (must be compared to the list)
+        @return: nothing
         """
         pass
 
@@ -288,21 +251,19 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def shutter_is_open(self):
-        """
-        Getter method returning if the shutter is open.
+    def shutter_mode(self):
+        """Getter method returning the shutter mode.
 
-        :return: @bool shutter open ?
+        @return: (str) shutter mode (must be compared to the list)
         """
         pass
 
     @abstract_interface_method
-    def shutter_is_open(self, shutter_open):
-        """
-        Setter method setting if the shutter is open.
+    def shutter_mode(self, shutter_mode):
+        """Setter method setting the shutter mode.
 
-        :param shutter_mode: @bool shutter open
-        :return: nothing
+        @param shutter_mode: (str) shutter mode (must be compared to the list)
+        @return: nothing
         """
         pass
 
@@ -311,40 +272,36 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_cooler_ON(self):
-        """
-        Getter method returning the cooler status if ON or OFF.
+    def get_cooler_status(self):
+        """Getter method returning the cooler status if ON or OFF.
 
-        :return: @bool True if ON or False if OFF or 0 if error
+        @return: (int) 1 if ON or 0 if OFF
         """
         pass
 
     @abstract_interface_method
-    def get_cooler_ON(self, cooler_ON):
-        """
-        Getter method returning the cooler status if ON or OFF.
+    def set_cooler_status(self, cooler_status):
+        """Getter method returning the cooler status if ON or OFF.
 
-        :cooler_ON: @bool True if ON or False if OFF
-        :return: nothing
+        @param cooler_status: (bool) 1 if ON or 0 if OFF
+        @return: nothing
         """
         pass
 
 
     @abstract_interface_method
     def get_temperature(self):
-        """
-        Getter method returning the temperature of the camera.
+        """Getter method returning the temperature of the camera.
 
-        :return: @float temperature or 0 if error
+        @return: (float) temperature
         """
         pass
 
     @abstract_interface_method
     def set_temperature(self, temperature):
-        """
-        Getter method returning the temperature of the camera.
+        """Getter method returning the temperature of the camera.
 
-        :param temperature: @float temperature or 0 if error
-        :return: nothing
+        @param temperature: (float) temperature
+        @return: nothing
         """
         pass
