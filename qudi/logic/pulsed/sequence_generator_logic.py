@@ -1753,6 +1753,16 @@ class SequenceGeneratorLogic(LogicBase):
         else:
             array_length = self._overhead_bytes // bytes_per_sample
 
+        n_max_samples = self.pulsegenerator().get_constraints().waveform_length.max
+        if n_max_samples > 0. and ensemble_info['number_of_samples'] > n_max_samples:
+            self.log.error("Tried to write more samples ({:d}) than device supports ({:d}).".format(
+                ensemble_info['number_of_samples'],
+                n_max_samples))
+            if not self.__sequence_generation_in_progress:
+                self.module_state.unlock()
+            self.sigSampleEnsembleComplete.emit(None)
+            return -1, list(), dict()
+
         # Allocate the sample arrays that are used for a single write command
         analog_samples = dict()
         digital_samples = dict()

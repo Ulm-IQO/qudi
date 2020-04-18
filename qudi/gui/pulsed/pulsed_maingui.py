@@ -22,8 +22,21 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import datetime
+<<<<<<< HEAD:qudi/gui/pulsed/pulsed_maingui.py
 import numpy as np
 import pyqtgraph as pg
+=======
+
+from core.connector import Connector
+from core.statusvariable import StatusVar
+from core.util import units
+from core.util.helpers import natural_sort
+from gui.colordefs import QudiPalettePale as palette
+from gui.fitsettings import FitSettingsDialog
+from gui.guibase import GUIBase
+from qtpy import QtCore, QtWidgets, uic, QtGui
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+>>>>>>> 85b2b1c8 (improved waveform upload):gui/pulsed/pulsed_maingui.py
 from enum import Enum
 
 from qudi.core.connector import Connector
@@ -398,6 +411,15 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated)
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.connect(self.extraction_settings_updated)
 
+        # todo: disconnect new signals
+        self.pulsedmasterlogic().sigSampleBlockEnsemble.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigLoadBlockEnsemble.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigLoadSequence.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigSampleSequence.connect(self.sampling_or_loading_busy)
+
+        self.pulsedmasterlogic().sigLoadedAssetUpdated.connect(self.sampling_or_loading_finished)
+
+
         self.pulsedmasterlogic().sigBlockDictUpdated.connect(self.update_block_dict)
         self.pulsedmasterlogic().sigEnsembleDictUpdated.connect(self.update_ensemble_dict)
         self.pulsedmasterlogic().sigSequenceDictUpdated.connect(self.update_sequence_dict)
@@ -590,6 +612,28 @@ class PulsedMeasurementGui(GuiBase):
                                                     'from all loaded files.')
         self._mw.control_ToolBar.addWidget(self._mw.clear_device_PushButton)
 
+        # load animation
+        self._mw.sampleload_idle = QtGui.QPixmap("artwork/icons/sampload_idle.gif")
+        self._sampload_movie = QtGui.QMovie("artwork/icons/sampleload_busy_2.gif")
+
+        self._mw.sampload_animation = QtWidgets.QLabel(self._mw)
+
+        self._mw.sampload_animation.setToolTip('Shows when busy with uploading or sampling.')
+        # self._mw.sampload_animation.setSizePolicy(sizepolicy)
+        # a = self._mw.analysis_ToolBar.sizeHint()
+        # a.setHeight(a.height())
+        # self._mw.sampload_animation.sizeHint =   a
+        gifHeight = int(self._mw.save_ToolBar.height() * 0.64)
+        gifSize = QtCore.QSize(gifHeight, gifHeight)
+        self._sampload_movie.setScaledSize(gifSize)
+
+        self._mw.sampload_animation.setPixmap(self._mw.sampleload_idle)
+        #self._mw.sampload_animation.setMovie(self._sampload_movie)
+        #self._sampload_movie.start()
+
+        self._mw.control_ToolBar.addWidget(self._mw.sampload_animation)
+        self._mw.sampload_animation.setLayout(QtGui.QHBoxLayout())
+
         self._mw.current_loaded_asset_Label = QtWidgets.QLabel(self._mw)
         sizepolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                            QtWidgets.QSizePolicy.Fixed)
@@ -698,7 +742,7 @@ class PulsedMeasurementGui(GuiBase):
         @return:
         """
         # block signals
-        self._mw.action_run_stop.blockSignals(True)
+        self._mw.action_run_stop.blockSignals(True)   # start stop mes
         self._mw.action_continue_pause.blockSignals(True)
 
         # Enable/Disable widgets
@@ -1917,7 +1961,34 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().load_ensemble(ensemble_name)
         return
 
+<<<<<<< HEAD:qudi/gui/pulsed/pulsed_maingui.py
     def generate_predefined_clicked(self, method_name, sample_and_load=False):
+=======
+    @QtCore.Slot()
+    def sampling_or_loading_busy(self):
+        self.log.debug("Deactivating stuff because sampling is busy")
+        if self.pulsedmasterlogic().status_dict['sampload_busy']:
+            self._mw.action_run_stop.setEnabled(False)
+
+            label = self._mw.current_loaded_asset_Label
+            label.setText('  loading...')
+
+            #self._sampload_movie = QtGui.QMovie("artwork/icons/sampload_busy_2_44.gif")
+            self._mw.sampload_animation.setMovie(self._sampload_movie)
+            self._sampload_movie.start()
+
+    @QtCore.Slot()
+    def sampling_or_loading_finished(self):
+        if not self.pulsedmasterlogic().status_dict['sampload_busy']:
+            self._mw.action_run_stop.setEnabled(True)
+
+            self._sampload_movie.stop()
+            self._mw.sampload_animation.setPixmap(self._mw.sampleload_idle)
+
+
+    @QtCore.Slot(bool)
+    def generate_predefined_clicked(self, button_obj=None):
+>>>>>>> 85b2b1c8 (improved waveform upload):gui/pulsed/pulsed_maingui.py
         """
 
         @param str method_name:
