@@ -28,11 +28,14 @@ from enum import Enum
 from ctypes import *
 import numpy as np
 import ctypes as ct
+import ctypes
 
 from core.module import Base
 from core.configoption import ConfigOption
 
 from interface.camera_complete_interface import CameraInterface
+from core.util.modules import get_main_dir
+import os
 
 
 class ReadMode(Enum):
@@ -42,12 +45,14 @@ class ReadMode(Enum):
     SINGLE_TRACK = 3
     IMAGE = 4
 
+
 class AcquisitionMode(Enum):
     SINGLE_SCAN = 1
     ACCUMULATE = 2
     KINETICS = 3
     FAST_KINETICS = 4
     RUN_TILL_ABORT = 5
+
 
 class TriggerMode(Enum):
     INTERNAL = 0
@@ -56,6 +61,12 @@ class TriggerMode(Enum):
     EXTERNAL_EXPOSURE = 7
     SOFTWARE_TRIGGER = 10
     EXTERNAL_CHARGE_SHIFTING = 12
+
+class ShutterMode(Enum):
+    AUTO = 0
+    OPEN = 1
+    CLOSE = 2
+
 
 ERROR_DICT = {
     20001: "DRV_ERROR_CODES",
@@ -99,6 +110,7 @@ ERROR_DICT = {
     20992: "DRV_NOT_AVAILABLE"
 }
 
+
 class Newton940(Base, CameraInterface):
     """
     Hardware class for Andors Newton940
@@ -108,37 +120,46 @@ class Newton940(Base, CameraInterface):
 
     _default_exposure = ConfigOption('default_exposure', 1.0)
     _default_read_mode = ConfigOption('default_read_mode', 'IMAGE')
-    _default_temperature = ConfigOption('default_temperature', -70)
-    _default_cooler_on = ConfigOption('default_cooler_on', True)
+    _default_temperature = ConfigOption('default_temperature', -7)
+    _default_cooler_status = ConfigOption('default_cooler_status', True)
     _default_acquisition_mode = ConfigOption('default_acquisition_mode', 'SINGLE_SCAN')
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
+    _default_shutter_status = ConfigOption('default_shutter_status', 'CLOSE')
+    _default_active_tracks = ConfigOption('default_active_tracks', [246, 266])
     _dll_location = ConfigOption('dll_location', missing='error')
-    #_dll_location = 'ATMCD32D.dll'
+    # _dll_location = 'ATMCD32D.dll'
 
     _camera_name = 'Newton940'
 
-
-
     _exposure = _default_exposure
     _temperature = _default_temperature
-    _cooler_on = _default_cooler_on
+    _cooler_status = _default_cooler_status
     _read_mode = _default_read_mode
     _acquisition_mode = _default_acquisition_mode
     _gain = 0
     _width = 0
     _height = 0
     _last_acquisition_mode = None  # useful if config changes during acq
-    _supported_read_mode = ReadMode # TODO: read this from camera, all readmodes are available for iXon Ultra
+    _supported_read_mode = ReadMode  # TODO: read this from camera, all readmodes are available for iXon Ultra
     _max_cooling = -85
     _live = False
     _shutter = "closed"
     _trigger_mode = _default_trigger_mode
-    _scans = 1 #TODO get from camera
+    _scans = 1  # TODO get from camera
     _acquiring = False
 
-###################################################################################################
+    _shutter_TTL = 1
+    _shutter_closing_time = 100 #ms!
+    _shutter_opening_time = 100 #ms!
+    _shutter_status = _default_shutter_status
+
+    _active_tracks = _default_active_tracks
+    _number_of_tracks = 1
+
+
+    ##############################################################################
 #                            Basic module activation/deactivation
-###################################################################################################
+##############################################################################
     def on_activate(self):
         """ Initialization performed during activation of the module.
 
@@ -153,27 +174,37 @@ class Newton940(Base, CameraInterface):
             self.log.info('Problem during camera (Andor/Newton) initialization')
             self.on_deactivate()
         else:
-        nx_px, ny_px = c_int(), c_int()
-        nx_px, ny_py = self._get_size()
-        self._width, self._height = nx_px.value, ny_px.value
+            nx_px, ny_px = c_int(), c_int()
+            nx_px, ny_px = self.get_image_size()
+            self._width, self._height = nx_px, ny_px
 
-        self._set_read_mode(self._read_mode)
-        self._set_trigger_mode(self._trigger_mode)
-        self._set_exposuretime(self._exposure)
-        self._set_acquisition_mode(self._acquisition_mode)
+        self.set_read_mode(self._read_mode)
+        # à reprendre
+
+        # self._set_trigger_mode(self._trigger_mode)
+        # self._set_exposuretime(self._exposure)
+
+        # ok
+        self.set_acquisition_mode(self._acquisition_mode)
+        self.set_cooler_status(self._cooler_status)
+        self.set_temperature(self._temperature)
+
+        self.set_shutter_status(self._shutter_status)
 
     def on_deactivate(self):
         """
         Deinitialisation performed during deactivation of the module.
 
         """
-        self.stop_acquisition()
-        self._set_shutter(0, 0, 0.1, 0.1)
-        self._shut_down()
+        #self.stop_acquisition()
 
-###################################################################################################
+        # à reprendre
+        # self._set_shutter(0, 0, 0.1, 0.1)
+        self.dll.ShutDown()
+
+##############################################################################
 #                                     Error management
-###################################################################################################
+##############################################################################
 
     def check(self, func_val):
         """ Check routine for the received error codes.
@@ -182,14 +213,13 @@ class Newton940(Base, CameraInterface):
         """
 
         if not func_val == 20002:
-            self.log.error('Error in Shamrock with errorcode {0}:\n'
+            self.log.error('Error in Newton with errorcode {0}:\n'
                            '{1}'.format(func_val, self.errorcode[func_val]))
         return func_val
 
     def _create_errorcode(self):
         """ Create a dictionary with the errorcode for the device.
         """
-
         maindir = get_main_dir()
 
         filename = os.path.join(maindir, 'hardware', 'camera', 'andor', 'errorcodes_newton.h')
@@ -198,18 +228,448 @@ class Newton940(Base, CameraInterface):
                 content = f.readlines()
         except:
             self.log.error('No file "errorcodes_newton.h" could be found in the '
-                        'hardware/spectrometer directory!')
+                           'hardware/camera/andor/ directory!')
+
         errorcode = {}
         for line in content:
-            if '#define NEWTON940' in line:
+            if '#define ' in line:
                 errorstring, errorvalue = line.split()[-2:]
                 errorcode[int(errorvalue)] = errorstring
 
         return errorcode
 
-###################################################################################################
+##############################################################################
 #                                     Basic functions
-###################################################################################################
+##############################################################################
+
+    def get_constraint(self):
+        """Returns all the fixed parameters of the hardware which can be used by the logic.
+
+        @return: (dict) constraint dict : {'read_mode_list' : ['FVB', 'MULTI_TRACK'...],
+                                    'acquistion_mode_list' : ['SINGLE_SCAN', 'MULTI_SCAN'...],
+                                     'trigger_mode_list' : ['INTERNAL', 'EXTERNAL'...],
+                                     'shutter_mode_list' : ['CLOSE', 'OPEN'...]
+                                     'image_size' : (512, 2048),
+                                     'pixiel_size' : (1e-4, 1e-4),
+                                     'name' : 'Newton940'}
+        """
+        dico={}
+        dico['read_mode_list'] =['FVB','MULTI_TRACK', 'RANDOM_TRACK', 'SINGLE_TRACK', 'IMAGE']
+        dico['acquistion_mode_list'] = ['SINGLE_SCAN', 'ACCUMULATE', 'KINETICS', 'FAST_KINETICS', 'RUN_TILL_ABORT']
+        dico['trigger_mode_list'] =  ['INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE', 'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING']
+        dico['shutter_mode_list'] = ['AUTO', 'OPEN', 'CLOSE']
+        dico['image_size'] = self.get_image_size()
+        dico['pixiel_size'] = self.get_pixel_size()
+        dico['name'] = self.get_name()
+
+        return dico
+
+    def start_acquisition(self):
+        """
+        :return: nothing
+        Tested : no
+        """
+        self.check(self.dll.StartAcquisition())
+        self.dll.WaitForAcquisition()
+        return
+
+    def stop_acquisition(self):
+        """
+        Stops/aborts live or single acquisition
+
+        @return nothing
+        """
+        self.check(self.dll.AbortAcquisition())
+        return
+
+    def get_acquired_data(self):
+        """ Return an array of last acquired image.
+
+        @return numpy array: image data in format [[row],[row]...]
+
+        Each pixel might be a float, integer or sub pixels
+        """
+
+        if self._acquisition_mode == 'SINGLE_SCAN':
+            if self._read_mode == 'FVB':
+                dim = self._width
+                h=1
+
+            if self._read_mode == 'RANDOM_TRACK':
+                dim = self._width*self._number_of_tracks
+                h=self._number_of_tracks
+            if self._read_mode == 'SINGLE_TRACK':
+                dim = self._width
+                h=1
+            if self._read_mode == 'IMAGE':
+                dim = self._width*self._height
+                h=self._height
+
+            dim = int(dim)
+            image_array = np.zeros(dim)
+            cimage_array = c_int * dim
+            cimage = cimage_array()
+
+
+            error_code = self.dll.GetAcquiredData(pointer(cimage), dim)
+
+            if ERROR_DICT[error_code] != 'DRV_SUCCESS':
+                self.log.warning('Couldn\'t retrieve an image. {0}'.format(ERROR_DICT[error_code]))
+
+            else:
+                self.log.debug('image length {0}'.format(len(cimage)))
+                for i in range(len(cimage)):
+                    # could be problematic for 'FVB' or 'SINGLE_TRACK' readmode
+                    image_array[i] = cimage[i]
+
+            image_array = np.reshape(image_array, (self._width, h))
+
+            self._cur_image = image_array
+            return image_array
+
+
+
+
+        elif self.acquisition_mode == 'ACCUMULATE':
+            return
+
+
+
+##############################################################################
+#                           Read mode functions
+##############################################################################
+# is working, but not secured and SI
+
+    def get_read_mode(self):
+        """
+        Getter method returning the current read mode used by the camera.
+
+        :return: @str read mode (must be compared to a dict)
+
+        The function GetReadMode does not exist in Andor SDK... surprising !
+        We have to use a local variable.
+        """
+
+        return self._read_mode
+
+    def set_read_mode(self, read_mode):
+        """
+        Setter method setting the read mode used by the camera.
+
+        :param read_mode: @str read mode (must be compared to a dict)
+        :return: nothing
+        """
+        if hasattr(ReadMode, read_mode):
+            n_mode = c_int(getattr(ReadMode, read_mode).value)
+            error_code = self.dll.SetReadMode(n_mode)
+            if read_mode == 'IMAGE':
+                self.log.debug("width:{0}, height:{1}".format(self._width, self._height))
+                self.set_active_image(1, 1, 1, self._width, 1, self._height)
+            self._read_mode = read_mode
+
+        return
+
+    def get_active_tracks(self):
+        """Getter method returning the read mode tracks parameters of the camera.
+
+        @return: (ndarray) active tracks positions [1st track start, 1st track end, ... ]
+        """
+        if self._read_mode == 'SINGLE_TRACK' or self._read_mode == 'RANDOM_TRACK':
+            return self._active_tracks
+        else:
+            self.log.error('you are not in SINGLE_TRACK or RANDOM_TRACK read_mode')
+            return
+
+    def set_active_tracks(self, active_tracks):
+        """
+        Setter method setting the read mode tracks parameters of the camera.
+
+        @param active_tracks: (numpy array of int32) active tracks positions [1st track start, 1st track end, ... ]
+        @return: nothing
+        """
+
+        number_of_tracks = int(len(active_tracks)/2)
+        self.dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
+
+        if self._read_mode == 'FVB':
+            self.log.error('you want to define acquisition track, but current read_mode is FVB')
+        elif self._read_mode == 'MULTI_TRACK':
+            self.log.error('Please use RANDOM TRACK read mode for multi-track acquisition')
+        elif self._read_mode == 'IMAGE':
+            self.log.error('you want to define acquisition track, but current read_mode is IMAGE')
+        elif self._read_mode == 'SINGLE_TRACK' and number_of_tracks == 1:
+            self.check(self.dll.SetRandomTracks(number_of_tracks, active_tracks.ctypes.data))
+        elif self._read_mode == 'RANDOM_TRACK':
+            self.check(self.dll.SetRandomTracks(number_of_tracks, active_tracks.ctypes.data))
+        else:
+            self.log.error('problem with active tracks setting')
+
+        self._active_tracks=active_tracks
+        self._numbre_of_tracks=number_of_tracks
+
+        return
+
+    def get_active_image(self):
+        """Getter method returning the read mode image parameters of the camera.
+
+        @return: (ndarray) active image parameters [hbin, vbin, hstart, hend, vstart, vend]
+        """
+        active_image_parameters = [self._hbin, self._vbin, self._hstart, self._hend, self._vstart, self._vend]
+        return active_image_parameters
+
+    def set_active_image(self,hbin, vbin, hstart, hend, vstart, vend):
+        """Setter method setting the read mode image parameters of the camera.
+
+        @param hbin: (int) horizontal pixel binning
+        @param vbin: (int) vertical pixel binning
+        @param hstart: (int) image starting row
+        @param hend: (int) image ending row
+        @param vstart: (int) image starting column
+        @param vend: (int) image ending column
+        @return: nothing
+        """
+        hbin, vbin, hstart, hend, vstart, vend = c_int(hbin), c_int(vbin), \
+                                                 c_int(hstart), c_int(hend), c_int(vstart), c_int(vend)
+
+        error_code = self.dll.SetImage(hbin, vbin, hstart, hend, vstart, vend)
+        msg = ERROR_DICT[error_code]
+        if msg == 'DRV_SUCCESS':
+            self._hbin = hbin.value
+            self._vbin = vbin.value
+            self._hstart = hstart.value
+            self._hend = hend.value
+            self._vstart = vstart.value
+            self._vend = vend.value
+            self._width = int((self._hend - self._hstart + 1) / self._hbin)
+            self._height = int((self._vend - self._vstart + 1) / self._vbin)
+        else:
+            self.log.error('Call to SetImage went wrong:{0}'.format(msg))
+        return
+
+##############################################################################
+#                           Acquisition mode functions
+##############################################################################
+
+    def get_acquisition_mode(self):
+        """
+        Getter method returning the current acquisition mode used by the camera.
+
+        :return: @str acquisition mode (must be compared to a dict)
+        """
+        return self._acquisition_mode
+
+    def set_acquisition_mode(self, acquisition_mode):
+        """
+        Setter method setting the acquisition mode used by the camera.
+
+        :param acquisition_mode: @str read mode (must be compared to a dict)
+        :return: nothing
+        """
+
+        if hasattr(AcquisitionMode, acquisition_mode):
+            n_mode = c_int(getattr(AcquisitionMode, acquisition_mode).value)
+            self.check(self.dll.SetAcquisitionMode(n_mode))
+        else:
+            self.log.warning('{0} mode is not supported'.format(acquisition_mode))
+
+        self._acquisition_mode = acquisition_mode
+
+        return
+
+    def get_accumulation_delay(self):
+        """
+        Getter method returning the accumulation cycle delay scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :return: @int accumulation cycle delay or 0 if error
+        """
+        pass
+
+    def set_accumulation_delay(self, accumulation_delay):
+        """
+        Setter method setting the accumulation cycle delay scan carry out during an accumulate acquisition mode
+        by the camera.
+
+        :param accumulation_time: @int accumulation cycle delay
+        :return: nothing
+        """
+        pass
+
+    def get_number_accumulated_scan(self):
+        """
+        Getter method returning the number of accumulated scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :return: @int number of accumulated scan or 0 if error
+        """
+        pass
+
+    def set_number_accumulated_scan(self, number_scan):
+        """
+        Setter method setting the number of accumulated scan carry out during an accumulate acquisition mode
+         by the camera.
+
+        :param number_scan: @int number of accumulated scan
+        :return: nothing
+        """
+        pass
+
+    def get_exposure_time(self):
+        """ Get the exposure time in seconds
+
+        @return float exposure time
+        """
+
+        exposure = c_float()
+        accumulate = c_float()
+        kinetic = c_float()
+        error_code = self.dll.GetAcquisitionTimings(byref(exposure),
+                                                    byref(accumulate),
+                                                    byref(kinetic))
+        self._exposure = exposure.value
+        self._accumulate = accumulate.value
+        self._kinetic = kinetic.value
+
+        return self._exposure
+
+    def set_exposure_time(self, exposure_time):
+        """ Set the exposure time in seconds
+
+        @param float time: desired new exposure time
+
+        @return float: setted new exposure time
+        """
+        # faire test sur type de exposure time
+
+        # self.dll.SetExposureTime.argtypes = [ct.c_float]
+
+        code = self.check(self.dll.SetExposureTime(c_float(exposure_time)))
+
+        if code == 20002:
+            self._exposure = exposure_time
+            return True
+        else:
+            self.log.error('Error during set_exposure_time')
+
+    def get_gain(self):
+        """ Get the gain
+
+        @return float: exposure gain
+        """
+        pass
+
+    def set_gain(self, gain):
+        """ Set the gain
+
+        @param float gain: desired new gain
+
+        @return float: new exposure gain
+        """
+        pass
+
+##############################################################################
+#                           Trigger mode functions
+##############################################################################
+
+    def get_trigger_mode(self):
+        """
+        Getter method returning the current trigger mode used by the camera.
+
+        :return: @str trigger mode (must be compared to a dict)
+        """
+        pass
+
+    def set_trigger_mode(self, trigger_mode):
+        """
+        Setter method setting the trigger mode used by the camera.
+
+        :param trigger_mode: @str trigger mode (must be compared to a dict)
+        :return: nothing
+        """
+        pass
+
+##############################################################################
+#                           Shutter mode functions
+##############################################################################
+# is working, but not secured and SI
+
+    def get_shutter_status(self):
+        """
+        Getter method returning if the shutter is open.
+
+        :return: @bool shutter open ?
+        """
+        return self._shutter_status
+
+    def set_shutter_status(self, shutter_status):
+        """
+        Setter method setting if the shutter is open.
+
+        :param shutter_mode: @bool shutter open
+        :return: nothing
+        """
+
+        if hasattr(ShutterMode, shutter_status):
+            mode = c_int(getattr(ShutterMode, shutter_status).value)
+            self.dll.SetShutter(self._shutter_TTL, mode, self._shutter_closing_time, self._shutter_opening_time)
+            self._shutter_status = shutter_status
+
+        return
+
+##############################################################################
+#                           Temperature functions
+##############################################################################
+# is working, but not secured and SI
+
+    def get_cooler_status(self):
+        """
+        Getter method returning the cooler status if ON or OFF.
+
+        :return: @bool True if ON or False if OFF or 0 if error
+        """
+        return self._cooler_status
+
+    def set_cooler_status(self, cooler_status):
+        """
+        Setter method returning the cooler status if ON or OFF.
+
+        :cooler_ON: @bool True if ON or False if OFF
+        :return: nothing
+        """
+        if cooler_status:
+            self.check(self.dll.CoolerON())
+            self._cooler_status=True
+        else:
+            self.check(self.dll.CoolerOFF())
+            self._cooler_status=False
+        return
+
+    def get_temperature(self):
+        """
+        Getter method returning the temperature of the camera.
+
+        :return: @float temperature (°C) or 0 if error
+        """
+        temp = c_int32()
+        self.dll.GetTemperature(byref(temp))
+
+        return temp.value
+
+    def set_temperature(self, temperature):
+        """
+        Getter method returning the temperature of the camera.
+
+        :param temperature: @float temperature (°C) or 0 if error
+        :return: nothing
+        """
+        tempperature = c_int32(temperature)
+        self.dll.SetTemperature(temperature)
+        return
+
+##############################################################################
+#               Internal functions, for constraints preparation
+##############################################################################
+# is working, but not secured and SI
 
     def get_name(self):
         """
@@ -237,69 +697,34 @@ class Newton940(Base, CameraInterface):
 
     def get_pixel_size(self):
         """
-
         :return:
         """
         x_px = ct.c_float()
-        y_py = ct.c_float()
+        y_px = ct.c_float()
         self.check(self.dll.GetPixelSize(byref(x_px), byref(y_px)))
-        return x_px.value*1E-6, y_py.value*1E-6
+        return x_px.value * 1E-6, y_px.value * 1E-6
 
     def get_ready_state(self):
+        """
+
+        :return:
+        """
         code = ct.c_int()
         self.check(self.dll.GetStatus(byref(code)))
-        if code.value==2073:
+        if code.value == 20073:
             return True
         else:
             return False
 
-    def start_acquisition(self):
-        """
-        Starts a single acquisition
-        :return: nothing
-        Tested : no
 
-        """
-        self.check(self.dll.StartAcquisition())
-        self.dll.WaitForAcquisition()
-        return
 
-    def stop_acquisition(self):
-        """
-        Stops/aborts live or single acquisition
 
-        @return nothing
-        """
-        self.check(self.dll.AbortAcquisition())
-        return
 
-    def set_acquisition_mode(self, acquisition_mode, **kwargs):
-        """
-        Setter method setting the acquisition mode used by the camera.
 
-        :param acquisition_mode: @str read mode (must be compared to a dict)
-        :param kwargs: packed @dict which contain a series of arguments specific to the differents acquisition modes
-        :return: nothing
-        """
 
 
-        check_val = 0
-        if hasattr(AcquisitionMode, mode):
-            n_mode = c_int(getattr(AcquisitionMode, mode).value)
-            error_code = self.dll.SetAcquisitionMode(n_mode)
-        else:
-            self.log.warning('{0} mode is not supported'.format(mode))
-            check_val = -1
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            check_val = -1
-        else:
-            self._acquisition_mode = mode
 
-        return check_val
 
-##############################################################################
-#                           Read mode functions
-##############################################################################
 
 
 
@@ -320,546 +745,15 @@ class Newton940(Base, CameraInterface):
 
 
 
-    def support_live_acquisition(self):
-        """ Return whether or not the camera can take care of live acquisition
 
-        @return bool: True if supported, False if not
-        """
-        return False
 
-    def start_live_acquisition(self):
-        """ Start a continuous acquisition
 
-        @return bool: Success ?
-        """
-        if self._support_live:
-            self._live = True
-            self._acquiring = False
 
-        return False
 
 
 
 
 
-    def get_acquired_data(self):
-        """ Return an array of last acquired image.
 
-        @return numpy array: image data in format [[row],[row]...]
 
-        Each pixel might be a float, integer or sub pixels
-        """
 
-        width = self._width
-        height = self._height
-
-        if self._read_mode == 'IMAGE':
-            if self._acquisition_mode == 'SINGLE_SCAN':
-                dim = width * height
-            elif self._acquisition_mode == 'KINETICS':
-                dim = width * height * self._scans
-            elif self._acquisition_mode == 'RUN_TILL_ABORT':
-                dim = width * height
-            else:
-                self.log.error('Your acquisition mode is not covered currently')
-        elif self._read_mode == 'SINGLE_TRACK' or self._read_mode == 'FVB':
-            if self._acquisition_mode == 'SINGLE_SCAN':
-                dim = width
-            elif self._acquisition_mode == 'KINETICS':
-                dim = width * self._scans
-        else:
-            self.log.error('Your acquisition mode is not covered currently')
-
-        dim = int(dim)
-        image_array = np.zeros(dim)
-        cimage_array = c_int * dim
-        cimage = cimage_array()
-
-        # this will be a bit hacky
-        if self._acquisition_mode == 'RUN_TILL_ABORT':
-            error_code = self.dll.GetOldestImage(pointer(cimage), dim)
-        else:
-            error_code = self.dll.GetAcquiredData(pointer(cimage), dim)
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            self.log.warning('Couldn\'t retrieve an image. {0}'.format(ERROR_DICT[error_code]))
-        else:
-            self.log.debug('image length {0}'.format(len(cimage)))
-            for i in range(len(cimage)):
-                # could be problematic for 'FVB' or 'SINGLE_TRACK' readmode
-                image_array[i] = cimage[i]
-
-        image_array = np.reshape(image_array, (self._width, self._height))
-
-        self._cur_image = image_array
-        return image_array
-
-    def set_exposure(self, exposure):
-        """ Set the exposure time in seconds
-
-        @param float time: desired new exposure time
-
-        @return bool: Success?
-        """
-        msg = self._set_exposuretime(exposure)
-        if msg == "DRV_SUCCESS":
-            self._exposure = exposure
-            return True
-        else:
-            return False
-
-    def get_exposure(self):
-        """ Get the exposure time in seconds
-
-        @return float exposure time
-        """
-        self._get_acquisition_timings()
-        return self._exposure
-
-    # not sure if the distinguishing between gain setting and gain value will be problematic for
-    # this camera model. Just keeping it in mind for now.
-    #TODO: Not really funcitonal right now.
-    def set_gain(self, gain):
-        """ Set the gain
-
-        @param float gain: desired new gain
-
-        @return float: new exposure gain
-        """
-        n_pre_amps = self._get_number_preamp_gains()
-        msg = ''
-        if (gain >= 0) & (gain < n_pre_amps):
-            msg = self._set_preamp_gain(gain)
-        else:
-            self.log.warning('Choose gain value between 0 and {0}'.format(n_pre_amps-1))
-        if msg == 'DRV_SUCCESS':
-            self._gain = gain
-        else:
-            self.log.warning('The gain wasn\'t set. {0}'.format(msg))
-        return self._gain
-
-    def get_gain(self):
-        """ Get the gain
-
-        @return float: exposure gain
-        """
-        _, self._gain = self._get_preamp_gain()
-        return self._gain
-
-    def get_ready_state(self):
-        """ Is the camera ready for an acquisition ?
-
-        @return bool: ready ?
-        """
-        status = c_int()
-        self._get_status(status)
-        if ERROR_DICT[status.value] == 'DRV_IDLE':
-            return True
-        else:
-            return False
-
-# soon to be interface functions for using
-# a camera as a part of a (slow) photon counter
-    def set_up_counter(self):
-        check_val = 0
-        if self._shutter == 'closed':
-            msg = self._set_shutter(0, 1, 0.1, 0.1)
-            if msg == 'DRV_SUCCESS':
-                self._shutter = 'open'
-            else:
-                self.log.error('Problems with the shutter.')
-                check_val = -1
-        ret_val1 = self._set_trigger_mode('EXTERNAL')
-        ret_val2 = self._set_acquisition_mode('RUN_TILL_ABORT')
-        # let's test the FT mode
-        # ret_val3 = self._set_frame_transfer(True)
-        error_code = self.dll.PrepareAcquisition()
-        error_msg = ERROR_DICT[error_code]
-        if error_msg == 'DRV_SUCCESS':
-            self.log.debug('prepared acquisition')
-        else:
-            self.log.debug('could not prepare acquisition: {0}'.format(error_msg))
-        self._get_acquisition_timings()
-        if check_val == 0:
-            check_val = ret_val1 | ret_val2
-
-        if msg != 'DRV_SUCCESS':
-            ret_val3 = -1
-        else:
-            ret_val3 = 0
-
-        check_val = ret_val3 | check_val
-
-        return check_val
-
-    def count_odmr(self, length):
-        first, last = self._get_number_new_images()
-        self.log.debug('number new images:{0}'.format((first, last)))
-        if last - first + 1 < length:
-            while last - first + 1 < length:
-                first, last = self._get_number_new_images()
-        else:
-            self.log.debug('acquired too many images:{0}'.format(last - first + 1))
-
-        images = []
-        for i in range(first, last + 1):
-            img = self._get_images(i, i, 1)
-            images.append(img)
-        self.log.debug('expected number of images:{0}'.format(length))
-        self.log.debug('number of images acquired:{0}'.format(len(images)))
-        return np.array(images).transpose()
-
-    def get_down_time(self):
-        return self._exposure
-
-    def get_counter_channels(self):
-        width, height = self.get_size()
-        num_px = width * height
-        return [i for i in map(lambda x: 'px {0}'.format(x), range(num_px))]
-
-# non interface functions regarding camera interface
-    def _abort_acquisition(self):
-        error_code = self.dll.AbortAcquisition()
-        return ERROR_DICT[error_code]
-
-    def _shut_down(self):
-        error_code = self.dll.ShutDown()
-        return ERROR_DICT[error_code]
-
-    def _start_acquisition(self):
-        error_code = self.dll.StartAcquisition()
-        self.dll.WaitForAcquisition()
-        return ERROR_DICT[error_code]
-
-# setter functions
-
-    def _set_shutter(self, typ, mode, closingtime, openingtime):
-        """
-        @param int typ:   0 Output TTL low signal to open shutter
-                          1 Output TTL high signal to open shutter
-        @param int mode:  0 Fully Auto
-                          1 Permanently Open
-                          2 Permanently Closed
-                          4 Open for FVB series
-                          5 Open for any series
-        """
-        typ, mode, closingtime, openingtime = c_int(typ), c_int(mode), c_float(closingtime), c_float(openingtime)
-        error_code = self.dll.SetShutter(typ, mode, closingtime, openingtime)
-
-        return ERROR_DICT[error_code]
-
-    def _set_exposuretime(self, time):
-        """
-        @param float time: exposure duration
-        @return string answer from the camera
-        """
-        error_code = self.dll.SetExposureTime(c_float(time))
-        return ERROR_DICT[error_code]
-
-    def _set_read_mode(self, mode):
-        """
-        @param string mode: string corresponding to certain ReadMode
-        @return string answer from the camera
-        """
-        check_val = 0
-
-        if hasattr(ReadMode, mode):
-            n_mode = getattr(ReadMode, mode).value
-            n_mode = c_int(n_mode)
-            error_code = self.dll.SetReadMode(n_mode)
-            if mode == 'IMAGE':
-                self.log.debug("widt:{0}, height:{1}".format(self._width, self._height))
-                msg = self._set_image(1, 1, 1, self._width, 1, self._height)
-                if msg != 'DRV_SUCCESS':
-                    self.log.warning('{0}'.format(ERROR_DICT[error_code]))
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            self.log.warning('Readmode was not set: {0}'.format(ERROR_DICT[error_code]))
-            check_val = -1
-        else:
-            self._read_mode = mode
-
-        return check_val
-
-    def _set_trigger_mode(self, mode):
-        """
-        @param string mode: string corresponding to certain TriggerMode
-        @return string: answer from the camera
-        """
-        check_val = 0
-        if hasattr(TriggerMode, mode):
-            n_mode = c_int(getattr(TriggerMode, mode).value)
-            self.log.debug('Input to function: {0}'.format(n_mode))
-            error_code = self.dll.SetTriggerMode(n_mode)
-        else:
-            self.log.warning('{0} mode is not supported'.format(mode))
-            check_val = -1
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            check_val = -1
-        else:
-            self._trigger_mode = mode
-
-        return check_val
-
-    def _set_image(self, hbin, vbin, hstart, hend, vstart, vend):
-        """
-        This function will set the horizontal and vertical binning to be used when taking a full resolution image.
-        Parameters
-        @param int hbin: number of pixels to bin horizontally
-        @param int vbin: number of pixels to bin vertically. int hstart: Start column (inclusive)
-        @param int hend: End column (inclusive)
-        @param int vstart: Start row (inclusive)
-        @param int vend: End row (inclusive).
-
-        @return string containing the status message returned by the function call
-        """
-        hbin, vbin, hstart, hend, vstart, vend = c_int(hbin), c_int(vbin),\
-                                                 c_int(hstart), c_int(hend), c_int(vstart), c_int(vend)
-
-        error_code = self.dll.SetImage(hbin, vbin, hstart, hend, vstart, vend)
-        msg = ERROR_DICT[error_code]
-        if msg == 'DRV_SUCCESS':
-            self._hbin = hbin.value
-            self._vbin = vbin.value
-            self._hstart = hstart.value
-            self._hend = hend.value
-            self._vstart = vstart.value
-            self._vend = vend.value
-            self._width = int((self._hend - self._hstart + 1) / self._hbin)
-            self._height = int((self._vend - self._vstart + 1) / self._vbin)
-        else:
-            self.log.error('Call to SetImage went wrong:{0}'.format(msg))
-        return ERROR_DICT[error_code]
-
-    def _set_output_amplifier(self, typ):
-        """
-        @param c_int typ: 0: EMCCD gain, 1: Conventional CCD register
-        @return string: error code
-        """
-        error_code = self.dll.SetOutputAmplifier(typ)
-        return ERROR_DICT[error_code]
-
-    def _set_preamp_gain(self, index):
-        """
-        @param c_int index: 0 - (Number of Preamp gains - 1)
-        """
-        error_code = self.dll.SetPreAmpGain(index)
-        return ERROR_DICT[error_code]
-
-    def _set_temperature(self, temp):
-        temp = c_int(temp)
-        error_code = self.dll.SetTemperature(temp)
-        return  ERROR_DICT[error_code]
-
-    def _set_acquisition_mode(self, mode):
-        """
-        Function to set the acquisition mode
-        @param mode:
-        @return:
-        """
-        check_val = 0
-        if hasattr(AcquisitionMode, mode):
-            n_mode = c_int(getattr(AcquisitionMode, mode).value)
-            error_code = self.dll.SetAcquisitionMode(n_mode)
-        else:
-            self.log.warning('{0} mode is not supported'.format(mode))
-            check_val = -1
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            check_val = -1
-        else:
-            self._acquisition_mode = mode
-
-        return check_val
-
-    def _set_cooler(self, state):
-        if state:
-            error_code = self.dll.CoolerON()
-        else:
-            error_code = self.dll.CoolerOFF()
-
-        return ERROR_DICT[error_code]
-
-    def _set_frame_transfer(self, bool):
-        acq_mode = self._acquisition_mode
-
-        if (acq_mode == 'SINGLE_SCAN') | (acq_mode == 'KINETIC'):
-            self.log.debug('Setting of frame transfer mode has no effect in acquisition '
-                           'mode \'SINGLE_SCAN\' or \'KINETIC\'.')
-            return -1
-        else:
-            if bool:
-                rtrn_val = self.dll.SetFrameTransferMode(1)
-            else:
-                rtrn_val = self.dll.SetFrameTransferMode(0)
-
-        if ERROR_DICT[rtrn_val] == 'DRV_SUCCESS':
-            return 0
-        else:
-            self.log.warning('Could not set frame transfer mode:{0}'.format(ERROR_DICT[rtrn_val]))
-            return -1
-
-# getter functions
-    def _get_status(self, status):
-        error_code = self.dll.GetStatus(byref(status))
-        return ERROR_DICT[error_code]
-
-
-
-    def _get_camera_serialnumber(self, number):
-        """
-        Gives serial number
-        Parameters
-        """
-        error_code = self.dll.GetCameraSerialNumber(byref(number))
-        return ERROR_DICT[error_code]
-
-    def _get_acquisition_timings(self):
-        exposure = c_float()
-        accumulate = c_float()
-        kinetic = c_float()
-        error_code = self.dll.GetAcquisitionTimings(byref(exposure),
-                                               byref(accumulate),
-                                               byref(kinetic))
-        self._exposure = exposure.value
-        self._accumulate = accumulate.value
-        self._kinetic = kinetic.value
-        return ERROR_DICT[error_code]
-
-    def _get_oldest_image(self):
-        """ Return an array of last acquired image.
-
-        @return numpy array: image data in format [[row],[row]...]
-
-        Each pixel might be a float, integer or sub pixels
-        """
-
-        width = self._width
-        height = self._height
-
-        if self._read_mode == 'IMAGE':
-            if self._acquisition_mode == 'SINGLE_SCAN':
-                dim = width * height / self._hbin / self._vbin
-            elif self._acquisition_mode == 'KINETICS':
-                dim = width * height / self._hbin / self._vbin * self._scans
-        elif self._read_mode == 'SINGLE_TRACK' or self._read_mode == 'FVB':
-            if self._acquisition_mode == 'SINGLE_SCAN':
-                dim = width
-            elif self._acquisition_mode == 'KINETICS':
-                dim = width * self._scans
-
-        dim = int(dim)
-        image_array = np.zeros(dim)
-        cimage_array = c_int * dim
-        cimage = cimage_array()
-        error_code = self.dll.GetOldestImage(pointer(cimage), dim)
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            self.log.warning('Couldn\'t retrieve an image')
-        else:
-            self.log.debug('image length {0}'.format(len(cimage)))
-            for i in range(len(cimage)):
-                # could be problematic for 'FVB' or 'SINGLE_TRACK' readmode
-                image_array[i] = cimage[i]
-
-        image_array = np.reshape(image_array, (int(self._width/self._hbin), int(self._height/self._vbin)))
-        return image_array
-
-    def _get_number_amp(self):
-        """
-        @return int: Number of amplifiers available
-        """
-        n_amps = c_int()
-        self.dll.GetNumberAmp(byref(n_amps))
-        return n_amps.value
-
-    def _get_number_preamp_gains(self):
-        """
-        Number of gain settings available for the pre amplifier
-
-        @return int: Number of gains available
-        """
-        n_gains = c_int()
-        self.dll.GetNumberPreAmpGains(byref(n_gains))
-        return n_gains.value
-
-    def _get_preamp_gain(self):
-        """
-        Function returning
-        @return tuple (int1, int2): First int describing the gain setting, second value the actual gain
-        """
-        index = c_int()
-        gain = c_float()
-        self.dll.GetPreAmpGain(index, byref(gain))
-        return index.value, gain.value
-
-    def _get_temperature(self):
-        temp = c_int()
-        error_code = self.dll.GetTemperature(byref(temp))
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            self.log.error('Can not retrieve temperature'.format(ERROR_DICT[error_code]))
-        return temp.value
-
-    def _get_temperature_f(self):
-        """
-        Status of the cooling process + current temperature
-        @return: (float, str) containing current temperature and state of the cooling process
-        """
-        temp = c_float()
-        error_code = self.dll.GetTemperatureF(byref(temp))
-
-        return temp.value, ERROR_DICT[error_code]
-
-    def _get_size_of_circular_ring_buffer(self):
-        index = c_long()
-        error_code = self.dll.GetSizeOfCircularBuffer(byref(index))
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            self.log.error('Can not retrieve size of circular ring '
-                           'buffer: {0}'.format(ERROR_DICT[error_code]))
-        return index.value
-
-    def _get_number_new_images(self):
-        first = c_long()
-        last = c_long()
-        error_code = self.dll.GetNumberNewImages(byref(first), byref(last))
-        msg = ERROR_DICT[error_code]
-        pass_returns = ['DRV_SUCCESS', 'DRV_NO_NEW_DATA']
-        if msg not in pass_returns:
-            self.log.error('Can not retrieve number of new images {0}'.format(ERROR_DICT[error_code]))
-
-        return first.value, last.value
-
-    # not working properly (only for n_scans = 1)
-    def _get_images(self, first_img, last_img, n_scans):
-        """ Return an array of last acquired image.
-
-        @return numpy array: image data in format [[row],[row]...]
-
-        Each pixel might be a float, integer or sub pixels
-        """
-
-        width = self._width
-        height = self._height
-
-        # first_img, last_img = self._get_number_new_images()
-        # n_scans = last_img - first_img
-        dim = width * height * n_scans
-
-        dim = int(dim)
-        image_array = np.zeros(dim)
-        cimage_array = c_int * dim
-        cimage = cimage_array()
-
-        first_img = c_long(first_img)
-        last_img = c_long(last_img)
-        size = c_ulong(width * height)
-        val_first = c_long()
-        val_last = c_long()
-        error_code = self.dll.GetImages(first_img, last_img, pointer(cimage),
-                                        size, byref(val_first), byref(val_last))
-        if ERROR_DICT[error_code] != 'DRV_SUCCESS':
-            self.log.warning('Couldn\'t retrieve an image. {0}'.format(ERROR_DICT[error_code]))
-        else:
-            for i in range(len(cimage)):
-                # could be problematic for 'FVB' or 'SINGLE_TRACK' readmode
-                image_array[i] = cimage[i]
-
-        self._cur_image = image_array
-        return image_array
-# non interface functions regarding setpoint interface
