@@ -58,6 +58,17 @@ class Shamrock(Base,SpectrometerInterface):
     SLIT_MIN_WIDTH=10E-6
     SLIT_MAX_WIDTH=2500E-6
 
+    def get_constraint(self):
+        number_of_gratings = self.get_number_gratings()
+        wavelength_limits = np.array([[self.get_wavelength_limit(i)] for i in range(number_of_gratings)])
+        auto_slit_installed = np.array([[self.auto_slit_is_present('input',0), self.auto_slit_is_present('input',1)],
+                                        [self.auto_slit_is_present('output',0), self.auto_slit_is_present('output',1)]])
+        flipper_mirror_installed = np.array([self.flipper_mirror_is_present('input'), self.flipper_mirror_is_present('output')])
+        constraint_dict = {'number_of_gratings':number_of_gratings,
+                           'wavelength_limits':wavelength_limits,
+                           'auto_slit_installed':auto_slit_installed,
+                           'flipper_mirror_installed':flipper_mirror_installed}
+
 ##############################################################################
 #                            Basic functions
 ##############################################################################
@@ -357,28 +368,6 @@ class Shamrock(Base,SpectrometerInterface):
         else :
             self.log.error('get_wavelength_limit function "grating" parameter needs to be int type')
 
-    def get_calibration(self, number_pixels):
-        """
-        Returns the wavelength calibration of each pixel (m)
-        @params int number_pixels
-
-        Tested : yes
-        SI check : yes
-
-        Important Note : ShamrockSetNumberPixels and ShamrockSetPixelWidth must have been called
-        otherwise this function will return -1
-        """
-
-        if (number_pixels == self.get_number_of_pixels()):
-            wl_array = np.ones((number_pixels,), dtype=np.float32)
-            self.dll.ShamrockGetCalibration.argtypes = [ct.c_int32, ct.c_void_p, ct.c_int32]
-            self.check(self.dll.ShamrockGetCalibration(self.deviceID, wl_array.ctypes.data, number_pixels))
-            return wl_array*1E-9
-        else:
-            self.log.debug("get_calibration : your argument seems not consistant with the current number of pixels\
-                            did you really perform shamrock.set_number_of_pixel before to proceed ?")
-            return -1
-
     def set_number_of_pixels(self, number_of_pixels):
         """
         Sets the number of pixels of the detector (to prepare for calibration)
@@ -438,6 +427,33 @@ class Shamrock(Base,SpectrometerInterface):
         pixel_width = ct.c_float()
         self.check(self.dll.ShamrockGetPixelWidth(self.deviceID, ct.byref(pixel_width)))
         return pixel_width.value*1E-6
+
+##############################################################################
+#                            Calibration functions
+##############################################################################
+
+    def get_calibration(self):
+        """
+        Returns the wavelength calibration of each pixel (m)
+        @params int number_pixels
+
+        Tested : yes
+        SI check : yes
+
+        Important Note : ShamrockSetNumberPixels and ShamrockSetPixelWidth must have been called
+        otherwise this function will return -1
+        """
+        number_pixels = self.get_number_of_pixels()
+        wl_array = np.ones((number_pixels,), dtype=np.float32)
+        self.dll.ShamrockGetCalibration.argtypes = [ct.c_int32, ct.c_void_p, ct.c_int32]
+        self.check(self.dll.ShamrockGetCalibration(self.deviceID, wl_array.ctypes.data, number_pixels))
+        return wl_array*1E-9
+
+    def set_calibration(self, number_of_pixels, pixel_width, tracks_offset):
+
+        self.set_number_of_pixels(number_of_pixels)
+        self.set_pixel_width(pixel_width)
+        self.set_detector_offset(tracks_offset)
 
 ##############################################################################
 #                            Detector functions
