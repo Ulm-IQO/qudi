@@ -202,7 +202,7 @@ class AWG7k(Base, PulserInterface):
         elif self.model == 'AWG7052':
             constraints.sample_rate.min = 10.0e6
             constraints.sample_rate.max = 5.0e9
-            constraints.sample_rate.step = 10.0e6
+            constraints.sample_rate.step = 10.0e6 # <=== not sure
             constraints.sample_rate.default = 5.0e9
 
         if '02' in self.installed_options or self._has_interleave():
@@ -1627,4 +1627,10 @@ class AWG7k(Base, PulserInterface):
         return has_error
 
     def _has_sequence_mode(self):
-        return '08' in self.installed_options
+        if self.model == 'AWG7052':
+            # the Tek AWG model 7052 does support sequencing even without the option '08'
+            # from measurement results it looks kind of "fast" too
+            # can be used for T1 and correlation spectroscopy
+            return True
+        else:
+            return '08' in self.installed_options
