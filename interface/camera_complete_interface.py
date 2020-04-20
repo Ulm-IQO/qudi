@@ -94,6 +94,14 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def get_readout_speed(self):
+        pass
+
+    @abstract_interface_method
+    def set_readout_speed(self, readout_speed):
+        pass
+
+    @abstract_interface_method
     def get_active_tracks(self):
         """Getter method returning the read mode tracks parameters of the camera.
 
@@ -155,39 +163,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
-    def get_accumulation_delay(self):
-        """Getter method returning the accumulation delay between consecutive scan during accumulate acquisition mode.
-
-        @return: (float) accumulation delay
-        """
-        pass
-
-    @abstract_interface_method
-    def set_accumulation_delay(self, accumulation_delay):
-        """Setter method setting the accumulation delay between consecutive scan during an accumulate acquisition mode.
-
-        @param accumulation_delay: (float) accumulation delay
-        @return: nothing
-        """
-        pass
-
-    @abstract_interface_method
-    def get_number_accumulated_scan(self):
-        """Getter method returning the number of accumulated scan during accumulate acquisition mode.
-
-        @return: (int) number of accumulated scan
-        """
-        pass
-
-    @abstract_interface_method
-    def set_number_accumulated_scan(self, number_scan):
-        """Setter method setting the number of accumulated scan during accumulate acquisition mode.
-
-        @param number_scan: (int) number of accumulated scan
-        @return: nothing
-        """
-        pass
 
     @abstract_interface_method
     def get_exposure_time(self):

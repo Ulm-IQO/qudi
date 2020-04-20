@@ -45,14 +45,12 @@ class ReadMode(Enum):
     SINGLE_TRACK = 3
     IMAGE = 4
 
-
 class AcquisitionMode(Enum):
     SINGLE_SCAN = 1
     ACCUMULATE = 2
     KINETICS = 3
     FAST_KINETICS = 4
     RUN_TILL_ABORT = 5
-
 
 class TriggerMode(Enum):
     INTERNAL = 0
@@ -67,6 +65,17 @@ class ShutterMode(Enum):
     OPEN = 1
     CLOSE = 2
 
+GAIN_DICT = {
+    0: 1,       # index=0 - gain is 1x
+    1: 2,       # index=1 - gain is 2x
+    2: 4        # ...
+}
+
+READOUT_SPEED_DICT = {
+    0: 50000,   # index=0 - Horizontal shift is 50kHz
+    1: 1000000, # index=1 - Horizontal shift is 1MHz
+    2: 3000000  # ...
+}
 
 ERROR_DICT = {
     20001: "DRV_ERROR_CODES",
@@ -113,53 +122,58 @@ ERROR_DICT = {
 
 class Newton940(Base, CameraInterface):
     """
-    Hardware class for Andors Newton940
+    Hardware class for Andor Newton940 CCD spectroscopy cameras
     """
     _modtype = 'camera'
     _modclass = 'hardware'
 
-    _default_exposure = ConfigOption('default_exposure', 1.0)
-    _default_read_mode = ConfigOption('default_read_mode', 'IMAGE')
-    _default_temperature = ConfigOption('default_temperature', -7)
     _default_cooler_status = ConfigOption('default_cooler_status', True)
+    _default_temperature = ConfigOption('default_temperature', -7)
     _default_acquisition_mode = ConfigOption('default_acquisition_mode', 'SINGLE_SCAN')
+    _default_read_mode = ConfigOption('default_read_mode', 'IMAGE')
+    _default_readout_speed = ConfigOption('default_readout_speed', 50000)
+    _default_preamp_gain = ConfigOption('default_preamp_gain', 1)
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
+    _default_exposure = ConfigOption('default_exposure', 1.0)
     _default_shutter_status = ConfigOption('default_shutter_status', 'CLOSE')
     _default_active_tracks = ConfigOption('default_active_tracks', [246, 266])
     _dll_location = ConfigOption('dll_location', missing='error')
-    # _dll_location = 'ATMCD32D.dll'
 
     _camera_name = 'Newton940'
 
-    _exposure = _default_exposure
-    _temperature = _default_temperature
     _cooler_status = _default_cooler_status
-    _read_mode = _default_read_mode
+    _temperature = _default_temperature
+    _max_cooling = -85
     _acquisition_mode = _default_acquisition_mode
+    _read_mode = _default_read_mode
+    _readout_speed = _default_readout_speed
+    _preamp_gain = _default_preamp_gain
+    _trigger_mode = _default_trigger_mode
+
+    _exposure = _default_exposure
+    _shutter_status = _default_shutter_status
+    _shutter_TTL = 1
+    _shutter_closing_time = 100 #ms!
+    _shutter_opening_time = 100 #ms!
+
     _gain = 0
     _width = 0
     _height = 0
     _last_acquisition_mode = None  # useful if config changes during acq
-    _supported_read_mode = ReadMode  # TODO: read this from camera, all readmodes are available for iXon Ultra
-    _max_cooling = -85
+    _supported_read_mode = ReadMode  #
     _live = False
-    _shutter = "closed"
-    _trigger_mode = _default_trigger_mode
-    _scans = 1  # TODO get from camera
-    _acquiring = False
 
-    _shutter_TTL = 1
-    _shutter_closing_time = 100 #ms!
-    _shutter_opening_time = 100 #ms!
-    _shutter_status = _default_shutter_status
+    _scans = 1
+    _acquiring = False
 
     _active_tracks = _default_active_tracks
     _number_of_tracks = 1
 
-
-    ##############################################################################
+##############################################################################
 #                            Basic module activation/deactivation
 ##############################################################################
+# is working, but not secured and SI
+
     def on_activate(self):
         """ Initialization performed during activation of the module.
 
@@ -173,21 +187,22 @@ class Newton940(Base, CameraInterface):
         if code != 20002:
             self.log.info('Problem during camera (Andor/Newton) initialization')
             self.on_deactivate()
+
         else:
-            nx_px, ny_px = c_int(), c_int()
+            #nx_px, ny_px = c_int(), c_int()
             nx_px, ny_px = self.get_image_size()
             self._width, self._height = nx_px, ny_px
 
-        self.set_read_mode(self._read_mode)
-        # à reprendre
-
-        # self._set_trigger_mode(self._trigger_mode)
-        # self._set_exposuretime(self._exposure)
-
-        # ok
-        self.set_acquisition_mode(self._acquisition_mode)
         self.set_cooler_status(self._cooler_status)
         self.set_temperature(self._temperature)
+
+        self.set_acquisition_mode(self._acquisition_mode)
+        self.set_read_mode(self._read_mode)
+        self.set_readout_speed(self._readout_speed)
+        self.set_gain(self._preamp_gain)
+        self.set_trigger_mode(self._trigger_mode)
+
+        self.set_exposure_time(self._exposure)
 
         self.set_shutter_status(self._shutter_status)
 
@@ -205,7 +220,7 @@ class Newton940(Base, CameraInterface):
 ##############################################################################
 #                                     Error management
 ##############################################################################
-
+# is working
     def check(self, func_val):
         """ Check routine for the received error codes.
          :return: the dll function error code
@@ -254,13 +269,14 @@ class Newton940(Base, CameraInterface):
                                      'name' : 'Newton940'}
         """
         dico={}
-        dico['read_mode_list'] =['FVB','MULTI_TRACK', 'RANDOM_TRACK', 'SINGLE_TRACK', 'IMAGE']
-        dico['acquistion_mode_list'] = ['SINGLE_SCAN', 'ACCUMULATE', 'KINETICS', 'FAST_KINETICS', 'RUN_TILL_ABORT']
+        dico['read_mode_list'] =['FVB', 'RANDOM_TRACK', 'SINGLE_TRACK', 'IMAGE']
+        dico['acquistion_mode_list'] = ['SINGLE_SCAN']
         dico['trigger_mode_list'] =  ['INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE', 'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING']
         dico['shutter_mode_list'] = ['AUTO', 'OPEN', 'CLOSE']
         dico['image_size'] = self.get_image_size()
         dico['pixiel_size'] = self.get_pixel_size()
         dico['name'] = self.get_name()
+        dico['Pream Gain'] = [1, 2, 4]
 
         return dico
 
@@ -298,9 +314,11 @@ class Newton940(Base, CameraInterface):
             if self._read_mode == 'RANDOM_TRACK':
                 dim = self._width*self._number_of_tracks
                 h=self._number_of_tracks
+
             if self._read_mode == 'SINGLE_TRACK':
                 dim = self._width
                 h=1
+
             if self._read_mode == 'IMAGE':
                 dim = self._width*self._height
                 h=self._height
@@ -328,10 +346,6 @@ class Newton940(Base, CameraInterface):
             return image_array
 
 
-
-
-        elif self.acquisition_mode == 'ACCUMULATE':
-            return
 
 
 
@@ -369,6 +383,19 @@ class Newton940(Base, CameraInterface):
 
         return
 
+    def get_readout_speed(self):
+        return self._readout_speed
+
+    def set_readout_speed(self, readout_speed):
+        if readout_speed in list(READOUT_SPEED_DICT.values()):
+            readout_speed_index=list(READOUT_SPEED_DICT.values()).index(readout_speed)
+            self.check(self.dll.SetHSSpeed(0,readout_speed_index))
+            self._readout_speed = readout_speed
+            return
+        else:
+            self.log.warning('Hardware / Newton940 / set.readout_speed : readout_speed value is not available')
+
+
     def get_active_tracks(self):
         """Getter method returning the read mode tracks parameters of the camera.
 
@@ -405,7 +432,7 @@ class Newton940(Base, CameraInterface):
             self.log.error('problem with active tracks setting')
 
         self._active_tracks=active_tracks
-        self._numbre_of_tracks=number_of_tracks
+        self._number_of_tracks=number_of_tracks
 
         return
 
@@ -449,6 +476,7 @@ class Newton940(Base, CameraInterface):
 ##############################################################################
 #                           Acquisition mode functions
 ##############################################################################
+# is working, but not secured and SI
 
     def get_acquisition_mode(self):
         """
@@ -475,44 +503,6 @@ class Newton940(Base, CameraInterface):
         self._acquisition_mode = acquisition_mode
 
         return
-
-    def get_accumulation_delay(self):
-        """
-        Getter method returning the accumulation cycle delay scan carry out during an accumulate acquisition mode
-         by the camera.
-
-        :return: @int accumulation cycle delay or 0 if error
-        """
-        pass
-
-    def set_accumulation_delay(self, accumulation_delay):
-        """
-        Setter method setting the accumulation cycle delay scan carry out during an accumulate acquisition mode
-        by the camera.
-
-        :param accumulation_time: @int accumulation cycle delay
-        :return: nothing
-        """
-        pass
-
-    def get_number_accumulated_scan(self):
-        """
-        Getter method returning the number of accumulated scan carry out during an accumulate acquisition mode
-         by the camera.
-
-        :return: @int number of accumulated scan or 0 if error
-        """
-        pass
-
-    def set_number_accumulated_scan(self, number_scan):
-        """
-        Setter method setting the number of accumulated scan carry out during an accumulate acquisition mode
-         by the camera.
-
-        :param number_scan: @int number of accumulated scan
-        :return: nothing
-        """
-        pass
 
     def get_exposure_time(self):
         """ Get the exposure time in seconds
@@ -556,7 +546,7 @@ class Newton940(Base, CameraInterface):
 
         @return float: exposure gain
         """
-        pass
+        return self._preamp_gain
 
     def set_gain(self, gain):
         """ Set the gain
@@ -565,11 +555,19 @@ class Newton940(Base, CameraInterface):
 
         @return float: new exposure gain
         """
-        pass
+
+        if gain in list(GAIN_DICT.values()):
+            gain_index=list(GAIN_DICT.values()).index(gain)
+            self.check(self.dll.SetPreAmpGain(gain_index))
+            self._preamp_gain = gain
+            return
+        else:
+            self.log.warning('Hardware / Newton940 / set.gain : gain value is not available')
 
 ##############################################################################
 #                           Trigger mode functions
 ##############################################################################
+# is working, but not secured and SI
 
     def get_trigger_mode(self):
         """
@@ -577,7 +575,7 @@ class Newton940(Base, CameraInterface):
 
         :return: @str trigger mode (must be compared to a dict)
         """
-        pass
+        return self._trigger_mode
 
     def set_trigger_mode(self, trigger_mode):
         """
@@ -586,7 +584,13 @@ class Newton940(Base, CameraInterface):
         :param trigger_mode: @str trigger mode (must be compared to a dict)
         :return: nothing
         """
-        pass
+        if hasattr(TriggerMode, trigger_mode):
+            n_mode = c_int(getattr(TriggerMode, trigger_mode).value)
+            self.check(self.dll.SetTriggerMode(n_mode))
+            self._trigger_mode = trigger_mode
+        else:
+            self.log.warning('{0} mode is not supported'.format(trigger_mode))
+        return
 
 ##############################################################################
 #                           Shutter mode functions
