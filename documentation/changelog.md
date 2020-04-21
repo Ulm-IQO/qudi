@@ -63,6 +63,7 @@ The potential sequence_options are:
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
+* Added basic field calculation tool with NV center.
 
 
 Config changes:
@@ -71,6 +72,7 @@ Config changes:
 of the `SequenceGeneratorLogic` can now either be a string for a single path 
 or a list of strings for multiple paths.
 * There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`  
+* Added calculator_logic and calculator_gui.
 
 ## Release 0.10
 Released on 14 Mar 2019
