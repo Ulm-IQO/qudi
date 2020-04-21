@@ -58,9 +58,6 @@ class CalculatorGui(GUIBase):
         self._mw.fit_source_comboBox.addItem('CW_ODMR')
         self._mw.fit_source_comboBox.addItem('pulsed')
         self._mw.fit_source_comboBox.activated.connect(self.update_source)
-        # NMR setting
-        self.tableWidget = QtWidgets.QTableWidget
-
         ########################################################################
         #                       Connect signals                                #
         ########################################################################
@@ -78,6 +75,7 @@ class CalculatorGui(GUIBase):
 
         self._mw.nmr_auto_PushButton.clicked.connect(self.auto_calculate_nmr, QtCore.Qt.QueuedConnection)
         self._mw.nmr_manual_PushButton.clicked.connect(self.manual_calculate_nmr, QtCore.Qt.QueuedConnection)
+        self._mw.odmr1nmr_manual_PushButton.clicked.connect(self.use_single_freq, QtCore.Qt.QueuedConnection)
 
         self.sigCalParamsChanged.connect(self.calculator.set_field_params, QtCore.Qt.QueuedConnection)
         self.sigManualDipsChanged.connect(self.calculator.set_manual_dip_values, QtCore.Qt.QueuedConnection)
@@ -124,6 +122,7 @@ class CalculatorGui(GUIBase):
     def update_source(self, index):
         self._mw.fit_source_comboBox.itemData(index, QtCore.Qt.UserRole)
         self.calculator.set_data_source(index)
+        return
 
     def update_field_params(self, param_dict):
         param = param_dict.get('ZFS')
@@ -182,6 +181,13 @@ class CalculatorGui(GUIBase):
         """ Change the field values manualy for NMR calculation"""
         manual_field = self._mw.manual_field_DoubleSpinBox.value()
         self.sigMaualFieldChanged.emit(manual_field)
+        return
+
+    def use_single_freq(self):
+        single_freq = self._mw.odmr1_DoubleSpinBox.value()
+        b_field = self.calculator.single_freq(single_freq)
+        self._mw.manual_field_DoubleSpinBox.setValue(b_field)
+        self.change_manual_field()
         return
 
     def auto_calculate_nmr(self):

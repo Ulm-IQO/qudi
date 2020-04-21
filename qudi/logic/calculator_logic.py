@@ -26,7 +26,9 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 from scipy.constants import physical_constants
 
 
@@ -183,3 +185,10 @@ class CalculatorLogic(GenericLogic):
         xy8 = [h1_xy8, c13_xy8, n14_xy8, n15_xy8]
         self.sigNMRUpdated.emit(freqs, xy8)
         return freqs, xy8
+
+    def single_freq(self, freq):
+        if self.lac:
+            b_field = np.abs(freq/1e6 + self.zero_field_D/1e6)/2.8
+        else:
+            b_field = np.abs(freq / 1e6 - self.zero_field_D / 1e6) / 2.8
+        return b_field
