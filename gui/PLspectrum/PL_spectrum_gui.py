@@ -95,7 +95,7 @@ class PLspectrumGUI(GUIBase):
 
         # label plot axis :
 
-        self._spec.setLabel('left', 'Fluorescence', units='counts/s')
+        self._spec.setLabel('left', 'Signal intensity', units='counts/s')
         self._spec.setLabel('right', 'Number of Points', units='#')
         self._spec.setLabel('bottom', 'Wavelength', units='m')
         self._spec.setLabel('top', 'Relative Frequency', units='Hz')
@@ -119,55 +119,74 @@ class PLspectrumGUI(GUIBase):
         self._save_PNG = True
 
     def read_settings(self):
-
-        self._center_wavelength = self._spectrum_logic.center_wavelength
-        self._detector_offset = self._spectrum_logic.detector_offset
-        self._grating = self._spectrum_logic.grating
-        self._input_slit = self._spectrum_logic.input_slit
-        self._input_slit_width = self._spectrum_logic.input_slit_width
-        self._output_slit = self._spectrum_logic.output_slit
-        self._output_slit_width = self._spectrum_logic.output_slit_width
-        self._min_wavelength, self._max_wavelength = self._spectrum_logic.wavelength_limits
-
-        self._mw.wavelengthDSpin.setRange(self._min_wavelength, self._max_wavelength)
-
+"""
         # Initialize widgets slots :
-        self._mw.wavelengthDSpin.setValue(self._center_wavelength)
-        self._mw.detectorOffsetSpin.setValue(self._detector_offset)
-        self._mw.gratingNumCombo.setCurrentIndex(self._grating)
-        self._mw.inputSlitCombo.setCurrentIndex(self._input_slit-1)
-        self._mw.inputSlitWidthDSpin.setValue(self._input_slit_width)
-        self._mw.outputSlitCombo.setCurrentIndex(self._output_slit-1)
-        self._mw.outputSlitWidthDSpin.setValue(self._output_slit_width)
+        self._mw.gratingNumCombo.setCurrentIndex(self._spectrum_logic.grating)
+        self._mw.inputPortCombo.setCurrentIndex(self._spectrum_logic.input_port)
+        self._mw.outputPortCombo.setCurrentIndex(self._spectrum_logic.output_port)
+        self._mw.readModeCombo.setCurrentIndex(self._spectrum_logic.read_mode)
+        self._mw.acquModeCombo.setCurrentIndex(self._spectrum_logic.acquisition_mode)
+        self._mw.triggerModeCombo.setCurrentIndex(self._spectrum_logic.trigger_mode)
+        self._mw.scanFreqCombo.setCurrentIndex(self._spectrum_logic.
+        self._mw.accumulationDelayDSpin.setCurrentIndex(self._spectrum_logic.
 
+        self._mw.cameraGainSpin.setValue(self._spectrum_logic._camera_gain)
+        self._mw.numAccumulatedSpin.setValue(self._spectrum_logic.
+        self._mw.numTrackSpin.setValue(self._spectrum_logic.
+        self._mw.trackHeightSpin.setValue(self._spectrum_logic.
+        self._mw.trackOffsetSpin.setValue(self._spectrum_logic.
+        self._mw.gratingOffsetSpin.setValue(self._spectrum_logic.
+
+        self._mw.exposureDSpin.setValue(self._spectrum_logic.
+        self._mw.numScanDSpin.setValue(self._spectrum_logic.
+        self._mw.temperatureDSpin.setValue(self._spectrum_logic.
+        self._mw.inputSlitWidthDSpin.setValue(self._spectrum_logic.
+        self._mw.outputSlitWidthDSpin.setValue(self._spectrum_logic.
+        self._mw.wavelengthDSpin.setValue(self._spectrum_logic.
+
+        self._mw.coolerButton
+
+        self._mw.wavelengthDSpin.setRange(self._spectrum_logic.wavelength_limit)
+        """
 
     def update_settings(self):
 
-        self._center_wavelength = self._mw.wavelengthDSpin.value()
-        self._detector_offset = self._mw.detectorOffsetSpin.value()
-        self._grating = self._mw.gratingNumCombo.currentIndex()
-        self._input_slit = self._mw.inputSlitCombo.currentIndex()+1
-        self._input_slit_width = self._mw.inputSlitWidthDSpin.value()
-        self._output_slit = self._mw.outputSlitCombo.currentIndex()+1
-        self._output_slit_width = self._mw.outputSlitWidthDSpin.value()
+        self._spectrum_logic.center_wavelength = self._mw.wavelengthDSpin.value()
+        self._spectrum_logic.detector_offset = self._mw.detectorOffsetSpin.value()
+        self._spectrum_logic.grating = self._mw.gratingNumCombo.currentIndex()
+        self._spectrum_logic.input_slit = self._mw.inputSlitCombo.currentIndex()
+        self._spectrum_logic.input_slit_width = self._mw.inputSlitWidthDSpin.value()
+        self._spectrum_logic.output_slit = self._mw.outputSlitCombo.currentIndex()
+        self._spectrum_logic.output_slit_width = self._mw.outputSlitWidthDSpin.value()
 
-        self._spectrum_logic.center_wavelength = self._center_wavelength
-        self._spectrum_logic.detector_offset = self._detector_offset
-        self._spectrum_logic.grating = self._grating
-        self._spectrum_logic.input_slit = self._input_slit
-        self._spectrum_logic.input_slit_width = self._input_slit_width
-        self._spectrum_logic.output_slit = self._output_slit
-        self._spectrum_logic.output_slit_width = self._output_slit_width
+        self._mw.wavelengthDSpin.setRange(self._spectrum_logic.wavelength_limits)
 
-        self._min_wavelength, self._max_wavelength = self._spectrum_logic.wavelength_limits
-        self._mw.wavelengthDSpin.setRange(self._min_wavelength, self._max_wavelength)
+        self._mw.gratingNumCombo.setCurrentIndex(self._spectrum_logic.grating)
+        self._mw.inputPortCombo.setCurrentIndex(self._spectrum_logic.input_port)
+        self._mw.outputPortCombo.setCurrentIndex(self._spectrum_logic.output_port)
+        self._mw.readModeCombo.setCurrentIndex(self._spectrum_logic.read_mode)
+        self._mw.acquModeCombo.setCurrentIndex(self._spectrum_logic.acquisition_mode)
+        self._mw.triggerModeCombo.setCurrentIndex(self._spectrum_logic.trigger_mode)
+        self._mw.scanFreqCombo.setCurrentIndex(self._spectrum_logic.
+        self._mw.accumulationDelayDSpin.setCurrentIndex(self._spectrum_logic.
 
-    def update_image_settings(self):
+        self._mw.cameraGainSpin.setValue(self._spectrum_logic._camera_gain)
+        self._mw.numAccumulatedSpin.setValue(self._spectrum_logic.
+        self._mw.numTrackSpin.setValue(self._spectrum_logic.
+        self._mw.trackHeightSpin.setValue(self._spectrum_logic.
+        self._mw.trackOffsetSpin.setValue(self._spectrum_logic.
+        self._mw.gratingOffsetSpin.setValue(self._spectrum_logic.
 
-        self._width = 2048  # number of pixels along dispersion axis
-        self._height = 512  # number of pixels (perpendicular to dispersion axis)
-        self._pixelwidth = 13  # unit is micrometer
-        self._pixelheight = 13  # unit is micrometer
+        self._mw.exposureDSpin.setValue(self._spectrum_logic.
+        self._mw.numScanDSpin.setValue(self._spectrum_logic.
+        self._mw.temperatureDSpin.setValue(self._spectrum_logic.
+        self._mw.inputSlitWidthDSpin.setValue(self._spectrum_logic.
+        self._mw.outputSlitWidthDSpin.setValue(self._spectrum_logic.
+        self._mw.wavelengthDSpin.setValue(self._spectrum_logic.
+
+        self._mw.coolerButton
+
+        self._mw.wavelengthDSpin.setRange(self._spectrum_logic.wavelength_limit)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
