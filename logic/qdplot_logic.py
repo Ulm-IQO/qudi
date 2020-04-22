@@ -48,6 +48,8 @@ class QDPlotLogic(GenericLogic):
     fit_logic = Connector(interface='FitLogic')
 
     plot_1_fit_container = StatusVar(name='plot_1_fit_container', default=None)
+    plot_2_fit_container = StatusVar(name='plot_2_fit_container', default=None)
+    plot_3_fit_container = StatusVar(name='plot_3_fit_container', default=None)
 
     def __init__(self, *args, **kwargs):
         """ Create QDPlotLogic object with connectors.
@@ -62,29 +64,35 @@ class QDPlotLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-        self._clear_old = True
-        self._x_limits = [[0., 1.]] * 3
-        self._y_limits = [[0., 1.]] * 3
-        self._x_label = ['X'] * 3
-        self._y_label = ['Y'] * 3
-        self._x_unit = ['a.u.'] * 3
-        self._y_unit = ['a.u.'] * 3
-        self._x_data = [np.zeros(shape=(1, 10))] * 3
-        self._y_data = [np.zeros(shape=(1, 10))] * 3
+        self._number_of_plots = 3
+
+        self._clear_old = [True] * self._number_of_plots
+        self._x_limits = [[0., 1.]] * self._number_of_plots
+        self._y_limits = [[0., 1.]] * self._number_of_plots
+        self._x_label = ['X'] * self._number_of_plots
+        self._y_label = ['Y'] * self._number_of_plots
+        self._x_unit = ['a.u.'] * self._number_of_plots
+        self._y_unit = ['a.u.'] * self._number_of_plots
+        self._x_data = [np.zeros(shape=(1, 10))] * self._number_of_plots
+        self._y_data = [np.zeros(shape=(1, 10))] * self._number_of_plots
+        self._fit_containers = list()
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
         self._save_logic = self.save_logic()
         self._fit_logic = self.fit_logic()
+        self._fit_containers = [self.plot_1_fit_container, self.plot_2_fit_container, self.plot_3_fit_container]
 
     def on_deactivate(self):
         """ De-initialisation performed during deactivation of the module. """
         return 0
 
     @plot_1_fit_container.constructor
-    def sv_set_fit_1(self, val):
+    @plot_2_fit_container.constructor
+    @plot_3_fit_container.constructor
+    def sv_set_fit(self, val):
         # Setup fit container
-        fc = self.fit_logic().make_fit_container('Plot 1 QDPlotterLogic', '1d')
+        fc = self.fit_logic().make_fit_container('Plot QDPlotterLogic', '1d')
         fc.set_units(['', 'a.u.'])
         if not (isinstance(val, dict) and len(val) > 0):
             val = dict()
@@ -92,34 +100,46 @@ class QDPlotLogic(GenericLogic):
         return fc
 
     @plot_1_fit_container.representer
-    def sv_get_fit_1(self, val):
+    @plot_2_fit_container.representer
+    @plot_3_fit_container.representer
+    def sv_get_fit(self, val):
         """ save configured fits """
         if len(val.fit_list) > 0:
             return val.save_to_dict()
         else:
             return None
-        
+
     def do_fit_1(self, fit_method):
+        self.do_fit(fit_method=fit_method, plot_index=0)
+
+    def do_fit_2(self, fit_method):
+        self.do_fit(fit_method=fit_method, plot_index=1)
+
+    def do_fit_3(self, fit_method):
+        self.do_fit(fit_method=fit_method, plot_index=2)
+        
+    def do_fit(self, fit_method, plot_index):
+        fit_container = self._fit_containers[plot_index]
         result = ''
         fit_data = list()
         for dataset in range(len(self._x_data[0])):
-            x_data = self._x_data[0][dataset]
-            y_data = self._y_data[0][dataset]
+            x_data = self._x_data[plot_index][dataset]
+            y_data = self._y_data[plot_index][dataset]
 
             if fit_method is not None and isinstance(fit_method, str):
-                if fit_method in self.plot_1_fit_container.fit_list:
-                    self.plot_1_fit_container.set_current_fit(fit_method)
+                if fit_method in fit_container.fit_list:
+                    fit_container.set_current_fit(fit_method)
                 else:
-                    self.plot_1_fit_container.set_current_fit('No Fit')
+                    fit_container.set_current_fit('No Fit')
                     if fit_method != 'No Fit':
                         self.log.warning('Fit function "{0}" not available in plot_1 fit container.'
                                          ''.format(fit_method))
 
             if len(x_data) < 2 or len(y_data) < 2 or min(x_data) == max(x_data):
                 self.log.warning('The data you are trying to fit does not contain enough data for a fit.')
-                return np.zeros(shape=(len(self._x_data[0]), 2, 10)), 'results', self.plot_1_fit_container.current_fit
+                return np.zeros(shape=(len(self._x_data[plot_index]), 2, 10)), 'results', fit_container.current_fit
 
-            fit_x, fit_y, result_set = self.plot_1_fit_container.do_fit(np.array(x_data), np.array(y_data))
+            fit_x, fit_y, result_set = fit_container.do_fit(np.array(x_data), np.array(y_data))
             fit_data_set = np.array([fit_x, fit_y])
             fit_data.append(fit_data_set)
 
@@ -134,8 +154,8 @@ class QDPlotLogic(GenericLogic):
             result += 'Dataset {0}:\n{1}'.format(dataset, formatted_fitresult)
 
         fit_data = np.array(fit_data)
-        self.sigFit1Updated.emit(fit_data, result, self.plot_1_fit_container.current_fit)
-        return fit_data, result, self.plot_1_fit_container.current_fit
+        self.sigFit1Updated.emit(fit_data, result, fit_container.current_fit)
+        return fit_data, result, fit_container.current_fit
     
     @property
     def plot_1_x_data(self):
@@ -146,6 +166,15 @@ class QDPlotLogic(GenericLogic):
         return self._y_data[0]
 
     def plot_1_set_data(self, x=None, y=None, clear_old=True):
+        self.set_data(x=x, y=y, clear_old=clear_old, plot_index=0)
+
+    def plot_2_set_data(self, x=None, y=None, clear_old=True):
+        self.set_data(x=x, y=y, clear_old=clear_old, plot_index=1)
+
+    def plot_3_set_data(self, x=None, y=None, clear_old=True):
+        self.set_data(x=x, y=y, clear_old=clear_old, plot_index=2)
+
+    def set_data(self, x=None, y=None, clear_old=True, plot_index=0):
         """Set the data to plot
 
         @param np.ndarray or list of np.ndarrays x: data of independents variable(s)
@@ -161,17 +190,17 @@ class QDPlotLogic(GenericLogic):
             self.log.error('No y-values provided, cannot set plot data.')
             return -1
 
-        self._clear_old = clear_old
+        self._clear_old[plot_index] = clear_old
         # check if input is only an array (single plot) or a list of arrays (one or several plots)
         if type(x[0]) is np.ndarray:  # if x is an array, type(x[0]) is a np.float
-            self._x_data[0] = x
-            self._y_data[0] = y
+            self._x_data[plot_index] = x
+            self._y_data[plot_index] = y
         else:
-            self._x_data[0] = [x]
-            self._y_data[0] = [y]
+            self._x_data[plot_index] = [x]
+            self._y_data[plot_index] = [y]
 
-        self.plot_1_y_limits = None
-        self.plot_1_x_limits = None
+        self.x_limits(plot_index=plot_index)
+        self.y_limits(plot_index=plot_index)
 
         self.sigPlotDataUpdated.emit()
         self.sigPlotParamsUpdated.emit()
@@ -185,6 +214,22 @@ class QDPlotLogic(GenericLogic):
     @plot_1_x_limits.setter
     def plot_1_x_limits(self, limits=None):
         self.x_limits(plot_index=0, limits=limits)
+
+    @property
+    def plot_2_x_limits(self):
+        return self._x_limits[1]
+
+    @plot_2_x_limits.setter
+    def plot_2_x_limits(self, limits=None):
+        self.x_limits(plot_index=1, limits=limits)
+
+    @property
+    def plot_3_x_limits(self):
+        return self._x_limits[2]
+
+    @plot_3_x_limits.setter
+    def plot_3_x_limits(self, limits=None):
+        self.x_limits(plot_index=2, limits=limits)
 
     def x_limits(self, plot_index, limits=None):
         """Set the plot_1_x_limits, to match the data (default) or to a specified new range
@@ -212,6 +257,22 @@ class QDPlotLogic(GenericLogic):
     @plot_1_y_limits.setter
     def plot_1_y_limits(self, limits=None):
         self.y_limits(plot_index=0, limits=limits)
+
+    @property
+    def plot_2_y_limits(self):
+        return self._y_limits[1]
+
+    @plot_2_y_limits.setter
+    def plot_2_y_limits(self, limits=None):
+        self.y_limits(plot_index=1, limits=limits)
+
+    @property
+    def plot_3_y_limits(self):
+        return self._y_limits[2]
+
+    @plot_3_y_limits.setter
+    def plot_3_y_limits(self, limits=None):
+        self.y_limits(plot_index=2, limits=limits)
 
     def y_limits(self, plot_index, limits=None):
         """Set the plot_1_y_limits, to match the data (default) or to a specified new range
@@ -341,8 +402,19 @@ class QDPlotLogic(GenericLogic):
         self.sigPlotParamsUpdated.emit()
 
     @property
-    def clear_old_data(self):
-        return self._clear_old
+    def plot_1_clear_old_data(self):
+        return self.clear_old_data(plot_index=0)
+
+    @property
+    def plot_2_clear_old_data(self):
+        return self.clear_old_data(plot_index=1)
+
+    @property
+    def plot_3_clear_old_data(self):
+        return self.clear_old_data(plot_index=2)
+
+    def clear_old_data(self, plot_index=0):
+        return self._clear_old[plot_index]
 
     def save_data(self, postfix='', plot_index=0):
         """ Save the data to a file.

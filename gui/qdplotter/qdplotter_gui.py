@@ -132,7 +132,7 @@ class QDPlotterGui(GUIBase):
         """ Function creates empty plots, grabs the data and sends it to them.
         """
 
-        if self._plot_logic.clear_old_data:
+        if self._plot_logic.plot_1_clear_old_data:
             self._mw.plot_1_PlotWidget.clear()
 
         self._plot_1_curves = []
