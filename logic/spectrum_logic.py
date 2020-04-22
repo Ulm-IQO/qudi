@@ -41,7 +41,7 @@ class SpectrumLogic(GenericLogic):
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
     camera = Connector(interface='CameraInterface')
-    savelogic = Connector(interface='SaveLogic', optional=True)
+    savelogic = Connector(interface='SaveLogic')
 
     # declare status variables (logic attribute) :
     _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
@@ -49,16 +49,16 @@ class SpectrumLogic(GenericLogic):
     _image_data = StatusVar('image_data', np.empty((2, 0)))
 
     # Allow to set a default save directory in the config file :
-    _default_save_file_path = ConfigOption('default_save_file_path')
-    _save_file_path = StatusVar('save_file_path', _default_save_file_path)
+    _default_save_file_path = ConfigOption('default_save_file_path') #TODO: Qudi savelogic handle the saving, it's better to let it do it things
+    _save_file_path = StatusVar('save_file_path', _default_save_file_path) # TODO: same
 
     # declare status variables (camera attribute) :
     _read_mode = StatusVar('read_mode', 'FVB')
-    _active_tracks = StatusVar('active_tracks', [240, 240])
+    _active_tracks = StatusVar('active_tracks', [240, 240]) # TODO: some camera have only one pixel height, or not support anything else than FVB
 
     _acquistion_mode = StatusVar('acquistion_mode', 'MULTI_SCAN')
-    _exposure_time = StatusVar('exposure_time', 1e-4)
-    _camera_gain = StatusVar('camera_gain', 1)
+    _exposure_time = StatusVar('exposure_time', 1)
+    _camera_gain = StatusVar('camera_gain', 1) # TODO: even if unlikely, some camera might not have 1 in its possible value
     _number_of_scan = StatusVar('number_of_scan', 1)
     _scan_delay = StatusVar('scan_delay', 1e-2)
     _number_accumulated_scan = StatusVar('number_accumulated_scan', 1)
@@ -76,19 +76,18 @@ class SpectrumLogic(GenericLogic):
           @param dict kwargs: optional parameters
         """
         super().__init__(**kwargs)
-
-        # locking for thread safety
-        self.threadlock = Mutex()
+        self.threadlock = Mutex() # TODO: This line on its own does nothing
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-
-        self.spectrometer_device = self.spectrometer()
+        self.spectrometer_device = self.spectrometer() #TODO: New modules prefer the syntax self.spectrometer() directly in the code rather than storing a second reference in a variable
         self.camera_device = self.camera()
         self._save_logic = self.savelogic()
 
         # hardware constraints :
+        #TODO: You don't need to copy every entry to the module attributes, you can just use self.constraints['auto_slit_installed']
+        # You can merge the two dictionaries or keep them separate
         spectro_constraints = self.spectrometer_device.get_constraints()
         self._number_of_gratings = spectro_constraints['number_of_gratings']
         self._wavelength_limits = spectro_constraints['wavelength_limits']
@@ -104,11 +103,16 @@ class SpectrumLogic(GenericLogic):
         self._pixel_size = camera_constraints['pixel_size']
 
         # Spectrometer calibration using camera contraints parameters:
-        self.spectrometer_device.set_calibration(self._image_size[1], self._pixel_size[1], self._image_size[0]/2)
+        self.spectrometer_device.set_calibration(self._image_size[1], self._pixel_size[1], self._image_size[0]/2) #TODO
 
         # declare spectrometer attributes :
         # grating :
+        # TODO: Here you can initialize the hidden variable with :
+        # self._attribute = self.spectrometer().get_attribute()
+        # and then in the logic getter just return : self._attribute
+        # Here is way it is initialize works but it quite unusual
         self._grating = self.grating
+        # self._grating = self.spectrometer().get_grating() #todo and then in the grating property return self._grating directly
         self._grating_offset = self.grating_offset
 
         #wavelenght :
@@ -121,13 +125,13 @@ class SpectrumLogic(GenericLogic):
         self._output_slit_width = self.output_slit_width
 
         # declare camera attributes :
-        self._active_image = self._image_size
+        self._active_image = self._image_size #TODO This line surprise me from the variable name
 
         self._shutter_mode = self.shutter_mode
         self._cooler_status = self.cooler_status
         self._camera_temperature = self.camera_temperature
 
-        # QTimer for asynchrone execution :
+        # QTimer for asynchronous execution :
         self._timer = QtCore.QTimer()
         self._timer.timeout.connect(self.acquire_data)
         self._counter = 0
@@ -135,7 +139,7 @@ class SpectrumLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated': #TODO: if the module is not idle, this function needs to stop the acquisition, it can not disobey !
             pass
 
     ##############################################################################
@@ -153,20 +157,20 @@ class SpectrumLogic(GenericLogic):
         data = OrderedDict()
         today = date.today()
         if data_type == 'image':
-            data = self._image_data[:, :]
+            data = self._image_data[:, :] # TODO: tab[:, :] is equivalent to just tab
         if data_type == 'spectrum':
-            data['Wavelength (m)'] = self._spectrum_data[0, :]
-            data['PL intensity (u.a)'] = self._spectrum_data[1, :]
+            data['Wavelength (m)'] = self._spectrum_data[0, :] #TODO: It's better to use simple variable-like name for this. This will be clear the day the data are treated !
+            data['PL intensity (u.a)'] = self._spectrum_data[1, :] #TODO: just "counts" would be more appropriate, it's not (u.a.)
         elif data_type == 'background':
             data['Wavelength (m)'] = self._background_data[0, :]
             data['PL intensity (u.a)'] = self._background_data[1, :]
         else:
-            self.log.debug('Data type parameter is not defined : it can only be \'spectrum\','
+            self.log.debug('Data type parameter is not defined : it can only be \'spectrum\',' #TODO: this should be an error
                            ' \'background\' or \'image\'')
         if file_name is not None:
             file_label = file_name
         else:
-            file_label = '{}_'.format(data_type) + today.strftime("%d%m%Y")
+            file_label = '{}_'.format(data_type) + today.strftime("%d%m%Y") #TODO: Savelogic already does timestamping
         if save_path is not None:
             self._save_file_path = save_path
         self._save_logic.save_data(data,
@@ -178,24 +182,24 @@ class SpectrumLogic(GenericLogic):
     #                            Acquisition functions
     ##############################################################################
 
-    def start_spectrum_acquisition(self):
-        """Start acquisition by lauching the timer signal calling the 'acquire_data' function.
+    def start_spectrum_acquisition(self): #TODO: In the code this function also starts image
+        """ Start acquisition by lauching the timer signal calling the 'acquire_data' function.
         """
         self._counter = 0
-        self.module_state.lock()
-        self._timer.start(1000 * self._scan_delay) #The argument of QTimer.start() is in ms
+        self.module_state.lock() #TODO: this method should check if the module is already soemthing
+        self._timer.start(1000 * self._scan_delay) #The argument of QTimer.start() is in ms #TODO: Why is the acquisition not started right away ? What exactly is _scan_delay ?
 
     def acquire_data(self):
-        """Method acquiring data by using the camera hardware mathode 'start_acquistion'. This method is connected
+        """ Method acquiring data by using the camera hardware methode 'start_acquistion'. This method is connected
         to a timer signal : after timer start this slot is called with a period of a time delay. After a certain
         number of call this method can stop the timer if not in 'LIVE' acquisition.
         """
-        self.shutter_mode('OPEN')
+        self.shutter_mode('OPEN') #TODO: Some hardware do not have a shutter
         self.camera_device.start_acquisition()
-        self.shutter_mode('CLOSE')
+        self.shutter_mode('CLOSE') # TODO: start_acquisition only starts it, this line is executed while it is still ongoing
         self._counter += 1
         if self._read_mode == 'IMAGE':
-            self._image_data = np.concatenate(self._image_data, self.acquired_data)
+            self._image_data = np.concatenate(self._image_data, self.acquired_data) #TODO: I don't understand what this tries to do
             name = 'Image'
         else:
             self._spectrum_data = np.concatenate(self._spectrum_data, self.acquired_data)
@@ -254,7 +258,7 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
 
     @property
-    def grating(self):
+    def grating(self): #TODO: From the name, it's unclear if it's the grating id or an object describing the grating that is returned
         """Getter method returning the grating number used by the spectrometer.
 
         @return: (int) active grating number
@@ -272,13 +276,16 @@ class SpectrumLogic(GenericLogic):
         """
         if not isinstance(grating_number, int):
             self.log.debug('Grating parameter is not correct : it must be an integer ')
+            # TODO: a break is to end a loop in the middle of it, python will raise an error on this line
+            # If you want to stop the function use return
             break
         if not 0 < grating_number < self._number_of_gratings:
             self.log.debug('Grating parameter is not correct : it must be in range 0 to {} '
                            .format(self._number_of_gratings - 1))
             break
-        if not grating_number != self._grating:
-            self.log.info('Grating parameter has not been changed')
+        if not grating_number != self._grating: #TODO: This will only generate a lot of lines in the log file, it's common for the GUI to update an attribute to its current value
+            #TODO: And if the value has not changed, they we should not invoke the hardware setter
+            self.log.info('Grating parameter has not been changed') #
             break
         self.spectrometer_device.set_grating(grating_number)
         self._grating = grating_number
@@ -290,7 +297,7 @@ class SpectrumLogic(GenericLogic):
 
         @return: (int) the corresponding grating offset
         """
-        self._grating_offset = self.spectrometer_device.get_grating_offset(self._grating)
+        self._grating_offset = self.spectrometer_device.get_grating_offset(self._grating) #TODO: I though we decided this to be handled in logic only
         return self._grating_offset
 
     @grating_offset.setter
@@ -304,7 +311,7 @@ class SpectrumLogic(GenericLogic):
         if not isinstance(grating_offset, int):
             self.log.debug('Offset parameter is not correct : it must be an integer ')
             break
-        offset_min = -self._number_of_gratings//2 - self._number_of_gratings % 2
+        offset_min = -self._number_of_gratings//2 - self._number_of_gratings % 2 #TODO: I don't understand what is the idea here
         offset_max = self._number_of_gratings//2
         if not offset_min < grating_offset < offset_max:
             self.log.debug('Offset parameter is not correct : it must be in range {} to {} '
@@ -337,11 +344,15 @@ class SpectrumLogic(GenericLogic):
         @param wavelength: (float) center wavelength
         @return: nothing
         """
-        if not isinstance(wavelength, float):
+        if not isinstance(wavelength, float): #TODO: This test is not essential and can generate problem in can the parameter is a int
+            # If you want to be sure the wavelength is a float, you can do : wavelength = float(wavelength)
+            # This way python tries to cast the type and raise an error if it's not possible
+            # This is true for a lot of type testing in this module
             self.log.debug('Wavelength parameter is not correct : it must be a float ')
             break
         wavelength_min = self._wavelength_limits[self._grating, 0]
-        wavelength_max = self._wavelength_limits[self._grating, 1]
+        wavelength_max = self._wavelength_limits[self._grating, 1] # TODO: You can write :
+        #wavelength_min, wavelength_max = self._wavelength_limits[self._grating] # python will try to unpack automatically
         if not wavelength_min < wavelength < wavelength_max:
             self.log.debug('Wavelength parameter is not correct : it must be in range {} to {} '
                            .format(wavelength_min, wavelength_max))
@@ -354,20 +365,20 @@ class SpectrumLogic(GenericLogic):
         self.log.info('Spectrometer wavelength has been changed correctly ')
 
     @property
-    def wavelength_range(self):
+    def wavelength_range(self): #TODO: The name of the property is confusing
         """Getter method returning the wavelength array of the full measured spectral range.
         (used for plotting spectrum with the spectral range)
 
         @return: (ndarray) measured wavelength array
         """
-        self._wavelength_range = self.spectrometer_device.get_calibration()
+        self._wavelength_range = self.spectrometer_device.get_calibration() #TODO
         return self._wavelength_range
 
     ##############################################################################
     #                      Calibration functions
     ##############################################################################
 
-    def set_calibration(self, number_of_pixels, pixel_width, tracks_offset):
+    def set_calibration(self, number_of_pixels, pixel_width, tracks_offset): # TODO: This function will be erased in the future
         """Setter method returning the detector offset used by the spectrometer DLLs calibration function.
         (the value returned by this function must be the real detector offset value of the camera)
 
@@ -420,6 +431,8 @@ class SpectrumLogic(GenericLogic):
         @param input_port: (int) active input port (0 front and 1 side)
         @return: nothing
         """
+         #TODO: All this test could be replaced by :
+        # if input_port not in self.constraints.input_ports:
         if input_port==1 and not self._flipper_mirror_installed[0]:
             self.log.debug('Your hardware do not have any flipper mirror present at the input port ')
             break
@@ -540,7 +553,7 @@ class SpectrumLogic(GenericLogic):
 
     @property
     def acquired_data(self):
-        """ Return an array of last acquired image.
+        """ Return an array of last acquired image. #TODO: This function also works for spectra
 
         @return: (ndarray) image data in format [[row],[row]...]
         Each pixel might be a float, integer or sub pixels
@@ -572,7 +585,7 @@ class SpectrumLogic(GenericLogic):
             self.log.debug("Read mode parameter do not match with any of the available read "
                            "mode of the camera ")
             break
-        if not isinstance(read_mode, str):
+        if not isinstance(read_mode, str): #TODO: This test will never fail after the previous one
             self.log.debug("Read mode parameter must be a string ")
             break
         if not read_mode == self._read_mode:
@@ -597,10 +610,11 @@ class SpectrumLogic(GenericLogic):
         @param active_tracks: (ndarray) active tracks positions [1st track start, 1st track end, ... ]
         @return: nothing
         """
+        # TODO: this function will change when the tracks become of the format [(10, 20), (55, 57), ...]
         if not (np.all(active_tracks[::2]<self._image_size[0]) and np.all(active_tracks[1::2]<self._image_size[1])):
             self.log.debug("Active tracks positions are out of range : some position are out of the pixel matrix ")
             break
-        if not isinstance(active_tracks.dtype, np.dtype):
+        if not isinstance(active_tracks.dtype, np.dtype): #TODO: the input [(10, 20)] should be ok even without being a numpy array
             self.log.debug("Active tracks parameter is not correct : must be an numpy array ")
             break
         if not np.size(active_tracks)%2 == 0:
@@ -777,7 +791,7 @@ class SpectrumLogic(GenericLogic):
         if not exposure_time > 0:
             self.log.debug("Exposure time parameter must be a positive number ")
             break
-        if not exposure_time < self._accumulation_delay:
+        if not exposure_time < self._accumulation_delay: #TODO: This is confusing
             self.log.debug("Exposure time parameter must be a value lower"
                            "that the current accumulation time values ")
             break
@@ -892,7 +906,7 @@ class SpectrumLogic(GenericLogic):
     def cooler_status(self):
         """Getter method returning the cooler status if ON or OFF.
 
-        @return: (int) 1 if ON or 0 if OFF
+        @return: (int) 1 if ON or 0 if OFF #TODO: why not use 'ON' or 'OFF'
         """
         self._cooler_status = self.camera_device.get_cooler_status()
         return self._cooler_status
@@ -910,8 +924,8 @@ class SpectrumLogic(GenericLogic):
         if not cooler_status == self._cooler_status:
             self.log.info("Cooler status parameter has not be changed ")
             break
-        self._cooler_ON = cooler_ON
-        self.camera_device.set_cooler_ON(cooler_ON)
+        self._cooler_ON = cooler_status
+        self.camera_device.set_cooler_ON(cooler_status)
         self.log.info("Cooler status has been changed correctly ")
 
     @property
@@ -924,7 +938,7 @@ class SpectrumLogic(GenericLogic):
         return self._camera_temperature
 
     @camera_temperature.setter
-    def camera_temperature(self, camera_temperature):
+    def camera_temperature(self, camera_temperature): #TODO: this set the setpoint, not the temperature
         """Setter method returning the temperature of the camera.
 
         @param temperature: (float) temperature
