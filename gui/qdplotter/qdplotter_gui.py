@@ -29,10 +29,7 @@ from qtpy import uic
 
 from core.connector import Connector
 from gui.guibase import GUIBase
-from core.util.helpers import natural_sort
-from core.util import units
 from gui.fitsettings import FitSettingsDialog
-from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
 class QDPlotMainWindow(QtWidgets.QMainWindow):
@@ -143,8 +140,8 @@ class QDPlotterGui(GUIBase):
         for line in range(len(self._plot_logic.plot_1_y_data)):
             self._plot_1_curves.append(self._mw.plot_1_PlotWidget.plot())
             self._plot_1_curves[line].setPen(next(self._pen_colors))
-            self._plot_1_curves[line].setData(y=self._plot_logic.plot_1_x_data[line],
-                                              x=self._plot_logic.plot_1_y_data[line])
+            self._plot_1_curves[line].setData(x=self._plot_logic.plot_1_x_data[line],
+                                              y=self._plot_logic.plot_1_y_data[line])
             self._fit_1_curves.append(self._mw.plot_1_PlotWidget.plot())
             self._fit_1_curves[line].setPen('r')
             self._fit_1_curves[line].setData(y=[0, 1],
@@ -159,15 +156,33 @@ class QDPlotterGui(GUIBase):
                                             units=self._plot_logic.plot_1_y_unit)
 
         # Update display in gui if plot params are changed by script access to logic
-        self._mw.parameter_1_x_lower_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_y_limits[0])
-        self._mw.parameter_1_x_upper_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_y_limits[1])
-        self._mw.parameter_1_y_lower_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_x_limits[0])
-        self._mw.parameter_1_y_upper_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_x_limits[1])
+        self._mw.parameter_1_x_lower_limit_DoubleSpinBox.blockSignals(True)
+        self._mw.parameter_1_x_upper_limit_DoubleSpinBox.blockSignals(True)
+        self._mw.parameter_1_y_lower_limit_DoubleSpinBox.blockSignals(True)
+        self._mw.parameter_1_y_upper_limit_DoubleSpinBox.blockSignals(True)
+        self._mw.parameter_1_x_label_lineEdit.blockSignals(True)
+        self._mw.parameter_1_x_unit_lineEdit.blockSignals(True)
+        self._mw.parameter_1_y_label_lineEdit.blockSignals(True)
+        self._mw.parameter_1_y_unit_lineEdit.blockSignals(True)
+
+        self._mw.parameter_1_x_lower_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_x_limits[0])
+        self._mw.parameter_1_x_upper_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_x_limits[1])
+        self._mw.parameter_1_y_lower_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_y_limits[0])
+        self._mw.parameter_1_y_upper_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_y_limits[1])
 
         self._mw.parameter_1_x_label_lineEdit.setText(self._plot_logic.plot_1_x_label)
         self._mw.parameter_1_x_unit_lineEdit.setText(self._plot_logic.plot_1_x_unit)
         self._mw.parameter_1_y_label_lineEdit.setText(self._plot_logic.plot_1_y_label)
         self._mw.parameter_1_y_unit_lineEdit.setText(self._plot_logic.plot_1_y_unit)
+
+        self._mw.parameter_1_x_lower_limit_DoubleSpinBox.blockSignals(False)
+        self._mw.parameter_1_x_upper_limit_DoubleSpinBox.blockSignals(False)
+        self._mw.parameter_1_y_lower_limit_DoubleSpinBox.blockSignals(False)
+        self._mw.parameter_1_y_upper_limit_DoubleSpinBox.blockSignals(False)
+        self._mw.parameter_1_x_label_lineEdit.blockSignals(False)
+        self._mw.parameter_1_x_unit_lineEdit.blockSignals(False)
+        self._mw.parameter_1_y_label_lineEdit.blockSignals(False)
+        self._mw.parameter_1_y_unit_lineEdit.blockSignals(False)
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -195,12 +210,14 @@ class QDPlotterGui(GUIBase):
         self._plot_logic.plot_1_y_limits = None
 
     def parameter_1_x_label_changed(self):
+        unit = self._mw.parameter_1_x_unit_lineEdit.text()
         self._plot_logic.plot_1_x_label = self._mw.parameter_1_x_label_lineEdit.text()
-        self._plot_logic.plot_1_x_unit = self._mw.parameter_1_x_unit_lineEdit.text()
+        self._plot_logic.plot_1_x_unit = unit
 
     def parameter_1_y_label_changed(self):
+        unit = self._mw.parameter_1_y_unit_lineEdit.text()
         self._plot_logic.plot_1_y_label = self._mw.parameter_1_y_label_lineEdit.text()
-        self._plot_logic.plot_1_y_unit = self._mw.parameter_1_y_unit_lineEdit.text()
+        self._plot_logic.plot_1_y_unit = unit
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default

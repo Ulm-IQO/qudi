@@ -28,6 +28,7 @@ from core.connector import Connector
 from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
+from core.util import units
 
 
 class QDPlotLogic(GenericLogic):
@@ -68,8 +69,8 @@ class QDPlotLogic(GenericLogic):
         self._y_label = ['Y'] * 3
         self._x_unit = ['a.u.'] * 3
         self._y_unit = ['a.u.'] * 3
-        self._x_data = np.zeros(shape=(3, 1, 10))
-        self._y_data = np.zeros(shape=(3, 1, 10))
+        self._x_data = [np.zeros(shape=(1, 10))] * 3
+        self._y_data = [np.zeros(shape=(1, 10))] * 3
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -121,7 +122,16 @@ class QDPlotLogic(GenericLogic):
             fit_x, fit_y, result_set = self.plot_1_fit_container.do_fit(np.array(x_data), np.array(y_data))
             fit_data_set = np.array([fit_x, fit_y])
             fit_data.append(fit_data_set)
-            result += 'Dataset {0}:\n{1}'.format(dataset, result_set)
+
+            # Get formatted result string
+            if fit_method == 'No Fit':
+                formatted_fitresult = 'No Fit'
+            else:
+                try:
+                    formatted_fitresult = units.create_formatted_output(result_set.result_str_dict)
+                except:
+                    formatted_fitresult = 'This fit does not return formatted results'
+            result += 'Dataset {0}:\n{1}'.format(dataset, formatted_fitresult)
 
         fit_data = np.array(fit_data)
         self.sigFit1Updated.emit(fit_data, result, self.plot_1_fit_container.current_fit)
@@ -154,11 +164,11 @@ class QDPlotLogic(GenericLogic):
         self._clear_old = clear_old
         # check if input is only an array (single plot) or a list of arrays (one or several plots)
         if type(x[0]) is np.ndarray:  # if x is an array, type(x[0]) is a np.float
-            self._y_data[0] = x
-            self._x_data[0] = y
+            self._x_data[0] = x
+            self._y_data[0] = y
         else:
-            self._y_data[0] = [x]
-            self._x_data[0] = [y]
+            self._x_data[0] = [x]
+            self._y_data[0] = [y]
 
         self.plot_1_y_limits = None
         self.plot_1_x_limits = None
@@ -174,20 +184,24 @@ class QDPlotLogic(GenericLogic):
 
     @plot_1_x_limits.setter
     def plot_1_x_limits(self, limits=None):
+        self.x_limits(plot_index=0, limits=limits)
+
+    def x_limits(self, plot_index, limits=None):
         """Set the plot_1_x_limits, to match the data (default) or to a specified new range
 
+        @param int plot_index: index of the plot in the range for 0 to 3
         @param float limits: 2-element list containing min and max y-values
         """
         if limits is not None:
             if isinstance(limits, (list, tuple, np.ndarray)) and len(limits) > 1:
-                self._x_limits[0] = limits
+                self._x_limits[plot_index] = limits
             else:
                 self.log('plot_1_x_limits need to be a list of at least 2 elements but are {}.'.format(limits))
         else:
-            range_min = np.min([np.min(values) for values in self.depen_vals])
-            range_max = np.max([np.max(values) for values in self.depen_vals])
+            range_min = np.min([np.min(values) for values in self._x_data[plot_index]])
+            range_max = np.max([np.max(values) for values in self._x_data[plot_index]])
             range_range = range_max - range_min
-            self._x_limits[0] = [range_min - 0.02 * range_range, range_max + 0.02 * range_range]
+            self._x_limits[plot_index] = [range_min - 0.02 * range_range, range_max + 0.02 * range_range]
 
         self.sigPlotParamsUpdated.emit()
 
@@ -197,20 +211,24 @@ class QDPlotLogic(GenericLogic):
 
     @plot_1_y_limits.setter
     def plot_1_y_limits(self, limits=None):
+        self.y_limits(plot_index=0, limits=limits)
+
+    def y_limits(self, plot_index, limits=None):
         """Set the plot_1_y_limits, to match the data (default) or to a specified new range
 
+        @param int plot_index: index of the plot in the range for 0 to 3
         @param float limits: 2-element list containing min and max y-values
         """
         if limits is not None:
             if isinstance(limits, (list, tuple, np.ndarray)) and len(limits) > 1:
-                self._y_limits[0] = limits
+                self._y_limits[plot_index] = limits
             else:
                 self.log('plot_1_y_limits need to be a list of at least 2 elements but are {}.'.format(limits))
         else:
-            range_min = np.min([np.min(values) for values in self.indep_vals])
-            range_max = np.max([np.max(values) for values in self.indep_vals])
+            range_min = np.min([np.min(values) for values in self._y_data[plot_index]])
+            range_max = np.max([np.max(values) for values in self._y_data[plot_index]])
             range_range = range_max - range_min
-            self._y_limits[0] = [range_min - 0.02 * range_range, range_max + 0.02 * range_range]
+            self._y_limits[plot_index] = [range_min - 0.02 * range_range, range_max + 0.02 * range_range]
 
         self.sigPlotParamsUpdated.emit()
 
@@ -221,6 +239,7 @@ class QDPlotLogic(GenericLogic):
     @plot_1_x_label.setter
     def plot_1_x_label(self, value):
         self._x_label[0] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_1_y_label(self):
@@ -229,6 +248,7 @@ class QDPlotLogic(GenericLogic):
     @plot_1_y_label.setter
     def plot_1_y_label(self, value):
         self._y_label[0] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_1_x_unit(self):
@@ -237,6 +257,7 @@ class QDPlotLogic(GenericLogic):
     @plot_1_x_unit.setter
     def plot_1_x_unit(self, value):
         self._x_unit[0] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_1_y_unit(self):
@@ -245,6 +266,7 @@ class QDPlotLogic(GenericLogic):
     @plot_1_y_unit.setter
     def plot_1_y_unit(self, value):
         self._y_unit[0] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_2_x_label(self):
@@ -253,6 +275,7 @@ class QDPlotLogic(GenericLogic):
     @plot_2_x_label.setter
     def plot_2_x_label(self, value):
         self._x_label[1] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_2_y_label(self):
@@ -261,6 +284,7 @@ class QDPlotLogic(GenericLogic):
     @plot_2_y_label.setter
     def plot_2_y_label(self, value):
         self._y_label[1] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_2_x_unit(self):
@@ -269,6 +293,7 @@ class QDPlotLogic(GenericLogic):
     @plot_2_x_unit.setter
     def plot_2_x_unit(self, value):
         self._x_unit[1] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_2_y_unit(self):
@@ -277,6 +302,7 @@ class QDPlotLogic(GenericLogic):
     @plot_2_y_unit.setter
     def plot_2_y_unit(self, value):
         self._y_unit[1] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_3_x_label(self):
@@ -285,6 +311,7 @@ class QDPlotLogic(GenericLogic):
     @plot_3_x_label.setter
     def plot_3_x_label(self, value):
         self._x_label[2] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_3_y_label(self):
@@ -293,6 +320,7 @@ class QDPlotLogic(GenericLogic):
     @plot_3_y_label.setter
     def plot_3_y_label(self, value):
         self._y_label[2] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_3_x_unit(self):
@@ -301,6 +329,7 @@ class QDPlotLogic(GenericLogic):
     @plot_3_x_unit.setter
     def plot_3_x_unit(self, value):
         self._x_unit[2] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def plot_3_y_unit(self):
@@ -309,53 +338,54 @@ class QDPlotLogic(GenericLogic):
     @plot_3_y_unit.setter
     def plot_3_y_unit(self, value):
         self._y_unit[2] = str(value)
+        self.sigPlotParamsUpdated.emit()
 
     @property
     def clear_old_data(self):
         return self._clear_old
 
-    def save_data(self, postfix=''):
+    def save_data(self, postfix='', plot_index=0):
         """ Save the data to a file.
 
-        @param bool to_file: indicate, whether data have to be saved to file
         @param str postfix: an additional tag, which will be added to the filename upon save
-
-        @return np.array([2 or 3][X]), OrderedDict: array with the
+        @param int plot_index: index of the plot in the range for 0 to 3
         """
         # Set the parameters:
         parameters = OrderedDict()
-        parameters['User-selected display domain'] = self.plot_domain
-        parameters['User-selected display range'] = self.plot_range
+        parameters['user-selected x-limits'] = self._x_limits[plot_index]
+        parameters['user-selected y-limits'] = self._y_limits[plot_index]
 
         # If there is a postfix then add separating underscore
         if postfix == '':
             filelabel = 'qdplot'
         else:
             filelabel = postfix
+            
+        filelabel += '_plot_{0:d}'.format(int(plot_index) + 1)
 
         # Data labels
-        indep_label = self.h_label + ' (' + self.h_units + ')'
-        depen_label = self.v_label + ' (' + self.v_units + ')'
+        x_label = self._x_label[plot_index] + ' (' + self._x_unit[plot_index] + ')'
+        y_label = self._y_label[plot_index] + ' (' + self._y_unit[plot_index] + ')'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        for ii in range(len(self.indep_vals)):
-            data['indep_label' + str(ii + 1)] = self.indep_vals[ii]
-            data['depen_label' + str(ii + 1)] = self.depen_vals[ii]
+        for dataset in range(len(self._x_data[plot_index])):
+            data['{0} Set {1:d}'.format(x_label, dataset + 1)] = self._x_data[plot_index][dataset]
+            data['{0} Set {1:d}'.format(y_label, dataset + 1)] = self._y_data[plot_index][dataset]
 
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
 
         fig, ax1 = plt.subplots()
 
-        for ii in range(len(self.indep_vals)):
-            ax1.plot(self.indep_vals[ii], self.depen_vals[ii], linestyle=':', linewidth=1)
+        for dataset in range(len(self._x_data[plot_index])):
+            ax1.plot(self._x_data[plot_index][dataset], self._y_data[plot_index][dataset], linestyle=':', linewidth=1)
 
-        ax1.set_xlabel(indep_label)
-        ax1.set_ylabel(depen_label)
+        ax1.set_xlabel(x_label)
+        ax1.set_ylabel(y_label)
 
-        ax1.set_xlim(self.plot_domain)
-        ax1.set_ylim(self.plot_range)
+        ax1.set_xlim(self._x_limits[plot_index])
+        ax1.set_ylim(self._y_limits[plot_index])
 
         fig.tight_layout()
 
