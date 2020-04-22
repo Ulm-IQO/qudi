@@ -41,15 +41,13 @@ class QDPlotLogic(GenericLogic):
     """
     sigPlotDataUpdated = QtCore.Signal()
     sigPlotParamsUpdated = QtCore.Signal()
-    sigFit1Updated = QtCore.Signal(np.ndarray, str, str)
+    sigFitUpdated = QtCore.Signal(int, np.ndarray, str, str)
 
     # declare connectors
     save_logic = Connector(interface='SaveLogic')
     fit_logic = Connector(interface='FitLogic')
 
-    plot_1_fit_container = StatusVar(name='plot_1_fit_container', default=None)
-    plot_2_fit_container = StatusVar(name='plot_2_fit_container', default=None)
-    plot_3_fit_container = StatusVar(name='plot_3_fit_container', default=None)
+    fit_container = StatusVar(name='fit_container', default=None)
 
     def __init__(self, *args, **kwargs):
         """ Create QDPlotLogic object with connectors.
@@ -75,21 +73,17 @@ class QDPlotLogic(GenericLogic):
         self._y_unit = ['a.u.'] * self._number_of_plots
         self._x_data = [np.zeros(shape=(1, 10))] * self._number_of_plots
         self._y_data = [np.zeros(shape=(1, 10))] * self._number_of_plots
-        self._fit_containers = list()
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
         self._save_logic = self.save_logic()
         self._fit_logic = self.fit_logic()
-        self._fit_containers = [self.plot_1_fit_container, self.plot_2_fit_container, self.plot_3_fit_container]
 
     def on_deactivate(self):
         """ De-initialisation performed during deactivation of the module. """
         return 0
 
-    @plot_1_fit_container.constructor
-    @plot_2_fit_container.constructor
-    @plot_3_fit_container.constructor
+    @fit_container.constructor
     def sv_set_fit(self, val):
         # Setup fit container
         fc = self.fit_logic().make_fit_container('Plot QDPlotterLogic', '1d')
@@ -99,27 +93,16 @@ class QDPlotLogic(GenericLogic):
         fc.load_from_dict(val)
         return fc
 
-    @plot_1_fit_container.representer
-    @plot_2_fit_container.representer
-    @plot_3_fit_container.representer
+    @fit_container.representer
     def sv_get_fit(self, val):
         """ save configured fits """
         if len(val.fit_list) > 0:
             return val.save_to_dict()
         else:
             return None
-
-    def do_fit_1(self, fit_method):
-        self.do_fit(fit_method=fit_method, plot_index=0)
-
-    def do_fit_2(self, fit_method):
-        self.do_fit(fit_method=fit_method, plot_index=1)
-
-    def do_fit_3(self, fit_method):
-        self.do_fit(fit_method=fit_method, plot_index=2)
         
     def do_fit(self, fit_method, plot_index):
-        fit_container = self._fit_containers[plot_index]
+        fit_container = self.fit_container
         result = ''
         fit_data = list()
         for dataset in range(len(self._x_data[0])):
@@ -154,16 +137,14 @@ class QDPlotLogic(GenericLogic):
             result += 'Dataset {0}:\n{1}'.format(dataset, formatted_fitresult)
 
         fit_data = np.array(fit_data)
-        self.sigFit1Updated.emit(fit_data, result, fit_container.current_fit)
-        return fit_data, result, fit_container.current_fit
+        self.sigFitUpdated.emit(plot_index, fit_data, result, fit_container.current_fit)
+        return plot_index, fit_data, result, fit_container.current_fit
     
-    @property
-    def plot_1_x_data(self):
-        return self._x_data[0]
+    def get_x_data(self, plot_index=0):
+        return self._x_data[plot_index]
     
-    @property
-    def plot_1_y_data(self):
-        return self._y_data[0]
+    def get_y_data(self, plot_index=0):
+        return self._y_data[plot_index]
 
     def plot_1_set_data(self, x=None, y=None, clear_old=True):
         self.set_data(x=x, y=y, clear_old=clear_old, plot_index=0)
@@ -199,39 +180,18 @@ class QDPlotLogic(GenericLogic):
             self._x_data[plot_index] = [x]
             self._y_data[plot_index] = [y]
 
-        self.x_limits(plot_index=plot_index)
-        self.y_limits(plot_index=plot_index)
+        self.set_x_limits(plot_index=plot_index)
+        self.set_y_limits(plot_index=plot_index)
 
         self.sigPlotDataUpdated.emit()
         self.sigPlotParamsUpdated.emit()
 
         return 0
 
-    @property
-    def plot_1_x_limits(self):
-        return self._x_limits[0]
+    def get_x_limits(self, plot_index):
+        return self._x_limits[plot_index]
 
-    @plot_1_x_limits.setter
-    def plot_1_x_limits(self, limits=None):
-        self.x_limits(plot_index=0, limits=limits)
-
-    @property
-    def plot_2_x_limits(self):
-        return self._x_limits[1]
-
-    @plot_2_x_limits.setter
-    def plot_2_x_limits(self, limits=None):
-        self.x_limits(plot_index=1, limits=limits)
-
-    @property
-    def plot_3_x_limits(self):
-        return self._x_limits[2]
-
-    @plot_3_x_limits.setter
-    def plot_3_x_limits(self, limits=None):
-        self.x_limits(plot_index=2, limits=limits)
-
-    def x_limits(self, plot_index, limits=None):
+    def set_x_limits(self, plot_index, limits=None):
         """Set the plot_1_x_limits, to match the data (default) or to a specified new range
 
         @param int plot_index: index of the plot in the range for 0 to 3
@@ -250,31 +210,10 @@ class QDPlotLogic(GenericLogic):
 
         self.sigPlotParamsUpdated.emit()
 
-    @property
-    def plot_1_y_limits(self):
-        return self._y_limits[0]
+    def get_y_limits(self, plot_index):
+        return self._y_limits[plot_index]
 
-    @plot_1_y_limits.setter
-    def plot_1_y_limits(self, limits=None):
-        self.y_limits(plot_index=0, limits=limits)
-
-    @property
-    def plot_2_y_limits(self):
-        return self._y_limits[1]
-
-    @plot_2_y_limits.setter
-    def plot_2_y_limits(self, limits=None):
-        self.y_limits(plot_index=1, limits=limits)
-
-    @property
-    def plot_3_y_limits(self):
-        return self._y_limits[2]
-
-    @plot_3_y_limits.setter
-    def plot_3_y_limits(self, limits=None):
-        self.y_limits(plot_index=2, limits=limits)
-
-    def y_limits(self, plot_index, limits=None):
+    def set_y_limits(self, plot_index, limits=None):
         """Set the plot_1_y_limits, to match the data (default) or to a specified new range
 
         @param int plot_index: index of the plot in the range for 0 to 3
@@ -292,126 +231,34 @@ class QDPlotLogic(GenericLogic):
             self._y_limits[plot_index] = [range_min - 0.02 * range_range, range_max + 0.02 * range_range]
 
         self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_1_x_label(self):
-        return self._x_label[0]
-
-    @plot_1_x_label.setter
-    def plot_1_x_label(self, value):
-        self._x_label[0] = str(value)
+        
+    def get_x_label(self, plot_index):
+        return self._x_label[plot_index]
+    
+    def set_x_label(self, plot_index, value):
+        self._x_label[plot_index] = str(value)
         self.sigPlotParamsUpdated.emit()
 
-    @property
-    def plot_1_y_label(self):
-        return self._y_label[0]
-
-    @plot_1_y_label.setter
-    def plot_1_y_label(self, value):
-        self._y_label[0] = str(value)
+    def get_y_label(self, plot_index):
+        return self._y_label[plot_index]
+    
+    def set_y_label(self, plot_index, value):
+        self._y_label[plot_index] = str(value)
+        self.sigPlotParamsUpdated.emit()
+        
+    def get_x_unit(self, plot_index):
+        return self._x_unit[plot_index]
+    
+    def set_x_unit(self, plot_index, value):
+        self._x_unit[plot_index] = str(value)
         self.sigPlotParamsUpdated.emit()
 
-    @property
-    def plot_1_x_unit(self):
-        return self._x_unit[0]
-
-    @plot_1_x_unit.setter
-    def plot_1_x_unit(self, value):
-        self._x_unit[0] = str(value)
+    def get_y_unit(self, plot_index):
+        return self._y_unit[plot_index]
+    
+    def set_y_unit(self, plot_index, value):
+        self._y_unit[plot_index] = str(value)
         self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_1_y_unit(self):
-        return self._y_unit[0]
-
-    @plot_1_y_unit.setter
-    def plot_1_y_unit(self, value):
-        self._y_unit[0] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_2_x_label(self):
-        return self._x_label[1]
-
-    @plot_2_x_label.setter
-    def plot_2_x_label(self, value):
-        self._x_label[1] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_2_y_label(self):
-        return self._y_label[1]
-
-    @plot_2_y_label.setter
-    def plot_2_y_label(self, value):
-        self._y_label[1] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_2_x_unit(self):
-        return self._x_unit[1]
-
-    @plot_2_x_unit.setter
-    def plot_2_x_unit(self, value):
-        self._x_unit[1] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_2_y_unit(self):
-        return self._y_unit[1]
-
-    @plot_2_y_unit.setter
-    def plot_2_y_unit(self, value):
-        self._y_unit[1] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_3_x_label(self):
-        return self._x_label[2]
-
-    @plot_3_x_label.setter
-    def plot_3_x_label(self, value):
-        self._x_label[2] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_3_y_label(self):
-        return self._y_label[2]
-
-    @plot_3_y_label.setter
-    def plot_3_y_label(self, value):
-        self._y_label[2] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_3_x_unit(self):
-        return self._x_unit[2]
-
-    @plot_3_x_unit.setter
-    def plot_3_x_unit(self, value):
-        self._x_unit[2] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_3_y_unit(self):
-        return self._y_unit[2]
-
-    @plot_3_y_unit.setter
-    def plot_3_y_unit(self, value):
-        self._y_unit[2] = str(value)
-        self.sigPlotParamsUpdated.emit()
-
-    @property
-    def plot_1_clear_old_data(self):
-        return self.clear_old_data(plot_index=0)
-
-    @property
-    def plot_2_clear_old_data(self):
-        return self.clear_old_data(plot_index=1)
-
-    @property
-    def plot_3_clear_old_data(self):
-        return self.clear_old_data(plot_index=2)
 
     def clear_old_data(self, plot_index=0):
         return self._clear_old[plot_index]
@@ -472,3 +319,187 @@ class QDPlotLogic(GenericLogic):
                                    delimiter='\t')
         plt.close(fig)
         self.log.debug('Data saved to:\n{0}'.format(filepath))
+
+###############################################################################################
+#   individual getters and setters
+###############################################################################################
+
+    @property
+    def plot_1_x_data(self):
+        return self.get_x_data(plot_index=0)
+
+    @property
+    def plot_1_y_data(self):
+        return self.get_y_data(plot_index=0)
+
+    @property
+    def plot_2_x_data(self):
+        return self.get_x_data(plot_index=1)
+
+    @property
+    def plot_2_y_data(self):
+        return self.get_y_data(plot_index=1)
+
+    @property
+    def plot_3_x_data(self):
+        return self.get_x_data(plot_index=2)
+
+    @property
+    def plot_3_y_data(self):
+        return self.get_y_data(plot_index=2)
+
+    @property
+    def plot_1_x_label(self):
+        return self._x_label[0]
+
+    @plot_1_x_label.setter
+    def plot_1_x_label(self, value):
+        self.set_x_label(plot_index=0, value=value)
+
+    @property
+    def plot_1_y_label(self):
+        return self._y_label[0]
+
+    @plot_1_y_label.setter
+    def plot_1_y_label(self, value):
+        self.set_y_label(plot_index=0, value=value)
+
+    @property
+    def plot_1_x_unit(self):
+        return self._x_unit[0]
+
+    @plot_1_x_unit.setter
+    def plot_1_x_unit(self, value):
+        self.set_x_unit(plot_index=0, value=value)
+
+    @property
+    def plot_1_y_unit(self):
+        return self._y_unit[0]
+
+    @plot_1_y_unit.setter
+    def plot_1_y_unit(self, value):
+        self.set_y_unit(plot_index=0, value=value)
+
+    @property
+    def plot_2_x_label(self):
+        return self._x_label[1]
+
+    @plot_2_x_label.setter
+    def plot_2_x_label(self, value):
+        self.set_x_label(plot_index=1, value=value)
+
+    @property
+    def plot_2_y_label(self):
+        return self._y_label[1]
+
+    @plot_2_y_label.setter
+    def plot_2_y_label(self, value):
+        self.set_y_label(plot_index=1, value=value)
+
+    @property
+    def plot_2_x_unit(self):
+        return self._x_unit[1]
+
+    @plot_2_x_unit.setter
+    def plot_2_x_unit(self, value):
+        self.set_x_unit(plot_index=1, value=value)
+
+    @property
+    def plot_2_y_unit(self):
+        return self._y_unit[1]
+
+    @plot_2_y_unit.setter
+    def plot_2_y_unit(self, value):
+        self.set_y_unit(plot_index=1, value=value)
+
+    @property
+    def plot_3_x_label(self):
+        return self._x_label[2]
+
+    @plot_3_x_label.setter
+    def plot_3_x_label(self, value):
+        self.set_x_label(plot_index=2, value=value)
+
+    @property
+    def plot_3_y_label(self):
+        return self._y_label[2]
+
+    @plot_3_y_label.setter
+    def plot_3_y_label(self, value):
+        self.set_y_label(plot_index=2, value=value)
+
+    @property
+    def plot_3_x_unit(self):
+        return self._x_unit[2]
+
+    @plot_3_x_unit.setter
+    def plot_3_x_unit(self, value):
+        self.set_x_unit(plot_index=2, value=value)
+
+    @property
+    def plot_3_y_unit(self):
+        return self._y_unit[2]
+
+    @plot_3_y_unit.setter
+    def plot_3_y_unit(self, value):
+        self.set_y_unit(plot_index=2, value=value)
+
+    @property
+    def plot_1_clear_old_data(self):
+        return self.clear_old_data(plot_index=0)
+
+    @property
+    def plot_2_clear_old_data(self):
+        return self.clear_old_data(plot_index=1)
+
+    @property
+    def plot_3_clear_old_data(self):
+        return self.clear_old_data(plot_index=2)
+
+    @property
+    def plot_1_x_limits(self):
+        return self._x_limits[0]
+
+    @plot_1_x_limits.setter
+    def plot_1_x_limits(self, limits=None):
+        self.set_x_limits(plot_index=0, limits=limits)
+
+    @property
+    def plot_2_x_limits(self):
+        return self._x_limits[1]
+
+    @plot_2_x_limits.setter
+    def plot_2_x_limits(self, limits=None):
+        self.set_x_limits(plot_index=1, limits=limits)
+
+    @property
+    def plot_3_x_limits(self):
+        return self._x_limits[2]
+
+    @plot_3_x_limits.setter
+    def plot_3_x_limits(self, limits=None):
+        self.set_x_limits(plot_index=2, limits=limits)
+
+    @property
+    def plot_1_y_limits(self):
+        return self._y_limits[0]
+
+    @plot_1_y_limits.setter
+    def plot_1_y_limits(self, limits=None):
+        self.set_y_limits(plot_index=0, limits=limits)
+
+    @property
+    def plot_2_y_limits(self):
+        return self._y_limits[1]
+
+    @plot_2_y_limits.setter
+    def plot_2_y_limits(self, limits=None):
+        self.set_y_limits(plot_index=1, limits=limits)
+
+    @property
+    def plot_3_y_limits(self):
+        return self._y_limits[2]
+
+    @plot_3_y_limits.setter
+    def plot_3_y_limits(self, limits=None):
+        self.set_y_limits(plot_index=2, limits=limits)
