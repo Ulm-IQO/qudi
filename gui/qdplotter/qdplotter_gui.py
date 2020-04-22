@@ -63,7 +63,10 @@ class QDPlotterGui(GUIBase):
         super().__init__(*args, **kwargs)
         self._plot_logic = None
         self._mw = None
-        self._fsd = None
+        self._fsd_1 = None
+        self._pen_colors = cycle(['b', 'y', 'm', 'g'])
+        self._plot_1_curves = []
+        self._fit_1_curves = []
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
@@ -81,39 +84,36 @@ class QDPlotterGui(GUIBase):
         self._mw.setDockNestingEnabled(True)
 
         #####################
-        # Setting default parameters
-        self._mw.domain_min_DoubleSpinBox.setValue(self._plot_logic.get_domain()[0])
-        self._mw.domain_max_DoubleSpinBox.setValue(self._plot_logic.get_domain()[1])
-        self._mw.range_min_DoubleSpinBox.setValue(self._plot_logic.get_range()[0])
-        self._mw.range_max_DoubleSpinBox.setValue(self._plot_logic.get_range()[1])
-
-        self._mw.horizontal_label_lineEdit.setText(self._plot_logic.h_label)
-        self._mw.horizontal_units_lineEdit.setText(self._plot_logic.h_units)
-        self._mw.vertical_label_lineEdit.setText(self._plot_logic.v_label)
-        self._mw.vertical_units_lineEdit.setText(self._plot_logic.v_units)
-
-        #####################
         # Connecting user interactions
-        self._mw.domain_min_DoubleSpinBox.valueChanged.connect(self.domain_min_changed)
-        self._mw.domain_max_DoubleSpinBox.valueChanged.connect(self.domain_max_changed)
-        self._mw.range_min_DoubleSpinBox.valueChanged.connect(self.range_min_changed)
-        self._mw.range_max_DoubleSpinBox.valueChanged.connect(self.range_max_changed)
+        self._mw.parameter_1_x_lower_limit_DoubleSpinBox.valueChanged.connect(self.parameter_1_x_limits_changed)
+        self._mw.parameter_1_x_upper_limit_DoubleSpinBox.valueChanged.connect(self.parameter_1_x_limits_changed)
+        self._mw.parameter_1_y_lower_limit_DoubleSpinBox.valueChanged.connect(self.parameter_1_y_limits_changed)
+        self._mw.parameter_1_y_upper_limit_DoubleSpinBox.valueChanged.connect(self.parameter_1_y_limits_changed)
 
-        self._mw.horizontal_label_lineEdit.editingFinished.connect(self.h_label_changed)
-        self._mw.horizontal_units_lineEdit.editingFinished.connect(self.h_label_changed)
-        self._mw.vertical_label_lineEdit.editingFinished.connect(self.v_label_changed)
-        self._mw.vertical_units_lineEdit.editingFinished.connect(self.v_label_changed)
+        self._mw.parameter_1_x_label_lineEdit.editingFinished.connect(self.parameter_1_x_label_changed)
+        self._mw.parameter_1_x_unit_lineEdit.editingFinished.connect(self.parameter_1_x_label_changed)
+        self._mw.parameter_1_y_label_lineEdit.editingFinished.connect(self.parameter_1_y_label_changed)
+        self._mw.parameter_1_y_unit_lineEdit.editingFinished.connect(self.parameter_1_y_label_changed)
 
-        self._mw.fit_domain_to_data_PushButton.clicked.connect(self.fit_domain_to_data)
-        self._mw.fit_range_to_data_PushButton.clicked.connect(self.fit_range_to_data)
+        self._mw.parameter_1_x_auto_PushButton.clicked.connect(self.parameter_1_x_auto_clicked)
+        self._mw.parameter_1_y_auto_PushButton.clicked.connect(self.parameter_1_y_auto_clicked)
+        self._mw.plot_1_save_pushButton.clicked.connect(self.save_clicked)
+
+        # Fit settings dialogs
+        self._fsd_1 = FitSettingsDialog(self._plot_logic.plot_1_fit_container)
+        self._fsd_1.applySettings()
+        self._mw.fit_1_comboBox.setFitFunctions(self._fsd_1.currentFits)
+        self._mw.fit_settings_Action.triggered.connect(self._fsd_1.show)
+        self._fsd_1.sigFitsUpdated.connect(self._mw.fit_1_comboBox.setFitFunctions)
+        self._mw.fit_1_pushButton.clicked.connect(self.fit_1_clicked)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
-        self._mw.save_Action.triggered.connect(self.save_clicked)
 
         #####################
         self._plot_logic.sigPlotDataUpdated.connect(self.update_data)
         self._plot_logic.sigPlotParamsUpdated.connect(self.update_plot)
+        self._plot_logic.sigFit1Updated.connect(self.fit_1_updated)
 
         self.update_data()
         self.update_plot()
@@ -138,84 +138,69 @@ class QDPlotterGui(GUIBase):
         if self._plot_logic.clear_old_data:
             self._mw.plot_1_PlotWidget.clear()
 
-        self.curves = []
-        pen_colors = cycle(['b', 'y', 'm', 'g'])
-        for ii in range(len(self._plot_logic.indep_vals)):
-            self.curves.append(self._mw.plot_1_PlotWidget.plot())
-            self.curves[ii].setPen(next(pen_colors))
-            self.curves[ii].setData(y=self._plot_logic.depen_vals[ii], x=self._plot_logic.indep_vals[ii])
+        self._plot_1_curves = []
+        self._fit_1_curves = []
+        for line in range(len(self._plot_logic.plot_1_y_data)):
+            self._plot_1_curves.append(self._mw.plot_1_PlotWidget.plot())
+            self._plot_1_curves[line].setPen(next(self._pen_colors))
+            self._plot_1_curves[line].setData(y=self._plot_logic.plot_1_x_data[line],
+                                              x=self._plot_logic.plot_1_y_data[line])
+            self._fit_1_curves.append(self._mw.plot_1_PlotWidget.plot())
+            self._fit_1_curves[line].setPen('r')
+            self._fit_1_curves[line].setData(y=[0, 1],
+                                             x=[0, 1])
 
     def update_plot(self):
-        self._mw.plot_1_PlotWidget.setXRange(self._plot_logic.plot_domain[0], self._plot_logic.plot_domain[1])
-        self._mw.plot_1_PlotWidget.setYRange(self._plot_logic.plot_range[0], self._plot_logic.plot_range[1])
-        self._mw.plot_1_PlotWidget.setLabel('bottom', self._plot_logic.h_label, units=self._plot_logic.h_units)
-        self._mw.plot_1_PlotWidget.setLabel('left', self._plot_logic.v_label, units=self._plot_logic.v_units)
+        self._mw.plot_1_PlotWidget.setXRange(self._plot_logic.plot_1_x_limits[0], self._plot_logic.plot_1_x_limits[1])
+        self._mw.plot_1_PlotWidget.setYRange(self._plot_logic.plot_1_y_limits[0], self._plot_logic.plot_1_y_limits[1])
+        self._mw.plot_1_PlotWidget.setLabel('bottom', self._plot_logic.plot_1_x_label,
+                                            units=self._plot_logic.plot_1_x_unit)
+        self._mw.plot_1_PlotWidget.setLabel('left', self._plot_logic.plot_1_y_label,
+                                            units=self._plot_logic.plot_1_y_unit)
 
         # Update display in gui if plot params are changed by script access to logic
-        self._mw.domain_min_DoubleSpinBox.setValue(self._plot_logic.get_domain()[0])
-        self._mw.domain_max_DoubleSpinBox.setValue(self._plot_logic.get_domain()[1])
-        self._mw.range_min_DoubleSpinBox.setValue(self._plot_logic.get_range()[0])
-        self._mw.range_max_DoubleSpinBox.setValue(self._plot_logic.get_range()[1])
+        self._mw.parameter_1_x_lower_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_y_limits[0])
+        self._mw.parameter_1_x_upper_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_y_limits[1])
+        self._mw.parameter_1_y_lower_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_x_limits[0])
+        self._mw.parameter_1_y_upper_limit_DoubleSpinBox.setValue(self._plot_logic.plot_1_x_limits[1])
 
-        self._mw.horizontal_label_lineEdit.setText(self._plot_logic.h_label)
-        self._mw.horizontal_units_lineEdit.setText(self._plot_logic.h_units)
-        self._mw.vertical_label_lineEdit.setText(self._plot_logic.v_label)
-        self._mw.vertical_units_lineEdit.setText(self._plot_logic.v_units)
+        self._mw.parameter_1_x_label_lineEdit.setText(self._plot_logic.plot_1_x_label)
+        self._mw.parameter_1_x_unit_lineEdit.setText(self._plot_logic.plot_1_x_unit)
+        self._mw.parameter_1_y_label_lineEdit.setText(self._plot_logic.plot_1_y_label)
+        self._mw.parameter_1_y_unit_lineEdit.setText(self._plot_logic.plot_1_y_unit)
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
         self._plot_logic.save_data()
 
-    def domain_min_changed(self):
-        """ Handling the change of the domain minimum.
+    def parameter_1_x_limits_changed(self):
+        """ Handling the change of the parameter_1_x_limits.
         """
-        self._plot_logic.set_domain([self._mw.domain_min_DoubleSpinBox.value(),
-                                     self._plot_logic.get_domain()[1]
-                                     ]
-                                    )
+        self._plot_logic.plot_1_x_limits = [self._mw.parameter_1_x_lower_limit_DoubleSpinBox.value(),
+                                            self._mw.parameter_1_x_upper_limit_DoubleSpinBox.value()]
 
-    def domain_max_changed(self):
-        """ Handling the change of the domain minimum.
+    def parameter_1_y_limits_changed(self):
+        """ Handling the change of the parameter_1_y_limits.
         """
-        self._plot_logic.set_domain([self._plot_logic.get_domain()[0],
-                                     self._mw.domain_max_DoubleSpinBox.value()
-                                     ]
-                                    )
+        self._plot_logic.plot_1_y_limits = [self._mw.parameter_1_y_lower_limit_DoubleSpinBox.value(),
+                                            self._mw.parameter_1_y_upper_limit_DoubleSpinBox.value()]
 
-    def range_min_changed(self):
-        """ Handling the change of range.
-        """
-        self._plot_logic.set_range([self._mw.range_min_DoubleSpinBox.value(),
-                                    self._plot_logic.get_range()[1]
-                                    ]
-                                   )
+    def parameter_1_x_auto_clicked(self):
+        """Set the parameter_1_x_limits to the min/max of the data values"""
+        self._plot_logic.plot_1_x_limits = None
 
-    def range_max_changed(self):
-        """ Handling the change of range.
-        """
-        self._plot_logic.set_range([self._plot_logic.get_range()[0],
-                                    self._mw.range_max_DoubleSpinBox.value()
-                                    ]
-                                   )
+    def parameter_1_y_auto_clicked(self):
+        """Set the parameter_1_y_limits to the min/max of the data values"""
+        self._plot_logic.plot_1_y_limits = None
 
-    def fit_domain_to_data(self):
-        """Set the domain to the min/max of the data values"""
-        self._plot_logic.set_domain()
+    def parameter_1_x_label_changed(self):
+        self._plot_logic.plot_1_x_label = self._mw.parameter_1_x_label_lineEdit.text()
+        self._plot_logic.plot_1_x_unit = self._mw.parameter_1_x_unit_lineEdit.text()
 
-    def fit_range_to_data(self):
-        """Set the range to the min/max of the data values"""
-        self._plot_logic.set_range()
-
-    def h_label_changed(self):
-        self._plot_logic.set_hlabel(self._mw.horizontal_label_lineEdit.text(),
-                                    self._mw.horizontal_units_lineEdit.text()
-                                    )
-
-    def v_label_changed(self):
-        self._plot_logic.set_vlabel(self._mw.vertical_label_lineEdit.text(),
-                                    self._mw.vertical_units_lineEdit.text()
-                                    )
+    def parameter_1_y_label_changed(self):
+        self._plot_logic.plot_1_y_label = self._mw.parameter_1_y_label_lineEdit.text()
+        self._plot_logic.plot_1_y_unit = self._mw.parameter_1_y_unit_lineEdit.text()
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -235,3 +220,25 @@ class QDPlotterGui(GUIBase):
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
                             self._mw.control_ToolBar)
+
+    def fit_1_clicked(self):
+
+        print('fit')
+        current_fit_method = self._mw.fit_1_comboBox.getCurrentFit()[0]
+        self._plot_logic.do_fit_1(current_fit_method)
+
+    @QtCore.Slot(np.ndarray, str, str)
+    def fit_1_updated(self, fit_data, formatted_fitresult, fit_method):
+        print('fit returned', fit_data)
+        self._mw.fit_1_comboBox.blockSignals(True)
+        self._mw.fit_1_textBrowser.clear()
+        self._mw.fit_1_textBrowser.setPlainText(formatted_fitresult)
+        if fit_method:
+            self._mw.fit_1_comboBox.setCurrentFit(fit_method)
+        for index, curve in enumerate(self._fit_1_curves):
+            curve.setData(x=fit_data[index][0], y=fit_data[index][1])
+            if fit_method == 'No Fit' and curve in self._mw.plot_1_PlotWidget.items():
+                self._mw.plot_1_PlotWidget.removeItem(curve)
+            elif fit_method != 'No Fit' and curve not in self._mw.plot_1_PlotWidget.items():
+                self._mw.plot_1_PlotWidget.addItem(curve)
+        self._mw.fit_1_comboBox.blockSignals(False)
