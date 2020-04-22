@@ -30,7 +30,7 @@ from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
 
 
-class QdplotLogic(GenericLogic):
+class QDPlotLogic(GenericLogic):
 
     """ This logic module helps display user data in plots, and makes it easy to save.
 
@@ -55,11 +55,13 @@ class QdplotLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
+        self._clear_old = True
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.indep_vals = np.zeros((10,))
-        self.depen_vals = np.zeros((10,))
+        self.indep_vals = np.zeros((10, 10))
+        self.depen_vals = np.zeros((10, 10))
 
         self.plot_domain = [0, 1]
         self.plot_range = [0, 1]
@@ -90,7 +92,7 @@ class QdplotLogic(GenericLogic):
             self.log.error('No y-values provided, cannot set plot data.')
             return -1
 
-        self.clear_old = clear_old
+        self._clear_old = clear_old
         # check if input is only an array (single plot) or a list of arrays (one or several plots)
         if type(x[0]) is np.ndarray:  # if x is an array, type(x[0]) is a np.float
             self.indep_vals = x
@@ -173,6 +175,10 @@ class QdplotLogic(GenericLogic):
 
     def get_range(self):
         return self.plot_range
+
+    @property
+    def clear_old_data(self):
+        return self._clear_old
 
     def save_data(self, postfix=''):
         """ Save the data to a file.
