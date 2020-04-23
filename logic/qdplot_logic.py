@@ -105,7 +105,7 @@ class QDPlotLogic(GenericLogic):
         fit_container = self.fit_container
         result = ''
         fit_data = list()
-        for dataset in range(len(self._x_data[0])):
+        for dataset in range(len(self._x_data[plot_index])):
             x_data = self._x_data[plot_index][dataset]
             y_data = self._y_data[plot_index][dataset]
 
@@ -135,7 +135,6 @@ class QDPlotLogic(GenericLogic):
                 except:
                     formatted_fitresult = 'This fit does not return formatted results'
             result += 'Dataset {0}:\n{1}'.format(dataset, formatted_fitresult)
-
         fit_data = np.array(fit_data)
         self.sigFitUpdated.emit(plot_index, fit_data, result, fit_container.current_fit)
         return plot_index, fit_data, result, fit_container.current_fit

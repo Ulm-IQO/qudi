@@ -91,7 +91,7 @@ class QDPlotterGui(GUIBase):
         self._parameter3 = None
         self._parameters = list()
 
-        self._pen_colors = cycle(['b', 'y', 'm', 'g'])
+        self._pen_colors = [cycle(['b', 'y', 'm', 'g']), cycle(['b', 'y', 'm', 'g']), cycle(['b', 'y', 'm', 'g'])]
         self._plot_curves = [list()] * 3
         self._fit_curves = [list()] * 3
 
@@ -235,6 +235,7 @@ class QDPlotterGui(GUIBase):
         """ Restore the arrangement of DockWidgets to the default """
 
         self._mw.centralwidget.setVisible(False)
+        self._mw.setTabPosition(QtCore.Qt.TopDockWidgetArea, 0)  # North: 0, South: 1, West: 2, East: 3
 
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot1)
@@ -269,8 +270,11 @@ class QDPlotterGui(GUIBase):
             self._fit_curves[plot_index] = []
 
             for line in range(len(self._plot_logic.get_x_data(plot_index=plot_index))):
-                self._plot_curves[plot_index].append(plot.plot_PlotWidget.plot())
-                self._plot_curves[plot_index][line].setPen(next(self._pen_colors))
+                pen_color = next(self._pen_colors[plot_index])
+                self._plot_curves[plot_index].append(plot.plot_PlotWidget.plot(pen=pen_color,
+                                                                               symbol='d',
+                                                                               symbolSize=6,
+                                                                               symbolBrush=pen_color))
                 self._plot_curves[plot_index][line].setData(x=self._plot_logic.get_x_data(plot_index=plot_index)[line],
                                                             y=self._plot_logic.get_y_data(plot_index=plot_index)[line])
                 self._fit_curves[plot_index].append(plot.plot_PlotWidget.plot())
