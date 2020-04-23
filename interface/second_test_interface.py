@@ -6,7 +6,8 @@ from core.meta import InterfaceMetaclass
 
 
 class SecondTestInterface(metaclass=InterfaceMetaclass):
-    """
+    """ This interface is used with first_test_interface to demo the use of two interfaces with collision in naming.
+    See the documentation how_to_hardware_with_multiple_interfaces.md for more detail.
     """
 
     @abstract_interface_method
