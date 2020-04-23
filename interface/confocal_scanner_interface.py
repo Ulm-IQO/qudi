@@ -25,14 +25,25 @@ from core.meta import InterfaceMetaclass
 
 
 class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
-    """ This is the Interface class to define the controls for the simple
-    microwave hardware.
+    """ This is the Interface class to define the controls for a scanner device
+
+    A scanner device is a hardware that can move on up to 4 multiple axis with repeatability in position and measure
+    something at each point of a line in the parameter space trajectory.
+    The key idea of this interface is that the hardware handle the timing of the acquisition to remove as much delay as
+    possible.
+
+    A typical example of such hardware in the lab is the use with the NI card to move scanner/mirrors and record the
+    luminescence at each position to build, line by line, a raster scan.
+
+    ---
+    This code, while trying to be compatible with any number of axis, is as of now only used with 3 or 4 axis.
+    Using less will raise errors in confocal_logic.
+
     """
 
     @abstract_interface_method
     def reset_hardware(self):
-        """ Resets the hardware, so the connection is lost and other programs
-            can access it.
+        """ Resets the hardware, so the connection is lost and other programs can access it.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -42,8 +53,8 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 
-        @return float [4][2]: array of 4 ranges with an array containing lower
-                              and upper limit
+        @return float [N][2]: array of N ranges with an array containing lower and upper limit, preferably in SI unit.
+
         """
         pass
 
@@ -51,8 +62,9 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
-        @param float [4][2] myrange: array of 4 ranges with an array containing
-                                     lower and upper limit
+        Deprecated : This range should not be accessible by logic. TODO: Discuss and remove from interface ?
+
+        @param float [N][2] myrange: array of N ranges with an array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
@@ -61,6 +73,8 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     @abstract_interface_method
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
+
+        Deprecated : This range should not be accessible by logic. TODO: Discuss and remove from interface ?
 
         @param float [2] myrange: array containing lower and upper limit
 
@@ -96,12 +110,13 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
-        """ Configures the hardware clock of the NiDAQ card to give the timing.
+        """ Configures the hardware clock of the hardware that controls the acquisition timing.
 
-        @param float clock_frequency: if defined, this sets the frequency of the
-                                      clock
-        @param str clock_channel: if defined, this is the physical channel of
-                                  the clock
+        @param float clock_frequency: if defined, this sets the frequency of the clock
+        @param str clock_channel: if defined, this is the physical channel of the clock
+
+        TODO: the clock_channel argument is unused and should not be known by the logic.
+        TODO: Discuss and remove from interface ?
 
         @return int: error code (0:OK, -1:error)
         """
@@ -124,19 +139,23 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
                                         output channels
 
         @return int: error code (0:OK, -1:error)
+
+        TODO: Again, should the multiple clocks controlled by logic be in this interface ?
         """
         pass
 
     @abstract_interface_method
     def scanner_set_position(self, x=None, y=None, z=None, a=None):
-        """Move stage to x, y, z, a (where a is the fourth voltage channel).
+        """ Move stage to x, y, z, a (where a is the fourth channel).
 
-        @param float x: postion in x-direction (volts)
-        @param float y: postion in y-direction (volts)
-        @param float z: postion in z-direction (volts)
-        @param float a: postion in a-direction (volts)
+        @param float x: position in x-direction (in axis unit)
+        @param float y: position in y-direction (in axis unit)
+        @param float z: position in z-direction (in axis unit)
+        @param float a: position in a-direction (in axis unit)
 
         @return int: error code (0:OK, -1:error)
+
+        If a value is not set or set to None, the actual value is implied.
         """
         pass
 
@@ -144,7 +163,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
 
-        @return float[n]: current position in (x, y, z, a).
+        @return tuple(float): current position as a tuple. Ex : (x, y, z, a).
         """
         pass
 
@@ -155,6 +174,8 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         @param float[k][n] line_path: array k of n-part tuples defining the pixel positions
         @param bool pixel_clock: whether we need to output a pixel clock for this line
 
+        TODO: Give a detail explanation of pixel_clock argument, how it is used in practice and why it is necessary.
+
         @return float[k][m]: the photon counts per second for k pixels with m channels
         """
         pass
@@ -164,6 +185,8 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """ Closes the scanner and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
+
+        TODO: Give a detail explanation how it is used in practice and why it is necessary.
         """
         pass
 
@@ -172,6 +195,8 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
+
+        TODO: Give a detail explanation how it is used in practice and why it is necessary.
         """
         pass
 
