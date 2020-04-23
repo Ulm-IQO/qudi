@@ -65,6 +65,8 @@ The potential sequence_options are:
 * Added save_pdf and save_png config options for save_logic
 * Fixed bug in spincore pulseblaster hardware that affected only old models
 * Added a netobtain in spincore pulseblaster hardware to speedup remote loading 
+* Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
+
 
 
 Config changes:
