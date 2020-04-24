@@ -33,7 +33,9 @@
     </property>
     <addaction name="fit_settings_Action"/>
     <addaction name="separator"/>
-    <addaction name="restore_default_view_Action"/>
+    <addaction name="restore_tabbed_view_Action"/>
+    <addaction name="restore_side_by_side_view_Action"/>
+    <addaction name="restore_arc_view_Action"/>
     <addaction name="actionClose"/>
    </widget>
    <addaction name="menuView"/>
@@ -55,9 +57,9 @@
     <string>&amp;Controls</string>
    </property>
   </action>
-  <action name="restore_default_view_Action">
+  <action name="restore_tabbed_view_Action">
    <property name="text">
-    <string>&amp;Restore default</string>
+    <string>Restore &amp;tabbed view</string>
    </property>
   </action>
   <action name="parameter_view_Action">
@@ -97,6 +99,16 @@
   <action name="fit_settings_Action">
    <property name="text">
     <string>Fit Settings</string>
+   </property>
+  </action>
+  <action name="restore_side_by_side_view_Action">
+   <property name="text">
+    <string>Restore &amp;side by side view</string>
+   </property>
+  </action>
+  <action name="restore_arc_view_Action">
+   <property name="text">
+    <string>Restore &amp;arc view</string>
    </property>
   </action>
  </widget>

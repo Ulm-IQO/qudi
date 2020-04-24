@@ -30,6 +30,7 @@ from qtpy import QtCore
 from qtpy import uic
 
 from core.connector import Connector
+from core.statusvariable import StatusVar
 from gui.guibase import GUIBase
 from gui.fitsettings import FitSettingsDialog
 
@@ -78,6 +79,8 @@ class QDPlotterGui(GUIBase):
     # declare connectors
     qdplot_logic = Connector(interface='QDPlotLogic')
 
+    widget_alignment = StatusVar(name='widget_alignment', default='tabbed')
+
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
 
@@ -115,7 +118,9 @@ class QDPlotterGui(GUIBase):
         self._mw.fit_settings_Action.triggered.connect(self._fsd.show)
 
         # Connect the default view action
-        self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+        self._mw.restore_tabbed_view_Action.triggered.connect(self.restore_tabbed_view)
+        self._mw.restore_side_by_side_view_Action.triggered.connect(self.restore_side_by_side_view)
+        self._mw.restore_arc_view_Action.triggered.connect(self.restore_arc_view)
 
         # Add the actual plots as DockWidgets to the main window
         self.initialize_plot1()
@@ -125,7 +130,7 @@ class QDPlotterGui(GUIBase):
         self._plots = [self._plot1, self._plot2, self._plot3]
         self._parameters = [self._parameter1, self._parameter2, self._parameter3]
 
-        self.restore_default_view()
+        self.restore_tabbed_view(alignment=self.widget_alignment)
         self.update_data()
         self.update_plot()
 
@@ -147,7 +152,9 @@ class QDPlotterGui(GUIBase):
         self._fsd.sigFitsUpdated.disconnect()
         self._mw.fit_settings_Action.triggered.disconnect(self._fsd.show)
 
-        self._mw.restore_default_view_Action.triggered.disconnect(self.restore_default_view)
+        self._mw.restore_tabbed_view_Action.triggered.disconnect(self.restore_tabbed_view)
+        self._mw.restore_side_by_side_view_Action.triggered.disconnect(self.restore_side_by_side_view)
+        self._mw.restore_arc_view_Action.triggered.disconnect(self.restore_arc_view)
 
         # disconnect logic
         self._plot_logic.sigPlotDataUpdated.disconnect(self.update_data)
@@ -175,6 +182,7 @@ class QDPlotterGui(GUIBase):
         self._plot1.fit_comboBox.setFitFunctions(self._fsd.currentFits)
         self._fsd.sigFitsUpdated.connect(self._plot1.fit_comboBox.setFitFunctions)
         self._plot1.fit_pushButton.clicked.connect(self.fit_1_clicked)
+        self._plot1.show_fit_checkBox.setChecked(False)
 
         # Connecting user interactions
         self._parameter1.x_lower_limit_DoubleSpinBox.valueChanged.connect(self.parameter_1_x_limits_changed)
@@ -224,6 +232,7 @@ class QDPlotterGui(GUIBase):
         self._plot2.fit_comboBox.setFitFunctions(self._fsd.currentFits)
         self._fsd.sigFitsUpdated.connect(self._plot2.fit_comboBox.setFitFunctions)
         self._plot2.fit_pushButton.clicked.connect(self.fit_2_clicked)
+        self._plot2.show_fit_checkBox.setChecked(False)
 
         # Connecting user interactions
         self._parameter2.x_lower_limit_DoubleSpinBox.valueChanged.connect(self.parameter_2_x_limits_changed)
@@ -274,6 +283,7 @@ class QDPlotterGui(GUIBase):
         self._plot3.fit_comboBox.setFitFunctions(self._fsd.currentFits)
         self._fsd.sigFitsUpdated.connect(self._plot3.fit_comboBox.setFitFunctions)
         self._plot3.fit_pushButton.clicked.connect(self.fit_3_clicked)
+        self._plot3.show_fit_checkBox.setChecked(False)
 
         # Connecting user interactions
         self._parameter3.x_lower_limit_DoubleSpinBox.valueChanged.connect(self.parameter_3_x_limits_changed)
@@ -309,16 +319,38 @@ class QDPlotterGui(GUIBase):
         self._parameter3.y_auto_PushButton.clicked.disconnect()
         self._plot3.save_pushButton.clicked.disconnect()
 
-    def restore_default_view(self):
+    def restore_side_by_side_view(self):
+        """ Restore the arrangement of DockWidgets to the default """
+        self.restore_tabbed_view(alignment='side_by_side')
+
+    def restore_arc_view(self):
+        """ Restore the arrangement of DockWidgets to the default """
+        self.restore_tabbed_view(alignment='arc')
+
+    def restore_tabbed_view(self, alignment='tabbed'):
         """ Restore the arrangement of DockWidgets to the default """
 
-        self._mw.centralwidget.setVisible(False)
+        self.widget_alignment = alignment
         self._mw.setTabPosition(QtCore.Qt.TopDockWidgetArea, 0)  # North: 0, South: 1, West: 2, East: 3
+        self._mw.setDockNestingEnabled(True)
 
         # Arrange docks widgets
-        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot1)
-        self._mw.tabifyDockWidget(self._plot1, self._plot2)
-        self._mw.tabifyDockWidget(self._plot1, self._plot3)
+        if alignment == 'tabbed':
+            self._mw.centralwidget.setVisible(False)
+            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot1)
+            self._mw.tabifyDockWidget(self._plot1, self._plot2)
+            self._mw.tabifyDockWidget(self._plot1, self._plot3)
+        elif alignment == 'arc':
+            self._mw.centralwidget.setVisible(True)
+            self._mw.centralwidget.setFixedWidth(0)
+            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot1)
+            self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._plot2)
+            self._mw.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._plot3)
+        elif alignment == 'side_by_side':
+            self._mw.centralwidget.setVisible(False)
+            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot1)
+            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot2)
+            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._plot3)
 
         self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._parameter1)
         self._mw.tabifyDockWidget(self._parameter1, self._parameter2)
@@ -535,6 +567,7 @@ class QDPlotterGui(GUIBase):
         """
         self._plots[plot_index].fit_comboBox.blockSignals(True)
 
+        self._plots[plot_index].show_fit_checkBox.setChecked(True)
         self._plots[plot_index].fit_textBrowser.clear()
         self._plots[plot_index].fit_textBrowser.setPlainText(formatted_fitresult)
 
