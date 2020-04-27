@@ -32,6 +32,7 @@ from qtpy import uic
 from pyqtgraph import SignalProxy, mkColor
 
 from core.connector import Connector
+from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from gui.guibase import GUIBase
 from gui.fitsettings import FitSettingsDialog
@@ -90,6 +91,7 @@ class QDPlotterGui(GUIBase):
 
     qdplotter:
         module.Class: 'qdplotter.qdplotter_gui.QDPlotterGui'
+        pen_color_list: [[100, 100, 100], 'c', 'm', 'g']
         connect:
             qdplot_logic: 'qdplotlogic'
     """
@@ -101,8 +103,12 @@ class QDPlotterGui(GUIBase):
 
     # declare connectors
     qdplot_logic = Connector(interface='QDPlotLogic')
-
+    # declare config options
+    _pen_color_list = ConfigOption(name='pen_color_list', default=['b', 'y', 'm', 'g'])
+    # declare status variables
     widget_alignment = StatusVar(name='widget_alignment', default='tabbed')
+
+    _allowed_colors = {'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -120,6 +126,25 @@ class QDPlotterGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
         self._plot_logic = self.qdplot_logic()
+
+        if not isinstance(self._pen_color_list, (list, tuple)) or len(self._pen_color_list) < 1:
+            self.log.warning(
+                'The ConfigOption pen_color_list needs to be a list of strings but was "{0}".'
+                ' Will use the following pen colors as default: {1}.'
+                ''.format(self._pen_color_list, ['b', 'y', 'm', 'g']))
+            self._pen_color_list = ['b', 'y', 'm', 'g']
+        else:
+            self._pen_color_list = list(self._pen_color_list)
+
+        for index, color in enumerate(self._pen_color_list):
+            if (isinstance(color, (list, tuple)) and len(color) == 3) or \
+                    (isinstance(color, str) and color in self._allowed_colors):
+                pass
+            else:
+                self.log.warning('The color was "{0}" but needs to be from this list: {1} '
+                                 'or a 3 element tuple with values from 0 to 255 for RGB.'
+                                 ' Setting color to "b".'.format(color, self._allowed_colors))
+                self._pen_color_list[index] = 'b'
 
         # Use the inherited class 'QDPlotMainWindow' to create the GUI window
         self._mw = QDPlotMainWindow()
@@ -229,7 +254,7 @@ class QDPlotterGui(GUIBase):
             dockwidget.widget().fit_groupBox.setVisible(False)
             dockwidget.widget().controls_groupBox.setVisible(False)
             self._plot_dockwidgets.append(dockwidget)
-            self._pen_colors.append(cycle(self._plot_logic.pen_colors))
+            self._pen_colors.append(cycle(self._pen_color_list))
             self._plot_curves.append(list())
             self._fit_curves.append(list())
             self._pg_signal_proxys.append([None, None])
@@ -294,6 +319,30 @@ class QDPlotterGui(GUIBase):
         for sig_proxy in self._pg_signal_proxys[index]:
             sig_proxy.sigDelayed.disconnect()
             sig_proxy.disconnect()
+
+    @property
+    def pen_color_list(self):
+        return self._pen_color_list.copy()
+
+    @pen_color_list.setter
+    def pen_color_list(self, value):
+        if not isinstance(value, (list, tuple)) or len(value) < 1:
+            self.log.warning(
+                'The parameter pen_color_list needs to be a list of strings but was "{0}".'
+                ' Will use the following old pen colors: {1}.'
+                ''.format(value, self._pen_color_list))
+            return
+        for index, color in enumerate(self._pen_color_list):
+            if (isinstance(color, (list, tuple)) and len(color) == 3) or \
+                    (isinstance(color, str) and color in self._allowed_colors):
+                pass
+            else:
+                self.log.warning('The color was "{0}" but needs to be from this list: {1} '
+                                 'or a 3 element tuple with values from 0 to 255 for RGB.'
+                                 ''.format(color, self._allowed_colors))
+                return
+        else:
+            self._pen_color_list = list(value)
 
     def restore_side_by_side_view(self):
         """ Restore the arrangement of DockWidgets to the default """
@@ -371,7 +420,7 @@ class QDPlotterGui(GUIBase):
         dockwidget = self._plot_dockwidgets[plot_index].widget()
         if clear_old:
             dockwidget.plot_PlotWidget.clear()
-            self._pen_colors[plot_index] = cycle(self._plot_logic.pen_colors)
+            self._pen_colors[plot_index] = cycle(self._pen_color_list)
 
         self._plot_curves[plot_index] = list()
         self._fit_curves[plot_index] = list()
