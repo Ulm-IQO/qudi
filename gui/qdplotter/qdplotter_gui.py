@@ -29,6 +29,7 @@ from itertools import cycle
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
+import pyqtgraph as pg
 
 from core.connector import Connector
 from core.statusvariable import StatusVar
@@ -71,10 +72,10 @@ class PlotDockWidget(QtWidgets.QDockWidget):
         widget.fit_groupBox.setVisible(False)
         widget.controls_groupBox.setVisible(False)
 
-        widget.plot_PlotWidget.setMouseEnabled(x=False, y=False)  # forbid panning/zooming via mouse
-        widget.plot_PlotWidget.disableAutoRange()  # disable any axis scale changes by pyqtgraph
-        widget.plot_PlotWidget.hideButtons()  # do not show the "A" autoscale button of pyqtgraph
-        widget.plot_PlotWidget.setMenuEnabled(False)  # Disable pyqtgraph right click context menu
+        # widget.plot_PlotWidget.setMouseEnabled(x=False, y=False)  # forbid panning/zooming via mouse
+        # widget.plot_PlotWidget.disableAutoRange()  # disable any axis scale changes by pyqtgraph
+        # widget.plot_PlotWidget.hideButtons()  # do not show the "A" autoscale button of pyqtgraph
+        # widget.plot_PlotWidget.setMenuEnabled(False)  # Disable pyqtgraph right click context menu
 
         self.setWidget(widget)
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
@@ -83,7 +84,15 @@ class PlotDockWidget(QtWidgets.QDockWidget):
 class QDPlotterGui(GUIBase):
     """ GUI  for displaying up to 3 custom plots.
     The plots are held in tabified DockWidgets and can either be manipulated in the logic
-    or by corresponding parameter DockWidgets."""
+    or by corresponding parameter DockWidgets.
+
+    Example config for copy-paste:
+
+    qdplotter:
+        module.Class: 'qdplotter.qdplotter_gui.QDPlotterGui'
+        connect:
+            qdplot_logic: 'qdplotlogic'
+    """
 
     sigPlotParametersChanged = QtCore.Signal(int, dict)
     sigAutoRangeClicked = QtCore.Signal(int, bool, bool)
@@ -216,7 +225,7 @@ class QDPlotterGui(GUIBase):
             dockwidget.widget().fit_groupBox.setVisible(False)
             dockwidget.widget().controls_groupBox.setVisible(False)
             self._plot_dockwidgets.append(dockwidget)
-            self._pen_colors.append(cycle(['b', 'y', 'm', 'g']))
+            self._pen_colors.append(cycle(self._plot_logic.pen_colors))
             self._plot_curves.append(list())
             self._fit_curves.append(list())
             self._connect_plot_signals(index)
@@ -346,7 +355,7 @@ class QDPlotterGui(GUIBase):
         dockwidget = self._plot_dockwidgets[plot_index].widget()
         if clear_old:
             dockwidget.plot_PlotWidget.clear()
-            self._pen_colors[plot_index] = cycle(['b', 'y', 'm', 'g'])
+            self._pen_colors[plot_index] = cycle(self._plot_logic.pen_colors)
 
         self._plot_curves[plot_index] = list()
         self._fit_curves[plot_index] = list()
@@ -355,10 +364,10 @@ class QDPlotterGui(GUIBase):
             yd = y_data[line]
             pen_color = next(self._pen_colors[plot_index])
             self._plot_curves[plot_index].append(dockwidget.plot_PlotWidget.plot(
-                pen=pen_color,
+                pen=pg.mkColor(pen_color),
                 symbol='d',
                 symbolSize=6,
-                symbolBrush=pen_color))
+                symbolBrush=pg.mkColor(pen_color)))
             self._plot_curves[plot_index][-1].setData(x=xd, y=yd)
             self._fit_curves[plot_index].append(dockwidget.plot_PlotWidget.plot())
             self._fit_curves[plot_index][-1].setPen('r')
