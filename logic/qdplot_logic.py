@@ -43,6 +43,16 @@ class QDPlotLogic(GenericLogic):
     
     All parameters and data can also be interacted with by calling get_ and set_ functions.
 
+    Example config for copy-paste:
+
+    qdplotlogic:
+        module.Class: 'qdplot_logic.QDPlotLogic'
+        connect:
+            save_logic: 'savelogic'
+            fit_logic: 'fitlogic'
+        default_plot_number: 3
+        pen_color_list: [[100, 100, 100], 'c', 'm', 'g'] # these colors are for the GUI only.
+
     @signal sigPlotDataUpdated: empty signal that is fired whenever the plot data has been updated
     @signal sigPlotParamsUpdated: empty signal that is fired whenever any of the parameters or data have been updated.                
     @signal sigFitUpdated: 
@@ -57,6 +67,7 @@ class QDPlotLogic(GenericLogic):
     fit_logic = Connector(interface='FitLogic')
 
     _default_plot_number = ConfigOption(name='default_plot_number', default=3)
+    _pen_color_list = ConfigOption(name='pen_color_list', default=['b', 'y', 'm', 'g'])
 
     fit_container = StatusVar(name='fit_container', default=None)
 
@@ -96,6 +107,23 @@ class QDPlotLogic(GenericLogic):
 
         self._save_logic = self.save_logic()
         self._fit_logic = self.fit_logic()
+
+        self._allowed_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+        if not isinstance(self._pen_color_list, (list, tuple)) or len(self._pen_color_list) < 1:
+            self.log.warning('The parameter pen_color_list needs to be a list of strings but was "{0}".'
+                             ' Will use the following pen colors as default: {1}.'
+                             ''.format(self._pen_color_list, ['b', 'y', 'm', 'g']))
+            self._pen_color_list = ['b', 'y', 'm', 'g']
+
+        for index, color in enumerate(self._pen_color_list):
+            if (isinstance(color, (list, tuple)) and len(color) == 3) or \
+                    (isinstance(color, str) and color in self._allowed_colors):
+                pass
+            else:
+                self.log.warning('The color was "{0}" but needs to be from this list: {1} '
+                                 'or a 3 element tuple with values from 0 to 255 for RGB.'
+                                 ' Setting color to "b".'.format(color, self._allowed_colors))
+                self._pen_color_list[index] = 'b'
 
         self._clear_old = list()
         self._x_limits = list()
@@ -141,6 +169,29 @@ class QDPlotLogic(GenericLogic):
     def number_of_plots(self):
         with self.threadlock:
             return len(self._clear_old)
+
+    @property
+    def pen_colors(self):
+        return self._pen_color_list
+
+    @pen_colors.setter
+    def pen_colors(self, value):
+        if not isinstance(value, (list, tuple)) or len(value) < 1:
+            self.log.warning('The parameter pen_color_list needs to be a list of strings but was "{0}".'
+                             ' Will use the following old pen colors: {1}.'
+                             ''.format(value, self._pen_color_list))
+            return
+        for index, color in enumerate(self._pen_color_list):
+            if (isinstance(color, (list, tuple)) and len(color) == 3) or \
+                    (isinstance(color, str) and color in self._allowed_colors):
+                pass
+            else:
+                self.log.warning('The color was "{0}" but needs to be from this list: {1} '
+                                 'or a 3 element tuple with values from 0 to 255 for RGB.'
+                                 ''.format(color, self._allowed_colors))
+                return
+        else:
+            self._pen_color_list = list(value)
 
     @QtCore.Slot()
     def add_plot(self):
