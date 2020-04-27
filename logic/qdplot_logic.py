@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 Completely reworked by Kay Jahnke, May 2020
 """
 
-import re
-import functools
 from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
@@ -61,8 +59,6 @@ class QDPlotLogic(GenericLogic):
     _default_plot_number = ConfigOption(name='default_plot_number', default=3)
 
     fit_container = StatusVar(name='fit_container', default=None)
-
-    __dyn_attr_regex = re.compile(r'\Aplot_(\d+)_((?:[xy]_\w+)|(?:clear_old_data))\Z')
 
     def __init__(self, *args, **kwargs):
         """ Create QDPlotLogic object with connectors.
@@ -144,15 +140,7 @@ class QDPlotLogic(GenericLogic):
         self._fit_results.append(None)
         self._fit_method.append('No Fit')
         plot_index = self.number_of_plots - 1
-        setattr(self,
-                'plot_{0:d}_set_data'.format(plot_index + 1),
-                functools.partial(self.set_data, plot_index=plot_index))
-        setattr(self,
-                'plot_{0:d}_do_fit'.format(plot_index + 1),
-                functools.partial(self.do_fit, plot_index=plot_index))
-        setattr(self,
-                'plot_{0:d}_save_data'.format(plot_index + 1),
-                functools.partial(self.save_data, plot_index=plot_index))
+
         self.sigPlotNumberChanged.emit(self.number_of_plots)
         self.sigPlotDataUpdated.emit(plot_index,
                                      self._x_data[plot_index],
@@ -179,9 +167,6 @@ class QDPlotLogic(GenericLogic):
         elif not (0 <= plot_index < self.number_of_plots):
             raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
 
-        delattr(self, 'plot_{0:d}_set_data'.format(self.number_of_plots))
-        delattr(self, 'plot_{0:d}_do_fit'.format(self.number_of_plots))
-        delattr(self, 'plot_{0:d}_save_data'.format(self.number_of_plots))
         del self._clear_old[plot_index]
         del self._x_limits[plot_index]
         del self._y_limits[plot_index]
@@ -195,6 +180,7 @@ class QDPlotLogic(GenericLogic):
         del self._fit_results[plot_index]
         del self._fit_method[plot_index]
         self.sigPlotNumberChanged.emit(self.number_of_plots)
+
         update_range = (-1,) if plot_index == -1 else range(plot_index, self.number_of_plots)
         for i in update_range:
             self.sigPlotDataUpdated.emit(i, self._x_data[i], self._y_data[i], self._clear_old[i])
@@ -696,30 +682,3 @@ class QDPlotLogic(GenericLogic):
             self.set_x_limits(plot_index=plot_index)
         if auto_y:
             self.set_y_limits(plot_index=plot_index)
-
-###############################################################################################
-#   individual getters and setters
-###############################################################################################
-# FIXME: Nerver ever ever do something like this. It is completely unnecessary and leads to
-#  poor performance, errors and namespace cluttering. Not a good software design.
-    def __getattr__(self, item):
-        match = self.__dyn_attr_regex.match(item)
-        if match is None:
-            raise AttributeError('QDPlotLogic has no attribute "{0}"'.format(item))
-        plot_index, attr = match.groups()
-        plot_index = int(plot_index) - 1
-        if not (0 <= plot_index < self.number_of_plots):
-            raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
-        if attr == 'clear_old_data':
-            return self.clear_old_data(plot_index)
-        return getattr(self, 'get_' + attr)
-
-    def __setattr__(self, name, value):
-        match = self.__dyn_attr_regex.match(name)
-        if match is None or match.groups()[1] == 'clear_old_data':
-            return super().__setattr__(name, value)
-        plot_index, attr = match.groups()
-        plot_index = int(plot_index) - 1
-        if not (0 <= plot_index < self.number_of_plots):
-            raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
-        getattr(self, 'set_' + attr)(value)
