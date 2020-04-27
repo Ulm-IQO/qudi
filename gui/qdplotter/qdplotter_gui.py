@@ -29,6 +29,7 @@ from itertools import cycle
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
+from pyqtgraph import SignalProxy
 
 from core.connector import Connector
 from core.statusvariable import StatusVar
@@ -71,10 +72,10 @@ class PlotDockWidget(QtWidgets.QDockWidget):
         widget.fit_groupBox.setVisible(False)
         widget.controls_groupBox.setVisible(False)
 
-        widget.plot_PlotWidget.setMouseEnabled(x=False, y=False)  # forbid panning/zooming via mouse
-        widget.plot_PlotWidget.disableAutoRange()  # disable any axis scale changes by pyqtgraph
-        widget.plot_PlotWidget.hideButtons()  # do not show the "A" autoscale button of pyqtgraph
-        widget.plot_PlotWidget.setMenuEnabled(False)  # Disable pyqtgraph right click context menu
+        # widget.plot_PlotWidget.setMouseEnabled(x=False, y=False)  # forbid mouse panning/zooming
+        # widget.plot_PlotWidget.disableAutoRange()  # disable any axis scale changes by pyqtgraph
+        # widget.plot_PlotWidget.hideButtons()  # do not show the "A" autoscale button of pyqtgraph
+        # widget.plot_PlotWidget.setMenuEnabled(False)  # Disable pyqtgraph right click context menu
 
         self.setWidget(widget)
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
@@ -105,6 +106,7 @@ class QDPlotterGui(GUIBase):
         self._pen_colors = list()
         self._plot_curves = list()
         self._fit_curves = list()
+        self._pg_signal_proxys = list()
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
@@ -130,6 +132,7 @@ class QDPlotterGui(GUIBase):
         self._pen_colors = list()
         self._plot_curves = list()
         self._fit_curves = list()
+        self._pg_signal_proxys = list()
         self.update_number_of_plots(self._plot_logic.number_of_plots)
         # Update all plot parameters and data from logic
         for index, _ in enumerate(self._plot_dockwidgets):
@@ -200,12 +203,14 @@ class QDPlotterGui(GUIBase):
         """
         # Remove dock widgets if plot count decreased
         while count < len(self._plot_dockwidgets):
-            self._disconnect_plot_signals(len(self._plot_dockwidgets) - 1)
+            index = len(self._plot_dockwidgets) - 1
+            self._disconnect_plot_signals(index)
             self._plot_dockwidgets[-1].setParent(None)
             del self._plot_curves[-1]
             del self._fit_curves[-1]
             del self._pen_colors[-1]
             del self._plot_dockwidgets[-1]
+            del self._pg_signal_proxys[-1]
         # Add dock widgets if plot count increased
         while count > len(self._plot_dockwidgets):
             index = len(self._plot_dockwidgets)
@@ -219,6 +224,7 @@ class QDPlotterGui(GUIBase):
             self._pen_colors.append(cycle(['b', 'y', 'm', 'g']))
             self._plot_curves.append(list())
             self._fit_curves.append(list())
+            self._pg_signal_proxys.append([None, None])
             self._connect_plot_signals(index)
             self.restore_view()
 
@@ -249,6 +255,14 @@ class QDPlotterGui(GUIBase):
             functools.partial(self.y_auto_range_clicked, index))
         dockwidget.save_pushButton.clicked.connect(functools.partial(self.save_clicked, index))
         dockwidget.remove_pushButton.clicked.connect(functools.partial(self.remove_clicked, index))
+        self._pg_signal_proxys[index][0] = SignalProxy(
+            dockwidget.plot_PlotWidget.sigXRangeChanged,
+            delay=0.2,
+            slot=lambda args: self._pyqtgraph_x_limits_changed(index, args[1]))
+        self._pg_signal_proxys[index][1] = SignalProxy(
+            dockwidget.plot_PlotWidget.sigYRangeChanged,
+            delay=0.2,
+            slot=lambda args: self._pyqtgraph_y_limits_changed(index, args[1]))
 
     def _disconnect_plot_signals(self, index):
         dockwidget = self._plot_dockwidgets[index].widget()
@@ -269,6 +283,9 @@ class QDPlotterGui(GUIBase):
         dockwidget.y_auto_PushButton.clicked.disconnect()
         dockwidget.save_pushButton.clicked.disconnect()
         dockwidget.remove_pushButton.clicked.disconnect()
+        for sig_proxy in self._pg_signal_proxys[index]:
+            sig_proxy.sigDelayed.disconnect()
+            sig_proxy.disconnect()
 
     def restore_side_by_side_view(self):
         """ Restore the arrangement of DockWidgets to the default """
@@ -411,7 +428,9 @@ class QDPlotterGui(GUIBase):
             dockwidget.y_unit_lineEdit.blockSignals(False)
         if 'x_limits' in params:
             limits = params['x_limits']
-            dockwidget.plot_PlotWidget.setXRange(*limits)
+            self._pg_signal_proxys[plot_index][0].block = True
+            dockwidget.plot_PlotWidget.setXRange(*limits, padding=0)
+            self._pg_signal_proxys[plot_index][0].block = False
             dockwidget.x_lower_limit_DoubleSpinBox.blockSignals(True)
             dockwidget.x_upper_limit_DoubleSpinBox.blockSignals(True)
             dockwidget.x_lower_limit_DoubleSpinBox.setValue(limits[0])
@@ -420,7 +439,9 @@ class QDPlotterGui(GUIBase):
             dockwidget.x_upper_limit_DoubleSpinBox.blockSignals(False)
         if 'y_limits' in params:
             limits = params['y_limits']
-            dockwidget.plot_PlotWidget.setYRange(*limits)
+            self._pg_signal_proxys[plot_index][1].block = True
+            dockwidget.plot_PlotWidget.setYRange(*limits, padding=0)
+            self._pg_signal_proxys[plot_index][1].block = False
             dockwidget.y_lower_limit_DoubleSpinBox.blockSignals(True)
             dockwidget.y_upper_limit_DoubleSpinBox.blockSignals(True)
             dockwidget.y_lower_limit_DoubleSpinBox.setValue(limits[0])
@@ -430,14 +451,16 @@ class QDPlotterGui(GUIBase):
 
     def save_clicked(self, plot_index):
         """ Handling the save button to save the data into a file. """
+        self._flush_pg_proxy(plot_index)
         self._plot_logic.save_data(plot_index=plot_index)
 
     def save_all_clicked(self):
         """ Handling the save button to save the data into a file. """
         for plot_index, _ in enumerate(self._plot_dockwidgets):
-            self._plot_logic.save_data(plot_index=plot_index)
+            self.save_clicked(plot_index)
 
     def remove_clicked(self, plot_index):
+        self._flush_pg_proxy(plot_index)
         self.sigRemovePlotClicked.emit(plot_index)
 
     def x_auto_range_clicked(self, plot_index):
@@ -527,3 +550,20 @@ class QDPlotterGui(GUIBase):
                 curve.setData(x=fit_data[index][0], y=fit_data[index][1])
 
         dockwidget.fit_comboBox.blockSignals(False)
+
+    def _pyqtgraph_x_limits_changed(self, plot_index, limits):
+        plot_item = self._plot_dockwidgets[plot_index].widget().plot_PlotWidget.getPlotItem()
+        if plot_item.ctrl.logXCheck.isChecked() or plot_item.ctrl.fftCheck.isChecked():
+            return
+        self.sigPlotParametersChanged.emit(plot_index, {'x_limits': limits})
+
+    def _pyqtgraph_y_limits_changed(self, plot_index, limits):
+        plot_item = self._plot_dockwidgets[plot_index].widget().plot_PlotWidget.getPlotItem()
+        if plot_item.ctrl.logYCheck.isChecked() or plot_item.ctrl.fftCheck.isChecked():
+            return
+        self.sigPlotParametersChanged.emit(plot_index, {'y_limits': limits})
+
+    def _flush_pg_proxy(self, plot_index):
+        x_proxy, y_proxy = self._pg_signal_proxys[plot_index]
+        x_proxy.flush()
+        y_proxy.flush()
