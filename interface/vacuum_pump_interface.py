@@ -24,7 +24,13 @@ from core.meta import InterfaceMetaclass
 
 
 class VacuumPumpInterface(metaclass=InterfaceMetaclass):
-    """
+    """ This interface can be used to control a vacuum pump.
+
+    This interface, while functional, is not used by any hardware nor logic at the moment.
+    Also it has no dummy associated with it.
+
+    TODO: Improve documentation - Some methods are not crystal clear and no hardwre/logic to infer from.
+
     """
 
     @abstract_interface_method
