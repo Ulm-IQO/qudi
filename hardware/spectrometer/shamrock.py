@@ -58,6 +58,56 @@ class Shamrock(Base,SpectrometerInterface):
     SLIT_MIN_WIDTH=10E-6
     SLIT_MAX_WIDTH=2500E-6
 
+    def get_constraint(self):
+        """Returns all the fixed parameters of the hardware which can be used by the logic.
+
+        @return: (dict) constraint dict : {
+
+            'optical_parameters' : (dict) {
+                            'focal_length' : focal length in m,
+                             'angular_deviation' : angular deviation in rad,
+                              'focal_tilt' : focal tilt in rad}
+            give the optical parameters (in s.i) used to measure the wavelength dispersion of the spectrometer,
+
+            'gratings_info' : (list) [(tuple) (ruling, blaze), ..] give the gratings info for any gratings installed
+            with position corresponding to grating index,
+
+            'number_of_gratings' : (int) give the number of gratings installed (ex:3),
+
+            'wavelength_limits' : (list) [[(float) wavelength_min, (float) wavelength_max], .. ] give the list of
+             the wavelength limits for any gratings installed with position corresponding to grating index,
+
+            'available_port' : (list) [[(int) input port, ..], [(int) output port, ..]] give the available
+            input (1st list) and output (2nd port) ports in the spectrometer,
+
+            'auto_slit_installed' : (list) [[(bool) input slit installed, ..], [(bool) output slit installed, ..]]
+            give if the related input (1st list) and output (2nd list ) ports has motorized auto slit installed.
+
+            (optional) : let this key empty if no shutter is installed !
+            'shutter_modes' : (list) [(str) shutter_mode, ..] give the shutter modes available if any
+            shutter is installed.
+            }
+        """
+        optical_param = self.get_optical_parameters()
+        optical_param = (optical_param['focal_length'], optical_param['angular_deviation'], optical_param['focal_tilt'])
+        gratings_info = [(info['ruling'], info['blaze']) for info in self.get_grating_info()]
+        number_of_gratings = self.get_number_gratings()
+        wavelength_limits = np.array([[self.get_wavelength_limit(i)] for i in range(number_of_gratings)])
+        auto_slit_installed = np.array([[self.auto_slit_is_present('input',0), self.auto_slit_is_present('input',1)],
+                                        [self.auto_slit_is_present('output',0), self.auto_slit_is_present('output',1)]])
+        input_port = [i for i in range(self.flipper_mirror_is_present('input')+1)]
+        output_port = [j for j in range(self.flipper_mirror_is_present('output')+1)]
+        available_port = np.array([input_port, output_port])
+        constraint_dict = {
+            'optical_parameters':optical_param ,
+            'grating_info': gratings_info,
+            'number_of_gratings': number_of_gratings,
+            'wavelength_limits':wavelength_limits,
+            'available_port': available_port,
+            'auto_slit_installed':auto_slit_installed,
+            }
+        return constraint_dict
+
 ##############################################################################
 #                            Basic functions
 ##############################################################################
@@ -148,9 +198,9 @@ class Shamrock(Base,SpectrometerInterface):
                                                            ct.byref(focal_length),
                                                            ct.byref(angular_deviation),
                                                            ct.byref(focal_tilt)))
-        dico['focal length (m)'] = focal_length.value
-        dico['angular deviation (rad)'] = angular_deviation.value*np.pi/180
-        dico['focal tilt (rad)'] = focal_tilt.value*np.pi/180
+        dico['focal_length'] = focal_length.value
+        dico['angular_deviation'] = angular_deviation.value*np.pi/180
+        dico['focal_tilt'] = focal_tilt.value*np.pi/180
 
         return dico
 
@@ -163,7 +213,7 @@ class Shamrock(Base,SpectrometerInterface):
 # parameters validity is secured
 ##############################################################################
 
-    def get_grating(self):
+    def get_grating_number(self):
         """
         Returns the current grating identification (0 to self.get_number_gratings-1)
 
@@ -174,7 +224,7 @@ class Shamrock(Base,SpectrometerInterface):
         self.check(self.dll.ShamrockGetGrating(self.deviceID, ct.byref(grating)))
         return grating.value-1
 
-    def set_grating(self, grating):
+    def set_grating_number(self, grating):
         """
         Sets the required grating (0 to self.get_number_gratings-1)
 
@@ -239,7 +289,7 @@ class Shamrock(Base,SpectrometerInterface):
                                                    ct.byref(home),
                                                    ct.byref(offset)))
             dico['ruling'] = line.value*1E3
-            dico['blaze wavelength (nm)'] = blaze.value
+            dico['blaze'] = blaze.value
             dico['home'] = home.value
             dico['offset'] = offset.value
             return dico
@@ -357,28 +407,6 @@ class Shamrock(Base,SpectrometerInterface):
         else :
             self.log.error('get_wavelength_limit function "grating" parameter needs to be int type')
 
-    def get_calibration(self, number_pixels):
-        """
-        Returns the wavelength calibration of each pixel (m)
-        @params int number_pixels
-
-        Tested : yes
-        SI check : yes
-
-        Important Note : ShamrockSetNumberPixels and ShamrockSetPixelWidth must have been called
-        otherwise this function will return -1
-        """
-
-        if (number_pixels == self.get_number_of_pixels()):
-            wl_array = np.ones((number_pixels,), dtype=np.float32)
-            self.dll.ShamrockGetCalibration.argtypes = [ct.c_int32, ct.c_void_p, ct.c_int32]
-            self.check(self.dll.ShamrockGetCalibration(self.deviceID, wl_array.ctypes.data, number_pixels))
-            return wl_array*1E-9
-        else:
-            self.log.debug("get_calibration : your argument seems not consistant with the current number of pixels\
-                            did you really perform shamrock.set_number_of_pixel before to proceed ?")
-            return -1
-
     def set_number_of_pixels(self, number_of_pixels):
         """
         Sets the number of pixels of the detector (to prepare for calibration)
@@ -438,6 +466,33 @@ class Shamrock(Base,SpectrometerInterface):
         pixel_width = ct.c_float()
         self.check(self.dll.ShamrockGetPixelWidth(self.deviceID, ct.byref(pixel_width)))
         return pixel_width.value*1E-6
+
+##############################################################################
+#                            Calibration functions
+##############################################################################
+
+    def get_calibration(self):
+        """
+        Returns the wavelength calibration of each pixel (m)
+        @params int number_pixels
+
+        Tested : yes
+        SI check : yes
+
+        Important Note : ShamrockSetNumberPixels and ShamrockSetPixelWidth must have been called
+        otherwise this function will return -1
+        """
+        number_pixels = self.get_number_of_pixels()
+        wl_array = np.ones((number_pixels,), dtype=np.float32)
+        self.dll.ShamrockGetCalibration.argtypes = [ct.c_int32, ct.c_void_p, ct.c_int32]
+        self.check(self.dll.ShamrockGetCalibration(self.deviceID, wl_array.ctypes.data, number_pixels))
+        return wl_array*1E-9
+
+    def set_calibration(self, number_of_pixels, pixel_width, tracks_offset):
+
+        self.set_number_of_pixels(number_of_pixels)
+        self.set_pixel_width(pixel_width)
+        self.set_detector_offset(tracks_offset)
 
 ##############################################################################
 #                            Detector functions
@@ -656,6 +711,30 @@ class Shamrock(Base,SpectrometerInterface):
         else:
             self.log.error('there is no slit on this port')
         return
+
+    def get_input_slit_width(self):
+        """Getter method returning the input slit width of the current used input port.
+        This method is a simplification of the auto_slit_width function apply for the current configuration
+        """
+        return self.get_auto_slit_width('input', self.get_input_port())
+
+    def set_input_slit_width(self, slit_width):
+        """Setter method setting the input slit width of the current used input port.
+        This method is a simplification of the auto_slit_width function apply for the current configuration
+        """
+        return self.set_auto_slit_width('input', self.get_input_port(), slit_width)
+
+    def get_output_slit_width(self):
+        """Getter method returning the output slit width of the current used output port.
+        This method is a simplification of the auto_slit_width function apply for the current configuration
+        """
+        return self.get_auto_slit_width('output', self.get_output_port())
+
+    def set_output_slit_width(self, slit_width):
+        """Setter method setting the output slit width of the current used output port.
+        This method is a simplification of the auto_slit_width function apply for the current configuration
+        """
+        return self.set_auto_slit_width('output', self.get_output_port(), slit_width)
 
     def auto_slit_is_present(self, flipper, port):
         """

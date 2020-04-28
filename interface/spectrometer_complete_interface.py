@@ -28,53 +28,55 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     This is the Interface class to define the controls for spectrometer hardware
     """
 
+    @abstract_interface_method
+    def get_constraint(self):
+        """Returns all the fixed parameters of the hardware which can be used by the logic.
+
+        @return: (dict) constraint dict : {
+
+            'optical_parameters' : (tuple) (focal_length, angular_deviation, focal_tilt)
+                            focal_length : focal length in m
+                             angular_deviation : angular deviation in rad
+                              focal_tilt : focal tilt in rad
+            give the optical parameters (in s.i) used to measure the wavelength dispersion of the spectrometer,
+
+            'gratings_info' : (list) [(tuple) (ruling, blaze), ..] give the gratings info for any gratings installed
+            with position corresponding to grating index,
+
+            'number_of_gratings' : (int) give the number of gratings installed (ex:3),
+
+            'wavelength_limits' : (list) [[(float) wavelength_min, (float) wavelength_max], .. ] give the list of
+             the wavelength limits for any gratings installed with position corresponding to grating index,
+
+            'available_port' : (list) [[(int) input port, ..], [(int) output port, ..]] give the available
+            input (1st list) and output (2nd port) ports in the spectrometer,
+
+            'auto_slit_installed' : (list) [[(bool) input slit installed, ..], [(bool) output slit installed, ..]]
+            give if the related input (1st list) and output (2nd list ) ports has motorized auto slit installed.
+
+            (optional) : let this key empty if no shutter is installed !
+            'shutter_modes' : (list) [(str) shutter_mode, ..] give the shutter modes available if any
+            shutter is installed.
+            }
+        """
+        pass
+
     ##############################################################################
     #                            Gratings functions
     ##############################################################################
 
     @abstract_interface_method
-    def get_grating(self):
-        """
-        Returns the current grating identification (0 to self.get_number_gratings-1)
+    def get_grating_number(self):
+        """Returns the current grating identification (0 to self.get_number_gratings-1)
         """
         pass
 
     @abstract_interface_method
-    def set_grating(self, grating):
-        """
-        Sets the required grating (0 to self.get_number_gratings-1)
+    def set_grating_number(self, grating):
+        """Sets the required grating (0 to self.get_number_gratings-1)
 
-        @param int grating: grating identification number
+        @param (int) grating: grating identification number
         @return: void
-        """
-        pass
-
-    @abstract_interface_method
-    def get_number_gratings(self):
-        """
-        Returns the number of gratings in the spectrometer
-
-        @return int number_of_gratings
-        """
-        pass
-
-    @abstract_interface_method
-    def get_grating_offset(self, grating):
-        """
-        Returns the grating offset (unit is motor steps)
-
-        @param int grating (between 0 and number_of_gratings)
-        @return int grating offset (step)
-        """
-        pass
-
-    @abstract_interface_method
-    def set_grating_offset(self, grating, offset):
-        """
-        Sets the grating offset (unit is motor step)
-
-        @param int grating : grating id (0..self.get_number_gratings()
-                int offset : grating offset (step)
         """
         pass
 
@@ -84,91 +86,19 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def get_wavelength(self):
-        """
-        Returns the central current wavelength (m)
-        @return float wavelength (m)
+        """Returns the central current wavelength (m)
+
+        @return (float) wavelength (m)
         """
         pass
 
     @abstract_interface_method
     def set_wavelength(self, wavelength):
-        """
-        Sets the new central wavelength
-        @params float wavelength (m)
+        """Sets the new central wavelength (m)
+
+        @params (float) wavelength (m)
         """
 
-        pass
-
-    @abstract_interface_method
-    def get_wavelength_limit(self, grating):
-        """
-        Returns the wavelength limits (m) of the grating (0-self.get_number_gratings)
-        @params int grating
-        """
-        pass
-
-    @abstract_interface_method
-    def get_calibration(self, number_pixels):
-        """
-        Returns the wavelength calibration of each pixel (m)
-        @params int number_pixels
-        """
-        pass
-
-    @abstract_interface_method
-    def get_number_of_pixels(self):
-        """
-        Returns the number of pixel that has to be previously set with self.set_number_of_pixels()
-        :return: int pixel number
-        """
-        pass
-
-    @abstract_interface_method
-    def set_number_of_pixels(self, number_of_pixels):
-        """
-        Sets the number of pixels of the detector (to prepare for calibration)
-        :param number_of_pixels: int
-        :return: nothing
-        """
-        pass
-
-    @abstract_interface_method
-    def get_pixel_width(self):
-        """
-        Returns the pixel width along dispersion axis.
-        Note that pixel width has to be previously set with self.set_pixel_width(width)
-        :return: int pixel number
-        """
-        pass
-
-    @abstract_interface_method
-    def set_pixel_width(self, width):
-        """
-        Sets the pixel width along the dispersion axis (to prepare for calibration)
-        :param width: float unit is m
-        :return: nothing
-        """
-        pass
-
-    ##############################################################################
-    #                            Detector functions
-    ##############################################################################
-
-    @abstract_interface_method
-    def get_detector_offset(self):
-        """
-        Returns the detector offset in pixels
-        :return: int offset
-        """
-        pass
-
-    @abstract_interface_method
-    def set_detector_offset(self, offset):
-        """
-        Sets the detecotor offset in pixels
-        :param offset : int
-        :return: nothing
-        """
         pass
 
     ##############################################################################
@@ -176,82 +106,95 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def flipper_mirror_is_present(self, flipper):
-        """
-        Returns 1 if flipper mirror is present, 0 if not
-
-        :param flipper: int 1 is for input, 2 is for output
-        :return: 1 or 0
-        """
-
-        pass
-
-    @abstract_interface_method
     def get_input_port(self):
-        """
-        Returns the current port for the input flipper mirror.
-        0 is for front port, 1 is for side port
+        """Returns the current port for the input flipper mirror.
+
+        @return: (int) 0 is for front port, 1 is for side port
         in case of no flipper mirror, front port (0) is used
         """
         pass
 
     @abstract_interface_method
     def set_input_port(self, input_port):
-        """
-        Sets the input port - 0 is for front port, 1 is for side port
+        """Sets the input port - 0 is for front port, 1 is for side port
 
-        :param input_port: int. has to be in [0, 1]
-        :return: nothing
+        @param input_port: (int). has to be 0 or 1
+        @return: nothing
         """
         pass
 
     @abstract_interface_method
     def get_output_port(self):
-        """
-        Returns the current port for the output flipper mirror.
-        0 is for front port, 1 is for side port
+        """Returns the current port for the output flipper mirror.
+
+        @return: (int) 0 is for front port, 1 is for side port
         in case of no flipper mirror, front port (0) is used
         """
         pass
 
     @abstract_interface_method
     def set_output_port(self, output_port):
-        """
-        Sets the input port - 0 is for front port, 1 is for side port
+        """Sets the input port - 0 is for front port, 1 is for side port
 
-        :param input_port: int. has to be in [0, 1]
+        @param output_port: (int). has to be 0 or 1
+        @return: nothing
+        """
+        pass
+
+    @abstract_interface_method
+    def get_input_slit_width(self):
+        """Returns the input slit width (um) of the current input slit.
+
+        @return:  (int) offset - slit width, unit is meter (SI)
+        """
+        pass
+
+    @abstract_interface_method
+    def set_input_slit_width(self, slit_width):
+        """Sets the new slit width for the current input slit.
+
+        @param slit_width: (float) slit width unit is meter (SI)
         :return: nothing
         """
         pass
 
     @abstract_interface_method
-    def get_auto_slit_width(self, flipper, port):
-        """
-        Returns the input slit width (um) in case of a motorized slit,
-        :param  string flipper - within ['input', 'output']
-                int port - within[0,1] for front or side port
-        :return  int offset - slit width, unit is meter (SI)
+    def get_output_slit_width(self):
+        """Returns the output slit width (um) of the current output slit.
+
+        @return:  (int) offset - slit width, unit is meter (SI)
         """
         pass
 
     @abstract_interface_method
-    def set_auto_slit_width(self, flipper, port, slit_width):
-        """
-        Sets the new slit width for the required slit
-        :param flipper: string flipper - within ['input', 'output']
-        :param port: int - within[0,1] for front or side port
-        :param slit_width: float - unit is meter (SI)
+    def set_output_slit_width(self, slit_width):
+        """Sets the new slit width for the current output slit.
+
+        @param slit_width: (float) slit width unit is meter (SI)
         :return: nothing
         """
         pass
 
+    ##############################################################################
+    #                        Shutter mode function (optional)
+    ##############################################################################
+    # Shutter mode function are used in logic only if the spectrometer constraints
+    # dictionary has 'shutter_modes' key filled. If empty this functions will not
+    # be used and can be ignored.
+
     @abstract_interface_method
-    def auto_slit_is_present(self, flipper, port):
-        """
-        Return whether the required slit is present or not
-        :param flipper: string flipper - within ['input', 'output']
-        :param port: int - within[0,1] for front or side port
-        :return: 1 if present, 0 if not
+    def get_shutter_status(self):
+        """Getter method returning the shutter mode.
+
+        @return: (str) shutter mode (must be compared to the list)
         """
         pass
 
+    @abstract_interface_method
+    def set_shutter_status(self, shutter_mode):
+        """Setter method setting the shutter mode.
+
+        @param shutter_mode: (str) shutter mode (must be compared to the list)
+        @return: nothing
+        """
+        pass
