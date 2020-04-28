@@ -116,7 +116,7 @@ class SpectrumLogic(GenericLogic):
 
         # QTimer for asynchronous execution :
         self._timer = QtCore.QTimer()
-        self._timer.singleShot(True)
+        self._timer.setSingleShot(True)
         self._timer.timeout.connect(self.loop_acquisition)
         self._loop_counter = 0
 
@@ -246,6 +246,9 @@ class SpectrumLogic(GenericLogic):
         """Getter method returning the grating number used by the spectrometer.
 
         @return: (int) active grating number
+
+        Tested : yes
+        SI check : yes
         """
         return self._grating_number
 
@@ -256,13 +259,16 @@ class SpectrumLogic(GenericLogic):
 
         @param grating_number: (int) gating number to set active
         @return: nothing
+
+        Tested : yes
+        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
                            " until the acquisition is completely stopped ")
             return
         grating_number = int(grating_number)
-        if not 0 < grating_number < self._number_of_gratings:
+        if not 0 < grating_number < self.spectro_constraints['number_of_gratings']:
             self.log.debug('Grating number parameter is not correct : it must be in range 0 to {} '
                            .format(self.spectro_constraints['number_of_gratings'] - 1))
             return
@@ -293,8 +299,7 @@ class SpectrumLogic(GenericLogic):
                            " until the acquisition is completely stopped ")
             return
         wavelength = float(wavelength)
-        wavelength_min = self.spectro_constraints['wavelength_limits'][self._grating_number, 0]
-        wavelength_max = self.spectro_constraints['wavelength_limits'][self._grating_number, 1]
+        wavelength_min, wavelength_max = self.spectro_constraints['wavelength_limits'][self._grating_number]
         if not wavelength_min < wavelength < wavelength_max:
             self.log.debug('Wavelength parameter is not correct : it must be in range {} to {} '
                            .format(wavelength_min, wavelength_max))
@@ -312,7 +317,7 @@ class SpectrumLogic(GenericLogic):
         image_length = self.camera_constraints['image_size'][1]
         pixel_length = self.camera_constraints['pixel_size'][1]
         pixels_vector = np.arange(-image_length//2, image_length//2 - image_length%2)*pixel_length
-        focal_length, angular_dev, focal_tilt = self.spectro_constraints['optical_parameters']['focal_length']
+        focal_length, angular_dev, focal_tilt = self.spectro_constraints['optical_parameters']
         ruling, blaze = self.spectro_constraints['gratings_info'][self._grating_number]
         wavelength_spectrum = pixels_vector/np.sqrt(focal_length**2+pixels_vector**2)/ruling + self._center_wavelength
         return wavelength_spectrum

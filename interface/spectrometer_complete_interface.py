@@ -29,7 +29,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     """
 
     @abstract_interface_method
-    def get_constraint(self):
+    def get_constraints(self):
         """Returns all the fixed parameters of the hardware which can be used by the logic.
 
         @return: (dict) constraint dict : {
@@ -182,7 +182,6 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     # dictionary has 'shutter_modes' key filled. If empty this functions will not
     # be used and can be ignored.
 
-    @abstract_interface_method
     def get_shutter_status(self):
         """Getter method returning the shutter mode.
 
@@ -190,7 +189,6 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
     def set_shutter_status(self, shutter_mode):
         """Setter method setting the shutter mode.
 

@@ -30,7 +30,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     """
 
     @abstract_interface_method
-    def get_constraint(self):
+    def get_constraints(self):
         """Returns all the fixed parameters of the hardware which can be used by the logic.
 
         @return: (dict) constraint dict : {

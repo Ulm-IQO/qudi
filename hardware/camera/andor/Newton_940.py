@@ -216,7 +216,7 @@ class Newton940(Base, CameraInterface):
             self.on_deactivate()
 
         else:
-            self._constraints = self.get_constraint()
+            self._constraints = self.get_constraints()
             nx_px, ny_px = self.get_image_size()
             self._width, self._height = nx_px, ny_px
 
@@ -296,7 +296,7 @@ class Newton940(Base, CameraInterface):
     # is working
     # secured OK - tested PV - SI OK
 
-    def get_constraint(self):
+    def get_constraints(self):
         """Returns all the fixed parameters of the hardware which can be used by the logic.
 
         @return: (dict) constraint dict : {
@@ -307,9 +307,12 @@ class Newton940(Base, CameraInterface):
 
             'pixel_size' : (tuple) ((float) pixel_width, (float) pixel_length) give the pixels size in m,
 
-            'read_mode_list' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
+            'read_modes' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
 
-            'trigger_mode_list' : (list) [(str) trigger_mode, ..] give the available trigger modes of the camera,
+            'internal_gains' : (list) [(float) gain, ..] give the available internal gain which can be set
+            to the camera preamplifier,
+
+            'trigger_modes' : (list) [(str) trigger_mode, ..] give the available trigger modes of the camera,
 
             'has_cooler' : (bool) give if the camera has temperature controller installed,
 
@@ -326,6 +329,7 @@ class Newton940(Base, CameraInterface):
             'read_modes': ['FVB', 'RANDOM_TRACK', 'IMAGE'],
             'trigger_modes': ['INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE',
                                   'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING'],
+            'acquisition_modes': ['SINGLE_SCAN'],
             'internal_gains': [1, 2, 4],
             'has_cooler': True,
             'shutter_modes': ['AUTO', 'OPEN', 'CLOSE'],
@@ -421,7 +425,7 @@ class Newton940(Base, CameraInterface):
         :return: nothing
         """
 
-        if hasattr(ReadMode, read_mode) and (read_mode in self._constraints['read_mode_list']):
+        if hasattr(ReadMode, read_mode) and (read_mode in self._constraints['read_modes']):
             n_mode = c_int(getattr(ReadMode, read_mode).value)
             self.check(self.dll.SetReadMode(n_mode))
         else:
@@ -472,11 +476,7 @@ class Newton940(Base, CameraInterface):
         tested : yes
         SI check : yes
         """
-        if self._read_mode == 'RANDOM_TRACK':
-            return self._active_tracks
-        else:
-            self.log.error('you are not RANDOM_TRACK read_mode')
-            return
+        return self._active_tracks
 
     def set_active_tracks(self, active_tracks):
         """
@@ -579,7 +579,7 @@ class Newton940(Base, CameraInterface):
         """
 
         if hasattr(AcquisitionMode, acquisition_mode) \
-                and (acquisition_mode in self._constraints['acquisition_mode_list']):
+                and (acquisition_mode in self._constraints['acquisition_modes']):
             n_mode = c_int(getattr(AcquisitionMode, acquisition_mode).value)
             self.check(self.dll.SetAcquisitionMode(n_mode))
         else:
@@ -680,7 +680,7 @@ class Newton940(Base, CameraInterface):
         SI check : yes
         """
         if hasattr(TriggerMode, trigger_mode) \
-                and (trigger_mode in self._constraints['trigger_mode_list']):
+                and (trigger_mode in self._constraints['trigger_modes']):
             n_mode = c_int(getattr(TriggerMode, trigger_mode).value)
             self.check(self.dll.SetTriggerMode(n_mode))
             self._trigger_mode = trigger_mode
@@ -718,7 +718,7 @@ class Newton940(Base, CameraInterface):
         """
 
         if hasattr(ShutterMode, shutter_status) \
-                and (shutter_status in self._constraints['shutter_mode_list']):
+                and (shutter_status in self._constraints['shutter_modes']):
             mode = c_int(getattr(ShutterMode, shutter_status).value)
             self.check(self.dll.SetShutter(self._shutter_TTL, mode,
                                            self._shutter_closing_time, self._shutter_opening_time))
