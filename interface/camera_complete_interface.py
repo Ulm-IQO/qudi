@@ -33,13 +33,27 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_constraint(self):
         """Returns all the fixed parameters of the hardware which can be used by the logic.
 
-        @return: (dict) constraint dict : {'read_mode_list' : ['FVB', 'MULTI_TRACK'...],
-                                    'acquistion_mode_list' : ['SINGLE_SCAN', 'MULTI_SCAN'...],
-                                     'trigger_mode_list' : ['INTERNAL', 'EXTERNAL'...],
-                                     'shutter_mode_list' : ['CLOSE', 'OPEN'...]
-                                     'image_size' : (512, 2048),
-                                     'pixiel_size' : (1e-4, 1e-4),
-                                     'name' : 'Newton940'}
+        @return: (dict) constraint dict : {
+
+            'name' : (str) give the camera manufacture name (ex : 'Newton940')
+
+            'image_size' : (tuple) ((int) image_width, (int) image_length) give the camera image size in pixels units,
+
+            'pixel_size' : (tuple) ((float) pixel_width, (float) pixel_length) give the pixels size in m,
+
+            'read_modes' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
+
+            'internal_gains' : (list) [(float) gain, ..] give the available internal gain which can be set
+            to the camera preamplifier,
+
+            'trigger_modes' : (list) [(str) trigger_mode, ..] give the available trigger modes of the camera,
+
+            'has_cooler' : (bool) give if the camera has temperature controller installed,
+
+            (optional) : let this key empty if no shutter is installed !
+            'shutter_modes' : (ndarray) [(str) shutter_mode, ..] give the shutter modes available if any
+            shutter is installed.
+
         """
         pass
 
@@ -114,7 +128,8 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         Setter method setting the read mode tracks parameters of the camera.
 
-        @param active_tracks: (ndarray) active tracks positions [1st track start, 1st track end, ... ]
+        @param active_tracks: (ndarray) active tracks positions [((int) start row, (int) end row ), ... ]
+        in pixel unit.
         @return: nothing
         """
         pass
@@ -146,23 +161,22 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_acquisition_mode(self):
-        """
-        Getter method returning the current acquisition mode used by the camera.
+    def get_gain(self):
+        """ Get the gain.
 
-        @return: (str) acquisition mode
+        @return: (float) exposure gain
         """
         pass
 
     @abstract_interface_method
-    def set_acquisition_mode(self, acquisition_mode):
-        """Setter method setting the acquisition mode used by the camera.
+    def set_gain(self, gain):
+        """ Set the gain.
 
-        @param acquisition_mode: (str) acquistion mode
+        @param camera_gain: (float) desired new gain
+
         @return: nothing
         """
         pass
-
 
     @abstract_interface_method
     def get_exposure_time(self):
@@ -177,24 +191,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """ Set the exposure time in seconds.
 
         @param exposure_time: (float) desired new exposure time
-
-        @return: nothing
-        """
-        pass
-
-    @abstract_interface_method
-    def get_gain(self):
-        """ Get the gain.
-
-        @return: (float) exposure gain
-        """
-        pass
-
-    @abstract_interface_method
-    def set_gain(self, gain):
-        """ Set the gain.
-
-        @param camera_gain: (float) desired new gain
 
         @return: nothing
         """
@@ -222,8 +218,11 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     ##############################################################################
-    #                           Shutter mode functions
+    #                        Shutter mode function (optional)
     ##############################################################################
+    # Shutter mode function are used in logic only if the camera constraints
+    # dictionary has 'shutter_modes' key filled. If empty this functions will not
+    # be used and can be ignored.
 
     @abstract_interface_method
     def get_shutter_status(self):

@@ -297,34 +297,39 @@ class Newton940(Base, CameraInterface):
     # secured OK - tested PV - SI OK
 
     def get_constraint(self):
-        """
-        Returns all the fixed parameters of the hardware which can be used by the logic.
+        """Returns all the fixed parameters of the hardware which can be used by the logic.
 
-        @return: (dict) constraint dict : {'read_mode_list' : ['FVB', 'MULTI_TRACK'...],
-                                     'acquisition_mode_list' : ['SINGLE_SCAN', 'MULTI_SCAN'...],
-                                     'trigger_mode_list' : ['INTERNAL', 'EXTERNAL'...],
-                                     'shutter_mode_list' : ['CLOSE', 'OPEN'...]
-                                     'image_size' : (512, 2048),
-                                     'pixel_size' : (1e-4, 1e-4),
-                                     'name' : 'Newton940'
-                                     'preamp_gain': authorized gain value (floats)}
+        @return: (dict) constraint dict : {
 
-        Tested : yes
-        SI check : yes
+            'name' : (str) give the camera manufacture name (ex : 'Newton940')
+
+            'image_size' : (tuple) ((int) image_width, (int) image_length) give the camera image size in pixels units,
+
+            'pixel_size' : (tuple) ((float) pixel_width, (float) pixel_length) give the pixels size in m,
+
+            'read_mode_list' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
+
+            'trigger_mode_list' : (list) [(str) trigger_mode, ..] give the available trigger modes of the camera,
+
+            'has_cooler' : (bool) give if the camera has temperature controller installed,
+
+            (optional) : let this key empty if no shutter is installed !
+            'shutter_modes' : (ndarray) [(str) shutter_mode, ..] give the shutter modes available if any
+            shutter is installed.
+
         """
 
         constraints = {
-            'read_mode_list': ['FVB', 'RANDOM_TRACK', 'IMAGE'],
-            'acquisition_mode_list': 'SINGLE_SCAN',
-            'trigger_mode_list': ('INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE',
-                                  'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING'),
-            'shutter_mode_list': ('AUTO', 'OPEN', 'CLOSE'),
+            'name': self.get_name(),
             'image_size': self.get_image_size(),
             'pixel_size': self.get_pixel_size(),
-            'name': self.get_name(),
-            'preamp_gain': [1, 2, 4]
+            'read_modes': ['FVB', 'RANDOM_TRACK', 'IMAGE'],
+            'trigger_modes': ['INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE',
+                                  'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING'],
+            'internal_gains': [1, 2, 4],
+            'has_cooler': True,
+            'shutter_modes': ['AUTO', 'OPEN', 'CLOSE'],
         }
-
         return constraints
 
     def start_acquisition(self):
@@ -478,17 +483,14 @@ class Newton940(Base, CameraInterface):
         Setter method setting the read mode tracks parameters of the camera.
 
         @param active_tracks: (numpy array of int32) active tracks
-            positions [1st track start-row, 1st track end-row, ... ]
+            positions [(tuple) (1st track start-row, 1st track end-row), ... ]
         @return: nothing
         tested : yes
         SI check : yes
         """
-        if (active_tracks.size % 2) != 0:
-            self.log.error('Hardware / Newton940 / set.active_tracks :'
-                           'check your active tracks array : size should be even !')
-            return
 
-        number_of_tracks = int(len(active_tracks) / 2)
+        number_of_tracks = int(len(active_tracks))
+        active_tracks = [item for item_tuple in active_tracks for item in item_tuple]
         self.dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
 
         if self._read_mode == 'FVB':

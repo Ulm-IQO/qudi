@@ -32,10 +32,32 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     def get_constraint(self):
         """Returns all the fixed parameters of the hardware which can be used by the logic.
 
-        @return: (dict) constraint dict : {'number_of_gratings' : 3,
-                    'wavelength_limits' : [[wavelength_min1, wavelength_max1], ... ],
-                    'auto_slit_installed' : [[front input slit, side input slit], [front output slit, side output slit]],
-                    'flipper_mirror_installed' : [input port, output port]}
+        @return: (dict) constraint dict : {
+
+            'optical_parameters' : (tuple) (focal_length, angular_deviation, focal_tilt)
+                            focal_length : focal length in m
+                             angular_deviation : angular deviation in rad
+                              focal_tilt : focal tilt in rad
+            give the optical parameters (in s.i) used to measure the wavelength dispersion of the spectrometer,
+
+            'gratings_info' : (list) [(tuple) (ruling, blaze), ..] give the gratings info for any gratings installed
+            with position corresponding to grating index,
+
+            'number_of_gratings' : (int) give the number of gratings installed (ex:3),
+
+            'wavelength_limits' : (list) [[(float) wavelength_min, (float) wavelength_max], .. ] give the list of
+             the wavelength limits for any gratings installed with position corresponding to grating index,
+
+            'available_port' : (list) [[(int) input port, ..], [(int) output port, ..]] give the available
+            input (1st list) and output (2nd port) ports in the spectrometer,
+
+            'auto_slit_installed' : (list) [[(bool) input slit installed, ..], [(bool) output slit installed, ..]]
+            give if the related input (1st list) and output (2nd list ) ports has motorized auto slit installed.
+
+            (optional) : let this key empty if no shutter is installed !
+            'shutter_modes' : (list) [(str) shutter_mode, ..] give the shutter modes available if any
+            shutter is installed.
+            }
         """
         pass
 
@@ -44,35 +66,17 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_grating(self):
+    def get_grating_number(self):
         """Returns the current grating identification (0 to self.get_number_gratings-1)
         """
         pass
 
     @abstract_interface_method
-    def set_grating(self, grating):
+    def set_grating_number(self, grating):
         """Sets the required grating (0 to self.get_number_gratings-1)
 
         @param (int) grating: grating identification number
         @return: void
-        """
-        pass
-
-    @abstract_interface_method
-    def get_grating_offset(self, grating):
-        """Returns the grating offset (unit is motor steps)
-
-        @param (int) grating (between 0 and number_of_gratings)
-        @return (int) grating offset (step)
-        """
-        pass
-
-    @abstract_interface_method
-    def set_grating_offset(self, grating, offset):
-        """Sets the grating offset (unit is motor step)
-
-        @param (int) grating : grating id (0..self.get_number_gratings()
-                (int) offset : grating offset (step)
         """
         pass
 
@@ -95,29 +99,6 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         @params (float) wavelength (m)
         """
 
-        pass
-
-    ##############################################################################
-    #                            Calibration functions
-    ##############################################################################
-
-    @abstract_interface_method
-    def get_calibration(self):
-        """Returns the wavelength calibration of each pixel (m)
-
-        @return: (ndarray) wavelength range for all the pixels of the camera
-        """
-        pass
-
-    @abstract_interface_method
-    def set_calibration(self, number_of_pixels, pixel_width, tracks_offset):
-        """Returns the wavelength calibration of each pixel (m).
-
-        @param number_of_pixels: (int) number of pixels in the horizontal direction
-        @param pixel_width: (float) camera pixel width
-        @param tracks_offset: (int) camera pixel matrix offset
-        @return: nothing
-        """
         pass
 
     ##############################################################################
@@ -161,22 +142,59 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_auto_slit_width(self, flipper, port):
-        """Returns the input slit width (um) in case of a motorized slit.
+    def get_input_slit_width(self):
+        """Returns the input slit width (um) of the current input slit.
 
-        @param flipper: (str) within ['input', 'output']
-        @param port: (int) 0 for front or 1 for side port
         @return:  (int) offset - slit width, unit is meter (SI)
         """
         pass
 
     @abstract_interface_method
-    def set_auto_slit_width(self, flipper, port, slit_width):
-        """Sets the new slit width for the required slit.
+    def set_input_slit_width(self, slit_width):
+        """Sets the new slit width for the current input slit.
 
-        @param flipper: (str) within ['input', 'output']
-        @param port: (int) 0 for front or 1 for side port
         @param slit_width: (float) slit width unit is meter (SI)
         :return: nothing
+        """
+        pass
+
+    @abstract_interface_method
+    def get_output_slit_width(self):
+        """Returns the output slit width (um) of the current output slit.
+
+        @return:  (int) offset - slit width, unit is meter (SI)
+        """
+        pass
+
+    @abstract_interface_method
+    def set_output_slit_width(self, slit_width):
+        """Sets the new slit width for the current output slit.
+
+        @param slit_width: (float) slit width unit is meter (SI)
+        :return: nothing
+        """
+        pass
+
+    ##############################################################################
+    #                        Shutter mode function (optional)
+    ##############################################################################
+    # Shutter mode function are used in logic only if the spectrometer constraints
+    # dictionary has 'shutter_modes' key filled. If empty this functions will not
+    # be used and can be ignored.
+
+    @abstract_interface_method
+    def get_shutter_status(self):
+        """Getter method returning the shutter mode.
+
+        @return: (str) shutter mode (must be compared to the list)
+        """
+        pass
+
+    @abstract_interface_method
+    def set_shutter_status(self, shutter_mode):
+        """Setter method setting the shutter mode.
+
+        @param shutter_mode: (str) shutter mode (must be compared to the list)
+        @return: nothing
         """
         pass
