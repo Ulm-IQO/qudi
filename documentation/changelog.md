@@ -66,6 +66,7 @@ The potential sequence_options are:
 * Fixed bug in spincore pulseblaster hardware that affected only old models
 * Added a netobtain in spincore pulseblaster hardware to speedup remote loading 
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
+* reworked the QDPlotter to now contain fits and a scalable number of plots. Attention: custom notebooks might break by this change.
 * Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
 
 
@@ -74,7 +75,9 @@ Config changes:
 * The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
 of the `SequenceGeneratorLogic` can now either be a string for a single path 
 or a list of strings for multiple paths.
-* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`  
+* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`
+* The connectors and file names of the GUI and logic modules of the QDPlotter have been changed.
+* QDPlotter now needs a new connection to the fit logic. 
 
 ## Release 0.10
 Released on 14 Mar 2019
