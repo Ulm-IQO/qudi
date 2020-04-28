@@ -139,34 +139,36 @@ def encode_images(format_dict):
 
     """
     # constants for identifying png/jpeg data
-    PNG = b'\x89PNG\r\n\x1a\n'
-    # front of PNG base64-encoded
-    PNG64 = b'iVBORw0KG'
-    JPEG = b'\xff\xd8'
-    # front of JPEG base64-encoded
-    JPEG64 = b'/9'
-    # front of PDF base64-encoded
-    PDF64 = b'JVBER'
+    file_identifiers = {
+        'PNG': b'\x89PNG\r\n\x1a\n',
+        # front of PNG base64-encoded
+        'PNG64': b'iVBORw0KG',
+        'JPEG': b'\xff\xd8',
+        # front of JPEG base64-encoded
+        'JPEG64': b'/9',
+        # front of PDF base64-encoded
+        'PDF64': b'JVBER',
+    }
 
     encoded = format_dict.copy()
     pngdata = format_dict.get('image/png')
     if isinstance(pngdata, bytes):
         # make sure we don't double-encode
-        if not pngdata.startswith(PNG64):
+        if not pngdata.startswith(file_identifiers['PNG64']):
             pngdata = encodebytes(pngdata)
         encoded['image/png'] = pngdata.decode('ascii')
 
     jpegdata = format_dict.get('image/jpeg')
     if isinstance(jpegdata, bytes):
         # make sure we don't double-encode
-        if not jpegdata.startswith(JPEG64):
+        if not jpegdata.startswith(file_identifiers['JPEG64']):
             jpegdata = encodebytes(jpegdata)
         encoded['image/jpeg'] = jpegdata.decode('ascii')
 
     pdfdata = format_dict.get('application/pdf')
     if isinstance(pdfdata, bytes):
         # make sure we don't double-encode
-        if not pdfdata.startswith(PDF64):
+        if not pdfdata.startswith(file_identifiers['PDF64']):
             pdfdata = encodebytes(pdfdata)
         encoded['application/pdf'] = pdfdata.decode('ascii')
 
@@ -203,13 +205,9 @@ def setup_matplotlib(kernel):
     
       @param kernel: reference to the kernel using the backend
     """
-    import matplotlib
+
     import matplotlib.pyplot
     matplotlib.pyplot.switch_backend('module://logic.jupyterkernel.mpl.backend_inline')
-    import matplotlib.pylab as pylab
-
-    from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg  # analysis: ignore
-    from matplotlib._pylab_helpers import Gcf
 
     from qudi.core.jupyterkernel.mpl.backend_inline import InlineBackend
 

@@ -49,10 +49,11 @@ class QZMQStream(QtCore.QObject):
         self.readnotifier = QtCore.QSocketNotifier(
             self.socket.get(zmq.FD),
             QtCore.QSocketNotifier.Read)
-        logging.debug("Notifier: {0!s} at filenumber {1!s} with socket {2!s} of class {3!s}".format(self.readnotifier.socket(),
-                                                                                                    self.socket.get(zmq.FD),
-                                                                                                    self.socket,
-                                                                                                    self.name))
+        logging.debug(
+            "Notifier: {0!s} at filenumber {1!s} with socket {2!s} of class {3!s}".format(self.readnotifier.socket(),
+                                                                                          self.socket.get(zmq.FD),
+                                                                                          self.socket,
+                                                                                          self.name))
         self.readnotifier.activated.connect(self.checkForMessage)
 
     def checkForMessage(self, socket):

@@ -70,8 +70,7 @@ def code_name(code, number=0):
 # -----------------------------------------------------------------------------
 
 class CachingCompiler(codeop.Compile):
-    """A compiler that caches code compiled from interactive statements.
-    """
+    """ A compiler that caches code compiled from interactive statements. """
 
     def __init__(self):
         codeop.Compile.__init__(self)
