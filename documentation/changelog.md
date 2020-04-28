@@ -44,6 +44,7 @@ _how_to_hardware_with_multiple_interfaces.md_ for detailed documentation.
 * Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
 * Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
 * Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* Add two different chirp functions to sampling functions and predefined methods
 * Adding Ocean optics spectrometer hardware module.
 * Removed the method `has_sequence_mode` from the `PulserInterface` 
 and rather added a `sequence_option` to the `PulserConstraints`.
