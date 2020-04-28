@@ -40,11 +40,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 ## General Python imports:
-import sys
 import json
 import hmac
 import uuid
-import errno
 import hashlib
 import datetime
 import logging
@@ -57,10 +55,8 @@ import threading
 
 # zmq specific imports:
 import zmq
-from io import StringIO
-from zmq.error import ZMQError
 
-from qudi.core.jupyterkernel.compilerop import CachingCompiler, check_linecache_ipython
+from qudi.core.jupyterkernel.compilerop import CachingCompiler
 from qudi.core.jupyterkernel.display_trap import DisplayTrap
 from qudi.core.jupyterkernel.builtin_trap import BuiltinTrap
 from qudi.core.jupyterkernel.redirect import RedirectedStdOut, RedirectedStdErr
@@ -127,7 +123,8 @@ class QZMQKernel(QtCore.QObject):
             self.secure_key,
             digestmod=self.signature_schemes[self._config["signature_scheme"]])
         logging.debug('New Kernel {}'.format(self.engine_id))
-        logging.debug('python: {0}, zqm: {1}'.format(sys.version.replace('\n', ' ').replace('\r', ''), zmq.pyzmq_version()))
+        logging.debug(
+            'python: {0}, zqm: {1}'.format(sys.version.replace('\n', ' ').replace('\r', ''), zmq.pyzmq_version()))
 
     @QtCore.Slot()
     def connect_kernel(self):
@@ -266,6 +263,7 @@ class QZMQKernel(QtCore.QObject):
 
         class ThreadFixer(threading.Thread):
             notebook_thread = self.engine_id
+
         sys.modules['threading'].Thread = ThreadFixer
 
         # capture output
