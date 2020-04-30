@@ -25,24 +25,21 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from enum import Enum
-from ctypes import *
 import numpy as np
 import ctypes as ct
 
 from core.module import Base
 from core.configoption import ConfigOption
 
-from interface.camera_complete_interface import CameraInterface
-from core.util.modules import get_main_dir
-import os
+from interface.camera_complete_interface import CameraInterface, ReadMode, Constraints, ImageAdvancedParameters
+
 
 # Bellow are the classes used by Andor dll. They are not par of Qudi interfaces
+class ReadModeDLL(Enum):
+    """ Class defining the possible read mode supported by Andor DLL
 
-
-class ReadMode(Enum):
-    """ Class defining the possible read mode supported by Andor dll
-
-     Only FVB, RANDOM_TRACK and IMAGE are used by this module.
+    This read mode is different from the class of the interface, be careful!
+    Only FVB, RANDOM_TRACK and IMAGE are used by this module.
      """
     FVB = 0
     MULTI_TRACK = 1
@@ -52,7 +49,7 @@ class ReadMode(Enum):
 
 
 class AcquisitionMode(Enum):
-    """ Class defining the possible acquisition mode supported by Andor dll
+    """ Class defining the possible acquisition mode supported by Andor DLL
 
      Only SINGLE_SCAN is used by this module.
      """
@@ -64,7 +61,7 @@ class AcquisitionMode(Enum):
 
 
 class TriggerMode(Enum):
-    """ Class defining the possible trigger mode supported by Andor dll """
+    """ Class defining the possible trigger mode supported by Andor DLL """
     INTERNAL = 0
     EXTERNAL = 1
     EXTERNAL_START = 6
@@ -74,15 +71,15 @@ class TriggerMode(Enum):
 
 
 class ShutterMode(Enum):
-    """ Class defining the possible shutter mode supported by Andor dll """
+    """ Class defining the possible shutter mode supported by Andor DLL """
     AUTO = 0
     OPEN = 1
     CLOSE = 2
 
 
-OK_CODE = 20002
+OK_CODE = 20002  # Status code associated with DRV_SUCCESS
 
-
+# Error codes and strings defines by the DLL
 ERROR_DICT = {
     20001: "DRV_ERROR_CODES",
     20002: "DRV_SUCCESS",
@@ -126,117 +123,65 @@ ERROR_DICT = {
 }
 
 
-class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor camera
-    """ Hardware class for Andor Newton940 CCD spectroscopy cameras  """
+class Main(Base, CameraInterface):
+    """ Hardware class for Andor CCD spectroscopy cameras
 
+    Tested with :
+     - Newton 940
+    """
     _dll_location = ConfigOption('dll_location', missing='error')
     _close_shutter_on_deactivate = ConfigOption('close_shutter_on_deactivate', False)
+    #todo: open shutter_on_activate ?
 
-    _default_cooler_status = ConfigOption('default_cooler_status', True)
+    _start_cooler_on_activate = ConfigOption('start_cooler_on_activate', True)
     _default_temperature = ConfigOption('default_temperature', 260)
-    _default_acquisition_mode = ConfigOption('default_acquisition_mode', 'SINGLE_SCAN') #todo: remove
-    _default_read_mode = ConfigOption('default_read_mode', 'IMAGE') #todo: remove
-    _default_readout_speed = ConfigOption('default_readout_speed', 50000) #todo: remove
-    _default_preamp_gain = ConfigOption('default_preamp_gain', 1) #todo: remove
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
-    _default_exposure = ConfigOption('default_exposure', 1.0) #todo: remove
-    _default_shutter_status = ConfigOption('default_shutter_status', 'CLOSE') #todo: remove, but maybe close on deactivate ?
-    _default_active_tracks = ConfigOption('default_active_tracks', [246, 266]) #todo: remove
-    _default_binning = ConfigOption('default_binning', [1, 1]) #todo: remove
-    _default_ROI = ConfigOption('default_ROI', [1, 2048, 1, 512]) #todo: remove
-    _default_max_exposure_time = ConfigOption('default_max_exposure_time', 600) #todo: does this come from the dll and why forbid it ?
+    _max_exposure_time = ConfigOption('max_exposure_time', 600)  # todo: does this come from the dll and why forbid it ?
 
-    _camera_name = 'Newton940'#todo: from config option or read from dll ?
-
-    _cooler_status = _default_cooler_status
-    _temperature = _default_temperature
-    _max_cooling = -85 # todo
-    _acquisition_mode = _default_acquisition_mode
-    _read_mode = _default_read_mode
-    _readout_speed = _default_readout_speed
-    _preamp_gain = _default_preamp_gain
-    _trigger_mode = _default_trigger_mode
-
-    _exposure = _default_exposure
-    _max_exposure_time = _default_max_exposure_time
-    _shutter_status = _default_shutter_status
-    _shutter_TTL = 1
-    _shutter_closing_time = 100  # ms!
-    _shutter_opening_time = 100  # ms!
-
-    _gain = 0
-    _width = 0
-    _height = 0
-    _supported_read_mode = ReadMode
-    _live = False
-
-    _scans = 1
-    _acquiring = False
-
-    _number_of_tracks = 1
-    _binning = _default_binning
-    _ROI = _default_ROI
-
-    _hbin = 1
-    _vbin = 1
-    _hstart = 1
-    _hend = 2
-    _vstart = 1
-    _vend = 2
-
-    _constraints = {} # not todo: this is nice !
     _min_temperature = 189 #todo: why ?
     _max_temperature = 262 # todo: why ?
+
+    # Declarations of attributes to make Pycharm happy
+    def __init__(self):
+        self._constraints = None
+        self._dll = None
+        self._active_tracks = None
+        self._image_advanced_parameters = None
 
     ##############################################################################
     #                            Basic module activation/deactivation
     ##############################################################################
-    # is working
-    # secured OK - tested PV - SI OK
-
     def on_activate(self):
-        """ Initialization performed during activation of the module.
-        """
+        """ Initialization performed during activation of the module. """
         try:
-            self.dll = ct.cdll.LoadLibrary(self._dll_location)
+            self._dll = ct.cdll.LoadLibrary(self._dll_location)
         except OSError:
             self.log.error('Error during dll loading of the Andor camera, check the dll path.')
 
         status_code = self.dll.Initialize()
         if status_code != OK_CODE:
-            self.log.error('Problem during camera (Andor/Newton) initialization')
+            self.log.error('Problem during camera initialization')
             return
 
-        self._constraints = self.get_constraints()
-        self._height, self._width = self.get_image_size()
+        self._constraints = self._build_constraints()
 
-        self.set_cooler_status(self._cooler_status)
-        self.set_temperature(self._temperature)
+        if self._constraints.has_cooler and self._start_cooler_on_activate:
+            self.set_cooler_on(True)
 
-        self.set_acquisition_mode(self._acquisition_mode) #todo: done by logic
-        self.set_read_mode(self._read_mode) #todo: done by logic
-        self.set_readout_speed(self._readout_speed) #todo: done by logic
-        self.set_gain(self._preamp_gain) #todo: done by logic
-        self.set_trigger_mode(self._trigger_mode)
+        self.set_read_mode(ReadMode.FVB)
+        self.set_trigger_mode(self._default_trigger_mode)
+        self.set_temperature_setpoint(self._default_temperature)
 
-        self.set_exposure_time(self._exposure) #todo: done by logic
-
-        self.set_shutter_status(self._shutter_status)
-
-        self._active_tracks = np.array(self._default_active_tracks)
-        self._hbin = self._binning[0]
-        self._vbin = self._binning[1]
-        self._hstart = self._ROI[0]
-        self._hend = self._ROI[1]
-        self._vstart = self._ROI[2]
-        self._vend = self._ROI[3]
+        self.set_acquisition_mode(AcquisitionMode.SINGLE_SCAN)
+        self._active_tracks = []
+        self._image_advanced_parameters = None
 
     def on_deactivate(self):
         """ De-initialisation performed during deactivation of the module. """
-        if not (self.get_ready_state()):
+        if self.module_state() == 'locked':
             self.stop_acquisition()
         if self._close_shutter_on_deactivate:
-            self.set_shutter_status('CLOSE') #todo: closed ?
+            self.set_shutter_open_state(False)
         try:
             self.dll.ShutDown()
         except:
@@ -245,101 +190,94 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
     ##############################################################################
     #                                     Error management
     ##############################################################################
-    def check(self, func_val):
+    def _check(self, func_val):
         """ Check routine for the received error codes.
-         :return: the dll function error code
-        Tested : no
-        """
 
+        @param (int) func_val: Status code returned by the DLL
+
+        @return: The DLL function error code
+        """
         if not func_val == OK_CODE:
-            self.log.error('Error in Newton with error_code {0}:'
-                           '{1}'.format(func_val, ERROR_DICT[func_val]))
+            self.log.error('Error in Andor camera with error_code {}:{}'.format(func_val, ERROR_DICT[func_val]))
         return func_val
+
+    ##############################################################################
+    #                                     Constraints functions
+    ##############################################################################
+    def _build_constraints(self):
+        """ Internal method that build the constraints once at initialisation
+
+         This makes multiple call to the DLL, so it will be called only onced by on_activate
+         """
+        constraints = Constraints()
+        constraints.name = self._get_name()
+        constraints.width, constraints.width = self._get_image_size()
+        constraints.pixel_size_width, constraints.pixel_size_width = self._get_pixel_size()
+        constraints.internal_gains = [1, 2, 4]  # # todo : from hardware
+        constraints.readout_speeds = [50000, 1000000, 3000000]  # todo : read from hardware
+        constraints.has_cooler = True # todo : from hardware ?
+        constraints.trigger_modes = list(TriggerMode.__members__) # todo : from hardware if only some are available ?
+        constraints.has_shutter = True  # todo : from hardware ?
+        constraints.read_modes = [ReadMode.FVB]
+        if constraints.height > 1:
+            constraints.read_modes.extend([ReadMode.MULTIPLE_TRACKS, ReadMode.IMAGE, ReadMode.IMAGE_ADVANCED])
+        return constraints
+
+    def get_constraints(self):
+        """ Returns all the fixed parameters of the hardware which can be used by the logic.
+
+        @return (Constraints): An object of class Constraints containing all fixed parameters of the hardware
+        """
+        return self._constraints
 
     ##############################################################################
     #                                     Basic functions
     ##############################################################################
-    def get_constraints(self):
-        """ Returns all the fixed parameters of the hardware which can be used by the logic.
-
-        @return: (dict) constraint dict : {
-
-            'name' : (str) give the camera manufacture name (ex : 'Newton940')
-
-            'image_size' : (tuple) ((int) image_width, (int) image_length) give the camera image size in pixels units,
-
-            'pixel_size' : (tuple) ((float) pixel_width, (float) pixel_length) give the pixels size in m,
-
-            'read_modes' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
-
-            'readout_speed' : (list)
-
-            'internal_gains' : (list) [(float) gain, ..] give the available internal gain which can be set
-            to the camera preamplifier,
-
-            'trigger_modes' : (list) [(str) trigger_mode, ..] give the available trigger modes of the camera,
-
-            'has_cooler' : (bool) give if the camera has temperature controller installed,
-
-            (optional) : let this key empty if no shutter is installed !
-            'shutter_modes' : (ndarray) [(str) shutter_mode, ..] give the shutter modes available if any
-            shutter is installed.
-
-        """
-        #todo: there is many thing, a class would probably be preferable
-
-        internal_gains = [1, 2, 4]  # todo : read from hardware
-        readout_speeds = [50000, 1000000, 3000000]  # todo : read from hardware
-
-        constraints = {
-            'name': self.get_name(),
-            'image_size': self.get_image_size(),
-            'pixel_size': self.get_pixel_size(),
-            'read_modes': ['FVB', 'RANDOM_TRACK', 'IMAGE'],
-            'readout_speeds': readout_speeds,
-            'trigger_modes': ['INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE',
-                                  'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING'],
-            'acquisition_modes': ['SINGLE_SCAN'],
-            'internal_gains': internal_gains,
-            'has_cooler': True,
-            'shutter_modes': ['AUTO', 'OPEN', 'CLOSE'],
-        }
-        return constraints
-
     def start_acquisition(self):
         """ Starts the acquisition """
         self.check(self.dll.StartAcquisition())
-        self.dll.WaitForAcquisition()  # todo: this is not synchronous
 
-    def stop_acquisition(self):
+    def _wait_for_acquisition(self):
+        """ Internal function, can be used to wait till acquisition is finished """
+        self.dll.WaitForAcquisition()
+
+    def abort_acquisition(self):
         """ Aborts the acquisition """
         self.check(self.dll.AbortAcquisition())
 
     def get_acquired_data(self):
-        """ Return the last acquired data.
+        """ Return an array of last acquired data.
 
-        @return numpy array: image data in format [[row],[row]...]
-        """
-        if self._read_mode == 'FVB':
+               @return: Data in the format depending on the read mode.
+
+               Depending on the read mode, the format is :
+               'FVB' : 1d array
+               'MULTIPLE_TRACKS' : list of 1d arrays
+               'IMAGE' 2d array of shape (width, height)
+               'IMAGE_ADVANCED' 2d array of shape (width, height)
+
+               Each value might be a float or an integer.
+               """
+        if self.get_read_mode() == ReadMode.FVB:
             height = 1
-        if self._read_mode == 'RANDOM_TRACK':
-            height = self._number_of_tracks
-        if self._read_mode == 'IMAGE':
-            height = self._height
-        dim = int(self._width * height)
-        image_array = np.zeros(dim)
-        c_image_array = c_int * dim
+        elif self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
+            height = len(self.get_active_tracks())
+        elif self.get_read_mode() == ReadMode.IMAGE:
+            height = self.get_constraints().height
+        elif self.get_read_mode() == ReadMode.IMAGE_ADVANCED:
+            pass #todo
+
+        dimension = int(self.get_constraints().width * height)
+        c_image_array = ct.c_int * dimension
         c_image = c_image_array()
-
-        status_code = self.dll.GetAcquiredData(pointer(c_image), dim)
-
+        status_code = self.dll.GetAcquiredData(ct.pointer(c_image), dimension)
         if status_code != OK_CODE:
-            self.log.warning('Could not retrieve an image. {0}'.format(ERROR_DICT[status_code]))
-        else:
-            for i in range(len(c_image)): #todo: there must be something better here
-                image_array[i] = c_image[i]
+            self.log.error('Could not retrieve data from camera. {0}'.format(ERROR_DICT[status_code]))
 
-        return np.reshape(image_array, (self._width, height))
+        if self.get_read_mode() == ReadMode.FVB:
+            return np.array(c_image)
+        else:
+            return np.reshape(np.array(c_image), (self._width, height)).transpose()
 
     ##############################################################################
     #                           Read mode functions
@@ -347,30 +285,33 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
     def get_read_mode(self):
         """ Getter method returning the current read mode used by the camera.
 
-        @return  (str): read mode
+        @return (ReadMode): Current read mode
         """
         return self._read_mode
 
-    def set_read_mode(self, read_mode):
+    def set_read_mode(self, value):
         """ Setter method setting the read mode used by the camera.
 
-        @param (str) read_mode: read mode among those defined in the self.get_constraint
-        """
+         @param (ReadMode) value: read mode to set
+         """
 
-        if hasattr(ReadMode, read_mode) and (read_mode in self._constraints['read_modes']):
-            n_mode = c_int(getattr(ReadMode, read_mode).value)
-            self.check(self.dll.SetReadMode(n_mode))
-        else:
+        if value not in self.get_constraints().read_modes:
             self.log.error('read_mode not supported')
             return
 
-        self._read_mode = read_mode
+        conversion_dict = {ReadMode.FVB: ReadModeDLL.FVB,
+                           ReadMode.MULTIPLE_TRACKS: ReadModeDLL.RANDOM_TRACK,
+                           ReadMode.IMAGE: ReadModeDLL.IMAGE,
+                           ReadMode.IMAGE_ADVANCED: ReadModeDLL.IMAGE}
 
-        if read_mode == 'IMAGE':
-            self.set_active_image(1, 1, 1, self._height, 1, self._width)
+        n_mode = conversion_dict[value].value
+        self.check(self.dll.SetReadMode(n_mode))
+        self._read_mode = value
 
-        elif read_mode == 'RANDOM_TRACK':
-            self.set_active_tracks(self._active_tracks)
+        if value == ReadMode.IMAGE or value == ReadMode.IMAGE_ADVANCED:
+            self._update_image()
+        elif value == ReadMode.MULTIPLE_TRACKS():
+            self._update_active_tracks()
 
     def get_readout_speed(self):
         """  Get the current readout speed (in Hz)
@@ -379,17 +320,17 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         """
         return self._readout_speed
 
-    def set_readout_speed(self, readout_speed):
+    def set_readout_speed(self, value):
         """ Set the readout speed (in Hz)
 
-        @param (float) readout_speed: horizontal shift in Hz
+        @param (float) value: horizontal readout speed in Hz
         """
-        if readout_speed in self._constraints['readout_speeds']:
-            readout_speed_index = self._constraints['readout_speeds'].index(readout_speed)
+        if value in self._constraints['readout_speeds']:
+            readout_speed_index = self._constraints['readout_speeds'].index(value)
             self.check(self.dll.SetHSSpeed(0, readout_speed_index))
-            self._readout_speed = readout_speed
+            self._readout_speed = value
         else:
-            self.log.error('Readout_speed value error, value {} is not in correct.'.format(readout_speed))
+            self.log.error('Readout_speed value error, value {} is not in correct.'.format(value))
 
     def get_active_tracks(self):
         """ Getter method returning the read mode tracks parameters of the camera.
@@ -423,7 +364,7 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         active_image_parameters = [self._vbin, self._hbin, self._vstart, self._vend, self._hstart, self._hend]
         return active_image_parameters
 
-    def set_active_image(self, vbin, hbin, vstart, vend, hstart, hend):
+    def _set_image(self, vbin, hbin, vstart, vend, hstart, hend):
         """ Setter method setting the read mode image parameters of the camera.
 
         @param hbin: (int) horizontal pixel binning
@@ -494,21 +435,21 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
 
         @return (dict): dict containing keys 'exposure', 'accumulate', 'kinetic' and their values in seconds """
         exposure, accumulate, kinetic = c_float(), c_float(), c_float()
-        self.check(self.dll.GetAcquisitionTimings(byref(exposure), byref(accumulate), byref(kinetic)))
+        self.check(self.dll.GetAcquisitionTimings(ct.byref(exposure), ct.byref(accumulate), ct.byref(kinetic)))
         return {'exposure': exposure.value, 'accumulate': accumulate.value, 'kinetic': kinetic.value}
 
-    def set_exposure_time(self, exposure_time):
+    def set_exposure_time(self, value):
         """ Set the exposure time in seconds
 
-        @param (float) exposure_time: desired new exposure time
+        @param (float) value: desired new exposure time
         """
-        if exposure_time < 0:
+        if value < 0:
             self.log.error('Exposure_time can not be negative.')
             return
-        if exposure_time > self._max_exposure_time:
+        if value > self._max_exposure_time:
             self.log.error('Exposure time is above the high limit : {0} s'.format(self._max_exposure_time))
             return
-        self.check(self.dll.SetExposureTime(c_float(exposure_time)))
+        self.check(self.dll.SetExposureTime(c_float(value)))
 
     def get_gain(self):
         """ Get the gain
@@ -517,15 +458,15 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         """
         return self._preamp_gain #todo: read from hardware ?
 
-    def set_gain(self, gain):
+    def set_gain(self, value):
         """ Set the gain
 
-        @param (float) gain: desired new gain
+        @param (float) value: desired new gain
         """
-        if gain not in self._constraints['internal_gains']:
-            self.log.error('gain value {} is not available.'.format(gain))
+        if value not in self._constraints['internal_gains']:
+            self.log.error('gain value {} is not available.'.format(value))
             return
-        gain_index = self._constraints['internal_gains'].index(gain)
+        gain_index = self._constraints['internal_gains'].index(value)
         self.check(self.dll.SetPreAmpGain(gain_index))
 
     ##############################################################################
@@ -538,33 +479,33 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         """
         return self._trigger_mode #todo: read from hardware ?
 
-    def set_trigger_mode(self, trigger_mode):
+    def set_trigger_mode(self, value):
         """ Setter method for the trigger mode used by the camera.
 
-        @param (str) trigger_mode: trigger mode (must be compared to a dict)
+        @param (str) value: trigger mode (must be compared to a dict)
         """
-        if hasattr(TriggerMode, trigger_mode) \
-                and (trigger_mode in self._constraints['trigger_modes']):
-            n_mode = c_int(getattr(TriggerMode, trigger_mode).value)
+        if hasattr(TriggerMode, value) \
+                and (value in self._constraints['trigger_modes']):
+            n_mode = c_int(getattr(TriggerMode, value).value)
             self.check(self.dll.SetTriggerMode(n_mode))
-            self._trigger_mode = trigger_mode
+            self._trigger_mode = value
         else:
-            self.log.warning('Trigger mode {} is not supported.'.format(trigger_mode))
+            self.log.warning('Trigger mode {} is not supported.'.format(value))
             return
-        self._trigger_mode = trigger_mode
+        self._trigger_mode = value
         return
 
     ##############################################################################
     #                           Shutter mode functions
     ##############################################################################
-    def get_shutter_status(self):
+    def get_shutter_open_state(self):
         """ Getter method returning if the shutter is open.
 
         @return (bool): @bool shutter open ? #todo: status
         tested : yes
         SI check : yes
         """
-        return self._shutter_status #todo from hardware ?
+        return self._shutter_status #todo from hardware
 
     def set_shutter_status(self, shutter_status):
         """ Setter method for the shutter state.
@@ -613,7 +554,7 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         @return (float): temperature (in Kelvin)
         """
         temp = c_int32()
-        self.dll.GetTemperature(byref(temp))
+        self.dll.GetTemperature(ct.byref(temp))
         return temp.value + 273.15
 
     def set_temperature(self, temperature):
@@ -640,7 +581,7 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         @return (str): local camera name with serial number
         """
         serial = ct.c_int()
-        self.check(self.dll.GetCameraSerialNumber(byref(serial)))
+        self.check(self.dll.GetCameraSerialNumber(ct.byref(serial)))
         name = self._camera_name + " serial number " + str(serial.value)
         return name
 
@@ -651,8 +592,8 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         """
         nx_px = ct.c_int()
         ny_px = ct.c_int()
-        self.check(self.dll.GetDetector(byref(nx_px), byref(ny_px)))
-        return ny_px.value, nx_px.value
+        self.check(self.dll.GetDetector(ct.byref(nx_px), ct.byref(ny_px)))
+        return nx_px.value, ny_px.value
 
     def get_pixel_size(self):
         """ Get the physical pixel size (width, height) in meter
@@ -661,7 +602,7 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         """
         x_px = ct.c_float()
         y_px = ct.c_float()
-        self.check(self.dll.GetPixelSize(byref(x_px), byref(y_px)))
+        self.check(self.dll.GetPixelSize(ct.byref(x_px), ct.byref(y_px)))
         return y_px.value * 1e-6, x_px.value * 1e-6
 
     def get_ready_state(self):
@@ -670,7 +611,7 @@ class Newton940(Base, CameraInterface):  # Todo : rename class for any Andor cam
         @return (bool): True if camera state is idle
         """
         code = ct.c_int()
-        self.check(self.dll.GetStatus(byref(code)))
+        self.check(self.dll.GetStatus(ct.byref(code)))
         return code.value == OK_CODE
 
     def _get_current_config(self):
