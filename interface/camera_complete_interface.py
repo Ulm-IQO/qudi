@@ -44,8 +44,10 @@ class Constraints:
     """ Class defining formally the hardware constraints """
     def __init__(self):
         self.name = '',                  # Camera manufacture name (ex : 'Newton940')
-        self.image_size = (None, None),  # Camera size in pixels (width, height)
-        self.pixel_size = (None, None),  # Physical size of the pixels in meter (width, height)
+        self.width = None,               # Camera width in pixels
+        self.height = None,              # Camera height in pixels
+        self.pixel_size_width = None,    # Physical width of the pixels in meter
+        self.pixel_size_height = None    # Physical height of the pixels in meter
         self.read_modes = [],            # Read mode supported by the camera (see ReadMode class)
         self.internal_gains = [],        # Internal gains supported by the camera (list of float)
         self.readout_speeds = [],        # Readout speed supported by the camera, in Hz (list of float)
@@ -85,7 +87,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def stop_acquisition(self):
+    def abort_acquisition(self):
         """ Abort acquisition """
         pass
 
