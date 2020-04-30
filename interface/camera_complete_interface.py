@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the updated Qudi Interface for a camera.
+This file contains the updated Qudi Interface for a scientific camera used for spectroscopy.
 
 
 Qudi is free software: you can redistribute it and/or modify
@@ -20,164 +20,206 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+from enum import Enum
 
 from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
+class ReadMode(Enum):
+    """ Class defining the possible read modes of the camera
+
+    'FVB': Full vertical binning. Returns the signal integrated over the whole columns of pixels, giving one curve.
+    'MULTIPLE_TRACK': The signal is integrated over one or multiple tracks, giving a lost of one or multiple curves.
+    'IMAGE': The camera return the signal over all the pixels as a 2d array.
+    'IMAGE_ADVANCED': The camera return the signal over the super pixels on a given region of the camera, as a 2d array.
+     """
+    FVB = 0
+    MULTIPLE_TRACKS = 1
+    IMAGE = 2
+    IMAGE_ADVANCED = 3
+
+
+class Constraints:
+    """ Class defining formally the hardware constraints """
+    def __init__(self):
+        self.name = '',                  # Camera manufacture name (ex : 'Newton940')
+        self.image_size = (None, None),  # Camera size in pixels (width, height)
+        self.pixel_size = (None, None),  # Physical size of the pixels in meter (width, height)
+        self.read_modes = [],            # Read mode supported by the camera (see ReadMode class)
+        self.internal_gains = [],        # Internal gains supported by the camera (list of float)
+        self.readout_speeds = [],        # Readout speed supported by the camera, in Hz (list of float)
+        self.has_cooler = False,         # Tells if the camera has a cooling system
+        self.has_shutter = False,        # Tells if the camera has a shutter
+        self.trigger_modes = [],         # User defined trigger mode (list of string)
+
+
+class ImageAdvancedParameters:
+    """ Class defining formally a binning and a region of the camera for IMAGE_ADVANCED mode """
+    def __init__(self):
+        self.horizontal_binning = 1,
+        self.vertical_binning = 1,
+        self.horizontal_start = 0,
+        self.horizontal_end = None,  # Has to be an integer
+        self.vertical_start = 0,
+        self.vertical_end = None  # Has to be an integer
+
+
 class CameraInterface(metaclass=InterfaceMetaclass):
-    """ This interface is used to manage and visualize a simple camera
-    """
+    """ This interface is used to manage a camera used for spectroscopy """
 
     @abstract_interface_method
     def get_constraints(self):
-        """Returns all the fixed parameters of the hardware which can be used by the logic.
+        """ Returns all the fixed parameters of the hardware which can be used by the logic.
 
-        @return: (dict) constraint dict : {
-
-            'name' : (str) give the camera manufacture name (ex : 'Newton940')
-
-            'image_size' : (tuple) ((int) image_width, (int) image_length) give the camera image size in pixels units,
-
-            'pixel_size' : (tuple) ((float) pixel_width, (float) pixel_length) give the pixels size in m,
-
-            'read_modes' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
-
-            'internal_gains' : (list) [(float) gain, ..] give the available internal gain which can be set
-            to the camera preamplifier,
-
-            'trigger_modes' : (list) [(str) trigger_mode, ..] give the available trigger modes of the camera,
-
-            'has_cooler' : (bool) give if the camera has temperature controller installed,
-
-            (optional) : let this key empty if no shutter is installed !
-            'shutter_modes' : (ndarray) [(str) shutter_mode, ..] give the shutter modes available if any
-            shutter is installed.
-
+        @return (Constraints): An object of class Constraints containing all fixed parameters of the hardware
         """
         pass
 
     ##############################################################################
     #                           Basic functions
     ##############################################################################
-
     @abstract_interface_method
     def start_acquisition(self):
-        """ Start a single acquisition
-
-        @return: nothing
-        """
+        """ Starts an acquisition of the current mode and returns immediately """
         pass
 
     @abstract_interface_method
     def stop_acquisition(self):
-        """ Stop/abort live or single acquisition
-
-        @return: nothing
-        """
+        """ Abort acquisition """
         pass
 
     @abstract_interface_method
     def get_acquired_data(self):
-        """ Return an array of last acquired image.
+        """ Return an array of last acquired data.
 
-        @return: (ndarray) image data in format [[row],[row]...]
-        Each pixel might be a float, integer or sub pixels
+        @return: Data in the format depending on the read mode.
+
+        Depending on the read mode, the format is :
+        'FVB' : 1d array
+        'MULTIPLE_TRACKS' : list of 1d arrays
+        'IMAGE' 2d array of shape (width, height)
+        'IMAGE_ADVANCED' 2d array of shape (width, height)
+
+        Each value might be a float or an integer.
         """
         pass
 
     ##############################################################################
     #                           Read mode functions
     ##############################################################################
-
     @abstract_interface_method
     def get_read_mode(self):
-        """Getter method returning the current read mode used by the camera.
+        """ Getter method returning the current read mode used by the camera.
 
-        @return: (str) read mode
+        @return (ReadMode): Current read mode
         """
         pass
 
     @abstract_interface_method
-    def set_read_mode(self, read_mode):
-        """Setter method setting the read mode used by the camera.
+    def set_read_mode(self, value):
+        """ Setter method setting the read mode used by the camera.
 
-        @param read_mode: (str) read mode
-        @return: nothing
+        @param (ReadMode) value: read mode to set
         """
         pass
 
+    ##############################################################################
+    #                           Readout speed functions
+    ##############################################################################
     @abstract_interface_method
     def get_readout_speed(self):
+        """ Get the current readout speed of the camera
+
+        This value is one of the possible values given by constraints
+        """
         pass
 
     @abstract_interface_method
-    def set_readout_speed(self, readout_speed):
+    def set_readout_speed(self, value):
+        """ Set the readout speed of the camera
+
+        @param (float) value: Readout speed to set, must be a value from the constraints readout_speeds list
+        """
         pass
 
+    ##############################################################################
+    #                           Active tracks functions
+    #
+    # Method used only for read mode MULTIPLE_TRACKS
+    ##############################################################################
     @abstract_interface_method
     def get_active_tracks(self):
-        """Getter method returning the read mode tracks parameters of the camera.
+        """ Getter method returning the read mode tracks parameters of the camera.
 
-        @return: (ndarray) active tracks positions [1st track start, 1st track end, ... ]
+        @return (list):  active tracks positions [(start_1, end_1), (start_2, end_2), ... ]
+
+        Should only be used while in MULTIPLE_TRACKS mode
         """
         pass
 
     @abstract_interface_method
-    def set_active_tracks(self, active_tracks):
-        """
-        Setter method setting the read mode tracks parameters of the camera.
+    def set_active_tracks(self, value):
+        """ Setter method for the active tracks of the camera.
 
-        @param active_tracks: (ndarray) active tracks positions [((int) start row, (int) end row ), ... ]
-        in pixel unit.
-        @return: nothing
-        """
-        pass
+        @param (list) value: active tracks positions  as [(start_1, end_1), (start_2, end_2), ... ]
 
-    @abstract_interface_method
-    def get_active_image(self):
-        """Getter method returning the read mode image parameters of the camera.
+        Some camera can sum the signal over tracks of pixels (all width times a height given by start and stop pixels)
+        This sum is done internally before the analog to digital converter to reduce the signal noise.
 
-        @return: (ndarray) active image parameters [hbin, vbin, hstart, hend, vstart, vend]
-        """
-        pass
-
-    @abstract_interface_method
-    def set_active_image(self,hbin, vbin, hstart, hend, vstart, vend):
-        """Setter method setting the read mode image parameters of the camera.
-
-        @param hbin: (int) horizontal pixel binning
-        @param vbin: (int) vertical pixel binning
-        @param hstart: (int) image starting row
-        @param hend: (int) image ending row
-        @param vstart: (int) image starting column
-        @param vend: (int) image ending column
-        @return: nothing
+        Should only be used while in MULTIPLE_TRACKS mode
         """
         pass
 
     ##############################################################################
-    #                           Acquisition mode functions
+    #                           Image advanced functions
+    #
+    # Method used only for read mode IMAGE_ADVANCED
     ##############################################################################
+    @abstract_interface_method
+    def get_image_advanced_parameters(self):
+        """ Getter method returning the image parameters of the camera.
 
+        @return (ImageAdvancedParameters): Current image advanced parameters
+
+        Should only be used while in IMAGE_ADVANCED mode
+        """
+        pass
+
+    @abstract_interface_method
+    def set_image_advanced_parameters(self, value):
+        """ Setter method setting the read mode image parameters of the camera.
+
+        @param (ImageAdvancedParameters) value: Parameters to set
+
+        Should only be used while in IMAGE_ADVANCED mode
+        """
+        pass
+
+    ##############################################################################
+    #                           Gain mode functions
+    ##############################################################################
     @abstract_interface_method
     def get_gain(self):
-        """ Get the gain.
+        """ Get the current gain.
 
-        @return: (float) exposure gain
+        @return (float): Current gain
+
+        Gain value should be one in the constraints internal_gains list.
         """
         pass
 
     @abstract_interface_method
-    def set_gain(self, gain):
+    def set_gain(self, value):
         """ Set the gain.
 
-        @param camera_gain: (float) desired new gain
-
-        @return: nothing
+        @param (float) value: New gain, value should be one in the constraints internal_gains list.
         """
         pass
 
+    ##############################################################################
+    #                           Exposure functions
+    ##############################################################################
     @abstract_interface_method
     def get_exposure_time(self):
         """ Get the exposure time in seconds
@@ -187,10 +229,10 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_exposure_time(self, exposure_time):
+    def set_exposure_time(self, value):
         """ Set the exposure time in seconds.
 
-        @param exposure_time: (float) desired new exposure time
+        @param value: (float) desired new exposure time
 
         @return: nothing
         """
@@ -202,79 +244,84 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def get_trigger_mode(self):
-        """Getter method returning the current trigger mode used by the camera.
+        """ Getter method returning the current trigger mode used by the camera.
 
-        @return: (str) trigger mode (must be compared to the list)
+        @return (str): Trigger mode
+
+        This string should match one in the constraints trigger_modes list.
         """
         pass
 
     @abstract_interface_method
-    def set_trigger_mode(self, trigger_mode):
-        """Setter method setting the trigger mode used by the camera.
+    def set_trigger_mode(self, value):
+        """ Setter method for the trigger mode used by the camera.
 
-        @param trigger_mode: (str) trigger mode (must be compared to the list)
-        @return: nothing
+        @param (str) value: trigger mode, should match one in the constraints trigger_modes list.
         """
         pass
 
     ##############################################################################
-    #                        Shutter mode function (optional)
+    #                        Shutter mode function
+    #
+    # Method used only if constraints.has_shutter
     ##############################################################################
-    # Shutter mode function are used in logic only if the camera constraints
-    # dictionary has 'shutter_modes' key filled. If empty this functions will not
-    # be used and can be ignored.
-
     @abstract_interface_method
-    def get_shutter_status(self):
-        """Getter method returning the shutter mode.
+    def get_shutter_open_state(self):
+        """ Getter method returning the shutter mode.
 
-        @return: (str) shutter mode (must be compared to the list)
+        @return (bool): True if the shutter is open, False of closed
         """
         pass
 
     @abstract_interface_method
-    def set_shutter_status(self, shutter_mode):
-        """Setter method setting the shutter mode.
+    def set_shutter_open_state(self, value):
+        """ Setter method setting the shutter mode.
 
-        @param shutter_mode: (str) shutter mode (must be compared to the list)
-        @return: nothing
+        @param (bool) value: True to open, False tp close
         """
         pass
 
     ##############################################################################
     #                           Temperature functions
+    #
+    # Method used only if constraints.has_cooler
     ##############################################################################
-
     @abstract_interface_method
-    def get_cooler_status(self):
-        """Getter method returning the cooler status if ON or OFF.
+    def get_cooler_on(self):
+        """ Getter method returning the cooler status
 
-        @return: (int) 1 if ON or 0 if OFF
+        @return (bool): True if the cooler is on
         """
         pass
 
     @abstract_interface_method
-    def set_cooler_status(self, cooler_status):
-        """Getter method returning the cooler status if ON or OFF.
+    def set_cooler_on(self, value):
+        """ Setter method for the the cooler status
 
-        @param cooler_status: (bool) 1 if ON or 0 if OFF
-        @return: nothing
+        @param (bool) value: True to turn it on, False to turn it off
         """
         pass
 
     @abstract_interface_method
     def get_temperature(self):
-        """Getter method returning the temperature of the camera.
+        """ Getter method returning the temperature of the camera in Kelvin.
 
-        @return: (float) temperature
+        @return (float) : Measured temperature in kelvin
         """
         pass
 
     @abstract_interface_method
-    def set_temperature(self, temperature):
-        """Getter method returning the temperature of the camera.
+    def get_temperature_setpoint(self):
+        """ Getter method for the temperature setpoint of the camera.
 
-        @param temperature: (float) temperature
-        @return: nothing
+        @return (float): Current setpoint in Kelvin
+        """
+        pass
+
+    @abstract_interface_method
+    def set_temperature_setpoint(self, value):
+        """ Setter method for the temperature setpoint of the camera.
+
+        @param (float) value: New setpoint in Kelvin
         """
         pass
