@@ -218,7 +218,7 @@ class Newton940(Base, CameraInterface):
         else:
             self._constraints = self.get_constraints()
             nx_px, ny_px = self.get_image_size()
-            self._width, self._height = nx_px, ny_px
+            self._height, self._width = nx_px, ny_px
 
             self.set_cooler_status(self._cooler_status)
             self.set_temperature(self._temperature)
@@ -309,6 +309,8 @@ class Newton940(Base, CameraInterface):
 
             'read_modes' : (list) [(str) read_mode, ..] give the available read modes of the camera (ex : ['FVB']),
 
+            'readout_speed' : (list)
+
             'internal_gains' : (list) [(float) gain, ..] give the available internal gain which can be set
             to the camera preamplifier,
 
@@ -322,15 +324,19 @@ class Newton940(Base, CameraInterface):
 
         """
 
+        internal_gains = [gain for gain in GAIN_DICT.values()]
+        readout_speeds = [speed for speed in READOUT_SPEED_DICT.values()]
+
         constraints = {
             'name': self.get_name(),
             'image_size': self.get_image_size(),
             'pixel_size': self.get_pixel_size(),
             'read_modes': ['FVB', 'RANDOM_TRACK', 'IMAGE'],
+            'readout_speeds': readout_speeds,
             'trigger_modes': ['INTERNAL', 'EXTERNAL', 'EXTERNAL_START', 'EXTERNAL_EXPOSURE',
                                   'SOFTWARE_TRIGGER', 'EXTERNAL_CHARGE_SHIFTING'],
             'acquisition_modes': ['SINGLE_SCAN'],
-            'internal_gains': [1, 2, 4],
+            'internal_gains': internal_gains,
             'has_cooler': True,
             'shutter_modes': ['AUTO', 'OPEN', 'CLOSE'],
         }
@@ -435,7 +441,7 @@ class Newton940(Base, CameraInterface):
         self._read_mode = read_mode
 
         if read_mode == 'IMAGE':
-            self.set_active_image(1, 1, 1, self._width, 1, self._height)
+            self.set_active_image(1, 1, 1, self._height, 1, self._width,)
 
         elif read_mode == 'RANDOM_TRACK':
             self.set_active_tracks(self._active_tracks)
@@ -515,10 +521,10 @@ class Newton940(Base, CameraInterface):
         tested : yes
         SI check : yes
         """
-        active_image_parameters = [self._hbin, self._vbin, self._hstart, self._hend, self._vstart, self._vend]
+        active_image_parameters = [self._vbin, self._hbin, self._vstart, self._vend, self._hstart, self._hend]
         return active_image_parameters
 
-    def set_active_image(self, hbin, vbin, hstart, hend, vstart, vend):
+    def set_active_image(self, vbin, hbin, vstart, vend, hstart, hend):
         """
         Setter method setting the read mode image parameters of the camera.
 
@@ -823,7 +829,7 @@ class Newton940(Base, CameraInterface):
         nx_px = ct.c_int()
         ny_px = ct.c_int()
         self.check(self.dll.GetDetector(byref(nx_px), byref(ny_px)))
-        return nx_px.value, ny_px.value
+        return ny_px.value, nx_px.value
 
     def get_pixel_size(self):
         """
@@ -834,7 +840,7 @@ class Newton940(Base, CameraInterface):
         x_px = ct.c_float()
         y_px = ct.c_float()
         self.check(self.dll.GetPixelSize(byref(x_px), byref(y_px)))
-        return x_px.value * 1E-6, y_px.value * 1E-6
+        return y_px.value * 1E-6, x_px.value * 1E-6
 
     def get_ready_state(self):
         """

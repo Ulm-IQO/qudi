@@ -182,6 +182,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     # dictionary has 'shutter_modes' key filled. If empty this functions will not
     # be used and can be ignored.
 
+    @abstract_interface_method
     def get_shutter_status(self):
         """Getter method returning the shutter mode.
 
@@ -189,6 +190,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @abstract_interface_method
     def set_shutter_status(self, shutter_mode):
         """Setter method setting the shutter mode.
 
