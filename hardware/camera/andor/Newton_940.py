@@ -131,15 +131,17 @@ class Main(Base, CameraInterface):
     """
     _dll_location = ConfigOption('dll_location', missing='error')
     _close_shutter_on_deactivate = ConfigOption('close_shutter_on_deactivate', False)
-    #todo: open shutter_on_activate ?
+    # todo: open shutter_on_activate ?
 
     _start_cooler_on_activate = ConfigOption('start_cooler_on_activate', True)
     _default_temperature = ConfigOption('default_temperature', 260)
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
     _max_exposure_time = ConfigOption('max_exposure_time', 600)  # todo: does this come from the dll and why forbid it ?
+    _shutter_TTL = ConfigOption('shutter_TTL', 1)  # todo: explain what this is for the user
+    _shutter_switching_time = ConfigOption('shutter_switching_time', 100e-3)  # todo: explain what this is for the user
 
-    _min_temperature = 189 #todo: why ?
-    _max_temperature = 262 # todo: why ?
+    _min_temperature = -85  # todo: why ? In this module internally, we can work with degree celsius, as andor users will be used to this. Still, this look rather arbitrary
+    _max_temperature = -10  # todo: why ? same
 
     # Declarations of attributes to make Pycharm happy
     def __init__(self):
@@ -147,6 +149,12 @@ class Main(Base, CameraInterface):
         self._dll = None
         self._active_tracks = None
         self._image_advanced_parameters = None
+        self._readout_speed = None
+        self._read_mode = None
+        self._trigger_mode = None
+        self._shutter_status = None
+        self._cooler_status = None
+        self._temperature_setpoint = None
 
     ##############################################################################
     #                            Basic module activation/deactivation
@@ -157,8 +165,8 @@ class Main(Base, CameraInterface):
             self._dll = ct.cdll.LoadLibrary(self._dll_location)
         except OSError:
             self.log.error('Error during dll loading of the Andor camera, check the dll path.')
-
-        status_code = self.dll.Initialize()
+        # todo: camera selection by SN ?
+        status_code = self._dll.Initialize()
         if status_code != OK_CODE:
             self.log.error('Problem during camera initialization')
             return
@@ -168,11 +176,11 @@ class Main(Base, CameraInterface):
         if self._constraints.has_cooler and self._start_cooler_on_activate:
             self.set_cooler_on(True)
 
-        self.set_read_mode(ReadMode.FVB)
+        self.set_read_mode(ReadMode.FVB)  # todo: what if not ?
         self.set_trigger_mode(self._default_trigger_mode)
         self.set_temperature_setpoint(self._default_temperature)
 
-        self.set_acquisition_mode(AcquisitionMode.SINGLE_SCAN)
+        self._set_acquisition_mode(AcquisitionMode.SINGLE_SCAN)
         self._active_tracks = []
         self._image_advanced_parameters = None
 
@@ -183,7 +191,7 @@ class Main(Base, CameraInterface):
         if self._close_shutter_on_deactivate:
             self.set_shutter_open_state(False)
         try:
-            self.dll.ShutDown()
+            self._dll.ShutDown()
         except:
             self.log.warning('Error while shutting down Andor camera via dll.')
 
@@ -215,8 +223,8 @@ class Main(Base, CameraInterface):
         constraints.pixel_size_width, constraints.pixel_size_width = self._get_pixel_size()
         constraints.internal_gains = [1, 2, 4]  # # todo : from hardware
         constraints.readout_speeds = [50000, 1000000, 3000000]  # todo : read from hardware
-        constraints.has_cooler = True # todo : from hardware ?
-        constraints.trigger_modes = list(TriggerMode.__members__) # todo : from hardware if only some are available ?
+        constraints.has_cooler = True  # todo : from hardware ?
+        constraints.trigger_modes = list(TriggerMode.__members__)  # todo : from hardware if only some are available ?
         constraints.has_shutter = True  # todo : from hardware ?
         constraints.read_modes = [ReadMode.FVB]
         if constraints.height > 1:
@@ -235,17 +243,33 @@ class Main(Base, CameraInterface):
     ##############################################################################
     def start_acquisition(self):
         """ Starts the acquisition """
-        self.check(self.dll.StartAcquisition())
+        self._check(self._dll.StartAcquisition())
 
     def _wait_for_acquisition(self):
         """ Internal function, can be used to wait till acquisition is finished """
-        self.dll.WaitForAcquisition()
+        self._dll.WaitForAcquisition()
 
     def abort_acquisition(self):
         """ Aborts the acquisition """
-        self.check(self.dll.AbortAcquisition())
+        self._check(self._dll.AbortAcquisition())
 
-    def get_acquired_data(self):
+    def get_ready_state(self):  # todo: check this function, i've guessed the dll behavior...
+        """ Get the status of the camera, to know if the acquisition is finished or still ongoing.
+
+        @return (bool): True if the camera is ready, False if an acquisition is ongoing
+
+        As there is no synchronous acquisition in the interface, the logic needs a way to check the acquisition state.
+        """
+        code = ct.c_int()
+        self._dll.GetStatus(ct.byref(code))
+        if ERROR_DICT[code.value] == 'DRV_IDLE':
+            return True
+        elif ERROR_DICT[code.value] == 'DRV_ACQUIRING':
+            return False
+        else:
+            self._check(code.value)
+
+    def get_acquired_data(self):  # todo: test for every mode
         """ Return an array of last acquired data.
 
                @return: Data in the format depending on the read mode.
@@ -258,6 +282,7 @@ class Main(Base, CameraInterface):
 
                Each value might be a float or an integer.
                """
+        width = self.get_constraints().width
         if self.get_read_mode() == ReadMode.FVB:
             height = 1
         elif self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
@@ -265,19 +290,21 @@ class Main(Base, CameraInterface):
         elif self.get_read_mode() == ReadMode.IMAGE:
             height = self.get_constraints().height
         elif self.get_read_mode() == ReadMode.IMAGE_ADVANCED:
-            pass #todo
+            params = self.get_image_advanced_parameters()
+            height = (params.vertical_end - params.vertical_start)/params.vertical_binning
+            width = (params.horizontal_end - params.horizontal_start)/params.horizontal_binning
 
-        dimension = int(self.get_constraints().width * height)
+        dimension = int(width * height)
         c_image_array = ct.c_int * dimension
         c_image = c_image_array()
-        status_code = self.dll.GetAcquiredData(ct.pointer(c_image), dimension)
+        status_code = self._dll.GetAcquiredData(ct.pointer(c_image), dimension)
         if status_code != OK_CODE:
             self.log.error('Could not retrieve data from camera. {0}'.format(ERROR_DICT[status_code]))
 
         if self.get_read_mode() == ReadMode.FVB:
             return np.array(c_image)
         else:
-            return np.reshape(np.array(c_image), (self._width, height)).transpose()
+            return np.reshape(np.array(c_image), (width, height)).transpose()
 
     ##############################################################################
     #                           Read mode functions
@@ -305,12 +332,13 @@ class Main(Base, CameraInterface):
                            ReadMode.IMAGE_ADVANCED: ReadModeDLL.IMAGE}
 
         n_mode = conversion_dict[value].value
-        self.check(self.dll.SetReadMode(n_mode))
-        self._read_mode = value
+        status_code = self._check(self._dll.SetReadMode(n_mode))
+        if status_code == OK_CODE:
+            self._read_mode = value
 
         if value == ReadMode.IMAGE or value == ReadMode.IMAGE_ADVANCED:
             self._update_image()
-        elif value == ReadMode.MULTIPLE_TRACKS():
+        elif value == ReadMode.MULTIPLE_TRACKS:
             self._update_active_tracks()
 
     def get_readout_speed(self):
@@ -318,16 +346,16 @@ class Main(Base, CameraInterface):
 
         @return (float): the readout_speed (Horizontal shift) in Hz
         """
-        return self._readout_speed
+        return self._readout_speed  # todo: not in dll ?
 
     def set_readout_speed(self, value):
         """ Set the readout speed (in Hz)
 
         @param (float) value: horizontal readout speed in Hz
         """
-        if value in self._constraints['readout_speeds']:
-            readout_speed_index = self._constraints['readout_speeds'].index(value)
-            self.check(self.dll.SetHSSpeed(0, readout_speed_index))
+        if value in self.get_constraints().readout_speeds:
+            readout_speed_index = self.get_constraints().readout_speeds.index(value)
+            self._check(self._dll.SetHSSpeed(0, readout_speed_index))
             self._readout_speed = value
         else:
             self.log.error('Readout_speed value error, value {} is not in correct.'.format(value))
@@ -336,106 +364,103 @@ class Main(Base, CameraInterface):
         """ Getter method returning the read mode tracks parameters of the camera.
 
         @return (list):  active tracks positions [(start_1, end_1), (start_2, end_2), ... ]
+
+        This getter is not available in the dll, so its state is handled by this module # todo: confirm ?
         """
         return self._active_tracks
 
-    def set_active_tracks(self, active_tracks):
+    def set_active_tracks(self, value):
         """ Setter method for the active tracks of the camera.
 
-        @param (list) active_tracks: active tracks positions  as [(start_1, end_1), (start_2, end_2), ... ]
+        @param (list) value: active tracks positions  as [(start_1, end_1), (start_2, end_2), ... ]
         """
-        if self._read_mode != 'RANDOM_TRACK':
-            self.log.error('Active tracks are defined outside of RANDOM_TRACK mode.')
-            return
-        number_of_tracks = int(len(active_tracks))
-        active_tracks = [item for item_tuple in active_tracks for item in item_tuple] #todo: decompose this, do not use imbricated loops in one line loop
-        self.dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
-        self.check(self.dll.SetRandomTracks(number_of_tracks, active_tracks.ctypes.data))
-        self._active_tracks = active_tracks
-        self._number_of_tracks = number_of_tracks
+        if self.get_read_mode() != ReadMode.MULTIPLE_TRACKS:
+            self.log.warning('Active tracks are defined outside of MULTIPLE_TRACKS mode.')
 
-    def get_active_image(self):
-        """ Getter method returning the read mode image parameters of the camera.
+        self._active_tracks = value
+        self._update_active_tracks()
 
-        @return: (np array) active image parameters [hbin, vbin, hstart, hend, vstart, vend]
-        tested : yes
-        SI check : yes
+    def _update_active_tracks(self):
+        """ Internal function that send the current active tracks to the DLL """
+        flatten_tracks = np.array(self._active_tracks).flatten()
+        self._dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
+        status_code = self._check(self._dll.SetRandomTracks(len(self._active_tracks), flatten_tracks.ctypes.data))
+        self._check(status_code)
+        if status_code != OK_CODE:  # Clear tracks if an error has occurred
+            self._active_tracks = []
+
+    def get_image_advanced_parameters(self):
+        """ Getter method returning the image parameters of the camera.
+
+        @return (ImageAdvancedParameters): Current image advanced parameters
+
+        Should only be used while in IMAGE_ADVANCED mode
         """
-        active_image_parameters = [self._vbin, self._hbin, self._vstart, self._vend, self._hstart, self._hend]
-        return active_image_parameters
+        return self._advanced_image_parameters
 
-    def _set_image(self, vbin, hbin, vstart, vend, hstart, hend):
+    def set_image_advanced_parameters(self, value):
         """ Setter method setting the read mode image parameters of the camera.
 
-        @param hbin: (int) horizontal pixel binning
-        @param vbin: (int) vertical pixel binning
-        @param hstart: (int) image starting row
-        @param hend: (int) image ending row
-        @param vstart: (int) image starting column
-        @param vend: (int) image ending column
-        @return: nothing
-        tested : yes
-        SI check : yes
-        """
-        hbin, vbin, hstart, hend, vstart, vend = c_int(hbin), c_int(vbin), c_int(hstart), c_int(hend),\
-            c_int(vstart), c_int(vend)
+        @param (ImageAdvancedParameters) value: Parameters to set
 
-        status_code = self.check(self.dll.SetImage(hbin, vbin, hstart, hend, vstart, vend))
-        if status_code == OK_CODE:
-            self._hbin = hbin.value
-            self._vbin = vbin.value
-            self._hstart = hstart.value
-            self._hend = hend.value
-            self._vstart = vstart.value
-            self._vend = vend.value
-            self._width = int((self._hend - self._hstart + 1) / self._hbin)
-            self._height = int((self._vend - self._vstart + 1) / self._vbin)
-            self._ROI = (self._hstart, self._hend, self._vstart, self._vend)
-            self._binning = (self._hbin, self._vbin)
-        else:
-            self.log.error('Call to set_active_image went wrong:{0}'.format(ERROR_DICT[status_code]))
-        return
+        Should only be used while in IMAGE_ADVANCED mode
+        """
+        self._image_advanced_parameters = value
+        self._update_image()
+
+    def _update_image(self):
+        """ Internal method that send the current appropriate image settings to the DLL"""
+
+        if self.get_read_mode() == ReadMode.IMAGE:
+            status_code = self._dll.SetImage(1, 1, 0, self.get_constraints().width, 0, self.get_constraints().height)
+            self._check(status_code)
+
+        elif self.get_read_mode() == ReadMode.IMAGE_ADVANCED:
+            params = self._image_advanced_parameters
+            status_code = self._dll.SetImage(int(params.horizontal_binning),  int(params.vertical_binning),
+                                             int(params.horizontal_start), int(params.horizontal_end),
+                                             int(params.vertical_start), int(params.vertical_end))
+            self._check(status_code)
 
     ##############################################################################
     #                           Acquisition mode functions
     ##############################################################################
-
-    def get_acquisition_mode(self):
+    def _get_acquisition_mode(self):
         """ Getter method returning the current acquisition mode used by the camera.
 
         @return (str): acquisition mode
         """
         return self._acquisition_mode
 
-    def set_acquisition_mode(self, acquisition_mode):
+    def _set_acquisition_mode(self, value):
         """ Setter method setting the acquisition mode used by the camera.
 
-        @param acquisition_mode: @str read mode (must be compared to a dict)
-        """
+        @param (str|AcquisitionMode): Acquisition mode as a string or an object
 
-        if hasattr(AcquisitionMode, acquisition_mode) \
-                and (acquisition_mode in self._constraints['acquisition_modes']):
-            n_mode = c_int(getattr(AcquisitionMode, acquisition_mode).value)
-            self.check(self.dll.SetAcquisitionMode(n_mode))
-        else:
-            self.log.error('{} mode is not supported'.format(acquisition_mode))
+        This method is not part of the interface, so we might need to use it from a script directly. Hence, here
+        it is worth it to accept a string.
+        """
+        if isinstance(value, str) and value in AcquisitionMode.__members__:
+            value = AcquisitionMode[value]
+        if not isinstance(value, AcquisitionMode):
+            self.log.error('{} acquisition mode is not supported'.format(value))
             return
-        self._acquisition_mode = acquisition_mode
-        return
+        n_mode = ct.c_int(value.value)
+        self._check(self._dll.SetAcquisitionMode(n_mode))
 
     def get_exposure_time(self):
         """ Get the exposure time in seconds
 
         @return (float) : exposure time in s
         """
-        return self._get_acquisition_timings['exposure']
+        return self._get_acquisition_timings()['exposure']
 
     def _get_acquisition_timings(self):
         """ Get the acquisitions timings from the dll
 
         @return (dict): dict containing keys 'exposure', 'accumulate', 'kinetic' and their values in seconds """
-        exposure, accumulate, kinetic = c_float(), c_float(), c_float()
-        self.check(self.dll.GetAcquisitionTimings(ct.byref(exposure), ct.byref(accumulate), ct.byref(kinetic)))
+        exposure, accumulate, kinetic = ct.c_float(), ct.c_float(), ct.c_float()
+        self._check(self._dll.GetAcquisitionTimings(ct.byref(exposure), ct.byref(accumulate), ct.byref(kinetic)))
         return {'exposure': exposure.value, 'accumulate': accumulate.value, 'kinetic': kinetic.value}
 
     def set_exposure_time(self, value):
@@ -444,30 +469,30 @@ class Main(Base, CameraInterface):
         @param (float) value: desired new exposure time
         """
         if value < 0:
-            self.log.error('Exposure_time can not be negative.')
+            self.log.error('Exposure_time ({} s) can not be negative.'.format(value))
             return
         if value > self._max_exposure_time:
-            self.log.error('Exposure time is above the high limit : {0} s'.format(self._max_exposure_time))
+            self.log.error('Exposure time ({} s) is above the high limit ({} s)'.format(value, self._max_exposure_time))
             return
-        self.check(self.dll.SetExposureTime(c_float(value)))
+        self._check(self._dll.SetExposureTime(ct.c_float(value)))
 
     def get_gain(self):
         """ Get the gain
 
         @return (float): exposure gain
         """
-        return self._preamp_gain #todo: read from hardware ?
+        return self._preamp_gain  # todo: read from hardware ?
 
     def set_gain(self, value):
         """ Set the gain
 
-        @param (float) value: desired new gain
+        @param (float) value: New gain, value should be one in the constraints internal_gains list.
         """
-        if value not in self._constraints['internal_gains']:
+        if value not in self.get_constraints().internal_gains:
             self.log.error('gain value {} is not available.'.format(value))
             return
-        gain_index = self._constraints['internal_gains'].index(value)
-        self.check(self.dll.SetPreAmpGain(gain_index))
+        gain_index = self.get_constraints().internal_gains.index(value)
+        self._check(self._dll.SetPreAmpGain(gain_index))
 
     ##############################################################################
     #                           Trigger mode functions
@@ -477,152 +502,150 @@ class Main(Base, CameraInterface):
 
         @return (str): current trigger mode
         """
-        return self._trigger_mode #todo: read from hardware ?
+        return self._trigger_mode  # todo: read from hardware ?
 
     def set_trigger_mode(self, value):
         """ Setter method for the trigger mode used by the camera.
 
         @param (str) value: trigger mode (must be compared to a dict)
         """
-        if hasattr(TriggerMode, value) \
-                and (value in self._constraints['trigger_modes']):
-            n_mode = c_int(getattr(TriggerMode, value).value)
-            self.check(self.dll.SetTriggerMode(n_mode))
-            self._trigger_mode = value
-        else:
-            self.log.warning('Trigger mode {} is not supported.'.format(value))
+        if value not in self.get_constraints().trigger_modes:
+            self.log.error('Trigger mode {} is not declared by hardware.'.format(value))
             return
-        self._trigger_mode = value
-        return
+        n_mode = TriggerMode[value].value
+        status_code = self._check(self._dll.SetTriggerMode(n_mode))
+        if status_code == OK_CODE:
+            self._trigger_mode = value
 
     ##############################################################################
     #                           Shutter mode functions
     ##############################################################################
     def get_shutter_open_state(self):
-        """ Getter method returning if the shutter is open.
+        """ Getter method returning the shutter mode.
 
-        @return (bool): @bool shutter open ? #todo: status
-        tested : yes
-        SI check : yes
+        @return (bool): True if the shutter is open, False of closed
         """
-        return self._shutter_status #todo from hardware
+        if not self.get_constraints().has_shutter:
+            self.log.error('Can not get state of the shutter, camera does not have a shutter')
+        return self._shutter_status  # todo from hardware
 
-    def set_shutter_status(self, shutter_status):
-        """ Setter method for the shutter state.
+    def set_shutter_open_state(self, value):
+        """ Setter method setting the shutter mode.
 
-        @param (str): shutter_status
+        @param (bool) value: True to open, False tp close
         """
-
-        if hasattr(ShutterMode, shutter_status) \
-                and (shutter_status in self._constraints['shutter_modes']):
-            mode = c_int(getattr(ShutterMode, shutter_status).value)
-            self.check(self.dll.SetShutter(self._shutter_TTL, mode,
-                                           self._shutter_closing_time, self._shutter_opening_time))
-            self._shutter_status = shutter_status
-        else:
-            self.log.warning('HW/Newton940/set_shutter_status() : '
-                             '{0} mode is not supported'.format(shutter_status))
-            return
-        self._shutter_status = shutter_status
-        return
+        if not self.get_constraints().has_shutter:
+            self.log.error('Can not set state of the shutter, camera does not have a shutter')
+        mode = ShutterMode.OPEN if value else ShutterMode.CLOSE
+        mode = ct.c_int(mode.value)  # todo: needed for interger ?
+        shutter_TTL = int(self._shutter_TTL)
+        shutter_time = int(round(self._shutter_switching_time*1e3))  # DLL use ms
+        status_code = self._check(self._dll.SetShutter(shutter_TTL, mode, shutter_time, shutter_time))
+        if status_code == OK_CODE:
+            self._shutter_status = value
 
     ##############################################################################
     #                           Temperature functions
     ##############################################################################
-    def get_cooler_status(self):
-        """ Getter method returning the cooler status if ON or OFF.
+    def get_cooler_on(self):
+        """ Getter method returning the cooler status
 
-        @return (bool): True if ON or False if OFF or 0 if error
+        @return (bool): True if the cooler is on
         """
-        return self._cooler_status #todo: from harware
+        return self._cooler_status  # todo: from harware
 
-    def set_cooler_status(self, cooler_status):
-        """ Setter method for the cooler status.
+    def set_cooler_on(self, value):
+        """ Setter method for the the cooler status
 
-        @param (bool) cooler_status: True if ON or False if OFF
+        @param (bool) value: True to turn it on, False to turn it off
         """
-        if cooler_status:
-            self.check(self.dll.CoolerON())
-            self._cooler_status = True #todo: handled by camera
+        if value:
+            status_code = self._dll.CoolerON()
         else:
-            self.check(self.dll.CoolerOFF())
-            self._cooler_status = False #todo: handled by camera
+            status_code = self._dll.CoolerOFF()
+        self._check(status_code)
+        if status_code == OK_CODE:
+            self._cooler_status = value  # todo: no need if handled by hardware
 
     def get_temperature(self):
         """ Getter method returning the temperature of the camera.
 
         @return (float): temperature (in Kelvin)
+
+        The dll uses integers in celsius, so the result will always end with .15, too bad.
         """
-        temp = c_int32()
-        self.dll.GetTemperature(ct.byref(temp))
+        temp = ct.c_int32()
+        self._dll.GetTemperature(ct.byref(temp))
         return temp.value + 273.15
 
-    def set_temperature(self, temperature):
+    def get_temperature_setpoint(self):
+        """ Getter method for the temperature setpoint of the camera.
+
+        @return (float): Current setpoint in Kelvin
+        """
+        return self._temperature_setpoint  #todo: not in dll ?
+
+    def set_temperature_setpoint(self, value):
         """ Setter method for the the temperature setpoint of the camera.
 
-        @param (float) temperature: temperature (in Kelvin)
+        @param (float) value: New setpoint in Kelvin
         """
-        temperature = int(temperature) #todo: conversion to integer might mess things up, this has do ne checked nicely
-        if self._min_temperature < temperature < self._max_temperature:
-            temperature = int(temperature-273.15)
-            self.check(self.dll.SetTemperature(temperature))
-            self._temperature = temperature+273.15
-        else:
-            self.log.warning('Temperature {} Kelvin is not in the validity range.')
-
-    #todo: setpoint getter ?
+        temperature = int(round(value + 273.15))
+        if not(self._min_temperature < temperature < self._max_temperature):
+            self.log.error('Temperature {}°C is not in the validity range.')
+            return
+        status_code = self._check(self._dll.SetTemperature(temperature))
+        if status_code == OK_CODE:
+            self._temperature_setpoint = temperature
 
     ##############################################################################
     #               Internal functions, for constraints preparation
     ##############################################################################
-    def get_name(self):
+    def _get_serial_number(self):
+        """ Get the serial number of the camera as a string
+
+        @return (str): serial number of the camera
+        """
+        serial = ct.c_int()
+        self._check(self._dll.GetCameraSerialNumber(ct.byref(serial)))
+        return serial.value
+
+    def _get_name(self):
         """ Get a name for the camera
 
         @return (str): local camera name with serial number
         """
-        serial = ct.c_int()
-        self.check(self.dll.GetCameraSerialNumber(ct.byref(serial)))
-        name = self._camera_name + " serial number " + str(serial.value)
-        return name
+        return "Camera SN: {}".format(self._get_serial_number())
 
-    def get_image_size(self):
+    def _get_image_size(self):
         """ Returns the sensor size in pixels (width, height)
 
         @return tuple(int, int): number of pixel in width and height
         """
         nx_px = ct.c_int()
         ny_px = ct.c_int()
-        self.check(self.dll.GetDetector(ct.byref(nx_px), ct.byref(ny_px)))
+        self._check(self._dll.GetDetector(ct.byref(nx_px), ct.byref(ny_px)))
         return nx_px.value, ny_px.value
 
-    def get_pixel_size(self):
+    def _get_pixel_size(self):
         """ Get the physical pixel size (width, height) in meter
 
         @return tuple(float, float): physical pixel size in meter
         """
         x_px = ct.c_float()
         y_px = ct.c_float()
-        self.check(self.dll.GetPixelSize(ct.byref(x_px), ct.byref(y_px)))
+        self._check(self._dll.GetPixelSize(ct.byref(x_px), ct.byref(y_px)))
         return y_px.value * 1e-6, x_px.value * 1e-6
-
-    def get_ready_state(self):
-        """ Get the state of the camera to know if the acquisition is finished or not yet.
-
-        @return (bool): True if camera state is idle
-        """
-        code = ct.c_int()
-        self.check(self.dll.GetStatus(ct.byref(code)))
-        return code.value == OK_CODE
 
     def _get_current_config(self):
         """ Internal helper method to get the camera parameters in a printable dict.
 
         @return (dict): dictionary with camera current configuration.
         """
-        config = { #todo use getters for most of them
-            'camera ID..................................': self.get_name(),
-            'sensor size (pixels).......................': self.get_image_size(),
-            'pixel size (m)............................': self.get_pixel_size(),
+        config = {  #todo use getters for most of them
+            'camera ID..................................': self._get_name(),
+            'sensor size (pixels).......................': self._get_image_size(),
+            'pixel size (m)............................': self._get_pixel_size(),
             'acquisition mode...........................': self._acquisition_mode,
             'read mode..................................': self._read_mode,
             'readout speed (Hz).........................': self._readout_speed,
@@ -631,7 +654,6 @@ class Main(Base, CameraInterface):
             'exposure_time..............................': self._exposure,
             'ROI geometry (readmode = IMAGE)............': self._ROI,
             'ROI binning (readmode = IMAGE).............': self._binning,
-            'number of tracks (readmode = RANDOM TRACK).': self._number_of_tracks,
             'tracks definition (readmode = RANDOM TRACK)': self._active_tracks,
             'temperature (K)............................': self._temperature,
             'shutter_status.............................': self._shutter_status,
