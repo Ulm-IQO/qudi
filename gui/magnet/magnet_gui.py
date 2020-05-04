@@ -27,7 +27,8 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 from qtpy import uic
 
-from core.module import Connector, StatusVar
+from core.module import Connector
+from core.statusvariable import StatusVar
 from core.util.units import get_unit_prefix_dict
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette

@@ -64,7 +64,10 @@ class MagnetLogic(GenericLogic):
     ---
     """
 
-    # declare connectors
+    _modclass = 'MagnetLogic'
+    _modtype = 'logic'
+
+    ## declare connectors
     magnetstage = Connector(interface='MagnetInterface')
     optimizerlogic = Connector(interface='OptimizerLogic')
     counterlogic = Connector(interface='CounterLogic')
@@ -1770,6 +1773,7 @@ class MagnetLogic(GenericLogic):
 
     def save_2d_data(self, tag=None, timestamp=None):
         """ Save the data of the  """
+
         filepath = self._save_logic.get_path_for_module(module_name='Magnet')
 
         if timestamp is None:
