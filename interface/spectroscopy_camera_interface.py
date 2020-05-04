@@ -67,7 +67,7 @@ class ImageAdvancedParameters:
         self.vertical_end = None  # Has to be an integer
 
 
-class CameraInterface(metaclass=InterfaceMetaclass):
+class SpectroscopyCameraInterface(metaclass=InterfaceMetaclass):
     """ This interface is used to manage a camera used for spectroscopy """
 
     @abstract_interface_method

@@ -31,7 +31,8 @@ import ctypes as ct
 from core.module import Base
 from core.configoption import ConfigOption
 
-from interface.camera_complete_interface import CameraInterface, ReadMode, Constraints, ImageAdvancedParameters
+from interface.spectroscopy_camera_interface import SpectroscopyCameraInterface
+from interface.spectroscopy_camera_interface import ReadMode, Constraints, ImageAdvancedParameters
 
 
 # Bellow are the classes used by Andor dll. They are not par of Qudi interfaces
@@ -123,7 +124,7 @@ ERROR_DICT = {
 }
 
 
-class Main(Base, CameraInterface):
+class Main(Base, SpectroscopyCameraInterface):
     """ Hardware class for Andor CCD spectroscopy cameras
 
     Tested with :
