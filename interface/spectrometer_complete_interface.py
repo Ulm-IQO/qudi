@@ -18,87 +18,92 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+from enum import Enum
 
 from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
+from core.interface import ScalarConstraint
+
+
+class Grating:
+    """ Class defining formally a hardware grating """
+    def __init__(self):
+        self.ruling = None               # Ruling in line per meter
+        self.blaze = None                # Blaze in meter
+        self.wavelength_constraints = ScalarConstraint(unit='m')       # Wavelength limits in meter
+
+
+class Port(Enum):
+    """ Class defining the possible port for input or output """
+    FRONT = 0
+    SIDE = 1
+
+
+class Constraints:
+    """ Class defining formally the hardware constraints """
+    def __init__(self):
+        self.focal_length = None         # Focal length in meter
+        self.angular_deviation = None    # Angular deviation in radian
+        self.focal_tilt = None           # Focal tilt in radian
+        self.gratings = []               # List of Grating object
+        self.has_side_input = False      # Tells if the hardware has an second input on the side
+        self.has_side_output = False     # Tells if the hardware has an second output on the side
+        self.input_motorized_slit = ScalarConstraint(unit='m')      # Motorized slit constraints or None
+        self.output_motorized_slit = ScalarConstraint(unit='m')     # Motorized slit constraints or None
+        self.shutter_modes = []          # Hardware defined shutter modes (list of string)
 
 
 class SpectrometerInterface(metaclass=InterfaceMetaclass):
-    """
-    This is the Interface class to define the controls for spectrometer hardware
+    """ This is the interface class to define the controls for spectrometer hardware
+
+    This interface only deals with the part of the spectrometer that set central wavelength and gratings.
+    For the parameter of the spectroscopy camera, see the "spectroscopy_camera_interface".
     """
 
     @abstract_interface_method
     def get_constraints(self):
-        """Returns all the fixed parameters of the hardware which can be used by the logic.
+        """ Returns all the fixed parameters of the hardware which can be used by the logic.
 
-        @return: (dict) constraint dict : {
-
-            'optical_parameters' : (tuple) (focal_length, angular_deviation, focal_tilt)
-                            focal_length : focal length in m
-                             angular_deviation : angular deviation in rad
-                              focal_tilt : focal tilt in rad
-            give the optical parameters (in s.i) used to measure the wavelength dispersion of the spectrometer,
-
-            'gratings_info' : (list) [(tuple) (ruling, blaze), ..] give the gratings info for any gratings installed
-            with position corresponding to grating index,
-
-            'number_of_gratings' : (int) give the number of gratings installed (ex:3),
-
-            'wavelength_limits' : (list) [[(float) wavelength_min, (float) wavelength_max], .. ] give the list of
-             the wavelength limits for any gratings installed with position corresponding to grating index,
-
-            'available_port' : (list) [[(int) input port, ..], [(int) output port, ..]] give the available
-            input (1st list) and output (2nd port) ports in the spectrometer,
-
-            'auto_slit_installed' : (list) [[(bool) input slit installed, ..], [(bool) output slit installed, ..]]
-            give if the related input (1st list) and output (2nd list ) ports has motorized auto slit installed.
-
-            (optional) : let this key empty if no shutter is installed !
-            'shutter_modes' : (list) [(str) shutter_mode, ..] give the shutter modes available if any
-            shutter is installed.
-            }
+        @return (Constraints): An object of class Constraints containing all fixed parameters of the hardware
         """
         pass
 
     ##############################################################################
     #                            Gratings functions
     ##############################################################################
-
     @abstract_interface_method
-    def get_grating_number(self):
-        """Returns the current grating identification (0 to self.get_number_gratings-1)
+    def get_grating_index(self):
+        """ Returns the current grating index
+
+        @return (int): Current grating index
         """
         pass
 
     @abstract_interface_method
-    def set_grating_number(self, grating):
-        """Sets the required grating (0 to self.get_number_gratings-1)
+    def set_grating_index(self, value):
+        """ Sets the grating by index
 
-        @param (int) grating: grating identification number
-        @return: void
+        @param (int) value: grating index
         """
         pass
 
     ##############################################################################
     #                            Wavelength functions
     ##############################################################################
-
     @abstract_interface_method
     def get_wavelength(self):
-        """Returns the central current wavelength (m)
+        """ Returns the current central wavelength in meter
 
-        @return (float) wavelength (m)
+        @return (float): current central wavelength (meter)
         """
         pass
 
     @abstract_interface_method
-    def set_wavelength(self, wavelength):
-        """Sets the new central wavelength (m)
+    def set_wavelength(self, value):
+        """ Sets the new central wavelength in meter
 
-        @params (float) wavelength (m)
+        @params (float) value: The new central wavelength (meter)
         """
-
         pass
 
     ##############################################################################
