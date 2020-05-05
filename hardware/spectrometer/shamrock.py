@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module contains the hardware module of the Shamrock 500
-spectrometer from Andor.
+This module interface Shamrock spectrometer from Andor.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,17 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 na=not applicable
 """
+import os
+import numpy as np
+import ctypes as ct
 
 from core.module import Base
-from interface.spectrometer_complete_interface import SpectrometerInterface
 from core.configoption import ConfigOption
-from core.util.modules import get_main_dir
-import os
 
-import numpy as np
-
-import ctypes as ct
-import time
+from interface.spectrometer_complete_interface import SpectrometerInterface
+from interface.spectrometer_complete_interface import Grating, Port, Constraints
 
 ERROR_CODE = {
     20201: "SHAMROCK_COMMUNICATION_ERROR",
@@ -43,20 +40,132 @@ ERROR_CODE = {
     20275: "SHAMROCK_NOT_INITIALIZED"
 }
 
+OK_CODE = 20202  # Status code associated with DRV_SUCCESS
+
+
 class Shamrock(Base,SpectrometerInterface):
+    """ Hardware module that interface a Shamrock spectrometer from Andor
 
-# default values
+    Tested with :
+    - Shamrock 500
+    """
+
     _dll_location = ConfigOption('dll_location', missing='error')
+    _serial_number = ConfigOption('serial_number', None)  # Optional - if Shamrock hardware are connected
 
-    _width = 2048       #number of pixels along dispersion axis
-    _height = 512       #number of pixels (perpendicular to dispersion axis)
-    _pixelwidth = 13E-6    #unit is meter
-    _pixelheight = 13E-6  #unit is meter
+    SLIT_MIN_WIDTH = 10e-6  # todo: can this be get from the DLL ? Or else is it the same for ALL spectro ? If not, maybe a config option ?
+    SLIT_MAX_WIDTH = 2500e-6  # todo: same
 
-    MAX_SLITS=4
-    MAX_GRATINGS=3
-    SLIT_MIN_WIDTH=10E-6
-    SLIT_MAX_WIDTH=2500E-6
+    # Declarations of attributes to make Pycharm happy
+    def __init__(self):
+        self._constraints = None
+        self._dll = None
+        self._shutter_status = None
+        self._device_id = None
+
+##############################################################################
+#                            Basic functions
+##############################################################################
+
+    def on_activate(self):
+        """ Activate module """
+        try:
+            self._dll = ct.cdll.LoadLibrary(self._dll_location)
+        except OSError:
+            self.log.error('Error during dll loading of the Shamrock spectrometer, check the dll path.')
+
+        status_code = self._dll.ShamrockInitialize()
+        if status_code != OK_CODE:
+            self.log.error('Problem during Shamrock initialization')
+            return
+
+        if self._serial_number is not None:
+            # Check that the right hardware is connected and connect to the right one
+            devices = self._get_connected_devices()
+            target = str(self._serial_number)
+            if target in devices:
+                self._device_id = devices.index(target)
+            else:
+                self.log.error('Serial number {} not found in connected devices : {}'.format(target, devices))
+                return
+        else:
+            self._device_id = 0
+
+        self._constraints = self._build_constraints()
+
+
+
+        self.gratingID = self.get_grating_number()
+        self.set_number_of_pixels(self._width)
+        self.set_pixel_width(self._pixelwidth)
+
+    def on_deactivate(self):
+        return self.dll.ShamrockClose()
+
+    def _get_connected_devices(self):
+        """ Return a list of serial numbers of the connected devices
+
+         @result (list(str)): A list of the serial numbers as string """
+        result = []
+        for i in range(self._get_number_devices()):
+            result.append(self._get_device_serial_number(i))
+        return result
+
+    def _get_device_serial_number(self, index):
+        """ Return the serial number of a hardware by the index number
+
+        @param (int) index: The index the hardware
+
+        @result (str): The serial number as a string
+        """
+        # todo: This function
+        return 'Please fix me !'
+
+    def _build_constraints(self):
+        """ Internal method that build the constraints once at initialisation
+
+         This makes multiple call to the DLL, so it will be called only once by on_activate
+         """
+        constraints = Constraints()
+
+        optical_param = self._get_optical_parameters()
+        constraints.focal_length = optical_param['focal_length']
+        constraints.angular_deviation = optical_param['angular_deviation']
+        constraints.focal_tilt = optical_param['focal_tilt']
+
+        number_of_gratings = self._get_number_gratings()
+        for i in range(number_of_gratings):
+            grating_info = self._get_grating_info(i)
+            grating = Grating()
+            grating.ruling = grating_info['ruling']
+            grating.blaze = grating_info['blaze']
+            grating.wavelength_max = self._get_wavelength_limit(i)
+            constraints.gratings.append(grating)
+
+        # todo: below this is a war zone
+        self.has_side_input = bool(self._flipper_mirror_is_present(1))
+        self.has_side_output = bool(self._flipper_mirror_is_present(2))
+
+
+        return constraints
+
+
+        self.focal_length = None         # Focal length in meter
+        self.angular_deviation = None    # Angular deviation in radian
+        self.focal_tilt = None           # Focal tilt in radian
+        self.gratings = []               # List of Grating object
+        self.has_side_input = False      # Tells if the hardware has an second input on the side
+        self.has_side_output = False     # Tells if the hardware has an second output on the side
+        self.input_motorized_slit = ScalarConstraint(unit='m')      # Motorized slit constraints or None
+        self.output_motorized_slit = ScalarConstraint(unit='m')     # Motorized slit constraints or None
+        self.shutter_modes = []          # Hardware defined shutter modes (list of string)
+
+    def get_constraints(self):
+        """ Returns all the fixed parameters of the hardware which can be used by the logic.
+
+        @return (Constraints): An object of class Constraints containing all fixed parameters of the hardware
+        """
+        return self._constraints
 
     def get_constraints(self):
         """Returns all the fixed parameters of the hardware which can be used by the logic.
@@ -108,38 +217,6 @@ class Shamrock(Base,SpectrometerInterface):
             }
         return constraint_dict
 
-##############################################################################
-#                            Basic functions
-##############################################################################
-
-    def on_activate(self):
-        """ Activate module.
-        """
-        self.spectrometer_status = 0
-        self.errorcode = self._create_errorcode()
-
-        #self.dll = ct.cdll.LoadLibrary('C:/temp/ShamrockCIF.dll')
-
-        self.dll = ct.cdll.LoadLibrary(self._dll_location)
-
-        code = self.dll.ShamrockInitialize()
-
-        if code != 20202:
-            self.log.info('Problem during spectrometer initialization')
-            self.on_deactivate()
-        else:
-            self.spectrometer_status = 1
-            nd = ct.c_int()
-            self.dll.ShamrockGetNumberDevices(ct.byref(nd))
-            #self.nd = nd.value
-            self.deviceID = 0 #hard coding : whatever the number of devices... we work with the first. Fix me ?
-            self.gratingID = self.get_grating_number()
-            self.set_number_of_pixels(self._width)
-            self.set_pixel_width(self._pixelwidth)
-
-    def on_deactivate(self):
-        return self.dll.ShamrockClose()
-
     def check(self, func_val):
         """ Check routine for the received error codes.
         """
@@ -149,37 +226,13 @@ class Shamrock(Base,SpectrometerInterface):
                            '{1}'.format(func_val, self.errorcode[func_val]))
         return func_val
 
-    def _create_errorcode(self):
-        """ Create a dictionary with the errorcode for the device.
-        """
-
-        maindir = get_main_dir()
-
-        filename = os.path.join(maindir, 'hardware', 'spectrometer', 'errorcodes_shamrock.h')
-        try:
-            with open(filename) as f:
-                content = f.readlines()
-        except:
-            self.log.error('No file "errorcodes_shamrock.h" could be found in the '
-                        'hardware/spectrometer directory!')
-        errorcode = {}
-        for line in content:
-            if '#define SHAMROCK' in line:
-                errorstring, errorvalue = line.split()[-2:]
-                errorcode[int(errorvalue)] = errorstring
-
-        return errorcode
-
-    def get_number_device(self):
-        """
-        Returns the number of devices
-        Tested : yes
-        """
+    def _get_number_devices(self):
+        """ Returns the number of devices """
         number_of_devices = ct.c_int()
         self.check(self.dll.ShamrockGetNumberDevices(self.deviceID, ct.byref(number_of_devices)))
         return number_of_devices.value
 
-    def get_optical_parameters(self):
+    def _get_optical_parameters(self):
         """
         Returns the spectrometer optical parameters
 
