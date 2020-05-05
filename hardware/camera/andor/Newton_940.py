@@ -406,6 +406,8 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Should only be used while in IMAGE_ADVANCED mode
         """
+        if not isinstance(value, ImageAdvancedParameters):
+            self.log.error('ImageAdvancedParameters value error. Value {} is not correct.'.format(value))
         self._image_advanced_parameters = value
         self._update_image()
 
