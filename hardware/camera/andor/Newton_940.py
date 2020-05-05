@@ -32,23 +32,10 @@ from core.module import Base
 from core.configoption import ConfigOption
 
 from interface.spectroscopy_camera_interface import SpectroscopyCameraInterface
-from interface.spectroscopy_camera_interface import ReadMode, Constraints, ImageAdvancedParameters
+from interface.spectroscopy_camera_interface import ReadMode, Constraints, ImageAdvancedParameters, ShutterState
 
 
 # Bellow are the classes used by Andor dll. They are not par of Qudi interfaces
-class ReadModeDLL(Enum):
-    """ Class defining the possible read mode supported by Andor DLL
-
-    This read mode is different from the class of the interface, be careful!
-    Only FVB, RANDOM_TRACK and IMAGE are used by this module.
-     """
-    FVB = 0
-    MULTI_TRACK = 1
-    RANDOM_TRACK = 2
-    SINGLE_TRACK = 3
-    IMAGE = 4
-
-
 class AcquisitionMode(Enum):
     """ Class defining the possible acquisition mode supported by Andor DLL
 
@@ -69,13 +56,6 @@ class TriggerMode(Enum):
     EXTERNAL_EXPOSURE = 7
     SOFTWARE_TRIGGER = 10
     EXTERNAL_CHARGE_SHIFTING = 12
-
-
-class ShutterMode(Enum):
-    """ Class defining the possible shutter mode supported by Andor DLL """
-    AUTO = 0
-    OPEN = 1
-    CLOSE = 2
 
 
 OK_CODE = 20002  # Status code associated with DRV_SUCCESS
@@ -131,13 +111,10 @@ class Main(Base, SpectroscopyCameraInterface):
      - Newton 940
     """
     _dll_location = ConfigOption('dll_location', missing='error')
-    _close_shutter_on_deactivate = ConfigOption('close_shutter_on_deactivate', False)
-    # todo: open shutter_on_activate ?
 
     _start_cooler_on_activate = ConfigOption('start_cooler_on_activate', True)
     _default_temperature = ConfigOption('default_temperature', 260)
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
-    _max_exposure_time = ConfigOption('max_exposure_time', 600)  # todo: does this come from the dll and why forbid it ?
     _shutter_TTL = ConfigOption('shutter_TTL', 1)  # todo: explain what this is for the user
     _shutter_switching_time = ConfigOption('shutter_switching_time', 100e-3)  # todo: explain what this is for the user
 
@@ -216,7 +193,7 @@ class Main(Base, SpectroscopyCameraInterface):
     def _build_constraints(self):
         """ Internal method that build the constraints once at initialisation
 
-         This makes multiple call to the DLL, so it will be called only onced by on_activate
+         This makes multiple call to the DLL, so it will be called only once by on_activate
          """
         constraints = Constraints()
         constraints.name = self._get_name()
@@ -254,7 +231,7 @@ class Main(Base, SpectroscopyCameraInterface):
         """ Aborts the acquisition """
         self._check(self._dll.AbortAcquisition())
 
-    def get_ready_state(self):  # todo: check this function, i've guessed the dll behavior...
+    def get_ready_state(self):  # todo: test this function, i've guessed the dll behavior...
         """ Get the status of the camera, to know if the acquisition is finished or still ongoing.
 
         @return (bool): True if the camera is ready, False if an acquisition is ongoing
@@ -327,12 +304,12 @@ class Main(Base, SpectroscopyCameraInterface):
             self.log.error('read_mode not supported')
             return
 
-        conversion_dict = {ReadMode.FVB: ReadModeDLL.FVB,
-                           ReadMode.MULTIPLE_TRACKS: ReadModeDLL.RANDOM_TRACK,
-                           ReadMode.IMAGE: ReadModeDLL.IMAGE,
-                           ReadMode.IMAGE_ADVANCED: ReadModeDLL.IMAGE}
+        conversion_dict = {ReadMode.FVB: 0,
+                           ReadMode.MULTIPLE_TRACKS: 2,
+                           ReadMode.IMAGE: 4,
+                           ReadMode.IMAGE_ADVANCED: 4}
 
-        n_mode = conversion_dict[value].value
+        n_mode = conversion_dict[value]
         status_code = self._check(self._dll.SetReadMode(n_mode))
         if status_code == OK_CODE:
             self._read_mode = value
@@ -523,24 +500,25 @@ class Main(Base, SpectroscopyCameraInterface):
     ##############################################################################
     #                           Shutter mode functions
     ##############################################################################
-    def get_shutter_open_state(self):
-        """ Getter method returning the shutter mode.
+    def get_shutter_state(self):
+        """ Getter method returning the shutter state.
 
-        @return (bool): True if the shutter is open, False of closed
+        @return (ShutterState): The current shutter state
         """
         if not self.get_constraints().has_shutter:
             self.log.error('Can not get state of the shutter, camera does not have a shutter')
         return self._shutter_status  # todo from hardware
 
-    def set_shutter_open_state(self, value):
-        """ Setter method setting the shutter mode.
+    def set_shutter_state(self, value):
+        """ Setter method setting the shutter state.
 
-        @param (bool) value: True to open, False tp close
+        @param (ShutterState) value: the shutter state to set
         """
         if not self.get_constraints().has_shutter:
             self.log.error('Can not set state of the shutter, camera does not have a shutter')
-        mode = ShutterMode.OPEN if value else ShutterMode.CLOSE
-        mode = ct.c_int(mode.value)  # todo: needed for interger ?
+
+        conversion_dict = {ShutterState.AUTO: 0, ShutterState.OPEN: 1, ShutterState.CLOSED: 2}
+        mode = conversion_dict[value]
         shutter_TTL = int(self._shutter_TTL)
         shutter_time = int(round(self._shutter_switching_time*1e3))  # DLL use ms
         status_code = self._check(self._dll.SetShutter(shutter_TTL, mode, shutter_time, shutter_time))

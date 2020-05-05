@@ -40,6 +40,19 @@ class ReadMode(Enum):
     IMAGE_ADVANCED = 3
 
 
+class ShutterState(Enum):
+    """ Class defining the possible shutter states
+
+    AUTO means the shutter opens only for the acquisition time.
+
+    Shutter might be handled by the camera or the grating spectrometer.
+    As a consequence, both interfaces have the shutter features.
+    """
+    CLOSED = 0
+    OPEN = 1
+    AUTO = 4  # Value do not conflict with ShutterState from simple_laser_logic
+
+
 class Constraints:
     """ Class defining formally the hardware constraints """
     def __init__(self):
@@ -278,18 +291,18 @@ class SpectroscopyCameraInterface(metaclass=InterfaceMetaclass):
     # Method used only if constraints.has_shutter
     ##############################################################################
     @abstract_interface_method
-    def get_shutter_open_state(self):
-        """ Getter method returning the shutter mode.
+    def get_shutter_state(self):
+        """ Getter method returning the shutter state.
 
-        @return (bool): True if the shutter is open, False of closed
+        @return (ShutterState): The current shutter state
         """
         pass
 
     @abstract_interface_method
-    def set_shutter_open_state(self, value):
-        """ Setter method setting the shutter mode.
+    def set_shutter_state(self, value):
+        """ Setter method setting the shutter state.
 
-        @param (bool) value: True to open, False tp close
+        @param (ShutterState) value: the shutter state to set
         """
         pass
 
