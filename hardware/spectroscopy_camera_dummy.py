@@ -73,7 +73,7 @@ class Main(Base, SpectroscopyCameraInterface):
          """
         constraints = Constraints()
         constraints.name = 'Spectroscopy camera dummy'
-        constraints.width, constraints.width = 1024, 256
+        constraints.width, constraints.height = 1024, 256
         constraints.pixel_size_width, constraints.pixel_size_width = 13e-6, 13e-6
         constraints.internal_gains = [1, 2, 4]
         constraints.readout_speeds = [50000, 1000000, 3000000]
@@ -291,7 +291,7 @@ class Main(Base, SpectroscopyCameraInterface):
         """
         if value > 0:
             self._exposure = value
-        self.acquisition_timer.setInterval(value*1e3)
+        self._acquisition_timer.setInterval(value*1e3)
 
     ##############################################################################
     #                           Trigger mode functions
