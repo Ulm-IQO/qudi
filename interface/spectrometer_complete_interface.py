@@ -26,17 +26,45 @@ from core.interface import ScalarConstraint
 
 
 class Grating:
-    """ Class defining formally a hardware grating """
+    """ Class defining formally the grating constraints """
     def __init__(self):
         self.ruling = None               # Ruling in line per meter
         self.blaze = None                # Blaze in meter
-        self.wavelength_constraints = ScalarConstraint(unit='m')       # Wavelength limits in meter
+        self.wavelength_max = None       # Wavelength limits in meter
 
 
-class Port(Enum):
-    """ Class defining the possible port for input or output """
+class PortType(Enum):
+    """ Class defining the possible type : input or output"""
+    INPUT = 0
+    OUTPUT = 1
+
+
+class PortSide(Enum):
+    """ Class defining the possible input/output port side """
     FRONT = 0
     SIDE = 1
+
+
+class Port:
+    """ Class defining formally the port constraints  """
+    def __init__(self):
+        self.type = PortType.INPUT
+        self.side = PortSide.FRONT
+        self.is_motorized = True
+        self.constraints = ScalarConstraint(unit='m')
+
+
+class ShutterState(Enum):
+    """ Class defining the possible shutter states
+
+    AUTO means the shutter opens only for the acquisition time.
+
+    Shutter might be handled by the camera or the grating spectrometer.
+    As a consequence, both interfaces have the shutter features.
+    """
+    CLOSED = 0
+    OPEN = 1
+    AUTO = 4  # Value do not conflict with ShutterState from simple_laser_logic
 
 
 class Constraints:
@@ -46,11 +74,8 @@ class Constraints:
         self.angular_deviation = None    # Angular deviation in radian
         self.focal_tilt = None           # Focal tilt in radian
         self.gratings = []               # List of Grating object
-        self.has_side_input = False      # Tells if the hardware has an second input on the side
-        self.has_side_output = False     # Tells if the hardware has an second output on the side
-        self.input_motorized_slit = ScalarConstraint(unit='m')      # Motorized slit constraints or None
-        self.output_motorized_slit = ScalarConstraint(unit='m')     # Motorized slit constraints or None
-        self.shutter_modes = []          # Hardware defined shutter modes (list of string)
+        self.ports = []                  # List of Ports object
+        self.has_shutter = False         # If the hardware has shutter interfaced by this module
 
 
 class SpectrometerInterface(metaclass=InterfaceMetaclass):
@@ -111,95 +136,62 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_input_port(self):
-        """Returns the current port for the input flipper mirror.
+    def get_current_port(self, port_type):
+        """ Returns the current port side on input or output
 
-        @return: (int) 0 is for front port, 1 is for side port
-        in case of no flipper mirror, front port (0) is used
+        @param (PortType) port_type: input or output
+
+        @return (PortSide): current port side
         """
         pass
 
     @abstract_interface_method
-    def set_input_port(self, input_port):
-        """Sets the input port - 0 is for front port, 1 is for side port
+    def set_current_port(self, port_type, value):
+        """ Set the current port on input or output
 
-        @param input_port: (int). has to be 0 or 1
-        @return: nothing
+        @param (PortType) port_type: input or output
+        @param (PortSide) value: The port side to set
         """
         pass
 
     @abstract_interface_method
-    def get_output_port(self):
-        """Returns the current port for the output flipper mirror.
+    def get_slit_width(self, port_type, port_side):
+        """ Getter for the current slit width in meter on a given port
 
-        @return: (int) 0 is for front port, 1 is for side port
-        in case of no flipper mirror, front port (0) is used
+        @param (PortType) port_type: input or output
+        @param (PortSide) port_side: front or side
+
+        @return (float): input slit width (in meter)
         """
         pass
 
     @abstract_interface_method
-    def set_output_port(self, output_port):
-        """Sets the input port - 0 is for front port, 1 is for side port
+    def set_slit_width(self, port_type, port_side, value):
+        """ Setter for the input slit width in meter
 
-        @param output_port: (int). has to be 0 or 1
-        @return: nothing
-        """
-        pass
-
-    @abstract_interface_method
-    def get_input_slit_width(self):
-        """Returns the input slit width (um) of the current input slit.
-
-        @return:  (int) offset - slit width, unit is meter (SI)
-        """
-        pass
-
-    @abstract_interface_method
-    def set_input_slit_width(self, slit_width):
-        """Sets the new slit width for the current input slit.
-
-        @param slit_width: (float) slit width unit is meter (SI)
-        :return: nothing
-        """
-        pass
-
-    @abstract_interface_method
-    def get_output_slit_width(self):
-        """Returns the output slit width (um) of the current output slit.
-
-        @return:  (int) offset - slit width, unit is meter (SI)
-        """
-        pass
-
-    @abstract_interface_method
-    def set_output_slit_width(self, slit_width):
-        """Sets the new slit width for the current output slit.
-
-        @param slit_width: (float) slit width unit is meter (SI)
-        :return: nothing
+        @param (PortType) port_type: input or output
+        @param (PortSide) port_side: front or side
+        @param (float) value: input slit width (in meter)
         """
         pass
 
     ##############################################################################
-    #                        Shutter mode function (optional)
+    #                        Shutter mode function
+    #
+    # Method used only if constraints.has_shutter
     ##############################################################################
-    # Shutter mode function are used in logic only if the spectrometer constraints
-    # dictionary has 'shutter_modes' key filled. If empty this functions will not
-    # be used and can be ignored.
-
     @abstract_interface_method
-    def get_shutter_status(self):
-        """Getter method returning the shutter mode.
+    def get_shutter_state(self):
+        """ Getter method returning the shutter state.
 
-        @return: (str) shutter mode (must be compared to the list)
+        @return (ShutterState): The current shutter state
         """
         pass
 
     @abstract_interface_method
-    def set_shutter_status(self, shutter_mode):
-        """Setter method setting the shutter mode.
+    def set_shutter_state(self, value):
+        """ Setter method setting the shutter state.
 
-        @param shutter_mode: (str) shutter mode (must be compared to the list)
-        @return: nothing
+        @param (ShutterState) value: the shutter state to set
         """
         pass
