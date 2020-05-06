@@ -35,36 +35,18 @@ class Grating:
 
 class PortType(Enum):
     """ Class defining the possible type : input or output"""
-    INPUT = 0
-    OUTPUT = 1
-
-
-class PortSide(Enum):
-    """ Class defining the possible input/output port side """
-    FRONT = 0
-    SIDE = 1
+    INPUT_FRONT = 0
+    INPUT_SIDE = 1
+    OUTPUT_FRONT = 2
+    OUTPUT_SIDE = 3
 
 
 class Port:
     """ Class defining formally the port constraints  """
     def __init__(self):
-        self.type = PortType.INPUT
-        self.side = PortSide.FRONT
+        self.type = PortType.INPUT_FRONT
         self.is_motorized = True
         self.constraints = ScalarConstraint(unit='m')
-
-
-class ShutterState(Enum):
-    """ Class defining the possible shutter states
-
-    AUTO means the shutter opens only for the acquisition time.
-
-    Shutter might be handled by the camera or the grating spectrometer.
-    As a consequence, both interfaces have the shutter features.
-    """
-    CLOSED = 0
-    OPEN = 1
-    AUTO = 4  # Value do not conflict with ShutterState from simple_laser_logic
 
 
 class Constraints:
@@ -136,62 +118,52 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     ##############################################################################
 
     @abstract_interface_method
-    def get_current_port(self, port_type):
-        """ Returns the current port side on input or output
+    def get_input_port(self):
+        """ Returns the current input port
 
-        @param (PortType) port_type: input or output
-
-        @return (PortSide): current port side
+        @return (PortType): current port side
         """
         pass
 
     @abstract_interface_method
-    def set_current_port(self, port_type, value):
-        """ Set the current port on input or output
+    def set_input_port(self, value):
+        """ Set the current input port
 
-        @param (PortType) port_type: input or output
-        @param (PortSide) value: The port side to set
+        @param (PortType) value: The port side to set
         """
         pass
 
     @abstract_interface_method
-    def get_slit_width(self, port_type, port_side):
+    def get_output_port(self):
+        """ Returns the current output port
+
+        @return (PortType): current port side
+        """
+        pass
+
+    @abstract_interface_method
+    def set_input_port(self, value):
+        """ Set the current output port
+
+        @param (PortType) value: The port side to set
+        """
+        pass
+
+    @abstract_interface_method
+    def get_slit_width(self, port_type):
         """ Getter for the current slit width in meter on a given port
 
-        @param (PortType) port_type: input or output
-        @param (PortSide) port_side: front or side
+        @param (PortType) port_type: The port to inquire
 
         @return (float): input slit width (in meter)
         """
         pass
 
     @abstract_interface_method
-    def set_slit_width(self, port_type, port_side, value):
+    def set_slit_width(self, port_type, value):
         """ Setter for the input slit width in meter
 
-        @param (PortType) port_type: input or output
-        @param (PortSide) port_side: front or side
+        @param (PortType) port_type: The port to set
         @param (float) value: input slit width (in meter)
-        """
-        pass
-
-    ##############################################################################
-    #                        Shutter mode function
-    #
-    # Method used only if constraints.has_shutter
-    ##############################################################################
-    @abstract_interface_method
-    def get_shutter_state(self):
-        """ Getter method returning the shutter state.
-
-        @return (ShutterState): The current shutter state
-        """
-        pass
-
-    @abstract_interface_method
-    def set_shutter_state(self, value):
-        """ Setter method setting the shutter state.
-
-        @param (ShutterState) value: the shutter state to set
         """
         pass
