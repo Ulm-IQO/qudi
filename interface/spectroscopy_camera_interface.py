@@ -44,9 +44,6 @@ class ShutterState(Enum):
     """ Class defining the possible shutter states
 
     AUTO means the shutter opens only for the acquisition time.
-
-    Shutter might be handled by the camera or the grating spectrometer.
-    As a consequence, both interfaces have the shutter features.
     """
     CLOSED = 0
     OPEN = 1

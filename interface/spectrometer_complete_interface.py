@@ -43,8 +43,8 @@ class PortType(Enum):
 
 class Port:
     """ Class defining formally the port constraints  """
-    def __init__(self):
-        self.type = PortType.INPUT_FRONT
+    def __init__(self, _type):
+        self.type = _type  # PortType.INPUT_FRONT
         self.is_motorized = True
         self.constraints = ScalarConstraint(unit='m')
 
@@ -57,7 +57,6 @@ class Constraints:
         self.focal_tilt = None           # Focal tilt in radian
         self.gratings = []               # List of Grating object
         self.ports = []                  # List of Ports object
-        self.has_shutter = False         # If the hardware has shutter interfaced by this module
 
 
 class SpectrometerInterface(metaclass=InterfaceMetaclass):
@@ -142,7 +141,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_input_port(self, value):
+    def set_output_port(self, value):
         """ Set the current output port
 
         @param (PortType) value: The port side to set
