@@ -205,7 +205,11 @@ class BaseMixin(metaclass=ModuleMeta):
         # add status vars
         for vname, var in self._stat_vars.items():
             sv = self._statusVariables
-            svar = sv[var.name] if var.name in sv else var.default
+            if isinstance(var.default, (OrderedDict, dict)) and var.name in sv:
+                svar = var.default
+                svar.update(sv[var.name])
+            else:
+                svar = sv[var.name] if var.name in sv else var.default
 
             if var.constructor_function is None:
                 setattr(self, var.var_name, svar)
