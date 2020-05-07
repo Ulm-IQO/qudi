@@ -3322,9 +3322,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         @param  string analogue_channel: the representative name of the analogue channel for
                                         which the voltages are written
 
-        @param List[float] voltages: array of n-part tuples defining the voltage points
+        @param List[float] voltages: array of n-part tuples defining the voltages to be generated
 
-        @param int length: number of tuples to write
+        @param int length: number of samples to be generated per analogue  channel (each channel must have the same
+                                amount of samples)
 
         @param bool start: write immediately (True) or wait for start of task (False)
 
@@ -3440,10 +3441,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if analogue_channel not in self._analogue_output_daq_tasks:
             self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
             return -1
-        # Fixme: When more than one channel can be done at a time this needs to be taken care of here by dividing the
-        # number of samples by the number of channels to get an accurate length of passed samples per channel
-        length = len(voltages)  # convert to np array
+
         voltages_array = np.array(voltages)
+        # length: number of samples per scanned channel
+        length = voltages_array.shape[-1]  # gives the length of the innermost array and works also for a 1D array
 
         if analogue_channel not in self._clock_daq_task_new:
             self.log.error('The analogue output channel %s has no clock task configured.', analogue_channel)
@@ -3452,7 +3453,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         try:
             # write the positions to the analog output
             written_voltages = self.write_ao(analogue_channel,
-                                             voltages=voltages_array,
+                                             voltages=voltages_array,  # .flatten()?
                                              length=length,
                                              start=False, time_out=self._RWTimeout)
 
