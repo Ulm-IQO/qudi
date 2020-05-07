@@ -261,10 +261,10 @@ class Base(QtCore.QObject):
             # add StatusVar values to instance attributes
             for attr_name, var in self._module_meta['status_variables'].items():
                 if isinstance(var.default, dict) and var.name in variables:
-                    value = var.default.copy()
+                    value = copy.deepcopy(var.default)
                     value.update(variables[var.name])
                 else:
-                    value = variables.get(var.name, var.default)
+                    value = variables.get(var.name, copy.deepcopy(var.default))
 
                 if var.constructor_function is None:
                     setattr(self, attr_name, value)
