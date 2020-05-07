@@ -298,7 +298,7 @@ class QudiMainGui(GuiBase):
     def update_ipython_single_module(self, base, name, state):
         """Remove deactivated module from namespace or add it if activated.
         """
-        if state == 'activated':
+        if state != 'deactivated':
             self._kernel_manager.kernel.shell.user_ns[name] = self._qudi_main.module_manager[
                 name].instance
         else:
