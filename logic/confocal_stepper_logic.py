@@ -1860,8 +1860,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         return result_back, analog_result_back
 
     def sort_counted_data(self, counts, line):
-        # self.log.info("2D sorting start, line %s, time: %s", line,
-        #              datetime.datetime.now().strftime('%M-%S-%f'))
+        """
+        Divides the data acquired by a 2D step scan according to acquisition channels
+        and save preliminary into .npy files
+
+        @param np.array [m][n] counts: The data acquired for the 2D scan. length of m: amount of data channels acquired,
+                                        length n points of data acquired
+        @param int line: The line number of the slow axis for which the data was acquired
+        """
+
         data_counter = 0
         self.stepping_raw_data[line] = counts[data_counter]
         if not self._3D_measurement:
@@ -2200,7 +2207,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             parameters["Start Voltage Scan (V)"] = self.start_voltage_3D
             parameters["End Voltage scan (V)"] = self.end_voltage_3D
             parameters["Points per Ramp"] = self._ramp_length
-            parameters["Scan Frequency(Hz)"] = self._clock_frequency_3D*1.0/self._ramp_length
+            parameters["Scan Frequency(Hz)"] = self._clock_frequency_3D * 1.0 / self._ramp_length
             if self.smoothing:
                 parameters["Smoothing Steps"] = self._3D_smoothing_steps
 
