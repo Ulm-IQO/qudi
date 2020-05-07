@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import copy
 import logging
 import warnings
 from fysom import Fysom  # provides a final state machine
@@ -203,13 +204,14 @@ class BaseMixin(metaclass=ModuleMeta):
             @param e: Fysom event
         """
         # add status vars
+        sv = self._statusVariables
         for vname, var in self._stat_vars.items():
-            sv = self._statusVariables
-            if isinstance(var.default, (OrderedDict, dict)) and var.name in sv:
-                svar = var.default
+
+            if isinstance(var.default, dict) and var.name in sv:
+                svar = copy.deepcopy(var.default)
                 svar.update(sv[var.name])
             else:
-                svar = sv[var.name] if var.name in sv else var.default
+                svar = sv[var.name] if var.name in sv else copy.deepcopy(var.default)
 
             if var.constructor_function is None:
                 setattr(self, var.var_name, svar)
