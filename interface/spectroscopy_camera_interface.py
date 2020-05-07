@@ -24,6 +24,7 @@ from enum import Enum
 
 from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
+from core.interface import ScalarConstraint
 
 
 class ReadMode(Enum):
@@ -61,9 +62,10 @@ class Constraints:
         self.read_modes = [],            # Read mode supported by the camera (see ReadMode class)
         self.internal_gains = [],        # Internal gains supported by the camera (list of float)
         self.readout_speeds = [],        # Readout speed supported by the camera, in Hz (list of float)
-        self.has_cooler = False,         # Tells if the camera has a cooling system
         self.has_shutter = False,        # Tells if the camera has a shutter
         self.trigger_modes = [],         # User defined trigger mode (list of string)
+        self.has_cooler = False,         # Tells if the camera has a cooling system
+        self.temperature = ScalarConstraint(unit='K')     # Temperature limits in kelvin
 
 
 class ImageAdvancedParameters:

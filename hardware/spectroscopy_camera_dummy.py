@@ -77,10 +77,11 @@ class Main(Base, SpectroscopyCameraInterface):
         constraints.pixel_size_width, constraints.pixel_size_width = 13e-6, 13e-6
         constraints.internal_gains = [1, 2, 4]
         constraints.readout_speeds = [50000, 1000000, 3000000]
-        constraints.has_cooler = True
         constraints.trigger_modes = ['Internal', 'Dummy TTL']
         constraints.has_shutter = True
         constraints.read_modes = [ReadMode.FVB, ReadMode.MULTIPLE_TRACKS, ReadMode.IMAGE, ReadMode.IMAGE_ADVANCED]
+        constraints.has_cooler = True
+        constraints.temperature.min = 0.1  # Very good cooling !
         self._constraints = constraints
 
     ##############################################################################
