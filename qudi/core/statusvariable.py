@@ -48,7 +48,7 @@ class StatusVar:
         @param kwargs: Additional or overridden parameters for the constructor of this class
         """
         newargs = {'name': copy.copy(self.name),
-                   'default': copy.copy(self.default),
+                   'default': copy.deepcopy(self.default),
                    'constructor': self.constructor_function,
                    'representer': self.representer_function}
         newargs.update(kwargs)
