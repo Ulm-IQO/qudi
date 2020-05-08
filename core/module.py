@@ -29,6 +29,7 @@ from qtpy import QtCore
 from .meta import ModuleMeta
 from .configoption import MissingOption
 from .connector import Connector
+from .statusvariable import StatusVar
 
 
 class ModuleStateMachine(QtCore.QObject, Fysom):
@@ -234,12 +235,12 @@ class BaseMixin(metaclass=ModuleMeta):
             # save status vars even if deactivation failed
             for vname, var in self._stat_vars.items():
                 if hasattr(self, var.var_name):
-                    if var.representer_function is None:
-                        self._statusVariables[var.name] = getattr(self, var.var_name)
-                    else:
-                        self._statusVariables[var.name] = var.representer_function(
-                                                            self,
-                                                            getattr(self, var.var_name))
+                    value = getattr(self, var.var_name)
+                    if not isinstance(value, StatusVar):
+                        if var.representer_function is None:
+                            self._statusVariables[var.name] = value
+                        else:
+                            self._statusVariables[var.name] = var.representer_function(self, value)
 
     @property
     def log(self):
