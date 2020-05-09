@@ -76,7 +76,7 @@ class Scanner3DLogic(GenericLogic):
     signal_start_scanning = QtCore.Signal(str)
     signal_continue_scanning = QtCore.Signal(str)
     signal_stop_scanning = QtCore.Signal()
-    signal_scan_lines_next = QtCore.Signal()
+    signal_scan_line_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
     signal_data_saved = QtCore.Signal()
@@ -111,12 +111,12 @@ class Scanner3DLogic(GenericLogic):
 
         # Sets connections between signals and functions
         self.signal_scan_line_next.connect(self._scan_line_3D, QtCore.Qt.QueuedConnection)
-        self.signal_start_scanning.connect(self.start_scanner_3D, QtCore.Qt.QueuedConnection)
-        self.signal_continue_scanning.connect(self.continue_scanner_3D, QtCore.Qt.QueuedConnection)
+        self.signal_start_scanning.connect(self.start_3D_scan, QtCore.Qt.QueuedConnection)
+        self.signal_continue_scanning.connect(self.continue_3D_scan, QtCore.Qt.QueuedConnection)
 
-        self.signal_sort_count_data_3D.connect(self._sort_data, QtCore.Qt.DirectConnection)
+        self.signal_sort_count_data.connect(self._sort_data, QtCore.Qt.DirectConnection)
 
-        self._change_position('activation')
+        # self._change_position('activation')
 
         # Reads in the maximal scanning range. The unit of that scan range is meters!
         self.x_range = self._scanning_device.get_position_range()[0]
@@ -138,10 +138,12 @@ class Scanner3DLogic(GenericLogic):
 
         # Default values for the resolution of the scan
         self.xy_resolution = 100
+        # Todo: there must be an option to define this for every axis
+        self._max_scan_speed_single_axis = 10  # (Hz/V)
+        self._min_scan_resolution = 0.005  # (V)
 
         # Variable to check if a scan is continuable
         self.scan_counter = 0
-
 
         self._analog_counting = True
         self.go_to_start_positions = False
@@ -158,7 +160,7 @@ class Scanner3DLogic(GenericLogic):
         # Position_feedback
         # Todo: Define sensible axes
         self._ai_position_feedback_axes = []
-        self.map_scan_positions = False
+        self.map_scan_positions = True
         # Todo: shouldnt this be dependent on the analogue reader ?
         if self._ai_counter != None:
             if self._ai_counter in self._counting_device._analogue_input_channels:
@@ -170,7 +172,7 @@ class Scanner3DLogic(GenericLogic):
         self._ai_axes = {"x": "x_pos_voltages", "y": "y_post_voltages", "z": "z_pos_voltages",
                          self._ai_counter: "APD counter: " + self._ai_counter}
 
-        self.get_scanner_count_channels()
+        self._get_scanner_count_channels()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -185,6 +187,7 @@ class Scanner3DLogic(GenericLogic):
         given hardware
 
         @return int: error code (0:OK, -1:error)        """
+        # Todo: integrate this function into scan
 
         self.scan_resolution_3rd_axis = self.calculate_resolution(
             self._analog_input_device.get_analogue_resolution(), [self._min_z, self._max_z])
@@ -309,6 +312,10 @@ class Scanner3DLogic(GenericLogic):
         # Todo: Maybe something to implement later. Check axis and how they are to be scanned
         # (which one is first, second, third axis)
 
+        first_new_scan_position = self.image[self._scan_counter, 0, 0, :3]
+        self.move_to_position(
+            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]})
+
         # Initialize data
         if self.initialize_image() < 0:
             self.log.error("Initialisation of image failed. Scan stopped")
@@ -344,7 +351,7 @@ class Scanner3DLogic(GenericLogic):
 
         self.generate_file_path()
         self.generate_file_info()
-        self.signal_scan_lines_next.emit()
+        self.signal_scan_line_next.emit()
 
     def continue_3D_scan(self):
         """Continue scanning
@@ -356,11 +363,14 @@ class Scanner3DLogic(GenericLogic):
         if self._scan_counter == 0:
             self.start_3D_scan()
             return 0
+        first_new_scan_position = self.image[self._scan_counter, 0, 0, :3]
+        self.move_to_position(
+            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]})
         if 0 > self._initalize_measurement(steps=self._dim_fast_axis * self._dim_medium_axis,
                                            frequency=self._clock_frequency_3D, ai_channels=
                                            self.current_ai_axes):
             return -1
-        self.signal_scan_lines_next.emit()
+        self.signal_scan_line_next.emit()
         # Todo: Use tags and signals to disable parts fo gui when program is scanning
         # self.signal_continue_scanning.emit(tag)
 
@@ -403,7 +413,6 @@ class Scanner3DLogic(GenericLogic):
                 # Todo: Update current positions
                 # if self.go_to_start_positions:
                 #    self._change_position()
-
                 self._analogue_output_device.close_analogue_output(self._ao_channels[0])
 
                 self.stopRequested = False
@@ -428,7 +437,7 @@ class Scanner3DLogic(GenericLogic):
         # new_counts = self._scan_and_count_3D(self.image[self._scan_counter, :, :, :3], self.current_ai_axes)
         # if np.any(new_counts == -1):
         #    self.stopRequested = True
-        #    self.signal_scan_lines_next.emit()
+        #    self.signal_scan_line_next.emit()
         #    return
 
         # Todo: There need to be a method implemented here for the 3D case
@@ -444,7 +453,7 @@ class Scanner3DLogic(GenericLogic):
             self.log.info("3D Scan at end position")
         # self.log.info("new line %s time: %s", self._scan_counter, datetime.datetime.now().strftime('%M-%S-%f'))
 
-        self.signal_scan_lines_next.emit()
+        self.signal_scan_line_next.emit()
 
     def _scan_and_count_3D(self, scan_trajectory, ai_axes=[]):
         """
@@ -461,28 +470,24 @@ class Scanner3DLogic(GenericLogic):
 
             @return [np.array]: acquired data in counts/s or error value -1
                 """
+        asd
 
         # added, that the stepper now scans back and forth
         # Todo: This needs to optional
         retval = -1
-
-        # Todo: Check how clock needs to be set
-        if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
-            self.log.error("Starting the counter failed")
-            return [-1], []
-        if ai_axes:
-            if 0 > self._analog_input_device.start_analogue_voltage_reader(ai_axes[0],
-                                                                           start_clock=False):
-                self.log.error("Starting the analogue input failed")
-                return [-1], []
-        self._scanning_device.analogue_scan_line(self._ao_channels[0], scan_trajectory)
-
+        end_pos = scan_trajectory[-1, -1]
+        # Todo: Check how c
+        if not np.array_equal(self._scanning_device.analogue_scan_line(self._ao_channels[0], scan_trajectory),
+                              scan_trajectory):
+            self.log.error("the scanning went wrong during line scan %s", self._scan_counter)
+            return retval
         # get data
         count_result = self._counting_device.get_finite_counts()
         if ai_axes:
             analog_result = self._analog_input_device.get_analogue_voltage_reader(ai_axes)
 
         error = self._counting_device.stop_finite_counter()
+        self.update_current_position({"x": end_pos[1], "y": end_pos[0], "z": end_pos[2]})
         if ai_axes:
             if 0 > self._analog_input_device.stop_analogue_voltage_reader(ai_axes[0]):
                 self.log.error("Stopping the analog input failed")
@@ -490,7 +495,7 @@ class Scanner3DLogic(GenericLogic):
 
         if count_result[0][0] == [-1]:
             self.log.error("The readout of the counter failed")
-            return retval
+            return retvalnpasd
         elif error < 0:
             self.log.error("Stopping the counter failed")
             return retval
@@ -565,7 +570,7 @@ class Scanner3DLogic(GenericLogic):
         self.sort_counted_data(mean_counts, line_number)
 
     def initialize_image(self):
-        """Initalization of the image.
+        """Initialization of the image.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -622,26 +627,27 @@ class Scanner3DLogic(GenericLogic):
         # The inner part of the matrix are the values, x,y,z, than the count channels, first digital then analog
         # self.image = [..[y_value, x_value, z_value, count_value1, ..., analog_counts_value].. ]
 
-        self._counts_ch = self._scanning_device.get_scanner_count_channels()
+        digital_count_ch = self._get_scanner_count_channels()
         # generate empty image
         self.image = np.zeros((self._dim_slow_axis, self._dim_medium_axis, self._dim_fast_axis,
-                               3 + len(self._counts_ch) + self._analog_counting))
+                               3 + len(digital_count_ch) + self._analog_counting))
         # generate sub images
         x_axis = np.full((self._dim_fast_axis, self._dim_medium_axis), self._X_Axis).transpose()
         z_axis = np.full((self._dim_medium_axis, self._dim_fast_axis), self._Z_Axis)
-        z_axis[1::2] = np.flip(z_axis[1::2])  # every second value is scanned the opposite direction
+        z_axis[1::2] = np.flip(z_axis[1::2], 1)  # every second value is scanned the opposite direction
         xz_axis = np.zeros((self._dim_medium_axis, self._dim_fast_axis, 2))  # make matrix for x and z values
         xz_axis[:, :, 0] = x_axis
         xz_axis[:, :, 1] = z_axis
-        xz_axis = np.full((self._dim_slow_axis, self._dim_medium_axis, self._dim_fast_axis, 2), xz_axis)
-        xz_axis[1::2] = np.flip(xz_axis[1::2], (1, 2))  # every second line is scanned the opposite direction
-
+        xz_axis_full = np.full((self._dim_slow_axis, self._dim_medium_axis, self._dim_fast_axis, 2), xz_axis)
+        # Todo: resuse next code line when numpy version 1.15 is added for qudi
+        # xz_axis[1::2] = np.flip(xz_axis[1::2], (1, 2))  # every second line is scanned the opposite direction
+        xz_axis_full[1::2] = np.flip(np.flip(xz_axis_full[1::2], 1), 2)
         # fill image positions
-        self.image[:, :, :, 0] = xz_axis[:, :, :, 0]  # x
+        self.image[:, :, :, 0] = xz_axis_full[:, :, :, 0]  # x
         # for y flip around axis length of matrix to form matrix using linspace and than reflip using transpose
         self.image[:, :, :, 1] = np.full((self._dim_fast_axis, self._dim_medium_axis, self._dim_slow_axis),
-                                         np.linspace(1, 7, 7)).transpose()  # y
-        self.image[:, :, :, 2] = xz_axis[:, :, :, 1]  # z
+                                         self._Y_Axis).transpose()  # y
+        self.image[:, :, :, 2] = xz_axis_full[:, :, :, 1]  # z
 
         # This image is used to display data (as only 2d possible).
         # The fast axis is analysed and the displayed in this image
@@ -677,7 +683,7 @@ class Scanner3DLogic(GenericLogic):
 
             # Sanity check in case the range is too short
             # The voltage range covered while accelerating in the smoothing steps
-            v_range_of_accel = sum(n * self.scan_resolution_3D / smoothing_range
+            v_range_of_accel = sum(n * self.scan_resolution_3rd_axis / smoothing_range
                                    for n in range(0, smoothing_range)
                                    )
 
@@ -737,6 +743,13 @@ class Scanner3DLogic(GenericLogic):
         self._ao_channels = self._scanning_device._scanner_ao_channels
         return self._ao_channels
 
+    def _get_scanner_count_channels(self):
+        """ Returns the current counters of the digital counting hardware
+        @return List[]: Name of the current counting channels
+        """
+        self._counts_ch = self._scanning_device._counter_channels[:]
+        return self._counts_ch
+
     def kill_counter(self):
         """Closing the counting device.
 
@@ -755,6 +768,98 @@ class Scanner3DLogic(GenericLogic):
         #        except Exception as e:
 
         return 0
+
+    def update_current_position(self, position_dict):
+        """
+        Updates the current position of the scanner (in the memory) to positions given in the dictionary
+        @param dict position_dict:
+
+        """
+        # Todo: The current positions should be saved in a dict not as single values! this is not flexible!
+        if "x" in position_dict:
+            self.current_x = position_dict["x"]
+
+        if "y" in position_dict:
+            self.current_y = position_dict["y"]
+
+        if "z" in position_dict:
+            self.current_z = position_dict["z"]
+
+    def move_to_position(self, position_dict):
+        """
+        Changes the current position of the scanner to the given position
+        @param dict position_dict:
+
+        @return int: error code (0:OK, -1:error)
+        """
+        # Todo: This is very crude and should be more universal!!
+
+        # check if given position is current position
+        if "x" in position_dict:
+            new_pos = position_dict["x"]
+            if new_pos != self.current_x:
+                if in_range(new_pos, self.x_range[0], self.x_range[1]):
+                    if 0 < self.change_single_output_position("x", new_pos, self.current_x):
+                        self.log.error("Moving scanner to new position failed for axis x")
+                        return -1
+                    self.current_x = new_pos
+                # Todo: error message missing, if new pos is not within possible range
+
+        if "y" in position_dict:
+            new_pos = position_dict["y"]
+            if new_pos != self.current_y:
+                if in_range(new_pos, self.y_range[0], self.y_range[1]):
+                    if 0 < self.change_single_output_position("x", new_pos, self.current_y):
+                        self.log.error("Moving scanner to new position failed for axis y")
+                    self.current_y = new_pos
+
+        if "z" in position_dict:
+            new_pos = position_dict["z"]
+            if new_pos != self.current_z:
+                if in_range(new_pos, self.z_range[0], self.z_range[1]):
+                    if 0 < self.change_single_output_position("z", new_pos, self.current_z):
+                        self.log.error("Moving scanner to new position failed for axis z")
+                    self.current_z = new_pos
+
+    def change_single_output_position(self, channel, new_pos, current_pos):
+        scan_res = self.calculate_resolution(
+            self._analog_input_device.get_analogue_resolution(), [self._min_z, self._max_z])
+        v_range = self.axis_class[self.control_axis].output_voltage_range
+        # Todo: The scan resolution used should be done much more sensibly. This could possibly very slow
+        num_of_linear_steps = np.rint(abs((current_pos - new_pos)) / scan_res)
+        _clock_frequency = 10 / scan_res
+        # _clock_frequency = self.maximum_clock_frequency
+        if (num_of_linear_steps == 1):
+            num_of_linear_steps = 2
+        ramp = np.linspace(current_pos, new_pos, num_of_linear_steps)
+        voltage_difference = abs(current_pos - new_pos)
+        if voltage_difference > scan_res:
+            if 0 > self._scanning_device.set_up_analogue_output([channel]):
+                self.log.error("Setting up scanner for  channel %s failed", channel)
+                return -1
+
+            if 0 > self._scanning_device.set_up_analogue_output_clock(channel, clock_frequency=_clock_frequency):
+                # Fixme: I do not think this is necessary. However it should be checked.
+                # self.set_position('scanner')
+                self.log.error("Problems setting up scanner clock.")
+                if 0 > self._scanning_device.close_analogue_output(channel):
+                    self.log.error("Closing scanner failed. Giving up")
+                return -1
+
+            self._scanning_device.configure_analogue_timing(channel, len(ramp))
+
+            retval3 = self._scanning_device.analogue_scan_line(channel, ramp)
+            try:
+                retval1 = self._scanning_device.close_analogue_output_clock(channel)
+                retval2 = self._scanning_device.close_analogue_output(channel)
+            except:
+                self.log.warn("Closing the scanner did not work")
+            if retval3 != -1:
+                self.axis_class[self.control_axis].output_voltage = new_pos
+            return min(retval1, retval2, retval3)
+        else:
+            self.log.info("The device was already at required output voltage")
+            return 0
 
     ################################### Save Functions ###############################
 
@@ -828,4 +933,3 @@ class Scanner3DLogic(GenericLogic):
 
         np.save(self.path_name + '/' + self.filename, data)
         np.save(self.path_name + '/' + self.filename_back, data)
-

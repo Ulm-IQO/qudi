@@ -198,6 +198,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 self.log.error("%s channel has no analogue output range defined. Taking default [0,6.] instead.")
                 self._ao_voltage_range["i"] = [0, 6.]
 
+        pos_list = ["x", "y", "z", "a"]
+        self._a_o_pos_ranges = dict()
+        for i in range(len(self._scanner_position_ranges)):
+            if pos_list[i] in self._analogue_output_channels and pos_list[i] in self._a_o_ranges:
+                self._a_o_pos_ranges[pos_list[i]] = self._scanner_position_ranges[i]
+
         for i in self._a_i_channels:
             for j in i.items():
                 self._analogue_input_channels[j[0]] = j[1]
@@ -2722,6 +2728,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # name to assign to it
                 "Analogue Voltage Reader {}".format(analogue_channel),
                 # the analogue input read mode (rse, nres or diff)
+                # daq.DAQmx_Val_Diff,
                 daq.DAQmx_Val_RSE,
                 # the minimum input voltage expected
                 self._ai_voltage_range[analogue_channel][0],
@@ -2817,6 +2824,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     "Analogue Voltage Reader {}".format(channel),
                     # the analogue input read mode (rse, nres or diff)
                     daq.DAQmx_Val_RSE,
+                    # daq.DAQmx_Val_Diff,
                     # the minimum input voltage expected
                     self._ai_voltage_range[channel][0],
                     # the minimum input voltage expected
@@ -3436,7 +3444,57 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return -1
         return 0
 
+    def analogue_scan_line_positions(self, analogue_channels, positions):
+        """Scans a line of positions for the given channels
+
+        @param list[str] analogue_channels: the channels for which the voltages should be written
+        @param array[][][] positions: the positions to be moved by the NIDAQ
+
+        @return np.array: the positions written. If an error occured returns  [-1]
+        """
+        if analogue_channels.any() not in self._analogue_output_daq_tasks:
+            self.log.error('The analogue output channel %s has no output task configured.', analogue_channels)
+            return -1
+
+        if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Given position list is no array type.')
+            return [-1]
+
+        if not set(analogue_channels).issubset(self._a_o_pos_ranges):
+            self.log.error("for one of the given analogue channels (%s) there is not position range defined",
+                           analogue_channels)
+            return [-1]
+
+        if not set(analogue_channels).issubset(self._a_o_ranges):
+            self.log.error("for one of the given analogue channels (%s) there is not voltage range defined",
+                           analogue_channels)
+            return [-1]
+
+        voltage_array = np.zeros(np.shape(positions))
+        i = 0
+        for channel in analogue_channels:
+            v_range = self._a_o_ranges[channel]
+            pos_range = self._a_o_pos_ranges[channel]
+            voltage_array[:,:,i] = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
+                        positions[:, :, i] - v_range[0]) +v_range[0]
+            if np.min(voltage_array[i]) < v_range[0] or np.max(voltage_array[i]) > v_range[1]:
+                self.log.error(
+                    'Voltages (%s, %s) exceed the limit, the positions have to '
+                    'be adjusted to stay in the given range.',np.min(voltage_array[i]),np.max(voltage_array[i]))
+                return [-1]
+
+        self.analogue_scan_line(analogue_channels[0], voltage_array)
+
+        return positions
+
     def analogue_scan_line(self, analogue_channel, voltages):
+        """Scans a line of voltages for the task of the given channel
+
+        @param analogue_channel: the channels for which the voltages should be written
+        @param voltages: the positions to be written
+
+        @return np.array: the voltages written. If an error occured returns  -1
+        """
         # check if task for channel is configured
         if analogue_channel not in self._analogue_output_daq_tasks:
             self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
