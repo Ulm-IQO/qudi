@@ -119,22 +119,24 @@ class Scanner3DLogic(GenericLogic):
         # self._change_position('activation')
 
         # Reads in the maximal scanning range. The unit of that scan range is meters!
-        self.x_range = self._scanning_device.get_position_range()[0]
-        self.y_range = self._scanning_device.get_position_range()[1]
-        self.z_range = self._scanning_device.get_position_range()[2]
+        self._scanning_axes_ranges = OrderedDict()
+        self._scanning_axes_ranges["x"] = self._scanning_device.get_position_range()[0]
+        self._scanning_axes_ranges["y"] = self._scanning_device.get_position_range()[1]
+        self._scanning_axes_ranges["z"] = self._scanning_device.get_position_range()[2]
 
         # Sets the current position to the center of the maximal scanning range
         # Todo: In general these should be defined by the config and it should be checked if they havent already been set
         # by another program
-        self.current_x = self.x_range[0]
-        self.current_y = self.y_range[0]
-        self.current_z = self.z_range[0]
-        self.current_a = 0.0
+        self._current_position = OrderedDict()
+        self._current_position["x"] = self._scanning_axes_ranges["x"][0]
+        self._current_position["y"] = self._scanning_axes_ranges["y"][0]
+        self._current_position["z"] = self._scanning_axes_ranges["z"][0]
+        self._current_position["a"] = 0.0
 
         # Sets the size of the image to the maximal scanning range
-        self.image_x_range = self.x_range
-        self.image_y_range = self.y_range
-        self.image_z_range = self.z_range
+        self.image_x_range = self._scanning_axes_ranges["x"]
+        self.image_y_range = self._scanning_axes_ranges["y"]
+        self.image_z_range = self._scanning_axes_ranges["z"]
 
         # Default values for the resolution of the scan
         self.xy_resolution = 100
@@ -189,8 +191,10 @@ class Scanner3DLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)        """
         # Todo: integrate this function into scan
 
-        self.scan_resolution_3rd_axis = self.calculate_resolution(
-            self._analog_input_device.get_analogue_resolution(), [self._min_z, self._max_z])
+        # Todo: This needs to be flexible: the 3rd axis
+
+        self.scan_resolution_3rd_axis = self.calculate_resolution(self._analog_input_device.get_analogue_resolution(),
+                                                                  self._scanning_axes_ranges["z"])
         if self.scan_resolution_3rd_axis == -1:
             self.log.error("Calculated scan resolution not possible")
             return -1
@@ -218,15 +222,30 @@ class Scanner3DLogic(GenericLogic):
         precision = round_to_2(precision)
         return precision
 
-    def _check_if_voltage_in_range(self, voltage, range):
-        """Checks if a selected voltage is allowed by checking if it lies within the possible range of voltages
-            @param float voltage: The voltage to be checked
-            @param list range:  a list with two entries with the minimum and maximum allowed voltage
+    def _convert_v_to_pos(self, voltage, axes):
+        """
+        Converts a voltage to a position for a given axes
+        @param float voltage: The voltage to be converted
+        @param str axes: The axes for which the voltage is to be converted
+        @return: the position
+        """
+        # Todo: The ranges should be defined by a dict and then this should be calculated using the dic
+        # With the if and list it is only a fast work around and not error safe
+
+        v_range = self._scanning_device._a_o_ranges[axes]
+        pos_range = self._scanning_axes_ranges[axes]
+        pos = (pos_range[1] - pos_range[0]) / (v_range[1] - v_range[0]) * (voltage - pos_range[0]) + pos_range[0]
+        return pos
+
+    def _check_if_pos_in_range(self, position, pos_range):
+        """Checks if a selected position is allowed by checking if it lies within the possible range of positions
+            @param float position: The voltage to be checked
+            @param list pos_range:  a list with two entries with the minimum and maximum allowed voltage
             @return int: error code (0:OK, -1:error)
         """
-        if not in_range(voltage, range[0], range[1]):
-            self.log.error("The given start voltage %s is not within the possible output voltages %s", voltage,
-                           range)
+        if not in_range(position, pos_range[0], pos_range[1]):
+            self.log.error("The given position %s is not within the range of possible positions %s", position,
+                           pos_range)
             return -1
         else:
             return 0
@@ -470,7 +489,6 @@ class Scanner3DLogic(GenericLogic):
 
             @return [np.array]: acquired data in counts/s or error value -1
                 """
-        asd
 
         # added, that the stepper now scans back and forth
         # Todo: This needs to optional
@@ -495,7 +513,7 @@ class Scanner3DLogic(GenericLogic):
 
         if count_result[0][0] == [-1]:
             self.log.error("The readout of the counter failed")
-            return retvalnpasd
+            return retval
         elif error < 0:
             self.log.error("Stopping the counter failed")
             return retval
@@ -575,18 +593,18 @@ class Scanner3DLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         # x1: x-start-value, x2: x-end-value
-        x1, x2 = self.image_x_range[0], self.image_x_range[1]
+        x1, x2 = self._scanning_axes_ranges["x"][0], self._scanning_axes_ranges["x"][1]
         # y1: x-start-value, y2: x-end-value
-        y1, y2 = self.image_y_range[0], self.image_y_range[1]
+        y1, y2 = self._scanning_axes_ranges["y"][0], self._scanning_axes_ranges["y"][1]
         # z1: x-start-value, z2: x-end-value
-        z1, z2 = self.image_z_range[0], self.image_z_range[1]
+        z1, z2 = self._scanning_axes_ranges["z"][0], self._scanning_axes_ranges["z"][1]
 
-        if self._check_if_voltage_in_range(x1, self.x_range) != 0 and \
-                self._check_if_voltage_in_range(x2, self.x_range) != 0 and \
-                self._check_if_voltage_in_range(y1, self.y_range) != 0 and \
-                self._check_if_voltage_in_range(y2, self.y_range) != 0 and \
-                self._check_if_voltage_in_range(z1, self.z_range) != 0 and \
-                self._check_if_voltage_in_range(z2, self.z_range) != 0:
+        if self._check_if_pos_in_range(x1, self._scanning_axes_ranges["x"]) != 0 and \
+                self._check_if_pos_in_range(x2, self._scanning_axes_ranges["x"]) != 0 and \
+                self._check_if_pos_in_range(y1, self._scanning_axes_ranges["y"]) != 0 and \
+                self._check_if_pos_in_range(y2, self._scanning_axes_ranges["y"]) != 0 and \
+                self._check_if_pos_in_range(z1, self._scanning_axes_ranges["z"]) != 0 and \
+                self._check_if_pos_in_range(z2, self._scanning_axes_ranges["z"]) != 0:
             return -1
 
         # Checks if the x-start and x-end value are ok
@@ -774,16 +792,16 @@ class Scanner3DLogic(GenericLogic):
         Updates the current position of the scanner (in the memory) to positions given in the dictionary
         @param dict position_dict:
 
+        @return int: error code (0:OK, -1:error)
         """
         # Todo: The current positions should be saved in a dict not as single values! this is not flexible!
-        if "x" in position_dict:
-            self.current_x = position_dict["x"]
-
-        if "y" in position_dict:
-            self.current_y = position_dict["y"]
-
-        if "z" in position_dict:
-            self.current_z = position_dict["z"]
+        for key in position_dict.keys():
+            if key in self._current_position:
+                self._current_position[key] = position_dict[key]
+            else:
+                self.log.error(
+                    "The axis (%s) for which the position was to be updated does not exist for the scanner (%s)", key,
+                    self._current_position.keys())
 
     def move_to_position(self, position_dict):
         """
@@ -792,40 +810,38 @@ class Scanner3DLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo: This is very crude and should be more universal!!
-
         # check if given position is current position
-        if "x" in position_dict:
-            new_pos = position_dict["x"]
-            if new_pos != self.current_x:
-                if in_range(new_pos, self.x_range[0], self.x_range[1]):
-                    if 0 < self.change_single_output_position("x", new_pos, self.current_x):
-                        self.log.error("Moving scanner to new position failed for axis x")
-                        return -1
-                    self.current_x = new_pos
-                # Todo: error message missing, if new pos is not within possible range
+        for key, value in position_dict.items():
+            if key in self._current_position:
+                if value != self._current_position[key]:
+                    if in_range(value, self._scanning_axes_ranges[key][0], self._scanning_axes_ranges[key][1]):
+                        if 0 < self.change_single_output_position(key, value):
+                            self.log.error("Moving scanner to new position failed for axis %s", key)
+                            return -1
+                        self._current_position[key] = value
+                    else:
+                        self.log.error("The new position (%s) lies without the possible range (%s) of the axis (%s)",
+                                       value, self._scanning_axes_ranges, key)
+            else:
+                self.log.error(
+                    "The axis (%s) for which the position was to be changed does not exist for the scanner (%s)", key,
+                    self._current_position.keys())
 
-        if "y" in position_dict:
-            new_pos = position_dict["y"]
-            if new_pos != self.current_y:
-                if in_range(new_pos, self.y_range[0], self.y_range[1]):
-                    if 0 < self.change_single_output_position("x", new_pos, self.current_y):
-                        self.log.error("Moving scanner to new position failed for axis y")
-                    self.current_y = new_pos
+    def change_single_output_position(self, axis, new_pos):
+        """Moves a scanner axis from the current position to a new position
 
-        if "z" in position_dict:
-            new_pos = position_dict["z"]
-            if new_pos != self.current_z:
-                if in_range(new_pos, self.z_range[0], self.z_range[1]):
-                    if 0 < self.change_single_output_position("z", new_pos, self.current_z):
-                        self.log.error("Moving scanner to new position failed for axis z")
-                    self.current_z = new_pos
+        @param key axis: The axis which is to be moved
+        @param float new_pos: The new position that the axis is to be moved to
 
-    def change_single_output_position(self, channel, new_pos, current_pos):
+        @return int: error code (0:OK, -1:error)
+        """
+        # Todo: Error checks if given values are existing in dicts and if they are float/str
+        pos_range = self._scanning_axes_ranges[axis]
         scan_res = self.calculate_resolution(
-            self._analog_input_device.get_analogue_resolution(), [self._min_z, self._max_z])
-        v_range = self.axis_class[self.control_axis].output_voltage_range
+            self._scanning_device.get_analogue_resolution(), pos_range)
         # Todo: The scan resolution used should be done much more sensibly. This could possibly very slow
+
+        current_pos = self._current_position[axis]
         num_of_linear_steps = np.rint(abs((current_pos - new_pos)) / scan_res)
         _clock_frequency = 10 / scan_res
         # _clock_frequency = self.maximum_clock_frequency
@@ -834,28 +850,28 @@ class Scanner3DLogic(GenericLogic):
         ramp = np.linspace(current_pos, new_pos, num_of_linear_steps)
         voltage_difference = abs(current_pos - new_pos)
         if voltage_difference > scan_res:
-            if 0 > self._scanning_device.set_up_analogue_output([channel]):
-                self.log.error("Setting up scanner for  channel %s failed", channel)
+            if 0 > self._scanning_device.set_up_analogue_output([axis]):
+                self.log.error("Setting up scanner for  channel %s failed", axis)
                 return -1
 
-            if 0 > self._scanning_device.set_up_analogue_output_clock(channel, clock_frequency=_clock_frequency):
+            if 0 > self._scanning_device.set_up_analogue_output_clock(axis, clock_frequency=_clock_frequency):
                 # Fixme: I do not think this is necessary. However it should be checked.
                 # self.set_position('scanner')
                 self.log.error("Problems setting up scanner clock.")
-                if 0 > self._scanning_device.close_analogue_output(channel):
+                if 0 > self._scanning_device.close_analogue_output(axis):
                     self.log.error("Closing scanner failed. Giving up")
                 return -1
 
-            self._scanning_device.configure_analogue_timing(channel, len(ramp))
+            self._scanning_device.configure_analogue_timing(axis, len(ramp))
 
-            retval3 = self._scanning_device.analogue_scan_line(channel, ramp)
+            retval3 = self._scanning_device.analogue_scan_line_positions(axis, ramp)
             try:
-                retval1 = self._scanning_device.close_analogue_output_clock(channel)
-                retval2 = self._scanning_device.close_analogue_output(channel)
+                retval1 = self._scanning_device.close_analogue_output_clock(axis)
+                retval2 = self._scanning_device.close_analogue_output(axis)
             except:
                 self.log.warn("Closing the scanner did not work")
             if retval3 != -1:
-                self.axis_class[self.control_axis].output_voltage = new_pos
+                self._current_position[axis] = new_pos
             return min(retval1, retval2, retval3)
         else:
             self.log.info("The device was already at required output voltage")
