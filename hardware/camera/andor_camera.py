@@ -31,8 +31,8 @@ import ctypes as ct
 from core.module import Base
 from core.configoption import ConfigOption
 
-from interface.spectroscopy_camera_interface import SpectroscopyCameraInterface
-from interface.spectroscopy_camera_interface import ReadMode, Constraints, ImageAdvancedParameters, ShutterState
+from interface.science_camera_interface import SpectroscopyCameraInterface
+from interface.science_camera_interface import ReadMode, Constraints, ImageAdvancedParameters, ShutterState
 
 
 # Bellow are the classes used by Andor dll. They are not par of Qudi interfaces

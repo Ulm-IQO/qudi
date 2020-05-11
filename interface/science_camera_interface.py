@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+
 """
-This module contains fake a spectrometer camera.
+This file contains the updated Qudi Interface for a scientific camera used for spectroscopy.
+
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,130 +20,90 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+from enum import Enum
 
-import numpy as np
-from core.module import Base
-from interface.spectroscopy_camera_interface import SpectroscopyCameraInterface
-from interface.spectroscopy_camera_interface import ReadMode, Constraints, ImageAdvancedParameters
-
-from qtpy import QtCore
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
+from core.interface import ScalarConstraint
 
 
-class Main(Base, SpectroscopyCameraInterface):
-    """ This module is the dummy module for the SpectroscopyCameraInterface interface
+class ReadMode(Enum):
+    """ Class defining the possible read modes of the camera
 
-    spectroscopy_camera_dummy:
-        module.Class: 'spectroscopy_camera_dummy.Main'
+    'FVB': Full vertical binning. Returns the signal integrated over the whole columns of pixels, giving one curve.
+    'MULTIPLE_TRACK': The signal is integrated over one or multiple tracks, giving a lost of one or multiple curves.
+    'IMAGE': The camera return the signal over all the pixels as a 2d array.
+    'IMAGE_ADVANCED': The camera return the signal over the super pixels on a given region of the camera, as a 2d array.
+     """
+    FVB = 0
+    MULTIPLE_TRACKS = 1
+    IMAGE = 2
+    IMAGE_ADVANCED = 3
+
+
+class ShutterState(Enum):
+    """ Class defining the possible shutter states
+
+    AUTO means the shutter opens only for the acquisition time.
     """
+    CLOSED = 0
+    OPEN = 1
+    AUTO = 4  # Value do not conflict with ShutterState from simple_laser_logic
 
-    def on_activate(self):
-        """ Activate module """
-        self._build_constraints()
 
-        self._acquisition_timer = QtCore.QTimer()
-        self._acquisition_timer.setSingleShot(True)
-        self._acquisition_timer.timeout.connect(self._end_acquisition, QtCore.Qt.QueuedConnection)
+class Constraints:
+    """ Class defining formally the hardware constraints """
+    def __init__(self):
+        self.name = '',                  # Camera manufacture name (ex : 'Newton940')
+        self.width = None,               # Camera width in pixels
+        self.height = None,              # Camera height in pixels
+        self.pixel_size_width = None,    # Physical width of the pixels in meter
+        self.pixel_size_height = None    # Physical height of the pixels in meter
+        self.read_modes = [],            # Read mode supported by the camera (see ReadMode class)
+        self.internal_gains = [],        # Internal gains supported by the camera (list of float)
+        self.readout_speeds = [],        # Readout speed supported by the camera, in Hz (list of float)
+        self.has_shutter = False,        # Tells if the camera has a shutter
+        self.trigger_modes = [],         # User defined trigger mode (list of string)
+        self.has_cooler = False,         # Tells if the camera has a cooling system
+        self.temperature = ScalarConstraint(unit='K')     # Temperature limits in kelvin
 
-        self._acquired_data = None
-        self._read_mode = ReadMode.FVB
-        self._readout_speed = self.get_constraints().read_modes[0]
-        self._active_tracks = []
-        self._image_advanced_parameters = None
-        self._gain = self.get_constraints().internal_gains[0]
-        self._exposure = 1
-        self._trigger_mode = self.get_constraints().trigger_modes[0]
 
-        self._shutter_open_state = True
-        self._cooler_on = True
-        self._temperature_setpoint = 183  # ~-90°C
+class ImageAdvancedParameters:
+    """ Class defining formally a binning and a region of the camera for IMAGE_ADVANCED mode """
+    def __init__(self):
+        self.horizontal_binning = 1,
+        self.vertical_binning = 1,
+        self.horizontal_start = 0,
+        self.horizontal_end = None,  # Has to be an integer
+        self.vertical_start = 0,
+        self.vertical_end = None  # Has to be an integer
 
-    def on_deactivate(self):
-        """ Deactivate module """
-        pass
 
+class ScienceCameraInterface(metaclass=InterfaceMetaclass):
+    """ This interface is used to manage a camera used for spectroscopy """
+
+    @abstract_interface_method
     def get_constraints(self):
         """ Returns all the fixed parameters of the hardware which can be used by the logic.
 
         @return (Constraints): An object of class Constraints containing all fixed parameters of the hardware
         """
-        return self._constraints
-
-    def _build_constraints(self):
-        """ Internal method that build the constraints once at initialisation
-
-         This makes multiple call to the DLL, so it will be called only onced by on_activate
-         """
-        constraints = Constraints()
-        constraints.name = 'Spectroscopy camera dummy'
-        constraints.width, constraints.height = 1024, 256
-        constraints.pixel_size_width, constraints.pixel_size_width = 13e-6, 13e-6
-        constraints.internal_gains = [1, 2, 4]
-        constraints.readout_speeds = [50000, 1000000, 3000000]
-        constraints.trigger_modes = ['Internal', 'Dummy TTL']
-        constraints.has_shutter = True
-        constraints.read_modes = [ReadMode.FVB, ReadMode.MULTIPLE_TRACKS, ReadMode.IMAGE, ReadMode.IMAGE_ADVANCED]
-        constraints.has_cooler = True
-        constraints.temperature.min = 0.1  # Very good cooling !
-        self._constraints = constraints
+        pass
 
     ##############################################################################
     #                           Basic functions
     ##############################################################################
+    @abstract_interface_method
     def start_acquisition(self):
         """ Starts an acquisition of the current mode and returns immediately """
-        self._acquired_data = None
-        self.module_state.lock()
-        self._acquisition_timer.start()
+        pass
 
-    def _end_acquisition(self):
-        """ Function called when the dummy acquisition is finished (after the exposure time) """
-        self.module_state.unlock()
-        if self.get_read_mode() == ReadMode.FVB:
-            self._acquired_data = self._get_fake_spectra()
-        elif self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
-            self._acquired_data = [self._get_fake_spectra() for track in self.get_active_tracks()]
-        elif self.get_read_mode() == ReadMode.IMAGE:
-            self._acquired_data = self._get_fake_image()
-        elif self.get_read_mode() == ReadMode.IMAGE_ADVANCED:
-            self._acquired_data = self._get_fake_image(image_advanced=True)
-
-    def _get_fake_spectra(self):
-        """ Function that build fake a spectrum """
-        width = self.get_constraints().width
-        data = np.random.uniform(0, 10, width)  # constant noise
-        data += np.random.uniform(0, 1 * self.get_exposure_time(), width)  # noise linear with time
-        if self.get_shutter_open_state():
-            data += np.random.uniform(0, 0.2 * self.get_exposure_time(), width) # noise for background
-        number_of_peaks = round(np.random.uniform(0, 20))
-        peak_position = np.random.uniform(0, width, number_of_peaks)
-        peak_linewidth = np.random.uniform(1, 5, number_of_peaks)
-        peak_intensity = np.random.uniform(0, 20*self.get_exposure_time(), number_of_peaks)
-        x = np.arange(width)
-        for i in range(number_of_peaks):
-            data += peak_intensity[i] * np.exp(-(x-peak_position[i])**2/(2*peak_linewidth[i]**2))
-        data *= self.get_gain()
-        return data
-
-    def _get_fake_image(self, image_advanced=False, line_width_height=20):
-        """ Function that build fake a image data """
-        height = self.get_constraints().height
-        spectra = self._get_fake_spectra()
-        width = len(spectra)
-        x = np.arange(height)
-        intensity = np.exp(-(x-height/2)**2/(2*line_width_height**2))
-        data = np.random.uniform(0.1, 1, (width, height))
-        image = (data * intensity).T * spectra
-        if image_advanced:
-            params = self.get_image_advanced_parameters()
-            image = image[params.vertical_start:params.vertical_end, params.horizontal_start:params.horizontal_end]
-            image = image[::params.vertical_binning, ::params.horizontal_binning]
-        return image
-
+    @abstract_interface_method
     def abort_acquisition(self):
         """ Abort acquisition """
-        self._acquisition_timer.stop()
-        self.module_state.unlock()
+        pass
 
+    @abstract_interface_method
     def get_ready_state(self):
         """ Get the status of the camera, to know if the acquisition is finished or still ongoing.
 
@@ -149,8 +111,9 @@ class Main(Base, SpectroscopyCameraInterface):
 
         As there is no synchronous acquisition in the interface, the logic needs a way to check the acquisition state.
         """
-        return self.module_state() == 'idle'
+        pass
 
+    @abstract_interface_method
     def get_acquired_data(self):
         """ Return an array of last acquired data.
 
@@ -164,49 +127,52 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Each value might be a float or an integer.
         """
-        return self._acquired_data
+        pass
 
     ##############################################################################
     #                           Read mode functions
     ##############################################################################
+    @abstract_interface_method
     def get_read_mode(self):
         """ Getter method returning the current read mode used by the camera.
 
         @return (ReadMode): Current read mode
         """
-        return self._read_mode
+        pass
 
+    @abstract_interface_method
     def set_read_mode(self, value):
         """ Setter method setting the read mode used by the camera.
 
         @param (ReadMode) value: read mode to set
         """
-        if value in self.get_constraints().read_modes:
-            self._read_mode = value
+        pass
 
     ##############################################################################
     #                           Readout speed functions
     ##############################################################################
+    @abstract_interface_method
     def get_readout_speed(self):
         """ Get the current readout speed of the camera
 
         This value is one of the possible values given by constraints
         """
-        return self._readout_seed
+        pass
 
+    @abstract_interface_method
     def set_readout_speed(self, value):
         """ Set the readout speed of the camera
 
         @param (float) value: Readout speed to set, must be a value from the constraints readout_speeds list
         """
-        if value in self.get_constraints().readout_speeds:
-            self._readout_speed = value
+        pass
 
     ##############################################################################
     #                           Active tracks functions
     #
     # Method used only for read mode MULTIPLE_TRACKS
     ##############################################################################
+    @abstract_interface_method
     def get_active_tracks(self):
         """ Getter method returning the read mode tracks parameters of the camera.
 
@@ -214,8 +180,9 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Should only be used while in MULTIPLE_TRACKS mode
         """
-        return self._active_tracks
+        pass
 
+    @abstract_interface_method
     def set_active_tracks(self, value):
         """ Setter method for the active tracks of the camera.
 
@@ -226,13 +193,14 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Should only be used while in MULTIPLE_TRACKS mode
         """
-        self._active_tracks = value
+        pass
 
     ##############################################################################
     #                           Image advanced functions
     #
     # Method used only for read mode IMAGE_ADVANCED
     ##############################################################################
+    @abstract_interface_method
     def get_image_advanced_parameters(self):
         """ Getter method returning the image parameters of the camera.
 
@@ -240,8 +208,9 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Should only be used while in IMAGE_ADVANCED mode
         """
-        return self._image_advanced_parameters
+        pass
 
+    @abstract_interface_method
     def set_image_advanced_parameters(self, value):
         """ Setter method setting the read mode image parameters of the camera.
 
@@ -249,13 +218,12 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Should only be used while in IMAGE_ADVANCED mode
         """
-        if not isinstance(value, ImageAdvancedParameters):
-            self.log.error('ImageAdvancedParameters value error. Value {} is not correct.'.format(value))
-        self._image_advanced_parameters = value
+        pass
 
     ##############################################################################
     #                           Gain mode functions
     ##############################################################################
+    @abstract_interface_method
     def get_gain(self):
         """ Get the current gain.
 
@@ -263,26 +231,28 @@ class Main(Base, SpectroscopyCameraInterface):
 
         Gain value should be one in the constraints internal_gains list.
         """
-        return self._gain
+        pass
 
+    @abstract_interface_method
     def set_gain(self, value):
         """ Set the gain.
 
         @param (float) value: New gain, value should be one in the constraints internal_gains list.
         """
-        if value in self.get_constraints().internal_gains:
-            self._gain = value
+        pass
 
     ##############################################################################
     #                           Exposure functions
     ##############################################################################
+    @abstract_interface_method
     def get_exposure_time(self):
         """ Get the exposure time in seconds
 
         @return: (float) exposure time
         """
-        return self._exposure
+        pass
 
+    @abstract_interface_method
     def set_exposure_time(self, value):
         """ Set the exposure time in seconds.
 
@@ -290,13 +260,13 @@ class Main(Base, SpectroscopyCameraInterface):
 
         @return: nothing
         """
-        if value > 0:
-            self._exposure = value
-        self._acquisition_timer.setInterval(value*1e3)
+        pass
 
     ##############################################################################
     #                           Trigger mode functions
     ##############################################################################
+
+    @abstract_interface_method
     def get_trigger_mode(self):
         """ Getter method returning the current trigger mode used by the camera.
 
@@ -304,74 +274,78 @@ class Main(Base, SpectroscopyCameraInterface):
 
         This string should match one in the constraints trigger_modes list.
         """
-        return self._trigger_mode
+        pass
 
+    @abstract_interface_method
     def set_trigger_mode(self, value):
         """ Setter method for the trigger mode used by the camera.
 
         @param (str) value: trigger mode, should match one in the constraints trigger_modes list.
         """
-        if value in self.get_constraints().trigger_modes:
-            self._trigger_mode = value
+        pass
 
     ##############################################################################
     #                        Shutter mode function
     #
     # Method used only if constraints.has_shutter
     ##############################################################################
-    def get_shutter_open_state(self):
-        """ Getter method returning the shutter mode.
+    @abstract_interface_method
+    def get_shutter_state(self):
+        """ Getter method returning the shutter state.
 
-        @return (bool): True if the shutter is open, False of closed
+        @return (ShutterState): The current shutter state
         """
-        return self._shutter_open_state
+        pass
 
-    def set_shutter_open_state(self, value):
-        """ Setter method setting the shutter mode.
+    @abstract_interface_method
+    def set_shutter_state(self, value):
+        """ Setter method setting the shutter state.
 
-        @param (bool) value: True to open, False tp close
+        @param (ShutterState) value: the shutter state to set
         """
-        if isinstance(value, bool):
-            self._shutter_open_state = value
+        pass
 
     ##############################################################################
     #                           Temperature functions
     #
     # Method used only if constraints.has_cooler
     ##############################################################################
+    @abstract_interface_method
     def get_cooler_on(self):
         """ Getter method returning the cooler status
 
         @return (bool): True if the cooler is on
         """
-        return self._cooler_on
+        pass
 
+    @abstract_interface_method
     def set_cooler_on(self, value):
         """ Setter method for the the cooler status
 
         @param (bool) value: True to turn it on, False to turn it off
         """
-        if isinstance(value, bool):
-            self._cooler_on = value
+        pass
 
+    @abstract_interface_method
     def get_temperature(self):
         """ Getter method returning the temperature of the camera in Kelvin.
 
         @return (float) : Measured temperature in kelvin
         """
-        return self._temperature_setpoint
+        pass
 
+    @abstract_interface_method
     def get_temperature_setpoint(self):
         """ Getter method for the temperature setpoint of the camera.
 
         @return (float): Current setpoint in Kelvin
         """
-        return self._temperature_setpoint
+        pass
 
+    @abstract_interface_method
     def set_temperature_setpoint(self, value):
         """ Setter method for the temperature setpoint of the camera.
 
         @param (float) value: New setpoint in Kelvin
         """
-        if value > 0:
-            self._temperature_setpoint = value
+        pass
