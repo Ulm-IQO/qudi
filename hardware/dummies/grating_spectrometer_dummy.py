@@ -24,11 +24,11 @@ import numpy as np
 from core.module import Base
 from core.configoption import ConfigOption
 
-from interface.spectrometer_complete_interface import SpectrometerInterface
-from interface.spectrometer_complete_interface import Grating, PortType, Port, Constraints
+from interface.grating_spectrometer_interface import SpectrometerInterface
+from interface.grating_spectrometer_interface import Grating, PortType, Port, Constraints
 
 
-class Main(Base, SpectrometerInterface):
+class Main(Base, GratingSpectrometerInterface):
     """ Hardware module that interface a dummy grating spectrometer
     """
 

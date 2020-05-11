@@ -59,7 +59,7 @@ class Constraints:
         self.ports = []                  # List of Ports object
 
 
-class SpectrometerInterface(metaclass=InterfaceMetaclass):
+class GratingSpectrometerInterface(metaclass=InterfaceMetaclass):
     """ This is the interface class to define the controls for spectrometer hardware
 
     This interface only deals with the part of the spectrometer that set central wavelength and gratings.

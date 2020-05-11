@@ -25,8 +25,8 @@ import ctypes as ct
 from core.module import Base
 from core.configoption import ConfigOption
 
-from interface.spectrometer_complete_interface import SpectrometerInterface
-from interface.spectrometer_complete_interface import Grating, PortType, Port, Constraints
+from interface.grating_spectrometer_interface import SpectrometerInterface
+from interface.grating_spectrometer_interface import Grating, PortType, Port, Constraints
 
 ERROR_CODE = {
     20201: "SHAMROCK_COMMUNICATION_ERROR",
@@ -48,7 +48,7 @@ FRONT_CODE = 0
 SIDE_CODE = 1
 
 
-class Shamrock(Base, SpectrometerInterface):
+class Shamrock(Base, GratingSpectrometerInterface):
     """ Hardware module that interface a Shamrock spectrometer from Andor
 
     Tested with :
