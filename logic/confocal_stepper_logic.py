@@ -444,7 +444,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._ai_scanner = False
 
         # initialize data arrays for stepper
-        self._initalize_data_arrays_stepper()
+        self._initialize_data_arrays_stepper()
 
         self.initialize_image()
 
@@ -471,7 +471,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._current_output_voltage = 0.0
 
         self._clock_frequency_3D = self.axis_class[self._first_scan_axis].step_freq * self._ramp_length
-        self._initalize_data_arrays_3D_stepper()  #
+        self._initialize_data_arrays_3D_stepper()  #
 
         self.finesse_scan_freq = 1.0
         self._finesse_measurement = False
@@ -867,13 +867,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._ai_scanner:
             self._ai_scan_axes.append(self._ai_counter)
 
-        if 0 > self._initalize_measurement(steps=self._steps_scan_first_line * self._ramp_length,
-                                           frequency=self._clock_frequency_3D, ai_channels=self._ai_scan_axes):
+        if 0 > self._initialize_measurement(steps=self._steps_scan_first_line * self._ramp_length,
+                                            frequency=self._clock_frequency_3D, ai_channels=self._ai_scan_axes):
             return -1
 
         # Initialize data
-        self._initalize_data_arrays_stepper()
-        self._initalize_data_arrays_3D_stepper()
+        self._initialize_data_arrays_stepper()
+        self._initialize_data_arrays_3D_stepper()
         self.initialize_image()
         self.signal_image_updated.emit()
 
@@ -1193,7 +1193,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return 0
 
-    def _initalize_measurement(self, steps, frequency, ai_channels):
+    def _initialize_measurement(self, steps, frequency, ai_channels):
         """Initializes everything but the stepper for a step scan measurement
 
         @param int steps: the steps that are to be counted/scanned during one part of the measurement
@@ -1294,12 +1294,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._ai_scanner:
             self._ai_scan_axes.append(self._ai_counter)
 
-        if 0 > self._initalize_measurement(steps=self._steps_scan_first_line,
-                                           frequency=self.axis_class[self._first_scan_axis].step_freq, ai_channels=
+        if 0 > self._initialize_measurement(steps=self._steps_scan_first_line,
+                                            frequency=self.axis_class[self._first_scan_axis].step_freq, ai_channels=
                                            self._ai_scan_axes):
             return -1
 
-        self._initalize_data_arrays_stepper()
+        self._initialize_data_arrays_stepper()
         self.initialize_image()
         self.signal_image_updated.emit()
 
@@ -2024,7 +2024,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq)
 
         if measurement_stopped:
-            self._initalize_measurement(steps, clock_frequency, ai_channels=self._ai_scan_axes)
+            self._initialize_measurement(steps, clock_frequency, ai_channels=self._ai_scan_axes)
 
     def measure_end_position_during_scan(self):
         if self.map_scan_position:
@@ -2110,7 +2110,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.full_image_back = image_raw_back
             self.full_image_back_smoothed = image_raw_back
 
-    def _initalize_data_arrays_stepper(self):
+    def _initialize_data_arrays_stepper(self):
         """
         Initialises all numpy data arrays for the current stepper settings
         """
@@ -2132,7 +2132,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if not self._fast_scan:
                 self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
 
-    def _initalize_data_arrays_3D_stepper(self):
+    def _initialize_data_arrays_3D_stepper(self):
         """
         Initialises all numpy data arrays for the current stepper settings
         """
@@ -2744,14 +2744,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._ai_scanner:
             self._ai_scan_axes.append(self._ai_counter)
 
-        if 0 > self._initalize_measurement(steps=self._ramp_length,
-                                           frequency=self._clock_frequency_3D, ai_channels=
+        if 0 > self._initialize_measurement(steps=self._ramp_length,
+                                            frequency=self._clock_frequency_3D, ai_channels=
                                            self._ai_scan_axes):
             return -1
 
         # Initialize data
-        self._initalize_data_arrays_stepper()
-        self._initalize_data_arrays_3D_stepper()
+        self._initialize_data_arrays_stepper()
+        self._initialize_data_arrays_3D_stepper()
         self.initialize_image()
         self.signal_image_updated.emit()
 
