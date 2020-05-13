@@ -3450,11 +3450,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         @param list[str] analogue_channels: the channels for which the voltages should be written
         @param array[][][] positions: the positions to be moved by the NIDAQ
 
-        @return np.array: the positions written. If an error occured returns  [-1]
+        @return np.array: the positions written. If an error occurred returns  [-1]
         """
-        if analogue_channels.any() not in self._analogue_output_daq_tasks:
-            self.log.error('The analogue output channel %s has no output task configured.', analogue_channels)
-            return -1
+        for channel in analogue_channels:
+            if channel not in self._analogue_output_daq_tasks:
+                self.log.error('The analogue output channel %s has no output task configured.', analogue_channels)
+                return -1
 
         if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray,)):
             self.log.error('Given position list is no array type.')
@@ -3469,21 +3470,36 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self.log.error("for one of the given analogue channels (%s) there is not voltage range defined",
                            analogue_channels)
             return [-1]
-
+        positions = np.array(positions)
         voltage_array = np.zeros(np.shape(positions))
         i = 0
+        if len(np.shape(positions)) == 1:
+            length_pos_array = 1
+        else:
+            length_pos_array = np.shape(positions)[0]
+        self.log.info("%s", len(analogue_channels))
+        if len(analogue_channels) != length_pos_array:
+            self.log.error(
+                "The length of scanned axes (%s) and the length of the given position array (%s) does not overlap",
+                analogue_channels, len(positions))
+
         for channel in analogue_channels:
             v_range = self._a_o_ranges[channel]
             pos_range = self._a_o_pos_ranges[channel]
-            voltage_array[:,:,i] = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
-                        positions[:, :, i] - v_range[0]) +v_range[0]
+            if length_pos_array == 1:
+                voltage_array = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
+                        positions - pos_range[0]) + v_range[0]
+            else:
+                voltage_array[i] = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
+                        positions[i] - pos_range[0]) + v_range[0]
             if np.min(voltage_array[i]) < v_range[0] or np.max(voltage_array[i]) > v_range[1]:
                 self.log.error(
                     'Voltages (%s, %s) exceed the limit, the positions have to '
-                    'be adjusted to stay in the given range.',np.min(voltage_array[i]),np.max(voltage_array[i]))
+                    'be adjusted to stay in the given range.', np.min(voltage_array[i]), np.max(voltage_array[i]))
                 return [-1]
 
-        self.analogue_scan_line(analogue_channels[0], voltage_array)
+        if np.array_equal(self.analogue_scan_line(analogue_channels[0], voltage_array), voltage_array) < 0:
+            return [-1]
 
         return positions
 
@@ -3537,6 +3553,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         except:
             self.log.exception('Error while scanning  voltage output line.')
             return -1
+        # Todo: the return value for error should be an array, to make comparison between correct values
+        #  and return value easier
+
         return written_voltages
 
     def start_analogue_output(self, analogue_channel, start_clock=False):
@@ -3725,6 +3744,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         else:
             self._clock_frequency_new[name] = float(clock_frequency)
 
+        if self._clock_frequency_new[name] > self._max_frequency:
+            self.log.warn(
+                "The chosen clock frequency for this task %s (kHZ) is higher than the maximally possible frequency %s(kHZ). "
+                "The frequency has been changed to the maximal frequency(kHZ) %s",
+                self._clock_frequency_new[name] / 1000, self._max_frequency / 1000, self._max_frequency / 1000)
+            self._clock_frequency_new[name] = self._max_frequency
         # use the correct clock in this method
         my_clock_frequency = self._clock_frequency_new[name]
 
