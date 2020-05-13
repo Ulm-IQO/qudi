@@ -20,36 +20,46 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from enum import Enum
-from core.util.interfaces import InterfaceMetaclass
+from core.meta import InterfaceMetaclass
 
 
 class SlowCounterInterface(metaclass=InterfaceMetaclass):
-    """ Define the controls for a slow counter."""
+    """ Define the controls for a slow counter.
 
-    _modtype = 'SlowCounterInterface'
-    _modclass = 'interface'
+    A slow counter is a measuring device that measures with a precise frequency one or multiple physical quantities.
 
-    @abc.abstractmethod
+    An example is a device that counts photons in real time with a given frequency.
+
+    The main idea of such a device is that the hardware handles the timing, and measurement of one or multiple
+    time varying quantities. The logic will periodically (but with imprecise timing) poll the hardware for the new
+    reading, not knowing if there is one, multiple or none.
+    """
+
+    @abstract_interface_method
     def get_constraints(self):
         """ Retrieve the hardware constrains from the counter device.
 
-        @return SlowCounterConstraints: object with constraints for the counter
+        @return (SlowCounterConstraints): object with constraints for the counter
+
+        The constrains are defined as a SlowCounterConstraints object, defined at  the end of this file
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
-        """ Configures the hardware clock of the NiDAQ card to give the timing.
+        """ Set the frequency of the counter by configuring the hardware clock
 
-        @param float clock_frequency: if defined, this sets the frequency of the clock
-        @param string clock_channel: if defined, this is the physical channel of the clock
+        @param (float) clock_frequency: if defined, this sets the frequency of the clock
+        @param (string) clock_channel: if defined, this is the physical channel of the clock
         @return int: error code (0:OK, -1:error)
+
+        TODO: Should the logic know about the different clock channels ?
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_counter(self,
                        counter_channels=None,
                        sources=None,
@@ -74,17 +84,17 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
 
         @param int samples: if defined, number of samples to read in one go
 
-        @return numpy.array((n, uint32)): the photon counts per second for n channels
+        @return numpy.array((n, uint32)): the measured quantity of each channel
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_counter_channels(self):
         """ Returns the list of counter channel names.
 
@@ -94,7 +104,7 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
  
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_counter(self):
         """ Closes the counter and cleans up afterwards.
 
@@ -102,16 +112,21 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_clock(self):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
+
+        TODO: This method is very hardware specific, it should be deprecated
         """
         pass
 
 
 class CountingMode(Enum):
+    """
+    TODO: Explain what are the counting mode and how they are used
+    """
     CONTINUOUS = 0
     GATED = 1
     FINITE_GATED = 2
@@ -125,6 +140,6 @@ class SlowCounterConstraints:
         # frequencies in Hz
         self.min_count_frequency = 5e-5
         self.max_count_frequency = 5e5
-        # add CountingMode enums to this list in instances
+        # TODO: add CountingMode enums to this list in instances
         self.counting_mode = []
 

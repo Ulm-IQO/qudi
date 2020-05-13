@@ -29,7 +29,8 @@ import ctypes   # is a foreign function library for Python. It provides C
                 # in pure Python.
 
 from interface.wavemeter_interface import WavemeterInterface
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.mutex import Mutex
 
 
@@ -85,9 +86,6 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         measurement_timing: 10.0 # in seconds
 
     """
-
-    _modclass = 'HighFinesseWavemeter'
-    _modtype = 'hardware'
 
     # config options
     _measurement_timing = ConfigOption('measurement_timing', default=10.)

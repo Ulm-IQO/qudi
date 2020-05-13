@@ -24,7 +24,8 @@ import visa
 import numpy as np
 import time
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -50,9 +51,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         gpib_timeout: 10
 
     """
-
-    _modclass = 'MicrowaveSMR'
-    _modtype = 'hardware'
 
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')

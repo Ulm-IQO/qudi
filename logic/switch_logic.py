@@ -24,10 +24,8 @@ from collections import OrderedDict
 
 
 class SwitchLogic(GenericLogic):
-    """ Logic module agreggating multiple hardware switches.
+    """ Logic module aggregating multiple hardware switches.
     """
-    _modclass = 'switch'
-    _modtype = 'logic'
 
     def __init__(self, config, **kwargs):
         """ Create logic object
