@@ -1133,7 +1133,7 @@ class ConfocalLogic(GenericLogic):
                             origin="lower",
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],
-                            interpolation='none',
+                            interpolation='bicubic',
                             extent=image_dimension
                             )
 
