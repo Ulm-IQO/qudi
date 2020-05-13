@@ -3280,7 +3280,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                                            "output channel", channel)
                             return -1
                         # check if no task for channel to be added is configured
-                        if channel in self._analogue_input_daq_tasks.keys():
+                        if channel in self._analogue_output_daq_tasks.keys():
                             self.log.error('The same analogue output channel %s already has '
                                            'an existing output task running, close this one first.', channel)
                             return -1
