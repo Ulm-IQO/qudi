@@ -166,7 +166,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         self._analogue_input_samples = {}
         self._analogue_input_started = False
-        self._analogue_output_clock_frequency = self._default_scanner_clock_frequency
         self._clock_daq_task_new = {}
         self._clock_frequency_new = {}
         self._clock_channel_new = {}
@@ -2559,10 +2558,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     daq.byref(n_read_samples),
                     # Reserved for future use. Pass NULL (here None) to this parameter
                     None)
-            except:
-                self.log.error("not able to read counts for finite counter.")
-                return np.array([-1]), 0
 
+            except Exception as err:
+                self.log.error('not able to read counts for finite counter.:\n %s', err)
+                return np.array([-1.]), 0
         return self._finite_clock_frequency * _finite_count_data, n_read_samples.value  # counts per second
 
     def stop_finite_counter(self):
@@ -3115,8 +3114,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 daq.byref(n_read_samples),
                 # Reserved for future use. Pass NULL (here None) to this parameter
                 None)
-        except:
-            self.log.error('Error while reading the analogue voltages from NIDAQ')
+        except daq.DAQmxFunctions.SamplesNotYetAvailableError as not_available_error:
+            self.log.error('Error while reading the analogue voltages from NIDAQ:\n %s', not_available_error)
+            return np.array([-1.]), 0
+        except Exception as err:
+            self.log.error('Error while reading the analogue voltages from NIDAQ:\n %s', err)
             return np.array([-1.]), 0
         return _analogue_count_data, n_read_samples.value
 
