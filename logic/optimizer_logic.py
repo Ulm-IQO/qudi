@@ -242,6 +242,8 @@ class OptimizerLogic(GenericLogic):
     def _initialize_xy_refocus_image(self):
         """Initialisation of the xy refocus image."""
         self._xy_scan_line_count = 0
+        scanner_pos = self._scanning_device.get_scanner_position()
+
 
         # Take optim pos as center of refocus image, to benefit from any previous
         # optimization steps that have occurred.
@@ -257,18 +259,19 @@ class OptimizerLogic(GenericLogic):
         self._X_values = np.linspace(xmin, xmax, num=self.optimizer_XY_res)
         self._Y_values = np.linspace(ymin, ymax, num=self.optimizer_XY_res)
         self._Z_values = self.optim_pos_z * np.ones(self._X_values.shape)
-        self._A_values = np.zeros(self._X_values.shape)
+        self._A_values = np.ones(self._X_values.shape) * scanner_pos[3]
         self._return_X_values = np.linspace(xmax, xmin, num=self.optimizer_XY_res)
-        self._return_A_values = np.zeros(self._return_X_values.shape)
+        self._return_A_values = np.ones(self._return_X_values.shape) * scanner_pos[3]
 
         self.xy_refocus_image = np.zeros((
             len(self._Y_values),
             len(self._X_values),
-            3 + len(self.get_scanner_count_channels())))
+            4 + len(self.get_scanner_count_channels())))
         self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
         self.xy_refocus_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+        self.xy_refocus_image[:, :, 3] = scanner_pos[3] * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
@@ -317,6 +320,8 @@ class OptimizerLogic(GenericLogic):
         until the xy optimization image is complete.
         """
         n_ch = len(self._scanning_device.get_scanner_axes())
+        scanner_pos = self._scanning_device.get_scanner_position()
+
         # stop scanning if instructed
         if self.stopRequested:
             with self.threadlock:
@@ -325,7 +330,7 @@ class OptimizerLogic(GenericLogic):
                 self.sigImageUpdated.emit()
                 self.sigRefocusFinished.emit(
                     self._caller_tag,
-                    [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0][0:n_ch])
+                    [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, scanner_pos[3]][0:n_ch])
                 return
 
         # move to the start of the first line
@@ -347,7 +352,7 @@ class OptimizerLogic(GenericLogic):
         if n_ch <= 3:
             line = np.vstack((lsx, lsy, lsz)[0:n_ch])
         else:
-            line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
+            line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
 
         line_counts = self._scanning_device.scan_line(line)
         if np.any(line_counts == -1):
@@ -362,7 +367,7 @@ class OptimizerLogic(GenericLogic):
         if n_ch <= 3:
             return_line = np.vstack((lsx, lsy, lsz))
         else:
-            return_line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
+            return_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
 
         return_line_counts = self._scanning_device.scan_line(return_line)
         if np.any(return_line_counts == -1):
@@ -372,7 +377,7 @@ class OptimizerLogic(GenericLogic):
             return
 
         s_ch = len(self.get_scanner_count_channels())
-        self.xy_refocus_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
+        self.xy_refocus_image[self._xy_scan_line_count, :, 4:4 + s_ch] = line_counts
         self.sigImageUpdated.emit()
 
         self._xy_scan_line_count += 1
@@ -385,7 +390,7 @@ class OptimizerLogic(GenericLogic):
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
-        xy_fit_data = self.xy_refocus_image[:, :, 3+self.opt_channel].ravel()
+        xy_fit_data = self.xy_refocus_image[:, :, 4+self.opt_channel].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
@@ -491,6 +496,7 @@ class OptimizerLogic(GenericLogic):
 
     def finish_refocus(self):
         """ Finishes up and releases hardware after the optimizer scans."""
+        scanner_pos = self._scanning_device.get_scanner_position()
         self.kill_scanner()
 
         self.log.info(
@@ -507,11 +513,11 @@ class OptimizerLogic(GenericLogic):
         # caller_tag
         self.sigRefocusFinished.emit(
             self._caller_tag,
-            [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
+            [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, scanner_pos[3]])
 
     def _scan_z_line(self):
         """Scans the z line for refocus."""
-
+        scanner_pos = self._scanning_device.get_scanner_position()
         # Moves to the start value of the z-scan
         status = self._move_to_start_pos(
             [self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
@@ -530,7 +536,7 @@ class OptimizerLogic(GenericLogic):
         if n_ch <= 3:
             line = np.vstack((scan_x_line, scan_y_line, scan_z_line)[0:n_ch])
         else:
-            line = np.vstack((scan_x_line, scan_y_line, scan_z_line, np.zeros(scan_x_line.shape)))
+            line = np.vstack((scan_x_line, scan_y_line, scan_z_line, np.ones(scan_x_line.shape)*scanner_pos[3]))
 
         # Perform scan
         line_counts = self._scanning_device.scan_line(line)
@@ -563,7 +569,7 @@ class OptimizerLogic(GenericLogic):
                     (scan_x_line + self.surface_subtr_scan_offset,
                      scan_y_line,
                      scan_z_line,
-                     np.zeros(scan_x_line.shape)))
+                     np.ones(scan_x_line.shape) * scanner_pos[3]))
 
             line_bg_counts = self._scanning_device.scan_line(line_bg)
             if np.any(line_bg_counts[0] == -1):

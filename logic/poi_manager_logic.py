@@ -821,7 +821,7 @@ class PoiManagerLogic(GenericLogic):
     def set_scan_image(self, emit_change=True):
         """ Get the current xy scan data and set as scan_image of ROI. """
         self._roi.set_scan_image(
-            self.scannerlogic().xy_image[:, :, 3],
+            self.scannerlogic().xy_image[:, :, 4],
             (tuple(self.scannerlogic().image_x_range), tuple(self.scannerlogic().image_y_range)))
 
         if emit_change:
