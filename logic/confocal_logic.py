@@ -872,8 +872,8 @@ class ConfocalLogic(GenericLogic):
 
         @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
 
-        @param: list percentile_range (optional) The percentile range [min, max] of the color scale 
-        
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+
         @param: bool block (optional) If False, return immediately; if True, block until save completes."""
 
         if block:
@@ -946,7 +946,6 @@ class ConfocalLogic(GenericLogic):
         data['x position (m)'] = self.xy_image[:, :, 0].flatten()
         data['y position (m)'] = self.xy_image[:, :, 1].flatten()
         data['z position (m)'] = self.xy_image[:, :, 2].flatten()
-        data['a position V?'] = self.xy_image[:, :, 3].flatten() # TODO Check for Unit
 
         for n, ch in enumerate(self.get_scanner_count_channels()):
             data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 4 + n].flatten()
@@ -977,8 +976,8 @@ class ConfocalLogic(GenericLogic):
 
         @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
 
-        @param: list percentile_range (optional) The percentile range [min, max] of the color scale 
-        
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+
         @param: bool block (optional) If False, return immediately; if True, block until save completes."""
         if block:
             self._save_depth_data(colorscale_range, percentile_range)
@@ -1145,7 +1144,7 @@ class ConfocalLogic(GenericLogic):
                             origin="lower",
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],
-                            interpolation='bicubic',
+                            interpolation='none',
                             extent=image_dimension
                             )
 

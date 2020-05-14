@@ -63,12 +63,13 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.x_range = confocal._scanning_device.get_position_range()[0]
         self.y_range = confocal._scanning_device.get_position_range()[1]
         self.z_range = confocal._scanning_device.get_position_range()[2]
+        self.a_range = confocal._scanning_device.get_position_range()[3]
 
         # Sets the current position to the center of the maximal scanning range
         self.current_x = (self.x_range[0] + self.x_range[1]) / 2
         self.current_y = (self.y_range[0] + self.y_range[1]) / 2
         self.current_z = (self.z_range[0] + self.z_range[1]) / 2
-        self.current_a = (self.z_range[0] + self.z_range[1]) / 2 #"z" same piezo as a
+        self.current_a = (self.a_range[0] + self.a_range[1]) / 2
 
         # Sets the size of the image to the maximal scanning range
         self.image_x_range = self.x_range
@@ -255,8 +256,6 @@ class ConfocalLogic(GenericLogic):
     """
     This is the Logic class for confocal scanning.
     """
-    _modclass = 'confocallogic'
-    _modtype = 'logic'
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
@@ -275,12 +274,16 @@ class ConfocalLogic(GenericLogic):
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
+    signal_save_started = QtCore.Signal()
     signal_xy_data_saved = QtCore.Signal()
     signal_depth_data_saved = QtCore.Signal()
     signal_tilt_correction_active = QtCore.Signal(bool)
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
     signal_position_changed = QtCore.Signal()
+
+    _signal_save_xy = QtCore.Signal(object, object)
+    _signal_save_depth = QtCore.Signal(object, object)
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -311,6 +314,7 @@ class ConfocalLogic(GenericLogic):
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
+        self.a_range = self._scanning_device.get_position_range()[3]
 
         # restore here ...
         self.history = []
@@ -894,6 +898,17 @@ class ConfocalLogic(GenericLogic):
         @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+
+        @param: bool block (optional) If False, return immediately; if True, block until save completes."""
+
+        if block:
+            self._save_xy_data(colorscale_range, percentile_range)
+        else:
+            self._signal_save_xy.emit(colorscale_range, percentile_range)
+
+    @QtCore.Slot(object, object)
+    def _save_xy_data(self, colorscale_range=None, percentile_range=None):
+        """ Execute save operation. Slot for _signal_save_xy.
         """
         filepath = self._save_logic.get_path_for_module('Confocal')
         timestamp = datetime.datetime.now()
@@ -1253,7 +1268,7 @@ class ConfocalLogic(GenericLogic):
             self.signal_depth_image_updated.emit()
             self.signal_tilt_correction_update.emit()
             self.signal_tilt_correction_active.emit(self._scanning_device.tiltcorrection)
-            self._change_position('history')
+            # self._change_position('history') # TODO: This is commented out to not change Crosshair pos in History
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
 
