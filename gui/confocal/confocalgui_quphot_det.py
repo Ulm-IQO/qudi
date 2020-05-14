@@ -25,8 +25,8 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.configoption import ConfigOption
 from core.connector import Connector
+from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
@@ -92,12 +92,25 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         super(OptimizerSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
+class SaveDialog(QtWidgets.QDialog):
+    """ Dialog to provide feedback and block GUI while saving """
+    def __init__(self, parent, title="Please wait", text="Saving..."):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
+
+        # Dialog layout
+        self.text = QtWidgets.QLabel("<font size='16'>" + text + "</font>")
+        self.hbox = QtWidgets.QHBoxLayout()
+        self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.hbox.addWidget(self.text)
+        self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.setLayout(self.hbox)
 
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
     """
-    _modclass = 'ConfocalGui'
-    _modtype = 'gui'
 
     # declare connectors
     confocallogic1 = Connector(interface='ConfocalLogic')
@@ -141,6 +154,8 @@ class ConfocalGui(GUIBase):
         self.initMainUI()      # initialize the main GUI
         self.initSettingsUI()  # initialize the settings GUI
         self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
+
+        self._save_dialog = SaveDialog(self._mw)
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -488,6 +503,9 @@ class ConfocalGui(GUIBase):
         # Connect other signals from the logic with an update of the gui
 
         self._scanning_logic.signal_start_scanning.connect(self.logic_started_scanning)
+        self._scanning_logic.signal_save_started.connect(self.logic_started_save)
+        self._scanning_logic.signal_xy_data_saved.connect(self.logic_finished_save)
+        self._scanning_logic.signal_depth_data_saved.connect(self.logic_finished_save)
         self._scanning_logic.signal_continue_scanning.connect(self.logic_continued_scanning)
         self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
         # self._scanning_logic.signal_stop_scanning.connect()
@@ -987,6 +1005,7 @@ class ConfocalGui(GUIBase):
 
     def update_crosshair_position_from_logic(self, tag):
         """ Update the GUI position of the crosshair from the logic.
+
         @param str tag: tag indicating the source of the update
 
         Ignore the update when it is tagged with one of the tags that the
@@ -1577,7 +1596,7 @@ class ConfocalGui(GUIBase):
             high_centile = self._mw.xy_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
-        self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range)
+        self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range, block=False)
 
         # TODO: find a way to produce raw image in savelogic.  For now it is saved here.
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
@@ -1598,6 +1617,8 @@ class ConfocalGui(GUIBase):
 
     def save_depth_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""
+        self._save_dialog.show()
+
         cb_range = self.get_depth_cb_range()
 
         # Percentile range is None, unless the percentile scaling is selected in GUI.
@@ -1607,7 +1628,7 @@ class ConfocalGui(GUIBase):
             high_centile = self._mw.depth_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
-        self._scanning_logic.save_depth_data(colorscale_range=cb_range, percentile_range=pcile_range)
+        self._scanning_logic.save_depth_data(colorscale_range=cb_range, percentile_range=pcile_range, block=False)
 
         # TODO: find a way to produce raw image in savelogic.  For now it is saved here.
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
@@ -1873,3 +1894,10 @@ class ConfocalGui(GUIBase):
         if tag == 'logic':
             self.disable_scan_actions()
 
+    def logic_started_save(self):
+        """ Displays modal dialog when save process starts """
+        self._save_dialog.show()
+
+    def logic_finished_save(self):
+        """ Hides modal dialog when save process done """
+        self._save_dialog.hide()
