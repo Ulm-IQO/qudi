@@ -25,7 +25,10 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.configoption import ConfigOption
+from core.connector import Connector
+from core.statusvariable import StatusVar
+
 from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar

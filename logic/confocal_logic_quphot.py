@@ -30,8 +30,11 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 from logic.generic_logic import GenericLogic
+
+from core.configoption import ConfigOption
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
 
 
 class OldConfigFileError(Exception):
