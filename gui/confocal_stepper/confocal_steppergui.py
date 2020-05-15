@@ -132,7 +132,7 @@ class CrossLine(pg.InfiniteLine):
 
 
 class ConfocalStepperMainWindow(QtWidgets.QMainWindow):
-    """ The main window for the ODMR measurement GUI.
+    """ The main window for the confocal stepper measurement GUI.
     """
 
     sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
@@ -168,7 +168,7 @@ class ConfocalStepperSettingDialog(QtWidgets.QDialog):
 
 class ConfocalStepperGui(GUIBase):
     """
-    This is the GUI Class for Confocal measurements
+    This is the GUI Class for Confocal Stepper measurements
     """
 
     _modclass = 'ConfocalStepperGui'
@@ -240,7 +240,6 @@ class ConfocalStepperGui(GUIBase):
         # All our gui elements are dockable, and so there should be no "central" widget.
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-        # self._mw.scanLineDockWidget.hide()
 
         self.init_plot_step_UI()
         self.init_hardware_UI()
@@ -360,7 +359,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.ViewWidget.setLabel('bottom', units='Steps')
         self._mw.ViewWidget.setLabel('left', units='Steps')
 
-        # Create Region of Interest for xy image and add to xy Image Widget:
+        # Create Region of Interest for xy image and add to Image Widget:
         # Get the image for the display from the logic
         step_image_data = self._stepper_logic.image_raw[:, :, 2]
         ini_pos_x_crosshair = len(step_image_data) / 2
@@ -378,7 +377,7 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.ViewWidget.addItem(self.roi)
 
-        # create horizontal and vertical line as a crosshair in xy image:
+        # create horizontal and vertical line as a crosshair in image:
         self.hline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
                                angle=0, pen={'color': palette.green, 'width': 1})
         self.vline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
@@ -394,7 +393,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.ViewWidget.addItem(self.hline)
         self._mw.ViewWidget.addItem(self.vline)
 
-        # Set up and connect xy channel combobox
+        # Set up and connect count channel combobox
         scan_channels = self._stepper_logic.get_counter_count_channels()
         for n, ch in enumerate(scan_channels):
             self._mw.count_channel_ComboBox.addItem(str(ch), n)
@@ -601,13 +600,17 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_piezo_max_InputWidget.setRange(self._scanning_logic.z_range[0],
                                                   self._scanning_logic.z_range[1])
 
-        # set the minimal step size
-        # self._mw.x_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        # self._mw.x_piezo_max_InputWidget.setOpts(minStep=1e-6)
-        # self._mw.y_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        # self._mw.y_piezo_max_InputWidget.setOpts(minStep=1e-6)
-        # self._mw.z_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        # self._mw.z_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        if self.default_meter_prefix:
+            self._mw.x_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+
+            self._mw.x_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
         # Handle slider movements by user:
         self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_x)
@@ -698,6 +701,8 @@ class ConfocalStepperGui(GUIBase):
 
         @param object event: qtpy.QtCore.QEvent object.
         """
+        pass
+        #todo: update from key needs to be adjusted for confocal stepper
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
         position = self._scanning_logic.get_position()  # in meters
@@ -1027,7 +1032,6 @@ class ConfocalStepperGui(GUIBase):
         self._mw.max_scan_resolution_3D_checkBox.setEnabled(False)
         self._mw.finesse_scan_freq_doubleSpinBox.setEnabled(False)
 
-
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
         if enable and self._stepper_logic.history_index < len(
@@ -1098,6 +1102,7 @@ class ConfocalStepperGui(GUIBase):
         self.disable_3D_parameters()
         self.update_stepper_hardware_values()
         self._stepper_logic.start_finesse_measurement()  # tag='gui')
+
     def menu_settings(self):
         """ This method opens the settings menu. """
         self._sd.exec_()
@@ -1135,9 +1140,9 @@ class ConfocalStepperGui(GUIBase):
 
         # Percentile range is None, unless the percentile scaling is selected in GUI.
         pcile_range = None
-        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
-            high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
+        if self._mw.cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
         self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
@@ -1192,8 +1197,7 @@ class ConfocalStepperGui(GUIBase):
         self.step_image.getViewBox().updateAutoRange()
         # Todo: this needs to have a check for the stepping direction and the correct data has to
         #  be chosen
-        # if self.count_direction:
-        # Todo: add count_direction variable
+
         if self.count_direction:
             step_image_data = self._stepper_logic.image_raw[:, :, 2 + self.count_channel]
         else:
@@ -1215,13 +1219,40 @@ class ConfocalStepperGui(GUIBase):
 
     ################## Step Parameters ##################
     def update_fast_scan_option(self):
-        """ The user changed if he wants to aquire both directions or just the forward one.
+        """ The user changed if he wants to acquire both directions or just the forward one.
          Adjust all other GUI elements accordingly."""
         fast_scan = self._mw._fast_scan_checkBox.isChecked()
         self._stepper_logic._fast_scan = fast_scan
         if fast_scan:
             self.update_count_direction(0)
         self._mw.count_direction_ComboBox.setDisabled(fast_scan)
+
+    def update_from_key(self, x=None, y=None, z=None):
+        """The user pressed a key to move the crosshair, adjust all GUI elements.
+
+        @param float x: new x position in m
+        @param float y: new y position in m
+        @param float z: new z position in m
+        """
+        if x is not None:
+            self.update_roi_xy(h=x)
+            if self._scanning_logic.depth_img_is_xz:
+                self.update_roi_depth(h=x)
+            self.update_slider_x(x)
+            self.update_input_x(x)
+            self._scanning_logic.set_position('xinput', x=x)
+        if y is not None:
+            self.update_roi_xy(v=y)
+            if not self._scanning_logic.depth_img_is_xz:
+                self.update_roi_depth(h=y)
+            self.update_slider_y(y)
+            self.update_input_y(y)
+            self._scanning_logic.set_position('yinput', y=y)
+        if z is not None:
+            self.update_roi_depth(v=z)
+            self.update_slider_z(z)
+            self.update_input_z(z)
+            self._scanning_logic.set_position('zinput', z=z)
 
     def update_step_direction(self):
         """ The user changed the step scan direction, adjust all
@@ -1231,13 +1262,14 @@ class ConfocalStepperGui(GUIBase):
         new_axes = self._mw.step_direction_comboBox.currentData()
         if direction:
             new_axes = self._inverted_axes[new_axes]
-        self._stepper_logic._inverted_scan = direction
-        self._stepper_logic.set_scan_axes(new_axes)
+        self._scanning_logic._inverted_scan = direction
+        self._scanning_logic.set_scan_axes(new_axes)
         self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     def update_from_input_x_piezo(self):
         """ The user changed the number in the x piezo position spin box, adjust all
             other GUI elements."""
+        #todo: this is not connected to anything yet.
         x_pos = self._mw.x_piezo_InputWidget.value()
         self.update_slider_piezo_x(x_pos)
         self._scanning_logic.set_position('xinput', x=x_pos)
@@ -1281,7 +1313,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_piezo_InputWidget.setValue(z_pos)
 
     def update_from_piezo_slider_x(self, sliderValue):
-        """The user moved the x piezo slider slider, adjust the other GUI elements.
+        """The user moved the x piezo slider, adjust the other GUI elements.
 
         @params int sliderValue: slider piezo position, a quantized whole number
         """
@@ -1347,17 +1379,11 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic.axis_class['z'].steps_direction = self._mw.z_steps_InputWidget.value()
 
     # Todo: did not do this yet
-    def change_x_image_range(self):
-        """ Adjust the image range for x in the logic. """
-        self._scanning_logic.image_x_range = [
-            self._mw.x_min_InputWidget.value(),
-            self._mw.x_max_InputWidget.value()]
-
     def change_x_piezo_range(self):
         """ Adjust the piezo range for x in the logic. """
         self._scanning_logic.image_x_range = [
-            self._mw.x_min_InputWidget.value(),
-            self._mw.x_max_InputWidget.value()]
+            self._mw.x_piezo_min_InputWidget.value(),
+            self._mw.x_piezo_max_InputWidget.value()]
 
     def change_y_piezo_range(self):
         """ Adjust the piezo range for y in the logic.
