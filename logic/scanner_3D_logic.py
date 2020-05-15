@@ -69,7 +69,7 @@ class Scanner3DLogic(GenericLogic):
     return_frequency = StatusVar(default=500)
 
     # config
-    scan_resolution_3rd_axis = ConfigOption('3D_scan_resolution', 1e-6, missing="warn")
+    scan_resolution_fast_axis = ConfigOption('3D_scan_resolution', 1e-6, missing="warn")
     _ai_counter = ConfigOption("AI_counter", None, missing="warn")
 
     # signals
@@ -151,16 +151,17 @@ class Scanner3DLogic(GenericLogic):
 
         # Variable to check if a scan is continuable
         self.scan_counter = 0
+        self._scan_continuable = False
 
         self._analog_counting = True
         self.go_to_start_positions = False
 
-        self.fast_axis_scan_freq = 5.0  # Hz, the freq. to scan the whole measurement range of the fast axis
+        self.scan_freq_fast_axis = 5.0  # Hz, the freq. to scan the whole measurement range of the fast axis
 
         self._double_3rd_axis_scan = False
-        self._use_maximal_resolution_3rd_axis = False
+        self._use_maximal_resolution_fast_axis = False
         self.smoothing = False
-        self._3rd_axis_smoothing_steps = 10
+        self._fast_axis_smoothing_steps = 10
         # Todo:this needs to be calculated after everything else is set
         self._clock_frequency_3D_scan = 10000
 
@@ -188,6 +189,9 @@ class Scanner3DLogic(GenericLogic):
             self.current_ai_axes.append("y")
             self.current_ai_axes.append("z")
 
+        # change scan direction variables
+        self._inverted_scan = False
+
         self._get_scanner_count_channels()
 
     def on_deactivate(self):
@@ -207,9 +211,9 @@ class Scanner3DLogic(GenericLogic):
 
         # Todo: This needs to be flexible: the 3rd axis
 
-        self.scan_resolution_3rd_axis = self.calculate_resolution(self._analog_input_device.get_analogue_resolution(),
-                                                                  self._scanning_axes_ranges["z"])
-        if self.scan_resolution_3rd_axis == -1:
+        self.scan_resolution_fast_axis = self.calculate_resolution(self._analog_input_device.get_analogue_resolution(),
+                                                                   self._scanning_axes_ranges["z"])
+        if self.scan_resolution_fast_axis == -1:
             self.log.error("Calculated scan resolution not possible")
             return -1
 
@@ -356,7 +360,7 @@ class Scanner3DLogic(GenericLogic):
 
         # Todo: Maybe something to implement later: Check axis and how they are to be scanned
         # (which one is first, second, third axis)
-        if self._use_maximal_resolution_3rd_axis:
+        if self._use_maximal_resolution_fast_axis:
             if 0 > self._use_maximal_resolution():
                 self.log.error("Error setting resolution for 3rd axis to maximum")
                 return -1
@@ -368,10 +372,11 @@ class Scanner3DLogic(GenericLogic):
         self.signal_image_updated.emit()
         first_new_scan_position = self.image[self._scan_counter, 0, 0, :3]
         self.move_to_position(
-            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]})
+            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]},
+            tag="scan")
 
         # The clock freq for each point is given by the freq used to scan one whole line on the fast axis
-        self._clock_frequency_3D_scan = int(self.fast_axis_scan_freq * self._dim_fast_axis)
+        self._clock_frequency_3D_scan = int(self.scan_freq_fast_axis * self._dim_fast_axis)
 
         # Todo: take care of hardware conflict with other logics
         # move piezo to desired start position to go easy on piezo
@@ -386,6 +391,7 @@ class Scanner3DLogic(GenericLogic):
 
         self.generate_file_path()
         self.generate_file_info()
+        self._scan_continuable = True
         self.signal_scan_line_next.emit()
 
     def continue_3D_scan(self):
@@ -393,14 +399,17 @@ class Scanner3DLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo: Check if scan is continuable. Else start new scan.
+        if not self._scan_continuable:
+            self.log.warning("It is not possible to continue this scan")
+            return -1
         self._scan_counter = self._line_pos
         if self._scan_counter == 0:
             self.start_3D_scan()
             return 0
         first_new_scan_position = self.image[self._scan_counter, 0, 0, :3]
         self.move_to_position(
-            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]})
+            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]},
+            tag="scan")
         if 0 > self._initialize_measurement(steps=self._dim_fast_axis * self._dim_medium_axis,
                                             frequency=self._clock_frequency_3D_scan, ai_channels=
                                             self.current_ai_axes):
@@ -454,6 +463,7 @@ class Scanner3DLogic(GenericLogic):
                 self.stopRequested = False
                 self.signal_image_updated.emit()
                 self.signal_stop_scanning.emit()
+                self.signal_change_position.emit("")
                 self.log.info("3D Scanning stopped successfully")
                 self.log.info("The scanner scanned %s lines", self._scan_counter)
                 self.module_state.unlock()
@@ -464,6 +474,7 @@ class Scanner3DLogic(GenericLogic):
         if type(new_counts) == int:
             self.stopRequested = True
             self.signal_scan_line_next.emit()
+            self._scan_continuable = False
             return
         # Todo:
         # this might be a better way to catch errors:
@@ -480,6 +491,7 @@ class Scanner3DLogic(GenericLogic):
         # check if at end of scan
         if self._scan_counter > self._dim_slow_axis - 1:
             self.stopRequested = True
+            self._scan_continuable = False
             self.log.info("3D Scan at end position")
 
         self.signal_scan_line_next.emit()
@@ -719,11 +731,11 @@ class Scanner3DLogic(GenericLogic):
             ramp = np.array([v_min, v_max])
 
         else:
-            smoothing_range = self._3rd_axis_smoothing_steps + 1
+            smoothing_range = self._fast_axis_smoothing_steps + 1
 
             # Sanity check in case the range is too short
             # The voltage range covered while accelerating in the smoothing steps
-            v_range_of_accel = sum(n * self.scan_resolution_3rd_axis / smoothing_range
+            v_range_of_accel = sum(n * self._fast_axis_smoothing_steps / smoothing_range
                                    for n in range(0, smoothing_range)
                                    )
 
@@ -734,9 +746,9 @@ class Scanner3DLogic(GenericLogic):
             # calculate smooth ramp if needed and possible
             if self.smoothing and v_min_linear < v_max_linear:
 
-                num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / self.scan_resolution_3rd_axis)
+                num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / self.scan_resolution_fast_axis)
                 # Calculate voltage step values for smooth acceleration part of ramp
-                smooth_curve = np.array([sum(n * self.scan_resolution_3rd_axis / smoothing_range
+                smooth_curve = np.array([sum(n * self.scan_resolution_fast_axis / smoothing_range
                                              for n in range(1, N)
                                              )
                                          for N in range(1, smoothing_range)
@@ -750,13 +762,12 @@ class Scanner3DLogic(GenericLogic):
                 # combine different part of ramp
                 ramp = np.hstack((accel_part, linear_part, decel_part))
             else:
-                num_of_linear_steps = np.rint((v_max - v_min) / self.scan_resolution_3rd_axis)
+                num_of_linear_steps = np.rint((v_max - v_min) / self.scan_resolution_fast_axis)
                 ramp = np.linspace(v_min, v_max, num_of_linear_steps)
                 if v_min_linear > v_max_linear and self.smoothing:
                     # print out info for use
                     self.log.warning('Voltage ramp too short to apply the '
-                                     'configured smoothing_steps. A simple linear ramp '
-                                     'was created instead.')
+                                     'configured smoothing steps. A simple linear ramp was created instead.')
         # Reverse if downwards ramp is required
         if end_voltage < start_voltage:
             ramp = ramp[::-1]
@@ -825,10 +836,11 @@ class Scanner3DLogic(GenericLogic):
                     "The axis (%s) for which the position was to be updated does not exist for the scanner (%s)", key,
                     self._current_position.keys())
 
-    def move_to_position(self, position_dict):
+    def move_to_position(self, position_dict, tag=""):
         """
         Changes the current position of the scanner to the given position
         @param dict position_dict:
+        @param str tag: the tag shows which function called this function
 
         @return int: error code (0:OK, -1:error)
         """
@@ -848,6 +860,7 @@ class Scanner3DLogic(GenericLogic):
                 self.log.error(
                     "The axis (%s) for which the position was to be changed does not exist for the scanner (%s)", key,
                     self._current_position.keys())
+        self.signal_change_position.emit(tag)
         return 0
 
     def change_single_output_position(self, axis, new_pos):
@@ -928,13 +941,13 @@ class Scanner3DLogic(GenericLogic):
         # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
 
         parameters["Count frequency (Hz)"] = self._clock_frequency_3D_scan
-        parameters["Scan Freq complete fast axis (Hz)"] = self.fast_axis_scan_freq
-        parameters["Scan resolution (V/step)"] = self.scan_resolution_3rd_axis
+        parameters["Scan Freq complete fast axis (Hz)"] = self.scan_freq_fast_axis
+        parameters["Scan resolution (V/step)"] = self.scan_resolution_fast_axis
         parameters["Start Voltage fast axis(V)"] = self.image_ranges["z"][0]
         parameters["End Voltage fast axis (V)"] = self.image_ranges["z"][1]
 
         if self.smoothing:
-            parameters["Smoothing Steps"] = self._3rd_axis_smoothing_steps
+            parameters["Smoothing Steps"] = self._fast_axis_smoothing_steps
 
         return parameters
 
@@ -981,3 +994,20 @@ class Scanner3DLogic(GenericLogic):
 
         np.save(self.path_name + '/' + self.filename, data)
         np.save(self.path_name + '/' + self.filename_back, data)
+
+    def save_data(self, colorscale_range=None, percentile_range=None):
+        """ Save the current confocal xy data to file.
+
+        Two files are created.  The first is the imagedata, which has a text-matrix of count values
+        corresponding to the pixel matrix of the image.  Only count-values are saved here.
+
+        The second file saves the full raw data with x, y, z, and counts at every pixel.
+
+        A figure is also saved.
+
+        @param: list colorscale_range (optional) The range [min, max] of the display colour scale
+                    (for the figure)
+
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+        """
+        pass
