@@ -22,11 +22,109 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import abc
 import sys
 import logging
+from enum import Enum
 from qtpy import QtCore
 
 from qudi.core.meta import TaskMetaclass
 from qudi.core.util.mutex import Mutex
+from qudi.core.connector import Connector
 from fysom import Fysom
+
+
+class TaskState(Enum):
+    stopped = 0
+    starting = 1
+    running = 2
+    pausing = 3
+    paused = 4
+    resuming = 5
+    finishing = 6
+
+
+class PrePostTaskState:
+    pass
+
+
+class ScriptResult:
+    """
+
+    """
+    def __init__(self, data, success):
+        self.data = data
+        self._success = bool(success)
+
+    @property
+    def success(self):
+        return self._success
+
+    @property
+    def result(self):
+        return self._data, self._success
+
+
+class QudiScript(QtCore.QObject):
+    """
+
+    """
+    # Declare modules to control.
+    # _my_module_conn = Connector(interface='MyModuleClassName', name='my_module')
+
+    sigScriptFinished = QtCore.Signal(object)
+    __sigInvokeRun = QtCore.Signal()
+
+    def __init__(self, conn_modules):
+        # Create connectors and connect them to module instances
+        for cls in reversed(self.__class__.mro()[:-1]):
+            for attr, value in vars(cls):
+                if isinstance(value, Connector):
+                    name = attr if value.name is None else value.name
+                    if name not in conn_modules and not value.optional:
+                        raise Exception(
+                            'Module connection "{0}" not configured for QudiScript.'.format(name))
+                    new_conn = value.copy(name=name)
+                    setattr(self, attr, new_conn)
+                    new_conn.connect(conn_modules[name])
+        self._result = None             # result object
+        self._lock = Mutex()   # mutex
+        self.__sigInvokeRun.connect(self.__run, QtCore.Qt.QueuedConnection)
+
+    @property
+    def log(self):
+        """ Returns a logger object """
+        return logging.getLogger(self.__class__.__name__)
+
+    def __call__(self):
+        return self.__run()
+
+    def __run(self):
+        if self.can_run():
+            with self._lock:
+                self._result = None
+                try:
+                    if QtCore.QThread.currentThread() is not self.thread():
+                        self.__sigInvokeRun.emit()
+                    else:
+                        self._run()
+                        self.sigScriptFinished.emit(self._result)
+                except:
+                    self.log.exception('Something went wrong while executing QudiScript "{0}"'
+                                       ''.format(self.__class__.__name__))
+                    if self._result is None or self._result.success is True:
+                        self._result = ScriptResult(None, False)
+                    self.sigScriptFinished.emit(self._result)
+
+    def can_run(self):
+        if self._lock.tryLock():
+            self._lock.unlock()
+            return self.prerequisites_met()
+        return False
+
+    def prerequisites_met(self):
+        return True
+
+    @abc.abstractmethod
+    def _run(self):
+        pass
 
 
 class TaskResult(QtCore.QObject):
@@ -39,12 +137,14 @@ class TaskResult(QtCore.QObject):
         self.data = data
         self.success = success
 
-class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
-    """ This class represents a task in a module that can be safely executed by checking preconditions
-        and pausing other tasks that are being executed as well.
-        The task can also be paused, given that the preconditions for pausing are met.
 
-        State diagram for InterruptableTask:
+class InterruptableTask(Fysom, metaclass=TaskMetaclass):
+    """
+    This class represents a task in a module that can be safely executed by checking
+    preconditions and pausing other tasks that are being executed as well.
+    The task can also be paused, given that the preconditions for pausing are met.
+
+    State diagram for InterruptableTask:
 
         stopped -> starting -----------> running ---------> finishing -*
            ^          |            _______|   ^_________               |
@@ -54,11 +154,11 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
            ^                      v                    v               |
            |-------------<--------|----------<---------|--------<-------
 
-        Each state has a transition state that allow for checks, synchronizatuion and for parts of the task
-        to influence its own execution via signals.
-        This also allows the TaskRunner to be informed about what the task is doing and ensuring that a task
-        is executed in the correct thread.
-        """
+    Each state has a transition state that allow for checks, synchronization and for parts of the
+    task to influence its own execution via signals.
+    This also allows the TaskRunner to be informed about what the task is doing and ensuring that a
+    task is executed in the correct thread.
+    """
     sigDoStart = QtCore.Signal()
     sigStarted = QtCore.Signal()
     sigNextTaskStep = QtCore.Signal()
@@ -68,7 +168,7 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
     sigResumed = QtCore.Signal()
     sigDoFinish = QtCore.Signal()
     sigFinished = QtCore.Signal()
-    sigStateChanged = QtCore.Signal(object)
+    sigStateChanged = QtCore.Signal(TaskState)
 
     prePostTasks = {}
     pauseTasks = {}
@@ -81,13 +181,12 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
           @param dict references: a dictionary of all required modules
           @param dict config: configuration dictionary
         """
-        default_callbacks = {
-                'onrun': self._start,
-                'onpause': self._pause,
-                'onresume': self._resume,
-                'onfinish': self._finish
-                }
-        _stateDict = {
+        default_callbacks = {'onrun': self._start,
+                             'onpause': self._pause,
+                             'onresume': self._resume,
+                             'onfinish': self._finish
+                             }
+        state_dict = {
             'initial': 'stopped',
             'events': [
                 {'name': 'run',                 'src': 'stopped',   'dst': 'starting'},
@@ -104,11 +203,10 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
             ],
             'callbacks': default_callbacks
         }
-        if 'PyQt5' in sys.modules:
-            super().__init__(cfg=_stateDict, **kwargs)
-        else:
-            QtCore.QObject.__init__(self)
-            Fysom.__init__(self, _stateDict)
+
+        super().__init__(cfg=state_dict, **kwargs)
+        # QtCore.QObject.__init__(self)
+        # Fysom.__init__(self, _stateDict)
 
         self.lock = Mutex()
         self.name = name
@@ -129,8 +227,7 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
         """
         Returns a logger object
         """
-        return logging.getLogger("{0}.{1}".format(
-            self.__module__,self.__class__.__name__))
+        return logging.getLogger("{0}.{1}".format(self.__module__, self.__class__.__name__))
 
     def onchangestate(self, e):
         """ Fysom callback for state transition.
