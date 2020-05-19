@@ -31,6 +31,72 @@ from qudi.core.connector import Connector
 from fysom import Fysom
 
 
+class ModuleScript(QtCore.QRunnable, QtCore.QObject):
+    """
+
+    """
+    # Declare modules to control.
+    # _my_module_conn = Connector(interface='MyModuleClassName', name='my_module')
+
+    sigFinished = QtCore.Signal(object, bool)
+
+    def __init__(self, conn_modules, *args, **kwargs):
+        # Create connectors and connect them to module instances
+        for attr, conn in self.module_connectors().items():
+            name = attr if conn.name is None else conn.name
+            if name not in conn_modules and not conn.optional:
+                raise Exception(
+                    'Module connection "{0}" not configured for QudiScript.'.format(name))
+            new_conn = conn.copy(name=name)
+            setattr(self, attr, new_conn)
+            new_conn.connect(conn_modules[name])
+        self.args = args
+        self.kwargs = kwargs
+        self.result = None
+        self.success = None
+
+    @classmethod
+    def module_connectors(cls):
+        connectors = dict()
+        for c in reversed(cls.mro()[:-1]):
+            connectors.update(
+                {attr: val for attr, val in vars(c).items() if isinstance(val, Connector)})
+        return connectors
+
+    @property
+    def log(self):
+        """ Returns a logger object """
+        return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
+
+    def __call__(self):
+        return self.run()
+
+    @QtCore.Slot()
+    def run(self):
+        if self.can_run():
+            try:
+                self.result = self._run(*self.args, **self.kwargs)
+                self.success = True
+            except:
+                self.result = None
+                self.success = False
+                self.log.exception('Something went wrong while executing ModuleScript "{0}":'
+                                   ''.format(self.__class__.__name__))
+        else:
+            self.result = None
+            self.success = False
+        self.sigFinished.emit(self.result, self.success)
+        return
+
+    @abc.abstractmethod
+    def can_run(self):
+        return True
+
+    @abc.abstractmethod
+    def _run(self, *args, **kwargs):
+        pass
+
+
 class TaskState(Enum):
     stopped = 0
     starting = 1
@@ -39,92 +105,6 @@ class TaskState(Enum):
     paused = 4
     resuming = 5
     finishing = 6
-
-
-class PrePostTaskState:
-    pass
-
-
-class ScriptResult:
-    """
-
-    """
-    def __init__(self, data, success):
-        self.data = data
-        self._success = bool(success)
-
-    @property
-    def success(self):
-        return self._success
-
-    @property
-    def result(self):
-        return self._data, self._success
-
-
-class QudiScript(QtCore.QObject):
-    """
-
-    """
-    # Declare modules to control.
-    # _my_module_conn = Connector(interface='MyModuleClassName', name='my_module')
-
-    sigScriptFinished = QtCore.Signal(object)
-    __sigInvokeRun = QtCore.Signal()
-
-    def __init__(self, conn_modules):
-        # Create connectors and connect them to module instances
-        for cls in reversed(self.__class__.mro()[:-1]):
-            for attr, value in vars(cls):
-                if isinstance(value, Connector):
-                    name = attr if value.name is None else value.name
-                    if name not in conn_modules and not value.optional:
-                        raise Exception(
-                            'Module connection "{0}" not configured for QudiScript.'.format(name))
-                    new_conn = value.copy(name=name)
-                    setattr(self, attr, new_conn)
-                    new_conn.connect(conn_modules[name])
-        self._result = None             # result object
-        self._lock = Mutex()   # mutex
-        self.__sigInvokeRun.connect(self.__run, QtCore.Qt.QueuedConnection)
-
-    @property
-    def log(self):
-        """ Returns a logger object """
-        return logging.getLogger(self.__class__.__name__)
-
-    def __call__(self):
-        return self.__run()
-
-    def __run(self):
-        if self.can_run():
-            with self._lock:
-                self._result = None
-                try:
-                    if QtCore.QThread.currentThread() is not self.thread():
-                        self.__sigInvokeRun.emit()
-                    else:
-                        self._run()
-                        self.sigScriptFinished.emit(self._result)
-                except:
-                    self.log.exception('Something went wrong while executing QudiScript "{0}"'
-                                       ''.format(self.__class__.__name__))
-                    if self._result is None or self._result.success is True:
-                        self._result = ScriptResult(None, False)
-                    self.sigScriptFinished.emit(self._result)
-
-    def can_run(self):
-        if self._lock.tryLock():
-            self._lock.unlock()
-            return self.prerequisites_met()
-        return False
-
-    def prerequisites_met(self):
-        return True
-
-    @abc.abstractmethod
-    def _run(self):
-        pass
 
 
 class TaskResult(QtCore.QObject):
@@ -136,6 +116,86 @@ class TaskResult(QtCore.QObject):
     def update(self, data, success=None):
         self.data = data
         self.success = success
+
+
+class TaskStateMachine(Fysom, QtCore.QObject):
+    """
+    FIXME
+    """
+    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
+    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
+
+    # signals
+    sigStateChanged = QtCore.Signal(TaskState, TaskState)  # old state, new state (Enum)
+
+    def __init__(self, callbacks=None, parent=None, **kwargs):
+        if callbacks is None:
+            callbacks = dict()
+
+        # State machine definition
+        # the abbreviations for the event list are the following:
+        #   name:   event name,
+        #   src:    source state,
+        #   dst:    destination state
+        fsm_cfg = {
+            'initial': 'stopped',
+            'events': [
+                {'name': 'run',                 'src': 'stopped',   'dst': 'starting'},
+                {'name': 'startup_complete',    'src': 'starting',  'dst': 'running'},
+                {'name': 'pause',               'src': 'running',   'dst': 'pausing'},
+                {'name': 'pausing_complete',    'src': 'pausing',   'dst': 'paused'},
+                {'name': 'finish',              'src': 'running',   'dst': 'finishing'},
+                {'name': 'finishing_complete',  'src': 'finishing', 'dst': 'stopped'},
+                {'name': 'resume',              'src': 'paused',    'dst': 'resuming'},
+                {'name': 'resuming_complete',   'src': 'resuming',  'dst': 'running'},
+                {'name': 'abort',               'src': 'pausing',   'dst': 'stopped'},
+                {'name': 'abort',               'src': 'starting',  'dst': 'stopped'},
+                {'name': 'abort',               'src': 'resuming',  'dst': 'stopped'}
+            ],
+            'callbacks': callbacks}
+
+        # Initialise state machine:
+        super().__init__(parent=parent, cfg=fsm_cfg, **kwargs)
+        # QtCore.QObject.__init__(self, parent)
+        # Fysom.__init__(self, cfg=fsm_cfg, **kwargs)
+
+    def __call__(self):
+        """
+        Returns the current state.
+        """
+        return self.current
+
+    def _build_event(self, event):
+        """
+        Overrides Fysom _build_event to wrap on_activate and on_deactivate to catch and log
+        exceptions.
+
+        @param str event: Event name to build the Fysom event for
+
+        @return function: The event handler used by Fysom for the given event
+        """
+        base_event = super()._build_event(event)
+        if event in ('run', 'pause', 'resume', 'finish', 'abort'):
+            def wrap_event(*args, **kwargs):
+                try:
+                    base_event(*args, **kwargs)
+                except:
+                    self.parent().log.exception('Error while trying to {0} task "{1}"'.format(event, self.parent().name))
+                    return False
+                return True
+            return wrap_event
+        return base_event
+
+    def onchangestate(self, e):
+        """
+        Fysom callback for all state transitions.
+
+        @param object e: Fysom event object passed through all state transition callbacks
+        """
+        old = TaskState[e.src]
+        new = TaskState[e.dst]
+        if old != new:
+            self.sigStateChanged.emit(old, new)
 
 
 class InterruptableTask(Fysom, metaclass=TaskMetaclass):
@@ -159,7 +219,7 @@ class InterruptableTask(Fysom, metaclass=TaskMetaclass):
     This also allows the TaskRunner to be informed about what the task is doing and ensuring that a
     task is executed in the correct thread.
     """
-    sigDoStart = QtCore.Signal()
+    sigAbort = QtCore.Signal()
     sigStarted = QtCore.Signal()
     sigNextTaskStep = QtCore.Signal()
     sigDoPause = QtCore.Signal()
@@ -227,7 +287,7 @@ class InterruptableTask(Fysom, metaclass=TaskMetaclass):
         """
         Returns a logger object
         """
-        return logging.getLogger("{0}.{1}".format(self.__module__, self.__class__.__name__))
+        return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
 
     def onchangestate(self, e):
         """ Fysom callback for state transition.
