@@ -28,14 +28,11 @@ import numpy as np
 import os
 import time
 
-from core.module import Connector
+from core.module import Connector, ConfigOption, StatusVar
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
-from core.util import units
-from qtwidgets.scan_plotwidget import ScanImageItem
 
 
 class CrossROI(pg.ROI):
@@ -189,21 +186,24 @@ class Scanner3DGui(GUIBase):
 
     # declare connectors
     savelogic = Connector(interface='SaveLogic')
-    scanlogic1 = Connector(interface='scanner_3D_logic')
+    scanner3Dlogic = Connector(interface='Scanner3DLogic')
     optimizerlogic1 = Connector(interface='OptimizerLogic')
 
-    default_meter_prefix = ConfigOption('default_meter_prefix', None)  # assume the unit prefix of position spinbox
     fixed_aspect_ratio = ConfigOption('fixed_aspect_ratio', True)
     image_x_padding = ConfigOption('image_x_padding', 0.02)
     image_y_padding = ConfigOption('image_y_padding', 0.02)
     image_z_padding = ConfigOption('image_z_padding', 0.02)
 
+    default_meter_prefix = ConfigOption('default_meter_prefix', None)  # assume the unit prefix of position spinbox
+
+    # status var
+    adjust_cursor_roi = StatusVar(default=True)
+    slider_small_step = StatusVar(default=10e-9)  # initial value in meter
+    slider_big_step = StatusVar(default=100e-9)  # initial value in meter
+
     # signals
-    sigStartScan = QtCore.Signal()
-    sigStopScan = QtCore.Signal()
-    sigContinueScan = QtCore.Signal()
-    sigClearData = QtCore.Signal()
     sigSaveMeasurement = QtCore.Signal(str, list, list)
+    sigStartOptimizer = QtCore.Signal(list, str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -221,7 +221,7 @@ class Scanner3DGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
-        self._scanner_logic = self.scanlogic1()
+        self._scanner_logic = self.scanner3Dlogic()
         self._save_logic = self.savelogic()
         self._optimizer_logic = self.optimizerlogic1()
 
@@ -259,9 +259,9 @@ class Scanner3DGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        self.init_scan_parameters_UI()
         self.init_plot_scan_UI()
         self.init_position_feedback_UI()
-        self.init_scan_parameters_UI()
         self.init_fast_axis_scan_parameters()
 
         # Set the state button as ready button as default setting.
@@ -344,47 +344,29 @@ class Scanner3DGui(GUIBase):
         self._mw.ViewWidget.addItem(self.scan_image)
 
         # Label the axes:
-        self._mw.ViewWidget.setLabel('bottom', units='Steps')
-        self._mw.ViewWidget.setLabel('left', units='Steps')
+        self._mw.ViewWidget.setLabel('bottom', 'X position', units='m')
+        self._mw.ViewWidget.setLabel('left', 'Y position', units='m')
 
         # Create Region of Interest for xy image and add to xy Image Widget:
         # Get the image for the display from the logic
         scan_image_data = self._scanner_logic.image_2D[:, :, 3]
         ini_pos_x_crosshair = len(scan_image_data) / 2
         ini_pos_y_crosshair = len(scan_image_data) / 2
-        self.roi = CrossROI(
-            [
-                ini_pos_x_crosshair - ini_pos_x_crosshair * 0.1,
-                ini_pos_y_crosshair - ini_pos_y_crosshair * 0.1,
-            ],
-            [ini_pos_y_crosshair * 0.05
-                , ini_pos_y_crosshair * 0.05],
-            pen={'color': "F0F", 'width': 1},
-            removable=True
-        )
 
-        self._mw.ViewWidget.addItem(self.roi)
+        # Create crosshair for image:
+        self._mw.ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.ViewWidget.set_crosshair_min_size_factor(0.02)
+        self._mw.ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.ViewWidget.set_crosshair_size(
+            (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
+        # connect the drag event of the crosshair with a change in scanner position:
+        self._mw.ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi)
 
-        # create horizontal and vertical line as a crosshair in image:
-        self.hline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
-                               angle=0, pen={'color': palette.green, 'width': 1})
-        self.vline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
-                               angle=90, pen={'color': palette.green, 'width': 1})
-
-        # connect the change of a region with the adjustment of the crosshair:
-        self.roi.sigRegionChanged.connect(self.hline.adjust)
-        self.roi.sigRegionChanged.connect(self.vline.adjust)
-        self.roi.sigUserRegionUpdate.connect(self.update_from_roi)
-        # self.roi.sigRegionChangeFinished.connect(self.roi_bounds_check)
-
-        # add the configured crosshair to the Widget
-        self._mw.ViewWidget.addItem(self.hline)
-        self._mw.ViewWidget.addItem(self.vline)
         # Connect the signal from the logic with an update of the cursor position
-        self._scanning_logic.signal_change_position.connect(self.update_crosshair_position_from_logic)
+        self._scanner_logic.signal_change_position.connect(self.update_crosshair_position_from_logic)
 
         # Set up and connect count channel combobox
-        scan_channels = self._scanner_logic.get_counter_count_channels()
+        scan_channels = self._scanner_logic._get_scanner_count_channels()
         self.digital_count_channels = len(scan_channels)
         scan_channels.append(self._scanner_logic._ai_counter)
         for n, ch in enumerate(scan_channels):
@@ -414,7 +396,6 @@ class Scanner3DGui(GUIBase):
         # Connect the emitted signal of an image change from the logic with
         # a refresh of the GUI picture:
         self._scanner_logic.signal_image_updated.connect(self.refresh_image)
-        self._scanner_logic.signal_image_updated.connect(self.refresh_scan_line)
         self._scanner_logic.sigImageInitialized.connect(self.adjust_window)
 
         # Connect the buttons and inputs for the colorbar
@@ -426,21 +407,28 @@ class Scanner3DGui(GUIBase):
         self._mw.cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_centiles)
         self._mw.cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_centiles)
 
+        # Connect the tracker
+        self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
+        self._optimizer_logic.sigRefocusXySizeChanged.connect(self.update_roi_size)
+
+        # Connect the change of the viewed area to an adjustment of the ROI:
+        self.adjust_cursor_roi = True
+        self.update_crosshair_position_from_logic('init')
         self.adjust_window()
 
     def init_position_feedback_UI(self):
         """
-            Initialises all values for the position feedback of the confocal stepper
-            Depending on the steppers used some ooptions will not be available
+            Initialises all values for the position feedback of the 3D scanner
+            Depending on the feedback of the scanner axis used some options will not be available
             """
         #### Initialize the position feedback LCD labels ####
 
         #  Check which axes have position feedback option
         self._feedback_axis = {}
         # Todo: check which position feedback axis exist
-        self._x_closed_loop = False
-        self._y_closed_loop = False
-        self._z_closed_loop = False
+        self._x_closed_loop = True
+        self._y_closed_loop = True
+        self._z_closed_loop = True
         # Todo: The corresponding functions do not yet exist in the scanner 3D logic. Therefore it is set to false
 
         # X Axis
@@ -449,7 +437,6 @@ class Scanner3DGui(GUIBase):
         else:
             self._mw.x_accuracy_doubleSpinBox.setValue(-1)
             self._mw.x_accuracy_doubleSpinBox.setValue(-1)
-            self._mw.x_new_position_doubleSpinBox.setEnabled(False)
 
         # Y Axis
         if self._y_closed_loop:
@@ -457,7 +444,6 @@ class Scanner3DGui(GUIBase):
         else:
             self._mw.y_accuracy_doubleSpinBox.setValue(-1)
             self._mw.y_position_doubleSpinBox.setValue(-1)
-            self._mw.y_new_position_doubleSpinBox.setEnabled(False)
 
         # Z Axis
         if self._z_closed_loop:
@@ -465,7 +451,6 @@ class Scanner3DGui(GUIBase):
         else:
             self._mw.z_accuracy_doubleSpinBox.setValue(-1)
             self._mw.z_position_doubleSpinBox.setValue(-1)
-            self._mw.z_new_position_doubleSpinBox.setEnabled(False)
 
         # connect actions
         self._mw.get_all_positions_pushButton.clicked.connect(self.get_scanner_position)
@@ -492,12 +477,12 @@ class Scanner3DGui(GUIBase):
         self.slider_res = 1e-9
 
         # How many points are needed for that kind of resolution:
-        num_of_points_x = (self._scanning_logic._scanning_axes_ranges["x"][1] -
-                           self._scanning_logic._scanning_axes_ranges["x"][0]) / self.slider_res
-        num_of_points_y = (self._scanning_logic._scanning_axes_ranges["y"][1] -
-                           self._scanning_logic._scanning_axes_ranges["y"][0]) / self.slider_res
-        num_of_points_z = (self._scanning_logic._scanning_axes_ranges["z"][1] -
-                           self._scanning_logic._scanning_axes_ranges["z"][0]) / self.slider_res
+        num_of_points_x = (self._scanner_logic._scanning_axes_ranges["x"][1] -
+                           self._scanner_logic._scanning_axes_ranges["x"][0]) / self.slider_res
+        num_of_points_y = (self._scanner_logic._scanning_axes_ranges["y"][1] -
+                           self._scanner_logic._scanning_axes_ranges["y"][0]) / self.slider_res
+        num_of_points_z = (self._scanner_logic._scanning_axes_ranges["z"][1] -
+                           self._scanner_logic._scanning_axes_ranges["z"][0]) / self.slider_res
 
         # Set a Range for the sliders:
         self._mw.x_SliderWidget.setRange(0, num_of_points_x)
@@ -506,35 +491,35 @@ class Scanner3DGui(GUIBase):
 
         # Just to be sure, set also the possible maximal values for the spin
         # boxes of the current values:
-        self._mw.x_current_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["x"][0],
-                                                self._scanning_logic._scanning_axes_ranges["x"][1])
-        self._mw.y_current_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["y"][0],
-                                                self._scanning_logic._scanning_axes_ranges["y"][1])
-        self._mw.z_current_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["z"][0],
-                                                self._scanning_logic._scanning_axes_ranges["z"][1])
+        self._mw.x_current_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["x"][0],
+                                                self._scanner_logic._scanning_axes_ranges["x"][1])
+        self._mw.y_current_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["y"][0],
+                                                self._scanner_logic._scanning_axes_ranges["y"][1])
+        self._mw.z_current_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["z"][0],
+                                                self._scanner_logic._scanning_axes_ranges["z"][1])
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
-        self._mw.x_min_InputWidget.setValue(self._scanning_logic._scanning_axes_ranges["x"][0])
-        self._mw.x_max_InputWidget.setValue(self._scanning_logic._scanning_axes_ranges["x"][1])
-        self._mw.y_min_InputWidget.setValue(self._scanning_logic._scanning_axes_ranges["y"][0])
-        self._mw.y_max_InputWidget.setValue(self._scanning_logic._scanning_axes_ranges["y"][1])
-        self._mw.z_min_InputWidget.setValue(self._scanning_logic._scanning_axes_ranges["z"][0])
-        self._mw.z_max_InputWidget.setValue(self._scanning_logic._scanning_axes_ranges["z"][1])
+        self._mw.x_min_InputWidget.setValue(self._scanner_logic._scanning_axes_ranges["x"][0])
+        self._mw.x_max_InputWidget.setValue(self._scanner_logic._scanning_axes_ranges["x"][1])
+        self._mw.y_min_InputWidget.setValue(self._scanner_logic._scanning_axes_ranges["y"][0])
+        self._mw.y_max_InputWidget.setValue(self._scanner_logic._scanning_axes_ranges["y"][1])
+        self._mw.z_min_InputWidget.setValue(self._scanner_logic._scanning_axes_ranges["z"][0])
+        self._mw.z_max_InputWidget.setValue(self._scanner_logic._scanning_axes_ranges["z"][1])
 
         # set the maximal ranges for the image range from the logic:
-        self._mw.x_min_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["x"][0],
-                                            self._scanning_logic._scanning_axes_ranges["x"][1])
-        self._mw.x_max_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["x"][0],
-                                            self._scanning_logic._scanning_axes_ranges["x"][1])
-        self._mw.y_min_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["y"][0],
-                                            self._scanning_logic._scanning_axes_ranges["y"][1])
-        self._mw.y_max_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["y"][0],
-                                            self._scanning_logic._scanning_axes_ranges["y"][1])
-        self._mw.z_min_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["z"][0],
-                                            self._scanning_logic._scanning_axes_ranges["z"][1])
-        self._mw.z_max_InputWidget.setRange(self._scanning_logic._scanning_axes_ranges["z"][0],
-                                            self._scanning_logic._scanning_axes_ranges["z"][1])
+        self._mw.x_min_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["x"][0],
+                                            self._scanner_logic._scanning_axes_ranges["x"][1])
+        self._mw.x_max_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["x"][0],
+                                            self._scanner_logic._scanning_axes_ranges["x"][1])
+        self._mw.y_min_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["y"][0],
+                                            self._scanner_logic._scanning_axes_ranges["y"][1])
+        self._mw.y_max_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["y"][0],
+                                            self._scanner_logic._scanning_axes_ranges["y"][1])
+        self._mw.z_min_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["z"][0],
+                                            self._scanner_logic._scanning_axes_ranges["z"][1])
+        self._mw.z_max_InputWidget.setRange(self._scanner_logic._scanning_axes_ranges["z"][0],
+                                            self._scanner_logic._scanning_axes_ranges["z"][1])
 
         if self.default_meter_prefix:
             self._mw.x_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
@@ -573,7 +558,7 @@ class Scanner3DGui(GUIBase):
         self._mw.scan_direction_comboBox.activated.connect(self.update_scan_direction)
         self._mw.inverted_direction_checkBox.clicked.connect(self.update_scan_direction)
 
-        self._scanner_logic.signal_step_scan_stopped.connect(self.enable_step_actions)
+        self._scanner_logic.signal_stop_scanning.connect(self.enable_step_actions)
 
     def init_fast_axis_scan_parameters(self):
         # setting GUI elements enabled
@@ -593,20 +578,21 @@ class Scanner3DGui(GUIBase):
         self._mw.scan_speed_m_fast_axis_doubleSpinBox.setValue(np.abs(self._scanner_logic.image_ranges["z"][1] -
                                                                       self._scanner_logic.image_ranges["z"][0]) *
                                                                self._mw.scan_freq_fast_axis_doubleSpinBox.value())
-        self._mw.scan_speed_V_fast_axis_doubleSpinBox.setValue(np.abs(self._max_voltage_range_fast_axis[0] -
-                                                                      self._max_voltage_range_fast_axis["z"][0]) *
+        self._mw.scan_speed_V_fast_axis_doubleSpinBox.setValue(np.abs(self._max_voltage_range_fast_axis[1] -
+                                                                      self._max_voltage_range_fast_axis[0]) *
                                                                self._mw.scan_freq_fast_axis_doubleSpinBox.value())
 
         # scan resolution
         self._mw.scan_resolution_fast_axis_spinBox.setValue(self._scanner_logic.scan_resolution_fast_axis)
-        self._mw.scan_resolution_fast_axis_V_doubleSpinBox_2.setValue(
-            self._max_voltage_range_fast_axis / self._max_position_range_fast_axis *
+        self._mw.scan_resolution_fast_axis_V_doubleSpinBox.setValue(
+            abs(self._max_voltage_range_fast_axis[1] - self._max_voltage_range_fast_axis[0]) / abs(
+                self._max_position_range_fast_axis[1] - self._max_position_range_fast_axis[0]) *
             self._mw.scan_resolution_fast_axis_spinBox.value())
 
         # todo: here it should actually find out the bit resolution of the hardware
         self._mw.maximal_scan_resolution_fast_axis_doubleSpinBox.setValue(self._scanner_logic.calculate_resolution(
             16, [self._scanner_logic.image_ranges["z"][0], self._scanner_logic.image_ranges["z"][1]]))
-        self._mw.max_scan_resolution_fast_checkBox.toggled.connect(self.max_scan_resolution_fast_axis_clicked)
+        self._mw.max_scan_resolution_fast_axis_checkBox.toggled.connect(self.max_scan_resolution_fast_axis_clicked)
         self._mw.scan_resolution_fast_axis_spinBox.valueChanged.connect(self.scan_resolution_fast_axis_changed)
 
         # smoothing
@@ -634,7 +620,7 @@ class Scanner3DGui(GUIBase):
         """
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
-        position = self._scanning_logic._current_position.copy()  # in meters
+        position = self._scanner_logic._current_position.copy()  # in meters
         x_pos = position["x"]
         y_pos = position["y"]
         z_pos = position["z"]
@@ -728,7 +714,14 @@ class Scanner3DGui(GUIBase):
     # Todo: write function
     def get_scanner_position(self):
         """Measures the current positions of the scanner for the axis with position feedback"""
-        pass
+        """Measures the current positions of the stepper for the axis with position feedback"""
+        result = self._scanner_logic.get_position_from_feedback([*self._feedback_axis])  # get position for keys of feedback axes
+        if self._x_closed_loop:
+            self._mw.x_position_doubleSpinBox.setValue(result[0] * 1e-3)
+        if self._y_closed_loop:
+            self._mw.y_position_doubleSpinBox.setValue(result[self._x_closed_loop] * 1e-3)
+        if self._z_closed_loop:
+            self._mw.z_position_doubleSpinBox.setValue(result[self._x_closed_loop + self._y_closed_loop] * 1e-3)
 
     ################## Tool bar ##################
     def disable_step_actions(self):
@@ -770,7 +763,7 @@ class Scanner3DGui(GUIBase):
         # Fast axis scan parameters:
         self._mw.scan_freq_fast_axis_doubleSpinBox.setEnabled(False)
         self._mw.scan_resolution_fast_axis_spinBox.setEnabled(False)
-        self._mw.max_scan_resolution_fast_checkBox.setEnabled(False)
+        self._mw.max_scan_resolution_fast_axis_checkBox.setEnabled(False)
         self._mw.smooth_fast_axis_checkBox.setEnabled(False)
 
         self._mw.smoothing_steps_fast_axis_spinBox.setEnabled(False)
@@ -808,7 +801,7 @@ class Scanner3DGui(GUIBase):
         # Fast axis scan parameters:
         self._mw.scan_freq_fast_axis_doubleSpinBox.setEnabled(True)
         self._mw.scan_resolution_fast_axis_spinBox.setEnabled(True)
-        self._mw.max_scan_resolution_fast_checkBox.setEnabled(True)
+        self._mw.max_scan_resolution_fast_axis_checkBox.setEnabled(True)
         self._mw.smooth_fast_axis_checkBox.setEnabled(True)
         if self._mw.smooth_fast_axis_checkBox.isChecked():
             self._mw.smoothing_steps_fast_axis_spinBox.setEnabled(True)
@@ -821,13 +814,13 @@ class Scanner3DGui(GUIBase):
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
 
-        if self._scanning_logic._scan_continuable is True:
+        if self._scanner_logic._scan_continuable is True:
             self._mw.action_scan_3D_resume.setEnabled(True)
         else:
             self._mw.action_scan_3D_resume.setEnabled(False)
 
         # Disable Position feedback buttons which can't be used during step scan
-        self._mw.get_all_positions_pushButton.setEnabled(False)
+        self._mw.get_all_positions_pushButton.setEnabled(True)
         self._mw.measure_pos_feedback_checkBox.setEnabled(True)
 
         self._currently_scanning = False
@@ -841,7 +834,7 @@ class Scanner3DGui(GUIBase):
             self._mw.actionForward.setEnabled(True)
         else:
             self._mw.actionForward.setEnabled(False)
-        if enable and self._scanning_logic.history_index > 0:
+        if enable and self._scanner_logic.history_index > 0:
             self._mw.actionBack.setEnabled(True)
         else:
             self._mw.actionBack.setEnabled(False)
@@ -857,7 +850,7 @@ class Scanner3DGui(GUIBase):
 
     def scan_start_clicked(self):
         """ Manages what happens if the scan is started. """
-        self._scanner_logic.map_scan_position = self._mw.measure_pos_feedback_checkBox.isChecked()
+        self._scanner_logic.map_scan_positions = self._mw.measure_pos_feedback_checkBox.isChecked()
 
         # Todo: This is code that can be used, when scan axes are flexible in the future
         # update axes (both for position feedback and plot display)
@@ -920,7 +913,7 @@ class Scanner3DGui(GUIBase):
         # todo: check! signal
         return
 
-    ################## Step Scan ##################
+    ################## Scan ##################
     def update_count_channel(self, index):
         """ The displayed channel for the image was changed, refresh the displayed image.
 
@@ -978,7 +971,14 @@ class Scanner3DGui(GUIBase):
         if self._scanner_logic.module_state() != 'locked':
             self.enable_step_actions()
 
-    ################## Step Parameters ##################
+    ################## Position Feedback ################
+    def update_move_to_start(self):
+        pass
+
+    def update_save_position(self):
+        self._scanner_logic._save_positions = self._mw.save_pos_feedback_checkBox.isChecked()
+
+    ################## Scan Parameters ##################
     def update_scan_direction(self):
         """ The user changed the step scan direction, adjust all
             other GUI elements."""
@@ -1015,14 +1015,14 @@ class Scanner3DGui(GUIBase):
             self.update_input_z(z)
             pos["z"] = z
         if pos:
-            self._scanning_logic.move_to_position(pos, 'key')
+            self._scanner_logic.move_to_position(pos, 'key')
 
     def update_from_input_x(self):
         """ The user changed the number in the current x position spin box, adjust all
             other GUI elements."""
         x_pos = self._mw.x_current_InputWidget.value()
         self.update_slider_piezo_x(x_pos)
-        self._scanning_logic.move_to_position({"x": x_pos}, "xinput")
+        self._scanner_logic.move_to_position({"x": x_pos}, "xinput")
         # todo: ROI
 
     def update_from_input_y(self):
@@ -1030,7 +1030,7 @@ class Scanner3DGui(GUIBase):
             other GUI elements."""
         y_pos = self._mw.y_current_InputWidget.value()
         self.update_slider_y(y_pos)
-        self._scanning_logic.move_to_position({"y": y_pos}, "yinput")
+        self._scanner_logic.move_to_position({"y": y_pos}, "yinput")
         # todo: ROI
 
     def update_from_input_z(self):
@@ -1038,7 +1038,7 @@ class Scanner3DGui(GUIBase):
            other GUI elements."""
         z_pos = self._mw.z_current_InputWidget.value()
         self.update_slider_piezo_z(z_pos)
-        self._scanning_logic.move_to_position({"z": z_pos}, "zinput")
+        self._scanner_logic.move_to_position({"z": z_pos}, "zinput")
         # todo: ROI
 
     def update_input_x(self, x_pos):
@@ -1070,27 +1070,34 @@ class Scanner3DGui(GUIBase):
 
         @params int sliderValue: slider position, a quantized whole number
         """
-        x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
+        x_pos = self._scanner_logic._scanning_axes_ranges["x"][0] + sliderValue * self.slider_res
+        self.update_roi(h=x_pos)
         self.update_input_x(x_pos)
-        self._scanning_logic.move_to_position({"x": x_pos}, 'xslider')
+        self._scanner_logic.move_to_position({"x": x_pos}, 'xslider')
+        self._optimizer_logic.set_position('xslider', x=x_pos)
 
     def update_from_slider_y(self, sliderValue):
         """The user moved the y slider, adjust the other GUI elements.
 
         @params int sliderValue: slider position, a quantized whole number
         """
-        y_pos = self._scanning_logic.y_range[0] + sliderValue * self.slider_res
+        y_pos = self._scanner_logic._scanning_axes_ranges["y"][0] + sliderValue * self.slider_res
+        self.update_roi(h=y_pos)
         self.update_input_y(y_pos)
-        self._scanning_logic.move_to_position({"y": y_pos}, 'yslider')
+        self._scanner_logic.move_to_position({"y": y_pos}, 'yslider')
+        self._optimizer_logic.set_position('yslider', x=y_pos)
 
     def update_from_slider_z(self, sliderValue):
         """The user moved the z slider, adjust the other GUI elements.
 
         @params int sliderValue: slider position, a quantized whole number
         """
-        z_pos = self._scanning_logic.z_range[0] + sliderValue * self.slider_res
+        z_pos = self._scanner_logic._scanning_axes_ranges["z"][0] + sliderValue * self.slider_res
+        # Todo: needs to be done, when possible to choose scan axes
+        # self.update_roi(h=z_pos)
         self.update_input_z(z_pos)
-        self._scanning_logic.move_to_position({"z": z_pos}, 'zslider')
+        self._scanner_logic.move_to_position({"z": z_pos}, 'zslider')
+        self._optimizer_logic.set_position('zslider', x=z_pos)
 
     def update_slider_x(self, x_pos):
         """ Update the x slider when a change happens.
@@ -1098,7 +1105,7 @@ class Scanner3DGui(GUIBase):
         @param float x_pos: x position in m
         """
         self._mw.x_SliderWidget.setValue(
-            (x_pos - self._scanning_logic._scanning_axes_ranges["x"][0]) / self.slider_res)
+            (x_pos - self._scanner_logic._scanning_axes_ranges["x"][0]) / self.slider_res)
 
     def update_slider_y(self, y_pos):
         """ Update the y slider when a change happens.
@@ -1106,7 +1113,7 @@ class Scanner3DGui(GUIBase):
         @param float y_pos: y position in m
         """
         self._mw.y_SliderWidget.setValue(
-            (y_pos - self._scanning_logic._scanning_axes_ranges["y"][0]) / self.slider_res)
+            (y_pos - self._scanner_logic._scanning_axes_ranges["y"][0]) / self.slider_res)
 
     def update_slider_z(self, z_pos):
         """ Update the z slider when a change happens.
@@ -1114,7 +1121,7 @@ class Scanner3DGui(GUIBase):
         @param float z_pos: z position in m
         """
         self._mw.z_SliderWidget.setValue(
-            (z_pos - self._scanning_logic._scanning_axes_ranges["z"][0]) / self.slider_res)
+            (z_pos - self._scanner_logic._scanning_axes_ranges["z"][0]) / self.slider_res)
 
     def change_x_resolution(self):
         """ Update the x resolution in the logic according to the GUI.
@@ -1139,7 +1146,7 @@ class Scanner3DGui(GUIBase):
     # Todo: did not do this yet
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanning_logic.image_ranges["x"] = [
+        self._scanner_logic.image_ranges["x"] = [
             self._mw.x_min_InputWidget.value(),
             self._mw.x_max_InputWidget.value()]
         self.update_scan_speed_fast_axis()
@@ -1148,7 +1155,7 @@ class Scanner3DGui(GUIBase):
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanning_logic.image_ranges["y"] = [
+        self._scanner_logic.image_ranges["y"] = [
             self._mw.y_min_InputWidget.value(),
             self._mw.y_max_InputWidget.value()]
         self.update_scan_speed_fast_axis()
@@ -1156,7 +1163,7 @@ class Scanner3DGui(GUIBase):
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
-        self._scanning_logic.image_ranges["z"] = [
+        self._scanner_logic.image_ranges["z"] = [
             self._mw.z_min_InputWidget.value(),
             self._mw.z_max_InputWidget.value()]
         self.update_scan_speed_fast_axis()
@@ -1176,10 +1183,10 @@ class Scanner3DGui(GUIBase):
         viewbox = self.scan_image.getViewBox()
 
         # Todo: this needs to be update when scanning axes can be changed
-        Min_first_axis = self._scanning_logic.image_ranges["x"][0]
-        Max_first_axis = self._scanning_logic.image_ranges["x"][1]
-        Min_second_axis = self._scanning_logic.image_ranges["y"][0]
-        Max_second_axis = self._scanning_logic.image_ranges["y"][1]
+        Min_first_axis = self._scanner_logic.image_ranges["x"][0]
+        Max_first_axis = self._scanner_logic.image_ranges["x"][1]
+        Min_second_axis = self._scanner_logic.image_ranges["y"][0]
+        Max_second_axis = self._scanner_logic.image_ranges["y"][1]
 
         if self.fixed_aspect_ratio:
             # Reset the limit settings so that the method 'setAspectLocked'
@@ -1276,26 +1283,29 @@ class Scanner3DGui(GUIBase):
             self._scanner_logic.scan_resolution_fast_axis = maximal_scan_resolution
             self._mw.scan_resolution_fast_axis_spinBox.setValue(maximal_scan_resolution)
             self._mw.scan_resolution_fast_axis_V_doubleSpinBox.setValue(
-                self._max_voltage_range_fast_axis / self._max_voltage_range_fast_axis * maximal_scan_resolution)
+                abs(self._max_voltage_range_fast_axis[1] - self._max_voltage_range_fast_axis[0]) /
+                abs(self._max_position_range_fast_axis[1] - self._max_position_range_fast_axis[0])
+                * maximal_scan_resolution)
         else:
             self._scanner_logic.scan_resolution_fast_axis = resolution
             self._mw.scan_resolution_fast_axis_V_doubleSpinBox.setValue(
-                self._max_voltage_range_fast_axis / self._max_voltage_range_fast_axis * resolution)
+                abs(self._max_voltage_range_fast_axis[1] - self._max_voltage_range_fast_axis[0]) /
+                abs(self._max_position_range_fast_axis[1] - self._max_position_range_fast_axis[0]) * resolution)
         self._mw.z_scan_resolution_InputWidget.setValue(self._scanner_logic.scan_resolution_fast_axis)
 
     def update_maximal_scan_resolution_fast_axis(self):
         """ Update fast axis scan resolution to the maximally possible scan resolution
         """
-        # todo: update when scan axis are variable
-        minV = min(self._scanner_logic.image_ranges["z"][0], self._scanner_logic.image_ranges["z"][1])
-        maxV = max(self._scanner_logic.image_ranges["z"][0], self._scanner_logic.image_ranges["z"][1])
-        maximal_scan_resolution = self._scanner_logic.calculate_resolution(16, [minV, maxV])
-        self._mw.maximal_scan_resolution_fast_axis_doubleSpinBox.setValue(maximal_scan_resolution)
+        if self._mw.max_scan_resolution_fast_axis_checkBox.isChecked():
+            self._scanner_logic._use_maximal_resolution()
+            maximal_scan_resolution = self._scanner_logic.scan_resolution_fast_axis
+            self._mw.maximal_scan_resolution_fast_axis_doubleSpinBox.setValue(maximal_scan_resolution)
         return
 
     def max_scan_resolution_fast_axis_clicked(self):
-        if self._mw.max_scan_resolution_fast_checkBox.isChecked():
+        if self._mw.max_scan_resolution_fast_axis_checkBox.isChecked():
             self._scanner_logic._use_maximal_resolution_fast_axis = True
+            self.update_maximal_scan_resolution_fast_axis()
             self._mw.scan_resolution_fast_axis_spinBox.setEnabled(False)
         else:
             self._scanner_logic._use_maximal_resolution_fast_axis = False
@@ -1312,10 +1322,11 @@ class Scanner3DGui(GUIBase):
         """
         if self._mw.smooth_fast_axis_checkBox.isChecked():
             self._scanner_logic.smoothing = True
-            self.smoothing_steps_fast_axis_spinBox.setEnabled(True)
+            self._mw.smoothing_steps_fast_axis_spinBox.setEnabled(True)
+
         else:
             self._scanner_logic.smoothing = False
-            self.smoothing_steps_fast_axis_spinBox.setEnabled(False)
+            self._mw.smoothing_steps_fast_axis_spinBox.setEnabled(False)
 
     ################## Settings ##################
     def switch_hardware(self):
@@ -1369,8 +1380,8 @@ class Scanner3DGui(GUIBase):
         """ Check if the focus cursor is oputside the allowed range after drag
             and set its position to the limit
         """
-        new_h_pos = np.clip(pos[0], *self._scanning_logic.image_ranges["x"])
-        new_v_pos = np.clip(pos[1], *self._scanning_logic.image_ranges["y"])
+        new_h_pos = np.clip(pos[0], *self._scanner_logic.image_ranges["x"])
+        new_v_pos = np.clip(pos[1], *self._scanner_logic.image_ranges["y"])
         in_bounds = new_h_pos == pos[0] and new_v_pos == pos[1]
         return in_bounds, (new_h_pos, new_v_pos)
 
@@ -1390,16 +1401,22 @@ class Scanner3DGui(GUIBase):
 
         # Todo: needs to be updated when scan axes are flexible
         # Update positions feedback position display
-        if self._scanner_logic.map_scan_position and not self._currently_scanning:
-            # This is a safety precaution
-            self._feedback_axis["x"].setValue(self._mw.x_position_doubleSpinBox.value())
-            self._feedback_axis["y"].setValue(self._mw.y_position_doubleSpinBox.value())
+        if self._scanner_logic.map_scan_positions and not self._currently_scanning:
+            other_channels = 3 + self._mw.count_channel_ComboBox.count()
+            # Todo: The position needs to be translate to ann index via the image 2D positions of the scanner.
+            # After this this function can be used
+            # h_pos = self._scanner_logic.image_2D[
+            #    v_step_pos, h_step_pos, other_channels + 0]
+            # v_pos = self._scanner_logic.image_2D[
+            #    v_step_pos, h_step_pos, other_channels + 1]
+            # if self._x_closed_loop:
+            #    # This is a safety precaution
+            #    self._feedback_axis["x"].setValue(self._mw.x_position_doubleSpinBox.value())
+            #    self._feedback_axis["x"].setValue(h_pos * 1e-3)
 
-            h_pos = self._scanner_logic.full_image_smoothed[v_step_pos, h_step_pos, 0]
-            v_pos = self._scanner_logic.full_image_smoothed[v_step_pos, h_step_pos, 1]
-
-            self._feedback_axis["x"].setValue(h_pos * 1e-3)
-            self._feedback_axis["y"].setValue(v_pos * 1e-3)
+            # if self._y_closed_loop:
+            #    self._feedback_axis["y"].setValue(self._mw.y_position_doubleSpinBox.value())
+            #    self._feedback_axis["y"].setValue(v_pos * 1e-3)
 
         # Update Piezo positions
         self.update_slider_x(h_step_pos)
@@ -1408,7 +1425,7 @@ class Scanner3DGui(GUIBase):
         self.update_input_x(h_step_pos)
         self.update_input_y(v_step_pos)
 
-        self._scanning_logic.move_to_position({"x": h_step_pos, "y": v_step_pos}, 'roi')
+        self._scanner_logic.move_to_position({"x": h_step_pos, "y": v_step_pos}, 'roi')
         self._optimizer_logic.set_position('roixy', x=h_step_pos, y=v_step_pos)
 
     def update_roi(self, h=None, v=None):
@@ -1424,7 +1441,7 @@ class Scanner3DGui(GUIBase):
         self._mw.ViewWidget.set_crosshair_pos((h, v))
 
     def update_roi_size(self):
-        """ Update the cursor size showing the optimizer scan area for the XY image.
+        """ Update the cursor size showing the optimizer scan area for the image.
         """
         if self.adjust_cursor_roi:
             self._mw.ViewWidget.set_crosshair_min_size_factor(0.02)
@@ -1444,13 +1461,13 @@ class Scanner3DGui(GUIBase):
         confocal gui emits, as the GUI elements were already adjusted.
         """
         if 'roi' not in tag and 'slider' not in tag and 'key' not in tag and 'input' not in tag:
-            position = self._scanning_logic._current_position.copy()
+            position = self._scanner_logic._current_position.copy()
             x_pos = position["x"]
             y_pos = position["y"]
             z_pos = position["z"]
 
             # image
-            self._mw.ViewWidget.set_crosshair_pos(position[:2])
+            self._mw.ViewWidget.set_crosshair_pos([x_pos, y_pos])
 
             self.update_slider_x(x_pos)
             self.update_slider_y(y_pos)

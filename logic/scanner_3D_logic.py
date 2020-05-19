@@ -53,7 +53,7 @@ class Scanner3DLogic(GenericLogic):
     """
     This is the Logic class for confocal scanning.
     """
-    _modclass = 'scanner3Dlogic'
+    _modclass = 'Scanner3Dlogic'
     _modtype = 'logic'
 
     # declare connectors
@@ -63,6 +63,7 @@ class Scanner3DLogic(GenericLogic):
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
     cavcontrol = Connector(interface="CavityStabilisationLogic")
+    stepperlogic = Connector(interface='ConfocalStepperLogic')
 
     # status vars
     _clock_frequency = StatusVar('clock_frequency', 500)
@@ -106,6 +107,7 @@ class Scanner3DLogic(GenericLogic):
         self._counting_device = self.digitalcounter()
         self._analog_input_device = self.analoguereader()
         self._scanning_device = self.analogueoutput()
+        self._stepper_logic = self.stepperlogic()
         self._save_logic = self.savelogic()
         self._cavitycontrol = self.cavcontrol()
 
@@ -189,10 +191,13 @@ class Scanner3DLogic(GenericLogic):
             self.current_ai_axes.append("y")
             self.current_ai_axes.append("z")
 
+        self._save_positions = True
+
         # change scan direction variables
         self._inverted_scan = False
 
         self._get_scanner_count_channels()
+        self.initialize_image()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -244,7 +249,7 @@ class Scanner3DLogic(GenericLogic):
         """
         Converts a voltage to a position for a given axes
         @param float voltage: The voltage to be converted
-        @param str axes: The axes for which the voltage is to be converted
+        @param str axis: The axis for which the voltage is to be converted
         @return: the position
         """
         # Todo: The ranges should be defined by a dict and then this should be calculated using the dic
@@ -254,6 +259,20 @@ class Scanner3DLogic(GenericLogic):
         pos_range = self._scanning_axes_ranges[axis]
         pos = (pos_range[1] - pos_range[0]) / (v_range[1] - v_range[0]) * (voltage - pos_range[0]) + pos_range[0]
         return pos
+
+    def convert_pos_to_v(self, pos, axis):
+        """Converts a position value to a voltage value
+        @param float pos: The position to be converted
+        @param str axis: The axes for which the voltage is to be converted
+        @return float: the calculated voltage
+        """
+        # todo: this only works for the fast axis
+        v_range = self._scanning_device._a_o_ranges[axis]
+        pos_range = self._scanning_axes_ranges[axis]
+        voltage = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
+                pos - pos_range[0]) + v_range[0]
+
+        return voltage
 
     def _check_if_pos_in_range(self, position, axis):
         """Checks if a selected position is allowed by checking if it lies within the possible range of positions
@@ -924,27 +943,39 @@ class Scanner3DLogic(GenericLogic):
             self.log.info("The device was already at required output voltage")
             return 0
 
+    def get_position_from_feedback(self, axes):
+        return self._stepper_logic.get_position(axes)
+
     ################################### Save Functions ###############################
 
     def generate_save_parameters(self):
         # Prepare the meta data parameters (common to both saved files):
         parameters = OrderedDict()
 
+        parameters["Count frequency (Hz)"] = self._clock_frequency_3D_scan
+        parameters["Scan Freq complete fast axis (Hz)"] = self.scan_freq_fast_axis
+        parameters["Scan resolution (m/step)"] = self.scan_resolution_fast_axis
+
         parameters['First Axis'] = "z"
         parameters['First Axis Steps'] = self._dim_fast_axis
+        parameters["Start Position fast axis(m)"] = self.image_ranges["z"][0]
+        parameters["End Position fast axis (m)"] = self.image_ranges["z"][1]
+        parameters["Start Voltage fast axis(V)"] = self.convert_pos_to_v(self.image_ranges["z"][0], "z")
+        parameters["End Voltage fast axis (V)"] = self.convert_pos_to_v(self.image_ranges["z"][1], "z")
 
         parameters['Second Axis'] = "x"
         parameters['Second Axis Steps'] = self._dim_medium_axis
+        parameters['X image min (m)'] = self.image_ranges["x"][0]
+        parameters['X image max (m)'] = self.image_ranges["x"][1]
+        parameters['X image range (m)'] = self.image_ranges["x"][1] - self.image_ranges["x"][0]
 
         parameters['Third Axis'] = "y"
         parameters['Third Axis Steps'] = self._dim_slow_axis
-        # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
+        parameters['Y image min'] = self.image_ranges["y"][0]
+        parameters['Y image max'] = self.image_ranges["y"][1]
+        parameters['Y image range'] = self.image_ranges["y"][1] - self.image_ranges["y"][0]
 
-        parameters["Count frequency (Hz)"] = self._clock_frequency_3D_scan
-        parameters["Scan Freq complete fast axis (Hz)"] = self.scan_freq_fast_axis
-        parameters["Scan resolution (V/step)"] = self.scan_resolution_fast_axis
-        parameters["Start Voltage fast axis(V)"] = self.image_ranges["z"][0]
-        parameters["End Voltage fast axis (V)"] = self.image_ranges["z"][1]
+        parameters['XY resolution (samples per range)'] = self.xy_resolution
 
         if self.smoothing:
             parameters["Smoothing Steps"] = self._fast_axis_smoothing_steps
@@ -996,7 +1027,7 @@ class Scanner3DLogic(GenericLogic):
         np.save(self.path_name + '/' + self.filename_back, data)
 
     def save_data(self, colorscale_range=None, percentile_range=None):
-        """ Save the current confocal xy data to file.
+        """ Save the current confocal data to a file.
 
         Two files are created.  The first is the imagedata, which has a text-matrix of count values
         corresponding to the pixel matrix of the image.  Only count-values are saved here.
@@ -1010,4 +1041,203 @@ class Scanner3DLogic(GenericLogic):
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
-        pass
+        filepath = self.filepath
+        timestamp = datetime.datetime.now()
+
+        parameters = self.generate_save_parameters()
+
+        # prepare the full raw data in an OrderedDict:
+        data = OrderedDict()
+
+        # Todo:Save feedback position data in meaning full way(as positions or with voltage boundaries)
+        for i in len(self.current_ai_axes):
+            name_suffix = "V"
+            if self.current_ai_axes[i] != self._ai_scanner and self._save_positions:
+                data[self._ai_axes + name_suffix] = self.image[:, :, :, 3 + len(self._counts_ch) + i].flatten()
+            else:
+                data[self._ai_axes + name_suffix] = self.image[:, :, :, 3 + len(self._counts_ch) + i].flatten()
+        if not self._save_positions:
+            data['x step'] = self.image[:, :, :, 0].flatten()
+            data['y step'] = self.image[:, :, :, 1].flatten()
+            data['z step'] = self.image[:, :, :, 2].flatten()
+
+        for n, ch in enumerate(self._counts_ch()):
+            data['count rate {0} (Hz)'.format(ch)] = self.image[:, :, :, 3 + n].flatten()
+
+        # Todo: update for variable axis
+        image_extent = [self.image_ranges["x"][0],
+                        self.image_ranges["x"][1],
+                        self.image_ranges["y"][0],
+                        self.image_ranges["y"][1]]
+
+
+        # Todo: This needs to be implemented in this logic, as this way only works for steppers as underlying hardware!
+        feedback_axis = []
+        for i in self.current_ai_axes:
+            if i != self._ai_scanner:
+                feedback_axis.append(i)
+
+        if feedback_axis:
+            position = self.get_position_from_feedback(feedback_axis)
+            if not position[0] == -1:
+                parameters['Last Positions '] = feedback_axis, position
+
+        figs = {ch: self.draw_figure(data=self.stepping_raw_data,
+                                     image_extent = image_extent,
+                                     cbar_range=colorscale_range,
+                                     percentile_range=percentile_range,
+                                     ch=n)
+                for n, ch in enumerate(self._counts_ch)}
+
+        # Save the raw data and plotted figure to file
+        filelabel = 'scanner_3D_data'
+        self._save_logic.save_data(data,
+                                    filepath = filepath,
+                                    timestamp = timestamp,
+                                    parameters = parameters,
+                                    filelabel = filelabel,
+                                    fmt = '%.6e',
+                                    delimiter = '\t')
+
+        self.log.debug('Scan 3D Image saved.')
+
+        self.signal_data_saved.emit()
+        # Todo Ask if it is possible to write only one save with options for which lines were scanned
+        return
+
+    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,
+                    crosshair_pos=None):
+        """ Create a 2-D color map figure of the scan image.
+
+        @param: array data: The NxM array of count values from a scan with NxM pixels.
+
+        @param: list image_extent: The scan range in the form [hor_min, hor_max, ver_min, ver_max]
+
+        @param: list axes: Names of the horizontal and vertical axes in the image
+
+        @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  If not supplied then a default of
+                                 data_min to data_max will be used.
+
+        @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
+
+        @param: list crosshair_pos: (optional) crosshair position as [hor, vert] in the chosen image axes.
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        if scan_axis is None:
+            scan_axis = ['X', 'Y']
+
+        # If no colorbar range was given, take full range of data
+        if cbar_range is None:
+            cbar_range = [np.min(data), np.max(data)]
+
+        # Scale color values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_count = 0
+        image_data = data
+        draw_cb_range = np.array(cbar_range)
+        image_dimension = image_extent.copy()
+
+        while draw_cb_range[1] > 1000:
+            image_data = image_data / 1000
+            draw_cb_range = draw_cb_range / 1000
+            prefix_count = prefix_count + 1
+
+        c_prefix = prefix[prefix_count]
+
+        # Scale axes values using SI prefix
+        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        x_prefix_count = 0
+        y_prefix_count = 0
+
+        while np.abs(image_dimension[1] - image_dimension[0]) < 1:
+            image_dimension[0] = image_dimension[0] * 1000.
+            image_dimension[1] = image_dimension[1] * 1000.
+            x_prefix_count = x_prefix_count + 1
+
+        while np.abs(image_dimension[3] - image_dimension[2]) < 1:
+            image_dimension[2] = image_dimension[2] * 1000.
+            image_dimension[3] = image_dimension[3] * 1000.
+            y_prefix_count = y_prefix_count + 1
+
+        x_prefix = axes_prefix[x_prefix_count]
+        y_prefix = axes_prefix[y_prefix_count]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        # Create image plot
+        cfimage = ax.imshow(image_data,
+                            cmap=plt.get_cmap('inferno'),  # reference the right place in qd
+                            origin="lower",
+                            vmin=draw_cb_range[0],
+                            vmax=draw_cb_range[1],
+                            interpolation='none',
+                            extent=image_dimension
+                            )
+
+        ax.set_aspect(1)
+        ax.set_xlabel(scan_axis[0] + ' position (' + x_prefix + 'm)')
+        ax.set_ylabel(scan_axis[1] + ' position (' + y_prefix + 'm)')
+        ax.spines['bottom'].set_position(('outward', 10))
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.get_xaxis().tick_bottom()
+        ax.get_yaxis().tick_left()
+
+        # draw the crosshair position if defined
+        if crosshair_pos is not None:
+            trans_xmark = mpl.transforms.blended_transform_factory(
+                ax.transData,
+                ax.transAxes)
+
+            trans_ymark = mpl.transforms.blended_transform_factory(
+                ax.transAxes,
+                ax.transData)
+
+            ax.annotate('', xy=(crosshair_pos[0] * np.power(1000, x_prefix_count), 0),
+                        xytext=(crosshair_pos[0] * np.power(1000, x_prefix_count), -0.01), xycoords=trans_xmark,
+                        arrowprops=dict(facecolor='#17becf', shrink=0.05),
+                        )
+
+            ax.annotate('', xy=(0, crosshair_pos[1] * np.power(1000, y_prefix_count)),
+                        xytext=(-0.01, crosshair_pos[1] * np.power(1000, y_prefix_count)), xycoords=trans_ymark,
+                        arrowprops=dict(facecolor='#17becf', shrink=0.05),
+                        )
+
+        # Draw the colorbar
+        cbar = plt.colorbar(cfimage, shrink=0.8)  # , fraction=0.046, pad=0.08, shrink=0.75)
+        cbar.set_label('Fluorescence (' + c_prefix + 'c/s)')
+
+        # remove ticks from colorbar for cleaner image
+        cbar.ax.tick_params(which=u'both', length=0)
+
+        # If we have percentile information, draw that to the figure
+        if percentile_range is not None:
+            cbar.ax.annotate(str(percentile_range[0]),
+                             xy=(-0.3, 0.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate(str(percentile_range[1]),
+                             xy=(-0.3, 1.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate('(percentile)',
+                             xy=(-0.3, 0.5),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+        self.signal_draw_figure_completed.emit()
+        return fig

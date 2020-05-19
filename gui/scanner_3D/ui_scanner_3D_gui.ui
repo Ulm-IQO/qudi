@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>qudi: Confocal Stepper</string>
+   <string>qudi: Scanner 3D</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_8"/>
@@ -35,7 +35,7 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="actionSave_Step_Scan"/>
+    <addaction name="actionSave_Scan"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
     <addaction name="actionClose"/>
@@ -983,6 +983,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="scan_dockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="minimumSize">
     <size>
      <width>201</width>
@@ -1273,17 +1279,7 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_10">
     <layout class="QGridLayout" name="gridLayout_4">
-     <item row="15" column="0" colspan="3">
-      <widget class="QCheckBox" name="start_position_bool_checkBox">
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
-       <property name="text">
-        <string extracomment="This of course only works if the axes have position feedback">Move to starting position at end?</string>
-       </property>
-      </widget>
-     </item>
-     <item row="12" column="0" colspan="3">
+     <item row="12" column="0">
       <widget class="QPushButton" name="get_all_positions_pushButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1301,16 +1297,13 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="ScienDSpinBox" name="x_accuracy_doubleSpinBox">
+     <item row="11" column="1">
+      <widget class="ScienDSpinBox" name="y_position_image_doubleSpinBox">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
-       </property>
-       <property name="layoutDirection">
-        <enum>Qt::LeftToRight</enum>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1324,32 +1317,10 @@
        <property name="suffix">
         <string>m</string>
        </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="minimum">
-        <double>-1.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>2000000.000000000000000</double>
-       </property>
       </widget>
      </item>
-     <item row="16" column="0" colspan="3">
-      <widget class="QCheckBox" name="measure_pos_feedback_checkBox">
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
-       <property name="text">
-        <string extracomment="This of course only works if the axes have position feedback">Collect Position Feedback  during scan?</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="2">
-      <widget class="ScienDSpinBox" name="z_accuracy_doubleSpinBox">
+     <item row="9" column="0">
+      <widget class="ScienDSpinBox" name="x_position_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -1369,7 +1340,7 @@
         <string>m</string>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>4</number>
        </property>
        <property name="minimum">
         <double>-1.000000000000000</double>
@@ -1379,44 +1350,107 @@
        </property>
       </widget>
      </item>
-     <item row="14" column="0" colspan="3">
-      <widget class="Line" name="line_8">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0" colspan="2">
-      <widget class="QLabel" name="label_4">
+     <item row="11" column="0">
+      <widget class="ScienDSpinBox" name="x_position_image_doubleSpinBox">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>100</height>
-        </size>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
        <property name="font">
         <font>
          <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>Positining Accuracy (nm)</string>
+        <string>X Position:</string>
        </property>
        <property name="alignment">
-        <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
+        <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="11" column="2">
+      <widget class="ScienDSpinBox" name="z_position_image_doubleSpinBox">
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+      </widget>
+     </item>
+     <item row="18" column="0" colspan="3">
+      <widget class="QCheckBox" name="save_pos_feedback_checkBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string extracomment="This of course only works if the axes have position feedback">Save Position Feedback of scan?</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLabel" name="label_9">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Z Position:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignBottom|Qt::AlignHCenter</set>
        </property>
       </widget>
      </item>
      <item row="3" column="1">
       <widget class="ScienDSpinBox" name="y_accuracy_doubleSpinBox">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -1475,6 +1509,23 @@
        </property>
       </widget>
      </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="label_8">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Y Position:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+       </property>
+      </widget>
+     </item>
      <item row="9" column="1">
       <widget class="ScienDSpinBox" name="y_position_doubleSpinBox">
        <property name="sizePolicy">
@@ -1506,10 +1557,23 @@
        </property>
       </widget>
      </item>
-     <item row="9" column="0">
-      <widget class="ScienDSpinBox" name="x_position_doubleSpinBox">
+     <item row="17" column="0" colspan="3">
+      <widget class="QCheckBox" name="measure_pos_feedback_checkBox">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string extracomment="This of course only works if the axes have position feedback">Collect Position Feedback  during scan?</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="ScienDSpinBox" name="z_accuracy_doubleSpinBox">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -1527,7 +1591,7 @@
         <string>m</string>
        </property>
        <property name="decimals">
-        <number>4</number>
+        <number>3</number>
        </property>
        <property name="minimum">
         <double>-1.000000000000000</double>
@@ -1537,83 +1601,58 @@
        </property>
       </widget>
      </item>
-     <item row="17" column="0" colspan="3">
-      <widget class="QCheckBox" name="save_pos_feedback_checkBox">
+     <item row="16" column="0" colspan="3">
+      <widget class="QCheckBox" name="start_position_bool_checkBox">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string extracomment="This of course only works if the axes have position feedback">Move to starting position at end?</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="ScienDSpinBox" name="x_accuracy_doubleSpinBox">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
        <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
+        <enum>Qt::LeftToRight</enum>
        </property>
-       <property name="text">
-        <string extracomment="This of course only works if the axes have position feedback">Save Position Feedback of scan?</string>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
-       <property name="checked">
+       <property name="readOnly">
         <bool>true</bool>
        </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="label_9">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
-       <property name="text">
-        <string>Z Position:</string>
+       <property name="suffix">
+        <string>m</string>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>X Position:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignBottom|Qt::AlignRight|Qt::AlignTrailing</set>
+     <item row="15" column="0" colspan="3">
+      <widget class="Line" name="line_8">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="label_8">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>Y Position:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignBottom|Qt::AlignHCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0">
+     <item row="4" column="0" colspan="3">
       <widget class="QLabel" name="label">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -1633,7 +1672,7 @@
        </property>
       </widget>
      </item>
-     <item row="10" column="0">
+     <item row="10" column="0" colspan="3">
       <widget class="QLabel" name="label_3">
        <property name="font">
         <font>
@@ -1643,55 +1682,34 @@
         </font>
        </property>
        <property name="text">
-        <string>Position Image</string>
+        <string>Position Image:</string>
        </property>
       </widget>
      </item>
-     <item row="11" column="0">
-      <widget class="ScienDSpinBox" name="x_position_image_doubleSpinBox">
+     <item row="2" column="0" colspan="3">
+      <widget class="QLabel" name="label_4">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>100</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Positining Accuracy (nm)</string>
+       </property>
        <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::NoButtons</enum>
-       </property>
-       <property name="suffix">
-        <string>m</string>
-       </property>
-      </widget>
-     </item>
-     <item row="11" column="1">
-      <widget class="ScienDSpinBox" name="y_position_image_doubleSpinBox">
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::NoButtons</enum>
-       </property>
-       <property name="suffix">
-        <string>m</string>
-       </property>
-      </widget>
-     </item>
-     <item row="11" column="2">
-      <widget class="ScienDSpinBox" name="z_position_image_doubleSpinBox">
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::NoButtons</enum>
-       </property>
-       <property name="suffix">
-        <string>m</string>
+        <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
        </property>
       </widget>
      </item>
@@ -1732,7 +1750,7 @@
         </widget>
        </item>
        <item row="0" column="2">
-        <widget class="QDoubleSpinBox" name="scan_freq_fast_axis_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="scan_freq_fast_axis_doubleSpinBox">
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
@@ -1786,6 +1804,9 @@
          </property>
          <property name="suffix">
           <string>m</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
          </property>
          <property name="singleStep">
           <double>0.001000000000000</double>
@@ -1894,7 +1915,7 @@
         </widget>
        </item>
        <item row="4" column="2">
-        <widget class="QDoubleSpinBox" name="scan_resolution_fast_axis_V_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="scan_resolution_fast_axis_V_doubleSpinBox">
          <property name="enabled">
           <bool>false</bool>
          </property>
@@ -1916,7 +1937,10 @@
         </widget>
        </item>
        <item row="5" column="2">
-        <widget class="QDoubleSpinBox" name="maximal_scan_resolution_fast_axis_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="maximal_scan_resolution_fast_axis_doubleSpinBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
@@ -1929,6 +1953,12 @@
          <property name="suffix">
           <string>m</string>
          </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.001000000000000</double>
+         </property>
         </widget>
        </item>
       </layout>
@@ -1936,7 +1966,7 @@
     </layout>
    </widget>
   </widget>
-  <action name="actionSave_Step_Scan">
+  <action name="actionSave_Scan">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
