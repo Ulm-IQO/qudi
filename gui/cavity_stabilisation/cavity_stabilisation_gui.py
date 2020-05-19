@@ -25,10 +25,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import os
 import pyqtgraph as pg
-import time
 
 from core.module import Connector, ConfigOption, StatusVar
 from collections import OrderedDict
+from gui.cavity_stabilisation.lab_book_gui import CavityLabBookWindow
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -102,6 +102,9 @@ class CavityStabilisationGui(GUIBase):
 
         # GUI element:
         self._mw = CavityStabilisationMainWindow()
+        self._lab= CavityLabBookWindow(self._cavity_stabilisation_logic)
+        self._mw.action_show_labbook.triggered.connect(self.show_labbook)
+
 
         # set up dock widgets
         self._mw.centralwidget.hide()
@@ -474,7 +477,8 @@ class CavityStabilisationGui(GUIBase):
 
     ##########   Options  #######
 
-        self._mw.action_stop_scanning.setEnabled(False)
+    def show_labbook(self):
+        self._lab.show()
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default

@@ -29,6 +29,7 @@ import os
 import time
 
 from core.module import Connector
+from gui.confocal_stepper.lab_book_gui import ConfocalStepperLabBookWindow
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -233,6 +234,8 @@ class ConfocalStepperGui(GUIBase):
         # Use the inherited class 'Ui_StepperGuiUI' to create now the GUI element:
         self._mw = ConfocalStepperMainWindow()
         self._sd = ConfocalStepperSettingDialog()
+        self._lab= ConfocalStepperLabBookWindow(self._stepper_logic)
+        self._mw.action_show_labbook.triggered.connect(self.show_labbook)
 
         ###################################################################
         #               Configuring the dock widgets                      #
@@ -1102,6 +1105,9 @@ class ConfocalStepperGui(GUIBase):
         self.disable_3D_parameters()
         self.update_stepper_hardware_values()
         self._stepper_logic.start_finesse_measurement()  # tag='gui')
+
+    def show_labbook(self):
+        self._lab.show()
 
     def menu_settings(self):
         """ This method opens the settings menu. """
