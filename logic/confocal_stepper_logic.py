@@ -2449,7 +2449,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @param: list image_extent: The scan range in the form [hor_min, hor_max, ver_min, ver_max]
 
-        @param: list axes: Names of the horizontal and vertical axes in the image
+        @param: list scan_axis: Names of the horizontal and vertical axes in the image
 
         @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  If not supplied
                                     then a default of data_min to data_max will be used.
@@ -2464,6 +2464,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
         # Todo: this is very incomplete. Things like axis etc are missing
+        if scan_axis is None:
+            scan_axis = ['X', 'Y']
+
         image_data = data
 
         # If no colorbar range was given, take full range of data
