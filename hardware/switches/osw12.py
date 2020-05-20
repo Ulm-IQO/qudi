@@ -42,9 +42,9 @@ class Main(Base, SwitchInterface):
         """ Module activation method """
         self._rm = visa.ResourceManager()
         try:
-            self._inst = self._rm.open_resource(self.serial_interface, baud_rate=115200, write_termination='\n',
+            self._inst = self._rm.open_resource(self.interface, baud_rate=115200, write_termination='\n',
                                                 read_termination='\r\n')
-        except:
+        except visa.VisaIOError:
             self.log.error('Could not connect to OSW device')
 
     def on_deactivate(self):
@@ -66,7 +66,7 @@ class Main(Base, SwitchInterface):
 
           @return bool: True if 1, False if 2
         """
-        state = self._inst.query('S ?')
+        state = self._inst.query('S?\n')
         if state == '1':
             return True
         elif state == '2':
