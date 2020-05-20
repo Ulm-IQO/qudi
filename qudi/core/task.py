@@ -22,11 +22,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import abc
 import sys
 import logging
+import weakref
+import importlib
 from enum import Enum
 from qtpy import QtCore
 
 from qudi.core.meta import TaskMetaclass
-from qudi.core.util.mutex import Mutex
+from qudi.core.util.mutex import Mutex, RecursiveMutex
 from qudi.core.connector import Connector
 from fysom import Fysom
 
@@ -40,7 +42,8 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
 
     sigFinished = QtCore.Signal(object, bool)
 
-    def __init__(self, conn_modules, *args, **kwargs):
+    def __init__(self, *args, conn_modules, fn=None, **kwargs):
+        super().__init__()
         # Create connectors and connect them to module instances
         for attr, conn in self.module_connectors().items():
             name = attr if conn.name is None else conn.name
@@ -50,6 +53,9 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
             new_conn = conn.copy(name=name)
             setattr(self, attr, new_conn)
             new_conn.connect(conn_modules[name])
+        # Set function as _run bound method
+        if callable(fn):
+            self._run = fn.__get__(self)
         self.args = args
         self.kwargs = kwargs
         self.result = None
@@ -68,8 +74,11 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
         """ Returns a logger object """
         return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
 
-    def __call__(self):
-        return self.run()
+    def __call__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.run()
+        return self.result, self.success
 
     @QtCore.Slot()
     def run(self):
@@ -88,13 +97,166 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
         self.sigFinished.emit(self.result, self.success)
         return
 
-    @abc.abstractmethod
     def can_run(self):
         return True
 
     @abc.abstractmethod
     def _run(self, *args, **kwargs):
         pass
+
+
+class ScriptManager(QtCore.QObject):
+    """
+    ToDo: Document
+    """
+
+    _instance = None  # Only class instance created will be stored here as weakref
+    _lock = RecursiveMutex()
+
+    sigManagedScriptsChanged = QtCore.Signal(dict)
+
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None or cls._instance() is None:
+                obj = super().__new__(cls, *args, **kwargs)
+                cls._instance = weakref.ref(obj)
+                return obj
+            raise Exception('ScriptManager is a singleton. An instance has already been created in '
+                            'this process. Please use ScriptManager.instance() instead.')
+
+    def __init__(self, *args, qudi_main, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._qudi_main_ref = weakref.ref(qudi_main, self._qudi_main_ref_dead_callback)
+        self._scripts = dict()
+
+    @classmethod
+    def instance(cls):
+        with cls._lock:
+            if cls._instance is None:
+                return None
+            return cls._instance()
+
+    @property
+    def script_names(self):
+        with self._lock:
+            return tuple(self._scripts)
+
+    @property
+    def scripts(self):
+        return self._scripts.copy()
+
+    def remove_script(self, script_name, ignore_missing=False, emit_change=True):
+        with self._lock:
+            if script_name not in self._scripts:
+                if not ignore_missing:
+                    logger.error('No script with name "{0}" registered. Unable to remove script.'
+                                 ''.format(script_name))
+                return
+            self._scripts[script_name].deactivate()
+            self._scripts[script_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
+            self.refresh_module_links()
+            if self._scripts[script_name].allow_remote_access:
+                stop_sharing_module(script_name)
+            del self._scripts[script_name]
+            if emit_change:
+                self.sigManagedModulesChanged.emit(self.scripts)
+
+    def add_script(self, name, configuration, allow_overwrite=False, emit_change=True):
+        with self._lock:
+            if not isinstance(name, str) or not name:
+                raise TypeError('script name must be non-empty str type')
+
+            if allow_overwrite:
+                self.remove_script(name, ignore_missing=True)
+            elif name in self._scripts:
+                logger.error(
+                    'Script with name "{0}" already registered. Unable to add script of same name.')
+                return
+            module, class_name = configuration.get('module.Class').rsplit('.', 1)
+            mod = importlib.import_module('scripts.{0}'.format(module))
+            importlib.reload(mod)
+
+            script_cls = getattr(mod, class_name)
+            if isinstance(script_cls, ModuleScript):
+                script = script_cls(conn_modules=modules, fn=fn)
+            else:
+                script = ModuleScript(conn_modules=modules, fn=fn)
+            module.sigStateChanged.connect(self.sigModuleStateChanged)
+            self._modules[name] = module
+            self.refresh_module_links()
+            # Register module in remote module service if module should be shared
+            if module.allow_remote_access:
+                if self._qudi_main_ref().remote_server is None:
+                    logger.error('Unable to share qudi module "{0}" as remote module. No remote'
+                                 ' server running in this qudi process.'.format(module.name))
+                else:
+                    logger.info('Start sharing qudi module "{0}" on remote module server.'
+                                ''.format(module.name))
+                    start_sharing_module(module)
+            if emit_change:
+                self.sigManagedModulesChanged.emit(self.modules)
+
+    def refresh_module_links(self):
+        with self._lock:
+            weak_refs = {
+                name: weakref.ref(mod, partial(self._module_ref_dead_callback, module_name=name))
+                for name, mod in self._modules.items()}
+            for module_name, module in self._modules.items():
+                # Add required module references
+                required = set(module.connection_cfg.values())
+                module.required_modules = set(
+                    mod_ref for name, mod_ref in weak_refs.items() if name in required)
+                # Add dependent module references
+                module.dependent_modules = set(mod_ref for mod_ref in weak_refs.values() if
+                                               module_name in mod_ref().connection_cfg.values())
+            return
+
+    def activate_module(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Module activation aborted.'.format(module_name))
+                return
+            return self._modules[module_name].activate()
+
+    def deactivate_module(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Module deactivation aborted.'.format(module_name))
+                return
+            return self._modules[module_name].deactivate()
+
+    def reload_module(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Module reload aborted.'.format(module_name))
+                return
+            return self._modules[module_name].reload()
+
+    def clear_module_status(self, module_name):
+        # ToDo: implement together with module Base class
+        pass
+
+    def start_all_modules(self):
+        with self._lock:
+            for module in self._modules.values():
+                module.activate()
+
+    def stop_all_modules(self):
+        with self._lock:
+            for module in self._modules.values():
+                module.deactivate()
+
+    def _module_ref_dead_callback(self, dead_ref, module_name):
+        with self._lock:
+            self.remove_module(module_name, ignore_missing=True)
+
+    def _qudi_main_ref_dead_callback(self):
+        logger.error('Qudi main reference no longer valid. This should never happen. Tearing down '
+                     'ModuleManager.')
+        self.clear()
 
 
 class TaskState(Enum):
@@ -107,28 +269,12 @@ class TaskState(Enum):
     finishing = 6
 
 
-class TaskResult(QtCore.QObject):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.data = None
-        self.success = None
-
-    def update(self, data, success=None):
-        self.data = data
-        self.success = success
-
-
-class TaskStateMachine(Fysom, QtCore.QObject):
+class TaskStateMachine(Fysom):
     """
-    FIXME
+    ToDo: Document
     """
-    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
-    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
 
-    # signals
-    sigStateChanged = QtCore.Signal(TaskState, TaskState)  # old state, new state (Enum)
-
-    def __init__(self, callbacks=None, parent=None, **kwargs):
+    def __init__(self, parent, callbacks=None, **kwargs):
         if callbacks is None:
             callbacks = dict()
 
@@ -155,15 +301,14 @@ class TaskStateMachine(Fysom, QtCore.QObject):
             'callbacks': callbacks}
 
         # Initialise state machine:
-        super().__init__(parent=parent, cfg=fsm_cfg, **kwargs)
-        # QtCore.QObject.__init__(self, parent)
-        # Fysom.__init__(self, cfg=fsm_cfg, **kwargs)
+        super().__init__(cfg=fsm_cfg, **kwargs)
+        self.__parent = parent
 
     def __call__(self):
         """
         Returns the current state.
         """
-        return self.current
+        return TaskState[self.current]
 
     def _build_event(self, event):
         """
@@ -180,25 +325,15 @@ class TaskStateMachine(Fysom, QtCore.QObject):
                 try:
                     base_event(*args, **kwargs)
                 except:
-                    self.parent().log.exception('Error while trying to {0} task "{1}"'.format(event, self.parent().name))
+                    self.__parent.log.exception(
+                        'Error while trying to {0} task "{1}"'.format(event, self.__parent.name))
                     return False
                 return True
             return wrap_event
         return base_event
 
-    def onchangestate(self, e):
-        """
-        Fysom callback for all state transitions.
 
-        @param object e: Fysom event object passed through all state transition callbacks
-        """
-        old = TaskState[e.src]
-        new = TaskState[e.dst]
-        if old != new:
-            self.sigStateChanged.emit(old, new)
-
-
-class InterruptableTask(Fysom, metaclass=TaskMetaclass):
+class InterruptableTask(QtCore.QObject, metaclass=TaskMetaclass):
     """
     This class represents a task in a module that can be safely executed by checking
     preconditions and pausing other tasks that are being executed as well.
@@ -228,11 +363,9 @@ class InterruptableTask(Fysom, metaclass=TaskMetaclass):
     sigResumed = QtCore.Signal()
     sigDoFinish = QtCore.Signal()
     sigFinished = QtCore.Signal()
-    sigStateChanged = QtCore.Signal(TaskState)
+    sigStateChanged = QtCore.Signal(TaskState, TaskState)  # new state, old state
 
-    prePostTasks = {}
-    pauseTasks = {}
-    requiredModules = []
+    scripts = dict()
 
     def __init__(self, name, runner, references, config, **kwargs):
         """ Create an Interruptable task.
@@ -241,32 +374,15 @@ class InterruptableTask(Fysom, metaclass=TaskMetaclass):
           @param dict references: a dictionary of all required modules
           @param dict config: configuration dictionary
         """
-        default_callbacks = {'onrun': self._start,
-                             'onpause': self._pause,
-                             'onresume': self._resume,
-                             'onfinish': self._finish
-                             }
-        state_dict = {
-            'initial': 'stopped',
-            'events': [
-                {'name': 'run',                 'src': 'stopped',   'dst': 'starting'},
-                {'name': 'startingFinished',    'src': 'starting',  'dst': 'running'},
-                {'name': 'pause',               'src': 'running',   'dst': 'pausing'},
-                {'name': 'pausingFinished',     'src': 'pausing',   'dst': 'paused'},
-                {'name': 'finish',              'src': 'running',   'dst': 'finishing'},
-                {'name': 'finishingFinished',   'src': 'finishing', 'dst': 'stopped'},
-                {'name': 'resume',              'src': 'paused',    'dst': 'resuming'},
-                {'name': 'resumingFinished',    'src': 'resuming',  'dst': 'running'},
-                {'name': 'abort',               'src': 'pausing',   'dst': 'stopped'},
-                {'name': 'abort',               'src': 'starting',  'dst': 'stopped'},
-                {'name': 'abort',               'src': 'resuming',  'dst': 'stopped'}
-            ],
-            'callbacks': default_callbacks
-        }
+        super().__init__(**kwargs)
+        fsm_callbacks = {'onchangestate': self._state_change_callback,
+                         # 'onrun': self._start,
+                         # 'onpause': self._pause,
+                         # 'onresume': self._resume,
+                         # 'onfinish': self._finish
+                         }
 
-        super().__init__(cfg=state_dict, **kwargs)
-        # QtCore.QObject.__init__(self)
-        # Fysom.__init__(self, _stateDict)
+        self.task_state = TaskStateMachine(parent=self, callbacks=fsm_callbacks)
 
         self.lock = Mutex()
         self.name = name
@@ -289,14 +405,17 @@ class InterruptableTask(Fysom, metaclass=TaskMetaclass):
         """
         return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
 
-    def onchangestate(self, e):
+    def _state_change_callback(self, e):
         """ Fysom callback for state transition.
 
           @param object e: Fysom state transition description
         """
-        self.sigStateChanged.emit(e)
+        old = TaskState[e.src]
+        new = TaskState[e.dst]
+        if old != new:
+            self.sigStateChanged.emit(new, old)
 
-    def _start(self, e):
+    def _startup_callback(self, e):
         """
           @param object e: Fysom state transition description
 
@@ -310,6 +429,14 @@ class InterruptableTask(Fysom, metaclass=TaskMetaclass):
             return True
         else:
             return False
+
+    @abc.abstractmethod
+    def task_preparation(self):
+        pass
+
+    @abc.abstractmethod
+    def task_cleanup(self):
+        pass
 
     def _doStart(self):
         """ Starting prerequisites were met, now do the actual start action.
