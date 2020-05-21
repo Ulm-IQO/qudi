@@ -3474,12 +3474,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return [-1]
         positions = np.array(positions)
         voltage_array = np.zeros(np.shape(positions))
-        i = 0
         if len(np.shape(positions)) == 1:
             length_pos_array = 1
         else:
             length_pos_array = np.shape(positions)[0]
-        self.log.info("%s", len(analogue_channels))
+        self.log.debug("Analogue output channels scanned: %s", analogue_channels)
         if len(analogue_channels) != length_pos_array:
             self.log.error(
                 "The length of scanned axes (%s) and the length of the given position array (%s) does not overlap",
@@ -3491,14 +3490,21 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             if length_pos_array == 1:
                 voltage_array = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
                         positions - pos_range[0]) + v_range[0]
+                if np.min(voltage_array) < v_range[0] or np.max(voltage_array) > v_range[1]:
+                    self.log.error(
+                        'Voltages (%s, %s) exceed the limit, the positions have to '
+                        'be adjusted to stay in the given range.',
+                        np.min(voltage_array), np.max(voltage_array))
             else:
-                voltage_array[i] = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
-                        positions[i] - pos_range[0]) + v_range[0]
-            if np.min(voltage_array[i]) < v_range[0] or np.max(voltage_array[i]) > v_range[1]:
-                self.log.error(
-                    'Voltages (%s, %s) exceed the limit, the positions have to '
-                    'be adjusted to stay in the given range.', np.min(voltage_array[i]), np.max(voltage_array[i]))
-                return [-1]
+                for i in range(len(analogue_channels)):
+                    voltage_array[i] = (v_range[1] - v_range[0]) / (pos_range[1] - pos_range[0]) * (
+                            positions[i] - pos_range[0]) + v_range[0]
+                    if np.min(voltage_array[i]) < v_range[0] or np.max(voltage_array[i]) > v_range[1]:
+                        self.log.error(
+                            'Voltages (%s, %s) exceed the limit, the positions have to '
+                            'be adjusted to stay in the given range.',
+                            np.min(voltage_array[i]), np.max(voltage_array[i]))
+                        return [-1]
 
         if np.array_equal(self.analogue_scan_line(analogue_channels[0], voltage_array), voltage_array) < 0:
             return [-1]
