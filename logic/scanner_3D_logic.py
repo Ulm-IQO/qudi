@@ -62,7 +62,6 @@ class Scanner3DLogic(GenericLogic):
     digitalcounter = Connector(interface='FiniteCounterInterface')
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
-    cavcontrol = Connector(interface="CavityStabilisationLogic")
     stepperlogic = Connector(interface='ConfocalStepperLogic')
 
     # status vars
@@ -72,6 +71,7 @@ class Scanner3DLogic(GenericLogic):
     # config
     scan_resolution_fast_axis = ConfigOption('3D_scan_resolution', 1e-6, missing="warn")
     _ai_counter = ConfigOption("AI_counter", None, missing="warn")
+    _scan_freq_per_m = ConfigOption("position_movement_scan_speed", 1, missing="warn")
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -109,7 +109,6 @@ class Scanner3DLogic(GenericLogic):
         self._scanning_device = self.analogueoutput()
         self._stepper_logic = self.stepperlogic()
         self._save_logic = self.savelogic()
-        self._cavitycontrol = self.cavcontrol()
 
         # Sets connections between signals and functions
         self.signal_scan_line_next.connect(self._scan_line_3D, QtCore.Qt.QueuedConnection)
@@ -146,7 +145,7 @@ class Scanner3DLogic(GenericLogic):
         # Default values for the resolution of the scan
         # Todo: it is very problematic that this is done in points per scan range,
         #  whereas the third axis is done in mum resolution
-        self.xy_resolution = 5
+        self.xy_resolution = 30
         # Todo: there must be an option to define this for every axis
         self._max_scan_speed_single_axis = 10  # (Hz/V)
         self._min_scan_resolution = 0.005  # (V)
@@ -511,7 +510,7 @@ class Scanner3DLogic(GenericLogic):
         if self._scan_counter > self._dim_slow_axis - 1:
             self.stopRequested = True
             self._scan_continuable = False
-            self.log.info("3D Scan at end position")
+            self.log.debug("3D Scan at end position")
 
         self.signal_scan_line_next.emit()
 
@@ -559,7 +558,7 @@ class Scanner3DLogic(GenericLogic):
             analog_result = self._analog_input_device.get_analogue_voltage_reader(ai_axes)
 
         error = self._counting_device.stop_finite_counter()
-        self.update_current_position({"x": end_pos[1], "y": end_pos[0], "z": end_pos[2]})
+        self.update_current_position({"x": end_pos[0], "y": end_pos[1], "z": end_pos[2]})
         if ai_axes:
             if 0 > self._analog_input_device.stop_analogue_voltage_reader(ai_axes[0]):
                 self.log.error("Stopping the analog input failed")
@@ -598,7 +597,7 @@ class Scanner3DLogic(GenericLogic):
         # Todo: This only woks for one digital counter and one analog counter (not position feedback) so far. Fix!
         new_counts = []
         length_scan = self._dim_medium_axis
-        name_save_addition = "3D_scan"
+        name_save_addition = "3D"
         data_counter = 0
 
         # Digital Counter Data
@@ -610,7 +609,7 @@ class Scanner3DLogic(GenericLogic):
             new_counts.append(np.concatenate(new_counts_uo))
             # save data
             self.save_to_npy("SPCM" + '_{0}_'.format(self._counts_ch[i].replace('/', '')) + name_save_addition,
-                             line_number, new_counts[i])
+                             line_number, np.split(new_counts[i], length_scan))
             # make data available
             self.image[self._scan_counter, :, :, 3 + i] = np.split(new_counts[i], self._dim_medium_axis)
             self.image_2D[self._scan_counter, :, 3 + i] = np.mean(new_counts_uo, 1)
@@ -629,16 +628,15 @@ class Scanner3DLogic(GenericLogic):
 
             for key, value in new_counts_analog.items():
                 # save data
-                self.save_to_npy("AI_" + self._ai_axes[key] + "_" + name_save_addition, line_number,
-                                 value)
+                self.save_to_npy( self._ai_axes[key] + "_" + name_save_addition, line_number,
+                                 np.split(value, length_scan))
                 # make data available
                 index_ai = self.current_ai_axes.index(key)
                 self.image[self._scan_counter, :, :, 3 + len(self._counts_ch) + index_ai] = np.split(value, length_scan)
                 self.image_2D[self._scan_counter, :, 3 + len(self._counts_ch) + index_ai] = np.mean(
                     np.split(value, length_scan), 1)
 
-        self.log.info("3D Scan finished saving, line %s,  time: %s", line_number,
-                      datetime.datetime.now().strftime('%M-%S-%f'))
+        self.signal_image_updated.emit()
 
     def initialize_image(self):
         """Initialization of the image.
@@ -901,17 +899,19 @@ class Scanner3DLogic(GenericLogic):
         if current_pos == new_pos:
             self.log.info("The device was already at required output voltage")
             return 0
-        scan_res = self.calculate_resolution(
+        scan_res = abs(self.calculate_resolution(
             # self._scanning_device.get_analogue_resolution(), pos_range)
-            4, [current_pos, new_pos])
+            4, [current_pos, new_pos]))
         # Todo: The scan resolution used should be done much more sensibly. This could possibly very slow
+        max_scan_res = self.calculate_resolution(16, self._scanning_axes_ranges[axis])
+        if scan_res < max_scan_res:
+            scan_res = max_scan_res
 
-        # Todo: The calculation of the freq needs to be done differently
         num_of_linear_steps = np.rint(abs((current_pos - new_pos) / scan_res))
-        _clock_frequency = abs(0.0001 / scan_res)
-        # _clock_frequency = self.maximum_clock_frequency
-        if (num_of_linear_steps == 1):
+        if (num_of_linear_steps < 1):
             num_of_linear_steps = 2
+        # convert speed of movement per m into clock freq per moved point
+        _clock_frequency = self._scan_freq_per_m / abs(current_pos - new_pos) * num_of_linear_steps
         ramp = np.linspace(current_pos, new_pos, num_of_linear_steps)
         voltage_difference = abs(current_pos - new_pos)
         if voltage_difference > scan_res:
@@ -1070,7 +1070,6 @@ class Scanner3DLogic(GenericLogic):
                         self.image_ranges["y"][0],
                         self.image_ranges["y"][1]]
 
-
         # Todo: This needs to be implemented in this logic, as this way only works for steppers as underlying hardware!
         feedback_axis = []
         for i in self.current_ai_axes:
@@ -1083,7 +1082,7 @@ class Scanner3DLogic(GenericLogic):
                 parameters['Last Positions '] = feedback_axis, position
 
         figs = {ch: self.draw_figure(data=self.stepping_raw_data,
-                                     image_extent = image_extent,
+                                     image_extent=image_extent,
                                      cbar_range=colorscale_range,
                                      percentile_range=percentile_range,
                                      ch=n)
@@ -1092,12 +1091,12 @@ class Scanner3DLogic(GenericLogic):
         # Save the raw data and plotted figure to file
         filelabel = 'scanner_3D_data'
         self._save_logic.save_data(data,
-                                    filepath = filepath,
-                                    timestamp = timestamp,
-                                    parameters = parameters,
-                                    filelabel = filelabel,
-                                    fmt = '%.6e',
-                                    delimiter = '\t')
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
 
         self.log.debug('Scan 3D Image saved.')
 
