@@ -221,8 +221,8 @@ class ConfocalStepperGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        # Disconnect signals
-        pass
+        self._mw.close()
+        return 0
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal stepper GUI.
