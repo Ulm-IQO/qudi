@@ -196,6 +196,8 @@ class Scanner3DGui(GUIBase):
 
     default_meter_prefix = ConfigOption('default_meter_prefix', None)  # assume the unit prefix of position spinbox
 
+    _min_step = ConfigOption('min_steps_per_m', 1)
+
     # status var
     adjust_cursor_roi = StatusVar(default=True)
     slider_small_step = StatusVar(default=10e-9)  # initial value in meter
@@ -239,8 +241,8 @@ class Scanner3DGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        # Disconnect signals
-        pass
+        self._mw.close()
+        return 0
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the Scanner 3D GUI.
@@ -465,9 +467,9 @@ class Scanner3DGui(GUIBase):
         # Todo: This is only correct while the z axis is always the fast axis
         self._mw.z_scan_resolution_InputWidget.setValue(self._scanner_logic.scan_resolution_fast_axis)
 
-        self._mw.x_scan_resolution_InputWidget.valueChanged.connect(self.change_x_resolution)
-        self._mw.y_scan_resolution_InputWidget.valueChanged.connect(self.change_y_resolution)
-        self._mw.z_scan_resolution_InputWidget.valueChanged.connect(self.change_z_resolution)
+        self._mw.x_scan_resolution_InputWidget.editingFinished.connect(self.change_x_resolution)
+        self._mw.y_scan_resolution_InputWidget.editingFinished.connect(self.change_y_resolution)
+        self._mw.z_scan_resolution_InputWidget.editingFinished.connect(self.change_z_resolution)
 
         # These connect to confocal logic such that the piezos are moved
         # Setup the Sliders:
@@ -558,7 +560,10 @@ class Scanner3DGui(GUIBase):
         self._mw.scan_direction_comboBox.activated.connect(self.update_scan_direction)
         self._mw.inverted_direction_checkBox.clicked.connect(self.update_scan_direction)
 
-        self._scanner_logic.signal_stop_scanning.connect(self.enable_step_actions)
+        self._scanner_logic.signal_stop_scanning.connect(self.enable_scan_actions)
+
+        # this ensures, that the scan resolution set in the gui is possible for the logic
+        self.change_x_resolution()
 
     def init_fast_axis_scan_parameters(self):
         # setting GUI elements enabled
@@ -715,7 +720,8 @@ class Scanner3DGui(GUIBase):
     def get_scanner_position(self):
         """Measures the current positions of the scanner for the axis with position feedback"""
         """Measures the current positions of the stepper for the axis with position feedback"""
-        result = self._scanner_logic.get_position_from_feedback([*self._feedback_axis])  # get position for keys of feedback axes
+        result = self._scanner_logic.get_position_from_feedback(
+            [*self._feedback_axis])  # get position for keys of feedback axes
         if self._x_closed_loop:
             self._mw.x_position_doubleSpinBox.setValue(result[0] * 1e-3)
         if self._y_closed_loop:
@@ -724,7 +730,7 @@ class Scanner3DGui(GUIBase):
             self._mw.z_position_doubleSpinBox.setValue(result[self._x_closed_loop + self._y_closed_loop] * 1e-3)
 
     ################## Tool bar ##################
-    def disable_step_actions(self):
+    def disable_scan_actions(self):
         """ Disables the buttons for scanning.
         """
         # Enable the stop scanning button
@@ -770,7 +776,7 @@ class Scanner3DGui(GUIBase):
 
         self._currently_scanning = True
 
-    def enable_step_actions(self):
+    def enable_scan_actions(self):
         """ Reset the scan action buttons to the default active
         state when the system is idle.
         """
@@ -846,7 +852,7 @@ class Scanner3DGui(GUIBase):
             # self._scanner_logic.permanent_scan = False
             self._scanner_logic.stop_3D_scan()
 
-        self.enable_step_actions()
+        self.enable_scan_actions()
 
     def scan_start_clicked(self):
         """ Manages what happens if the scan is started. """
@@ -859,12 +865,12 @@ class Scanner3DGui(GUIBase):
         # self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'm')
         # self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'm')
 
-        self.disable_step_actions()
+        self.disable_scan_actions()
         self._scanner_logic.start_3D_scan()  # tag='gui')
 
     def scan_continued_clicked(self):
         """ Continue 3D scan. """
-        self.disable_step_actions()
+        self.disable_scan_actions()
         self._scanner_logic.continue_3D_scan()  # tag='gui')
 
     def menu_settings(self):
@@ -969,7 +975,7 @@ class Scanner3DGui(GUIBase):
 
         # Unlock state widget if scan is finished
         if self._scanner_logic.module_state() != 'locked':
-            self.enable_step_actions()
+            self.enable_scan_actions()
 
     ################## Position Feedback ################
     def update_move_to_start(self):
@@ -1021,7 +1027,7 @@ class Scanner3DGui(GUIBase):
         """ The user changed the number in the current x position spin box, adjust all
             other GUI elements."""
         x_pos = self._mw.x_current_InputWidget.value()
-        self.update_slider_piezo_x(x_pos)
+        self.update_slider_x(x_pos)
         self._scanner_logic.move_to_position({"x": x_pos}, "xinput")
         # todo: ROI
 
@@ -1037,7 +1043,7 @@ class Scanner3DGui(GUIBase):
         """ The user changed the number in the current z position spin box, adjust all
            other GUI elements."""
         z_pos = self._mw.z_current_InputWidget.value()
-        self.update_slider_piezo_z(z_pos)
+        self.update_slider_z(z_pos)
         self._scanner_logic.move_to_position({"z": z_pos}, "zinput")
         # todo: ROI
 
@@ -1082,10 +1088,10 @@ class Scanner3DGui(GUIBase):
         @params int sliderValue: slider position, a quantized whole number
         """
         y_pos = self._scanner_logic._scanning_axes_ranges["y"][0] + sliderValue * self.slider_res
-        self.update_roi(h=y_pos)
+        self.update_roi(v=y_pos)
         self.update_input_y(y_pos)
         self._scanner_logic.move_to_position({"y": y_pos}, 'yslider')
-        self._optimizer_logic.set_position('yslider', x=y_pos)
+        self._optimizer_logic.set_position('yslider', y=y_pos)
 
     def update_from_slider_z(self, sliderValue):
         """The user moved the z slider, adjust the other GUI elements.
@@ -1097,7 +1103,7 @@ class Scanner3DGui(GUIBase):
         # self.update_roi(h=z_pos)
         self.update_input_z(z_pos)
         self._scanner_logic.move_to_position({"z": z_pos}, 'zslider')
-        self._optimizer_logic.set_position('zslider', x=z_pos)
+        self._optimizer_logic.set_position('zslider', z=z_pos)
 
     def update_slider_x(self, x_pos):
         """ Update the x slider when a change happens.
@@ -1126,9 +1132,22 @@ class Scanner3DGui(GUIBase):
     def change_x_resolution(self):
         """ Update the x resolution in the logic according to the GUI.
         """
-        self._scanner_logic.xy_resolution = self._mw.x_scan_resolution_InputWidget.value()
+        res = self._mw.x_scan_resolution_InputWidget.value()
+        range_x = self._scanner_logic.image_ranges["x"]
+        min_step = int(self._min_step * abs(range_x[1] - range_x[0]))
+        # Todo: when y resoultio is indepented, this needs to be removed
+        range_y = self._scanner_logic.image_ranges["y"]
+        min_step_y = int(self._min_step * abs(range_y[1] - range_y[0]))
+        if res < max(min_step, min_step_y):
+            self.log.info("The scan resolution %s chosen is too small for this hardware, "
+                          "the minimal possible resolution %s was chosen instead", res, max(min_step, min_step_y))
+            res = max(min_step_y, min_step)
+            self._mw.y_scan_resolution_InputWidget.setValue(res)
+            self._mw.x_scan_resolution_InputWidget.setValue(res)
+        self._scanner_logic.xy_resolution = res
+
         # Todo: this needs to be updated when there is actually the option to choose x and y resolution independently
-        self._mw.y_scan_resolution_InputWidget.setValue(self._mw.x_scan_resolution_InputWidget.value())
+        self._mw.y_scan_resolution_InputWidget.setValue(res)
 
     def change_y_resolution(self):
         """ Update the y resolution in the logic according to the GUI.
@@ -1143,21 +1162,38 @@ class Scanner3DGui(GUIBase):
         # todo: this function will have to be updated once it is possible to do a scan where z is not the fast axis
         # self._scanner_logic.z_resolution = self._mw.z_scan_resolution_InputWidget.value()
 
-    # Todo: did not do this yet
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanner_logic.image_ranges["x"] = [
-            self._mw.x_min_InputWidget.value(),
-            self._mw.x_max_InputWidget.value()]
+        range_x = [self._mw.x_min_InputWidget.value(), self._mw.x_max_InputWidget.value()]
+        res = self._mw.x_scan_resolution_InputWidget.value()
+        min_step = int(self._min_step * abs(range_x[1] - range_x[0]))
+        if res < min_step:
+            self.log.info(
+                "With the newly chosen x image range (%s) the scan resolution %s became too small for this hardware, "
+                "the minimal possible resolution %s was chosen instead", range_x, res, min_step)
+            self._scanner_logic.xy_resolution = min_step
+            self._mw.x_scan_resolution_InputWidget.setValue(min_step)
+            self._mw.y_scan_resolution_InputWidget.setValue(min_step)
+
+        self._scanner_logic.image_ranges["x"] = range_x
         self.update_scan_speed_fast_axis()
         self.update_maximal_scan_resolution_fast_axis()
 
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanner_logic.image_ranges["y"] = [
-            self._mw.y_min_InputWidget.value(),
-            self._mw.y_max_InputWidget.value()]
+        range_y = [self._mw.y_min_InputWidget.value(), self._mw.y_max_InputWidget.value()]
+        res = self._mw.x_scan_resolution_InputWidget.value()
+        min_step = int(self._min_step * abs(range_y[1] - range_y[0]))
+        if res < min_step:
+            self.log.info(
+                "With the newly chosen x image range (%s) the scan resolution %s became too small for this hardware, "
+                "the minimal possible resolution %s was chosen instead", range_y, res, min_step)
+            self._scanner_logic.xy_resolution = min_step
+            self._mw.x_scan_resolution_InputWidget.setValue(min_step)
+            self._mw.y_scan_resolution_InputWidget.setValue(min_step)
+
+        self._scanner_logic.image_ranges["y"] = range_y
         self.update_scan_speed_fast_axis()
         self.update_maximal_scan_resolution_fast_axis()
 
@@ -1365,7 +1401,7 @@ class Scanner3DGui(GUIBase):
             @param tag str: tag indicating command source
         """
         if tag == 'logic':
-            self.disable_step_actions()
+            self.disable_scan_actions()
 
     def logic_continued_scanning(self, tag):
         """ Disable icons if a scan was continued.
@@ -1373,7 +1409,7 @@ class Scanner3DGui(GUIBase):
             @param tag str: tag indicating command source
         """
         if tag == 'logic':
-            self.disable_step_actions()
+            self.disable_scan_actions()
 
     ################## ROI ######################
     def roi_bounds_check(self, pos):

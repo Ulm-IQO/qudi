@@ -46,6 +46,7 @@
     </property>
     <addaction name="action_Settings"/>
     <addaction name="action_optimizer_settings"/>
+    <addaction name="actionOptimizer_Settings"/>
     <addaction name="action_show_labbook"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -196,6 +197,9 @@
          <width>125</width>
          <height>16777215</height>
         </size>
+       </property>
+       <property name="toolTip">
+        <string>Amount of points scanned for the piezo range</string>
        </property>
        <property name="text">
         <string>Scan resolution</string>
@@ -1751,6 +1755,9 @@
        </item>
        <item row="0" column="2">
         <widget class="ScienDSpinBox" name="scan_freq_fast_axis_doubleSpinBox">
+         <property name="toolTip">
+          <string>1/time it takes to scan once along the fast axis</string>
+         </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
@@ -2097,7 +2104,7 @@
     <string>Start 3D Scan</string>
    </property>
    <property name="toolTip">
-    <string>Start a fresh stepping scan</string>
+    <string>Start a fresh 3D scan</string>
    </property>
   </action>
   <action name="action_scan_3D_resume">
@@ -2109,7 +2116,7 @@
     <string>Resume 3D Scan</string>
    </property>
    <property name="toolTip">
-    <string>Resume an interrupted stepping scan</string>
+    <string>Resume an interrupted  3D scan</string>
    </property>
   </action>
   <action name="action_scan_start">
@@ -2202,7 +2209,7 @@
     <string>Stop 3D Scan</string>
    </property>
    <property name="toolTip">
-    <string>Stop stepping and return to &quot;ready&quot; state</string>
+    <string>Stop scanning and return to &quot;ready&quot; state</string>
    </property>
   </action>
   <action name="restore_default_view_Action">
@@ -2373,6 +2380,11 @@
   <action name="action_show_labbook">
    <property name="text">
     <string>Show Labbook</string>
+   </property>
+  </action>
+  <action name="actionOptimizer_Settings">
+   <property name="text">
+    <string>Cursor Settings</string>
    </property>
   </action>
  </widget>
