@@ -31,6 +31,13 @@ class Main(Base, SwitchInterface):
     fibered_switch:
         module.Class: 'switches.osw12.Main'
         interface: 'ASRL1::INSTR'
+
+    Description of the hardware provided by Thorlabs:
+        Thorlabs offers a line of bidirectional fiber optic switch kits that include a MEMS optical switch with an
+         integrated control circuit that offers a USB 2.0 interface for easy integration into your optical system.
+          Choose from 1x2 or 2x2 MEMS modules with any of the following operating wavelengths:
+        480 - 650 nm, 600 - 800 nm, 750 - 950 nm, 800 - 1000 nm, 970 - 1170 nm, or 1280 - 1625 nm.
+        These bidirectional switches have low insertion loss and excellent repeatability.
     """
 
     interface = ConfigOption('interface', 'ASRL1::INSTR', missing='error')
