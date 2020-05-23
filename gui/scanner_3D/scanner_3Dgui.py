@@ -196,8 +196,6 @@ class Scanner3DGui(GUIBase):
 
     default_meter_prefix = ConfigOption('default_meter_prefix', None)  # assume the unit prefix of position spinbox
 
-    _min_step = ConfigOption('min_steps_per_m', 1)
-
     # status var
     adjust_cursor_roi = StatusVar(default=True)
     slider_small_step = StatusVar(default=10e-9)  # initial value in meter
@@ -1133,19 +1131,7 @@ class Scanner3DGui(GUIBase):
         """ Update the x resolution in the logic according to the GUI.
         """
         res = self._mw.x_scan_resolution_InputWidget.value()
-        range_x = self._scanner_logic.image_ranges["x"]
-        min_step = int(self._min_step * abs(range_x[1] - range_x[0]))
-        # Todo: when y resoultio is indepented, this needs to be removed
-        range_y = self._scanner_logic.image_ranges["y"]
-        min_step_y = int(self._min_step * abs(range_y[1] - range_y[0]))
-        if res < max(min_step, min_step_y):
-            self.log.info("The scan resolution %s chosen is too small for this hardware, "
-                          "the minimal possible resolution %s was chosen instead", res, max(min_step, min_step_y))
-            res = max(min_step_y, min_step)
-            self._mw.y_scan_resolution_InputWidget.setValue(res)
-            self._mw.x_scan_resolution_InputWidget.setValue(res)
         self._scanner_logic.xy_resolution = res
-
         # Todo: this needs to be updated when there is actually the option to choose x and y resolution independently
         self._mw.y_scan_resolution_InputWidget.setValue(res)
 
@@ -1165,16 +1151,6 @@ class Scanner3DGui(GUIBase):
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
         range_x = [self._mw.x_min_InputWidget.value(), self._mw.x_max_InputWidget.value()]
-        res = self._mw.x_scan_resolution_InputWidget.value()
-        min_step = int(self._min_step * abs(range_x[1] - range_x[0]))
-        if res < min_step:
-            self.log.info(
-                "With the newly chosen x image range (%s) the scan resolution %s became too small for this hardware, "
-                "the minimal possible resolution %s was chosen instead", range_x, res, min_step)
-            self._scanner_logic.xy_resolution = min_step
-            self._mw.x_scan_resolution_InputWidget.setValue(min_step)
-            self._mw.y_scan_resolution_InputWidget.setValue(min_step)
-
         self._scanner_logic.image_ranges["x"] = range_x
         self.update_scan_speed_fast_axis()
         self.update_maximal_scan_resolution_fast_axis()
@@ -1183,16 +1159,6 @@ class Scanner3DGui(GUIBase):
         """ Adjust the image range for y in the logic.
         """
         range_y = [self._mw.y_min_InputWidget.value(), self._mw.y_max_InputWidget.value()]
-        res = self._mw.x_scan_resolution_InputWidget.value()
-        min_step = int(self._min_step * abs(range_y[1] - range_y[0]))
-        if res < min_step:
-            self.log.info(
-                "With the newly chosen x image range (%s) the scan resolution %s became too small for this hardware, "
-                "the minimal possible resolution %s was chosen instead", range_y, res, min_step)
-            self._scanner_logic.xy_resolution = min_step
-            self._mw.x_scan_resolution_InputWidget.setValue(min_step)
-            self._mw.y_scan_resolution_InputWidget.setValue(min_step)
-
         self._scanner_logic.image_ranges["y"] = range_y
         self.update_scan_speed_fast_axis()
         self.update_maximal_scan_resolution_fast_axis()

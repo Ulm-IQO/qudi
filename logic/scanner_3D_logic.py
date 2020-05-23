@@ -75,7 +75,7 @@ class Scanner3DLogic(GenericLogic):
     _ai_counter = ConfigOption("AI_counter", None, missing="warn")
     _scan_freq_per_m = ConfigOption("position_movement_scan_speed", 1, missing="warn")
     # Todo: Add to config. This decides if the scanner does a work around for scan systems that have a maximum step size
-    _min_steps = ConfigOption('min_steps_per_m', 1)
+    _min_steps = ConfigOption('min_steps_per_m', 1, missing="warn")
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -149,7 +149,7 @@ class Scanner3DLogic(GenericLogic):
         # Default values for the resolution of the scan
         # Todo: it is very problematic that this is done in points per scan range,
         #  whereas the third axis is done in mum resolution
-        self.xy_resolution = 30
+        self.xy_resolution = 20
         self.dim_addition = 0
         # Todo: there must be an option to define this for every axis
         self._max_scan_speed_single_axis = 10  # (Hz/V)
@@ -407,7 +407,7 @@ class Scanner3DLogic(GenericLogic):
         # save starting positions
         self._start_position = [self._current_position["x"], self._current_position["y"], self._current_position["z"]]
 
-        if 0 > self._initialize_measurement(steps=self._dim_fast_axis * self._dim_medium_axis,
+        if 0 > self._initialize_measurement(steps=(self._dim_fast_axis+self.dim_addition) * self._dim_medium_axis,
                                             frequency=self._clock_frequency_3D_scan, ai_channels=
                                             self.current_ai_axes):
             self.module_state.unlock()
@@ -427,17 +427,18 @@ class Scanner3DLogic(GenericLogic):
         if not self._scan_continuable:
             self.log.warning("It is not possible to continue this scan")
             return -1
-        self._scan_counter = self._line_pos
         if self._scan_counter == 0:
             self.start_3D_scan()
             return 0
         first_new_scan_position = self._image_scanner[self._scan_counter, 0, 0]
         self.move_to_position(
-            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]},
+            {"x": first_new_scan_position[0], "y": first_new_scan_position[1], "z": first_new_scan_position[2]},
             tag="scan")
-        if 0 > self._initialize_measurement(steps=(self._dim_fast_axis+self.dim_addition) * self._dim_medium_axis,
+        if 0 > self._initialize_measurement(steps=(self._dim_fast_axis + self.dim_addition) * self._dim_medium_axis,
                                             frequency=self._clock_frequency_3D_scan, ai_channels=
                                             self.current_ai_axes):
+            self._scan_continuable = False
+            self.signal_stop_scanning.emit()
             return -1
         self.signal_scan_line_next.emit()
         # Todo: Use tags and signals to disable parts fo gui when program is scanning
@@ -618,8 +619,8 @@ class Scanner3DLogic(GenericLogic):
             self.save_to_npy("SPCM" + '_{0}_'.format(self._counts_ch[i].replace('/', '')) + name_save_addition,
                              np.split(new_counts[i], length_scan), line_number)
             # make data available
-            self.image_results[self._scan_counter, :, :,  i] = np.split(new_counts[i], self._dim_medium_axis)
-            self.image_2D[self._scan_counter, :,  i] = np.mean(new_counts_uo, 1)
+            self.image_results[self._scan_counter, :, :, i] = np.split(new_counts[i], self._dim_medium_axis)
+            self.image_2D[self._scan_counter, :, 3 + i] = np.mean(new_counts_uo, 1)
         data_counter += 1
 
         # Analog Counter Data
@@ -639,8 +640,8 @@ class Scanner3DLogic(GenericLogic):
                                  np.split(value, length_scan), line_number)
                 # make data available
                 index_ai = self.current_ai_axes.index(key)
-                self.image_results[self._scan_counter, :, :,  len(self._counts_ch) + index_ai] = np.split(value,
-                                                                                                             length_scan)
+                self.image_results[self._scan_counter, :, :, len(self._counts_ch) + index_ai] = np.split(value,
+                                                                                                         length_scan)
                 self.image_2D[self._scan_counter, :, 3 + len(self._counts_ch) + index_ai] = np.mean(
                     np.split(value, length_scan), 1)
 
@@ -707,18 +708,16 @@ class Scanner3DLogic(GenericLogic):
         self._dim_slow_axis = len(self._Y_Axis)  # slow axis ("y")
         self._dim_fast_axis = len(self._Z_Axis)  # fast axis ("z")
 
-        self._dim_medium_axis_scanner = self._dim_medium_axis
-
         # check both axis and use then axes that needs a longer addition as the
         add_dim_medium = 0
         min_step_medium = int(self._min_steps * abs(self.image_ranges["x"][1] - self.image_ranges["x"][0]))
         if min_step_medium > self._dim_medium_axis:
-            add_dim_medium = math.ceil(min_step_medium / self._dim_medium_axis) * self._dim_medium_axis
+            add_dim_medium = (math.ceil(min_step_medium / self._dim_medium_axis) - 1) * self._dim_medium_axis
 
         add_dim_slow = 0
         min_step_slow = int(self._min_steps * abs(self.image_ranges["y"][1] - self.image_ranges["y"][0]))
         if min_step_slow > self._dim_slow_axis:
-            add_dim_slow = math.ceil(min_step_slow / self._dim_slow_axis) * self._dim_slow_axis
+            add_dim_slow = (math.ceil(min_step_slow / self._dim_slow_axis) - 1) * self._dim_slow_axis
         self.dim_addition = max(add_dim_medium, add_dim_slow)
 
         # the value which needs more additional steps decides how many more positions are scanned at the "end" of each
@@ -744,8 +743,8 @@ class Scanner3DLogic(GenericLogic):
                                        len(digital_count_ch) + len(self.current_ai_axes)))
 
         # generate sub images for the scanner image
-        x_axis = np.full((_dim_fast_axis_scanner, self._dim_medium_axis), self._X_Axis).transpose()
-        z_axis = np.full((self._dim_medium_axis, _dim_fast_axis_scanner), self._Z_Axis)
+        x_axis = np.full((self._dim_fast_axis, self._dim_medium_axis), self._X_Axis).transpose()
+        z_axis = np.full((self._dim_medium_axis, self._dim_fast_axis), self._Z_Axis)
         z_axis[1::2] = np.flip(z_axis[1::2], 1)  # every second value is scanned the opposite direction
 
         xz_axis = np.zeros((self._dim_medium_axis, _dim_fast_axis_scanner, 2))  # make matrix for x and z values
@@ -774,8 +773,8 @@ class Scanner3DLogic(GenericLogic):
         # fill image_results positions
         self._image_scanner[:, :, :, 0] = xz_axis_full[:, :, :, 0]  # x
         # for y flip around axis length of matrix to form matrix using linspace and than reflip using transpose
-        self._image_scanner[:, :, :, 1] = np.full((self._dim_fast_axis, self._dim_medium_axis, self._dim_slow_axis),
-                                                  self._Y_Axis).transpose()  # y
+        self._image_scanner[:, :, :, 1] = np.full((_dim_fast_axis_scanner, self._dim_medium_axis,
+                                                   self._dim_slow_axis), self._Y_Axis).transpose()  # y
         self._image_scanner[:, :, :, 2] = xz_axis_full[:, :, :, 1]  # z
 
         if self.dim_addition > 0:
@@ -1057,7 +1056,7 @@ class Scanner3DLogic(GenericLogic):
         parameters['Y image range'] = self.image_ranges["y"][1] - self.image_ranges["y"][0]
 
         parameters['XY resolution (samples per range)'] = self.xy_resolution
-        if self.dim_addition>0:
+        if self.dim_addition > 0:
             parameters["Fast Axis Additional Steps to increase XY resolution"] = self.dim_addition
         if self.smoothing:
             parameters["Smoothing Steps"] = self._fast_axis_smoothing_steps
@@ -1093,7 +1092,8 @@ class Scanner3DLogic(GenericLogic):
                             If the line is given, it is saved as part of the filename
         """
         if line == None:
-            line = "_"
+            np.save(self.file_path_raw + "/" + self.filename + "_" + name, data)
+            return
         elif line < 10:
             addition = "000"
         elif line < 100:
@@ -1137,7 +1137,7 @@ class Scanner3DLogic(GenericLogic):
         for i in len(self.current_ai_axes):
             name_suffix = "V"
             if self.current_ai_axes[i] != self._ai_scanner and self._save_positions:
-                data[self._ai_axes + name_suffix] = self.image_results[:, :, :,  len(self._counts_ch) + i].flatten()
+                data[self._ai_axes + name_suffix] = self.image_results[:, :, :, len(self._counts_ch) + i].flatten()
             else:
                 data[self._ai_axes + name_suffix] = self.image_results[:, :, :, len(self._counts_ch) + i].flatten()
         if not self._save_positions:
