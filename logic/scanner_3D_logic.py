@@ -49,6 +49,8 @@ def in_range(x, min, max):
     return (min is None or min <= x) and (max is None or max >= x)
 
 
+# Todo: rename analog input into something less ambiguous: input might be input into the hardware,
+#  or what this logic puts into the hardware
 class Scanner3DLogic(GenericLogic):
     """
     This is the Logic class for confocal scanning.
@@ -72,6 +74,8 @@ class Scanner3DLogic(GenericLogic):
     scan_resolution_fast_axis = ConfigOption('3D_scan_resolution', 1e-6, missing="warn")
     _ai_counter = ConfigOption("AI_counter", None, missing="warn")
     _scan_freq_per_m = ConfigOption("position_movement_scan_speed", 1, missing="warn")
+    # Todo: Add to config. This decides if the scanner does a work around for scan systems that have a maximum step size
+    _min_steps = ConfigOption('min_steps_per_m', 1)
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -105,7 +109,7 @@ class Scanner3DLogic(GenericLogic):
         """
         # Connectors
         self._counting_device = self.digitalcounter()
-        self._analog_input_device = self.analoguereader()
+        self._analog_counting_device = self.analoguereader()
         self._scanning_device = self.analogueoutput()
         self._stepper_logic = self.stepperlogic()
         self._save_logic = self.savelogic()
@@ -146,6 +150,7 @@ class Scanner3DLogic(GenericLogic):
         # Todo: it is very problematic that this is done in points per scan range,
         #  whereas the third axis is done in mum resolution
         self.xy_resolution = 30
+        self.dim_addition = 0
         # Todo: there must be an option to define this for every axis
         self._max_scan_speed_single_axis = 10  # (Hz/V)
         self._min_scan_resolution = 0.005  # (V)
@@ -215,8 +220,9 @@ class Scanner3DLogic(GenericLogic):
 
         # Todo: This needs to be flexible: the 3rd axis
 
-        self.scan_resolution_fast_axis = self.calculate_resolution(self._analog_input_device.get_analogue_resolution(),
-                                                                   self._scanning_axes_ranges["z"])
+        self.scan_resolution_fast_axis = self.calculate_resolution(
+            self._analog_counting_device.get_analogue_resolution(),
+            self._scanning_axes_ranges["z"])
         if self.scan_resolution_fast_axis == -1:
             self.log.error("Calculated scan resolution not possible")
             return -1
@@ -326,7 +332,7 @@ class Scanner3DLogic(GenericLogic):
             if channel not in clock_channels:
                 clock_channels.append(channel)
 
-        if 0 > self._analog_input_device.add_clock_task_to_channel("Scanner_clock", clock_channels):
+        if 0 > self._analog_counting_device.add_clock_task_to_channel("Scanner_clock", clock_channels):
             self.log.error("Problems setting up analogue input and output clock.")
             self.stopRequested = True
 
@@ -337,12 +343,12 @@ class Scanner3DLogic(GenericLogic):
 
         # setup analogue input if existing
         if ai_channels:  # checks if list is not empty
-            if 0 > self._analog_input_device.set_up_analogue_voltage_reader_scanner(
+            if 0 > self._analog_counting_device.set_up_analogue_voltage_reader_scanner(
                     steps, ai_channels[0]):
                 self.stopRequested = True
             else:
                 if len(ai_channels) > 1:
-                    if 0 > self._analog_input_device.add_analogue_reader_channel_to_measurement(
+                    if 0 > self._analog_counting_device.add_analogue_reader_channel_to_measurement(
                             ai_channels[0], ai_channels[1:]):
                         self.stopRequested = True
 
@@ -388,7 +394,7 @@ class Scanner3DLogic(GenericLogic):
             self.log.error("Initialisation of image failed. Scan stopped")
             return -1
         self.signal_image_updated.emit()
-        first_new_scan_position = self.image[self._scan_counter, 0, 0, :3]
+        first_new_scan_position = self._image_scanner[self._scan_counter, 0, 0]
         self.move_to_position(
             {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]},
             tag="scan")
@@ -411,6 +417,7 @@ class Scanner3DLogic(GenericLogic):
         self.generate_file_info()
         self._scan_continuable = True
         self.signal_scan_line_next.emit()
+        self.save_to_npy("scanner_positions", self._image_scanner)
 
     def continue_3D_scan(self):
         """Continue scanning
@@ -424,11 +431,11 @@ class Scanner3DLogic(GenericLogic):
         if self._scan_counter == 0:
             self.start_3D_scan()
             return 0
-        first_new_scan_position = self.image[self._scan_counter, 0, 0, :3]
+        first_new_scan_position = self._image_scanner[self._scan_counter, 0, 0]
         self.move_to_position(
             {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]},
             tag="scan")
-        if 0 > self._initialize_measurement(steps=self._dim_fast_axis * self._dim_medium_axis,
+        if 0 > self._initialize_measurement(steps=(self._dim_fast_axis+self.dim_addition) * self._dim_medium_axis,
                                             frequency=self._clock_frequency_3D_scan, ai_channels=
                                             self.current_ai_axes):
             return -1
@@ -468,7 +475,7 @@ class Scanner3DLogic(GenericLogic):
             with self.threadlock:
                 self.kill_counter()
                 if self.current_ai_axes:
-                    self._analog_input_device.close_analogue_voltage_reader(self.current_ai_axes[0])
+                    self._analog_counting_device.close_analogue_voltage_reader(self.current_ai_axes[0])
                 # if self.map_scan_positions:
                 # Todo: Translate the voltage result from position voltage readout into positions
                 # self.convert_voltage_to_position_for_image()
@@ -488,7 +495,7 @@ class Scanner3DLogic(GenericLogic):
                 return
 
         # move and count
-        new_counts = self._scan_and_count_3D(self.image[self._scan_counter, :, :, :3], self.current_ai_axes)
+        new_counts = self._scan_and_count_3D(self._image_scanner[self._scan_counter], self.current_ai_axes)
         if type(new_counts) == int:
             self.stopRequested = True
             self.signal_scan_line_next.emit()
@@ -542,7 +549,7 @@ class Scanner3DLogic(GenericLogic):
             self.log.error("Starting the counter failed")
             return [-1], []
         if ai_axes:
-            if 0 > self._analog_input_device.start_analogue_voltage_reader(ai_axes[0], start_clock=False):
+            if 0 > self._analog_counting_device.start_analogue_voltage_reader(ai_axes[0], start_clock=False):
                 self.log.error("Starting the analogue input failed")
                 return [-1], []
 
@@ -555,12 +562,12 @@ class Scanner3DLogic(GenericLogic):
         # get data
         count_result = self._counting_device.get_finite_counts()
         if ai_axes:
-            analog_result = self._analog_input_device.get_analogue_voltage_reader(ai_axes)
+            analog_result = self._analog_counting_device.get_analogue_voltage_reader(ai_axes)
 
         error = self._counting_device.stop_finite_counter()
         self.update_current_position({"x": end_pos[0], "y": end_pos[1], "z": end_pos[2]})
         if ai_axes:
-            if 0 > self._analog_input_device.stop_analogue_voltage_reader(ai_axes[0]):
+            if 0 > self._analog_counting_device.stop_analogue_voltage_reader(ai_axes[0]):
                 self.log.error("Stopping the analog input failed")
                 return retval
 
@@ -609,10 +616,10 @@ class Scanner3DLogic(GenericLogic):
             new_counts.append(np.concatenate(new_counts_uo))
             # save data
             self.save_to_npy("SPCM" + '_{0}_'.format(self._counts_ch[i].replace('/', '')) + name_save_addition,
-                             line_number, np.split(new_counts[i], length_scan))
+                             np.split(new_counts[i], length_scan), line_number)
             # make data available
-            self.image[self._scan_counter, :, :, 3 + i] = np.split(new_counts[i], self._dim_medium_axis)
-            self.image_2D[self._scan_counter, :, 3 + i] = np.mean(new_counts_uo, 1)
+            self.image_results[self._scan_counter, :, :,  i] = np.split(new_counts[i], self._dim_medium_axis)
+            self.image_2D[self._scan_counter, :,  i] = np.mean(new_counts_uo, 1)
         data_counter += 1
 
         # Analog Counter Data
@@ -628,15 +635,26 @@ class Scanner3DLogic(GenericLogic):
 
             for key, value in new_counts_analog.items():
                 # save data
-                self.save_to_npy( self._ai_axes[key] + "_" + name_save_addition, line_number,
-                                 np.split(value, length_scan))
+                self.save_to_npy(self._ai_axes[key] + "_" + name_save_addition,
+                                 np.split(value, length_scan), line_number)
                 # make data available
                 index_ai = self.current_ai_axes.index(key)
-                self.image[self._scan_counter, :, :, 3 + len(self._counts_ch) + index_ai] = np.split(value, length_scan)
+                self.image_results[self._scan_counter, :, :,  len(self._counts_ch) + index_ai] = np.split(value,
+                                                                                                             length_scan)
                 self.image_2D[self._scan_counter, :, 3 + len(self._counts_ch) + index_ai] = np.mean(
                     np.split(value, length_scan), 1)
 
         self.signal_image_updated.emit()
+
+    def find_change_in_coupling(self, array):
+        """find the maximum change between minimum value and maximum value for each point for a given array
+        """
+        shape = np.shape(array)
+        new_array = np.zeros(shape[:2])
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                new_array[i, j] = np.ndarray.max(array[i, j]) - np.ndarray.min(array[i, j])
+        return new_array
 
     def initialize_image(self):
         """Initialization of the image.
@@ -689,40 +707,102 @@ class Scanner3DLogic(GenericLogic):
         self._dim_slow_axis = len(self._Y_Axis)  # slow axis ("y")
         self._dim_fast_axis = len(self._Z_Axis)  # fast axis ("z")
 
+        self._dim_medium_axis_scanner = self._dim_medium_axis
+
+        # check both axis and use then axes that needs a longer addition as the
+        add_dim_medium = 0
+        min_step_medium = int(self._min_steps * abs(self.image_ranges["x"][1] - self.image_ranges["x"][0]))
+        if min_step_medium > self._dim_medium_axis:
+            add_dim_medium = math.ceil(min_step_medium / self._dim_medium_axis) * self._dim_medium_axis
+
+        add_dim_slow = 0
+        min_step_slow = int(self._min_steps * abs(self.image_ranges["y"][1] - self.image_ranges["y"][0]))
+        if min_step_slow > self._dim_slow_axis:
+            add_dim_slow = math.ceil(min_step_slow / self._dim_slow_axis) * self._dim_slow_axis
+        self.dim_addition = max(add_dim_medium, add_dim_slow)
+
+        # the value which needs more additional steps decides how many more positions are scanned at the "end" of each
+        # fast axis scan. This way one does not need to start new task at the end of each line scan (medium dimension)
+        # if more extra steps are needed for the slow dimension.
+        # Todo: it should be tested if this  (see above) is really faster
+        #  than simply setting up, starting, stopping, deleting and resetting up original task
+
         # The dimensions arrangement of the array:
         # The outer dimension is y because it is the axis least often changed (slow axis),
         # the second one is x (horizontal), the medium fast axis),
         # and third the inner one that is changed with every step
         # The inner part of the matrix are the values, x,y,z, than the count channels, first digital then analog
-        # self.image = [..[y_value, x_value, z_value, count_value1, ..., analog_counts_value].. ]
+        # self.image_results = [..[y_value, x_value, z_value, count_value1, ..., analog_counts_value].. ]
+
+        # generate empty image for the scanner
+        _dim_fast_axis_scanner = self._dim_fast_axis + self.dim_addition
+        self._image_scanner = np.zeros((self._dim_slow_axis, self._dim_medium_axis, _dim_fast_axis_scanner, 3))
 
         digital_count_ch = self._get_scanner_count_channels()
-        # generate empty image
-        self.image = np.zeros((self._dim_slow_axis, self._dim_medium_axis, self._dim_fast_axis,
-                               3 + len(digital_count_ch) + len(self.current_ai_axes)))
-        # generate sub images
-        x_axis = np.full((self._dim_fast_axis, self._dim_medium_axis), self._X_Axis).transpose()
-        z_axis = np.full((self._dim_medium_axis, self._dim_fast_axis), self._Z_Axis)
+        # generate empty image for the measured results
+        self.image_results = np.zeros((self._dim_slow_axis, self._dim_medium_axis, _dim_fast_axis_scanner,
+                                       len(digital_count_ch) + len(self.current_ai_axes)))
+
+        # generate sub images for the scanner image
+        x_axis = np.full((_dim_fast_axis_scanner, self._dim_medium_axis), self._X_Axis).transpose()
+        z_axis = np.full((self._dim_medium_axis, _dim_fast_axis_scanner), self._Z_Axis)
         z_axis[1::2] = np.flip(z_axis[1::2], 1)  # every second value is scanned the opposite direction
-        xz_axis = np.zeros((self._dim_medium_axis, self._dim_fast_axis, 2))  # make matrix for x and z values
-        xz_axis[:, :, 0] = x_axis
-        xz_axis[:, :, 1] = z_axis
-        xz_axis_full = np.full((self._dim_slow_axis, self._dim_medium_axis, self._dim_fast_axis, 2), xz_axis)
+
+        xz_axis = np.zeros((self._dim_medium_axis, _dim_fast_axis_scanner, 2))  # make matrix for x and z values
+        # fill up array as if dim addition = 0
+        xz_axis[:, :self._dim_fast_axis, 0] = x_axis
+        xz_axis[:, :self._dim_fast_axis, 1] = z_axis
+
+        if self.dim_addition > 0:  # this isn't necessary but saves computation time
+            # make new scanning positions for x axis
+            new_medium = []
+            for i in range(self._dim_medium_axis):
+                if i < self._dim_medium_axis - 1:
+                    x_line = np.linspace(x_axis[i, 0], x_axis[i + 1, 0], self.dim_addition + 2)
+                else:
+                    x_line = np.array([x_axis[i, 0]] * (self.dim_addition + 2))
+                new_medium.append(x_line[1:-1])
+            xz_axis[:, self._dim_fast_axis:, 0] = np.array(new_medium)
+            xz_axis[:, self._dim_fast_axis:, 1] = np.full((self.dim_addition, self._dim_medium_axis),
+                                                          z_axis[:, -1]).transpose()
+
+        xz_axis_full = np.full((self._dim_slow_axis, self._dim_medium_axis, _dim_fast_axis_scanner, 2), xz_axis)
         # Todo: resuse next code line when numpy version 1.15 is added for qudi
         # xz_axis[1::2] = np.flip(xz_axis[1::2], (1, 2))  # every second line is scanned the opposite direction
         xz_axis_full[1::2] = np.flip(np.flip(xz_axis_full[1::2], 1), 2)
-        # fill image positions
-        self.image[:, :, :, 0] = xz_axis_full[:, :, :, 0]  # x
+
+        # fill image_results positions
+        self._image_scanner[:, :, :, 0] = xz_axis_full[:, :, :, 0]  # x
         # for y flip around axis length of matrix to form matrix using linspace and than reflip using transpose
-        self.image[:, :, :, 1] = np.full((self._dim_fast_axis, self._dim_medium_axis, self._dim_slow_axis),
-                                         self._Y_Axis).transpose()  # y
-        self.image[:, :, :, 2] = xz_axis_full[:, :, :, 1]  # z
+        self._image_scanner[:, :, :, 1] = np.full((self._dim_fast_axis, self._dim_medium_axis, self._dim_slow_axis),
+                                                  self._Y_Axis).transpose()  # y
+        self._image_scanner[:, :, :, 2] = xz_axis_full[:, :, :, 1]  # z
+
+        if self.dim_addition > 0:
+            # make new scanning positions for y axis
+            # this part :_image_scanner2[:,-1,:,1] now needs to be updated.
+            # It should not stay constant for each line and point but be scanned
+            new_slow = []
+            for i in range(self._dim_slow_axis):
+                if i < self._dim_slow_axis - 1:
+                    y_line = np.linspace(self._Y_Axis[i], self._Y_Axis[i + 1], self.dim_addition + 2)
+                else:
+                    y_line = np.array([self._Y_Axis[i]] * (self.dim_addition + 2))
+                new_slow.append(y_line[1:-1])
+            new_slow = np.array(new_slow)
+            self._image_scanner[:, -1, self._dim_fast_axis:, 1] = new_slow
+            # flip such that the additional position change in the slow axis happens
+            # while the other axes are not scanned
+            self._image_scanner[1::2, :, :, 1] = np.flip(self._image_scanner[1::2, :, :, 1], 1)
+            self._image_scanner[1::2, 0, :, 1] = np.flip(self._image_scanner[1::2, 0, :, 1], 1)
 
         # This image is used to display data (as only 2d possible).
-        # The fast axis is analysed and the displayed in this image
-
-        self.image_2D = np.copy(
-            self.image[:, :, 0])  # Any value instead of 0 in the range of the fast axis would be possible
+        self.image_2D = np.zeros((self._dim_slow_axis, self._dim_medium_axis,
+                                  3 + len(digital_count_ch) + len(self.current_ai_axes)))
+        # make array anew, as it is easier this way than going back from removing the additional positions.
+        self.image_2D[:, :, 0] = np.full((self._dim_slow_axis, self._dim_medium_axis), self._X_Axis)
+        self.image_2D[:, :, 1] = np.full((self._dim_medium_axis, self._dim_slow_axis), self._Y_Axis).transpose()
+        self.image_2D[:, :, 2] = np.full((self._dim_slow_axis, self._dim_medium_axis), np.mean(self._Z_Axis))
 
         self.sigImageInitialized.emit()
         return 0
@@ -956,27 +1036,29 @@ class Scanner3DLogic(GenericLogic):
         parameters["Scan Freq complete fast axis (Hz)"] = self.scan_freq_fast_axis
         parameters["Scan resolution (m/step)"] = self.scan_resolution_fast_axis
 
-        parameters['First Axis'] = "z"
-        parameters['First Axis Steps'] = self._dim_fast_axis
+        parameters['Fast Axis'] = "z"
+        parameters['Fast Axis Steps'] = self._dim_fast_axis
+
         parameters["Start Position fast axis(m)"] = self.image_ranges["z"][0]
         parameters["End Position fast axis (m)"] = self.image_ranges["z"][1]
         parameters["Start Voltage fast axis(V)"] = self.convert_pos_to_v(self.image_ranges["z"][0], "z")
         parameters["End Voltage fast axis (V)"] = self.convert_pos_to_v(self.image_ranges["z"][1], "z")
 
-        parameters['Second Axis'] = "x"
-        parameters['Second Axis Steps'] = self._dim_medium_axis
+        parameters['Medium Axis'] = "x"
+        parameters['Medium Axis Steps'] = self._dim_medium_axis
         parameters['X image min (m)'] = self.image_ranges["x"][0]
         parameters['X image max (m)'] = self.image_ranges["x"][1]
         parameters['X image range (m)'] = self.image_ranges["x"][1] - self.image_ranges["x"][0]
 
-        parameters['Third Axis'] = "y"
-        parameters['Third Axis Steps'] = self._dim_slow_axis
+        parameters['Slow Axis'] = "y"
+        parameters['Slow Axis Steps'] = self._dim_slow_axis
         parameters['Y image min'] = self.image_ranges["y"][0]
         parameters['Y image max'] = self.image_ranges["y"][1]
         parameters['Y image range'] = self.image_ranges["y"][1] - self.image_ranges["y"][0]
 
         parameters['XY resolution (samples per range)'] = self.xy_resolution
-
+        if self.dim_addition>0:
+            parameters["Fast Axis Additional Steps to increase XY resolution"] = self.dim_addition
         if self.smoothing:
             parameters["Smoothing Steps"] = self._fast_axis_smoothing_steps
 
@@ -1001,16 +1083,18 @@ class Scanner3DLogic(GenericLogic):
         self._save_logic.save_data(fake_data, filepath=self.filepath, parameters=file_info,
                                    filelabel=self.filename + "_experiment_parameters", delimiter='\t')
 
-    def save_to_npy(self, name, line, data):
+    def save_to_npy(self, name, data, line=None):
         """ saves data passed into a numpy file using the past name and line number to name the file
             filename in which data is stored: intrinsicfilename+ _name_line_str(line)
 
             @param str name: the name which can be given to the file additionally to the naming convention
-            @param int line: the line number of the measurement for which the data is to be saved. It is part of the file name☻
             @param numpy array data: the data to be saved, has to be given in form of a np array
+            @param int line: the line number of the measurement for which the data is to be saved.
+                            If the line is given, it is saved as part of the filename
         """
-
-        if line < 10:
+        if line == None:
+            line = "_"
+        elif line < 10:
             addition = "000"
         elif line < 100:
             addition = "00"
@@ -1053,16 +1137,16 @@ class Scanner3DLogic(GenericLogic):
         for i in len(self.current_ai_axes):
             name_suffix = "V"
             if self.current_ai_axes[i] != self._ai_scanner and self._save_positions:
-                data[self._ai_axes + name_suffix] = self.image[:, :, :, 3 + len(self._counts_ch) + i].flatten()
+                data[self._ai_axes + name_suffix] = self.image_results[:, :, :,  len(self._counts_ch) + i].flatten()
             else:
-                data[self._ai_axes + name_suffix] = self.image[:, :, :, 3 + len(self._counts_ch) + i].flatten()
+                data[self._ai_axes + name_suffix] = self.image_results[:, :, :, len(self._counts_ch) + i].flatten()
         if not self._save_positions:
-            data['x step'] = self.image[:, :, :, 0].flatten()
-            data['y step'] = self.image[:, :, :, 1].flatten()
-            data['z step'] = self.image[:, :, :, 2].flatten()
+            data['x step'] = self._image_scanner[:, :, :, 0].flatten()
+            data['y step'] = self._image_scanner[:, :, :, 1].flatten()
+            data['z step'] = self._image_scanner[:, :, :, 2].flatten()
 
         for n, ch in enumerate(self._counts_ch()):
-            data['count rate {0} (Hz)'.format(ch)] = self.image[:, :, :, 3 + n].flatten()
+            data['count rate {0} (Hz)'.format(ch)] = self.image_results[:, :, :, n].flatten()
 
         # Todo: update for variable axis
         image_extent = [self.image_ranges["x"][0],
