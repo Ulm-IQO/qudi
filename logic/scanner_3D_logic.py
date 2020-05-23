@@ -202,6 +202,7 @@ class Scanner3DLogic(GenericLogic):
 
         self._get_scanner_count_channels()
         self.initialize_image()
+        self.generate_file_path()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -407,7 +408,7 @@ class Scanner3DLogic(GenericLogic):
         # save starting positions
         self._start_position = [self._current_position["x"], self._current_position["y"], self._current_position["z"]]
 
-        if 0 > self._initialize_measurement(steps=(self._dim_fast_axis+self.dim_addition) * self._dim_medium_axis,
+        if 0 > self._initialize_measurement(steps=(self._dim_fast_axis + self.dim_addition) * self._dim_medium_axis,
                                             frequency=self._clock_frequency_3D_scan, ai_channels=
                                             self.current_ai_axes):
             self.module_state.unlock()
@@ -1132,20 +1133,23 @@ class Scanner3DLogic(GenericLogic):
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
+        digital_count_ch = self._get_scanner_count_channels()
 
         # Todo:Save feedback position data in meaning full way(as positions or with voltage boundaries)
-        for i in len(self.current_ai_axes):
+        for i in range(len(self.current_ai_axes)):
             name_suffix = "V"
-            if self.current_ai_axes[i] != self._ai_scanner and self._save_positions:
-                data[self._ai_axes + name_suffix] = self.image_results[:, :, :, len(self._counts_ch) + i].flatten()
+            if self.current_ai_axes[i] != self._ai_counter and self._save_positions:
+                data[self._ai_axes[self.current_ai_axes[i]] + name_suffix] = self.image_results[:, :, :,
+                                                                             len(digital_count_ch) + i].flatten()
             else:
-                data[self._ai_axes + name_suffix] = self.image_results[:, :, :, len(self._counts_ch) + i].flatten()
+                data[self._ai_axes[self.current_ai_axes[i]] + name_suffix] = self.image_results[:, :, :,
+                                                                             len(digital_count_ch) + i].flatten()
         if not self._save_positions:
             data['x step'] = self._image_scanner[:, :, :, 0].flatten()
             data['y step'] = self._image_scanner[:, :, :, 1].flatten()
             data['z step'] = self._image_scanner[:, :, :, 2].flatten()
 
-        for n, ch in enumerate(self._counts_ch()):
+        for n, ch in enumerate(self._counts_ch):
             data['count rate {0} (Hz)'.format(ch)] = self.image_results[:, :, :, n].flatten()
 
         # Todo: update for variable axis
@@ -1160,27 +1164,28 @@ class Scanner3DLogic(GenericLogic):
             if i != self._ai_scanner:
                 feedback_axis.append(i)
 
-        if feedback_axis:
-            position = self.get_position_from_feedback(feedback_axis)
-            if not position[0] == -1:
-                parameters['Last Positions '] = feedback_axis, position
+        # if feedback_axis:
+        #    position = self.get_position_from_feedback(feedback_axis)
+        #    if not position[0] == -1:
+        #        parameters['Last Positions '] = feedback_axis, position
 
-        figs = {ch: self.draw_figure(data=self.stepping_raw_data,
+        figs = {ch: self.draw_figure(data=self.image_2D[:, :, 3 + n],
                                      image_extent=image_extent,
                                      cbar_range=colorscale_range,
-                                     percentile_range=percentile_range,
-                                     ch=n)
+                                     percentile_range=percentile_range)
                 for n, ch in enumerate(self._counts_ch)}
 
         # Save the raw data and plotted figure to file
         filelabel = 'scanner_3D_data'
-        self._save_logic.save_data(data,
+        for n, ch in enumerate(self.get_scanner_count_channels()):
+            self._save_logic.save_data(data,
                                    filepath=filepath,
                                    timestamp=timestamp,
                                    parameters=parameters,
-                                   filelabel=filelabel,
+                                   filelabel=filelabel+str(ch),
                                    fmt='%.6e',
-                                   delimiter='\t')
+                                   delimiter='\t',
+                                   plotfig=figs[ch])
 
         self.log.debug('Scan 3D Image saved.')
 
