@@ -28,7 +28,7 @@ import numpy as np
 import os
 import time
 
-from core.module import Connector
+from core.module import Connector, ConfigOption
 from gui.confocal_stepper.lab_book_gui import ConfocalStepperLabBookWindow
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -179,6 +179,8 @@ class ConfocalStepperGui(GUIBase):
     confocallogic1 = Connector(interface='ConfocalLogic')
     savelogic = Connector(interface='SaveLogic')
     stepperlogic1 = Connector(interface='ConfocalStepperLogic')
+
+    default_meter_prefix = ConfigOption('default_meter_prefix', None)  # assume the unit prefix of position spinbox
 
     # signals
     sigStartSteppingScan = QtCore.Signal()
@@ -604,16 +606,16 @@ class ConfocalStepperGui(GUIBase):
                                                   self._scanning_logic.z_range[1])
 
         if self.default_meter_prefix:
-            self._mw.x_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_piezo_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_piezo_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_piezo_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
-            self._mw.x_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.x_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_piezo_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_piezo_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_piezo_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_piezo_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_piezo_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_piezo_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
         # Handle slider movements by user:
         self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_x)
@@ -1115,20 +1117,13 @@ class ConfocalStepperGui(GUIBase):
 
     def update_settings(self):
         """ Write new settings from the gui to the file. """
-        # Todo: Needs to be implemented when option in logic exists
-        # self._stepper_logic.permanent_scan = self._sd.loop_scan_CheckBox.isChecked()
+
         self.fixed_aspect_ratio = self._sd.fixed_aspect_checkBox.isChecked()
         self.slider_small_step = self._sd.slider_small_step_DoubleSpinBox.value()
         self.slider_big_step = self._sd.slider_big_step_DoubleSpinBox.value()
 
-        # Update GUI icons to new loop-scan state
-        self._set_scan_icons()
-
     def keep_former_settings(self):
         """ Keep the old settings and restores them in the gui. """
-        # Todo: Needs to be implemented when option in logic exists
-        self._sd.loop_scan_CheckBox.setChecked(self._stepper_logic.permanent_scan)
-        direction = self._stepper_logic._scan_axes
 
         self._sd.fixed_aspect_checkBox.setChecked(self.fixed_aspect_ratio)
         self._sd.slider_small_step_DoubleSpinBox.setValue(float(self.slider_small_step))

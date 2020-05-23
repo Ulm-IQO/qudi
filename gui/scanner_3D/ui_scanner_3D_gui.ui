@@ -45,8 +45,7 @@
      <string>Option&amp;s</string>
     </property>
     <addaction name="action_Settings"/>
-    <addaction name="action_optimizer_settings"/>
-    <addaction name="actionOptimizer_Settings"/>
+    <addaction name="action_cursor_settings"/>
     <addaction name="action_show_labbook"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -167,6 +166,9 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -253,6 +255,9 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -307,6 +312,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="suffix">
+        <string>m</string>
        </property>
        <property name="decimals">
         <number>3</number>
@@ -380,6 +388,9 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -434,6 +445,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="suffix">
+        <string>m</string>
        </property>
        <property name="decimals">
         <number>3</number>
@@ -584,6 +598,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="suffix">
+        <string>m</string>
        </property>
        <property name="decimals">
         <number>3</number>
@@ -740,6 +757,9 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -813,6 +833,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="suffix">
+        <string>m</string>
        </property>
        <property name="decimals">
         <number>3</number>
@@ -912,6 +935,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="suffix">
+        <string>m</string>
        </property>
        <property name="decimals">
         <number>3</number>
@@ -2027,16 +2053,22 @@
     <string>Save Depth Data</string>
    </property>
   </action>
-  <action name="action_optimizer_settings">
+  <action name="action_cursor_settings">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>O&amp;ptimizer Settings</string>
+    <string>C&amp;oursor Settings</string>
+   </property>
+   <property name="iconText">
+    <string>Cursor Settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Cursor Settings</string>
    </property>
    <property name="visible">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
   </action>
   <action name="action_zoom">

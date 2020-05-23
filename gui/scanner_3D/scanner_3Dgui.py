@@ -163,16 +163,16 @@ class Scanner3DSettingDialog(QtWidgets.QDialog):
         uic.loadUi(ui_file, self)
 
 
-class OptimizerSettingDialog(QtWidgets.QDialog):
-    """ User configurable settings for the optimizer embedded in scanner 3D gui"""
+class CursorSettingDialog(QtWidgets.QDialog):
+    """ User configurable settings for the cursor embedded in scanner 3D gui"""
 
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_optim_settings.ui')
+        ui_file = os.path.join(this_dir, 'ui_cursor_settings.ui')
 
         # Load it
-        super(OptimizerSettingDialog, self).__init__()
+        super(CursorSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
 
@@ -226,6 +226,8 @@ class Scanner3DGui(GUIBase):
         self._optimizer_logic = self.optimizerlogic1()
 
         self.initMainUI()
+        self.initSettingsUI()
+        self.initCursorSettingsUI()
 
         ########################################################################
         #                       Connect signals                                #
@@ -250,7 +252,6 @@ class Scanner3DGui(GUIBase):
         Moreover it sets default values.
         """
         self._mw = Scanner3DMainWindow()
-        self._sd = Scanner3DSettingDialog()
 
         ###################################################################
         #               Configuring the dock widgets                      #
@@ -275,6 +276,7 @@ class Scanner3DGui(GUIBase):
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
         self._mw.action_Settings.triggered.connect(self.menu_settings)
+        self._mw.action_cursor_settings.triggered.connect(self.menu_cursor_settings)
         self._mw.actionSave_Scan.triggered.connect(self.save_scan_data)
 
         #################################################################
@@ -322,7 +324,7 @@ class Scanner3DGui(GUIBase):
         """
         # Create the Settings window
         # Todo: Fix
-        self._sd = "a"
+        self._sd = Scanner3DSettingDialog()
         # Connect the action of the settings window with the code:
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.keep_former_settings)
@@ -332,6 +334,23 @@ class Scanner3DGui(GUIBase):
 
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
+
+    def initCursorSettingsUI(self):
+        """ Definition, configuration and initialisation of the cursor settings GUI.
+
+        This init connects all the graphic modules, which were created in the
+        *.ui file and configures the event handling between the modules.
+        Moreover it sets default values if not existed in the logic modules.
+        """
+        # Create the Settings window
+        self._csd = CursorSettingDialog()
+        # Connect the action of the settings window with the code:
+        self._csd.accepted.connect(self.update_cursor_settings)
+        self._csd.rejected.connect(self.keep_former_cursor_settings)
+        self._csd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_cursor_settings)
+
+        # write the configuration to the settings window of the GUI.
+        self.keep_former_cursor_settings()
 
     def init_plot_scan_UI(self):
         self._currently_scanning = False
@@ -882,19 +901,35 @@ class Scanner3DGui(GUIBase):
         self.fixed_aspect_ratio = self._sd.fixed_aspect_checkBox.isChecked()
         self.slider_small_step = self._sd.slider_small_step_DoubleSpinBox.value()
         self.slider_big_step = self._sd.slider_big_step_DoubleSpinBox.value()
-
-        # Update GUI icons to new loop-scan state
-        self._set_scan_icons()
+        # update cursor
+        self.update_roi_size()
 
     def keep_former_settings(self):
         """ Keep the old settings and restores them in the gui. """
-        # Todo: Needs to be implemented when option in logic exists
-        self._sd.loop_scan_CheckBox.setChecked(self._scanner_logic.permanent_scan)
-        direction = self._scanner_logic._scan_axes
 
         self._sd.fixed_aspect_checkBox.setChecked(self.fixed_aspect_ratio)
         self._sd.slider_small_step_DoubleSpinBox.setValue(float(self.slider_small_step))
         self._sd.slider_big_step_DoubleSpinBox.setValue(float(self.slider_big_step))
+
+    def menu_cursor_settings(self):
+        """ This method opens the settings menu. """
+        self.keep_former_cursor_settings()
+        self._csd.exec_()
+
+    def update_cursor_settings(self):
+        """ Write new settings from the gui to the file. """
+        self._optimizer_logic.refocus_XY_size = self._csd.cursor_range_DoubleSpinBox.value()
+        self._optimizer_logic.optimizer_XY_res = self._csd.cursor_resolution_SpinBox.value()
+
+        self.update_roi_size()
+
+
+    def keep_former_cursor_settings(self):
+        """ Keep the old settings and restores them in the gui. """
+        self._csd.cursor_range_DoubleSpinBox.setValue(self._optimizer_logic.refocus_XY_size)
+        self._csd.cursor_resolution_SpinBox.setValue(self._optimizer_logic.optimizer_XY_res)
+
+        self.update_roi_size()
 
     ############################################################################
     #                           Change Methods                                 #
