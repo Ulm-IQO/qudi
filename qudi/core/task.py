@@ -32,6 +32,8 @@ from qudi.core.util.mutex import Mutex, RecursiveMutex
 from qudi.core.connector import Connector
 from fysom import Fysom
 
+logger = logging.getLogger(__name__)
+
 
 class ModuleScript(QtCore.QRunnable, QtCore.QObject):
     """
@@ -105,7 +107,7 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
         pass
 
 
-class ScriptManager(QtCore.QObject):
+class ScriptRunner(QtCore.QObject):
     """
     ToDo: Document
     """
@@ -113,7 +115,8 @@ class ScriptManager(QtCore.QObject):
     _instance = None  # Only class instance created will be stored here as weakref
     _lock = RecursiveMutex()
 
-    sigManagedScriptsChanged = QtCore.Signal(dict)
+    sigScriptsChanged = QtCore.Signal(dict)
+    sigScriptFinished = QtCore.Signal(str, object, bool)
 
     def __new__(cls, *args, **kwargs):
         with cls._lock:
@@ -121,13 +124,15 @@ class ScriptManager(QtCore.QObject):
                 obj = super().__new__(cls, *args, **kwargs)
                 cls._instance = weakref.ref(obj)
                 return obj
-            raise Exception('ScriptManager is a singleton. An instance has already been created in '
-                            'this process. Please use ScriptManager.instance() instead.')
+            raise Exception('ScriptRunner is a singleton. An instance has already been created in '
+                            'this process. Please use ScriptRunner.instance() instead.')
 
     def __init__(self, *args, qudi_main, **kwargs):
         super().__init__(*args, **kwargs)
         self._qudi_main_ref = weakref.ref(qudi_main, self._qudi_main_ref_dead_callback)
         self._scripts = dict()
+        self._async_running = set()
+        self.thread_pool = QtCore.QThreadPool.globalInstance()
 
     @classmethod
     def instance(cls):
@@ -143,7 +148,8 @@ class ScriptManager(QtCore.QObject):
 
     @property
     def scripts(self):
-        return self._scripts.copy()
+        with self._lock:
+            return self._scripts.copy()
 
     def remove_script(self, script_name, ignore_missing=False, emit_change=True):
         with self._lock:
@@ -152,64 +158,51 @@ class ScriptManager(QtCore.QObject):
                     logger.error('No script with name "{0}" registered. Unable to remove script.'
                                  ''.format(script_name))
                 return
-            self._scripts[script_name].deactivate()
-            self._scripts[script_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
-            self.refresh_module_links()
-            if self._scripts[script_name].allow_remote_access:
-                stop_sharing_module(script_name)
+            if script_name in self._async_running:
+                logger.warning('Script "{0}" about to be removed is still running in thread pool.'
+                               ''.format(script_name))
+                self._scripts[script_name].abort()
+            self._scripts[script_name].sigFinished.disconnect()
             del self._scripts[script_name]
             if emit_change:
-                self.sigManagedModulesChanged.emit(self.scripts)
+                self.sigScriptsChanged.emit(self.scripts)
 
     def add_script(self, name, configuration, allow_overwrite=False, emit_change=True):
         with self._lock:
             if not isinstance(name, str) or not name:
-                raise TypeError('script name must be non-empty str type')
+                raise TypeError('Script name must be non-empty str type')
 
             if allow_overwrite:
                 self.remove_script(name, ignore_missing=True)
             elif name in self._scripts:
-                logger.error(
-                    'Script with name "{0}" already registered. Unable to add script of same name.')
+                logger.error('Script with name "{0}" already registered. '
+                             'Unable to add script of same name.'.format(name))
                 return
             module, class_name = configuration.get('module.Class').rsplit('.', 1)
-            mod = importlib.import_module('scripts.{0}'.format(module))
+            mod = importlib.import_module('script.{0}'.format(module))
             importlib.reload(mod)
 
             script_cls = getattr(mod, class_name)
             if isinstance(script_cls, ModuleScript):
                 script = script_cls(conn_modules=modules, fn=fn)
-            else:
+            elif callable(script_cls):
                 script = ModuleScript(conn_modules=modules, fn=fn)
-            module.sigStateChanged.connect(self.sigModuleStateChanged)
-            self._modules[name] = module
-            self.refresh_module_links()
-            # Register module in remote module service if module should be shared
-            if module.allow_remote_access:
-                if self._qudi_main_ref().remote_server is None:
-                    logger.error('Unable to share qudi module "{0}" as remote module. No remote'
-                                 ' server running in this qudi process.'.format(module.name))
-                else:
-                    logger.info('Start sharing qudi module "{0}" on remote module server.'
-                                ''.format(module.name))
-                    start_sharing_module(module)
+            else:
+                raise Exception(
+                    'Imported object is neither a ModuleScript subclass nor a callable.')
+
+            script.sigFinished.connect(
+                lambda result, success: self._script_finished_callback(name, result, success))
+            self._scripts[name] = script
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
 
-    def refresh_module_links(self):
+    @QtCore.Slot(str, object, bool)
+    def _script_finished_callback(self, script_name, result, success):
         with self._lock:
-            weak_refs = {
-                name: weakref.ref(mod, partial(self._module_ref_dead_callback, module_name=name))
-                for name, mod in self._modules.items()}
-            for module_name, module in self._modules.items():
-                # Add required module references
-                required = set(module.connection_cfg.values())
-                module.required_modules = set(
-                    mod_ref for name, mod_ref in weak_refs.items() if name in required)
-                # Add dependent module references
-                module.dependent_modules = set(mod_ref for mod_ref in weak_refs.values() if
-                                               module_name in mod_ref().connection_cfg.values())
-            return
+            if script_name in self._async_running:
+                self._async_running.remove(script_name)
+        self.sigScriptFinished.emit(script_name, result, success)
 
     def activate_module(self, module_name):
         with self._lock:
