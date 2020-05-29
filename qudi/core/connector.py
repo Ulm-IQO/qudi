@@ -21,6 +21,7 @@ top-level directory of this distribution and at
 """
 
 import copy
+import weakref
 from qudi.core.interface import InterfaceMethod
 
 
@@ -43,11 +44,13 @@ class Connector:
         self.interface = interface
         self.name = name
         self.optional = optional
-        self.obj = None
+        self.obj_ref = None
 
     def __call__(self):
         """ Return reference to the module that this connector is connected to. """
-        if self.obj is None:
+        obj = None if self.obj_ref is None else self.obj_ref()
+
+        if obj is None:
             if self.optional:
                 return None
             raise Exception(
@@ -58,38 +61,38 @@ class Connector:
 
             """
             def __getattribute__(*args):
-                attr = getattr(self.obj, args[1])
+                attr = getattr(obj, args[1])
                 if isinstance(attr, InterfaceMethod):
                     return attr[self.interface]
                 else:
                     return attr
 
             def __setattr__(*args):
-                return setattr(self.obj, args[1], args[2])
+                return setattr(obj, args[1], args[2])
 
             def __delattr__(*args):
-                return delattr(self.obj, args[1])
+                return delattr(obj, args[1])
 
             def __repr__(*args):
-                return repr(self.obj)
+                return repr(obj)
 
             def __str__(*args):
-                return str(self.obj)
+                return str(obj)
 
             def __dir__(*args):
-                return dir(self.obj)
+                return dir(obj)
 
             def __sizeof__(*args):
-                return self.obj.__sizeof__()
+                return obj.__sizeof__()
 
         return ConnectedInterfaceProxy()
 
     @property
     def is_connected(self):
-        return self.obj is not None
+        return self.obj_ref is not None and self.obj_ref() is not None
 
     def connect(self, target):
-        """ Check if target is connectable by this connector and connect."""
+        """ Check if target is connectible by this connector and connect."""
         if isinstance(self.interface, str):
             bases = [cls.__name__ for cls in target.__class__.mro()]
             if self.interface not in bases:
@@ -97,21 +100,24 @@ class Connector:
                     'Module {0} connected to connector {1} does not implement interface {2}.'
                     ''.format(target, self.name, self.interface))
 
-            self.obj = target
+            self.obj_ref = weakref.ref(target, self.__module_died_callback)
         elif isinstance(self.interface, type):
             if not isinstance(target, self.interface):
                 raise Exception(
                     'Module {0} connected to connector {1} does not implement interface {2}.'
                     ''.format(target, self.name, self.interface.__name__))
-            self.obj = target
+            self.obj_ref = weakref.ref(target, self.__module_died_callback)
         else:
             raise Exception(
                 'Unknown type for <Connector>.interface: "{0}"'.format(type(self.interface)))
         return
 
+    def __module_died_callback(self, ref=None):
+        self.disconnect()
+
     def disconnect(self):
         """ Disconnect connector. """
-        self.obj = None
+        self.obj_ref = None
 
     # def __repr__(self):
     #     return '<{0}: name={1}, interface={2}, object={3}>'.format(
