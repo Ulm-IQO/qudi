@@ -20,9 +20,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import visa
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 
 from interface.simple_data_interface import SimpleDataInterface
+from interface.process_interface import ProcessInterface
 
 try:
     from ThorlabsPM100 import ThorlabsPM100
@@ -30,7 +32,7 @@ except ImportError:
     raise ImportError('ThorlabsPM100 module not found. Please install it by typing command "pip install ThorlabsPM100"')
 
 
-class PM100D(Base, SimpleDataInterface):
+class PM100D(Base, SimpleDataInterface, ProcessInterface):
     """ Hardware module for Thorlabs PM100D powermeter.
 
     Example config :
@@ -41,10 +43,8 @@ class PM100D(Base, SimpleDataInterface):
     This module needs the ThorlabsPM100 package from PyPi, this package is not included in the environment
     To add install it, type :
     pip install ThorlabsPM100
-    in the Anaconda prompt after aving activated qudi environment
+    in the Anaconda prompt after having activated qudi environment
     """
-    _modclass = 'powermeter'
-    _modtype = 'hardware'
 
     _address = ConfigOption('address', missing='error')
     _timeout = ConfigOption('timeout', 1)
@@ -76,4 +76,33 @@ class PM100D(Base, SimpleDataInterface):
     def get_power(self):
         """ Return the power read from the ThorlabsPM100 package """
         return self._power_meter.read
+
+    def get_process_value(self):
+        """ Return a measured value """
+        return self.get_power()
+
+    def get_process_unit(self):
+        """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
+        return ('W', 'watt')
+
+    def get_wavelength(self):
+        """ Return the current wavelength in nanometers """
+        return self._power_meter.sense.correction.wavelength
+
+    def set_wavelength(self, value=None):
+        """ Set the new wavelength in nanometers """
+        mini, maxi = self.get_wavelength_range()
+        if value is not None:
+            if mini <= value <= maxi:
+                self._power_meter.sense.correction.wavelength = value
+            else:
+                self.log.error('Wavelength {} is out of the range [{}, {}].'.format(
+                    value, mini, maxi
+                ))
+        return self.get_wavelength()
+
+    def get_wavelength_range(self):
+        """ Return the wavelength range of the power meter in nanometers """
+        return self._power_meter.sense.correction.minimum_beamdiameter,\
+               self._power_meter.sense.correction.maximum_wavelength
 

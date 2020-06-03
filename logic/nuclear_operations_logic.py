@@ -25,7 +25,8 @@ import numpy as np
 import time
 
 from collections import OrderedDict
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
@@ -56,18 +57,15 @@ class NuclearOperationsLogic(GenericLogic):
 
     """
 
-    _modclass = 'NuclearOperationsLogic'
-    _modtype = 'logic'
-
     # declare connectors
-    #TODO: Use rather the task runner instead directly the module!
+    # TODO: Use rather the task runner instead directly the module!
 
-    sequencegenerationlogic = Connector(interface='SequenceGenerationLogic')
+    sequencegenerationlogic = Connector(interface='SequenceGeneratorLogic')
     traceanalysislogic = Connector(interface='TraceAnalysisLogic')
     gatedcounterlogic = Connector(interface='CounterLogic')
     odmrlogic = Connector(interface='ODMRLogic')
     optimizerlogic = Connector(interface='OptimizerLogic')
-    scannerlogic = Connector(interface='ScannerLogic')
+    scannerlogic = Connector(interface='ConfocalLogic')
     savelogic = Connector(interface='SaveLogic')
 
     # status vars

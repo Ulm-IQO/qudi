@@ -28,8 +28,9 @@ import time
 import visa
 from core.util.helpers import natural_sort
 
-from interface.pulser_interface import PulserInterface, PulserConstraints
-from core.module import Base, ConfigOption
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
+from core.module import Base
+from core.configoption import ConfigOption
 
 
 class DTG5334(Base, PulserInterface):
@@ -42,8 +43,6 @@ class DTG5334(Base, PulserInterface):
         visa_address: 'GPIB0::12::INSTR'
 
     """
-    _modclass = 'dtg5334'
-    _modtype = 'hardware'
 
     visa_address = ConfigOption('visa_address', missing='error')
 
@@ -204,16 +203,16 @@ class DTG5334(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_conf = OrderedDict()
-        activation_conf['A'] = {'d_ch1', 'd_ch2'}
-        activation_conf['B'] = {'d_ch3', 'd_ch4'}
-        activation_conf['C'] = {'d_ch5', 'd_ch6'}
-        activation_conf['D'] = {'d_ch7', 'd_ch8'}
-        activation_conf['AB'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'}
-        activation_conf['ABC'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6'}
-        activation_conf['all'] = {
-            'd_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'
-        }
+        activation_conf['A'] = frozenset({'d_ch1', 'd_ch2'})
+        activation_conf['B'] = frozenset({'d_ch3', 'd_ch4'})
+        activation_conf['C'] = frozenset({'d_ch5', 'd_ch6'})
+        activation_conf['D'] = frozenset({'d_ch7', 'd_ch8'})
+        activation_conf['AB'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'})
+        activation_conf['ABC'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6'})
+        activation_conf['all'] = frozenset(
+            {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
         constraints.activation_config = activation_conf
+        constraints.sequence_option = SequenceOption.FORCED
         return constraints
 
     def pulser_on(self):
@@ -646,13 +645,6 @@ class DTG5334(Base, PulserInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.dtg.write('*RST')
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return True
 
     def _get_id(self):
         result = self.dtg.query('*IDN?')

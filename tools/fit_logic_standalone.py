@@ -55,7 +55,7 @@ import os
 
 #matplotlib.rcParams.update({'font.size': 12})
 
-from core.util.units import compute_ft
+from core.util.math import compute_ft
 
 
 class FitLogic:

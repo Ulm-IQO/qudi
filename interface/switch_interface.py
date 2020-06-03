@@ -20,17 +20,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class SwitchInterface(metaclass=InterfaceMetaclass):
-    """ Methods to control slow (mechaincal) laser switching devices. """
+    """ Methods to control slow (mechanical) laser switching devices.
 
-    _modtype = 'SwitchInterface'
-    _modclass = 'interface'
+    Warning: This interface use CamelCase. This is should not be done in future versions. See more info here :
+    documentation/programming_style.md
+    """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
 
@@ -38,7 +39,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getSwitchState(self, switchNumber):
         """ Gives state of switch.
 
@@ -48,34 +49,30 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration
-                                   parameter
-          @param str switchState: state ['On', 'Off'] for which to get
-                                  calibration parameter
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
 
           @return str: calibration parameter fir switch and state.
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def setCalibration(self, switchNumber, state, value):
         """ Set calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration
-                                   parameter
-          @param str switchState: state ['On', 'Off'] for which to get
-                                  calibration parameter
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
           @param int value: calibration parameter to be set.
 
           @return bool: True if suceeds, False otherwise
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def switchOn(self, switchNumber):
         """ Switch on.
 
@@ -85,7 +82,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def switchOff(self, switchNumber):
         """ Switch off.
 
@@ -95,12 +92,12 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getSwitchTime(self, switchNumber):
         """ Give switching time for switch.
 
           @param int switchNumber: number of switch
-
+s
           @return float: time needed for switch state change
         """
         pass
