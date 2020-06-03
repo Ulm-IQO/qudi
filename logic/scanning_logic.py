@@ -31,7 +31,9 @@ import copy
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
+from core.connector import Connector
 
 
 class ScanData:
@@ -155,7 +157,7 @@ class ScanningLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    scanner = Connector(interface='ScannerInterface')
+    scanner = Connector(interface='ConfocalScannerInterface')
     savelogic = Connector(interface='SaveLogic')
 
     # status vars

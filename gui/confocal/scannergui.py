@@ -25,7 +25,9 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
+from core.configoption import ConfigOption
 from qtwidgets.scan_plotwidget import ScanImageItem
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 from qtwidgets.slider import DoubleSlider
