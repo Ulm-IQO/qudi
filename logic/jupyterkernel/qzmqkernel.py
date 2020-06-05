@@ -617,7 +617,10 @@ class QZMQKernel(QtCore.QObject):
 
         try:
             for i, node in enumerate(to_run_exec):
-                mod = ast.Module([node])
+                #mod = ast.Module([node])
+                mod = ast.parse("")
+                mod.body = [node]
+                mod = ast.fix_missing_locations(mod)
                 code = compiler(mod, cell_name, "exec")
                 if self.run_code(code, result):
                     return True
