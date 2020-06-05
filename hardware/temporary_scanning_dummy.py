@@ -35,7 +35,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
 
     scanning_probe_dummy:
         module.Class: 'scanning_probe_dummy.ScanningProbeDummy'
-        spot_density: 4e6           # in 1/m², optional
+        spot_density: 1e11           # in 1/m², optional
         position_ranges:
             x: [0, 200e-6]
             y: [0, 200e-6]
@@ -54,7 +54,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
     _position_ranges = ConfigOption(name='position_ranges', missing='error')
     _frequency_ranges = ConfigOption(name='frequency_ranges', missing='error')
     _resolution_ranges = ConfigOption(name='resolution_ranges', missing='error')
-    _spot_density = ConfigOption(name='spot_density', default=1e12/8)  # in 1/m²
+    _spot_density = ConfigOption(name='spot_density', default=1e11)  # in 1/m²
     _spot_depth_range = ConfigOption(name='spot_depth_range', default=(-500e-9, 500e-9))
     _spot_size_dist = ConfigOption(name='spot_size_dist', default=(100e-9, 15e-9))
     _spot_amplitude_dist = ConfigOption(name='spot_amplitude_dist', default=(2e5, 4e4))
@@ -136,6 +136,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
                 x_min, x_max = min(x_range), max(x_range)
                 y_min, y_max = min(y_range), max(y_range)
                 print(x_range, y_range, self._spot_density)
+                print()
                 spot_count = int(round((x_max - x_min) * (y_max - y_min) * self._spot_density))
 
                 # Fill in random spot information
@@ -199,11 +200,11 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
         if self.module_state() == 'locked':
             self.log.error('Unable to configure scan parameters while scan is running. '
                            'Stop scanning and try again.')
-            return self._current_scan_settings.copy()
+            return -1, self._current_scan_settings.copy()
         if not set(settings.axes).issubset(self._position_ranges):
             self.log.error('Unknown axes names encountered. Valid axes are: {0}'
                            ''.format(set(self._position_ranges)))
-            return self._current_scan_settings.copy()
+            return -1, self._current_scan_settings.copy()
         for i, ax in enumerate(settings.axes):
             pos_rng = self._position_ranges[ax]
             res_rng = self._resolution_ranges[ax]
@@ -211,29 +212,38 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
                 self.log.error(
                     'Scan range out of bounds for axis "{0}". Maximum possible range is: {1}'
                     ''.format(ax, list(pos_rng)))
-                return self._current_scan_settings.copy()
+                return -1, self._current_scan_settings.copy()
             if settings.resolutions[i] < min(res_rng) or settings.resolutions[i] > max(res_rng):
                 self.log.error(
                     'Scan resolution out of bounds for axis "{0}". Maximum possible range is: {1}'
                     ''.format(ax, list(res_rng)))
-                return self._current_scan_settings.copy()
+                return -1, self._current_scan_settings.copy()
         fast_freq_range = self._frequency_ranges[settings.axes[0]]
         if settings.px_frequency < min(fast_freq_range) or settings.px_frequency > max(fast_freq_range):
             self.log.error(
                 'Scan frequency out of bounds for fast axis "{0}". Maximum possible range is: {1}'
                 ''.format(settings.axes[0], fast_freq_range))
-            return self._current_scan_settings.copy()
+            return -1, self._current_scan_settings.copy()
         slow_freq_range = self._frequency_ranges[settings.axes[1]]
         slow_freq = settings.px_frequency / settings.resolutions[0]
         if slow_freq < min(slow_freq_range) or slow_freq > max(slow_freq_range):
             self.log.error(
                 'Derived scan frequency out of bounds for slow axis "{0}". Maximum possible range '
                 'is: {1}'.format(settings.axes[1], slow_freq_range))
-            return self._current_scan_settings.copy()
+            return -1, self._current_scan_settings.copy()
 
         self._line_scan_time = settings.resolution[0] / settings.px_frequency
         self._scan_image = np.zeros(self._current_scan_resolution)
         self._current_scan_settings = settings.copy()
+        return 0, self._current_scan_settings.copy()
+
+    def get_scan_settings(self):
+        """ Returns the current scan settings as ScanSettings object.
+        As long as "configure_scan" is not called again, this method will always return the same
+        parameters independent of the scan run state.
+
+        @return ScanSettings: Scan parameters defining a scanning probe run
+        """
         return self._current_scan_settings.copy()
 
     def move_absolute(self, position, velocity=None):

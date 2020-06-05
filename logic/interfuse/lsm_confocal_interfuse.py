@@ -53,7 +53,7 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
         ranges = [tuple(rng) for rng in constr['axes_position_ranges'].values()][:3]
         ranges.append((0, 0))
         self.__positioning_range = tuple(ranges)
-        self.__available_axes = tuple(*constr['axes_position_ranges'], 'a')
+        self.__available_axes = tuple([*constr['axes_position_ranges'], 'a'])
         self.__available_data_channels = tuple(constr['data_channel_units'])[:3]
 
         self.__current_line_index = 0
@@ -143,7 +143,10 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
             self.__number_of_lines = -1
         else:
             self.__scan_settings = return_settings.copy()
-            self.__number_of_lines = self.__scan_settings.
+            if len(return_settings.resolution) == 1:
+                self.__number_of_lines = 1
+            else:
+                self.__number_of_lines = return_settings.resolution[1]
         return err, return_settings
 
     def set_up_scanner(self, counter_channel=None, photon_source=None,
