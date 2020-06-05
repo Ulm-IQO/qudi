@@ -88,9 +88,7 @@ class OptimizerLogic(GenericLogic):
         self._fit_logic = self.fitlogic()
 
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
-        self.x_range = self._scanning_device.get_position_range()[0]
-        self.y_range = self._scanning_device.get_position_range()[1]
-        self.z_range = self._scanning_device.get_position_range()[2]
+        self.x_range, self.y_range, self.z_range = self._scanning_device.get_position_range()[:3]
 
         self._initial_pos_x = 0.
         self._initial_pos_y = 0.
@@ -203,7 +201,7 @@ class OptimizerLogic(GenericLogic):
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif initial_pos is None:
-            scpos = self._scanning_device.get_scanner_position()[0:3]
+            scpos = self._scanning_device.get_scanner_position()[:3]
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = scpos
         else:
             pass  # TODO: throw error
@@ -294,21 +292,21 @@ class OptimizerLogic(GenericLogic):
 
         @param start_pos float[]: 3-point vector giving x, y, z position to go to.
         """
-        n_ch = len(self._scanning_device.get_scanner_axes())
-        scanner_pos = self._scanning_device.get_scanner_position()
-        lsx = np.linspace(scanner_pos[0], start_pos[0], self.return_slowness)
-        lsy = np.linspace(scanner_pos[1], start_pos[1], self.return_slowness)
-        lsz = np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
-        if n_ch <= 3:
-            move_to_start_line = np.vstack((lsx, lsy, lsz)[0:n_ch])
-        else:
-            move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
-
-        counts = self._scanning_device.scan_line(move_to_start_line)
-        if np.any(counts == -1):
-            return -1
-
-        time.sleep(self.hw_settle_time)
+        # n_ch = len(self._scanning_device.get_scanner_axes())
+        # scanner_pos = self._scanning_device.get_scanner_position()
+        # lsx = np.linspace(scanner_pos[0], start_pos[0], self.return_slowness)
+        # lsy = np.linspace(scanner_pos[1], start_pos[1], self.return_slowness)
+        # lsz = np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
+        # if n_ch <= 3:
+        #     move_to_start_line = np.vstack((lsx, lsy, lsz)[0:n_ch])
+        # else:
+        #     move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
+        #
+        # counts = self._scanning_device.scan_line(move_to_start_line)
+        # if np.any(counts == -1):
+        #     return -1
+        #
+        # time.sleep(self.hw_settle_time)
         return 0
 
     def _refocus_xy_line(self):
