@@ -97,6 +97,7 @@ class QZMQKernel(QtCore.QObject):
         # namespaces
         self.user_global_ns = globals()
         self.user_ns = self.user_global_ns
+        self.user_ns['display_data'] = self.display_data
 
         self.exiting = False
         self.engine_id = str(uuid.uuid4())
