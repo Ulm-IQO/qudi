@@ -135,8 +135,6 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
                     continue
                 x_min, x_max = min(x_range), max(x_range)
                 y_min, y_max = min(y_range), max(y_range)
-                print(x_range, y_range, self._spot_density)
-                print()
                 spot_count = int(round((x_max - x_min) * (y_max - y_min) * self._spot_density))
 
                 # Fill in random spot information
@@ -213,7 +211,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
                     'Scan range out of bounds for axis "{0}". Maximum possible range is: {1}'
                     ''.format(ax, list(pos_rng)))
                 return -1, self._current_scan_settings.copy()
-            if settings.resolutions[i] < min(res_rng) or settings.resolutions[i] > max(res_rng):
+            if settings.resolution[i] < min(res_rng) or settings.resolution[i] > max(res_rng):
                 self.log.error(
                     'Scan resolution out of bounds for axis "{0}". Maximum possible range is: {1}'
                     ''.format(ax, list(res_rng)))
@@ -225,7 +223,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
                 ''.format(settings.axes[0], fast_freq_range))
             return -1, self._current_scan_settings.copy()
         slow_freq_range = self._frequency_ranges[settings.axes[1]]
-        slow_freq = settings.px_frequency / settings.resolutions[0]
+        slow_freq = settings.px_frequency / settings.resolution[0]
         if slow_freq < min(slow_freq_range) or slow_freq > max(slow_freq_range):
             self.log.error(
                 'Derived scan frequency out of bounds for slow axis "{0}". Maximum possible range '
@@ -348,6 +346,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
         if self.module_state() == 'idle':
             self.log.error('Unable to unlock scanner.')
             return -1
+        self.module_state.unlock()
         return 0
 
     def get_scan_line(self, line_index):

@@ -180,7 +180,7 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
         move_to = {ax: pos for ax, pos in zip(curr_pos, (x, y, z)) if
                    pos is not None and pos != curr_pos[ax]}
         new_pos = self.lsm_scanner().move_absolute(move_to)
-        return -int(any(pos != move_to[ax] for ax, pos in new_pos.items()))
+        return -int(any(new_pos[ax] != pos for ax, pos in move_to.items()))
 
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
@@ -208,7 +208,7 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
         line = self.lsm_scanner().get_scan_line(self.__current_line_index)
         self.__current_line_index += 1
 
-        data = np.empty(len(line_path), len(self.__available_data_channels))
+        data = np.empty((len(line_path[0]), len(self.__available_data_channels)))
         for i, channel in enumerate(self.__available_data_channels):
             data[:, i] = line[channel]
         return data
