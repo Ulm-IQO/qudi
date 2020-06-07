@@ -138,6 +138,7 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
             self.log.error('Unable to configure scan parameters. Scan is still active.')
             return self.lsm_scanner().get_scan_settings()
         err, return_settings = self.lsm_scanner().configure_scan(settings)
+        print(return_settings.resolution, return_settings.axes, return_settings.ranges)
         if err < 0:
             self.__scan_settings = None
             self.__number_of_lines = -1
@@ -147,6 +148,7 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
                 self.__number_of_lines = 1
             else:
                 self.__number_of_lines = return_settings.resolution[1]
+        print(self.__number_of_lines)
         return err, return_settings
 
     def set_up_scanner(self, counter_channel=None, photon_source=None,
@@ -218,6 +220,7 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.__current_line_index = 0
         return self.lsm_scanner().unlock_scanner()
 
     def close_scanner_clock(self, power=0):
