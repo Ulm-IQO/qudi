@@ -222,13 +222,13 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
                 'Scan frequency out of bounds for fast axis "{0}". Maximum possible range is: {1}'
                 ''.format(settings.axes[0], fast_freq_range))
             return -1, self._current_scan_settings.copy()
-        slow_freq_range = self._frequency_ranges[settings.axes[1]]
-        slow_freq = settings.px_frequency / settings.resolution[0]
-        if slow_freq < min(slow_freq_range) or slow_freq > max(slow_freq_range):
-            self.log.error(
-                'Derived scan frequency out of bounds for slow axis "{0}". Maximum possible range '
-                'is: {1}'.format(settings.axes[1], slow_freq_range))
-            return -1, self._current_scan_settings.copy()
+        if len(settings.axes) > 1:
+            slow_freq_range = self._frequency_ranges[settings.axes[1]]
+            slow_freq = settings.px_frequency / settings.resolution[0]
+            if slow_freq < min(slow_freq_range) or slow_freq > max(slow_freq_range):
+                self.log.error('Derived scan frequency out of bounds for slow axis "{0}". Maximum '
+                               'possible range is: {1}'.format(settings.axes[1], slow_freq_range))
+                return -1, self._current_scan_settings.copy()
 
         self._line_scan_time = settings.resolution[0] / settings.px_frequency
         self._scan_image = np.zeros(self._current_scan_resolution)

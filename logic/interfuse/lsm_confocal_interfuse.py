@@ -163,7 +163,10 @@ class LSMConfocalInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        return self.lsm_scanner().lock_scanner()
+        if self.lsm_scanner().lock_scanner() < 0:
+            return -1
+        self.__current_line_index = 0
+        return 0
 
     def scanner_set_position(self, x=None, y=None, z=None, a=None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).

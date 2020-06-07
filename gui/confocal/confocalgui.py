@@ -991,7 +991,7 @@ class ConfocalGui(GUIBase):
         """ Start optimize position. """
         self.disable_scan_actions()
         # Get the current crosshair position to send to optimizer
-        crosshair_pos = self._scanning_logic.get_position()
+        crosshair_pos = list(self._scanning_logic.get_position())
         self.sigStartOptimizer.emit(crosshair_pos, 'confocalgui')
 
     def update_crosshair_position_from_logic(self, tag):
