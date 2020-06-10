@@ -33,7 +33,7 @@ import config
 
 try:
     from .parentpoller import ParentPollerUnix, ParentPollerWindows
-except ModuleNotFoundError:
+except ImportError:
     from parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
