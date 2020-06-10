@@ -95,7 +95,7 @@ class PulseBlockElement(object):
 
     def __str__(self):
         pulse_func_dict = {chnl: type(func).__name__ for chnl, func in self.pulse_function.items()}
-        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\tlaser_on : {2],' \
+        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\tlaser_on : {2},' \
                      'analog channels: {3}\n\tdigital channels: {4}'.format(self.init_length_s,
                                                                             self.increment_s,
                                                                             self.laser_on,
@@ -1027,6 +1027,10 @@ class PredefinedGeneratorBase:
         return self.__sequencegeneratorlogic.generation_parameters
 
     @property
+    def pulse_generator_constraints(self):
+        return self.__sequencegeneratorlogic.pulse_generator_constraints
+
+    @property
     def channel_set(self):
         channels = self.pulse_generator_settings.get('activation_config')
         if channels is None:
@@ -1304,6 +1308,70 @@ class PredefinedGeneratorBase:
 
         mw_laser_element.laser_on = True
         return mw_laser_element
+
+    def _get_mw_element_linearchirp(self, length, increment, amplitude=None, start_freq=None, stop_freq=None, phase=None):
+        """
+        Creates a MW pulse PulseBlockElement
+
+        @param float length: MW pulse duration in seconds
+        @param float increment: MW pulse duration increment in seconds
+        @param float start_freq: start MW frequency in case of analogue MW channel in Hz
+        @param float stop_freq: stop MW frequency in case of analogue MW channel in Hz
+        @param float amp: MW amplitude in case of analogue MW channel in V
+        @param float phase: MW phase in case of analogue MW channel in deg
+
+        @return: PulseBlockElement, the generated MW element
+        """
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+            self.log.warning('You are trying to create chirped pulses on a digital channel.')
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+
+            sampling_function_name = 'Chirp'
+            kwargs = {'amplitude': amplitude, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase}
+
+            mw_element.pulse_function[self.microwave_channel] = \
+                getattr(SamplingFunctions, sampling_function_name)(**kwargs)
+        return mw_element
+
+    def _get_mw_element_AEchirp(self, length, increment, amp=None, start_freq=None, stop_freq=None, phase=None,
+                                truncation_ratio=0.1):
+        """
+        Creates a MW pulse PulseBlockElement
+
+        @param float length: MW pulse duration in seconds
+        @param float increment: MW pulse duration increment in seconds
+        @param float start_freq: start MW frequency in case of analogue MW channel in Hz
+        @param float stop_freq: stop MW frequency in case of analogue MW channel in Hz
+        @param float amp: MW amplitude in case of analogue MW channel in V
+        @param float phase: MW phase in case of analogue MW channel in deg
+
+        @return: PulseBlockElement, the generated MW element
+        """
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+            self.log.warning('You are trying to create chirped pulses on a digital channel.')
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+
+            sampling_function_name = 'AllenEberlyChirp'
+            kwargs = {'amplitude': amp, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase,
+                      'tau_pulse': truncation_ratio * length}
+
+            mw_element.pulse_function[self.microwave_channel] = \
+                getattr(SamplingFunctions, sampling_function_name)(**kwargs)
+        return mw_element
 
     def _get_readout_element(self):
 
