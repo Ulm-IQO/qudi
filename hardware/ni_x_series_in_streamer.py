@@ -48,7 +48,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
     Example config for copy-paste:
 
     nicard_6343_instreamer:
-        module.Class: 'ni_x_series_counter.NationalInstrumentsXSeriesCounter'
+        module.Class: 'ni_x_series_in_streamer.NIXSeriesInStreamer'
         device_name: 'Dev1'
         digital_sources:  # optional
             - 'PFI15'
