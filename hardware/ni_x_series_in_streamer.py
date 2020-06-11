@@ -410,7 +410,8 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
     @active_channels.setter
     def active_channels(self, channels):
         if self._check_settings_change():
-            if any(ch not in self.available_channels for ch in channels):
+            avail_channels = tuple(ch.name for ch in self.available_channels)
+            if any(ch not in avail_channels for ch in channels):
                 self.log.error('Invalid channel to stream from encountered ({0}).\nValid channels '
                                'are: {1}'
                                ''.format(tuple(channels), tuple(self.available_channels)))
@@ -843,7 +844,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return int: error code (0:OK, -1:error)
         """
         digital_channels = tuple(
-            ch for ch, p in self.active_channels.items() if p['type'] == StreamChannelType.DIGITAL)
+            ch.name for ch in self.active_channels if ch.type == StreamChannelType.DIGITAL)
         if not digital_channels:
             return 0
         if self._di_task_handles:
@@ -973,7 +974,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return int: error code (0:OK, -1:error)
         """
         analog_channels = tuple(
-            ch for ch, p in self.active_channels.items() if p['type'] == StreamChannelType.ANALOG)
+            ch.name for ch in self.active_channels if ch.type == StreamChannelType.ANALOG)
         if not analog_channels:
             return 0
         if self._ai_task_handle:
