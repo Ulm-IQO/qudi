@@ -95,7 +95,7 @@ class PulseBlockElement(object):
 
     def __str__(self):
         pulse_func_dict = {chnl: type(func).__name__ for chnl, func in self.pulse_function.items()}
-        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\tlaser_on : {2],' \
+        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\tlaser_on : {2},' \
                      'analog channels: {3}\n\tdigital channels: {4}'.format(self.init_length_s,
                                                                             self.increment_s,
                                                                             self.laser_on,

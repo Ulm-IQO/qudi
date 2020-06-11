@@ -48,6 +48,7 @@ class InterfaceMethod:
 
     def __init__(self, default_callable, is_abstractmethod=False):
         self._obj = None
+        self._name = default_callable.__name__
         if is_abstractmethod:
             self._default_callable = abstractmethod(default_callable)
         else:
@@ -100,7 +101,7 @@ class InterfaceMethod:
         def decorator(func):
             self.registered[interface] = func
             self.__isabstractmethod__ = False
-            InterfaceMethod._latest_unregistered_instances.pop(func.__name__, None)
+            InterfaceMethod._latest_unregistered_instances.pop(self._name, None)
             return func
         return decorator
 
