@@ -51,7 +51,7 @@ class Main(Base, SwitchInterface):
 
     def on_activate(self):
         """ Module activation method """
-        os.chdir(self.dll_folder)
+        os.environ['PATH'] = str(self.dll_folder) + os.pathsep + os.environ['PATH']
         self._dll = ct.cdll.LoadLibrary(self.dll_file)
         self._dll.TLI_BuildDeviceList()
 
