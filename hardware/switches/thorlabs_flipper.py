@@ -51,7 +51,7 @@ class Main(Base, SwitchInterface):
 
     def on_activate(self):
         """ Module activation method """
-        os.environ['PATH'] = str(self.dll_folder) + os.pathsep + os.environ['PATH']
+        os.environ['PATH'] = str(self.dll_folder) + os.pathsep + os.environ['PATH']  # needed otherwise dll don't load
         self._dll = ct.cdll.LoadLibrary(self.dll_file)
         self._dll.TLI_BuildDeviceList()
 
@@ -126,4 +126,4 @@ class Main(Base, SwitchInterface):
 
           @return float: time needed for switch state change
         """
-        return 500e-3  # max. 1 ms; typ. 0.5 ms
+        return 500e-3
