@@ -28,8 +28,6 @@ from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
-
-
 class ScanningProbeInterface(metaclass=InterfaceMetaclass):
     """ This is the Interface class to define the controls for a scanning probe device
 
@@ -107,7 +105,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
     def start_scan(self):
         """
 
-        @return (bool, ScanData): Failure indicator (fail=True), ScanData instance used in the scan
+        @return (bool): Failure indicator (fail=True)
         """
         pass
 
@@ -115,12 +113,17 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
     def stop_scan(self):
         """
 
-        @return:
+        @return bool: Failure indicator (fail=True)
         """
         pass
 
     @abstract_interface_method
     def get_scan_data(self):
+        """
+
+        @return (bool, ScanData): Failure indicator (fail=True), ScanData instance used in the scan
+        """
+        pass
 
     @abstract_interface_method
     def emergency_stop(self):
@@ -273,14 +276,11 @@ class ScanSettings:
         return cls(**params)
 
 
-
-class ScanData(QtCore.QObject):
+class ScanData:
     """
     Object representing all data associated to a SPM measurement.
     """
     # TODO: Automatic interpolation of irregular positional data onto rectangular grid
-
-    sigDataChanged = QtCore.Signal()
 
     def __init__(self, axes_units, data_channel_units, scan_settings, timestamp=None):
         """
@@ -429,3 +429,6 @@ class ScanData(QtCore.QObject):
         start_index = self.__current_data_index
         stop_index = self.__current_data_index + 1
         return self._add_data(position, data, start_index, stop_index)
+
+
+class ScanConstraints

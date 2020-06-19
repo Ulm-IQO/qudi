@@ -23,9 +23,8 @@ import time
 import numpy as np
 
 from core.module import Base
-from core.connector import Connector
 from core.configoption import ConfigOption
-from interface.scanning_probe_interface import ScanningProbeInterface
+from interface.scanning_probe_interface import ScanningProbeInterface, ScanSettings, ScanData
 
 
 class ScanningProbeDummy(Base, ScanningProbeInterface):
