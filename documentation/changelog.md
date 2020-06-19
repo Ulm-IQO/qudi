@@ -55,6 +55,12 @@ The potential sequence_options are:
   * `FORCED` (only output as sequence possible)
 * Added interfuse to correct geometrical aberration on scanner via polynomial transformations
 * added the option to do a purely analog ODMR scan.
+* Added new GUI, logic, interface and hardware modules to replace the "slow counter" tool in the 
+future. The new tools are designed to be able to stream any kind of time series data efficiently 
+for multiple analog and digital channels. See example config on how to set up the 
+time series/streaming modules (_time_series_gui.py_, _time_series_reader_logic.py_). 
+For a drop-in replacement of the obsolete slow counter together with a NI x-series card, 
+please use _ni_x_series_in_streamer.py_ as hardware module.
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
 * added a hardware file for power supply  Teledyne T3PS3000
@@ -69,7 +75,9 @@ The potential sequence_options are:
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
 * reworked the QDPlotter to now contain fits and a scalable number of plots. Attention: custom notebooks might break by this change.
 * Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
+* Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
 * Fixed bug affecting interface overloading of Qudi modules
+*
 
 
 Config changes:
