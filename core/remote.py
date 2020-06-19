@@ -31,6 +31,7 @@ import rpyc
 from rpyc.utils.server import ThreadedServer
 from rpyc.utils.authenticators import SSLAuthenticator
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
+rpyc.core.protocol.DEFAULT_CONFIG['sync_request_timeout'] = 3600
 
 
 class RemoteObjectManager(QObject):
