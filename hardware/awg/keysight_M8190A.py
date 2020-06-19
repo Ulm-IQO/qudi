@@ -1138,7 +1138,10 @@ class AWGM8190A(Base, PulserInterface):
                                      set(analog_samples.keys()).union(set(digital_samples.keys()))))
             return -1, waveforms
 
-        marker = True #TODO should be set in conf...
+        self.write(':FUNC1:MODE ARB')  # set to arbitrary mode
+        self.write(':FUNC2:MODE ARB')
+
+        marker = True   # no reason to deactivate any marker for M8190A, as active makers do not impose restrcitions
 
         for channel_index, channel_number in enumerate(active_analog):
 
@@ -1238,6 +1241,7 @@ class AWGM8190A(Base, PulserInterface):
                 control = 2 ** 28   # (=0x10000000) mark as start
             if index + 1 == num_steps:
                 control = 2 ** 30   # (=0x40000000) todo: any effect?
+            control += 0x1 << 24    # enable markers
 
             seq_loop_count = 1
             if seq_step.repetitions == -1:
