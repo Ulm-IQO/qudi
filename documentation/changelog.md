@@ -77,6 +77,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
 * Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
 * Fixed bug affecting interface overloading of Qudi modules
+* Update hardware module controlling the cryocon temperature regulator
 *
 
 
