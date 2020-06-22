@@ -19,6 +19,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import ctypes as ct
+from operator import xor
 from core.module import Base
 from core.configoption import ConfigOption
 from interface.switch_interface import SwitchInterface
@@ -42,6 +43,7 @@ class Main(Base, SwitchInterface):
     dll_file = ConfigOption('dll_ffile', default='Thorlabs.MotionControl.FilterFlipper.dll')
     serial_numbers = ConfigOption('serial_numbers', missing='error')
     polling_rate_ms = ConfigOption('polling_rate_ms', default=200)
+    invert_axis = ConfigOption('invert_axis', default=[False])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,6 +78,10 @@ class Main(Base, SwitchInterface):
         """
         return len(self._serial_numbers)
 
+    def _is_inverted(self, axis=0):
+        """ Helper function to get if axis is inverted in config """
+        return self.invert_axis is not None and len(self.invert_axis) > axis and bool(self.invert_axis[axis])
+
     def getSwitchState(self, switchNumber):
         """ Get the state of the switch.
 
@@ -83,7 +89,8 @@ class Main(Base, SwitchInterface):
 
           @return bool: True if 2, False if 1 (homed)
         """
-        return self._dll.FF_GetPosition(self._serial_numbers[switchNumber]) == 2
+        state = self._dll.FF_GetPosition(self._serial_numbers[switchNumber]) == 2
+        return xor(state, self._is_inverted(switchNumber))
 
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
@@ -106,7 +113,8 @@ class Main(Base, SwitchInterface):
 
           @return (bool): True if succeeds, False otherwise
         """
-        self._dll.FF_MoveToPosition(self._serial_numbers[switchNumber], 2)
+        setpoint = 2 if not self._is_inverted() else 1
+        self._dll.FF_MoveToPosition(self._serial_numbers[switchNumber], setpoint)
         return True
 
     def switchOff(self, switchNumber):
@@ -116,7 +124,8 @@ class Main(Base, SwitchInterface):
 
           @return (bool): True if suceeds, False otherwise
         """
-        self._dll.FF_MoveToPosition(self._serial_numbers[switchNumber], 1)
+        setpoint = 1 if not self._is_inverted() else 2
+        self._dll.FF_MoveToPosition(self._serial_numbers[switchNumber], setpoint)
         return True
 
     def getSwitchTime(self, switchNumber):
