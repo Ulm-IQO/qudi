@@ -200,46 +200,39 @@ class Mapper:
             raise Exception('Property {0} of widget {1} already mapped.'
                             ''.format(widget_property_name, repr(widget)))
 
-        if not isinstance(widget, ScienDSpinBox):  # general case
-            # check if widget property is available
-            index = widget.metaObject().indexOfProperty(widget_property_name)
-            if index == -1:
-                raise Exception('Property ''{0}'' of widget ''{1}'' not '
-                                'available.'.format(widget_property_name,
-                                                    widget.__class__.__name__))
+        # check if widget property is available
+        index = widget.metaObject().indexOfProperty(widget_property_name)
+        if index == -1:
+            raise Exception('Property ''{0}'' of widget ''{1}'' not '
+                            'available.'.format(widget_property_name,
+                                                widget.__class__.__name__))
 
-            meta_property = widget.metaObject().property(index)
+        meta_property = widget.metaObject().property(index)
 
-            # widget property notifier
-            if widget_property_notifier is None:
-                # check that widget property as a notify signal
-                if not meta_property.hasNotifySignal():
-                    raise Exception('Property ''{0}'' of widget ''{1}'' has '
-                                    'no notify signal.'.format(
-                                        widget_property_name,
-                                        widget.__class__.__name__))
-                widget_property_notifier = getattr(
-                    widget,
-                    meta_property.notifySignal().name().data().decode('utf8'))
+        # widget property notifier
+        if widget_property_notifier is None:
+            # check that widget property as a notify signal
+            if not meta_property.hasNotifySignal():
+                raise Exception('Property ''{0}'' of widget ''{1}'' has '
+                                'no notify signal.'.format(
+                                    widget_property_name,
+                                    widget.__class__.__name__))
+            widget_property_notifier = getattr(
+                widget,
+                meta_property.notifySignal().name().data().decode('utf8'))
 
-            # check that widget property is readable
-            if not meta_property.isReadable():
-                raise Exception('Property ''{0}'' of widget ''{1}'' is not '
-                                'readable.'.format(widget_property_name,
-                                                   widget.__class__.__name__))
-            widget_property_getter = meta_property.read
-            # check that widget property is writable if requested
-            if not meta_property.isWritable():
-                raise Exception('Property ''{0}'' of widget ''{1}'' is not '
-                                'writable.'.format(widget_property_name,
-                                                   widget.__class__.__name__))
-            widget_property_setter = meta_property.write
-        else:  # Case of ScienDSpinBox
-            widget_property_getter = lambda w: w.value()
-            widget_property_setter = lambda w, v: w.setValue(v)
-            if widget_property_notifier is None:
-                widget_property_notifier = widget.editingFinished
-
+        # check that widget property is readable
+        if not meta_property.isReadable():
+            raise Exception('Property ''{0}'' of widget ''{1}'' is not '
+                            'readable.'.format(widget_property_name,
+                                               widget.__class__.__name__))
+        widget_property_getter = meta_property.read
+        # check that widget property is writable if requested
+        if not meta_property.isWritable():
+            raise Exception('Property ''{0}'' of widget ''{1}'' is not '
+                            'writable.'.format(widget_property_name,
+                                               widget.__class__.__name__))
+        widget_property_setter = meta_property.write
 
         if isinstance(model_getter, str):
             # check if it is a property
