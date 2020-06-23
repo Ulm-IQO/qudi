@@ -131,7 +131,7 @@ class Mapper:
             return 'text'
         elif isinstance(widget, (QSpinBox, QDoubleSpinBox, QAbstractSlider)):
             return 'value'
-        if isinstance(widget, ScienDSpinBox):
+        elif isinstance(widget, ScienDSpinBox):
             return 'value_float'
         elif isinstance(widget, QPlainTextEdit):
             return 'plainText'
