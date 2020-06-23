@@ -196,7 +196,6 @@ class OptimizerLogic(GenericLogic):
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
 
-
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
@@ -656,7 +655,7 @@ class OptimizerLogic(GenericLogic):
             self._initialize_z_refocus_image()
             self._scanning_device.set_up_scanner_clock()
             axes = ('z', 'x')
-            ranges = ((min(self._Z_values), max(self._Z_values)),
+            ranges = ((min(self._zimage_Z_values), max(self._zimage_Z_values)),
                       (self.optim_pos_x, self.optim_pos_x))
             resolution = (self.optimizer_Z_res, 1)
             settings = ScanSettings(axes=axes,
