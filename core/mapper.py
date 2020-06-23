@@ -31,7 +31,7 @@ from qtpy.QtWidgets import QLineEdit
 from qtpy.QtWidgets import QPlainTextEdit
 from qtpy.QtWidgets import QSpinBox
 
-from qtwidgets.scientific_spinbox import ScienDSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 import functools
 
@@ -133,6 +133,8 @@ class Mapper:
             return 'value'
         elif isinstance(widget, ScienDSpinBox):
             return 'value_float'
+        elif isinstance(widget, ScienSpinBox):
+            return 'value_int'
         elif isinstance(widget, QPlainTextEdit):
             return 'plainText'
         else:
