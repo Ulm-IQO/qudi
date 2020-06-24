@@ -29,11 +29,10 @@ import os
 import sys
 import time
 
-from collections import OrderedDict
-from core.configoption import ConfigOption
-from core.util.mutex import Mutex
-from core.util.network import netobtain
-from core.module import LogicBase
+from qudi.core.configoption import ConfigOption
+from qudi.core.util.mutex import Mutex
+from qudi.core.util.network import netobtain
+from qudi.core.module import LogicBase
 from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
 from PIL import PngImagePlugin
