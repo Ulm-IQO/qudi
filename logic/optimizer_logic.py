@@ -414,13 +414,13 @@ class OptimizerLogic(GenericLogic):
                         self.optim_pos_y = result_2D_gaus.best_values['center_y']
                         self.optim_sigma_x = result_2D_gaus.best_values['sigma_x']
                         self.optim_sigma_y = result_2D_gaus.best_values['sigma_y']
-                        self._scanning_device.scanner_set_position(x=self.optim_pos_x,
-                                                                   y=self.optim_pos_y)
             else:
                 self.optim_pos_x = self._initial_pos_x
                 self.optim_pos_y = self._initial_pos_y
                 self.optim_sigma_x = 0.
                 self.optim_sigma_y = 0.
+
+        self._scanning_device.scanner_set_position(x=self.optim_pos_x, y=self.optim_pos_y)
 
         # emit image updated signal so crosshair can be updated from this fit
         self.sigImageUpdated.emit()
