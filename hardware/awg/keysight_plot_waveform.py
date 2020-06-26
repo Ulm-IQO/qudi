@@ -11,8 +11,6 @@
 # =========================================================
 import sys
 import os
-import re
-import string
 import struct
 import scipy.interpolate
 import numpy as np
@@ -32,15 +30,15 @@ def decode_m8190_val(val_int):
 
     val_int = np.asarray(val_int).astype('uint16')
 
-    bit_marker = bool(0x1 & val_int)
-    bit_sync = bool((0x2 & val_int) >> 1)
+    bit_marker = 0x1 & val_int
+    bit_sync = 0x2 & val_int >> 1
 
-    analog_binary = 0xFFFC & val_int >> shiftbits
+    analog_binary = (0xFFFC & val_int) >>  shiftbits
     #print("Debug: Analog bit {:#016b}".format(analog_binary))
     # sign extend to correctly fit 14 bit of 2s complement into 16 bit int
     int_analog = np.int16(sign_extend(analog_binary, 14))
 
-    return int_analog, bit_marker, bit_sync
+    return np.asarray(int_analog, dtype=np.int16), np.asarray(bit_marker, dtype=np.bool), np.asarray(bit_sync, dtype=np.bool)
 
 def decode_m8195_val(val_int, channel="a_ch1"):
 
@@ -135,16 +133,39 @@ def _decode_from_int16(int_array, mode="bin", channel_config=None):
 
     t_us = 1e6 * np.asarray(range(n_data)) / sampling_rate
 
-    res = [_decode_two_bytes(val16, mode, channel_config) for val16 in int_array]
+    # SLOOOOW:
+    #res = [_decode_two_bytes(val16, mode, channel_config) for val16 in np.asarray(int_array).astype('uint16')]
 
+    int_array = np.asarray(int_array).astype('uint16')
+
+    if mode == 'bin':
+        int_analog, bit_marker, bit_sync = decode_m8190_val(int_array)
+    elif mode == 'bin8':
+        if channel_config == 'marker':
+            int_analog = decode_m8195_val(int_array, 'a_ch1')
+            # marker sync only exist for M8190A
+            bit_marker = decode_m8195_val(int_array, 'd_ch1')
+            bit_sync = decode_m8195_val(int_array, 'd_ch2')
+        else:
+            raise NotImplementedError
+    else:
+        raise ValueError("Ubnknown mode: {}".format(mode))
+
+
+    """
     wave_analog_int = [el[0] for el in res]
     wave_analog = [analog_int_to_normalized_float(el) for el in wave_analog_int]
     wave_sample_marker = [el[1] for el in res]
     wave_sync_marker = [el[2] for el in res]
+    """
+    wave_analog_int = int_analog
+    wave_analog = analog_int_to_normalized_float(wave_analog_int)
+    wave_sample_marker = bit_marker
+    wave_sync_marker = bit_sync
 
     print("Debug: Decode done.")
 
-    return t_us, np.asarray(wave_analog), np.asarray(wave_analog_int), np.asarray(wave_sample_marker), np.asarray(wave_sync_marker)
+    return t_us, wave_analog, wave_analog_int, wave_sample_marker, wave_sync_marker
 
 
 def _decode_two_bytes(val_int16, mode='bin', channel_config=None):
@@ -225,7 +246,7 @@ def decode_bin_to_wave(bin_input, mode='bin', channel_config=None):
 
 dac_resolution = 14
 sampling_rate = 8e9
-
+time_it = False
 # =========================================================
 # Main Program
 # =========================================================
@@ -260,23 +281,23 @@ else:
     raise NotImplementedError
 
 
-"""
-stop_fast = datetime.datetime.now()
-start_slow = datetime.datetime.now()
+if time_it:
+    stop_fast = datetime.datetime.now()
+    start_slow = datetime.datetime.now()
 
-bin_in_ch1, bin_in_ch2 = load_waveform_files(path, mode=ext)
-if ext == 'bin':
-    t_us_ch1, w_analog_ch1, w_analog_int_ch1, w_sample_marker_ch1, w_sync_marker_ch1 = decode_bin_to_wave(bin_in_ch1, mode=ext)
-    t_us_ch2, w_analog_ch2, w_analog_int_ch2, w_sample_marker_ch2, w_sync_marker_ch2 = decode_bin_to_wave(bin_in_ch2, mode=ext)
-elif ext == 'bin8':
-    t_us_ch1, w_analog_ch1, _, w_sample_marker_ch1, w_sync_marker_ch1 = decode_bin_to_wave(bin_in_ch1,
-                                                                                           mode=ext, channel_config='marker')
-else:
-    raise NotImplementedError
-stop_slow = datetime.datetime.now()
+    bin_in_ch1, bin_in_ch2 = load_waveform_files(path, mode=ext)
+    if ext == 'bin':
+        t_us_ch1, w_analog_ch1, w_analog_int_ch1, w_sample_marker_ch1, w_sync_marker_ch1 = decode_bin_to_wave(bin_in_ch1, mode=ext)
+        t_us_ch2, w_analog_ch2, w_analog_int_ch2, w_sample_marker_ch2, w_sync_marker_ch2 = decode_bin_to_wave(bin_in_ch2, mode=ext)
+    elif ext == 'bin8':
+        t_us_ch1, w_analog_ch1, _, w_sample_marker_ch1, w_sync_marker_ch1 = decode_bin_to_wave(bin_in_ch1,
+                                                                                               mode=ext, channel_config='marker')
+    else:
+        raise NotImplementedError
+    stop_slow = datetime.datetime.now()
 
-print("Debug profiling: Fast: {}, Slow: {}".format(stop_fast-start_fast, stop_slow-start_slow))
-"""
+    print("Debug profiling: Fast: {}, Slow: {}".format(stop_fast-start_fast, stop_slow-start_slow))
+
 
 
 # Plotting waveforms
