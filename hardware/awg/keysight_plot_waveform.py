@@ -51,7 +51,7 @@ def decode_m8195_val(val_int, channel="a_ch1"):
     elif channel == 'd_ch1':
         val = (val_int >> 8 & 0x1)
     elif channel == "d_ch2":
-        val = (val_int >> 8 & 0x2)
+        val = (val_int >> 8 & 0x2) >> 1
     else:
         raise NotImplementedError
 
@@ -144,7 +144,7 @@ def _decode_from_int16(int_array, mode="bin", channel_config=None):
 
     print("Debug: Decode done.")
 
-    return t_us, wave_analog, wave_analog_int, wave_sample_marker, wave_sync_marker
+    return t_us, np.asarray(wave_analog), np.asarray(wave_analog_int), np.asarray(wave_sample_marker), np.asarray(wave_sync_marker)
 
 
 def _decode_two_bytes(val_int16, mode='bin', channel_config=None):
@@ -245,7 +245,11 @@ start_fast = datetime.datetime.now()
 
 path_ch1, path_ch2 = get_waveform_files(path, mode=ext)
 data_ch1 = np.fromfile(path_ch1, dtype=np.uint16, count=-1)
-data_ch2 = np.fromfile(path_ch2, dtype=np.uint16, count=-1)
+try:
+    data_ch2 = np.fromfile(path_ch2, dtype=np.uint16, count=-1)
+except:
+    pass
+
 if ext == 'bin':
     t_us_ch1, w_analog_ch1, w_analog_int_ch1, w_sample_marker_ch1, w_sync_marker_ch1 = decode_int16_to_wave(data_ch1, mode=ext)
     t_us_ch2, w_analog_ch2, w_analog_int_ch2, w_sample_marker_ch2, w_sync_marker_ch2 = decode_int16_to_wave(data_ch2, mode=ext)
