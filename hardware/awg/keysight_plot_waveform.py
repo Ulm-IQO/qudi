@@ -184,8 +184,8 @@ def _decode(bin_input, mode="bin", channel_config=None):
 
 def decode_bin_to_wave(bin_input, mode='bin', channel_config=None):
     if mode == 'bin':
-        if channel is not None:
-            print("Warning: ignoring specified channel {}".format(channel))
+        if channel_config is not None:
+            print("Warning: ignoring specified channel {}".format(channel_config))
         return _decode(bin_input, mode=mode)
     elif mode == 'bin8':
         return _decode(bin_input, mode=mode, channel_config='marker')
