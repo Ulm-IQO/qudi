@@ -54,7 +54,7 @@ class ModuleFrameWidget(QtWidgets.QWidget):
         # Create activation pushbutton
         self.activate_button = QtWidgets.QPushButton('load/activate <module_name>')
         self.activate_button.setObjectName('loadButton')
-        # self.activate_button.setCheckable(True)
+        self.activate_button.setCheckable(True)
         self.activate_button.setMinimumWidth(200)
         self.activate_button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
                                            QtWidgets.QSizePolicy.Fixed)
@@ -100,16 +100,22 @@ class ModuleFrameWidget(QtWidgets.QWidget):
             self.cleanup_button.setEnabled(True)
             self.deactivate_button.setEnabled(False)
             self.reload_button.setEnabled(False)
+            if self.activate_button.isChecked():
+                self.activate_button.setChecked(False)
         elif state == 'deactivated':
             self.activate_button.setText('Activate {0}'.format(self._module_name))
             self.cleanup_button.setEnabled(True)
             self.deactivate_button.setEnabled(False)
             self.reload_button.setEnabled(False)
+            if self.activate_button.isChecked():
+                self.activate_button.setChecked(False)
         else:
             self.activate_button.setText(self._module_name)
             self.cleanup_button.setEnabled(False)
             self.deactivate_button.setEnabled(True)
             self.reload_button.setEnabled(True)
+            if not self.activate_button.isChecked():
+                self.activate_button.setChecked(True)
         self.status_label.setText('Module is {0}'.format(state))
         return
 

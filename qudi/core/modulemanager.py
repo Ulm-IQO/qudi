@@ -449,6 +449,10 @@ class ManagedModule(QtCore.QObject):
             QtCore.QMetaObject.invokeMethod(self, 'activate', QtCore.Qt.BlockingQueuedConnection)
             return self.is_active
         with self._lock:
+            if not self.is_loaded:
+                if not self._load():
+                    return False
+
             if self.is_active:
                 if self._base == 'gui':
                     self._instance.show()
@@ -456,10 +460,6 @@ class ManagedModule(QtCore.QObject):
 
             logger.info(
                 'Activating module {0}.{1}.{2}'.format(self._base, self._module, self._class))
-
-            if not self.is_loaded:
-                if not self._load():
-                    return False
 
             # Recursive activation of required modules
             for module_ref in self._required_modules:
