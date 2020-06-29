@@ -294,8 +294,6 @@ class ManagedModule(QtCore.QObject):
 
         self._required_modules = set()
         self._dependent_modules = set()
-
-        # register module in module manager
         return
 
     def __call__(self):
@@ -444,6 +442,7 @@ class ManagedModule(QtCore.QObject):
     def module_thread_name(self):
         return 'mod-{0}-{1}'.format(self._base, self._name)
 
+    @QtCore.Slot()
     def activate(self):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'activate', QtCore.Qt.BlockingQueuedConnection)
@@ -497,7 +496,8 @@ class ManagedModule(QtCore.QObject):
                         thread_manager.join_thread(thread_name)
                 else:
                     self._instance.module_state.activate()
-                QtCore.QCoreApplication.instance().processEvents()
+                # FIXME: This return to main loop caused non-main-thread module activation to fail.
+                # QtCore.QCoreApplication.instance().processEvents()
                 if not self.is_active:
                     return False
             except:
@@ -507,6 +507,7 @@ class ManagedModule(QtCore.QObject):
             self.sigStateChanged.emit(self._base, self._name, self.state)
             return True
 
+    @QtCore.Slot()
     def deactivate(self):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'deactivate', QtCore.Qt.BlockingQueuedConnection)
@@ -557,6 +558,7 @@ class ManagedModule(QtCore.QObject):
             self.sigStateChanged.emit(self._base, self._name, self.state)
             return success
 
+    @QtCore.Slot()
     def reload(self):
         if QtCore.QThread.currentThread() is not self.thread():
             QtCore.QMetaObject.invokeMethod(self, 'reload', QtCore.Qt.BlockingQueuedConnection)

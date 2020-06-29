@@ -251,9 +251,9 @@ class QudiMainGui(GuiBase):
         self.log.info('IPython has kernel {0}'.format(self._kernel_manager.has_kernel))
         self.log.info('IPython kernel alive {0}'.format(self._kernel_manager.is_alive()))
         self._qudi_main.module_manager.sigModuleStateChanged.connect(
-            self.update_ipython_single_module)
+            self.update_ipython_single_module, QtCore.Qt.QueuedConnection)
         self._qudi_main.module_manager.sigManagedModulesChanged.connect(
-            self.update_ipython_all_modules)
+            self.update_ipython_all_modules, QtCore.Qt.QueuedConnection)
 
     def start_ipython_widget(self):
         """

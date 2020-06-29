@@ -100,6 +100,8 @@ class TemplateGui(GuiBase):
         self.sigStuffDone.disconnect(self.my_slot_for_stuff)
         self._mw.button_down.clicked.disconnect()
         self._mw.button_up.clicked.disconnect()
+        self.my_first_logic_connector().sigStuffDone.disconnect(self.my_slot_for_stuff)
+        self.my_second_logic_connector().sigStuffDone.disconnect(self.my_slot_for_stuff)
 
         # Close all windows associated with this GUI
         self._mw.close()
