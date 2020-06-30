@@ -24,6 +24,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.module import LogicBase
 from qtpy import QtCore
+import time
 
 
 class TemplateLogic(LogicBase):
@@ -36,6 +37,8 @@ class TemplateLogic(LogicBase):
     _my_config_var = ConfigOption(name='my_config_var', default=None, missing='warn')
 
     sigStuffDone = QtCore.Signal(object)
+    sigDict = QtCore.Signal(dict)
+    _sig_start_loop = QtCore.Signal()
 
     _my_status_variable = StatusVar(name='my_status_variable', default=42)
 
@@ -54,6 +57,8 @@ class TemplateLogic(LogicBase):
         self._send_pop_up_message(
             'Hello World!',
             'You wouldn\'t believe what\'s possible now to notify the user of random stuff.')
+        self._sig_start_loop.connect(self._loop, QtCore.Qt.QueuedConnection)
+        self._sig_start_loop.emit()
         return
 
     def on_deactivate(self):
@@ -63,6 +68,7 @@ class TemplateLogic(LogicBase):
         """
         # disconnect all signals connected in on_activate
         self.sigStuffDone.disconnect(self.my_slot_for_stuff)
+        self._sig_start_loop.disconnect(self._loop)
         return
 
     def set_status_var(self, new_var):
@@ -79,6 +85,15 @@ class TemplateLogic(LogicBase):
             self._my_status_variable, self._my_config_var))
         self.sigStuffDone.emit(self._my_config_var)
         return
+
+    @QtCore.Slot()
+    def _loop(self):
+        """An example of a function that continuously calls itself and queries a status.
+        """
+
+        data = {'name': 'Testlogic', 'value': time.time()}
+        self.sigDict.emit(data)
+        QtCore.QTimer.singleShot(500, self._loop())
 
     @QtCore.Slot()
     def my_slot_for_stuff(self):
