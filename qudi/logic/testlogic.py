@@ -93,7 +93,7 @@ class TemplateLogic(LogicBase):
 
         data = {'name': 'Testlogic', 'value': time.time()}
         self.sigDict.emit(data)
-        QtCore.QTimer.singleShot(500, self._loop())
+        QtCore.QTimer.singleShot(500, self._loop)
 
     @QtCore.Slot()
     def my_slot_for_stuff(self):
