@@ -65,6 +65,7 @@ class TemplateGui(GuiBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mw = None
+        self._logic_weakref = None
 
     def on_activate(self):
         """Everything that should be done when activating the module must go in here.
@@ -87,6 +88,9 @@ class TemplateGui(GuiBase):
         self.my_first_logic_connector().sigStuffDone.connect(self.my_slot_for_stuff)
         self.my_second_logic_connector().sigStuffDone.connect(self.my_slot_for_stuff)
 
+        self._logic_weakref = self.my_first_logic_connector()
+        self._logic_weakref.sigDict.connect(self.handle_dict, QtCore.Qt.QueuedConnection)
+
         # Show main window
         self.show()
         return
@@ -96,15 +100,16 @@ class TemplateGui(GuiBase):
         yourself and ensure there are no lingering connections, references to outside objects, open
         file handles etc. etc.
         """
+        # Close all windows associated with this GUI
+        self._mw.close()
+
         # disconnect all signals connected in on_activate
         self.sigStuffDone.disconnect(self.my_slot_for_stuff)
         self._mw.button_down.clicked.disconnect()
         self._mw.button_up.clicked.disconnect()
         self.my_first_logic_connector().sigStuffDone.disconnect(self.my_slot_for_stuff)
         self.my_second_logic_connector().sigStuffDone.disconnect(self.my_slot_for_stuff)
-
-        # Close all windows associated with this GUI
-        self._mw.close()
+        self._logic_weakref.sigDict.disconnect(self.handle_dict)
         return
 
     def show(self):
@@ -115,6 +120,10 @@ class TemplateGui(GuiBase):
         self._mw.raise_()
         self._mw.activateWindow()
         return
+
+    @QtCore.Slot(dict)
+    def handle_dict(self, value):
+        print(value['name'], value['value'])
 
     @QtCore.Slot()
     def count_down(self):
