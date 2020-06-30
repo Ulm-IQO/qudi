@@ -276,7 +276,12 @@ class ConfocalGui(GUIBase):
         self._mw.xy_ViewWidget.set_crosshair_size(
             (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
         # connect the drag event of the crosshair with a change in scanner position:
-        self._mw.xy_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_xy)
+        self._xy_crosshair_proxy = pg.SignalProxy(
+            self._mw.xy_ViewWidget.sigCrosshairDraggedPosChanged,
+            delay=0.5,
+            slot=self.update_from_roi_xy
+        )
+        # self._mw.xy_ViewWidget.sigCrosshairPosChanged.connect(self.update_from_roi_xy)
 
         # Set up and connect xy channel combobox
         scan_channels = self._scanning_logic.get_scanner_count_channels()
@@ -292,7 +297,12 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget.set_crosshair_size(
             (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_Z_size))
         # connect the drag event of the crosshair with a change in scanner position:
-        self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
+        self._depth_crosshair_proxy = pg.SignalProxy(
+            self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged,
+            delay=0.5,
+            slot=self.update_from_roi_depth
+        )
+        # self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
 
         # Set up and connect depth channel combobox
         scan_channels = self._scanning_logic.get_scanner_count_channels()
@@ -362,9 +372,24 @@ class ConfocalGui(GUIBase):
             self._mw.z_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
         # Handle slider movements by user:
-        self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
-        self._mw.y_SliderWidget.sliderMoved.connect(self.update_from_slider_y)
-        self._mw.z_SliderWidget.sliderMoved.connect(self.update_from_slider_z)
+        self._x_slider_proxy = pg.SignalProxy(
+            self._mw.x_SliderWidget.sliderMoved,
+            delay=0.5,
+            slot=self.update_from_slider_x
+        )
+        self._y_slider_proxy = pg.SignalProxy(
+            self._mw.y_SliderWidget.sliderMoved,
+            delay=0.5,
+            slot=self.update_from_slider_y
+        )
+        self._z_slider_proxy = pg.SignalProxy(
+            self._mw.z_SliderWidget.sliderMoved,
+            delay=0.5,
+            slot=self.update_from_slider_z
+        )
+        # self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
+        # self._mw.y_SliderWidget.sliderMoved.connect(self.update_from_slider_y)
+        # self._mw.z_SliderWidget.sliderMoved.connect(self.update_from_slider_z)
 
         # Take the default values from logic:
         self._mw.xy_res_InputWidget.setValue(self._scanning_logic.xy_resolution)
@@ -1052,6 +1077,7 @@ class ConfocalGui(GUIBase):
         @param float h: real value of the current horizontal position
         @param float v: real value of the current vertical position
         """
+        print('xy updated:', h, v)
         if h is None:
             h = self._mw.xy_ViewWidget.crosshair_position[0]
         if v is None:
@@ -1089,6 +1115,7 @@ class ConfocalGui(GUIBase):
         @param float h: real value of the current horizontal position
         @param float v: real value of the current vertical position
         """
+        print('xz updated:', h, v)
         if h is None:
             h = self._mw.depth_ViewWidget.crosshair_position[0]
         if v is None:
@@ -1101,6 +1128,8 @@ class ConfocalGui(GUIBase):
 
         @params object roi: PyQtGraph ROI object
         """
+        if isinstance(pos, tuple):
+            pos = pos[0]
         pos = (pos.x(), pos.y())
         in_range, pos = self.roi_xy_bounds_check(pos)
         if not in_range:
@@ -1113,12 +1142,19 @@ class ConfocalGui(GUIBase):
         self.update_input_x(h_pos)
         self.update_input_y(v_pos)
 
+        if self._scanning_logic.depth_img_is_xz:
+            self.update_roi_depth(h=h_pos)
+        else:
+            self.update_roi_depth(h=v_pos)
+
         self._scanning_logic.set_position('roixy', x=h_pos, y=v_pos)
         self._optimizer_logic.set_position('roixy', x=h_pos, y=v_pos)
 
     def update_from_roi_depth(self, pos):
         """The user manually moved the Z ROI, adjust all other GUI elements accordingly
         """
+        if isinstance(pos, tuple):
+            pos = pos[0]
         pos = (pos.x(), pos.y())
         in_range, pos = self.roi_depth_bounds_check(pos)
         if not in_range:
@@ -1228,6 +1264,8 @@ class ConfocalGui(GUIBase):
 
         @params int sliderValue: slider postion, a quantized whole number
         """
+        if isinstance(sliderValue, tuple):
+            sliderValue = sliderValue[0]
         x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
         self.update_roi_xy(h=x_pos)
         if self._scanning_logic.depth_img_is_xz:
@@ -1241,6 +1279,8 @@ class ConfocalGui(GUIBase):
 
         @params int sliderValue: slider postion, a quantized whole number
         """
+        if isinstance(sliderValue, tuple):
+            sliderValue = sliderValue[0]
         y_pos = self._scanning_logic.y_range[0] + sliderValue * self.slider_res
         self.update_roi_xy(v=y_pos)
         if not self._scanning_logic.depth_img_is_xz:
@@ -1254,6 +1294,8 @@ class ConfocalGui(GUIBase):
 
         @params int sliderValue: slider postion, a quantized whole number
         """
+        if isinstance(sliderValue, tuple):
+            sliderValue = sliderValue[0]
         z_pos = self._scanning_logic.z_range[0] + sliderValue * self.slider_res
         self.update_roi_depth(v=z_pos)
         self.update_input_z(z_pos)
