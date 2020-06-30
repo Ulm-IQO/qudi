@@ -39,11 +39,18 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.spinbox.setValue(0)
         self.spinbox.setReadOnly(True)
         self.label = QtWidgets.QLabel()
+        self.name_label = QtWidgets.QLabel()
+        self.double_spinbox = QtWidgets.QDoubleSpinBox()
+        self.double_spinbox.setRange(-2**31, 2**31-1)
+        self.double_spinbox.setValue(0)
+        self.double_spinbox.setReadOnly(True)
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.button_up)
         layout.addWidget(self.spinbox)
         layout.addWidget(self.button_down)
         layout.addWidget(self.label)
+        layout.addWidget(self.name_label)
+        layout.addWidget(self.double_spinbox)
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
@@ -123,7 +130,8 @@ class TemplateGui(GuiBase):
 
     @QtCore.Slot(dict)
     def handle_dict(self, value):
-        print(value['name'], value['value'])
+        self._mw.name_label.setText(value['name'])
+        self._mw.double_spinbox.setValue(value['value'])
 
     @QtCore.Slot()
     def count_down(self):
