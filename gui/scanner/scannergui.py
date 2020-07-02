@@ -237,12 +237,18 @@ class ScannerGui(GUIBase):
             self.optimizer_dockwidget.setVisible)
         self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
         self._mw.action_optimizer_settings.triggered.connect(lambda x: self._osd.exec_())
+        self._mw.action_scanner_settings.triggered.connect(lambda x: self._ssd.exec_())
 
         # Connect the action of the optimizer settings window with the code:
         self._osd.accepted.connect(self.change_optimizer_settings)
         self._osd.rejected.connect(self.update_optimizer_settings)
         self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.change_optimizer_settings)
+        # Connect the action of the scanner settings window with the code:
+        self._ssd.accepted.connect(self.change_scanner_settings)
+        self._ssd.rejected.connect(self.update_scanner_settings)
+        self._ssd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.change_scanner_settings)
 
         # Set input widget value ranges and units according to scanner constraints
         self.apply_scanner_constraints()
@@ -758,6 +764,11 @@ class ScannerGui(GUIBase):
     #     for dockwidget in self.scan_2d_dockwidgets.values():
     #         dockwidget.plot_widget.toggle_selection(enable)
     #     return
+
+    @QtCore.Slot()
+    def change_scanner_settings(self):
+        self.sigScannerSettingsChanged.emit(
+            {'pixel_clock_frequency': self._ssd.pixel_clock_frequency_scienSpinBox.value()})
 
     @QtCore.Slot()
     def change_optimizer_settings(self):
