@@ -321,7 +321,7 @@ class ScanningLogic(GenericLogic):
             if self.__scan_stop_requested or self.__scan_line_count <= 0:
                 self.module_state.unlock()
                 self.scanner().unlock_scanner()
-                self.sigScanStateChanged.emit(False, self.__running_scan)
+                self.sigScanStateChanged.emit(False, self.current_scan)
                 return
 
             if self.current_scan == 'xy':

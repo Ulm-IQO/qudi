@@ -331,6 +331,9 @@ class ScannerGui(GUIBase):
         # self.xz_scan.plot_widget.sigMouseAreaSelected.connect(self._xz_area_selected)
         # self.xz_scan.channel_comboBox.currentIndexChanged.connect(self._xz_channel_changed)
 
+        self._mw.action_xy_scan.triggered.connect(self._xy_scan_triggered)
+        self._mw.action_xz_scan.triggered.connect(self._xz_scan_triggered)
+
         self.show()
         return
 
@@ -559,18 +562,18 @@ class ScannerGui(GUIBase):
     def scan_state_updated(self, is_running, scan_axes):
         if is_running:
             if scan_axes == 'xy':
-                self.action_xy_scan.setChecked(True)
-                self.action_xz_scan.setEnabled(False)
+                self._mw.action_xy_scan.setChecked(True)
+                self._mw.action_xz_scan.setEnabled(False)
             elif scan_axes == 'xz':
-                self.action_xz_scan.setChecked(True)
-                self.action_xy_scan.setEnabled(False)
+                self._mw.action_xz_scan.setChecked(True)
+                self._mw.action_xy_scan.setEnabled(False)
+            self._mw.action_optimize_position.setEnabled(False)
         else:
-            self.action_xy_scan.setEnabled(True)
-            self.action_xz_scan.setEnabled(True)
-            if scan_axes == 'xy':
-                self.action_xy_scan.setChecked(False)
-            elif scan_axes == 'xz':
-                self.action_xz_scan.setChecked(False)
+            self._mw.action_xy_scan.setEnabled(True)
+            self._mw.action_xz_scan.setEnabled(True)
+            self._mw.action_optimize_position.setEnabled(True)
+            self._mw.action_xy_scan.setChecked(False)
+            self._mw.action_xz_scan.setChecked(False)
         return
 
     def _update_target_display(self, pos_dict, exclude_widget=None):
@@ -822,3 +825,13 @@ class ScannerGui(GUIBase):
             self._osd.optimization_sequence_lineEdit.setText(','.join(settings['sequence']))
             self._osd.optimization_sequence_lineEdit.blockSignals(False)
         return
+
+    @QtCore.Slot()
+    def _xy_scan_triggered(self):
+        start = self._mw.action_xy_scan.isEnabled()
+        self.sigToggleScan.emit(start, 'xy')
+
+    @QtCore.Slot()
+    def _xz_scan_triggered(self):
+        start = self._mw.action_xz_scan.isEnabled()
+        self.sigToggleScan.emit(start, 'xz')

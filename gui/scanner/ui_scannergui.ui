@@ -723,6 +723,9 @@ Shortcut: Shift+R</string>
    </property>
   </action>
   <action name="action_xy_scan">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</normaloff>
@@ -736,6 +739,9 @@ Shortcut: Shift+R</string>
    </property>
   </action>
   <action name="action_xz_scan">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</normaloff>
