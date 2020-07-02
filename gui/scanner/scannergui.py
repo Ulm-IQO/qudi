@@ -536,12 +536,6 @@ class ScannerGui(GUIBase):
 
         @param dict scan_data:
         """
-        if axes.lower() == 'xy':
-            print(1)
-            scan_data = self.scanninglogic().xy_scan_data
-        elif axes.lower() == 'xz':
-            print(2)
-            scan_data = self.scanninglogic().xz_scan_data
         resolution = self._mw.x_resolution_spinBox.value()
         if axes.lower() == 'xy':
             self.xy_scan.image_item.setImage(image=scan_data)
