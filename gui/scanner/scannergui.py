@@ -208,6 +208,7 @@ class ScannerGui(GUIBase):
         self.xy_scan.plot_widget.setLabel('left', 'Y', units='m')
         self.xy_scan.plot_widget.add_crosshair(movable=True, min_size_factor=0.02)
         self.xy_scan.plot_widget.setAspectLocked(lock=True, ratio=1.0)
+        self.xy_scan.plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         # self.xy_scan.plot_widget.toggle_zoom_by_selection(True)
 
         self.xz_scan.plot_widget.setLabel('bottom', 'X', units='m')
@@ -234,8 +235,6 @@ class ScannerGui(GUIBase):
             self._mw.action_view_optimizer.setChecked)
         self._mw.action_view_optimizer.triggered[bool].connect(
             self.optimizer_dockwidget.setVisible)
-        self._mw.action_view_scanner_control.triggered[bool].connect(
-            self.scanner_control_dockwidget.setVisible)
         self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
         self._mw.action_optimizer_settings.triggered.connect(lambda x: self._osd.exec_())
 
@@ -272,7 +271,8 @@ class ScannerGui(GUIBase):
         self.update_optimizer_settings()
         self.update_scanner_settings()
         self.scanner_target_updated()
-        self.scan_data_updated()
+        self.scan_data_updated('xy', self.scanninglogic().xy_scan_data)
+        self.scan_data_updated('xz', self.scanninglogic().xz_scan_data)
 
         # Initialize dockwidgets to default view
         self.restore_default_view()
@@ -296,7 +296,7 @@ class ScannerGui(GUIBase):
         self.sigOptimizerSettingsChanged.connect(
             self.scanninglogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
         self.sigToggleScan.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
-        self.sigToggleOptimize.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
+        # self.sigToggleOptimize.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_forward.triggered.connect(
         #     self.scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_back.triggered.connect(
@@ -305,8 +305,6 @@ class ScannerGui(GUIBase):
         #     self.scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
 
         # Connect signals from logic
-        self.scanninglogic().sigScannerPositionChanged.connect(
-            self.scanner_position_updated, QtCore.Qt.QueuedConnection)
         self.scanninglogic().sigScannerTargetChanged.connect(
             self.scanner_target_updated, QtCore.Qt.QueuedConnection)
         self.scanninglogic().sigScannerSettingsChanged.connect(
@@ -390,6 +388,9 @@ class ScannerGui(GUIBase):
         self._mw.splitDockWidget(self.xz_scan, self.optimizer_dockwidget, QtCore.Qt.Vertical)
         self._mw.resizeDocks([self.xz_scan, self.optimizer_dockwidget],
                              [1, 1],
+                             QtCore.Qt.Vertical)
+        self._mw.resizeDocks([self.xy_scan, self.xz_scan],
+                             [1, 1],
                              QtCore.Qt.Horizontal)
         return
 
@@ -459,36 +460,36 @@ class ScannerGui(GUIBase):
         if 'pixel_clock_frequency' in settings:
             self._ssd.pixel_clock_frequency_scienSpinBox.setValue(settings['pixel_clock_frequency'])
         if 'scan_resolution' in settings:
-            self.x_resolution_spinBox.blockSignals(True)
-            self.y_resolution_spinBox.blockSignals(True)
-            self.z_resolution_spinBox.blockSignals(True)
-            self.x_resolution_spinBox.setValue(settings['scan_resolution'])
-            self.y_resolution_spinBox.setValue(settings['scan_resolution'])
-            self.z_resolution_spinBox.setValue(settings['scan_resolution'])
-            self.x_resolution_spinBox.blockSignals(False)
-            self.y_resolution_spinBox.blockSignals(False)
-            self.z_resolution_spinBox.blockSignals(False)
+            self._mw.x_resolution_spinBox.blockSignals(True)
+            self._mw.y_resolution_spinBox.blockSignals(True)
+            self._mw.z_resolution_spinBox.blockSignals(True)
+            self._mw.x_resolution_spinBox.setValue(settings['scan_resolution'])
+            self._mw.y_resolution_spinBox.setValue(settings['scan_resolution'])
+            self._mw.z_resolution_spinBox.setValue(settings['scan_resolution'])
+            self._mw.x_resolution_spinBox.blockSignals(False)
+            self._mw.y_resolution_spinBox.blockSignals(False)
+            self._mw.z_resolution_spinBox.blockSignals(False)
         if 'x_scan_range' in settings:
-            self.x_min_range_doubleSpinBox.blockSignals(True)
-            self.x_max_range_doubleSpinBox.blockSignals(True)
-            self.x_min_range_doubleSpinBox.setValue(settings['x_scan_range'])
-            self.x_max_range_doubleSpinBox.setValue(settings['x_scan_range'])
-            self.x_min_range_doubleSpinBox.blockSignals(False)
-            self.x_max_range_doubleSpinBox.blockSignals(False)
+            self._mw.x_min_range_doubleSpinBox.blockSignals(True)
+            self._mw.x_max_range_doubleSpinBox.blockSignals(True)
+            self._mw.x_min_range_doubleSpinBox.setValue(min(settings['x_scan_range']))
+            self._mw.x_max_range_doubleSpinBox.setValue(max(settings['x_scan_range']))
+            self._mw.x_min_range_doubleSpinBox.blockSignals(False)
+            self._mw.x_max_range_doubleSpinBox.blockSignals(False)
         if 'y_scan_range' in settings:
-            self.y_min_range_doubleSpinBox.blockSignals(True)
-            self.y_max_range_doubleSpinBox.blockSignals(True)
-            self.y_min_range_doubleSpinBox.setValue(settings['y_scan_range'])
-            self.y_max_range_doubleSpinBox.setValue(settings['y_scan_range'])
-            self.y_min_range_doubleSpinBox.blockSignals(False)
-            self.y_max_range_doubleSpinBox.blockSignals(False)
+            self._mw.y_min_range_doubleSpinBox.blockSignals(True)
+            self._mw.y_max_range_doubleSpinBox.blockSignals(True)
+            self._mw.y_min_range_doubleSpinBox.setValue(min(settings['y_scan_range']))
+            self._mw.y_max_range_doubleSpinBox.setValue(max(settings['y_scan_range']))
+            self._mw.y_min_range_doubleSpinBox.blockSignals(False)
+            self._mw.y_max_range_doubleSpinBox.blockSignals(False)
         if 'z_scan_range' in settings:
-            self.z_min_range_doubleSpinBox.blockSignals(True)
-            self.z_max_range_doubleSpinBox.blockSignals(True)
-            self.z_min_range_doubleSpinBox.setValue(settings['z_scan_range'])
-            self.z_max_range_doubleSpinBox.setValue(settings['z_scan_range'])
-            self.z_min_range_doubleSpinBox.blockSignals(False)
-            self.z_max_range_doubleSpinBox.blockSignals(False)
+            self._mw.z_min_range_doubleSpinBox.blockSignals(True)
+            self._mw.z_max_range_doubleSpinBox.blockSignals(True)
+            self._mw.z_min_range_doubleSpinBox.setValue(min(settings['z_scan_range']))
+            self._mw.z_max_range_doubleSpinBox.setValue(max(settings['z_scan_range']))
+            self._mw.z_min_range_doubleSpinBox.blockSignals(False)
+            self._mw.z_max_range_doubleSpinBox.blockSignals(False)
         return
 
     def move_scanner_position(self, target_pos):
@@ -514,47 +515,43 @@ class ScannerGui(GUIBase):
             return
 
         if not isinstance(pos_dict, dict):
-            pos_dict = self.scanninglogic().scanner_position
+            pos_dict = self.scanninglogic().scanner_target
 
         self._update_target_display(pos_dict)
         return
 
-    @QtCore.Slot()
-    @QtCore.Slot(str, dict)
-    def scan_data_updated(self, axes=None, scan_data=None):
+    @QtCore.Slot(str, np.ndarray)
+    def scan_data_updated(self, axes, scan_data):
         """
 
         @param dict scan_data:
         """
-        if not isinstance(axes, str) or not isinstance(scan_data, dict):
-            raise('implement THIS!')
-
-        resolution = self.x_resolution_spinBox.value()
+        resolution = self._mw.x_resolution_spinBox.value()
         if axes.lower() == 'xy':
             self.xy_scan.image_item.setImage(image=scan_data)
             px_size_x = abs(
-                self.x_max_range_doubleSpinBox.value() - self.x_min_range_doubleSpinBox.value()) / (
+                self._mw.x_max_range_doubleSpinBox.value() - self._mw.x_min_range_doubleSpinBox.value()) / (
                                     resolution - 1)
             px_size_y = abs(
-                self.y_max_range_doubleSpinBox.value() - self.y_min_range_doubleSpinBox.value()) / (
+                self._mw.y_max_range_doubleSpinBox.value() - self._mw.y_min_range_doubleSpinBox.value()) / (
                                     resolution - 1)
-            x_min = self.x_min_range_doubleSpinBox.value() - px_size_x / 2
-            x_max = self.x_max_range_doubleSpinBox.value() + px_size_x / 2
-            y_min = self.y_min_range_doubleSpinBox.value() - px_size_y / 2
-            y_max = self.y_max_range_doubleSpinBox.value() + px_size_y / 2
+            x_min = self._mw.x_min_range_doubleSpinBox.value() - px_size_x / 2
+            x_max = self._mw.x_max_range_doubleSpinBox.value() + px_size_x / 2
+            y_min = self._mw.y_min_range_doubleSpinBox.value() - px_size_y / 2
+            y_max = self._mw.y_max_range_doubleSpinBox.value() + px_size_y / 2
             self.xy_scan.image_item.set_image_extent(((x_min, x_max), (y_min, y_max)))
         elif axes.lower() == 'xz':
             self.xz_scan.image_item.setImage(image=scan_data)
             px_size_x = abs(
-                self.x_max_range_doubleSpinBox.value() - self.x_min_range_doubleSpinBox.value()) / (
+                self._mw.x_max_range_doubleSpinBox.value() - self._mw.x_min_range_doubleSpinBox.value()) / (
                                 resolution - 1)
             px_size_z = abs(
-                self.z_max_range_doubleSpinBox.value() - self.z_min_range_doubleSpinBox.value()) / (
+                self._mw.z_max_range_doubleSpinBox.value() - self._mw.z_min_range_doubleSpinBox.value()) / (
                                 resolution - 1)
-            x_min = self.x_min_range_doubleSpinBox.value() - px_size_x / 2
-            x_max = self.x_max_range_doubleSpinBox.value() + px_size_x / 2
-            z_min = self.z_min_range_doubleSpinBox.value() - px_size_z / 2
-            z_max = self.z_max_range_doubleSpinBox.value() + px_size_z / 2
+            x_min = self._mw.x_min_range_doubleSpinBox.value() - px_size_x / 2
+            x_max = self._mw.x_max_range_doubleSpinBox.value() + px_size_x / 2
+            z_min = self._mw.z_min_range_doubleSpinBox.value() - px_size_z / 2
+            z_max = self._mw.z_max_range_doubleSpinBox.value() + px_size_z / 2
             self.xz_scan.image_item.set_image_extent(((x_min, x_max), (z_min, z_max)))
         return
 
