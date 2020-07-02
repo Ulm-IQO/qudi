@@ -34,6 +34,7 @@ from core.util.mutex import Mutex
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.connector import Connector
+from interface.temporary_scanning_interface import ScanSettings
 
 
 class ScanData:
@@ -147,6 +148,14 @@ class ScanData:
         return
 
 
+class OptimizerSettings:
+    def __init__(self, resolution_2d, resolution_1d, initial_position, scan_frequency):
+        self.resolution_2d = int(resolution_2d)
+        self.resolution_1d = int(resolution_1d)
+        self.initial_pos = dict(initial_position)
+        self.scan_frequency = float(scan_frequency)
+
+
 class ScanningLogic(GenericLogic):
     """
     This is the Logic class for 1D/2D scanning measurements.
@@ -157,10 +166,23 @@ class ScanningLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    scanner = Connector(interface='ConfocalScannerInterface')
+    scanner = Connector(interface='TemporaryScanningInterface')
     savelogic = Connector(interface='SaveLogic')
 
-    # status vars
+    # optimizer settings status vars
+    _optim_xy_scan_range = StatusVar(name='optim_xy_scan_range', default=1e-6)
+    _optim_z_scan_range = StatusVar(name='optim_z_scan_range', default=3e-6)
+    _optim_xy_resolution = StatusVar(name='optim_xy_resolution', default=20)
+    _optim_z_resolution = StatusVar(name='optim_z_resolution', default=20)
+    _optim_scan_frequency = StatusVar(name='optim_scan_frequency', default=50)
+
+    # scan settings status vars
+    _x_scan_range = StatusVar(name='x_scan_range', default=None)
+    _y_scan_range = StatusVar(name='y_scan_range', default=None)
+    _z_scan_range = StatusVar(name='z_scan_range', default=None)
+    _xy_scan_resolution = StatusVar(name='xy_scan_resolution', default=100)
+    _z_scan_resolution = StatusVar(name='z_scan_resolution', default=100)
+    _scan_frequency = StatusVar(name='scan_frequency', default=500.0)
 
     # signals
     sigScanStateChanged = QtCore.Signal(bool, tuple)
@@ -177,56 +199,56 @@ class ScanningLogic(GenericLogic):
 
         self.threadlock = Mutex()
 
-        # Create semi-random dummy constraints
-        self._constraints = dict()
-        self._constraints['data_channels'] = dict()
-        self._constraints['data_channels']['fluorescence'] = dict()
-        self._constraints['data_channels']['fluorescence']['unit'] = 'c/s'
-        self._constraints['data_channels']['unfug'] = dict()
-        self._constraints['data_channels']['unfug']['unit'] = 'bpm'
-        self._constraints['axes'] = dict()
-        for axis in ('x', 'y', 'z', 'phi'):
-            self._constraints['axes'][axis] = dict()
-            limit = 50e-6 + 50e-6 * np.random.rand()
-            self._constraints['axes'][axis]['min_value'] = -limit
-            self._constraints['axes'][axis]['max_value'] = limit
-            self._constraints['axes'][axis]['min_step'] = 1e-9
-            self._constraints['axes'][axis]['min_resolution'] = 2
-            self._constraints['axes'][axis]['max_resolution'] = np.inf
-            self._constraints['axes'][axis]['unit'] = 'm' if axis != 'phi' else '°'
+        constraints = self.scanner().get_constraints()
 
-        # scanner settings
-        self._scanner_settings = dict()
-        self._scanner_settings['scan_axes'] = (*combinations(self.scanner_constraints['axes'],
-                                                                 2), ('x',))
-        self._scanner_settings['pixel_clock_frequency'] = 1000
-        self._scanner_settings['backscan_points'] = 50
-        self._scanner_settings['scan_resolution'] = dict()
-        self._scanner_settings['scan_range'] = dict()
-        for axis, constr_dict in self._constraints['axes'].items():
-            self._scanner_settings['scan_resolution'][axis] = np.random.randint(
-                max(constr_dict['min_resolution'], 100),
-                min(constr_dict['max_resolution'], 400) + 1)
-            self._scanner_settings['scan_range'][axis] = (constr_dict['min_value'],
-                                                          constr_dict['max_value'])
+        # Constraint scan ranges
+        if self._x_scan_range is None:
+            self._x_scan_range = list(constraints['axes_position_ranges']['x'])
+        else:
+            self._x_scan_range = [
+                max(min(self._x_scan_range), min(constraints['axes_position_ranges']['x'])),
+                min(max(self._x_scan_range), max(constraints['axes_position_ranges']['x']))]
+        if self._y_scan_range is None:
+            self._y_scan_range = list(constraints['axes_position_ranges']['y'])
+        else:
+            self._y_scan_range = [
+                max(min(self._y_scan_range), min(constraints['axes_position_ranges']['y'])),
+                min(max(self._y_scan_range), max(constraints['axes_position_ranges']['y']))]
+        if self._z_scan_range is None:
+            self._z_scan_range = list(constraints['axes_position_ranges']['z'])
+        else:
+            self._z_scan_range = [
+                max(min(self._z_scan_range), min(constraints['axes_position_ranges']['z'])),
+                min(max(self._z_scan_range), max(constraints['axes_position_ranges']['z']))]
 
-        # Scanner target position
-        self._target = dict()
-        for axis, axis_dict in self.scanner_constraints['axes'].items():
-            extent = axis_dict['max_value'] - axis_dict['min_value']
-            self._target[axis] = axis_dict['min_value'] + extent * np.random.rand()
+        # Constraint scan resolution
+        xy_min_res = int(max(min(constraints['axes_resolution_ranges']['x']),
+                             min(constraints['axes_resolution_ranges']['y'])))
+        xy_max_res = int(min(max(constraints['axes_resolution_ranges']['x']),
+                             max(constraints['axes_resolution_ranges']['y'])))
+        self._xy_scan_resolution = int(self._xy_scan_resolutio)
+        if self._xy_scan_resolution < xy_min_res:
+            self._xy_scan_resolution = xy_min_res
+        elif self._xy_scan_resolution > xy_max_res:
+            self._xy_scan_resolution = xy_max_res
+        z_min_res = int(min(constraints['axes_resolution_ranges']['z']))
+        z_max_res = int(max(constraints['axes_resolution_ranges']['z']))
+        self._z_scan_resolution = int(self._z_scan_resolution)
+        if self._z_scan_resolution < z_min_res:
+            self._z_scan_resolution = z_min_res
+        elif self._z_scan_resolution > z_max_res:
+            self._z_scan_resolution = z_max_res
 
-        # Optimizer settings
-        self._optimizer_settings = dict()
-        self._optimizer_settings['settle_time'] = 0.1
-        self._optimizer_settings['pixel_clock'] = 50
-        self._optimizer_settings['backscan_pts'] = 20
-        self._optimizer_settings['sequence'] = ('xy', 'z')
-        self._optimizer_settings['axes'] = dict()
-        self._optimizer_settings['axes']['x'] = {'resolution': 15, 'range': 1e-6}
-        self._optimizer_settings['axes']['y'] = {'resolution': 15, 'range': 1e-6}
-        self._optimizer_settings['axes']['z'] = {'resolution': 15, 'range': 1e-6}
-        self._optimizer_settings['axes']['phi'] = {'resolution': 15, 'range': 1e-6}
+        # Constraint scan frequency
+        min_freq = float(max(min(constraints['axes_frequency_ranges']['x']),
+                             min(constraints['axes_frequency_ranges']['y'])))
+        max_freq = float(min(max(constraints['axes_frequency_ranges']['x']),
+                             max(constraints['axes_frequency_ranges']['y'])))
+        self._scan_frequency = float(self._scan_frequency)
+        if self._scan_frequency < min_freq:
+            self._scan_frequency = min_freq
+        elif self._scan_frequency < max_freq:
+            self._scan_frequency = max_freq
 
         # Scan history
         self._history = list()
