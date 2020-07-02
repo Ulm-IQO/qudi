@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore
 import numpy as np
+import time
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex

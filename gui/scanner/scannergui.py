@@ -506,7 +506,8 @@ class ScannerGui(GUIBase):
 
         @param dict target_pos:
         """
-        self.sigMoveScannerPosition.emit(target_pos, id(self))
+        if self.scanninglogic().module_state() == 'idle':
+            self.sigMoveScannerPosition.emit(target_pos, id(self))
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
@@ -535,6 +536,12 @@ class ScannerGui(GUIBase):
 
         @param dict scan_data:
         """
+        if axes.lower() == 'xy':
+            print(1)
+            scan_data = self.scanninglogic().xy_scan_data
+        elif axes.lower() == 'xz':
+            print(2)
+            scan_data = self.scanninglogic().xz_scan_data
         resolution = self._mw.x_resolution_spinBox.value()
         if axes.lower() == 'xy':
             self.xy_scan.image_item.setImage(image=scan_data)
@@ -567,6 +574,22 @@ class ScannerGui(GUIBase):
     @QtCore.Slot(bool, str)
     def scan_state_updated(self, is_running, scan_axes):
         if is_running:
+            self._mw.x_position_doubleSpinBox.setEnabled(False)
+            self._mw.y_position_doubleSpinBox.setEnabled(False)
+            self._mw.z_position_doubleSpinBox.setEnabled(False)
+            self._mw.x_slider.setEnabled(False)
+            self._mw.y_slider.setEnabled(False)
+            self._mw.z_slider.setEnabled(False)
+            self._mw.x_resolution_spinBox.setEnabled(False)
+            self._mw.x_min_range_doubleSpinBox.setEnabled(False)
+            self._mw.y_min_range_doubleSpinBox.setEnabled(False)
+            self._mw.z_min_range_doubleSpinBox.setEnabled(False)
+            self._mw.x_max_range_doubleSpinBox.setEnabled(False)
+            self._mw.y_max_range_doubleSpinBox.setEnabled(False)
+            self._mw.z_max_range_doubleSpinBox.setEnabled(False)
+            self.xy_scan.plot_widget.crosshairs[0].set_movable(False)
+            self.xz_scan.plot_widget.crosshairs[0].set_movable(False)
+
             if scan_axes == 'xy':
                 self._mw.action_xy_scan.setChecked(True)
                 self._mw.action_xz_scan.setEnabled(False)
@@ -575,6 +598,22 @@ class ScannerGui(GUIBase):
                 self._mw.action_xy_scan.setEnabled(False)
             self._mw.action_optimize_position.setEnabled(False)
         else:
+            self._mw.x_position_doubleSpinBox.setEnabled(True)
+            self._mw.y_position_doubleSpinBox.setEnabled(True)
+            self._mw.z_position_doubleSpinBox.setEnabled(True)
+            self._mw.x_slider.setEnabled(True)
+            self._mw.y_slider.setEnabled(True)
+            self._mw.z_slider.setEnabled(True)
+            self._mw.x_resolution_spinBox.setEnabled(True)
+            self._mw.x_min_range_doubleSpinBox.setEnabled(True)
+            self._mw.y_min_range_doubleSpinBox.setEnabled(True)
+            self._mw.z_min_range_doubleSpinBox.setEnabled(True)
+            self._mw.x_max_range_doubleSpinBox.setEnabled(True)
+            self._mw.y_max_range_doubleSpinBox.setEnabled(True)
+            self._mw.z_max_range_doubleSpinBox.setEnabled(True)
+            self.xy_scan.plot_widget.crosshairs[0].set_movable(True)
+            self.xz_scan.plot_widget.crosshairs[0].set_movable(True)
+
             self._mw.action_xy_scan.setEnabled(True)
             self._mw.action_xz_scan.setEnabled(True)
             self._mw.action_optimize_position.setEnabled(True)
