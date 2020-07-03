@@ -21,10 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore
 import numpy as np
-import time
 
 from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
+from core.util.mutex import RecursiveMutex
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.connector import Connector
@@ -70,7 +69,7 @@ class ScanningLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.threadlock = Mutex()
+        self.threadlock = RecursiveMutex()
 
         # Scan data buffer
         self._xy_scan_data = np.zeros((0, 0))
@@ -154,15 +153,18 @@ class ScanningLogic(GenericLogic):
 
     @property
     def xy_scan_data(self):
-        return self._xy_scan_data.copy()
+        with self.threadlock:
+            return self._xy_scan_data.copy()
 
     @property
     def xz_scan_data(self):
-        return self._xz_scan_data.copy()
+        with self.threadlock:
+            return self._xz_scan_data.copy()
 
     @property
     def scanner_target(self):
-        return self.scanner().get_target()
+        with self.threadlock:
+            return self.scanner().get_target()
 
     @property
     def scanner_constraints(self):
@@ -170,80 +172,95 @@ class ScanningLogic(GenericLogic):
 
     @property
     def scanner_settings(self):
-        return {'pixel_clock_frequency': self._scan_frequency,
-                'scan_resolution': self._xy_scan_resolution,
-                'x_scan_range': self._x_scan_range,
-                'y_scan_range': self._y_scan_range,
-                'z_scan_range': self._z_scan_range}
+        with self.threadlock:
+            return {'pixel_clock_frequency': self._scan_frequency,
+                    'xy_scan_resolution': self._xy_scan_resolution,
+                    'z_scan_resolution': self._z_scan_resolution,
+                    'x_scan_range': self._x_scan_range,
+                    'y_scan_range': self._y_scan_range,
+                    'z_scan_range': self._z_scan_range}
 
     @property
     def optimizer_settings(self):
-        return {'pixel_clock': self._optim_scan_frequency,
-                'sequence': self._optim_scan_sequence,
-                'x_range': self._optim_xy_scan_range,
-                'y_range': self._optim_xy_scan_range,
-                'z_range': self._optim_z_scan_range,
-                'x_resolution': self._optim_xy_resolution,
-                'y_resolution': self._optim_xy_resolution,
-                'z_resolution': self._optim_z_resolution}
+        with self.threadlock:
+            return {'pixel_clock': self._optim_scan_frequency,
+                    'sequence': self._optim_scan_sequence,
+                    'x_range': self._optim_xy_scan_range,
+                    'y_range': self._optim_xy_scan_range,
+                    'z_range': self._optim_z_scan_range,
+                    'x_resolution': self._optim_xy_resolution,
+                    'y_resolution': self._optim_xy_resolution,
+                    'z_resolution': self._optim_z_resolution}
 
     @QtCore.Slot(dict)
     def set_scanner_settings(self, settings):
-        if self.module_state() == 'locked':
-            self.log.warning('Scan is running. Unable to change scanner settings.')
+        print('CALLED: set_scanner_settings', settings)
+        with self.threadlock:
+            if self.module_state() != 'idle':
+                self.log.warning('Scan is running. Unable to change scanner settings.')
+                self.sigScannerSettingsChanged.emit(self.scanner_settings)
+                return
+
+            if 'pixel_clock_frequency' in settings:
+                self._scan_frequency = int(settings['pixel_clock_frequency'])
+            if 'xy_scan_resolution' in settings:
+                self._xy_scan_resolution = int(settings['xy_scan_resolution'])
+            if 'z_scan_resolution' in settings:
+                self._z_scan_resolution = int(settings['z_scan_resolution'])
+            if 'x_scan_range' in settings:
+                self._x_scan_range = settings['x_scan_range']
+            if 'y_scan_range' in settings:
+                self._y_scan_range = settings['y_scan_range']
+            if 'z_scan_range' in settings:
+                self._z_scan_range = settings['z_scan_range']
             self.sigScannerSettingsChanged.emit(self.scanner_settings)
             return
 
-        if 'pixel_clock_frequency' in settings:
-            self._scan_frequency = int(settings['pixel_clock_frequency'])
-        if 'scan_resolution' in settings:
-            self._xy_scan_resolution = int(settings['scan_resolution'])
-            self._z_scan_resolution = int(settings['scan_resolution'])
-        if 'x_scan_range' in settings:
-            self._x_scan_range = settings['x_scan_range']
-        if 'y_scan_range' in settings:
-            self._y_scan_range = settings['y_scan_range']
-        if 'z_scan_range' in settings:
-            self._z_scan_range = settings['z_scan_range']
-        self.sigScannerSettingsChanged.emit(self.scanner_settings)
-        return
-
     @QtCore.Slot(dict)
     def set_optimizer_settings(self, settings):
-        if self.module_state() == 'locked':
-            self.log.warning('Scan is running. Unable to change optimizer settings.')
+        print('CALLED: set_optimizer_settings', settings)
+        with self.threadlock:
+            if self.module_state() != 'idle':
+                self.log.warning('Scan is running. Unable to change optimizer settings.')
+                self.sigOptimizerSettingsChanged.emit(self.optimizer_settings)
+                return
+
+            if 'pixel_clock' in settings:
+                self._optim_scan_frequency = float(settings['pixel_clock'])
+            if 'sequence' in settings:
+                seq = tuple(x.strip().lower() for x in settings['sequence'] if x.strip().lower() in ('xy', 'z'))
+                self._optim_scan_sequence = seq
+            if 'x_range' in settings:
+                self._optim_xy_scan_range = float(settings['x_range'])
+            elif 'y_range' in settings:
+                self._optim_xy_scan_range = float(settings['y_range'])
+            if 'z_range' in settings:
+                self._optim_z_scan_range = float(settings['z_range'])
+            if 'x_resolution' in settings:
+                self._optim_xy_resolution = int(settings['x_resolution'])
+            elif 'y_resolution' in settings:
+                self._optim_xy_resolution = int(settings['y_resolution'])
+            if 'z_resolution' in settings:
+                self._optim_z_resolution = int(settings['z_resolution'])
             self.sigOptimizerSettingsChanged.emit(self.optimizer_settings)
             return
-
-        if 'pixel_clock' in settings:
-            self._optim_scan_frequency = float(settings['pixel_clock'])
-        if 'sequence' in settings:
-            seq = tuple(x.strip().lower() for x in settings['sequence'] if x.strip().lower() in ('xy', 'z'))
-            self._optim_scan_sequence = seq
-        if 'x_range' in settings:
-            self._optim_xy_scan_range = float(settings['x_range'])
-        elif 'y_range' in settings:
-            self._optim_xy_scan_range = float(settings['y_range'])
-        if 'z_range' in settings:
-            self._optim_z_scan_range = float(settings['z_range'])
-        if 'x_resolution' in settings:
-            self._optim_xy_resolution = int(settings['x_resolution'])
-        elif 'y_resolution' in settings:
-            self._optim_xy_resolution = int(settings['y_resolution'])
-        if 'z_resolution' in settings:
-            self._optim_z_resolution = int(settings['z_resolution'])
-        self.sigOptimizerSettingsChanged.emit(self.optimizer_settings)
-        return
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
     def set_scanner_target_position(self, pos_dict, caller_id=None):
-        self.scanner().move_absolute(pos_dict)
-        self.sigScannerTargetChanged.emit(pos_dict, id(self) if caller_id is None else caller_id)
+        print('CALLED: set_scanner_target_position', pos_dict, caller_id)
+        with self.threadlock:
+            if self.module_state() != 'idle':
+                self.log.warning('Scan is running. Unable to change target position.')
+                self.sigScannerTargetChanged.emit(self.scanner_target, id(self))
+                return
+            new_pos = self.scanner().move_absolute(pos_dict)
+            self.sigScannerTargetChanged.emit(new_pos, id(self) if caller_id is None else caller_id)
         return
 
     @QtCore.Slot(bool, str)
     def toggle_scan(self, start, axes):
+        print('CALLED: toggle_scan', start, axes)
         with self.threadlock:
             if start and self.module_state() != 'idle':
                 self.log.error('Unable to start scan. Scan already in progress.')
@@ -313,9 +330,6 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot()
     def _scan_loop(self):
-        if self.module_state() != 'locked':
-            return
-
         with self.threadlock:
             if self.module_state() != 'locked':
                 return
@@ -375,9 +389,9 @@ class ScanningLogic(GenericLogic):
     #     self.sigScanDataChanged.emit({axes: data})
     #     return
 
-    # @QtCore.Slot()
-    # def set_full_scan_ranges(self):
-    #     scan_ranges = {ax: (ax_dict['min_value'], ax_dict['max_value']) for ax, ax_dict in
-    #                    self.scanner_constraints['axes'].items()}
-    #     self.set_scanner_settings({'scan_range': scan_ranges})
-    #     return
+    @QtCore.Slot()
+    def set_full_scan_ranges(self):
+        axes_ranges = self.scanner().get_constraints()['axes_position_ranges']
+        settings = {'{0}_scan_range'.format(ax): rng for ax, rng in axes_ranges.items()}
+        self.set_scanner_settings(settings)
+        return

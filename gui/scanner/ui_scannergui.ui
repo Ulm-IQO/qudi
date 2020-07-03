@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>qudi: Confocal</string>
+   <string>qudi: Confocal Scanning</string>
   </property>
   <property name="dockOptions">
    <set>QMainWindow::AnimatedDocks</set>
@@ -166,7 +166,7 @@
        <number>999999999</number>
       </property>
       <property name="value">
-       <number>100</number>
+       <number>128</number>
       </property>
      </widget>
     </item>
@@ -297,7 +297,7 @@
        <number>999999999</number>
       </property>
       <property name="value">
-       <number>100</number>
+       <number>128</number>
       </property>
      </widget>
     </item>
@@ -330,7 +330,7 @@
     <item row="4" column="2">
      <widget class="QSpinBox" name="z_resolution_spinBox">
       <property name="enabled">
-       <bool>false</bool>
+       <bool>true</bool>
       </property>
       <property name="minimumSize">
        <size>
@@ -342,7 +342,7 @@
        <bool>true</bool>
       </property>
       <property name="buttonSymbols">
-       <enum>QAbstractSpinBox::NoButtons</enum>
+       <enum>QAbstractSpinBox::UpDownArrows</enum>
       </property>
       <property name="suffix">
        <string>px</string>
@@ -354,7 +354,7 @@
        <number>999999999</number>
       </property>
       <property name="value">
-       <number>100</number>
+       <number>128</number>
       </property>
      </widget>
     </item>
@@ -441,7 +441,6 @@
     </property>
     <addaction name="action_scanner_settings"/>
     <addaction name="action_optimizer_settings"/>
-    <addaction name="action_display_settings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -452,7 +451,6 @@
       <string>Too&amp;lbars</string>
      </property>
      <addaction name="action_view_utility_toolbar"/>
-     <addaction name="action_view_history_toolbar"/>
     </widget>
     <addaction name="action_view_optimizer"/>
     <addaction name="action_view_line_scan"/>
@@ -487,28 +485,6 @@
    <addaction name="action_optimize_position"/>
    <addaction name="action_utility_zoom"/>
    <addaction name="action_utility_full_range"/>
-  </widget>
-  <widget class="QToolBar" name="history_toolBar">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
-   <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonTextUnderIcon</enum>
-   </property>
-   <property name="floatable">
-    <bool>false</bool>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="action_history_back"/>
-   <addaction name="action_history_forward"/>
   </widget>
   <action name="action_scanner_settings">
    <property name="icon">
@@ -619,44 +595,6 @@ Shortcut:Ctrl+Alt+X</string>
     <string>Toggle toolbar containing useful utilities</string>
    </property>
   </action>
-  <action name="action_history_forward">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/go-next.png</normaloff>../../artwork/icons/oxygen/22x22/go-next.png</iconset>
-   </property>
-   <property name="text">
-    <string>Forward</string>
-   </property>
-   <property name="toolTip">
-    <string>Go forward in scan history
-Shortcut:Ctrl+R</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+R</string>
-   </property>
-  </action>
-  <action name="action_history_back">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</iconset>
-   </property>
-   <property name="text">
-    <string>Backward</string>
-   </property>
-   <property name="toolTip">
-    <string>Go backwards in scan history
-Shortcut:Ctrl+Z</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Z</string>
-   </property>
-  </action>
   <action name="action_view_line_scan">
    <property name="checkable">
     <bool>true</bool>
@@ -697,29 +635,6 @@ Shortcut: Shift+R</string>
    </property>
    <property name="shortcut">
     <string>Shift+R</string>
-   </property>
-  </action>
-  <action name="action_display_settings">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
-   </property>
-   <property name="text">
-    <string>Display Settings</string>
-   </property>
-  </action>
-  <action name="action_view_history_toolbar">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>History</string>
-   </property>
-   <property name="toolTip">
-    <string>Toggle toolbar containing actions to control the scanning history</string>
    </property>
   </action>
   <action name="action_xy_scan">
@@ -767,6 +682,23 @@ Shortcut: Shift+R</string>
    <header>qtwidgets.slider.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>x_resolution_spinBox</tabstop>
+  <tabstop>y_resolution_spinBox</tabstop>
+  <tabstop>z_resolution_spinBox</tabstop>
+  <tabstop>x_min_range_doubleSpinBox</tabstop>
+  <tabstop>x_max_range_doubleSpinBox</tabstop>
+  <tabstop>y_min_range_doubleSpinBox</tabstop>
+  <tabstop>y_max_range_doubleSpinBox</tabstop>
+  <tabstop>z_min_range_doubleSpinBox</tabstop>
+  <tabstop>z_max_range_doubleSpinBox</tabstop>
+  <tabstop>x_slider</tabstop>
+  <tabstop>y_slider</tabstop>
+  <tabstop>z_slider</tabstop>
+  <tabstop>x_position_doubleSpinBox</tabstop>
+  <tabstop>y_position_doubleSpinBox</tabstop>
+  <tabstop>z_position_doubleSpinBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
@@ -814,38 +746,6 @@ Shortcut: Shift+R</string>
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>history_toolBar</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>action_view_history_toolbar</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>973</x>
-     <y>67</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>action_view_history_toolbar</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>history_toolBar</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>973</x>
-     <y>67</y>
     </hint>
    </hints>
   </connection>

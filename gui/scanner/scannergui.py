@@ -209,19 +209,21 @@ class ScannerGui(GUIBase):
         self.xy_scan.plot_widget.add_crosshair(movable=True, min_size_factor=0.02)
         self.xy_scan.plot_widget.setAspectLocked(lock=True, ratio=1.0)
         self.xy_scan.plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
-        # self.xy_scan.plot_widget.toggle_zoom_by_selection(True)
+        self.xy_scan.plot_widget.toggle_zoom_by_selection(True)
 
         self.xz_scan.plot_widget.setLabel('bottom', 'X', units='m')
         self.xz_scan.plot_widget.setLabel('left', 'Z', units='m')
         self.xz_scan.plot_widget.add_crosshair(movable=True, min_size_factor=0.02)
         self.xz_scan.plot_widget.setAspectLocked(lock=True, ratio=1.0)
-        # self.xz_scan.plot_widget.toggle_zoom_by_selection(True)
+        self.xz_scan.plot_widget.toggle_zoom_by_selection(True)
 
         # Customize
         self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
         self.optimizer_dockwidget.scan_widget.add_crosshair(movable=False,
                                                             pen={'color': '#00ff00', 'width': 2})
         self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
+
+        self.__block_settings = False
         return
 
     def on_activate(self):
@@ -230,6 +232,8 @@ class ScannerGui(GUIBase):
         This method executes the all the inits for the different GUIs and passes
         the event argument from fysom to the methods.
         """
+        self.__block_settings = False
+
         # connect view/visibility signals
         self.optimizer_dockwidget.visibilityChanged.connect(
             self._mw.action_view_optimizer.setChecked)
@@ -254,15 +258,15 @@ class ScannerGui(GUIBase):
         self.apply_scanner_constraints()
 
         # Connect axis control signals
-        self._mw.x_min_range_doubleSpinBox.valueChanged.connect(self.change_x_scan_range)
-        self._mw.x_max_range_doubleSpinBox.valueChanged.connect(self.change_x_scan_range)
-        self._mw.y_min_range_doubleSpinBox.valueChanged.connect(self.change_y_scan_range)
-        self._mw.y_max_range_doubleSpinBox.valueChanged.connect(self.change_y_scan_range)
-        self._mw.z_min_range_doubleSpinBox.valueChanged.connect(self.change_z_scan_range)
-        self._mw.z_max_range_doubleSpinBox.valueChanged.connect(self.change_z_scan_range)
-        self._mw.x_resolution_spinBox.valueChanged.connect(self.change_scan_resolution)
-        # self._mw.y_resolution_spinBox.valueChanged.connect(self.change_scan_resolution)
-        # self._mw.z_resolution_spinBox.valueChanged.connect(self.change_scan_resolution)
+        self._mw.x_min_range_doubleSpinBox.editingFinished.connect(self.change_x_scan_range)
+        self._mw.x_max_range_doubleSpinBox.editingFinished.connect(self.change_x_scan_range)
+        self._mw.y_min_range_doubleSpinBox.editingFinished.connect(self.change_y_scan_range)
+        self._mw.y_max_range_doubleSpinBox.editingFinished.connect(self.change_y_scan_range)
+        self._mw.z_min_range_doubleSpinBox.editingFinished.connect(self.change_z_scan_range)
+        self._mw.z_max_range_doubleSpinBox.editingFinished.connect(self.change_z_scan_range)
+        self._mw.x_resolution_spinBox.editingFinished.connect(self.change_xy_scan_resolution)
+        # self._mw.y_resolution_spinBox.editingFinished.connect(self.change_xy_scan_resolution)
+        self._mw.z_resolution_spinBox.editingFinished.connect(self.change_z_scan_resolution)
         self._mw.x_slider.sliderMoved.connect(self._x_slider_moved)
         self._mw.y_slider.sliderMoved.connect(self._y_slider_moved)
         self._mw.z_slider.sliderMoved.connect(self._z_slider_moved)
@@ -307,8 +311,8 @@ class ScannerGui(GUIBase):
         #     self.scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_back.triggered.connect(
         #     self.scanninglogic().history_backward, QtCore.Qt.QueuedConnection)
-        # self._mw.action_utility_full_range.triggered.connect(
-        #     self.scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
+        self._mw.action_utility_full_range.triggered.connect(
+            self.scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
 
         # Connect signals from logic
         self.scanninglogic().sigScannerTargetChanged.connect(
@@ -322,19 +326,19 @@ class ScannerGui(GUIBase):
         self.scanninglogic().sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection)
 
-        # self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
+        self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
         # connect plot signals
         self.xy_scan.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
             self._xy_crosshair_dragged)
         self.xy_scan.plot_widget.crosshairs[0].sigDragStopped.connect(
             self._xy_crosshair_released)
-        # self.xy_scan.plot_widget.sigMouseAreaSelected.connect(self._xy_area_selected)
+        self.xy_scan.plot_widget.sigMouseAreaSelected.connect(self._xy_area_selected)
         # self.xy_scan.channel_comboBox.currentIndexChanged.connect(self._xy_channel_changed)
         self.xz_scan.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
             self._xz_crosshair_dragged)
         self.xz_scan.plot_widget.crosshairs[0].sigDragStopped.connect(
             self._xz_crosshair_released)
-        # self.xz_scan.plot_widget.sigMouseAreaSelected.connect(self._xz_area_selected)
+        self.xz_scan.plot_widget.sigMouseAreaSelected.connect(self._xz_area_selected)
         # self.xz_scan.channel_comboBox.currentIndexChanged.connect(self._xz_channel_changed)
 
         self._mw.action_xy_scan.triggered.connect(self._xy_scan_triggered)
@@ -348,22 +352,22 @@ class ScannerGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._mw.action_restore_default_view.triggered.disconnect()
-
         self.sigMoveScannerPosition.disconnect()
         self.sigScannerSettingsChanged.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
+        self.xz_scan.plot_widget.sigMouseAreaSelected.disconnect()
+        self.xy_scan.plot_widget.sigMouseAreaSelected.disconnect()
+        self._mw.action_restore_default_view.triggered.disconnect()
         self._mw.action_history_forward.triggered.disconnect()
         self._mw.action_history_back.triggered.disconnect()
         self._mw.action_utility_full_range.triggered.disconnect()
         self._mw.action_utility_zoom.toggled.disconnect()
-        self.scanninglogic().sigScannerPositionChanged.disconnect()
-        self.scanninglogic().sigScannerTargetChanged.disconnect()
-        self.scanninglogic().sigScannerSettingsChanged.disconnect()
-        self.scanninglogic().sigOptimizerSettingsChanged.disconnect()
-        self.scanninglogic().sigScanDataChanged.disconnect()
-        self.scanninglogic().sigScanStateChanged.disconnect()
+        self.scanninglogic().sigScannerTargetChanged.disconnect(self.scanner_target_updated)
+        self.scanninglogic().sigScannerSettingsChanged.disconnect(self.update_scanner_settings)
+        self.scanninglogic().sigOptimizerSettingsChanged.disconnect(self.update_optimizer_settings)
+        self.scanninglogic().sigScanDataChanged.disconnect(self.scan_data_updated)
+        self.scanninglogic().sigScanStateChanged.disconnect(self.scan_state_updated)
 
         self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
         self._window_state = bytearray(self._mw.saveState()).hex()
@@ -468,15 +472,16 @@ class ScannerGui(GUIBase):
 
         if 'pixel_clock_frequency' in settings:
             self._ssd.pixel_clock_frequency_scienSpinBox.setValue(settings['pixel_clock_frequency'])
-        if 'scan_resolution' in settings:
+        if 'xy_scan_resolution' in settings:
             self._mw.x_resolution_spinBox.blockSignals(True)
             self._mw.y_resolution_spinBox.blockSignals(True)
-            self._mw.z_resolution_spinBox.blockSignals(True)
-            self._mw.x_resolution_spinBox.setValue(settings['scan_resolution'])
-            self._mw.y_resolution_spinBox.setValue(settings['scan_resolution'])
-            self._mw.z_resolution_spinBox.setValue(settings['scan_resolution'])
+            self._mw.x_resolution_spinBox.setValue(settings['xy_scan_resolution'])
+            self._mw.y_resolution_spinBox.setValue(settings['xy_scan_resolution'])
             self._mw.x_resolution_spinBox.blockSignals(False)
             self._mw.y_resolution_spinBox.blockSignals(False)
+        if 'z_scan_resolution' in settings:
+            self._mw.z_resolution_spinBox.blockSignals(True)
+            self._mw.z_resolution_spinBox.setValue(settings['z_scan_resolution'])
             self._mw.z_resolution_spinBox.blockSignals(False)
         if 'x_scan_range' in settings:
             self._mw.x_min_range_doubleSpinBox.blockSignals(True)
@@ -506,7 +511,7 @@ class ScannerGui(GUIBase):
 
         @param dict target_pos:
         """
-        if self.scanninglogic().module_state() == 'idle':
+        if not self.__block_settings:
             self.sigMoveScannerPosition.emit(target_pos, id(self))
 
     @QtCore.Slot(dict)
@@ -568,6 +573,7 @@ class ScannerGui(GUIBase):
     @QtCore.Slot(bool, str)
     def scan_state_updated(self, is_running, scan_axes):
         if is_running:
+            self.__block_settings = True
             self._mw.x_position_doubleSpinBox.setEnabled(False)
             self._mw.y_position_doubleSpinBox.setEnabled(False)
             self._mw.z_position_doubleSpinBox.setEnabled(False)
@@ -575,6 +581,7 @@ class ScannerGui(GUIBase):
             self._mw.y_slider.setEnabled(False)
             self._mw.z_slider.setEnabled(False)
             self._mw.x_resolution_spinBox.setEnabled(False)
+            self._mw.z_resolution_spinBox.setEnabled(False)
             self._mw.x_min_range_doubleSpinBox.setEnabled(False)
             self._mw.y_min_range_doubleSpinBox.setEnabled(False)
             self._mw.z_min_range_doubleSpinBox.setEnabled(False)
@@ -583,14 +590,14 @@ class ScannerGui(GUIBase):
             self._mw.z_max_range_doubleSpinBox.setEnabled(False)
             self.xy_scan.plot_widget.crosshairs[0].set_movable(False)
             self.xz_scan.plot_widget.crosshairs[0].set_movable(False)
-
+            self._mw.action_xy_scan.setEnabled(False)
+            self._mw.action_xz_scan.setEnabled(False)
+            self._mw.action_optimize_position.setEnabled(False)
+            self._mw.action_utility_zoom.setEnabled(False)
             if scan_axes == 'xy':
                 self._mw.action_xy_scan.setChecked(True)
-                self._mw.action_xz_scan.setEnabled(False)
             elif scan_axes == 'xz':
                 self._mw.action_xz_scan.setChecked(True)
-                self._mw.action_xy_scan.setEnabled(False)
-            self._mw.action_optimize_position.setEnabled(False)
         else:
             self._mw.x_position_doubleSpinBox.setEnabled(True)
             self._mw.y_position_doubleSpinBox.setEnabled(True)
@@ -599,6 +606,7 @@ class ScannerGui(GUIBase):
             self._mw.y_slider.setEnabled(True)
             self._mw.z_slider.setEnabled(True)
             self._mw.x_resolution_spinBox.setEnabled(True)
+            self._mw.z_resolution_spinBox.setEnabled(True)
             self._mw.x_min_range_doubleSpinBox.setEnabled(True)
             self._mw.y_min_range_doubleSpinBox.setEnabled(True)
             self._mw.z_min_range_doubleSpinBox.setEnabled(True)
@@ -607,12 +615,13 @@ class ScannerGui(GUIBase):
             self._mw.z_max_range_doubleSpinBox.setEnabled(True)
             self.xy_scan.plot_widget.crosshairs[0].set_movable(True)
             self.xz_scan.plot_widget.crosshairs[0].set_movable(True)
-
             self._mw.action_xy_scan.setEnabled(True)
             self._mw.action_xz_scan.setEnabled(True)
             self._mw.action_optimize_position.setEnabled(True)
+            self._mw.action_utility_zoom.setEnabled(True)
             self._mw.action_xy_scan.setChecked(False)
             self._mw.action_xz_scan.setChecked(False)
+            self.__block_settings = False
         return
 
     def _update_target_display(self, pos_dict, exclude_widget=None):
@@ -762,41 +771,52 @@ class ScannerGui(GUIBase):
 
     @QtCore.Slot()
     def change_x_scan_range(self):
-        scan_range = (self._mw.x_min_range_doubleSpinBox.value(),
-                      self._mw.x_max_range_doubleSpinBox.value())
-        self.sigScannerSettingsChanged.emit({'x_scan_range': scan_range})
+        if not self.__block_settings:
+            scan_range = (self._mw.x_min_range_doubleSpinBox.value(),
+                          self._mw.x_max_range_doubleSpinBox.value())
+            self.sigScannerSettingsChanged.emit({'x_scan_range': scan_range})
         return
 
     @QtCore.Slot()
     def change_y_scan_range(self):
-        scan_range = (self._mw.y_min_range_doubleSpinBox.value(),
-                      self._mw.y_max_range_doubleSpinBox.value())
-        self.sigScannerSettingsChanged.emit({'y_scan_range': scan_range})
+        if not self.__block_settings:
+            scan_range = (self._mw.y_min_range_doubleSpinBox.value(),
+                          self._mw.y_max_range_doubleSpinBox.value())
+            self.sigScannerSettingsChanged.emit({'y_scan_range': scan_range})
         return
 
     @QtCore.Slot()
     def change_z_scan_range(self):
-        scan_range = (self._mw.z_min_range_doubleSpinBox.value(),
-                      self._mw.z_max_range_doubleSpinBox.value())
-        self.sigScannerSettingsChanged.emit({'z_scan_range': scan_range})
+        if not self.__block_settings:
+            scan_range = (self._mw.z_min_range_doubleSpinBox.value(),
+                          self._mw.z_max_range_doubleSpinBox.value())
+            self.sigScannerSettingsChanged.emit({'z_scan_range': scan_range})
         return
 
     @QtCore.Slot()
-    def change_scan_resolution(self):
-        scan_res = self._mw.x_resolution_spinBox.value()
-        self.sigScannerSettingsChanged.emit({'scan_resolution': scan_res})
+    def change_xy_scan_resolution(self):
+        if not self.__block_settings:
+            scan_res = self._mw.x_resolution_spinBox.value()
+            self.sigScannerSettingsChanged.emit({'xy_scan_resolution': scan_res})
         return
 
-    # @QtCore.Slot(bool)
-    # def toggle_cursor_zoom(self, enable):
-    #     if self._mw.action_utility_zoom.isChecked() != enable:
-    #         self._mw.action_utility_zoom.blockSignals(True)
-    #         self._mw.action_utility_zoom.setChecked(enable)
-    #         self._mw.action_utility_zoom.blockSignals(False)
-    #
-    #     for dockwidget in self.scan_2d_dockwidgets.values():
-    #         dockwidget.plot_widget.toggle_selection(enable)
-    #     return
+    @QtCore.Slot()
+    def change_z_scan_resolution(self):
+        if not self.__block_settings:
+            scan_res = self._mw.z_resolution_spinBox.value()
+            self.sigScannerSettingsChanged.emit({'z_scan_resolution': scan_res})
+        return
+
+    @QtCore.Slot(bool)
+    def toggle_cursor_zoom(self, enable):
+        if self._mw.action_utility_zoom.isChecked() != enable:
+            self._mw.action_utility_zoom.blockSignals(True)
+            self._mw.action_utility_zoom.setChecked(enable)
+            self._mw.action_utility_zoom.blockSignals(False)
+
+        self.xy_scan.plot_widget.toggle_selection(enable)
+        self.xz_scan.plot_widget.toggle_selection(enable)
+        return
 
     @QtCore.Slot()
     def change_scanner_settings(self):
@@ -873,9 +893,32 @@ class ScannerGui(GUIBase):
     @QtCore.Slot()
     def _xy_scan_triggered(self):
         start = self._mw.action_xy_scan.isEnabled()
+        self.__emit_last_settings_changes_and_block_signals()
         self.sigToggleScan.emit(start, 'xy')
 
     @QtCore.Slot()
     def _xz_scan_triggered(self):
         start = self._mw.action_xz_scan.isEnabled()
+        self.__emit_last_settings_changes_and_block_signals()
         self.sigToggleScan.emit(start, 'xz')
+
+    @QtCore.Slot(QtCore.QRectF)
+    def _xy_area_selected(self, rect):
+        self.sigScannerSettingsChanged.emit({'x_scan_range': (rect.left(), rect.right()),
+                                             'y_scan_range': (rect.bottom(), rect.top())})
+
+    @QtCore.Slot(QtCore.QRectF)
+    def _xz_area_selected(self, rect):
+        self.sigScannerSettingsChanged.emit({'x_scan_range': (rect.left(), rect.right()),
+                                             'z_scan_range': (rect.bottom(), rect.top())})
+
+    def __emit_last_settings_changes_and_block_signals(self):
+        focus_obj = self._mw.focusWidget().objectName()
+        if focus_obj.endswith('_range_doubleSpinBox'):
+            getattr(self, 'change_{0}_scan_range'.format(focus_obj[0]))()
+        elif focus_obj.endswith('_resolution_spinBox'):
+            if focus_obj.startswith('z'):
+                self.change_z_scan_resolution()
+            else:
+                self.change_xy_scan_resolution()
+        self.__block_settings = True
