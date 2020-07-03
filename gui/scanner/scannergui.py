@@ -904,11 +904,13 @@ class ScannerGui(GUIBase):
 
     @QtCore.Slot(QtCore.QRectF)
     def _xy_area_selected(self, rect):
+        self.toggle_cursor_zoom(False)
         self.sigScannerSettingsChanged.emit({'x_scan_range': (rect.left(), rect.right()),
                                              'y_scan_range': (rect.bottom(), rect.top())})
 
     @QtCore.Slot(QtCore.QRectF)
     def _xz_area_selected(self, rect):
+        self.toggle_cursor_zoom(False)
         self.sigScannerSettingsChanged.emit({'x_scan_range': (rect.left(), rect.right()),
                                              'z_scan_range': (rect.bottom(), rect.top())})
 
