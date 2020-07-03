@@ -84,7 +84,7 @@ class ScanningLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        constraints = self.scanner().get_constraints()
+        constraints = self.scanner_constraints
 
         # Constraint scan ranges
         if self._x_scan_range is None:
@@ -358,11 +358,13 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot()
     def history_backwards(self):
-        pass
+        print('CALLED: history_backwards')
+        return
 
     @QtCore.Slot()
     def history_forward(self):
-        pass
+        print('CALLED: history_forward')
+        return
 
     # def restore_from_history(self, index):
     #     if self.module_state() == 'locked':
@@ -391,7 +393,8 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot()
     def set_full_scan_ranges(self):
-        axes_ranges = self.scanner().get_constraints()['axes_position_ranges']
+        print('CALLED: set_full_scan_ranges')
+        axes_ranges = self.scanner_constraints['axes_position_ranges']
         settings = {'{0}_scan_range'.format(ax): rng for ax, rng in axes_ranges.items()}
         self.set_scanner_settings(settings)
         return
