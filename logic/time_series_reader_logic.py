@@ -681,7 +681,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             return np.empty(0), dict()
 
         saving_stop_time = self._record_start_time + dt.timedelta(
-            seconds=data_arr.shape[1] * self.data_rate)
+            seconds=data_arr.shape[1] / self.data_rate)
 
         # write the parameters:
         parameters = dict()
