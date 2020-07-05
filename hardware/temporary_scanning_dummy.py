@@ -162,6 +162,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        print('HARDWARE CALLED: toggle_scan')
         self.log.info('Scanning probe dummy has been reset.')
         return 0
 
@@ -170,6 +171,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
 
         @return:
         """
+        print('HARDWARE CALLED: get_constraints')
         return self._constraints
 
     def configure_scan(self, settings):
@@ -194,6 +196,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
         Logic currently does not care how you trace back to the start of a scan line.
         --------------------------------------------------------------------------------------------
         """
+        print('HARDWARE CALLED: configure_scan', settings)
         # Sanity checking
         if self.module_state() == 'locked':
             self.log.error('Unable to configure scan parameters while scan is running. '
@@ -242,6 +245,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
 
         @return ScanSettings: Scan parameters defining a scanning probe run
         """
+        print('HARDWARE CALLED: get_scan_settings')
         return self._current_scan_settings.copy()
 
     def move_absolute(self, position, velocity=None):
@@ -257,6 +261,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
 
         @return dict: The new target position (values) for ALL axes (keys)
         """
+        print('HARDWARE CALLED: move_absolute', position, velocity)
         if self.module_state() == 'locked':
             self.log.error('Scanning in progress. Unable to move to position.')
         elif not set(position).issubset(self._position_ranges):
@@ -278,6 +283,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
 
         @return dict: current target position (values) per axis (keys)
         """
+        print('HARDWARE CALLED: get_target')
         return self._current_position.copy()
 
     def lock_scanner(self):
@@ -295,6 +301,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
         This method will certainly be removed in the proper interface.
         --------------------------------------------------------------------------------------------
         """
+        print('HARDWARE CALLED: lock_scanner')
         if self.module_state() == 'locked':
             self.log.error('Unable to lock scanner and start scanning. Scan already in progress.')
             return -1
@@ -343,6 +350,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
         This method will certainly be removed in the proper interface.
         --------------------------------------------------------------------------------------------
         """
+        print('HARDWARE CALLED: unlock_scanner')
         if self.module_state() == 'idle':
             self.log.error('Unable to unlock scanner.')
             return -1
@@ -368,6 +376,7 @@ class TemporaryScanningDummy(Base, TemporaryScanningInterface):
         This method will certainly be removed in the proper interface.
         --------------------------------------------------------------------------------------------
         """
+        print('HARDWARE CALLED: get_scan_line', line_index)
         if self.module_state() != 'locked':
             self.log.error()
             return {ch: -1 * np.ones((1, 1)) for ch in self._constraints['data_channel_units']}

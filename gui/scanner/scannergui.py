@@ -45,6 +45,9 @@ from qtpy import uic
 class ConfocalMainWindow(QtWidgets.QMainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
+    sigWindowActivated = QtCore.Signal()
+    sigWindowDeactivated = QtCore.Signal()
+
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -62,6 +65,13 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
         else:
             super().mouseDoubleClickEvent(event)
         return
+
+    def event(self, ev):
+        if ev.type() == QtCore.QEvent.WindowDeactivate:
+            self.sigWindowDeactivated.emit()
+        elif ev.type() == QtCore.QEvent.WindowActivate:
+            self.sigWindowActivated.emit()
+        return super().event(ev)
 
 
 class Scan2dDockWidget(QtWidgets.QDockWidget):
@@ -344,6 +354,9 @@ class ScannerGui(GUIBase):
         self._mw.action_xy_scan.triggered.connect(self._xy_scan_triggered)
         self._mw.action_xz_scan.triggered.connect(self._xz_scan_triggered)
 
+        # self._mw.sigWindowActivated.connect(self._window_activated)
+        # self._mw.sigWindowDeactivated.connect(self._window_deactivated)
+
         self.show()
         return
 
@@ -594,6 +607,7 @@ class ScannerGui(GUIBase):
             self._mw.action_xz_scan.setEnabled(False)
             self._mw.action_optimize_position.setEnabled(False)
             self._mw.action_utility_zoom.setEnabled(False)
+            self._mw.action_utility_full_range.setEnabled(False)
             if scan_axes == 'xy':
                 self._mw.action_xy_scan.setChecked(True)
             elif scan_axes == 'xz':
@@ -619,6 +633,7 @@ class ScannerGui(GUIBase):
             self._mw.action_xz_scan.setEnabled(True)
             self._mw.action_optimize_position.setEnabled(True)
             self._mw.action_utility_zoom.setEnabled(True)
+            self._mw.action_utility_full_range.setEnabled(True)
             self._mw.action_xy_scan.setChecked(False)
             self._mw.action_xz_scan.setChecked(False)
             self.__block_settings = False
@@ -913,6 +928,14 @@ class ScannerGui(GUIBase):
         self.toggle_cursor_zoom(False)
         self.sigScannerSettingsChanged.emit({'x_scan_range': (rect.left(), rect.right()),
                                              'z_scan_range': (rect.bottom(), rect.top())})
+
+    @QtCore.Slot()
+    def _window_activated(self):
+        self.__block_settings = self.scanninglogic().module_state() == 'locked'
+
+    @QtCore.Slot()
+    def _window_deactivated(self):
+        self.__block_settings = True
 
     def __emit_last_settings_changes_and_block_signals(self):
         focus_obj = self._mw.focusWidget().objectName()

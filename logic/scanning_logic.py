@@ -79,6 +79,7 @@ class ScanningLogic(GenericLogic):
         self.__scan_line_count = 0
         self.current_scan = 'xy'
         self.__scan_stop_requested = True
+        self.__current_target = None
         return
 
     def on_activate(self):
@@ -142,6 +143,7 @@ class ScanningLogic(GenericLogic):
         self.__scan_line_count = 0
         self.current_scan = 'xy'
         self.__scan_stop_requested = True
+        self.__current_target = self.scanner_target
         self.__sigNextLine.connect(self._scan_loop, QtCore.Qt.QueuedConnection)
         return
 
@@ -164,7 +166,8 @@ class ScanningLogic(GenericLogic):
     @property
     def scanner_target(self):
         with self.threadlock:
-            return self.scanner().get_target()
+            self.__current_target = self.scanner().get_target()
+            return self.__current_target.copy()
 
     @property
     def scanner_constraints(self):
@@ -194,7 +197,7 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot(dict)
     def set_scanner_settings(self, settings):
-        print('CALLED: set_scanner_settings', settings)
+        print('LOGIC CALLED: set_scanner_settings', settings)
         with self.threadlock:
             if self.module_state() != 'idle':
                 self.log.warning('Scan is running. Unable to change scanner settings.')
@@ -218,7 +221,7 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot(dict)
     def set_optimizer_settings(self, settings):
-        print('CALLED: set_optimizer_settings', settings)
+        print('LOGIC CALLED: set_optimizer_settings', settings)
         with self.threadlock:
             if self.module_state() != 'idle':
                 self.log.warning('Scan is running. Unable to change optimizer settings.')
@@ -248,19 +251,21 @@ class ScanningLogic(GenericLogic):
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
     def set_scanner_target_position(self, pos_dict, caller_id=None):
-        print('CALLED: set_scanner_target_position', pos_dict, caller_id)
+        print('LOGIC CALLED: set_scanner_target_position', pos_dict, caller_id)
         with self.threadlock:
             if self.module_state() != 'idle':
                 self.log.warning('Scan is running. Unable to change target position.')
                 self.sigScannerTargetChanged.emit(self.scanner_target, id(self))
                 return
-            new_pos = self.scanner().move_absolute(pos_dict)
-            self.sigScannerTargetChanged.emit(new_pos, id(self) if caller_id is None else caller_id)
+            if any(self.__current_target[ax] != pos for ax, pos in pos_dict.items()):
+                self.__current_target = self.scanner().move_absolute(pos_dict)
+            self.sigScannerTargetChanged.emit(self.__current_target.copy(),
+                                              id(self) if caller_id is None else caller_id)
         return
 
     @QtCore.Slot(bool, str)
     def toggle_scan(self, start, axes):
-        print('CALLED: toggle_scan', start, axes)
+        print('LOGIC CALLED: toggle_scan', start, axes)
         with self.threadlock:
             if start and self.module_state() != 'idle':
                 self.log.error('Unable to start scan. Scan already in progress.')
@@ -358,12 +363,12 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot()
     def history_backwards(self):
-        print('CALLED: history_backwards')
+        print('LOGIC CALLED: history_backwards')
         return
 
     @QtCore.Slot()
     def history_forward(self):
-        print('CALLED: history_forward')
+        print('LOGIC CALLED: history_forward')
         return
 
     # def restore_from_history(self, index):
@@ -393,7 +398,7 @@ class ScanningLogic(GenericLogic):
 
     @QtCore.Slot()
     def set_full_scan_ranges(self):
-        print('CALLED: set_full_scan_ranges')
+        print('LOGIC CALLED: set_full_scan_ranges')
         axes_ranges = self.scanner_constraints['axes_position_ranges']
         settings = {'{0}_scan_range'.format(ax): rng for ax, rng in axes_ranges.items()}
         self.set_scanner_settings(settings)
