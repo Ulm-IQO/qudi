@@ -80,7 +80,7 @@
         </font>
        </property>
        <property name="text">
-        <string>(x,y,z): </string>
+        <string>Fit Result: </string>
        </property>
        <property name="textInteractionFlags">
         <set>Qt::NoTextInteraction</set>

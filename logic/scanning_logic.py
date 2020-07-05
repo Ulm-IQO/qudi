@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import lmfit
 from qtpy import QtCore
 import numpy as np
 
@@ -28,6 +29,8 @@ from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.connector import Connector
 from interface.temporary_scanning_interface import ScanSettings
+
+__all__ = ('ScanningLogic',)
 
 
 class ScanningLogic(GenericLogic):
@@ -63,8 +66,10 @@ class ScanningLogic(GenericLogic):
     sigScannerSettingsChanged = QtCore.Signal(dict)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigScanDataChanged = QtCore.Signal(str, np.ndarray)
+    sigOptimizerPositionChanged = QtCore.Signal(dict, dict, object)  # position, sigma
 
     __sigNextLine = QtCore.Signal()
+    __sigOptimizeNextStep = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -74,12 +79,17 @@ class ScanningLogic(GenericLogic):
         # Scan data buffer
         self._xy_scan_data = np.zeros((0, 0))
         self._xz_scan_data = np.zeros((0, 0))
+        self._xy_optim_scan_data = np.zeros((0, 0))
+        self._z_optim_scan_data = np.zeros(0)
 
         # others
         self.__scan_line_count = 0
         self.current_scan = 'xy'
         self.__scan_stop_requested = True
         self.__current_target = None
+        self.__next_optimize_steps = list()
+        self.__optim_xy_scan_range = (tuple(), tuple())
+        self.__optim_z_scan_range = tuple()
         return
 
     def on_activate(self):
@@ -139,12 +149,15 @@ class ScanningLogic(GenericLogic):
         # Scan data buffer
         self._xy_scan_data = np.zeros((self._xy_scan_resolution, self._xy_scan_resolution))
         self._xz_scan_data = np.zeros((self._xy_scan_resolution, self._z_scan_resolution))
+        self._xy_optim_scan_data = np.zeros((self._optim_xy_resolution, self._optim_xy_resolution))
+        self._z_optim_scan_data = np.zeros(self._optim_z_resolution)
 
         self.__scan_line_count = 0
         self.current_scan = 'xy'
         self.__scan_stop_requested = True
         self.__current_target = self.scanner_target
         self.__sigNextLine.connect(self._scan_loop, QtCore.Qt.QueuedConnection)
+        self.__sigOptimizeNextStep.connect(self._do_optimize_step, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -162,6 +175,16 @@ class ScanningLogic(GenericLogic):
     def xz_scan_data(self):
         with self.threadlock:
             return self._xz_scan_data.copy()
+
+    @property
+    def xy_optim_scan_data(self):
+        with self.threadlock:
+            return self._xy_optim_scan_data.copy()
+
+    @property
+    def z_optim_scan_data(self):
+        with self.threadlock:
+            return self._z_optim_scan_data.copy()
 
     @property
     def scanner_target(self):
@@ -253,7 +276,7 @@ class ScanningLogic(GenericLogic):
     def set_scanner_target_position(self, pos_dict, caller_id=None):
         print('LOGIC CALLED: set_scanner_target_position', pos_dict, caller_id)
         with self.threadlock:
-            if self.module_state() != 'idle':
+            if self.module_state() != 'idle' and self.current_scan != 'optimize':
                 self.log.warning('Scan is running. Unable to change target position.')
                 self.sigScannerTargetChanged.emit(self.scanner_target, id(self))
                 return
@@ -283,8 +306,8 @@ class ScanningLogic(GenericLogic):
             if start:
                 self.__scan_stop_requested = False
                 self.module_state.lock()
-                self.sigScanStateChanged.emit(True, axes)
                 self.current_scan = axes
+                self.sigScanStateChanged.emit(True, axes)
 
                 if axes == 'xz':
                     self.__scan_line_count = self._z_scan_resolution
@@ -339,9 +362,14 @@ class ScanningLogic(GenericLogic):
             if self.module_state() != 'locked':
                 return
             if self.__scan_stop_requested or self.__scan_line_count <= 0:
-                self.module_state.unlock()
                 self.scanner().unlock_scanner()
-                self.sigScanStateChanged.emit(False, self.current_scan)
+                if self.current_scan == 'optimize':
+                    self.__fit_optimize_scan()
+                    self.__next_optimize_steps.pop(0)
+                    self.__sigOptimizeNextStep.emit()
+                else:
+                    self.module_state.unlock()
+                    self.sigScanStateChanged.emit(False, self.current_scan)
                 return
 
             if self.current_scan == 'xy':
@@ -350,16 +378,139 @@ class ScanningLogic(GenericLogic):
                 data = data_dict[tuple(data_dict)[0]]
                 self._xy_scan_data[:, line_index] = data
                 self.sigScanDataChanged.emit(self.current_scan, self.xy_scan_data)
-            else:
+            elif self.current_scan == 'xz':
                 line_index = self._xz_scan_data.shape[1] - self.__scan_line_count
                 data_dict = self.scanner().get_scan_line(line_index)
                 data = data_dict[tuple(data_dict)[0]]
                 self._xz_scan_data[:, line_index] = data
                 self.sigScanDataChanged.emit(self.current_scan, self.xz_scan_data)
+            elif self.current_scan == 'optimize':
+                if self.__next_optimize_steps[0] == 'xy':
+                    line_index = self._xy_optim_scan_data.shape[1] - self.__scan_line_count
+                    data_dict = self.scanner().get_scan_line(line_index)
+                    data = data_dict[tuple(data_dict)[0]]
+                    self._xy_optim_scan_data[:, line_index] = data
+                    self.sigScanDataChanged.emit(self.current_scan, self.xy_optim_scan_data)
+                else:
+                    data_dict = self.scanner().get_scan_line(0)
+                    data = data_dict[tuple(data_dict)[0]]
+                    self._z_optim_scan_data[:] = data
+                    self.sigScanDataChanged.emit(self.current_scan, self.z_optim_scan_data)
 
             self.__scan_line_count -= 1
             self.__sigNextLine.emit()
         return
+
+    @QtCore.Slot(bool)
+    def toggle_optimize(self, start):
+        print('LOGIC CALLED: toggle_optimize', start)
+        with self.threadlock:
+            if start and self.module_state() != 'idle':
+                self.log.error('Unable to start optimizer scans. Scan already in progress.')
+                self.sigScanStateChanged.emit(True, self.current_scan)
+                return
+            elif not start and self.module_state() == 'idle':
+                self.log.error('Unable to stop optimizer scans. No scan running.')
+                self.sigScanStateChanged.emit(False, self.current_scan)
+                return
+
+            if start:
+                self.__scan_stop_requested = False
+                self.module_state.lock()
+                self.current_scan = 'optimize'
+                self.__next_optimize_steps = list(self._optim_scan_sequence)
+                self.sigScanStateChanged.emit(True, self.current_scan)
+                self.__sigOptimizeNextStep.emit()
+            return
+
+    @QtCore.Slot()
+    def _do_optimize_step(self):
+        with self.threadlock:
+            if self.module_state() != 'locked' or self.current_scan != 'optimize':
+                self.log.error('Unable to perform next optimizer step. Optimizer not running.')
+                self.sigScanStateChanged.emit(self.module_state() == 'locked', self.current_scan)
+                return
+            if len(self.__next_optimize_steps) == 0:
+                self.__finish_optimize()
+                return
+            next_step = self.__next_optimize_steps[0]
+            if next_step == 'xy':
+                self.__scan_line_count = self._optim_xy_resolution
+                self._xy_optim_scan_data = np.zeros(
+                    (self._optim_xy_resolution, self._optim_xy_resolution))
+                x_min = self.__current_target['x'] - (self._optim_xy_scan_range / 2)
+                x_max = self.__current_target['x'] + (self._optim_xy_scan_range / 2)
+                y_min = self.__current_target['y'] - (self._optim_xy_scan_range / 2)
+                y_max = self.__current_target['y'] + (self._optim_xy_scan_range / 2)
+                self.__optim_xy_scan_range = ((x_min, x_max), (y_min, y_max))
+                settings = ScanSettings(
+                    axes=('x', 'y'),
+                    ranges=self.__optim_xy_scan_range,
+                    resolution=(self._optim_xy_resolution, self._optim_xy_resolution),
+                    px_frequency=self._optim_scan_frequency,
+                    position_feedback=False)
+            elif next_step == 'z':
+                self.__scan_line_count = 1
+                self._z_optim_scan_data = np.zeros(self._optim_z_resolution)
+                x_min = self.__current_target['x']
+                x_max = self.__current_target['x']
+                z_min = self.__current_target['z'] - (self._optim_z_scan_range / 2)
+                z_max = self.__current_target['z'] + (self._optim_z_scan_range / 2)
+                self.__optim_z_scan_range = (z_min, z_max)
+                settings = ScanSettings(
+                    axes=('z', 'x'),
+                    ranges=(self.__optim_z_scan_range, (x_min, x_max)),
+                    resolution=(self._optim_z_resolution, 1),
+                    px_frequency=self._optim_scan_frequency,
+                    position_feedback=False)
+            else:
+                self.log.error(
+                    'Unable to perform next optimizer step. Unknown step: "{0}".'.format(next_step))
+                self.__finish_optimize()
+                return
+
+            # Configure scanner
+            err, new_settings = self.scanner().configure_scan(settings)
+            if err < 0:
+                self.log.error('Something went wrong while setting up scanner for optimize.')
+                self.__finish_optimize()
+                return
+            # Update new settings
+            self._optim_scan_frequency = new_settings.px_frequency
+            # ToDo: adjust resolution
+            # ToDo: adjust scan range
+            self.sigOptimizerSettingsChanged.emit(self.optimizer_settings)
+            # Start scan
+            err = self.scanner().lock_scanner()
+            if err < 0:
+                self.log.error('Something went wrong while starting scanner for optimize.')
+                self.__finish_optimize()
+                return
+            self.__sigNextLine.emit()
+
+    @QtCore.Slot()
+    def __finish_optimize(self):
+        self.__next_optimize_steps = list()
+        self.module_state.unlock()
+        self.sigScanStateChanged.emit(False, self.current_scan)
+
+    @QtCore.Slot()
+    def __fit_optimize_scan(self):
+        if self.__next_optimize_steps[0] == 'xy':
+            fit_result = self._fit_2d_gaussian()
+            self.set_scanner_target_position(
+                {'x': fit_result.values['x0'], 'y': fit_result.values['y0']})
+            self.sigOptimizerPositionChanged.emit(
+                {'x': fit_result.values['x0'], 'y': fit_result.values['y0']},
+                {'x': fit_result.values['sigma_x'], 'y': fit_result.values['sigma_y']},
+                None)
+            print('theta:', np.rad2deg(fit_result.values['theta']))
+        else:
+            fit_result = self._fit_1d_gaussian()
+            self.set_scanner_target_position({'z': fit_result.values['x0']})
+            self.sigOptimizerPositionChanged.emit({'z': fit_result.values['x0']},
+                                                  {'z': fit_result.values['sigma']},
+                                                  fit_result.best_fit)
 
     @QtCore.Slot()
     def history_backwards(self):
@@ -403,3 +554,68 @@ class ScanningLogic(GenericLogic):
         settings = {'{0}_scan_range'.format(ax): rng for ax, rng in axes_ranges.items()}
         self.set_scanner_settings(settings)
         return
+
+    def _fit_1d_gaussian(self):
+        model = lmfit.Model(self._gauss, independent_vars=['x'])
+        result = model.fit(data=self._z_optim_scan_data,
+                           x=np.linspace(self.__optim_z_scan_range[0],
+                                         self.__optim_z_scan_range[1],
+                                         self._optim_z_resolution),
+                           amp=lmfit.Parameter('amp', value=50000, min=0),
+                           x0=lmfit.Parameter(
+                               'x0', value=self.__current_target['z'],
+                               min=self.__current_target['z'] - 3 * self._optim_z_scan_range / 4,
+                               max=self.__current_target['z'] + 3 * self._optim_z_scan_range / 4),
+                           sigma=lmfit.Parameter('sigma',
+                                                 value=self._optim_z_scan_range/2,
+                                                 min=0,
+                                                 max=self._optim_z_scan_range),
+                           offset=lmfit.Parameter('offset', value=1000, min=0))
+        return result
+
+    def _fit_2d_gaussian(self):
+        model = lmfit.Model(self._gauss2d, independent_vars=['xy'])
+        result = model.fit(data=self._xy_optim_scan_data.flatten(),
+                           xy=np.meshgrid(np.linspace(self.__optim_xy_scan_range[0][0],
+                                                      self.__optim_xy_scan_range[0][1],
+                                                      self._optim_xy_resolution),
+                                          np.linspace(self.__optim_xy_scan_range[1][0],
+                                                      self.__optim_xy_scan_range[1][1],
+                                                      self._optim_xy_resolution),
+                                          indexing='ij'),
+                           amp=lmfit.Parameter('amp', value=50000, min=0),
+                           x0=lmfit.Parameter(
+                               'x0',
+                               value=self.__current_target['x'],
+                               min=self.__current_target['x'] - 3 * self._optim_xy_scan_range / 4,
+                               max=self.__current_target['x'] + 3 * self._optim_xy_scan_range / 4),
+                           y0=lmfit.Parameter(
+                               'y0',
+                               value=self.__current_target['y'],
+                               min=self.__current_target['y'] - 3 * self._optim_xy_scan_range / 4,
+                               max=self.__current_target['y'] + 3 * self._optim_xy_scan_range / 4),
+                           sigma_x=lmfit.Parameter('sigma_x',
+                                                   value=self._optim_xy_scan_range/2,
+                                                   min=0,
+                                                   max=self._optim_xy_scan_range),
+                           sigma_y=lmfit.Parameter('sigma_y',
+                                                   value=self._optim_xy_scan_range / 2,
+                                                   min=0,
+                                                   max=self._optim_xy_scan_range),
+                           offset=lmfit.Parameter('offset', value=1000, min=0),
+                           theta=lmfit.Parameter('theta', value=0, min=-np.pi/2, max=np.pi/2))
+        return result
+
+    @staticmethod
+    def _gauss(x, amp, x0, sigma, offset):
+        return offset + amp / (sigma * np.sqrt(2 * np.pi)) * np.exp(
+            -(x - x0)**2 / (2 * sigma ** 2))
+
+    @staticmethod
+    def _gauss2d(xy, amp, offset, x0, y0, sigma_x, sigma_y, theta):
+        x, y = xy
+        a = np.cos(-theta) ** 2 / (2 * sigma_x ** 2) + np.sin(-theta) ** 2 / (2 * sigma_y ** 2)
+        b = np.sin(2 * -theta) / (4 * sigma_y ** 2) - np.sin(2 * -theta) / (4 * sigma_x ** 2)
+        c = np.sin(-theta) ** 2 / (2 * sigma_x ** 2) + np.cos(-theta) ** 2 / (2 * sigma_y ** 2)
+        return (offset + amp * np.exp(
+            -(a * (x - x0) ** 2 + 2 * b * (x - x0) * (y - y0) + c * (y - y0) ** 2))).flatten()

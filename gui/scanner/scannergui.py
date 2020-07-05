@@ -234,6 +234,7 @@ class ScannerGui(GUIBase):
         self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
 
         self.__block_settings = False
+        self.__optimizer_extent = None
         return
 
     def on_activate(self):
@@ -316,7 +317,8 @@ class ScannerGui(GUIBase):
         self.sigOptimizerSettingsChanged.connect(
             self.scanninglogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
         self.sigToggleScan.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
-        # self.sigToggleOptimize.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
+        self.sigToggleOptimize.connect(
+            self.scanninglogic().toggle_optimize, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_forward.triggered.connect(
         #     self.scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_back.triggered.connect(
@@ -335,6 +337,8 @@ class ScannerGui(GUIBase):
             self.scan_data_updated, QtCore.Qt.QueuedConnection)
         self.scanninglogic().sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection)
+        self.scanninglogic().sigOptimizerPositionChanged.connect(
+            self.update_optimizer_result, QtCore.Qt.QueuedConnection)
 
         self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
         # connect plot signals
@@ -353,6 +357,7 @@ class ScannerGui(GUIBase):
 
         self._mw.action_xy_scan.triggered.connect(self._xy_scan_triggered)
         self._mw.action_xz_scan.triggered.connect(self._xz_scan_triggered)
+        self._mw.action_optimize_position.triggered.connect(self._optimize_triggered)
 
         # self._mw.sigWindowActivated.connect(self._window_activated)
         # self._mw.sigWindowDeactivated.connect(self._window_deactivated)
@@ -581,6 +586,17 @@ class ScannerGui(GUIBase):
             z_min = self._mw.z_min_range_doubleSpinBox.value() - px_size_z / 2
             z_max = self._mw.z_max_range_doubleSpinBox.value() + px_size_z / 2
             self.xz_scan.image_item.set_image_extent(((x_min, x_max), (z_min, z_max)))
+        elif scan_data.ndim == 1:
+            resolution = self._osd.z_optimizer_resolution_spinBox.value()
+            z_range = abs(self._osd.z_optimizer_range_doubleSpinBox.value())
+            curr_z = self._mw.z_position_doubleSpinBox.value()
+            z_min = curr_z - (z_range / 2)
+            z_max = curr_z + (z_range / 2)
+            self.optimizer_dockwidget.plot_item.setData(x=np.linspace(z_min, z_max, resolution),
+                                                        y=scan_data)
+        elif scan_data.ndim == 2:
+            self.optimizer_dockwidget.image_item.setImage(image=scan_data)
+            self.optimizer_dockwidget.image_item.set_image_extent(self.__optimizer_extent)
         return
 
     @QtCore.Slot(bool, str)
@@ -612,6 +628,8 @@ class ScannerGui(GUIBase):
                 self._mw.action_xy_scan.setChecked(True)
             elif scan_axes == 'xz':
                 self._mw.action_xz_scan.setChecked(True)
+            elif scan_axes == 'optimize':
+                self._mw.action_optimize_position.setChecked(True)
         else:
             self._mw.x_position_doubleSpinBox.setEnabled(True)
             self._mw.y_position_doubleSpinBox.setEnabled(True)
@@ -636,6 +654,7 @@ class ScannerGui(GUIBase):
             self._mw.action_utility_full_range.setEnabled(True)
             self._mw.action_xy_scan.setChecked(False)
             self._mw.action_xz_scan.setChecked(False)
+            self._mw.action_optimize_position.setChecked(False)
             self.__block_settings = False
         return
 
@@ -905,6 +924,32 @@ class ScannerGui(GUIBase):
             self._osd.optimization_sequence_lineEdit.blockSignals(False)
         return
 
+    @QtCore.Slot(dict, dict, object)
+    def update_optimizer_result(self, position, sigma, best_fit):
+        if best_fit is not None:
+            self.optimizer_dockwidget.plot_widget.addItem(self.optimizer_dockwidget.fit_plot_item)
+            self.optimizer_dockwidget.fit_plot_item.setData(
+                x=self.optimizer_dockwidget.plot_item.xData,
+                y=best_fit)
+        if 'x' in position and 'y' in position:
+            self.optimizer_dockwidget.scan_widget.crosshairs[0].set_position(
+                (position['x'], position['y']))
+
+        text = self.optimizer_dockwidget.position_label.text()
+        if 'x' in position:
+            text = text.replace('x', '{0:.3e}'.format(position['x']), 1)
+        if 'y' in position:
+            text = text.replace('y', '{0:.3e}'.format(position['y']), 1)
+        if 'z' in position:
+            text = text.replace('z', '{0:.3e}'.format(position['z']), 1)
+        if 'x' in sigma:
+            text = text.replace('x', '{0:.3e}'.format(sigma['x']), 1)
+        if 'y' in sigma:
+            text = text.replace('y', '{0:.3e}'.format(sigma['y']), 1)
+        if 'z' in sigma:
+            text = text.replace('z', '{0:.3e}'.format(sigma['z']), 1)
+        self.optimizer_dockwidget.position_label.setText(text)
+
     @QtCore.Slot()
     def _xy_scan_triggered(self):
         start = self._mw.action_xy_scan.isEnabled()
@@ -916,6 +961,29 @@ class ScannerGui(GUIBase):
         start = self._mw.action_xz_scan.isEnabled()
         self.__emit_last_settings_changes_and_block_signals()
         self.sigToggleScan.emit(start, 'xz')
+
+    @QtCore.Slot()
+    def _optimize_triggered(self):
+        resolution = self._osd.x_optimizer_resolution_spinBox.value()
+        x_range = abs(self._osd.x_optimizer_range_doubleSpinBox.value())
+        y_range = abs(self._osd.y_optimizer_range_doubleSpinBox.value())
+        px_size_x = x_range / (resolution - 1)
+        px_size_y = y_range / (resolution - 1)
+        curr_x = self._mw.x_position_doubleSpinBox.value()
+        curr_y = self._mw.y_position_doubleSpinBox.value()
+        x_min = curr_x - (x_range / 2) - px_size_x / 2
+        x_max = curr_x + (x_range / 2) + px_size_x / 2
+        y_min = curr_y - (y_range / 2) - px_size_y / 2
+        y_max = curr_y + (y_range / 2) + px_size_y / 2
+        self.optimizer_dockwidget.scan_widget.crosshairs[0].set_position((curr_x, curr_y))
+        self.__optimizer_extent = ((x_min, x_max), (y_min, y_max))
+        self.optimizer_dockwidget.image_item.set_image_extent(self.__optimizer_extent)
+
+        self.optimizer_dockwidget.plot_widget.removeItem(self.optimizer_dockwidget.fit_plot_item)
+
+        self.optimizer_dockwidget.position_label.setText('µ = (x, y, z)\nσ = (x, y, z)')
+
+        self.sigToggleOptimize.emit(True)
 
     @QtCore.Slot(QtCore.QRectF)
     def _xy_area_selected(self, rect):
