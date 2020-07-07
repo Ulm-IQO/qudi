@@ -362,11 +362,12 @@ class ScannerGui(GUIBase):
         # self._mw.sigWindowActivated.connect(self._window_activated)
         # self._mw.sigWindowDeactivated.connect(self._window_deactivated)
 
+        self.show()
+
+        print(self.default_position_unit_prefix)
         self._mw.x_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
         self._mw.y_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
         self._mw.z_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
-
-        self.show()
         return
 
     def on_deactivate(self):
@@ -374,26 +375,77 @@ class ScannerGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
+        self._mw.close()
+
+        self.optimizer_dockwidget.visibilityChanged.disconnect()
+        self._mw.action_view_optimizer.triggered[bool].disconnect()
+        self._mw.action_restore_default_view.triggered.disconnect()
+        self._mw.action_optimizer_settings.triggered.disconnect()
+        self._mw.action_scanner_settings.triggered.disconnect()
+        # Disconnect the action of the optimizer settings window with the code:
+        self._osd.accepted.disconnect()
+        self._osd.rejected.disconnect()
+        self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).disconnect()
+        # Disconnect the action of the scanner settings window with the code:
+        self._ssd.accepted.disconnect()
+        self._ssd.rejected.disconnect()
+        self._ssd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).disconnect()
+        # Disconnect axis control signals
+        self._mw.x_min_range_doubleSpinBox.editingFinished.disconnect()
+        self._mw.x_max_range_doubleSpinBox.editingFinished.disconnect()
+        self._mw.y_min_range_doubleSpinBox.editingFinished.disconnect()
+        self._mw.y_max_range_doubleSpinBox.editingFinished.disconnect()
+        self._mw.z_min_range_doubleSpinBox.editingFinished.disconnect()
+        self._mw.z_max_range_doubleSpinBox.editingFinished.disconnect()
+        self._mw.x_resolution_spinBox.editingFinished.disconnect()
+        # self._mw.y_resolution_spinBox.editingFinished.disconnect()
+        self._mw.z_resolution_spinBox.editingFinished.disconnect()
+        self._mw.x_slider.sliderMoved.disconnect()
+        self._mw.y_slider.sliderMoved.disconnect()
+        self._mw.z_slider.sliderMoved.disconnect()
+        self._mw.x_slider.sliderReleased.disconnect()
+        self._mw.y_slider.sliderReleased.disconnect()
+        self._mw.z_slider.sliderReleased.disconnect()
+        self._mw.x_position_doubleSpinBox.editingFinished.disconnect()
+        self._mw.y_position_doubleSpinBox.editingFinished.disconnect()
+        self._mw.z_position_doubleSpinBox.editingFinished.disconnect()
         self.sigMoveScannerPosition.disconnect()
         self.sigScannerSettingsChanged.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
-        self.xz_scan.plot_widget.sigMouseAreaSelected.disconnect()
-        self.xy_scan.plot_widget.sigMouseAreaSelected.disconnect()
-        self._mw.action_restore_default_view.triggered.disconnect()
-        self._mw.action_history_forward.triggered.disconnect()
-        self._mw.action_history_back.triggered.disconnect()
-        self._mw.action_utility_full_range.triggered.disconnect()
-        self._mw.action_utility_zoom.toggled.disconnect()
+        self.sigToggleOptimize.disconnect()
+
+        # Disconnect signals from logic
         self.scanninglogic().sigScannerTargetChanged.disconnect(self.scanner_target_updated)
         self.scanninglogic().sigScannerSettingsChanged.disconnect(self.update_scanner_settings)
         self.scanninglogic().sigOptimizerSettingsChanged.disconnect(self.update_optimizer_settings)
         self.scanninglogic().sigScanDataChanged.disconnect(self.scan_data_updated)
         self.scanninglogic().sigScanStateChanged.disconnect(self.scan_state_updated)
+        self.scanninglogic().sigOptimizerPositionChanged.disconnect(self.update_optimizer_result)
+
+        # Disconnect plot signals
+        self.xy_scan.plot_widget.crosshairs[0].sigDraggedPosChanged.disconnect()
+        self.xy_scan.plot_widget.crosshairs[0].sigDragStopped.disconnect()
+        self.xy_scan.plot_widget.sigMouseAreaSelected.disconnect()
+        # self.xy_scan.channel_comboBox.currentIndexChanged.disconnect()
+        self.xz_scan.plot_widget.crosshairs[0].sigDraggedPosChanged.disconnect()
+        self.xz_scan.plot_widget.crosshairs[0].sigDragStopped.disconnect()
+        self.xz_scan.plot_widget.sigMouseAreaSelected.disconnect()
+        # self.xz_scan.channel_comboBox.currentIndexChanged.disconnect()
+
+        self._mw.action_xy_scan.triggered.disconnect()
+        self._mw.action_xz_scan.triggered.disconnect()
+        self._mw.action_optimize_position.triggered.disconnect()
+        self._mw.action_utility_zoom.toggled.disconnect()
+        self._mw.action_utility_full_range.triggered.disconnect()
+        # self._mw.action_history_forward.triggered.disconnect()
+        # self._mw.action_history_back.triggered.disconnect()
+
+        # self._mw.sigWindowActivated.disconnect()
+        # self._mw.sigWindowDeactivated.disconnect()
 
         self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
         self._window_state = bytearray(self._mw.saveState()).hex()
-        self._mw.close()
         return 0
 
     def show(self):

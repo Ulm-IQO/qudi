@@ -164,6 +164,7 @@ class ScanningLogic(GenericLogic):
         """ Reverse steps of activation
         """
         self.__sigNextLine.disconnect()
+        self.__sigOptimizeNextStep.disconnect()
         return
 
     @property
@@ -419,8 +420,10 @@ class ScanningLogic(GenericLogic):
                 self.__scan_stop_requested = False
                 self.module_state.lock()
                 self.current_scan = 'optimize'
+                self._z_optim_scan_data = np.zeros(self._optim_z_resolution)
                 self.__next_optimize_steps = list(self._optim_scan_sequence)
                 self.sigScanStateChanged.emit(True, self.current_scan)
+                self.sigScanDataChanged.emit(self.current_scan, self.z_optim_scan_data)
                 self.__sigOptimizeNextStep.emit()
             return
 
@@ -565,7 +568,7 @@ class ScanningLogic(GenericLogic):
                            x=np.linspace(self.__optim_z_scan_range[0],
                                          self.__optim_z_scan_range[1],
                                          self._optim_z_resolution),
-                           amp=lmfit.Parameter('amp', value=50000, min=0),
+                           amp=lmfit.Parameter('amp', value=self._z_optim_scan_data.max(), min=0),
                            x0=lmfit.Parameter(
                                'x0', value=self.__current_target['z'],
                                min=self.__current_target['z'] - 3 * self._optim_z_scan_range / 4,
@@ -574,7 +577,9 @@ class ScanningLogic(GenericLogic):
                                                  value=self._optim_z_scan_range/2,
                                                  min=0,
                                                  max=self._optim_z_scan_range),
-                           offset=lmfit.Parameter('offset', value=1000, min=0))
+                           offset=lmfit.Parameter('offset',
+                                                  value=self._z_optim_scan_data.min(),
+                                                  min=0))
         return result
 
     def _fit_2d_gaussian(self):
@@ -587,7 +592,7 @@ class ScanningLogic(GenericLogic):
                                                       self.__optim_xy_scan_range[1][1],
                                                       self._optim_xy_resolution),
                                           indexing='ij'),
-                           amp=lmfit.Parameter('amp', value=50000, min=0),
+                           amp=lmfit.Parameter('amp', value=self._xy_optim_scan_data.max(), min=0),
                            x0=lmfit.Parameter(
                                'x0',
                                value=self.__current_target['x'],
@@ -606,7 +611,9 @@ class ScanningLogic(GenericLogic):
                                                    value=self._optim_xy_scan_range / 2,
                                                    min=0,
                                                    max=self._optim_xy_scan_range),
-                           offset=lmfit.Parameter('offset', value=1000, min=0),
+                           offset=lmfit.Parameter('offset',
+                                                  value=self._xy_optim_scan_data.min(),
+                                                  min=0),
                            theta=lmfit.Parameter('theta', value=0, min=-np.pi/2, max=np.pi/2))
         return result
 
