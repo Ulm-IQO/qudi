@@ -119,7 +119,7 @@ class TunableLaser(Base, SimpleLaserInterface):
 
             @return float: actual new power setpoint
         """
-        mini, maxi = self.get_control_limit()
+        mini, maxi = self.get_power_range()
         if mini <= power <= maxi:
             self._power_setpoint = power
             self._write("MW;P={}".format(power))
