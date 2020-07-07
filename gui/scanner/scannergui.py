@@ -362,6 +362,10 @@ class ScannerGui(GUIBase):
         # self._mw.sigWindowActivated.connect(self._window_activated)
         # self._mw.sigWindowDeactivated.connect(self._window_deactivated)
 
+        self._mw.x_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.y_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.z_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+
         self.show()
         return
 

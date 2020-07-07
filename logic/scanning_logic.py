@@ -41,7 +41,7 @@ class ScanningLogic(GenericLogic):
     """
 
     # declare connectors
-    scanner = Connector(interface='TemporaryScanningDummy')
+    scanner = Connector(interface='TemporaryScanningInterface')
     savelogic = Connector(interface='SaveLogic')
 
     # optimizer settings status vars
@@ -281,7 +281,8 @@ class ScanningLogic(GenericLogic):
                 self.sigScannerTargetChanged.emit(self.scanner_target, id(self))
                 return
             if any(self.__current_target[ax] != pos for ax, pos in pos_dict.items()):
-                self.__current_target = self.scanner().move_absolute(pos_dict)
+                print('MOVE RETURN:', self.scanner().move_absolute(pos_dict))
+                print('TARGET:', self.scanner_target)
             self.sigScannerTargetChanged.emit(self.__current_target.copy(),
                                               id(self) if caller_id is None else caller_id)
         return
@@ -498,6 +499,8 @@ class ScanningLogic(GenericLogic):
     def __fit_optimize_scan(self):
         if self.__next_optimize_steps[0] == 'xy':
             fit_result = self._fit_2d_gaussian()
+            fit_result.params.pretty_print()
+            print(fit_result.values['x0'], fit_result.values['y0'])
             self.set_scanner_target_position(
                 {'x': fit_result.values['x0'], 'y': fit_result.values['y0']})
             self.sigOptimizerPositionChanged.emit(
@@ -507,6 +510,7 @@ class ScanningLogic(GenericLogic):
             print('theta:', np.rad2deg(fit_result.values['theta']))
         else:
             fit_result = self._fit_1d_gaussian()
+            fit_result.params.pretty_print()
             self.set_scanner_target_position({'z': fit_result.values['x0']})
             self.sigOptimizerPositionChanged.emit({'z': fit_result.values['x0']},
                                                   {'z': fit_result.values['sigma']},
