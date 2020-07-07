@@ -129,6 +129,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self.axes_label = widget.optimizer_axes_label
         self.position_label = widget.optimizer_position_label
         self.image_item = ScanImageItem(image=np.zeros((2, 2)))
+        self.image_item.set_image_extent(((-1e6, 1e6), (-1e6, 1e6)))
         self.plot_item = pg.PlotDataItem(x=np.arange(10),
                                          y=np.zeros(10),
                                          pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
@@ -144,6 +145,11 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self.scan_widget.addItem(self.image_item)
 
         self.setWidget(widget)
+
+        self.scan_widget.setLabel('bottom', 'X', units='m')
+        self.scan_widget.setLabel('left', 'Y', units='m')
+        self.plot_widget.setLabel('bottom', 'Z', units='m')
+        self.plot_widget.setLabel('left', 'fluorescence', units='c/s')
         return
 
 
@@ -295,6 +301,20 @@ class ScannerGui(GUIBase):
         self.scan_data_updated('xy', self.scanninglogic().xy_scan_data)
         self.scan_data_updated('xz', self.scanninglogic().xz_scan_data)
 
+        # Set default unit prefix for position spinBoxes
+        self._mw.x_min_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.x_max_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.y_min_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.y_max_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.z_min_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.z_max_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.x_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.y_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._mw.z_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._osd.x_optimizer_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._osd.y_optimizer_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+        self._osd.z_optimizer_range_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
+
         # Initialize dockwidgets to default view
         self.restore_default_view()
         # Try to restore window state and geometry
@@ -319,12 +339,12 @@ class ScannerGui(GUIBase):
         self.sigToggleScan.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
         self.sigToggleOptimize.connect(
             self.scanninglogic().toggle_optimize, QtCore.Qt.QueuedConnection)
+        self._mw.action_utility_full_range.triggered.connect(
+            self.scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_forward.triggered.connect(
         #     self.scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
         # self._mw.action_history_back.triggered.connect(
         #     self.scanninglogic().history_backward, QtCore.Qt.QueuedConnection)
-        self._mw.action_utility_full_range.triggered.connect(
-            self.scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
 
         # Connect signals from logic
         self.scanninglogic().sigScannerTargetChanged.connect(
@@ -340,7 +360,6 @@ class ScannerGui(GUIBase):
         self.scanninglogic().sigOptimizerPositionChanged.connect(
             self.update_optimizer_result, QtCore.Qt.QueuedConnection)
 
-        self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
         # connect plot signals
         self.xy_scan.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
             self._xy_crosshair_dragged)
@@ -358,16 +377,12 @@ class ScannerGui(GUIBase):
         self._mw.action_xy_scan.triggered.connect(self._xy_scan_triggered)
         self._mw.action_xz_scan.triggered.connect(self._xz_scan_triggered)
         self._mw.action_optimize_position.triggered.connect(self._optimize_triggered)
+        self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
 
         # self._mw.sigWindowActivated.connect(self._window_activated)
         # self._mw.sigWindowDeactivated.connect(self._window_deactivated)
 
         self.show()
-
-        print(self.default_position_unit_prefix)
-        self._mw.x_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
-        self._mw.y_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
-        self._mw.z_position_doubleSpinBox.assumed_unit_prefix = self.default_position_unit_prefix
         return
 
     def on_deactivate(self):
@@ -512,6 +527,18 @@ class ScannerGui(GUIBase):
                                                    max(constraints['axes_position_ranges']['y']))
         self._mw.z_position_doubleSpinBox.setRange(min(constraints['axes_position_ranges']['z']),
                                                    max(constraints['axes_position_ranges']['z']))
+        total_x_range = np.abs(max(constraints['axes_position_ranges']['x']) - min(
+            constraints['axes_position_ranges']['x']))
+        total_y_range = np.abs(max(constraints['axes_position_ranges']['y']) - min(
+            constraints['axes_position_ranges']['y']))
+        total_z_range = np.abs(max(constraints['axes_position_ranges']['z']) - min(
+            constraints['axes_position_ranges']['z']))
+        self._osd.x_optimizer_range_doubleSpinBox.setRange(0, total_x_range)
+        self._osd.y_optimizer_range_doubleSpinBox.setRange(0, total_y_range)
+        self._osd.z_optimizer_range_doubleSpinBox.setRange(0, total_z_range)
+        self._osd.x_optimizer_resolution_spinBox.setRange(max(2, min_res), max_res)
+        self._osd.y_optimizer_resolution_spinBox.setRange(max(2, min_res), max_res)
+        self._osd.z_optimizer_resolution_spinBox.setRange(max(2, min_res), max_res)
 
         optimizer_settings = self.scanninglogic().optimizer_settings
         self.xy_scan.plot_widget.crosshairs[0].set_allowed_range(
@@ -1037,7 +1064,7 @@ class ScannerGui(GUIBase):
 
         self.optimizer_dockwidget.plot_widget.removeItem(self.optimizer_dockwidget.fit_plot_item)
 
-        self.optimizer_dockwidget.position_label.setText('µ = (x, y, z)\nσ = (x, y, z)')
+        self.optimizer_dockwidget.position_label.setText('µ = (x, y, z) m\nσ = (x, y, z) m')
 
         self.sigToggleOptimize.emit(True)
 

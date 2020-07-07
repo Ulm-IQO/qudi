@@ -229,11 +229,17 @@
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::UpDownArrows</enum>
         </property>
+        <property name="suffix">
+         <string>px</string>
+        </property>
         <property name="minimum">
          <number>2</number>
         </property>
         <property name="maximum">
          <number>999999999</number>
+        </property>
+        <property name="value">
+         <number>128</number>
         </property>
        </widget>
       </item>
@@ -348,11 +354,17 @@
           <pointsize>8</pointsize>
          </font>
         </property>
+        <property name="suffix">
+         <string>px</string>
+        </property>
         <property name="minimum">
          <number>2</number>
         </property>
         <property name="maximum">
          <number>999999999</number>
+        </property>
+        <property name="value">
+         <number>128</number>
         </property>
        </widget>
       </item>
@@ -363,11 +375,17 @@
           <pointsize>8</pointsize>
          </font>
         </property>
+        <property name="suffix">
+         <string>px</string>
+        </property>
         <property name="minimum">
          <number>2</number>
         </property>
         <property name="maximum">
          <number>999999999</number>
+        </property>
+        <property name="value">
+         <number>128</number>
         </property>
        </widget>
       </item>
