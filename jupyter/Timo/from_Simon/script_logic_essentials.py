@@ -156,7 +156,7 @@ def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, 
                 uglobals.abort.is_set()))
 
     user_terminated = False
-    if not handle_abort():  # next or abort leads to return
+    if not handle_abort():
         # prepare the measurement by generating and loading the sequence/waveform
         prepare_qm(experiment, qm_dict, generate_new)
 
@@ -585,6 +585,16 @@ def conventional_measurement(qm_dict):
 def set_up_conventional_measurement(qm_dict):
     from hardware.fast_counter_dummy import FastCounterDummy
 
+
+    # configure AWG
+    if 'trig_in_pol' in qm_dict:
+        try:
+            pulsedmasterlogic.pulsedmeasurementlogic().pulsegenerator().set_trig_polarity(qm_dict['trig_in_pol'])
+        except Exception as e:
+            logger.warning("Couldn't set trigger polarity {}: {}".format(qm_dict['trig_in_pol'], str(e)))
+
+
+    # configure counting
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
     logger.info("Setting fastcounter to gated: {}, bin_width {}".format(setup['gated'], qm_dict['bin_width']))
     pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'], is_single_sweeps=qm_dict['ctr_single_sweeps'],

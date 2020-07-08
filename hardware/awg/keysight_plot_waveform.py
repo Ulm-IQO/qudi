@@ -256,7 +256,7 @@ if len(sys.argv) != 2:
     sys.exit()
 
 print("Settings: Sampling Rate: {}; DAC res (M8190A only): {} bit".format(sampling_rate,
-                                                                          dac_resolution))
+                                     Y                                     dac_resolution))
 
 path = get_filename_no_extension(sys.argv[1])
 ext = get_extension(sys.argv[1])[1:]

@@ -579,7 +579,7 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
+                              save_figure=True, subdir=None):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
@@ -593,7 +593,7 @@ class PulsedMasterLogic(GenericLogic):
         @return str: filepath where data were saved
         """
         self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
-                                                            save_figure)
+                                                            save_figure, subdir=subdir)
         return
 
     #######################################################################

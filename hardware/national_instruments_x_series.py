@@ -34,6 +34,8 @@ from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
+__callback_func_change_detection = None     # must be module level, otherwise callback crashes (prob. due to lost pointer)
+
 class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface):
     """ A National Instruments device that can count and control microvave generators.
 
@@ -123,11 +125,13 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _RWTimeout = ConfigOption('read_write_timeout', default=10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
 
+
     def on_activate(self):
         """ Starts up the NI Card at activation.
         """
         # the tasks used on that hardware device:
         self._counter_daq_tasks = []
+        self._edgecounter_daq_tasks = []
         self._counter_analog_daq_task = None
         self._clock_daq_task = None
         self._scanner_clock_daq_task = None
@@ -2198,24 +2202,339 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if channel_name is None:
             self.log.error('No channel for digital output specified')
             return -1
-        else:
 
-            self.digital_out_task = daq.TaskHandle()
-            if mode:
-                self.digital_data = daq.c_uint32(0xffffffff)
-            else:
-                self.digital_data = daq.c_uint32(0x0)
-            self.digital_read = daq.c_int32()
-            self.digital_samples_channel = daq.c_int32(1)
-            daq.DAQmxCreateTask('DigitalOut', daq.byref(self.digital_out_task))
+        self.digital_out_task = daq.TaskHandle()
+        if mode:
+            self.digital_data = daq.c_uint32(0xffffffff)
+        else:
+            self.digital_data = daq.c_uint32(0x0)
+        self.digital_read = daq.c_int32()
+        self.digital_samples_channel = daq.c_int32(1)
+
+        daq.DAQmxCreateTask('DigitalOut', daq.byref(self.digital_out_task))
+        try:
             daq.DAQmxCreateDOChan(self.digital_out_task, channel_name, "", daq.DAQmx_Val_ChanForAllLines)
             daq.DAQmxStartTask(self.digital_out_task)
             daq.DAQmxWriteDigitalU32(self.digital_out_task, self.digital_samples_channel, True,
                                         self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
                                         np.array(self.digital_data), self.digital_read, None)
-
+        except Exception as e:
+            self.log.error("Exception while writing to digital channel: {}".format(e.message))
             daq.DAQmxStopTask(self.digital_out_task)
             daq.DAQmxClearTask(self.digital_out_task)
-            return 0
+            return -1
 
 
+        daq.DAQmxStopTask(self.digital_out_task)
+        daq.DAQmxClearTask(self.digital_out_task)
+        return 0
+
+
+    def _supports_change_detection(self, channel_name):
+        """will only work on DIO ports, not PFI ports"""
+
+        supports_cd = daq.bool32()
+        daq.DAQmxGetPhysicalChanDIChangeDetectSupported(channel_name, supports_cd)
+
+        return bool(supports_cd.value)
+
+
+    def register_callback_on_change_detection(self, channel_name, cb_func, edges=[True, True]):
+        """
+        :param channel_name:
+        :param cb_func: C protoype int32 CVICALLBACK Callback(TaskHandle taskHandle, int32 signalID, void *callbackData)
+        :param edges: rising / falling edge detection?
+        :return:
+        """
+        # todo: should store change detection task nicely as class var, like other task lists
+
+        if not self._supports_change_detection(channel_name):
+            self.log.error("NI device does not support change detection. No callback registered.")
+            return
+
+        # Convert the python function to a C function callback, as defined in DAQmxTypes
+        global __callback_func_change_detection
+        if cb_func is not None:
+            __callback_func_change_detection = daq.DAQmxSignalEventCallbackPtr(cb_func)
+        else:
+            try:
+                if hasattr(self, 'changedetection_task'):
+                    daq.DAQmxClearTask(self.changedetection_task)
+                    self.log.debug("Unregistering callback on ch {}".format(channel_name))
+                return
+            except:
+                self.log.warn("Can't unregister change detection. Already disabled?")
+                return
+
+        self.log.debug("Registering function {} as callback on ch {}".format(__callback_func_change_detection, channel_name))
+
+        # clear old task
+        if hasattr(self, 'changedetection_task'):
+            daq.DAQmxClearTask(self.changedetection_task)
+        self.changedetection_task = daq.TaskHandle()
+        # creation with names causes unexplained DuplicateTaskErrors
+        daq.DAQmxCreateTask("", daq.byref(self.changedetection_task))
+        #daq.DAQmxCreateTask("ChangeDetection", daq.byref(self.changedetection_task))
+
+        try:
+            daq.DAQmxCreateDIChan(self.changedetection_task, channel_name, "", daq.DAQmx_Val_ChanPerLine)
+            # ni 6323 supports only unbuffered change detection
+            daq.DAQmxSetBufInputBufSize(self.changedetection_task, daq.uInt32(0))
+
+            # only rising
+            if edges[0]:
+                ch_rising_name = channel_name
+            else:
+                ch_rising_name = None
+            if edges[1]:
+                ch_falling_name = channel_name
+            else:
+                ch_falling_name = None
+
+            daq.DAQmxCfgChangeDetectionTiming(self.changedetection_task, ch_rising_name, ch_falling_name, daq.DAQmx_Val_HWTimedSinglePoint, daq.uInt64(1))
+            daq.DAQmxRegisterSignalEvent(self.changedetection_task, daq.DAQmx_Val_ChangeDetectionEvent,
+                                         0, __callback_func_change_detection, None)
+
+            #clock_sa = daq.float64()    # Hz
+            #daq.DAQmxGetSampClkRate(self.changedetection_task, daq.byref(clock_sa))
+            #clock_max = daq.float64()    # Hz
+            #daq.DAQmxGetSampClkMaxRate(self.changedetection_task, daq.byref(clock_max))
+            #print("Debug Change detection Sample clock {} / {} Hz".format(clock_sa.value, clock_max.value))
+
+
+            daq.DAQmxStartTask(self.changedetection_task)
+
+        except Exception as e:
+            if hasattr(e, 'message'):
+                msg = e.message
+            else:
+                msg = ""
+            self.log.error("Failed to start change detection task: {}".format(msg))
+            daq.DAQmxStopTask(self.changedetection_task)
+            daq.DAQmxClearTask(self.changedetection_task)
+            raise e
+
+    def set_up_single_edge_counter(self, counter_ch):
+
+        task = daq.TaskHandle()
+        try:
+            daq.DAQmxCreateTask('EdgeCounter{0}'.format(0), daq.byref(task))
+        except Exception as e:
+            self.log.exception('Error while starting EdgeCounter. CLosing counters. Try again!: {}'.format(str(e)))
+            try:
+                self.close_edge_counters()
+            except:
+                self.log.exception('Could not close counter after error.')
+            return -1
+
+
+        # non clocked simple edge counter
+        daq.DAQmxCreateCICountEdgesChan(task, counter_ch, 'EdgeCounter Channel {0}'.format(0),
+                                    daq.DAQmx_Val_Rising, 0, daq.DAQmx_Val_CountUp)
+
+        # set input line, currently not used
+        #daq.DAQmxSetCICountEdgesTerm
+
+        self._edgecounter_daq_tasks.append(task)
+        try:
+            daq.DAQmxStartTask(task)
+        except Exception as e:
+            self.log.exception('Error while starting EdgeCounter: {}'.format(str(e)))
+            try:
+                self.close_edge_counters()
+            except:
+                self.log.exception('Could not close counter after error')
+            return -1
+        return 0
+
+    def close_edge_counters(self):
+
+        error = 0
+
+        for i, task in enumerate(self._edgecounter_daq_tasks):
+            try:
+                # stop the counter task
+                daq.DAQmxStopTask(task)
+                # after stopping delete all the configuration of the counter
+                daq.DAQmxClearTask(task)
+                # set the task handle to None as a safety
+            except:
+                self.log.exception('Could not close counter.')
+                error = -1
+
+        self._edgecounter_daq_tasks = []
+
+        return error
+
+    def get_edge_counters(self):
+
+        if len(self._edgecounter_daq_tasks) < 1:
+            self.log.error(
+                'No counter running, call set_up_single_edge_counter before reading it.')
+            return -1
+        try:
+            count_data = np.zeros((len(self._edgecounter_daq_tasks), 1), dtype=np.uint32(1))
+
+            for i, task in enumerate(self._edgecounter_daq_tasks):
+                val = daq.uInt32()
+                daq.DAQmxReadCounterScalarU32(task, self._RWTimeout, daq.byref(val), None)
+                count_data[i] = val
+
+        except Exception as e:
+            self.log.exception(
+                'Getting samples from counter failed: {}'.format(str(e)))
+            # in case of error return a lot of -1
+            return np.ones((len(self._edgecounter_daq_tasks), 1), dtype=np.uint32) * -1
+
+        return count_data
+
+
+_debug_cb_counter = 0
+def _debug_cb(taskhandle, signalID, callbackData):
+    global _debug_cb_counter
+    _debug_cb_counter += 1
+
+    print("test {}".format(_debug_cb_counter))
+    #self.log.info("[{}] NI callback from signalID {}".format(time.time(), signalID))
+
+    return 0
+
+
+channel_name_reponse = '/dev1/PFI15'
+digital_read = daq.c_int32()
+digital_samples_channel_high = daq.c_int32(1)
+digital_samples_channel_idle= daq.c_int32(0)
+digital_out_task_reponse = daq.TaskHandle()
+
+def _digital_out_cb(taskhandle, signalID, callbackData):
+    global digital_out_task_reponse
+    global digital_samples_channel
+    global digital_samples_channel_idle
+
+    daq.DAQmxWriteDigitalU32(digital_out_task_reponse, digital_samples_channel_high, True,
+                             0, daq.DAQmx_Val_GroupByChannel,
+                             np.array(digital_data), digital_read, None)
+    daq.DAQmxWriteDigitalU32(digital_out_task_reponse, digital_samples_channel_idle, True,
+                             0, daq.DAQmx_Val_GroupByChannel,
+                             np.array(digital_data), digital_read, None)
+
+
+    return 0
+
+
+if __name__ == '__main__':
+    print('DEBUG: Make sure to remove inheritance from Base class for debugging!')
+    import time
+    print("Reset status: {}".format(daq.DAQmxResetDevice('dev1')))
+
+    # via this file class
+    #"""
+
+    nicard = NationalInstrumentsXSeries()
+    nicard.register_callback_on_change_detection('dev1/port0/line0', _digital_out_cb, edges=[True, False])
+    #"""
+    exit()
+
+    # setup DIO for sending IRQ response to osci
+    daq.DAQmxCreateTask('DigitalOutResponse', daq.byref(digital_out_task_reponse))
+    daq.DAQmxCreateDOChan(digital_out_task_reponse, channel_name_reponse, "", daq.DAQmx_Val_ChanForAllLines)
+    daq.DAQmxStartTask(digital_out_task_reponse)
+
+    # setup another DIO for sending interrupt
+    val = False
+    channel_name = '/dev1/PFI9'
+    digital_read = daq.c_int32()
+    digital_samples_channel = daq.c_int32(1)
+    digital_out_task = daq.TaskHandle()
+    daq.DAQmxCreateTask('DigitalOut', daq.byref(digital_out_task))
+
+    try:
+        for i in range(0,10):
+            val = not val
+
+            # shadow of digital_write function
+            if val:
+                digital_data = daq.c_uint32(0xffffffff)
+            else:
+                digital_data = daq.c_uint32(0x0)
+
+            if i is 0:
+                daq.DAQmxCreateDOChan(digital_out_task, channel_name, "", daq.DAQmx_Val_ChanForAllLines)
+                daq.DAQmxStartTask(digital_out_task)
+            daq.DAQmxWriteDigitalU32(digital_out_task, digital_samples_channel, True,
+                                     0, daq.DAQmx_Val_GroupByChannel,
+                                    np.array(digital_data), digital_read, None)
+
+
+            # nicard.digital_channel_switch('/dev1/PFI9', val)
+            print("i {}".format(i))
+            time.sleep(0.2)
+            i += 1
+
+        # see whether callback was (silently) called
+        _debug_cb(None, None, None)
+
+    except Exception as e:
+
+        daq.DAQmxStopTask(digital_out_task)
+        daq.DAQmxClearTask(digital_out_task)
+        print("Error occured: {}".format(e.message))
+        exit()
+
+    daq.DAQmxStopTask(digital_out_task)
+    daq.DAQmxClearTask(digital_out_task)
+
+
+
+    # minimal example from git repo, EveryN works, DoneCallback doesn't
+    """
+    # one cannot create a weakref to a list directly
+    # but the following works well
+    class MyList(list):
+        pass
+
+
+    # list where the data are stored
+    from PyDAQmx.DAQmxCallBack import *
+    data = MyList()
+    id_a = daq.DAQmxCallBack.create_callbackdata_id(data)
+
+
+    # Define two Call back functions
+    def EveryNCallback_py(taskHandle, everyNsamplesEventType, nSamples, callbackData_ptr):
+        callbackdata = daq.DAQmxCallBack.get_callbackdata_from_id(callbackData_ptr)
+        read = daq.int32()
+        data = np.zeros(1000)
+        daq.DAQmxReadAnalogF64(taskHandle, 1000, 10.0, daq.DAQmx_Val_GroupByScanNumber, data, 1000, daq.byref(read), None)
+        callbackdata.extend(data.tolist())
+        print("Acquired total {} samples".format(len(data)))
+        return 0  # The function should return an integer
+
+
+    # Convert the python function to a CFunction
+    EveryNCallback = daq.DAQmxEveryNSamplesEventCallbackPtr(EveryNCallback_py)
+    #callback = daq.DAQmxEveryNSamplesEventCallbackPtr(EveryNCallback2_py)
+
+    def DoneCallback_py(taskHandle, status, callbackData):
+        print("Status {}".format(status.value))
+        return 0  # The function should return an integer
+
+
+    # Convert the python function to a CFunction
+    DoneCallback = daq.DAQmxDoneEventCallbackPtr(DoneCallback_py)
+
+    taskHandle = daq.TaskHandle()
+    daq.DAQmxCreateTask("", daq.byref(taskHandle))
+    daq.DAQmxCreateAIVoltageChan(taskHandle, "Dev1/ai0", "", daq.DAQmx_Val_RSE, -10.0, 10.0, daq.DAQmx_Val_Volts, None)
+    daq.DAQmxCfgSampClkTiming(taskHandle, "", 10000.0, daq.DAQmx_Val_Rising, daq.DAQmx_Val_ContSamps, 1000)
+
+    daq.DAQmxRegisterEveryNSamplesEvent(taskHandle, daq.DAQmx_Val_Acquired_Into_Buffer, 1000, 0, EveryNCallback, id_a)
+    daq.DAQmxRegisterDoneEvent(taskHandle, 0, DoneCallback, None)
+
+    daq.DAQmxStartTask(taskHandle)
+
+    input('Acquiring samples continuously. Press Enter to interrupt\n')
+    print('Done. Should invoke DoneCallback')
+    daq.DAQmxStopTask(taskHandle)
+    daq.DAQmxClearTask(taskHandle)
+    """

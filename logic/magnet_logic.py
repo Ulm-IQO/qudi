@@ -64,7 +64,10 @@ class MagnetLogic(GenericLogic):
     ---
     """
 
-    # declare connectors
+    _modclass = 'MagnetLogic'
+    _modtype = 'logic'
+
+    ## declare connectors
     magnetstage = Connector(interface='MagnetInterface')
     optimizerlogic = Connector(interface='OptimizerLogic')
     counterlogic = Connector(interface='CounterLogic')

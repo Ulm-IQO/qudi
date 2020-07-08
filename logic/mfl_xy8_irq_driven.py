@@ -69,6 +69,8 @@ class MFL_IRQ_Driven(GenericLogic):
         self.is_no_qudi = False             # run in own thread, avoid all calls to qudi
 
         self.jumptable = None
+        self.n_taus = 0             # for 2d jumptables
+        self.n_ns = 0
 
         # handles to hw
         self.nicard = None
@@ -271,7 +273,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def init_mfl_algo(self, **kwargs):
 
-        t2star_s = kwargs.get('t2star_s', None)
+        t2star_s = kwargs.get('t2_s', None)
         freq_max_mhz = kwargs.get('freq_max_mhz', 10)
         eta_assym = kwargs.get('eta_assym', 1)
         resample_a = kwargs.get('resample_1', 0.98)
@@ -391,8 +393,10 @@ class MFL_IRQ_Driven(GenericLogic):
             taus = seq.measurement_information['controlled_variable_virtual']   # needs to be added in generation method
         elif mes_var.ndim == 3:
             tau_n_arr = seq.measurement_information['controlled_variable_virtual']
-            taus = tau_n_arr[0][:]
-            ns = tau_n_arr[1][:]
+            self.n_taus = len(tau_n_arr[0][:,0])
+            self.n_ns = len(tau_n_arr[0][0, :])
+            taus = tau_n_arr[0][:].flatten()
+            ns = tau_n_arr[1][:].flatten()
         else:
             self.log.error("Couldn't understand controlled variable of dim {} for creating jumptable.".format(mes_var.ndim))
             return
@@ -405,7 +409,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
         t_seqs = self.pull_t_seq_list(ens, seq.ensemble_list, pg_settting)
 
-        # get all sequence steps that correspond to a tau
+        # get all sequence steps that correspond to a tau (have a jump name)
         seqsteps = [(i, el) for (i, el) in enumerate(seq.ensemble_list) if jumpseq_name in el['ensemble']]
 
         if len(taus) != len(seqsteps) or len(taus) != len(t_seqs):
@@ -424,7 +428,8 @@ class MFL_IRQ_Driven(GenericLogic):
         if mes_var.ndim == 1:
             self.set_jumptable(jumptable, taus, t_seqs, phase_list=phases)
         elif mes_var.ndim == 3:
-            self.set_jumptable_2d(jumptable, taus.flatten(), t_seqs, ns.flatten(), phase_list=phases)
+            self.set_jumptable_2d(jumptable, taus, t_seqs, ns, phase_list=phases)
+
 
     def pull_t_seq_list(self, ens_dict_all, active_ensembles, pulse_generator_settings):
         """
@@ -925,6 +930,12 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return tau
 
+    def calc_n_from_posterior(self):
+        # todo: is n_xy8 order or n_pi!?
+        # todo: implement heuristic
+
+        return np.random.randint(1,5)
+
     def calc_phase_from_posterior(self):
         # normal MFL: readout phase = 0
         # overwrite fucntion if needed
@@ -961,12 +972,21 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return phase_real
 
-    def calc_jump_addr(self, tau, last_tau=None, readout_phase=None):
+    def calc_jump_addr(self, tau, n, last_tau=None, readout_phase=None):
 
-        # normal mode: find closest tau in jumptable
-        idx_jumptable, val = self._find_nearest(self.jumptable['tau'], tau)
+        _, n_val = self._find_nearest(self.jumptable['n'], n)
+        jumptable_filter_n = [el[0] for el in zip(self.jumptable['tau'], self.jumptable['n']) if el[1] == n_val]
+        _, tau_val = self._find_nearest(jumptable_filter_n, tau)
+
+        try:
+            idx_jumptable = list(zip(self.jumptable['tau'], self.jumptable['n'])).index((tau_val, n_val))
+        except ValueError as e:
+            self.log.error("Couldn't find next (tau, n). {}".format(str(e)))
+
+
         if self.is_calibmode_lintau:
             # calibration mode: play taus linear after each other
+            self.logger.warning("Untested code: Calibmode for XY8")
             idx_jumptable, val = self._find_next_greatest(self.jumptable['tau'], last_tau)
             if idx_jumptable is -1:
                 self.log.warning("No next greatest tau. Repeating from smallest tau.")
@@ -976,7 +996,7 @@ class MFL_IRQ_Driven(GenericLogic):
         # search all phases for idx assuming that taus are ordered
         i_last = idx_jumptable
         while i_last < len(self.jumptable['tau']):
-            if self.jumptable['tau'][i_last] != val:
+            if self.jumptable['tau'][i_last] != tau_val:
                 break
             i_last += 1
 
@@ -986,12 +1006,14 @@ class MFL_IRQ_Driven(GenericLogic):
                                                           idx_start=idx_jumptable, idx_end=i_last)
         except KeyError:
             pass   # no readout phase available in jumptable
+        if val_phase != 0.:
+            self.logger.warning("Untested code: Readout phases for XY8")
 
         addr = self.jumptable['jump_address'][idx_jumptable]
         name_seqstep = self.jumptable['name'][idx_jumptable]
         if not self.nolog_callback:
-            self.log.info("Finding next tau {} ns (req: {}), read_phase= {:.2f} in {} at jump address {} (0b{:012b})".
-                          format(1e9*val, 1e9*tau, val_phase, name_seqstep, addr, addr))
+            self.log.info("Finding next tau= {} ns (req: {}), next n= {} (req: {}), read_phase= {:.2f} in {} at jump address {} (0b{:012b})".
+                          format(1e9*tau_val, 1e9*tau_val, n_val, n, val_phase, name_seqstep, addr, addr))
 
         return idx_jumptable, addr
 
@@ -1136,7 +1158,9 @@ class MFL_IRQ_Driven(GenericLogic):
         # for next epoch
         tau_new_req = self.calc_tau_from_posterior()
         phase_new_req = self.calc_phase_from_posterior()
-        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, last_tau, readout_phase=phase_new_req)
+        n_new_req = self.calc_n_from_posterior()
+
+        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, n_new_req, last_tau=last_tau, readout_phase=phase_new_req)
         real_tau, t_seq = self.get_ts(idx_jumptable)
         real_phase = self.get_phase(idx_jumptable)
 
@@ -1490,12 +1514,12 @@ if __name__ == '__main__':
 
         return success
 
-    def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh, t2star_s=None, calibmode_lintau=False, freq_max_mhz=10
-                                  , meta_dict=None, nowait_callback=False, eta_assym=1):
+    def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh, t2_s=None, calibmode_lintau=False, freq_max_mhz=10,
+                                  meta_dict=None, nowait_callback=False, eta_assym=1):
 
         nolog = False # not calibmode_lintau
 
-        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
+        mfl_logic.init('mfl_xy8_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
                        calibmode_lintau=calibmode_lintau, nowait_callback=nowait_callback)
         mfl_logic.meta_dict = meta_dict
 
@@ -1508,11 +1532,11 @@ if __name__ == '__main__':
         tau_first, t_seq_first = mfl_logic.get_ts(idx_jumptable_first)
         # shortest tau mfl algo may choose, problem: shorter than tau_first causes rounding issues
 
-        logger.info("Setting up mfl started at {}. n_sweeps= {}, n_epochs={}, z_thresh={}, t2star= {} us. First tau from flat prior {} ns, freq_max= {} Mhz, eta_assym= {}, Meta: {}".format(
-                meta['t_start'], n_sweeps, n_epochs, z_thresh, t2star_s*1e6 if t2star_s is not None else None,
+        logger.info("Setting up mfl started at {}. n_sweeps= {}, n_epochs={}, z_thresh={}, t2= {} us. First tau from flat prior {} ns, freq_max= {} Mhz, eta_assym= {}, Meta: {}".format(
+                meta['t_start'], n_sweeps, n_epochs, z_thresh, t2_s*1e6 if t2_s is not None else None,
                 1e9*tau_first, freq_max_mhz, eta_assym, meta_dict))
 
-        mfl_logic.setup_new_run(tau_first, tau_first_req, t_first_seq=t_seq_first, t2star_s=t2star_s,
+        mfl_logic.setup_new_run(tau_first, tau_first_req, t_first_seq=t_seq_first, t2star_s=t2_s,
                                 freq_max_mhz=freq_max_mhz, eta_assym=eta_assym)
 
         if mfl_logic._cur_pull_data_method is 'gated_2d':
@@ -1575,7 +1599,7 @@ if __name__ == '__main__':
     Run in sepearte thread
     """
     #"""
-    logger.info("Setting up mfl irq driven in own thread.")
+    logger.info("Setting up mfl xy8 irq driven in own thread.")
     logger.info("Waiting for new mes params. Now start mfl from qudi/jupyter notebook.")
     wait_for_correct_metafile(mfl_logic.qudi_vars_metafile)
     params, _, meta = import_mfl_params(mfl_logic.qudi_vars_metafile)
@@ -1585,8 +1609,8 @@ if __name__ == '__main__':
     #meta = {'t_start':0}
 
     setup_mfl_seperate_thread(n_epochs=params['n_epochs'], n_sweeps=params['n_sweeps'], z_thresh=params['z_thresh'],
-                              t2star_s=params['t2star'], calibmode_lintau=params['calibmode_lintau'],
-                              freq_max_mhz=params['freq_max_mhz'], eta_assym=params['eta_assym'],
+                              t2_s=params['t2'], calibmode_lintau=params['calibmode_lintau'],
+                              freq_max_mhz=params['freq_max_mhz'],
                               meta_dict=meta, nowait_callback=params['nowait_callback'])
     join_mfl_seperate_thread()
 
