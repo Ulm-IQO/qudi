@@ -20,21 +20,20 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-from collections import OrderedDict
-from itertools import combinations
+
 import time
+import copy
 import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import copy
+from qtpy import QtCore
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from core.connector import Connector
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
+from qudi.core.module import LogicBase
+from qudi.core.util.mutex import Mutex
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
 
 
 class ScanData:
@@ -203,7 +202,7 @@ class ScanData:
         return
 
 
-class ScanningProbeLogic(GenericLogic):
+class ScanningProbeLogic(LogicBase):
     """
     This is the Logic class for 1D/2D SPM measurements.
     Scanning in this context means moving something along 1 or 2 dimensions and collecting data from
