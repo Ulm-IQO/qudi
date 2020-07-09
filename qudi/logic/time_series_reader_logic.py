@@ -22,18 +22,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 import numpy as np
 import datetime as dt
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.configoption import ConfigOption
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from core.util.units import ScaledFloat
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
+from qudi.core.module import LogicBase
+from qudi.core.util.mutex import Mutex
 from qudi.interface.data_instream_interface import StreamChannelType, StreamingMode
 
 
-class TimeSeriesReaderLogic(GenericLogic):
+class TimeSeriesReaderLogic(LogicBase):
     """
     This logic module gathers data from a hardware streaming device.
 
@@ -55,7 +54,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
     # declare connectors
     _streamer_con = Connector(interface='DataInStreamInterface')
-    _savelogic_con = Connector(interface='SaveLogic')
+    # _savelogic_con = Connector(interface='SaveLogic')
 
     # config options
     _max_frame_rate = ConfigOption('max_frame_rate', default=10, missing='warn')
@@ -99,7 +98,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         """
         # Store references to connected modules
         self._streamer = self._streamer_con()
-        self._savelogic = self._savelogic_con()
+        # self._savelogic = self._savelogic_con()
 
         # Flag to stop the loop and process variables
         self._stop_requested = True
@@ -670,58 +669,59 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         @return dict parameters: Dictionary which contains the saving parameters
         """
-        if not self._recorded_data:
-            self.log.error('No data has been recorded. Save to file failed.')
-            return np.empty(0), dict()
-
-        data_arr = np.concatenate(self._recorded_data, axis=1)
-        if data_arr.size == 0:
-            self.log.error('No data has been recorded. Save to file failed.')
-            return np.empty(0), dict()
-
-        saving_stop_time = self._record_start_time + dt.timedelta(
-            seconds=data_arr.shape[1] * self.data_rate)
-
-        # write the parameters:
-        parameters = dict()
-        parameters['Start recoding time'] = self._record_start_time.strftime(
-            '%d.%m.%Y, %H:%M:%S.%f')
-        parameters['Stop recoding time'] = saving_stop_time.strftime('%d.%m.%Y, %H:%M:%S.%f')
-        parameters['Data rate (Hz)'] = self.data_rate
-        parameters['Oversampling factor (samples)'] = self.oversampling_factor
-        parameters['Sampling rate (Hz)'] = self.sampling_rate
-
-        if to_file:
-            # If there is a postfix then add separating underscore
-            filelabel = 'data_trace_{0}'.format(name_tag) if name_tag else 'data_trace'
-
-            # prepare the data in a dict:
-            header = ', '.join(
-                '{0} ({1})'.format(ch, unit) for ch, unit in self.active_channel_units.items())
-
-            data = {header: data_arr.transpose()}
-            filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
-            set_of_units = set(self.active_channel_units.values())
-            unit_list = tuple(self.active_channel_units)
-            y_unit = 'arb.u.'
-            occurrences = 0
-            for unit in set_of_units:
-                count = unit_list.count(unit)
-                if count > occurrences:
-                    occurrences = count
-                    y_unit = unit
-
-            fig = self._draw_figure(data_arr, self.data_rate, y_unit) if save_figure else None
-
-            self._savelogic.save_data(data=data,
-                                      filepath=filepath,
-                                      parameters=parameters,
-                                      filelabel=filelabel,
-                                      plotfig=fig,
-                                      delimiter='\t',
-                                      timestamp=saving_stop_time)
-            self.log.info('Time series saved to: {0}'.format(filepath))
-        return data_arr, parameters
+        pass
+        # if not self._recorded_data:
+        #     self.log.error('No data has been recorded. Save to file failed.')
+        #     return np.empty(0), dict()
+        #
+        # data_arr = np.concatenate(self._recorded_data, axis=1)
+        # if data_arr.size == 0:
+        #     self.log.error('No data has been recorded. Save to file failed.')
+        #     return np.empty(0), dict()
+        #
+        # saving_stop_time = self._record_start_time + dt.timedelta(
+        #     seconds=data_arr.shape[1] * self.data_rate)
+        #
+        # # write the parameters:
+        # parameters = dict()
+        # parameters['Start recoding time'] = self._record_start_time.strftime(
+        #     '%d.%m.%Y, %H:%M:%S.%f')
+        # parameters['Stop recoding time'] = saving_stop_time.strftime('%d.%m.%Y, %H:%M:%S.%f')
+        # parameters['Data rate (Hz)'] = self.data_rate
+        # parameters['Oversampling factor (samples)'] = self.oversampling_factor
+        # parameters['Sampling rate (Hz)'] = self.sampling_rate
+        #
+        # if to_file:
+        #     # If there is a postfix then add separating underscore
+        #     filelabel = 'data_trace_{0}'.format(name_tag) if name_tag else 'data_trace'
+        #
+        #     # prepare the data in a dict:
+        #     header = ', '.join(
+        #         '{0} ({1})'.format(ch, unit) for ch, unit in self.active_channel_units.items())
+        #
+        #     data = {header: data_arr.transpose()}
+        #     filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
+        #     set_of_units = set(self.active_channel_units.values())
+        #     unit_list = tuple(self.active_channel_units)
+        #     y_unit = 'arb.u.'
+        #     occurrences = 0
+        #     for unit in set_of_units:
+        #         count = unit_list.count(unit)
+        #         if count > occurrences:
+        #             occurrences = count
+        #             y_unit = unit
+        #
+        #     fig = self._draw_figure(data_arr, self.data_rate, y_unit) if save_figure else None
+        #
+        #     self._savelogic.save_data(data=data,
+        #                               filepath=filepath,
+        #                               parameters=parameters,
+        #                               filelabel=filelabel,
+        #                               plotfig=fig,
+        #                               delimiter='\t',
+        #                               timestamp=saving_stop_time)
+        #     self.log.info('Time series saved to: {0}'.format(filepath))
+        # return data_arr, parameters
 
     def _draw_figure(self, data, timebase, y_unit):
         """ Draw figure to save with data file.
@@ -730,23 +730,24 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        # Use qudi style
-        plt.style.use(self._savelogic.mpl_qd_style)
-
-        # Create figure and scale data
-        max_abs_value = ScaledFloat(max(data.max(), np.abs(data.min())))
-        time_data = np.arange(data.shape[1]) / timebase
-        fig, ax = plt.subplots()
-        if max_abs_value.scale:
-            ax.plot(time_data,
-                    data.transpose() / max_abs_value.scale_val,
-                    linestyle=':',
-                    linewidth=0.5)
-        else:
-            ax.plot(time_data, data.transpose(), linestyle=':', linewidth=0.5)
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Signal ({0}{1})'.format(max_abs_value.scale, y_unit))
-        return fig
+        pass
+        # # Use qudi style
+        # plt.style.use(self._savelogic.mpl_qd_style)
+        #
+        # # Create figure and scale data
+        # max_abs_value = ScaledFloat(max(data.max(), np.abs(data.min())))
+        # time_data = np.arange(data.shape[1]) / timebase
+        # fig, ax = plt.subplots()
+        # if max_abs_value.scale:
+        #     ax.plot(time_data,
+        #             data.transpose() / max_abs_value.scale_val,
+        #             linestyle=':',
+        #             linewidth=0.5)
+        # else:
+        #     ax.plot(time_data, data.transpose(), linestyle=':', linewidth=0.5)
+        # ax.set_xlabel('Time (s)')
+        # ax.set_ylabel('Signal ({0}{1})'.format(max_abs_value.scale, y_unit))
+        # return fig
 
     @QtCore.Slot()
     def save_trace_snapshot(self, to_file=True, name_tag='', save_figure=True):
@@ -761,33 +762,34 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         This method saves the already displayed counts to file and does not accumulate them.
         """
-        with self.threadlock:
-            timestamp = dt.datetime.now()
-
-            # write the parameters:
-            parameters = dict()
-            parameters['Time stamp'] = timestamp.strftime('%d.%m.%Y, %H:%M:%S.%f')
-            parameters['Data rate (Hz)'] = self.data_rate
-            parameters['Oversampling factor (samples)'] = self.oversampling_factor
-            parameters['Sampling rate (Hz)'] = self.sampling_rate
-
-            header = ', '.join(
-                '{0} ({1})'.format(ch, unit) for ch, unit in self.active_channel_units.items())
-            data_offset = self._trace_data.shape[1] - self.moving_average_width // 2
-            data = {header: self._trace_data[:, :data_offset].transpose()}
-
-            if to_file:
-                filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
-                filelabel = 'data_trace_snapshot_{0}'.format(
-                    name_tag) if name_tag else 'data_trace_snapshot'
-                self._savelogic.save_data(data=data,
-                                          filepath=filepath,
-                                          parameters=parameters,
-                                          filelabel=filelabel,
-                                          timestamp=timestamp,
-                                          delimiter='\t')
-                self.log.info('Time series snapshot saved to: {0}'.format(filepath))
-        return data, parameters
+        pass
+        # with self.threadlock:
+        #     timestamp = dt.datetime.now()
+        #
+        #     # write the parameters:
+        #     parameters = dict()
+        #     parameters['Time stamp'] = timestamp.strftime('%d.%m.%Y, %H:%M:%S.%f')
+        #     parameters['Data rate (Hz)'] = self.data_rate
+        #     parameters['Oversampling factor (samples)'] = self.oversampling_factor
+        #     parameters['Sampling rate (Hz)'] = self.sampling_rate
+        #
+        #     header = ', '.join(
+        #         '{0} ({1})'.format(ch, unit) for ch, unit in self.active_channel_units.items())
+        #     data_offset = self._trace_data.shape[1] - self.moving_average_width // 2
+        #     data = {header: self._trace_data[:, :data_offset].transpose()}
+        #
+        #     if to_file:
+        #         filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
+        #         filelabel = 'data_trace_snapshot_{0}'.format(
+        #             name_tag) if name_tag else 'data_trace_snapshot'
+        #         self._savelogic.save_data(data=data,
+        #                                   filepath=filepath,
+        #                                   parameters=parameters,
+        #                                   filelabel=filelabel,
+        #                                   timestamp=timestamp,
+        #                                   delimiter='\t')
+        #         self.log.info('Time series snapshot saved to: {0}'.format(filepath))
+        # return data, parameters
 
     def _stop_reader_wait(self):
         """
