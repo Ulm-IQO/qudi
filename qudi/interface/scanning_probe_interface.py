@@ -431,4 +431,126 @@ class ScanData:
         return self._add_data(position, data, start_index, stop_index)
 
 
-# class ScanConstraints
+class ScannerChannel:
+    """
+    """
+    def __init__(self, name, unit='', dtype=np.float64):
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if len(name) < 1:
+            raise ValueError('Parameter "name" must be non-empty str.')
+        if not isinstance(unit, str):
+            raise TypeError('Parameter "unit" must be of type str.')
+        if not isinstance(dtype, type):
+            raise TypeError('Parameter "dtype" must be numpy-compatible type.')
+        self._name = name
+        self._unit = unit
+        self._dtype = dtype
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def copy(self):
+        return ScannerChannel(name=self._name, unit=self._unit, dtype=self._dtype)
+
+
+class ScannerAxis:
+    """
+    """
+
+    def __init__(self, name, unit='', min_value=-np.inf, max_value=np.inf, min_step=-np.inf,
+                 max_step=np.inf, min_resolution=1, max_resolution=np.inf):
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if len(name) < 1:
+            raise ValueError('Parameter "name" must be non-empty str.')
+        if not isinstance(unit, str):
+            raise TypeError('Parameter "unit" must be of type str.')
+        if not isinstance(min_resolution, int):
+            raise TypeError('Parameter "min_resolution" must be of type int.')
+        if not isinstance(max_resolution, int):
+            raise TypeError('Parameter "max_resolution" must be of type int.')
+        if max_resolution < min_resolution:
+            raise ValueError('Parameter "max_resolution" must be >= "min_resolution".')
+        if max_step < min_step:
+            raise ValueError('Parameter "max_step" must be >= "min_step".')
+        if max_value < min_value:
+            raise ValueError('Parameter "max_value" must be >= "min_value".')
+        self._name = name
+        self._unit = unit
+        self._resolution_bounds = (int(min_resolution), int(max_resolution))
+        self._step_bounds = (float(min_step), float(max_step))
+        self._value_bounds = (float(min_value), float(max_value))
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @property
+    def resolution_bounds(self):
+        return self._resolution_bounds
+
+    @property
+    def min_resolution(self):
+        return self._resolution_bounds[0]
+
+    @property
+    def max_resolution(self):
+        return self._resolution_bounds[1]
+
+    @property
+    def step_bounds(self):
+        return self._step_bounds
+
+    @property
+    def min_step(self):
+        return self._step_bounds[0]
+
+    @property
+    def max_step(self):
+        return self._step_bounds[1]
+
+    @property
+    def value_bounds(self):
+        return self._value_bounds
+
+    @property
+    def min_value(self):
+        return self._value_bounds[0]
+
+    @property
+    def max_value(self):
+        return self._value_bounds[1]
+
+    def copy(self):
+        return ScannerAxis(name=self._name,
+                           unit=self._unit,
+                           min_value=self.min_value,
+                           max_value=self.max_value,
+                           min_step=self.min_step,
+                           max_step=self.max_step,
+                           min_resolution=self.min_resolution,
+                           max_resolution=self.max_resolution)
+
+
+class ScanConstraints:
+    """
+    """
+    def __init__(self, constraints=None):
+        """ Copy constructor
+        """
+        self.data_channels
+        if isinstance(constraints, ScanConstraints):
