@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 import numpy as np
 import datetime as dt
-import time
 import matplotlib.pyplot as plt
 
 from core.connector import Connector
@@ -31,7 +30,7 @@ from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.util.units import ScaledFloat
-from interface.data_instream_interface import StreamChannelType, StreamingMode
+from qudi.interface.data_instream_interface import StreamChannelType, StreamingMode
 
 
 class TimeSeriesReaderLogic(GenericLogic):
@@ -599,7 +598,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         # Append data to save if necessary
         if self._data_recording_active:
-            self._recorded_data.append(data.copy())
+            self._recorded_data.append(data)
 
         data = data[:, -self._trace_data.shape[1]:]
         new_samples = data.shape[1]
@@ -681,7 +680,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             return np.empty(0), dict()
 
         saving_stop_time = self._record_start_time + dt.timedelta(
-            seconds=data_arr.shape[1] / self.data_rate)
+            seconds=data_arr.shape[1] * self.data_rate)
 
         # write the parameters:
         parameters = dict()
