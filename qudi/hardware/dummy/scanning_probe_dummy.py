@@ -22,9 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.scanning_probe_interface import ScanningProbeInterface, ScanSettings, ScanData
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.interface.scanning_probe_interface import ScanningProbeInterface, ScanSettings, ScanData
 
 
 class ScanningProbeDummy(Base, ScanningProbeInterface):

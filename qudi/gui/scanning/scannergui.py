@@ -20,26 +20,23 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
 import os
-import pyqtgraph as pg
 import time
+import numpy as np
+import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets
 
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.configoption import ConfigOption
-from qtwidgets.scan_plotwidget import ScanImageItem
-from qtwidgets.scientific_spinbox import ScienDSpinBox
-from qtwidgets.slider import DoubleSlider
-from qtwidgets.colorbar import ColorBarWidget
-from gui.guibase import GUIBase
-from gui.colordefs import ColorScaleInferno
-from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitParametersWidget
-from qtpy import QtCore
-from qtpy import QtGui
-from qtpy import QtWidgets
-from qtpy import uic
+import qudi.core.gui.uic as uic
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
+from qudi.core.gui.qtwidgets.scan_plotwidget import ScanImageItem
+from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
+from qudi.core.gui.qtwidgets.slider import DoubleSlider
+from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget
+from qudi.core.module import GuiBase
+from qudi.core.gui.colordefs import ColorScaleInferno
+from qudi.core.gui.colordefs import QudiPalettePale as palette
 
 
 class ConfocalMainWindow(QtWidgets.QMainWindow):
@@ -243,7 +240,7 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         return
 
 
-class ScannerGui(GUIBase):
+class ScannerGui(GuiBase):
     """ Main Confocal Class for xy and depth scans.
     """
     _modclass = 'ScannerGui'

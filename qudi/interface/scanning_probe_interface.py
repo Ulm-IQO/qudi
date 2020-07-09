@@ -24,8 +24,8 @@ import datetime
 import numpy as np
 from qtpy import QtCore
 
-from core.interface import abstract_interface_method
-from core.meta import InterfaceMetaclass
+from qudi.core.interface import abstract_interface_method
+from qudi.core.meta import InterfaceMetaclass
 
 
 class ScanningProbeInterface(metaclass=InterfaceMetaclass):
@@ -431,4 +431,4 @@ class ScanData:
         return self._add_data(position, data, start_index, stop_index)
 
 
-class ScanConstraints
+# class ScanConstraints
