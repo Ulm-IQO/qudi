@@ -21,15 +21,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import copy
-import numpy as np
 import time
+import numpy as np
 
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.helpers import natural_sort
-from interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
-from interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.core.util.helpers import natural_sort
+from qudi.interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
+from qudi.interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 
 
 class InStreamDummy(Base, DataInStreamInterface):
