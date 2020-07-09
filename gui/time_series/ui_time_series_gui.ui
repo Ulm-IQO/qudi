@@ -1,0 +1,575 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>780</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>qudi: Slow Counter</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>780</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="trace_view_selection_Action"/>
+    <addaction name="separator"/>
+    <addaction name="trace_view_Action"/>
+    <addaction name="trace_settings_view_Action"/>
+    <addaction name="trace_toolbar_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="restore_default_view_Action"/>
+   </widget>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="start_trace_Action"/>
+    <addaction name="record_trace_Action"/>
+    <addaction name="trace_snapshot_Action"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="channel_settings_Action"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuView"/>
+   <addaction name="menuSettings"/>
+  </widget>
+  <widget class="QDockWidget" name="data_trace_DockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>1</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>Data trace</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QGridLayout" name="gridLayout" columnstretch="2,0,1">
+     <item row="2" column="0" colspan="3">
+      <widget class="PlotWidget" name="data_trace_PlotWidget"/>
+     </item>
+     <item row="1" column="0" colspan="3">
+      <widget class="QLabel" name="curr_value_Label">
+       <property name="font">
+        <font>
+         <pointsize>60</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QComboBox" name="curr_value_comboBox">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="sizeAdjustPolicy">
+        <enum>QComboBox::AdjustToContents</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Current value channel:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="trace_settings_DockWidget">
+   <property name="maximumSize">
+    <size>
+     <width>524287</width>
+     <height>100</height>
+    </size>
+   </property>
+   <property name="windowTitle">
+    <string>Trace settings</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="toolTip">
+        <string>Length of the time window showing the data trace.</string>
+       </property>
+       <property name="text">
+        <string>Trace length:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ScienDSpinBox" name="trace_length_DoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>75</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Length of the time window showing the data trace.</string>
+       </property>
+       <property name="suffix">
+        <string>s</string>
+       </property>
+       <property name="maximum">
+        <double>1000000000000000013287555072.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>6.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>Rate at which data points occur within the data trace.
+The physical sampling rate is this value times the oversampling factor.</string>
+       </property>
+       <property name="text">
+        <string>Data rate:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ScienDSpinBox" name="data_rate_DoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>75</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Rate at which data points occur within the data trace.
+The physical sampling rate is this value times the oversampling factor.</string>
+       </property>
+       <property name="suffix">
+        <string>Hz</string>
+       </property>
+       <property name="maximum">
+        <double>10000000000000000000.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>50.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="toolTip">
+        <string>If bigger than 1, this number of samples is acquired for each period of data rate.
+The average over these samples is giving the value of the data point.
+In other words, the physical sampling rate is oversampling factor times data rate.</string>
+       </property>
+       <property name="text">
+        <string>Oversampling factor:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="oversampling_SpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>50</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>If bigger than 1, this number of samples is acquired for each period of data rate.
+The average over these samples is giving the value of the data point.
+In other words, the physical sampling rate is oversampling factor times data rate.</string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>10000</number>
+       </property>
+       <property name="value">
+        <number>1</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_4">
+       <property name="toolTip">
+        <string>The window size in samples of the moving average for each data trace.
+Must be an odd number to ensure perfect trace data alignment.</string>
+       </property>
+       <property name="text">
+        <string>Moving average window:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="moving_average_spinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>50</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>The window size in samples of the moving average for each data trace.
+Must be an odd number to ensure perfect trace data alignment.</string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="singleStep">
+        <number>2</number>
+       </property>
+       <property name="value">
+        <number>3</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QToolBar" name="trace_control_ToolBar">
+   <property name="windowTitle">
+    <string>Counting Controls</string>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="start_trace_Action"/>
+   <addaction name="record_trace_Action"/>
+   <addaction name="trace_snapshot_Action"/>
+   <addaction name="separator"/>
+   <addaction name="trace_view_selection_Action"/>
+   <addaction name="channel_settings_Action"/>
+  </widget>
+  <action name="start_trace_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>Start trace</string>
+   </property>
+   <property name="toolTip">
+    <string>Start/Stop continuous reading of the data trace.</string>
+   </property>
+  </action>
+  <action name="record_trace_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/22x22/stop-record-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>Start recording</string>
+   </property>
+   <property name="toolTip">
+    <string>Start/Stop trace recorder. This will continuously accumulate trace data and save it to file once it is stopped.</string>
+   </property>
+  </action>
+  <action name="trace_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Data trace</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the data trace.</string>
+   </property>
+  </action>
+  <action name="trace_settings_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Trace settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Show data trace settings.</string>
+   </property>
+  </action>
+  <action name="restore_default_view_Action">
+   <property name="text">
+    <string>Restore default</string>
+   </property>
+   <property name="toolTip">
+    <string>Restore the default view.</string>
+   </property>
+  </action>
+  <action name="trace_toolbar_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Trace toolbar</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the trace control toolbar.</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset>
+     <normaloff>../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="trace_snapshot_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/trace-snapshot.png</normaloff>../../artwork/icons/qudiTheme/22x22/trace-snapshot.png</iconset>
+   </property>
+   <property name="text">
+    <string>Take snapshot</string>
+   </property>
+   <property name="toolTip">
+    <string>Take a snapshot of the currently shown data trace and save it to file.</string>
+   </property>
+  </action>
+  <action name="trace_view_selection_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Trace view selection</string>
+   </property>
+   <property name="toolTip">
+    <string>Opens the trace view selection dialog to configure the data traces to show.</string>
+   </property>
+  </action>
+  <action name="channel_settings_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Channel settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Opens the channel settings dialog to configure the active data channels.</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>trace_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>data_trace_DockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>136</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>data_trace_DockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>trace_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>399</x>
+     <y>136</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>trace_settings_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>trace_settings_DockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>trace_settings_DockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>trace_settings_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>399</x>
+     <y>551</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>trace_toolbar_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>trace_control_ToolBar</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>trace_control_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>trace_toolbar_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>399</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionClose</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
