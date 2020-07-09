@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>qudi: Slow Counter</string>
+   <string>qudi: Time Series Viewer</string>
   </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
@@ -69,21 +69,11 @@
     <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QGridLayout" name="gridLayout" columnstretch="2,0,1">
-     <item row="2" column="0" colspan="3">
-      <widget class="PlotWidget" name="data_trace_PlotWidget"/>
-     </item>
-     <item row="1" column="0" colspan="3">
-      <widget class="QLabel" name="curr_value_Label">
-       <property name="font">
-        <font>
-         <pointsize>60</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
+    <layout class="QGridLayout" name="gridLayout" columnstretch="2,0,0">
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>0</string>
+        <string>Current value channel:</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -103,13 +93,39 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="label_5">
+     <item row="1" column="0" colspan="3">
+      <widget class="QLabel" name="curr_value_Label">
+       <property name="font">
+        <font>
+         <pointsize>60</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Current value channel:</string>
+        <string>0</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0" colspan="3">
+      <widget class="PlotWidget" name="data_trace_PlotWidget">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Plain</enum>
+       </property>
+       <property name="lineWidth">
+        <number>1</number>
+       </property>
+       <property name="interactive">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -332,8 +348,8 @@ Must be an odd number to ensure perfect trace data alignment.</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+     <normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
+     <normalon>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start trace</string>
@@ -348,8 +364,8 @@ Must be an odd number to ensure perfect trace data alignment.</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/22x22/stop-record-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
+     <normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>
+     <normalon>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/stop-record-counter.png</normalon>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start recording</string>
@@ -402,7 +418,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="actionClose">
    <property name="icon">
     <iconset>
-     <normaloff>../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+     <normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/oxygen/22x22/application-exit.png</normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>Close</string>
@@ -411,7 +427,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="trace_snapshot_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/trace-snapshot.png</normaloff>../../artwork/icons/qudiTheme/22x22/trace-snapshot.png</iconset>
+     <normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/trace-snapshot.png</normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/trace-snapshot.png</iconset>
    </property>
    <property name="text">
     <string>Take snapshot</string>
@@ -423,7 +439,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="trace_view_selection_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Trace view selection</string>
@@ -435,7 +451,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="channel_settings_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>C:/Development/qudi_pyside/pyside2/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Channel settings</string>
@@ -454,7 +470,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
+   <header>qudi.core.gui.qtwidgets.scientific_spinbox</header>
   </customwidget>
  </customwidgets>
  <resources/>

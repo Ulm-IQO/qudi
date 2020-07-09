@@ -22,14 +22,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import pyqtgraph as pg
+from qtpy import QtCore, QtWidgets
 
-from core.connector import Connector
-from core.configoption import ConfigOption
-from gui.colordefs import QudiPalettePale as palette
-from gui.guibase import GUIBase
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
+from qudi.core.gui.uic import loadUi
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.gui.colordefs import QudiPalettePale as palette
+from qudi.core.module import GuiBase
 from qudi.interface.data_instream_interface import StreamChannelType
 
 
@@ -43,8 +42,7 @@ class TimeSeriesMainWindow(QtWidgets.QMainWindow):
 
         # Load it
         super().__init__(**kwargs)
-        uic.loadUi(ui_file, self)
-        self.show()
+        loadUi(ui_file, self)
 
 
 class TimeSeriesSelectionDialog(QtWidgets.QDialog):
@@ -57,10 +55,10 @@ class TimeSeriesSelectionDialog(QtWidgets.QDialog):
 
         # Load it
         super().__init__(**kwargs)
-        uic.loadUi(ui_file, self)
+        loadUi(ui_file, self)
 
 
-class TimeSeriesGui(GUIBase):
+class TimeSeriesGui(GuiBase):
     """
     GUI module to be used in conjunction with TimeSeriesReaderLogic.
 
@@ -135,7 +133,6 @@ class TimeSeriesGui(GUIBase):
         self._pw.hideButtons()
         # Create second ViewBox to plot with two independent y-axes
         self._vb = pg.ViewBox()
-        self._vb.setXLink(self._pw)
         self._pw.scene().addItem(self._vb)
         self._pw.getAxis('right').linkToView(self._vb)
         self._vb.setXLink(self._pw)
@@ -241,6 +238,8 @@ class TimeSeriesGui(GUIBase):
             self.update_settings, QtCore.Qt.QueuedConnection)
         self._time_series_logic.sigStatusChanged.connect(
             self.update_status, QtCore.Qt.QueuedConnection)
+
+        self.show()
         return
 
     def show(self):
@@ -648,12 +647,13 @@ class TimeSeriesGui(GUIBase):
                              ''.format(channel))
             return
 
-        left_axis_items = self._pw.items()
-        if self.curves[channel] in left_axis_items:
+        if self.curves[channel] in self._vb.addedItems:
             self._vb.removeItem(self.curves[channel])
+        if self.curves[channel] in self._pw.items():
             self._pw.removeItem(self.curves[channel])
-        if self.averaged_curves[channel] in left_axis_items:
+        if self.averaged_curves[channel] in self._vb.addedItems:
             self._vb.removeItem(self.averaged_curves[channel])
+        if self.averaged_curves[channel] in self._pw.items():
             self._pw.removeItem(self.averaged_curves[channel])
 
         if show_data and not self._vsd_widgets[channel]['checkbox1'].isChecked():
