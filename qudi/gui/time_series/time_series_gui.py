@@ -30,7 +30,7 @@ from gui.guibase import GUIBase
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-from interface.data_instream_interface import StreamChannelType
+from qudi.interface.data_instream_interface import StreamChannelType
 
 
 class TimeSeriesMainWindow(QtWidgets.QMainWindow):
