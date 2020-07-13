@@ -20,12 +20,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import copy
 import datetime
 import numpy as np
-from qtpy import QtCore
 
 from qudi.core.interface import abstract_interface_method
 from qudi.core.meta import InterfaceMetaclass
+from qudi.core.util.mutex import RecursiveMutex
 
 
 class ScanningProbeInterface(metaclass=InterfaceMetaclass):
@@ -69,7 +70,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def move_relative(self, position, velocity=None):
+    def move_relative(self, distance, velocity=None):
         """ Move the scanning probe by a relative distance from the current target position as fast
         as possible or with a defined velocity.
 
@@ -280,155 +281,131 @@ class ScanData:
     """
     Object representing all data associated to a SPM measurement.
     """
-    # TODO: Automatic interpolation of irregular positional data onto rectangular grid
 
-    def __init__(self, axes_units, data_channel_units, scan_settings, timestamp=None):
+    def __init__(self, axes, channels, scan_axes, scan_range, scan_resolution,
+                 position_feedback=False, timestamp=None):
         """
 
-        @param dict axes_units: physical units for ALL axes. (No unit prefix)
-        @param dict data_channel_units: physical units for ALL data channels. (No unit prefix)
-        @param ScanSettings scan_settings: ScanSettings instance containing all scan parameters
+        @param ScannerAxis[] axes: all available ScannerAxis objects
+        @param ScannerChannel[] channels: the names for each data channel
+        @param str[] scan_axes: name of the axes involved in the scan
+        @param float[][2] scan_range: inclusive range for each scan axis
+        @param int[] scan_resolution: planned number of points for each scan axis
+        @param bool position_feedback: optional, if the scanner position is saved for each pixel
         @param datetime.datetime timestamp: optional, timestamp used for creation time
         """
         # Sanity checking
-        if not scan_settings.is_valid:
-            raise ValueError('ScanSettings instance contains invalid parameters.')
-        if not set(scan_settings.axes).issubset(axes_units):
-            raise ValueError('Invalid scan axes encountered. Valid axes are: {0}'
-                             ''.format(set(axes_units)))
-        if not set(scan_settings.data_channels).issubset(data_channel_units):
-            raise ValueError('Invalid data channels encountered. Valid channels are: {0}'
-                             ''.format(set(data_channel_units)))
-        if timestamp is not None and not isinstance(timestamp, datetime.datetime):
-            raise TypeError('Timestamp must be a datetime.datetime instance. You can create a '
-                            'timestamp by calling e.g. "datetime.datetime.now()"')
+        if len(scan_axes) != len(scan_range):
+            raise ValueError('Parameters "scan_axes" and "scan_range" must have same len. Given '
+                             '{0:d} and {1:d}, respectively.'.format(len(scan_axes),
+                                                                     len(scan_range)))
+        if len(scan_axes) != len(scan_resolution):
+            raise ValueError('Parameters "scan_axes" and "scan_resolution" must have same len. '
+                             'Given {0:d} and {1:d}, respectively.'.format(len(scan_axes),
+                                                                           len(scan_resolution)))
+        if not all(isinstance(ax, ScannerAxis) for ax in axes):
+            raise TypeError('Parameter "axes" must be iterable containing only ScannerAxis objects')
+        if not set(scan_axes).issubset(ax.name for ax in axes):
+            raise ValueError('Parameter "scan_axes" ({0}) must contain a subset of available axes.'
+                             ''.format(scan_axes))
+        if not all(len(ax_range) == 2 for ax_range in scan_range):
+            raise TypeError(
+                'Parameter "scan_range" must be iterable containing only value pairs (len=2).')
+        if not all(isinstance(res, (int, np.integer)) for res in scan_resolution):
+            raise TypeError(
+                'Parameter "scan_resolution" must be iterable containing only integers.')
+        if not all(isinstance(ch, ScannerChannel) for ch in channels):
+            raise TypeError(
+                'Parameter "channels" must be iterable containing only ScannerChannel objects.')
 
-        self._axes_units = axes_units.copy()
-        self._data_channel_units = data_channel_units.copy()
-        self._scan_settings = scan_settings.copy()
-        self.timestamp = datetime.datetime.now() if timestamp is None else timestamp
+        self._axes_units = {ax.name: ax.unit for ax in axes}
+        self._scan_axes = tuple(str(ax) for ax in scan_axes)
+        self._scan_range = {self._scan_axes[i]: (float(start), float(stop)) for i, (start, stop) in
+                            enumerate(scan_range)}
+        self._scan_resolution = {self._scan_axes[i]: int(res) for i, res in enumerate(scan_resolution)}
+        self._channel_units = {ch.name: ch.unit for ch in channels}
+        self._position_feedback = bool(position_feedback)
 
-        self.__data_size = int(np.prod(self._scan_settings.resolution))
-        if self._scan_settings.backscan_resolution is None:
-            self.__backscan_data_size = None
-        else:
-            self.__backscan_data_size = int(np.prod(
-                (self._scan_settings.backscan_resolution, *self._scan_settings.resolution[1:])))
-        self.__current_data_index = 0
-
-        # scan data
-        self._data = {ch: np.zeros(self.__data_size) for ch in self._scan_settings.data_channels}
-        if self.__backscan_data_size is None:
-            self._backscan_data = None
-        else:
-            self._backscan_data = {ch: np.zeros(self.__backscan_data_size) for ch in
-                                   self._scan_settings.data_channels}
-        # position data
-        if self._scan_settings.position_feedback:
-            self._position_data = {ax: np.zeros(self.__data_size) for ax in self._axes_units}
-            if self.__backscan_data_size is None:
-                self._backscan_position_data = None
-            else:
-                self._backscan_position_data = {ax: np.zeros(self.__backscan_data_size) for ax in
-                                                self._axes_units}
-        else:
-            self._position_data = None
-            self._backscan_position_data = None
+        self.timestamp = None
+        self._data = None
+        self._position_data = None
+        self.new_data(timestamp=timestamp)
+        # TODO: Automatic interpolation onto rectangular grid needs to be implemented
         return
 
     @property
     def scan_axes(self):
-        return self._scan_settings.axes
+        return self._scan_axes
 
     @property
-    def scan_ranges(self):
-        return self._scan_settings.ranges
+    def axes(self):
+        return tuple(self._axes_units)
+
+    @property
+    def axes_units(self):
+        return self._axes_units.copy()
+
+    @property
+    def scan_range(self):
+        return self._scan_range.copy()
 
     @property
     def scan_resolution(self):
-        return self._scan_settings.resolution
-
-    @property
-    def backscan_resolution(self):
-        if self._scan_settings.backscan_resolution is None:
-            return None
-        return (self._scan_settings.backscan_resolution, *self._scan_settings.resolution[1:])
-
-    @property
-    def scan_size(self):
-        return self.__data_size
-
-    @property
-    def backscan_size(self):
-        return self.__backscan_data_size
+        return self._scan_resolution.copy()
 
     @property
     def data_channels(self):
-        return self._scan_settings.data_channels
+        return tuple(self._channel_units)
 
     @property
     def data_channel_units(self):
-        return self._data_channel_units.copy()
+        return self._channel_units.copy()
 
     @property
     def data(self):
-        return self._data
-
-    @property
-    def backscan_data(self):
-        return self._backscan_data
+        return self._data.copy()
 
     @property
     def position_data(self):
-        return self._position_data
+        if self._position_feedback and self._position_data is not None:
+            return self._position_data.copy()
+        return None
 
-    @property
-    def backscan_position_data(self):
-        return self._backscan_position_data
+    def new_data(self, timestamp=None):
+        """
 
-    def add_data(self, data, position=None):
-        if position is None:
-            if self._scan_settings.position_feedback:
-                raise Exception('Positional data missing.')
-        elif set(position) != set(self._axes_units):
-            raise KeyError('position dict must contain all available axes {0}.'
-                           ''.format(set(self._axes_units)))
-        if set(data) != set(self._data_channel_units):
-            raise KeyError('data dict must contain all available channels {0}.'
-                           ''.format(set(self._data_channel_units)))
-
-        size = len(data[tuple(data)[0]])
-        stop_index = self.__current_data_index + size
-        # Extend pre-allocated data arrays if the amount of data exceeds the planned size to avoid
-        # data loss.
-        # ToDo: Maybe implement that. Throw error for now.
-        if stop_index > self.__data_size:
-            raise Exception('Scan data exceeding pre-allocated data array.')
-            # append_size = stop_index - self.__data_size
-            # print('Ooops... Planned scan size of {0:d} points exceeded by {1:d} points.'
-            #       ''.format(self.__data_size, append_size))
-            # for channel in self._channels:
-            #     self._data[channel] = np.append(self._data[channel], np.zeros(append_size))
-            # for axis in self._axes:
-            #     self._position_data[axis] = np.append(self._position_data[axis],
-            #                                           np.zeros(append_size))
-            # self.__data_size += append_size
-
-        # Add channel data
-        for channel, data_arr in data.items():
-            self._data[channel][self.__current_data_index:stop_index] = data_arr
-        # Add positional data
-        if position is not None:
-            for axis, pos_arr in position.items():
-                self._position_data[axis][self.__current_data_index:stop_index] = pos_arr
-
-        self.__current_data_index = stop_index
+        @param timestamp:
+        """
+        if timestamp is None:
+            self.timestamp = datetime.datetime.now()
+        elif isinstance(timestamp, datetime.datetime):
+            self.timestamp = timestamp
+        else:
+            raise TypeError('Parameter "timestamp" must be datetime.datetime object.')
+        if self._position_feedback:
+            self._position_data = {ax: np.zeros(self._scan_resolution) for ax in self._axes_units}
+        else:
+            self._position_data = None
+        self._data = {ch: np.zeros(self._scan_resolution) for ch in self._channel_units}
         return
 
-    def add_data_point(self, data, position=None):
-        start_index = self.__current_data_index
-        stop_index = self.__current_data_index + 1
-        return self._add_data(position, data, start_index, stop_index)
+    def add_line_data(self, data, line_index, start_index=0, position_data=None):
+        if set(data) != set(self._channel_units):
+            raise KeyError('data dict must contain all available data channels {0}.'
+                           ''.format(tuple(self._channel_units)))
+
+        stop_index = len(data[tuple(data)[0]]) + start_index
+
+        if self._position_feedback and position_data is not None:
+            if set(position_data) != set(self._axes_units):
+                raise KeyError('position_data dict must contain all available axes {0}.'
+                               ''.format(tuple(self._axes_units)))
+            for ax, arr in position_data.items():
+                self._position_data[ax][start_index:stop_index, line_index] = arr
+
+        for ch, arr in data.items():
+            self._data[ch][start_index:stop_index, line_index] = arr
+        return
 
 
 class ScannerChannel:
@@ -468,7 +445,8 @@ class ScannerAxis:
     """
 
     def __init__(self, name, unit='', min_value=-np.inf, max_value=np.inf, min_step=-np.inf,
-                 max_step=np.inf, min_resolution=1, max_resolution=np.inf):
+                 max_step=np.inf, min_resolution=1, max_resolution=np.inf, min_frequency=0,
+                 max_frequency=np.inf):
         if not isinstance(name, str):
             raise TypeError('Parameter "name" must be of type str.')
         if len(name) < 1:
@@ -485,11 +463,14 @@ class ScannerAxis:
             raise ValueError('Parameter "max_step" must be >= "min_step".')
         if max_value < min_value:
             raise ValueError('Parameter "max_value" must be >= "min_value".')
+        if max_frequency < min_frequency:
+            raise ValueError('Parameter "max_frequency" must be >= "min_frequency".')
         self._name = name
         self._unit = unit
         self._resolution_bounds = (int(min_resolution), int(max_resolution))
         self._step_bounds = (float(min_step), float(max_step))
         self._value_bounds = (float(min_value), float(max_value))
+        self._frequency_bounds = (float(min_frequency), float(max_frequency))
 
     @property
     def name(self):
@@ -535,6 +516,18 @@ class ScannerAxis:
     def max_value(self):
         return self._value_bounds[1]
 
+    @property
+    def frequency_bounds(self):
+        return self._frequency_bounds
+
+    @property
+    def min_frequency(self):
+        return self._frequency_bounds[0]
+
+    @property
+    def max_frequency(self):
+        return self._frequency_bounds[1]
+
     def copy(self):
         return ScannerAxis(name=self._name,
                            unit=self._unit,
@@ -543,14 +536,51 @@ class ScannerAxis:
                            min_step=self.min_step,
                            max_step=self.max_step,
                            min_resolution=self.min_resolution,
-                           max_resolution=self.max_resolution)
+                           max_resolution=self.max_resolution,
+                           min_frequency=self.min_frequency,
+                           max_frequency=self.max_frequency)
 
 
 class ScanConstraints:
     """
     """
-    def __init__(self, constraints=None):
-        """ Copy constructor
+
+    def __init__(self, axes, channels, backscan_configurable, has_position_feedback,
+                 square_px_only):
         """
-        self.data_channels
-        if isinstance(constraints, ScanConstraints):
+        """
+        if not all(isinstance(ax, ScannerAxis) for ax in axes):
+            raise TypeError('Parameter "axes" must be of type ScannerAxis.')
+        if not all(isinstance(ch, ScannerChannel) for ch in channels):
+            raise TypeError('Parameter "channels" must be of type ScannerChannel.')
+        if not isinstance(backscan_configurable, bool):
+            raise TypeError('Parameter "backscan_configurable" must be of type bool.')
+        if not isinstance(has_position_feedback, bool):
+            raise TypeError('Parameter "has_position_feedback" must be of type bool.')
+        if not isinstance(square_px_only, bool):
+            raise TypeError('Parameter "square_px_only" must be of type bool.')
+        self._axes = {ax.name for ax in axes}
+        self._channels = {ch.name for ch in channels}
+        self._backscan_configurable = bool(backscan_configurable)
+        self._has_position_feedback = bool(has_position_feedback)
+        self._square_px_only = bool(square_px_only)
+
+    @property
+    def axes(self):
+        return self._axes.copy()
+
+    @property
+    def channels(self):
+        return self._channels.copy()
+
+    @property
+    def backscan_configurable(self):
+        return self._backscan_configurable
+
+    @property
+    def has_position_feedback(self):
+        return self._has_position_feedback
+
+    @property
+    def square_px_only(self):
+        return self._square_px_only
