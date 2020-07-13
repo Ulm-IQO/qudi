@@ -36,172 +36,6 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 
 
-class ScanData:
-    """
-    Object representing all data associated to a SPM measurement.
-    """
-    def __init__(self, axes, axes_units, scan_axes, scan_range, scan_resolution, channels, channel_units, timestamp=None):
-        """
-
-        @param str[] axes: name of all available axes
-        @param str[] axes_units: physical units for all axes. No unit prefix allowed.
-        @param str[] scan_axes: name of the axes involved in the scan
-        @param float[][2] scan_range: inclusive range for each scan axis
-        @param int[] scan_resolution: planned number of points for each scan axis
-        @param str[] channels: the names for each data channel
-        @param str[] channel_units: physical unit for each data channel
-        @param datetime.datetime timestamp: optional, timestamp used for creation time
-        """
-        # Sanity checking
-        if len(axes) != len(axes_units):
-            raise ValueError('Parameters "axes" and "axes_units" must have same len. Given {0:d} '
-                             'and {1:d}, respectively.'.format(len(axes), len(axes_units)))
-        if len(scan_axes) != len(scan_range):
-            raise ValueError('Parameters "scan_axes" and "scan_range" must have same len. Given '
-                             '{0:d} and {1:d}, respectively.'.format(len(scan_axes),
-                                                                     len(scan_range)))
-        if len(scan_axes) != len(scan_resolution):
-            raise ValueError('Parameters "scan_axes" and "scan_resolution" must have same len. '
-                             'Given {0:d} and {1:d}, respectively.'.format(len(scan_axes),
-                                                                           len(scan_resolution)))
-        if len(channels) != len(channel_units):
-            raise ValueError('Parameters "channels" and "channel_units" must have same len. Given '
-                             '{0:d} and {1:d}, respectively.'.format(len(channels),
-                                                                     len(channel_units)))
-        if not all(isinstance(ax, str) for ax in axes):
-            raise TypeError('Parameter "axes" must be iterable containing only str type items')
-        if not all(isinstance(ax, str) for ax in scan_axes):
-            raise TypeError('Parameter "scan_axes" must be iterable containing only str type items')
-        if not all(ax in axes for ax in scan_axes):
-            raise ValueError('Parameter "scan_axes" ({0}) must contain a subset of "axes" ({1}).'
-                             ''.format(scan_axes, axes))
-        if not all(len(ax_range) == 2 for ax_range in scan_range):
-            raise TypeError(
-                'Parameter "scan_range" must be iterable containing only value pairs (len=2).')
-        if not all(isinstance(res, (int, np.integer)) for res in scan_resolution):
-            raise TypeError(
-                'Parameter "scan_resolution" must be iterable containing only integers.')
-        if not all(isinstance(unit, str) for unit in axes_units):
-            raise TypeError(
-                'Parameter "axes_units" must be iterable containing only str type items')
-        if not all(isinstance(ch, str) for ch in channels):
-            raise TypeError('Parameter "channels" must be iterable containing only str type items')
-        if not all(isinstance(unit, str) for unit in channel_units):
-            raise TypeError(
-                'Parameter "channel_units" must be iterable containing only str type items')
-
-        self._axes = tuple(str(ax) for ax in axes)
-        self._scan_axes = tuple(str(ax) for ax in scan_axes)
-        self._axes_units = {self._axes[i]: str(unit) for i, unit in enumerate(axes_units)}
-        self._ranges = {self._scan_axes[i]: (float(start), float(stop)) for i, (start, stop) in
-                        enumerate(scan_range)}
-        self._resolutions = {self._scan_axes[i]: int(res) for i, res in enumerate(scan_resolution)}
-        self._channels = tuple(str(ch) for ch in channels)
-        self._channel_units = {self._channels[i]: str(unit) for i, unit in enumerate(channel_units)}
-
-        self.timestamp = None
-        self._data = None
-        self._position_data = None
-        self.__data_size = None
-        self.__current_data_index = None
-        self.new_data(timestamp=timestamp)
-        # TODO: Automatic interpolation onto rectangular grid needs to be implemented
-        return
-
-    @property
-    def scan_axes(self):
-        return self._scan_axes
-
-    @property
-    def axes(self):
-        return self._axes
-
-    @property
-    def scan_ranges(self):
-        return self._ranges.copy()
-
-    @property
-    def scan_resolutions(self):
-        return self._resolutions.copy()
-
-    @property
-    def scan_size(self):
-        return self.__data_size
-
-    @property
-    def data_channels(self):
-        return self._channels
-
-    @property
-    def data_channel_units(self):
-        return self._channel_units.copy()
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def position_data(self):
-        return self._position_data
-
-    def new_data(self, timestamp=None):
-        """
-
-        @param timestamp:
-        """
-        self.__data_size = np.prod(tuple(self._resolutions.values()))
-        self.__current_data_index = 0
-        self._position_data = {ax: np.zeros(self.__data_size) for ax in self._axes}
-        self._data = {ch: np.zeros(self.__data_size) for ch in self._channels}
-        if timestamp is None:
-            self.timestamp = datetime.datetime.now()
-        elif isinstance(timestamp, datetime.datetime):
-            self.timestamp = timestamp
-        else:
-            raise TypeError('Parameter "timestamp" must be datetime.datetime object.')
-        return
-
-    def add_data_array(self, position, data):
-        start_index = self.__current_data_index
-        stop_index = self.__current_data_index + len(position[list(position)[0]])
-        return self._add_data(position, data, start_index, stop_index)
-
-    def add_data_point(self, position, data):
-        start_index = self.__current_data_index
-        stop_index = self.__current_data_index + 1
-        return self._add_data(position, data, start_index, stop_index)
-
-    def _add_data(self, position, data, start_index, stop_index):
-        if set(position) != set(self._axes):
-            raise KeyError('position dict must contain all available axes {0}.'.format(self._axes))
-        if set(data) != set(self._channels):
-            raise KeyError(
-                'data dict must contain all available channels {0}.'.format(self._channels))
-
-        # Extend pre-allocated data arrays if the amount of data exceeds the planned size to avoid
-        # data loss.
-        if stop_index > self.__data_size:
-            append_size = stop_index - self.__data_size
-            print('Ooops... Planned scan size of {0:d} points exceeded by {1:d} points.'
-                  ''.format(self.__data_size, append_size))
-            for channel in self._channels:
-                self._data[channel] = np.append(self._data[channel], np.zeros(append_size))
-            for axis in self._axes:
-                self._position_data[axis] = np.append(self._position_data[axis],
-                                                      np.zeros(append_size))
-            self.__data_size += append_size
-
-        # Add channel data
-        for channel, data_arr in data.items():
-            self._data[channel][start_index:stop_index] = data_arr
-        # Add positional data
-        for axis, pos_arr in position.items():
-            self._position_data[axis][start_index:stop_index] = pos_arr
-
-        self.__current_data_index = stop_index
-        return
-
-
 class ScanningProbeLogic(LogicBase):
     """
     This is the Logic class for 1D/2D SPM measurements.
@@ -211,16 +45,24 @@ class ScanningProbeLogic(LogicBase):
 
     # declare connectors
     scanner = Connector(interface='ScannerInterface')
-
-    savelogic = Connector(interface='SaveLogic')
+    # savelogic = Connector(interface='SaveLogic')
 
     # status vars
+    _scan_ranges = StatusVar(name='scan_ranges', default=None)
+    _scan_resolution = StatusVar(name='scan_resolution', default=None)
+    _scan_settings = StatusVar(name='scan_settings', default=None)
+    _scan_history = StatusVar(name='scan_history', default=list())
+
+    # config options
+    _max_history_length = ConfigOption(name='max_history_length', default=10)
 
     # signals
     sigScanStateChanged = QtCore.Signal(bool, tuple)
     sigScannerPositionChanged = QtCore.Signal(dict, object)
     sigScannerTargetChanged = QtCore.Signal(dict, object)
-    sigScannerSettingsChanged = QtCore.Signal(dict)
+    sigScanRangesChanged = QtCore.Signal(dict)
+    sigScanResolutionChanged = QtCore.Signal(dict)
+    sigScanSettingsChanged = QtCore.Signal(dict)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigScanDataChanged = QtCore.Signal(dict)
 
@@ -229,46 +71,7 @@ class ScanningProbeLogic(LogicBase):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.threadlock = Mutex()
-
-        # Create semi-random dummy constraints
-        self._constraints = dict()
-        self._constraints['data_channels'] = dict()
-        self._constraints['data_channels']['fluorescence'] = dict()
-        self._constraints['data_channels']['fluorescence']['unit'] = 'c/s'
-        self._constraints['data_channels']['unfug'] = dict()
-        self._constraints['data_channels']['unfug']['unit'] = 'bpm'
-        self._constraints['axes'] = dict()
-        for axis in ('x', 'y', 'z', 'phi'):
-            self._constraints['axes'][axis] = dict()
-            limit = 50e-6 + 50e-6 * np.random.rand()
-            self._constraints['axes'][axis]['min_value'] = -limit
-            self._constraints['axes'][axis]['max_value'] = limit
-            self._constraints['axes'][axis]['min_step'] = 1e-9
-            self._constraints['axes'][axis]['min_resolution'] = 2
-            self._constraints['axes'][axis]['max_resolution'] = np.inf
-            self._constraints['axes'][axis]['unit'] = 'm' if axis != 'phi' else '°'
-
-        # scanner settings
-        self._scanner_settings = dict()
-        self._scanner_settings['scan_axes'] = (*combinations(self.scanner_constraints['axes'],
-                                                                 2), ('x',))
-        self._scanner_settings['pixel_clock_frequency'] = 1000
-        self._scanner_settings['backscan_points'] = 50
-        self._scanner_settings['scan_resolution'] = dict()
-        self._scanner_settings['scan_range'] = dict()
-        for axis, constr_dict in self._constraints['axes'].items():
-            self._scanner_settings['scan_resolution'][axis] = np.random.randint(
-                max(constr_dict['min_resolution'], 100),
-                min(constr_dict['max_resolution'], 400) + 1)
-            self._scanner_settings['scan_range'][axis] = (constr_dict['min_value'],
-                                                          constr_dict['max_value'])
-
-        # Scanner target position
-        self._target = dict()
-        for axis, axis_dict in self.scanner_constraints['axes'].items():
-            extent = axis_dict['max_value'] - axis_dict['min_value']
-            self._target[axis] = axis_dict['min_value'] + extent * np.random.rand()
+        self._thread_lock = Mutex()
 
         # Optimizer settings
         self._optimizer_settings = dict()
@@ -283,19 +86,7 @@ class ScanningProbeLogic(LogicBase):
         self._optimizer_settings['axes']['phi'] = {'resolution': 15, 'range': 1e-6}
 
         # Scan history
-        self._history = list()
-        self._history_index = 0
-        self.max_history_length = 10
-
-        # Scan data buffer
-        self._current_dummy_data = None
-        self._scan_data = dict()
-        for axes in self._scanner_settings['scan_axes']:
-            self._scan_data[tuple(axes)] = ScanData(
-                scan_axes=axes,
-                channel_config=self.scanner_constraints['data_channels'],
-                scanner_settings=self.scanner_settings)
-            self._scan_data[tuple(axes)].new_data()
+        self._curr_history_index = 0
 
         # others
         self.__timer = None
@@ -310,11 +101,17 @@ class ScanningProbeLogic(LogicBase):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.__timer = QtCore.QTimer()
-        self.__timer.setInterval(500)
-        self.__timer.setSingleShot(False)
-        self.__timer.timeout.connect(self.notify_scanner_position_change)
-        self.__timer.start()
+        constr = self.scanner_constraints
+
+        # scanner settings
+        if not isinstance(self._scan_ranges, dict):
+            self._scan_ranges = {ax.name: ax.value_bounds for ax in constr.axes.values()}
+        if not isinstance(self._scan_resolution, dict):
+            self._scan_resolution = {ax.name: max(ax.min_resolution, min(128, ax.max_resolution))
+                                     for ax in constr.axes.values()}
+        if not isinstance(self._scan_settings, dict):
+            self._scan_settings = {
+                'frequency': min(ax.max_frequency for ax in constr.axes.values())}
 
         self.__scan_line_count = 0
         self.__running_scan = None
@@ -322,6 +119,12 @@ class ScanningProbeLogic(LogicBase):
         self.__scan_line_interval = None
         self.__scan_stop_requested = True
         self.__sigNextLine.connect(self._scan_loop, QtCore.Qt.QueuedConnection)
+
+        self.__timer = QtCore.QTimer()
+        self.__timer.setInterval(500)
+        self.__timer.setSingleShot(True)
+        self.__timer.timeout.connect(self.update_scanner_position)
+        self.__timer.start()
         return
 
     def on_deactivate(self):
@@ -334,21 +137,17 @@ class ScanningProbeLogic(LogicBase):
 
     @property
     def scan_data(self):
-        return self._scan_data.copy()
+        return self.scanner().get_scan_data()
 
     @property
     def scanner_position(self):
-        pos = dict()
-        for axis, value in self._target.items():
-            axis_range = abs(
-                self._constraints['axes'][axis]['max_value'] - self._constraints['axes'][axis][
-                    'min_value'])
-            pos[axis] = value + (np.random.rand() - 0.5) * axis_range * 0.01
-        return pos
+        with self._thread_lock:
+            return self.scanner().get_position()
 
     @property
     def scanner_target(self):
-        return self._target.copy()
+        with self._thread_lock:
+            return self.scanner().get_target()
 
     @property
     def scanner_axes_names(self):
@@ -356,68 +155,85 @@ class ScanningProbeLogic(LogicBase):
 
     @property
     def scanner_constraints(self):
-        return self._constraints.copy()
+        return self.scanner().get_constrainst()
 
     @property
-    def scanner_settings(self):
-        return self._scanner_settings.copy()
+    def scan_ranges(self):
+        with self._thread_lock:
+            return self._scan_ranges.copy()
+
+    @property
+    def scan_resolution(self):
+        with self._thread_lock:
+            return self._scan_resolution.copy()
+
+    @property
+    def scan_settings(self):
+        with self._thread_lock:
+            return self._scan_settings.copy()
 
     @property
     def optimizer_settings(self):
-        return self._optimizer_settings.copy()
+        with self._thread_lock:
+            return self._optimizer_settings.copy()
 
     @QtCore.Slot(dict)
-    def set_scanner_settings(self, settings):
-        if self.module_state() == 'locked':
-            self.log.warning('Scan is running. Unable to change scanner settings.')
-            return
+    def set_scan_range(self, ranges):
+        with self._thread_lock:
+            if self.module_state() == 'locked':
+                self.log.warning('Scan is running. Unable to change scan ranges.')
+                new_ranges = self.scan_ranges
+                self.sigScanRangesChanged.emit(new_ranges)
+                return new_ranges
 
-        if 'scan_axes' in settings:
-            for axes in settings['scan_axes']:
-                if not (0 < len(axes) < 3):
-                    self.log.error('Scan_axes must contain only tuples of len 1 or 2.')
-                    return
-                for axis in axes:
-                    if axis not in self._constraints['axes']:
-                        self.log.error('Axis "{0}" is no valid axis for scanner.'.format(axis))
-                        return
-            self._scanner_settings['scan_axes'] = tuple(settings['scan_axes'])
-        if 'pixel_clock_frequency' in settings:
-            if settings['pixel_clock_frequency'] < 1:
-                self.log.error('Pixel clock frequency must be integer number >= 1.')
-                return
-            self._scanner_settings['pixel_clock_frequency'] = int(settings['pixel_clock_frequency'])
-        if 'backscan_points' in settings:
-            if settings['backscan_points'] < 1:
-                self.log.error('Backscan points must be integer number >= 1.')
-                return
-            self._scanner_settings['backscan_points'] = int(settings['backscan_points'])
-        if 'scan_resolution' in settings:
-            for axis, res in settings['scan_resolution'].items():
-                if axis not in self._constraints['axes']:
-                    self.log.error('Axis "{0}" is no valid axis for scanner.'.format(axis))
-                    return
-                if res < self._constraints['axes'][axis]['min_resolution']:
-                    self.log.error('Resolution to set not within allowed boundaries.')
-                    return
-                elif res > self._constraints['axes'][axis]['max_resolution']:
-                    self.log.error('Resolution to set not within allowed boundaries.')
-                    return
-            self._scanner_settings['scan_resolution'].update(settings['scan_resolution'])
-        if 'scan_range' in settings:
-            for axis, range in settings['scan_range'].items():
-                if axis not in self._constraints['axes']:
-                    self.log.error('Axis "{0}" is no valid axis for scanner.'.format(axis))
-                    return
-                if min(range) < self._constraints['axes'][axis]['min_value']:
-                    self.log.error('Scan range to set not within allowed boundaries.')
-                    return
-                elif max(range) > self._constraints['axes'][axis]['max_value']:
-                    self.log.error('Resolution to set not within allowed boundaries.')
-                    return
-            self._scanner_settings['scan_range'].update(settings['scan_range'])
-        self.sigScannerSettingsChanged.emit(self.scanner_settings)
-        return
+            ax_constr = self.scanner_constraints.axes
+            for ax, ax_range in ranges.items():
+                if ax not in self._scan_ranges:
+                    self.log.error('Unknown axis "{0}" encountered.'.format(ax))
+                    new_ranges = self.scan_ranges
+                    self.sigScanRangesChanged.emit(new_ranges)
+                    return new_ranges
+
+                new_range = (
+                    min(ax_constr[ax].max_value, max(ax_constr[ax].min_value, ax_range[0])),
+                    min(ax_constr[ax].max_value, max(ax_constr[ax].min_value, ax_range[1]))
+                )
+                if new_range[0] > new_range[1]:
+                    new_range = (new_range[0], new_range[0])
+                self._scan_ranges[ax] = new_range
+
+            new_ranges = {ax: r for ax, r in self._scan_ranges if ax in ranges}
+            self.sigScanRangesChanged.emit(new_ranges)
+            return new_ranges
+
+    @QtCore.Slot(dict)
+    def set_scan_resolution(self, resolution):
+        with self._thread_lock:
+            if self.module_state() == 'locked':
+                self.log.warning('Scan is running. Unable to change scan resolution.')
+                new_res = self.scan_resolution
+                self.sigScanResolutionChanged.emit(new_res)
+                return new_res
+
+            ax_constr = self.scanner_constraints.axes
+            for ax, ax_res in resolution.items():
+                if ax not in self._scan_resolution:
+                    self.log.error('Unknown axis "{0}" encountered.'.format(ax))
+                    new_res = self.scan_resolution
+                    self.sigScanResolutionChanged.emit(new_res)
+                    return new_res
+
+                new_res = (
+                    min(ax_constr[ax].max_resolution, max(ax_constr[ax].min_resolution, ax_res[0])),
+                    min(ax_constr[ax].max_resolution, max(ax_constr[ax].min_resolution, ax_res[1]))
+                )
+                if new_res[0] > new_res[1]:
+                    new_res = (new_res[0], new_res[0])
+                self._scan_ranges[ax] = new_range
+
+            new_ranges = {ax: r for ax, r in self._scan_ranges if ax in ranges}
+            self.sigScanResolutionChanged.emit(new_ranges)
+            return new_ranges
 
     @QtCore.Slot(dict)
     def set_optimizer_settings(self, settings):
@@ -466,7 +282,7 @@ class ScanningProbeLogic(LogicBase):
 
     @QtCore.Slot(tuple, bool)
     def toggle_scan(self, scan_axes, start):
-        with self.threadlock:
+        with self._thread_lock:
             if start and self.module_state() != 'idle':
                 self.log.error('Unable to start scan. Scan already in progress.')
                 return
@@ -516,7 +332,7 @@ class ScanningProbeLogic(LogicBase):
         if self.module_state() != 'locked':
             return
 
-        with self.threadlock:
+        with self._thread_lock:
             if len(self.__running_scan) > 1:
                 max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[1]]
             else:
