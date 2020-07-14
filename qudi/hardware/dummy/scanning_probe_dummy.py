@@ -407,7 +407,8 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             self.log.debug('Scanning probe dummy "get_scan_data" called.')
             elapsed = time.time() - self.__scan_start
             line_time = self._current_scan_resolution[0] / self._current_scan_frequency
-            acquired_lines = int(np.floor(elapsed / line_time))
+            acquired_lines = min(int(np.floor(elapsed / line_time)),
+                                 self._current_scan_resolution[1])
             if acquired_lines > 0:
                 if self.__last_line < 0:
                     self.__last_line = 0
