@@ -44,7 +44,7 @@ class ScanningProbeLogic(LogicBase):
     """
 
     # declare connectors
-    scanner = Connector(interface='ScannerInterface')
+    _scanner = Connector(name='scanner', interface='ScanningProbeInterface')
     # savelogic = Connector(interface='SaveLogic')
 
     # status vars
@@ -55,6 +55,9 @@ class ScanningProbeLogic(LogicBase):
 
     # config options
     _max_history_length = ConfigOption(name='max_history_length', default=10)
+    _max_scan_update_interval = ConfigOption(name='max_scan_update_interval', default=2)
+    _min_scan_update_interval = ConfigOption(name='min_scan_update_interval', default=0.25)
+    _position_update_interval = ConfigOption(name='position_update_interval', default=0.5)
 
     # signals
     sigScanStateChanged = QtCore.Signal(bool, tuple)
@@ -64,9 +67,10 @@ class ScanningProbeLogic(LogicBase):
     sigScanResolutionChanged = QtCore.Signal(dict)
     sigScanSettingsChanged = QtCore.Signal(dict)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
-    sigScanDataChanged = QtCore.Signal(dict)
+    sigScanDataChanged = QtCore.Signal(object)
 
-    __sigNextLine = QtCore.Signal()
+    __sigStopTimer = QtCore.Signal()
+    __sigStartTimer = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -90,11 +94,8 @@ class ScanningProbeLogic(LogicBase):
 
         # others
         self.__timer = None
-        self.__scan_line_count = 0
-        self.__running_scan = None
-        self.__scan_start_time = 0
-        self.__scan_line_interval = None
-        self.__scan_line_positions = dict()
+        self.__current_scan = None
+        self.__scan_update_interval = 0
         self.__scan_stop_requested = True
         return
 
@@ -113,17 +114,15 @@ class ScanningProbeLogic(LogicBase):
             self._scan_settings = {
                 'frequency': min(ax.max_frequency for ax in constr.axes.values())}
 
-        self.__scan_line_count = 0
-        self.__running_scan = None
-        self.__scan_start_time = time.time()
-        self.__scan_line_interval = None
-        self.__scan_stop_requested = True
-        self.__sigNextLine.connect(self._scan_loop, QtCore.Qt.QueuedConnection)
+        self.__current_scan = None
+        self.__scan_update_interval = 0
 
         self.__timer = QtCore.QTimer()
-        self.__timer.setInterval(500)
+        self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
         self.__timer.setSingleShot(True)
-        self.__timer.timeout.connect(self.update_scanner_position)
+        self.__timer.timeout.connect(self._update_scanner_position_loop, QtCore.Qt.QueuedConnection)
+        self.__sigStartTimer.connect(self.__timer.start)
+        self.__sigStopTimer.connect(self.__timer.stop)
         self.__timer.start()
         return
 
@@ -132,22 +131,23 @@ class ScanningProbeLogic(LogicBase):
         """
         self.__timer.stop()
         self.__timer.timeout.disconnect()
-        self.__sigNextLine.disconnect()
+        self.__sigStartTimer.disconnect()
+        self.__sigStopTimer.disconnect()
         return
 
     @property
     def scan_data(self):
-        return self.scanner().get_scan_data()
+        return self._scanner().get_scan_data()
 
     @property
     def scanner_position(self):
         with self._thread_lock:
-            return self.scanner().get_position()
+            return self._scanner().get_position()
 
     @property
     def scanner_target(self):
         with self._thread_lock:
-            return self.scanner().get_target()
+            return self._scanner().get_target()
 
     @property
     def scanner_axes_names(self):
@@ -155,7 +155,7 @@ class ScanningProbeLogic(LogicBase):
 
     @property
     def scanner_constraints(self):
-        return self.scanner().get_constrainst()
+        return self._scanner().get_constraints()
 
     @property
     def scan_ranges(self):
@@ -182,7 +182,7 @@ class ScanningProbeLogic(LogicBase):
         with self._thread_lock:
             if self.module_state() == 'locked':
                 self.log.warning('Scan is running. Unable to change scan ranges.')
-                new_ranges = self.scan_ranges
+                new_ranges = self._scan_ranges.copy()
                 self.sigScanRangesChanged.emit(new_ranges)
                 return new_ranges
 
@@ -190,7 +190,7 @@ class ScanningProbeLogic(LogicBase):
             for ax, ax_range in ranges.items():
                 if ax not in self._scan_ranges:
                     self.log.error('Unknown axis "{0}" encountered.'.format(ax))
-                    new_ranges = self.scan_ranges
+                    new_ranges = self._scan_ranges.copy()
                     self.sigScanRangesChanged.emit(new_ranges)
                     return new_ranges
 
@@ -211,7 +211,7 @@ class ScanningProbeLogic(LogicBase):
         with self._thread_lock:
             if self.module_state() == 'locked':
                 self.log.warning('Scan is running. Unable to change scan resolution.')
-                new_res = self.scan_resolution
+                new_res = self._scan_resolution.copy()
                 self.sigScanResolutionChanged.emit(new_res)
                 return new_res
 
@@ -219,7 +219,7 @@ class ScanningProbeLogic(LogicBase):
             for ax, ax_res in resolution.items():
                 if ax not in self._scan_resolution:
                     self.log.error('Unknown axis "{0}" encountered.'.format(ax))
-                    new_res = self.scan_resolution
+                    new_res = self._scan_resolution.copy()
                     self.sigScanResolutionChanged.emit(new_res)
                     return new_res
 
@@ -229,11 +229,11 @@ class ScanningProbeLogic(LogicBase):
                 )
                 if new_res[0] > new_res[1]:
                     new_res = (new_res[0], new_res[0])
-                self._scan_ranges[ax] = new_range
+                self._scan_ranges[ax] = new_res
 
-            new_ranges = {ax: r for ax, r in self._scan_ranges if ax in ranges}
-            self.sigScanResolutionChanged.emit(new_ranges)
-            return new_ranges
+            new_resolution = {ax: r for ax, r in self._scan_ranges if ax in resolution}
+            self.sigScanResolutionChanged.emit(new_resolution)
+            return new_resolution
 
     @QtCore.Slot(dict)
     def set_optimizer_settings(self, settings):
@@ -264,238 +264,233 @@ class ScanningProbeLogic(LogicBase):
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
     def set_scanner_target_position(self, pos_dict, caller_id=None):
-        constr = self.scanner_constraints
-        for ax, pos in pos_dict.items():
-            if ax not in constr['axes']:
-                self.log.error('Unknown scanner axis: "{0}"'.format(ax))
-                return
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                self.log.error('Unable to change scanner target position while a scan is running.')
+                return self._scanner().get_target()
 
-        self._target.update(pos_dict)
-        self.sigScannerTargetChanged.emit(pos_dict, id(self) if caller_id is None else caller_id)
-        time.sleep(0.01)
-        self.notify_scanner_position_change()
-        return
+            ax_constr = self.scanner_constraints.axes
+            for ax, pos in pos_dict.items():
+                if ax not in ax_constr:
+                    self.log.error('Unknown scanner axis: "{0}"'.format(ax))
+                    return self._scanner().get_target()
+                tmp_val = ax_constr[ax].clip_value(pos)
+                if pos != tmp_val:
+                    self.log.warning('Scanner position target value out of bounds for axis "{0}". '
+                                     'Clipping value.'.format(ax))
+                    pos_dict[ax] = tmp_val
+
+            new_pos = self._scanner().move_absolute(pos_dict)
+            self.sigScannerTargetChanged.emit(new_pos, id(self) if caller_id is None else caller_id)
+            return
 
     @QtCore.Slot()
-    def notify_scanner_position_change(self):
-        self.sigScannerPositionChanged.emit(self.scanner_position, id(self))
+    def _update_scanner_position_loop(self):
+        with self._thread_lock:
+            if self.module_state() == 'idle':
+                self.sigScannerPositionChanged.emit(self._scanner().get_position(), id(self))
+                self._start_timer()
 
-    @QtCore.Slot(tuple, bool)
-    def toggle_scan(self, scan_axes, start):
+    @QtCore.Slot()
+    def update_scanner_position(self):
+        with self._thread_lock:
+            self.sigScannerPositionChanged.emit(self._scanner().get_position(), id(self))
+
+    @QtCore.Slot(bool)
+    @QtCore.Slot(bool, tuple)
+    def toggle_scan(self, start, scan_axes=None):
         with self._thread_lock:
             if start and self.module_state() != 'idle':
-                self.log.error('Unable to start scan. Scan already in progress.')
-                return
+                self.sigScanStateChanged.emit(True, self.__current_scan)
+                return 0
             elif not start and self.module_state() == 'idle':
-                self.log.error('Unable to stop scan. No scan running.')
-                return
+                self.sigScanStateChanged.emit(True, self.__current_scan)
+                return 0
 
             if start:
-                self.module_state.lock()
-                self.__timer.stop()
-                self.__running_scan = scan_axes
-                self.sigScanStateChanged.emit(True, self.__running_scan)
-                if len(scan_axes) > 1:
-                    self._current_dummy_data = self._generate_2d_dummy_data(scan_axes)
-                else:
-                    self._current_dummy_data = self.generate_1d_dummy_data(scan_axes[0])
-                self.__scan_line_count = 0
-                self.__scan_start_time = time.time()
-                self._scan_data[self.__running_scan] = ScanData(
-                    scan_axes=self.__running_scan,
-                    channel_config=self.scanner_constraints['data_channels'],
-                    scanner_settings=self.scanner_settings)
-                self._scan_data[self.__running_scan].new_data()
-                num_x_vals = self.scanner_settings['scan_resolution'][scan_axes[0]]
-                if len(scan_axes) > 1:
-                    self.__scan_line_interval = num_x_vals / self.scanner_settings[
-                        'pixel_clock_frequency']
-                    self.__scan_line_positions = {ax: np.full(num_x_vals, self.scanner_target[ax])
-                                                  for
-                                                  ax in self._constraints['axes']}
-                    min_val, max_val = self.scanner_settings['scan_range'][self.__running_scan[0]]
-                    self.__scan_line_positions[self.__running_scan[0]] = np.linspace(min_val,
-                                                                                     max_val,
-                                                                                     num_x_vals)
-                else:
-                    self.__scan_line_interval = 10 / self.scanner_settings['pixel_clock_frequency']
-                    self.__scan_line_positions = self.scanner_target.copy()
+                if scan_axes is None or not (0 < len(scan_axes) < 3):
+                    self.log.error('Unable to start scan. Scan axes must be tuple of len 1 or 2.')
+                    return -1
 
-                self.__scan_stop_requested = False
-                self.__sigNextLine.emit()
+                self.module_state.lock()
+
+                self.__current_scan = tuple(scan_axes)
+                settings = {'axes': tuple(scan_axes),
+                            'range': tuple(self._scan_ranges[ax] for ax in scan_axes),
+                            'resolution': tuple(self._scan_resolution[ax] for ax in scan_axes),
+                            'frequency': self._scan_settings['frequency']}
+                new_settings = self._scanner().configure_scan(settings)
+                if new_settings['axes'] != self.__current_scan:
+                    self.log.error('Something went wrong while configuring scanner. Axes to scan '
+                                   'returned by scanner {0} do not match the intended scan axes '
+                                   '{1}.'.format(new_settings['axes'], self.__current_scan))
+                    self.module_state.unlock()
+                    self.sigScanStateChanged.emit(False, self.__current_scan)
+                    return -1
+                for ax_index, ax in enumerate(scan_axes):
+                    # Update scan ranges if needed
+                    old = self._scan_ranges[ax]
+                    new = new_settings['range'][ax_index]
+                    if old[0] != new[0] or old[1] != new[1]:
+                        self._scan_ranges[ax] = tuple(new)
+                        self.sigScanRangesChanged.emit({ax: self._scan_ranges[ax]})
+
+                    # Update scan resolution if needed
+                    old = self._scan_resolution[ax]
+                    new = new_settings['resolution'][ax_index]
+                    if old != new:
+                        self._scan_resolution[ax] = int(new)
+                        self.sigScanResolutionChanged.emit({ax: self._scan_resolution[ax]})
+
+                # Update scan frequency if needed
+                old = self._scan_settings['frequency']
+                new = new_settings['frequency']
+                if old != new:
+                    self._scan_settings['frequency'] = float(new)
+                    self.sigScanSettingsChanged.emit(
+                        {'frequency': self._scan_settings['frequency']})
+
+                line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
+                self.__scan_update_interval = max(
+                    self._min_scan_update_interval,
+                    min(self._max_scan_update_interval,
+                        line_points / self._scan_settings['frequency'])
+                )
+
+                # Try to start scanner
+                if self._scanner().start_scan() < 0:
+                    self.log.error('Unable to start scanner.')
+                    self.module_state.unlock()
+                    self.sigScanStateChanged.emit(False, self.__current_scan)
+                    return -1
+
+                self.log.debug('Scanner successfully started')
+
+                self._stop_timer()
+                self.log.debug('Timer stopped')
+                self.__timer.timeout.disconnect()
+                self.__timer.setSingleShot(True)
+                self.__timer.setInterval(int(round(self.__scan_update_interval * 1000)))
+                self.__timer.timeout.connect(self._scan_loop, QtCore.Qt.QueuedConnection)
+                self.log.debug('Timer connected')
+                self.sigScanStateChanged.emit(True, self.__current_scan)
+                self.log.debug('Starting scan timer')
+                self._start_timer()
             else:
-                self.__scan_stop_requested = True
-        return
+                scan_data = self._scanner().get_scan_data()
+                while len(self._scan_history) >= self._max_history_length:
+                    self._scan_history.pop(0)
+                self._scan_history.append(scan_data)
+                self._curr_history_index = len(self._scan_history) - 1
+                self.sigScanDataChanged.emit(scan_data)
+                if self._scanner().stop_scan() < 0:
+                    self.log.error(
+                        'Unable to stop scan. Waiting for currently running scan to finish.')
+                    self.sigScanStateChanged.emit(True, self.__current_scan)
+                    return -1
+                self._stop_timer()
+                self.__timer.timeout.disconnect()
+                self.__timer.setSingleShot(True)
+                self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
+                self.__timer.timeout.connect(
+                    self._update_scanner_position_loop, QtCore.Qt.QueuedConnection)
+                self.module_state.unlock()
+                self.sigScanStateChanged.emit(False, self.__current_scan)
+                self._start_timer()
+            print('Returning from toggle')
+            return 0
 
     @QtCore.Slot()
     def _scan_loop(self):
-        if self.module_state() != 'locked':
-            return
-
+        print('SCAN LOOP')
         with self._thread_lock:
-            if len(self.__running_scan) > 1:
-                max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[1]]
-            else:
-                max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[0]]
-            if self.__scan_line_count >= max_number_of_lines or self.__scan_stop_requested:
-                while len(self._history) >= self.max_history_length:
-                    self._history.pop(0)
-                self._history.append(copy.deepcopy(self.scan_data[self.__running_scan]))
-                self._history_index = len(self._history) - 1
-                self.module_state.unlock()
-                self.sigScanStateChanged.emit(False, self.__running_scan)
-                self.__timer.start()
+            print('Scan loop in lock')
+            if self.module_state() != 'locked':
+                print('Module not locked.')
                 return
 
-            if len(self.__running_scan) > 1:
-                y_min, y_max = self.scanner_settings['scan_range'][self.__running_scan[1]]
-                self.__scan_line_positions[self.__running_scan[1]] = np.full(
-                    self.scanner_settings['scan_resolution'][self.__running_scan[0]],
-                    y_min + (y_max - y_min) / (max_number_of_lines - 1))
-            else:
-                x_min, x_max = self.scanner_settings['scan_range'][self.__running_scan[0]]
-                self.__scan_line_positions[self.__running_scan[0]] = x_min + (x_max - x_min) / (
-                            max_number_of_lines - 1)
+            scan_data = self._scanner().get_scan_data()
+            print('scan data:', scan_data)
+            # Terminate scan if finished
+            if scan_data.finished:
+                print('scan stopped')
+                if self._scanner().stop_scan() < 0:
+                    self.log.error('Unable to stop scan.')
+                self._stop_timer()
+                self.__timer.timeout.disconnect()
+                self.__timer.setSingleShot(True)
+                self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
+                self.__timer.timeout.connect(
+                    self._update_scanner_position_loop, QtCore.Qt.QueuedConnection)
+                self.module_state.unlock()
+                self.sigScanStateChanged.emit(False, self.__current_scan)
+                while len(self._scan_history) >= self._max_history_length:
+                    self._scan_history.pop(0)
+                self._scan_history.append(scan_data)
+                self._curr_history_index = len(self._scan_history) - 1
+                self._start_timer()
 
-            self.__scan_line_count += 1
-            next_line_time = self.__scan_start_time + self.__scan_line_count * self.__scan_line_interval
-            while time.time() < next_line_time:
-                time.sleep(0.1)
-
-            channels = self._scan_data[self.__running_scan].channel_names
-            if len(self.__running_scan) > 1:
-                scan_line = self._current_dummy_data[:, self.__scan_line_count - 1]
-                self._scan_data[self.__running_scan].add_line_data(
-                    position=self.__scan_line_positions,
-                    data={chnl: scan_line * (i+1) for i, chnl in enumerate(channels)},
-                    y_index=self.__scan_line_count-1)
-            else:
-                scan_point = self._current_dummy_data[self.__scan_line_count - 1]
-                self._scan_data[self.__running_scan].add_data_point(
-                    position=self.__scan_line_positions,
-                    data={chnl: scan_point * (i+1) for i, chnl in enumerate(channels)},
-                    index=self.__scan_line_count-1)
-
-            self.sigScanDataChanged.emit({self.__running_scan: self.scan_data[self.__running_scan]})
-            self.__sigNextLine.emit()
-        return
-
-    def _generate_2d_dummy_data(self, axes):
-        x_res = self._scanner_settings['scan_resolution'][axes[0]]
-        y_res = self._scanner_settings['scan_resolution'][axes[1]]
-        x_start = self._scanner_settings['scan_range'][axes[0]][0]
-        y_start = self._scanner_settings['scan_range'][axes[1]][0]
-        z_start = -5e-6
-        x_end = self._scanner_settings['scan_range'][axes[0]][1]
-        y_end = self._scanner_settings['scan_range'][axes[1]][1]
-        z_end = 5e-6
-        x_range = x_end - x_start
-        y_range = y_end - y_start
-        z_range = z_end - z_start
-
-        area_density = 1 / (5e-6 * 5e-6)
-
-        params = np.random.rand(round(area_density * x_range * y_range), 7)
-        params[:, 0] = params[:, 0] * x_range + x_start     # X displacement
-        params[:, 1] = params[:, 1] * y_range + y_start     # Y displacement
-        params[:, 2] = params[:, 2] * z_range + z_start     # Z displacement
-        params[:, 3] = params[:, 3] * 50e-9 + 150e-9        # X sigma
-        params[:, 4] = params[:, 4] * 50e-9 + 150e-9        # Y sigma
-        params[:, 5] = params[:, 5] * 100e-9 + 450e-9       # Z sigma
-        params[:, 6] = params[:, 6] * 2 * np.pi             # theta
-
-        amplitude = 200000
-        offset = 20000
-
-        def gauss_ensemble(x, y):
-            result = np.zeros(x.shape)
-            for x0, y0, z0, sigmax, sigmay, sigmaz, theta in params:
-                a = np.cos(theta) ** 2 / (2 * sigmax ** 2) + np.sin(theta) ** 2 / (2 * sigmay ** 2)
-                b = np.sin(2 * theta) / (4 * sigmay ** 2) - np.sin(2 * theta) / (4 * sigmax ** 2)
-                c = np.sin(theta) ** 2 / (2 * sigmax ** 2) + np.cos(theta) ** 2 / (2 * sigmay ** 2)
-                zfactor = np.exp(-(z0 ** 2) / (2 * sigmaz**2))
-                result += zfactor * np.exp(
-                    -(a * (x - x0) ** 2 + 2 * b * (x - x0) * (y - y0) + c * (y - y0) ** 2))
-            result *= amplitude - offset
-            result += offset
-            return result
-
-        xx, yy = np.meshgrid(np.linspace(x_start, x_end, x_res),
-                             np.linspace(y_start, y_end, y_res),
-                             indexing='ij')
-        return np.random.rand(xx.shape[0], xx.shape[1]) * amplitude * 0.10 + gauss_ensemble(xx, yy)
-
-    def generate_1d_dummy_data(self, axis):
-        res = self._scanner_settings['scan_resolution'][axis]
-        start, stop = self._scanner_settings['scan_range'][axis]
-        range = stop - start
-
-        density = 1 / 10e-6
-
-        params = np.random.rand(round(density * range), 2)
-        params[:, 0] = params[:, 0] * range + start  # displacement
-        params[:, 1] = params[:, 1] * 50e-9 + 150e-9  # sigma
-
-        amplitude = 200000
-        offset = 20000
-
-        def gauss(x):
-            result = np.zeros(x.size)
-            for mu, sigma in params:
-                result += np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
-            result *= amplitude - offset
-            result += offset
-            return result
-
-        pos_arr = np.linspace(start, stop, res)
-        return np.random.rand(pos_arr.size) * amplitude * 0.10 + gauss(pos_arr)
+            self.sigScanDataChanged.emit(scan_data)
+            self._start_timer()
+            return
 
     @QtCore.Slot()
     def history_backwards(self):
-        if self._history_index < 1:
-            self.log.warning('Unable to restore previous state from scan history. '
-                             'Already at first history entry.')
-            return
-        self.restore_from_history(self._history_index - 1)
-        return
+        with self._thread_lock:
+            if self._curr_history_index < 1:
+                self.log.warning('Unable to restore previous state from scan history. '
+                                 'Already at earliest history entry.')
+                return
+        return self.restore_from_history(self._curr_history_index - 1)
 
     @QtCore.Slot()
     def history_forward(self):
-        if self._history_index >= len(self._history) - 1:
-            self.log.warning('Unable to restore next state from scan history. '
-                             'Already at last history entry.')
-            return
-        self.restore_from_history(self._history_index + 1)
-        return
+        with self._thread_lock:
+            if self._curr_history_index >= len(self._history) - 1:
+                self.log.warning('Unable to restore next state from scan history. '
+                                 'Already at latest history entry.')
+                return
+        return self.restore_from_history(self._curr_history_index + 1)
 
+    @QtCore.Slot(int)
     def restore_from_history(self, index):
-        if self.module_state() == 'locked':
-            self.log.warning('Scan is running. Unable to restore history state.')
-            return
-        if not isinstance(index, int):
-            self.log.error('History index to restore must be int type.')
-            return
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                self.log.error('Scan is running. Unable to restore history state.')
+                return
+            if not isinstance(index, int):
+                self.log.error('History index to restore must be int type.')
+                return
 
-        try:
-            data = self._history[index]
-        except IndexError:
-            self.log.error('History index "{0}" out of range.'.format(index))
-            return
+            try:
+                data = self._scan_history[index]
+            except IndexError:
+                self.log.error('History index "{0}" out of range.'.format(index))
+                return
 
-        axes = data.scan_axes
-        resolution = data.resolution
-        ranges = data.target_ranges
-        for i, axis in enumerate(axes):
-            self._scanner_settings['scan_resolution'][axis] = resolution[i]
-            self._scanner_settings['scan_range'][axis] = ranges[i]
-        self._history_index = index
-        self.sigScannerSettingsChanged.emit(self.scanner_settings)
-        self.sigScanDataChanged.emit({axes: data})
-        return
+            ax_constr = self.scanner_constraints.axes
+            for i, ax in enumerate(data.scan_axes):
+                constr = ax_constr[ax]
+                self._scan_resolution[ax] = int(constr.clip_resolution(data.resolution[i]))
+                self._scan_ranges[ax] = tuple(
+                    constr.clip_value(val) for val in data.target_ranges[i])
+            self._scan_settings['frequency'] = data.scan_frequency
+            self._curr_history_index = index
+            self.sigScanRangesChanged.emit(self._scan_ranges.copy())
+            self.sigScanResolutionChanged.emit(self._scan_resolution.copy())
+            self.sigScanSettingsChanged.emit(self._scan_settings.copy())
+            self.sigScanDataChanged.emit(data)
+            return
 
     @QtCore.Slot()
     def set_full_scan_ranges(self):
-        scan_ranges = {ax: (ax_dict['min_value'], ax_dict['max_value']) for ax, ax_dict in
-                       self.scanner_constraints['axes'].items()}
-        self.set_scanner_settings({'scan_range': scan_ranges})
-        return
+        scan_range = {ax: axis.value_bounds for ax, axis in self.scanner_constraints.axes.items()}
+        return self.set_scan_range(scan_range)
+
+    @QtCore.Slot()
+    def _start_timer(self):
+        self.__sigStartTimer.emit()
+
+    @QtCore.Slot()
+    def _stop_timer(self):
+        self.__sigStopTimer.emit()

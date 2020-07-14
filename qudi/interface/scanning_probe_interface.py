@@ -20,13 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import copy
 import datetime
 import numpy as np
 
 from qudi.core.interface import abstract_interface_method
 from qudi.core.meta import InterfaceMetaclass
-from qudi.core.util.mutex import RecursiveMutex
 
 
 class ScanningProbeInterface(metaclass=InterfaceMetaclass):
@@ -169,92 +167,37 @@ class ScanSettings:
             backscan_resolution)
         self._data_channels = None if not data_channels else tuple(data_channels)
 
-        # Flag to indicate a change of parameter values outside __init__
-        self.has_changed = False
-
     @property
     def axes(self):
         return self._axes
-
-    @axes.setter
-    def axes(self, new_axes):
-        new_axes = tuple(str(ax) for ax in new_axes)
-        self.has_changed = new_axes != self._axes
-        self._axes = new_axes
 
     @property
     def ranges(self):
         return self._ranges
 
-    @ranges.setter
-    def ranges(self, new_ranges):
-        for rng in new_ranges:
-            if len(rng) != 2:
-                raise ValueError(
-                    'Each element of parameter "ranges" must be an iterable of length 2.')
-        new_ranges = tuple((min(rng), max(rng)) for rng in new_ranges)
-        self.has_changed = new_ranges != self._ranges
-        self._ranges = new_ranges
-
     @property
     def resolution(self):
         return self._resolution
-
-    @resolution.setter
-    def resolution(self, new_resolution):
-        new_resolution = tuple(int(res) for res in new_resolution)
-        self.has_changed = new_resolution != self._resolution
-        self._resolution = new_resolution
 
     @property
     def px_frequency(self):
         return self._px_frequency
 
-    @px_frequency.setter
-    def px_frequency(self, new_freq):
-        new_freq = float(new_freq)
-        self.has_changed = new_freq != self._px_frequency
-        self._px_frequency = new_freq
-
     @property
     def position_feedback(self):
         return self._position_feedback
-
-    @position_feedback.setter
-    def position_feedback(self, flag):
-        flag = bool(flag)
-        self.has_changed = flag != self._position_feedback
-        self._position_feedback = flag
 
     @property
     def backscan_resolution(self):
         return self._backscan_resolution
 
-    @backscan_resolution.setter
-    def backscan_resolution(self, new_resolution):
-        new_resolution = None if new_resolution is None else int(new_resolution)
-        self.has_changed = new_resolution != self._backscan_resolution
-        self._backscan_resolution = new_resolution
-
     @property
     def data_channels(self):
         return self._data_channels
 
-    @data_channels.setter
-    def data_channels(self, new_channels):
-        new_channels = None if not new_channels else tuple(new_channels)
-        self.has_changed = new_channels != self._data_channels
-        self._data_channels = new_channels
-
-    @property
-    def is_valid(self):
-        return len(self._axes) == len(self._resolution) == len(self._ranges)
-
     @property
     def dimension(self):
-        if self.is_valid:
-            return len(self._axes)
-        return -1
+        return len(self._axes)
 
     def copy(self, **kwargs):
         params = self.to_dict()
@@ -268,8 +211,7 @@ class ScanSettings:
                   'px_frequency': self._px_frequency,
                   'position_feedback': self._position_feedback,
                   'data_channels': self._data_channels,
-                  'backscan_resolution': self._backscan_resolution
-                  }
+                  'backscan_resolution': self._backscan_resolution}
         return params
 
     @classmethod
@@ -282,8 +224,8 @@ class ScanData:
     Object representing all data associated to a SPM measurement.
     """
 
-    def __init__(self, axes, channels, scan_axes, scan_range, scan_resolution,
-                 position_feedback=False, timestamp=None):
+    def __init__(self, axes, channels, scan_axes, scan_range, scan_resolution, scan_frequency,
+                 position_feedback=False):
         """
 
         @param ScannerAxis[] axes: all available ScannerAxis objects
@@ -291,8 +233,8 @@ class ScanData:
         @param str[] scan_axes: name of the axes involved in the scan
         @param float[][2] scan_range: inclusive range for each scan axis
         @param int[] scan_resolution: planned number of points for each scan axis
+        @param float scan_frequency: Scan frequency of the fast axis
         @param bool position_feedback: optional, if the scanner position is saved for each pixel
-        @param datetime.datetime timestamp: optional, timestamp used for creation time
         """
         # Sanity checking
         if len(scan_axes) != len(scan_range):
@@ -324,12 +266,14 @@ class ScanData:
                             enumerate(scan_range)}
         self._scan_resolution = {self._scan_axes[i]: int(res) for i, res in enumerate(scan_resolution)}
         self._channel_units = {ch.name: ch.unit for ch in channels}
+        self._channel_dtypes = {ch.name: ch.dtype for ch in channels}
         self._position_feedback = bool(position_feedback)
+        self._scan_frequency = float(scan_frequency)
 
         self.timestamp = None
         self._data = None
         self._position_data = None
-        self.new_data(timestamp=timestamp)
+        self._finished = False
         # TODO: Automatic interpolation onto rectangular grid needs to be implemented
         return
 
@@ -362,8 +306,14 @@ class ScanData:
         return self._channel_units.copy()
 
     @property
+    def scan_frequency(self):
+        return self._scan_frequency
+
+    @property
     def data(self):
-        return self._data.copy()
+        if self._data is not None:
+            return self._data.copy()
+        return None
 
     @property
     def position_data(self):
@@ -371,22 +321,32 @@ class ScanData:
             return self._position_data.copy()
         return None
 
+    @property
+    def finished(self):
+        return self._finished
+
     def new_data(self, timestamp=None):
         """
 
         @param timestamp:
         """
+        print('NEW DATA CALLED')
         if timestamp is None:
             self.timestamp = datetime.datetime.now()
         elif isinstance(timestamp, datetime.datetime):
             self.timestamp = timestamp
         else:
             raise TypeError('Parameter "timestamp" must be datetime.datetime object.')
+
+        scan_size = tuple(self._scan_resolution[ax] for ax in self._scan_axes)
+
         if self._position_feedback:
-            self._position_data = {ax: np.zeros(self._scan_resolution) for ax in self._axes_units}
+            self._position_data = {ax: np.full(scan_size, np.nan) for ax in self._axes_units}
         else:
             self._position_data = None
-        self._data = {ch: np.zeros(self._scan_resolution) for ch in self._channel_units}
+        self._data = {ch: np.full(scan_size, np.nan, dtype=dtype) for ch, dtype in
+                      self._channel_dtypes.items()}
+        self._finished = False
         return
 
     def add_line_data(self, data, line_index, start_index=0, position_data=None):
@@ -405,6 +365,10 @@ class ScanData:
 
         for ch, arr in data.items():
             self._data[ch][start_index:stop_index, line_index] = arr
+        resolution = (self._scan_resolution[self._scan_axes[0]],
+                      self._scan_resolution[self._scan_axes[1]])
+        if line_index == (resolution[1] - 1) and stop_index >= resolution[0]:
+            self._finished = True
         return
 
 
@@ -528,6 +492,20 @@ class ScannerAxis:
     def max_frequency(self):
         return self._frequency_bounds[1]
 
+    def clip_value(self, value):
+        if value < self.min_value:
+            return self.min_value
+        elif value > self.max_value:
+            return self.max_value
+        return value
+
+    def clip_resolution(self, res):
+        if res < self.min_resolution:
+            return self.min_resolution
+        elif res > self.max_resolution:
+            return self.max_resolution
+        return res
+
     def copy(self):
         return ScannerAxis(name=self._name,
                            unit=self._unit,
@@ -559,8 +537,8 @@ class ScanConstraints:
             raise TypeError('Parameter "has_position_feedback" must be of type bool.')
         if not isinstance(square_px_only, bool):
             raise TypeError('Parameter "square_px_only" must be of type bool.')
-        self._axes = {ax.name for ax in axes}
-        self._channels = {ch.name for ch in channels}
+        self._axes = {ax.name: ax for ax in axes}
+        self._channels = {ch.name: ch for ch in channels}
         self._backscan_configurable = bool(backscan_configurable)
         self._has_position_feedback = bool(has_position_feedback)
         self._square_px_only = bool(square_px_only)

@@ -25,7 +25,7 @@ import numpy as np
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.mutex import RecursiveMutex
-from qudi.interface.scanning_probe_interface import ScanningProbeInterface, ScanSettings, ScanData
+from qudi.interface.scanning_probe_interface import ScanningProbeInterface, ScanData
 from qudi.interface.scanning_probe_interface import ScanConstraints, ScannerAxis, ScannerChannel
 
 
@@ -103,7 +103,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                                   self._position_ranges.items()}
         self._scan_image = np.zeros(self._current_scan_resolution)
         self._scan_running = False
-        self._scan_data = None  # ScanData instance provided by master logic
+        self._scan_data = None
 
         # Create fixed maps of spots for each scan axes configuration
         self._randomize_new_spots()
@@ -157,7 +157,6 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                     continue
                 x_min, x_max = min(x_range), max(x_range)
                 y_min, y_max = min(y_range), max(y_range)
-                print(x_range, y_range, self._spot_density)
                 spot_count = int(round((x_max - x_min) * (y_max - y_min) * self._spot_density))
 
                 # Fill in random spot information
@@ -186,7 +185,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return int: error code (0:OK, -1:error)
         """
         with self._thread_lock:
-            self.log.info('Scanning probe dummy has been reset.')
+            self.log.debug('Scanning probe dummy has been reset.')
             return 0
 
     def get_constraints(self):
@@ -194,6 +193,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
 
         @return:
         """
+        self.log.debug('Scanning probe dummy "get_constraints" called.')
         return self._constraints
 
     def configure_scan(self, scan_settings):
@@ -204,6 +204,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return dict: ALL actually set scan settings
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "configure_scan" called.')
             # Sanity checking
             if self._scan_running:
                 self.log.error('Unable to configure scan parameters while scan is running. '
@@ -226,7 +227,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                 self.log.error('"axes", "range" and "resolution" must have same length.')
                 return self.scan_settings
             for i, ax in enumerate(axes):
-                for axis_constr in self._constraints.axes:
+                for axis_constr in self._constraints.axes.values():
                     if ax == axis_constr.name:
                         break
                 if ranges[i][0] < axis_constr.min_value or ranges[i][1] > axis_constr.max_value:
@@ -259,6 +260,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         progress.
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "move_absolute" called.')
             if self._scan_running:
                 self.log.error('Scanning in progress. Unable to move to position.')
             elif not set(position).issubset(self._position_ranges):
@@ -284,6 +286,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         progress.
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "move_relative" called.')
             if self._scan_running:
                 self.log.error('Scanning in progress. Unable to move relative.')
             elif not set(distance).issubset(self._position_ranges):
@@ -306,6 +309,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return dict: current target position per axis.
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "get_target" called.')
             return self._current_position.copy()
 
     def get_position(self):
@@ -314,6 +318,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return dict: current target position per axis.
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "get_position" called.')
             position = {ax: pos + np.random.normal(0, self._position_accuracy[ax]) for ax, pos in
                         self._current_position.items()}
             return position
@@ -324,6 +329,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return:
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "start_scan" called.')
             if self._scan_running:
                 self.log.error('Can not start scan. Scan already in progress.')
                 return -1
@@ -364,8 +370,10 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                 scan_axes=self._current_scan_axes,
                 scan_range=self._current_scan_ranges,
                 scan_resolution=self._current_scan_resolution,
+                scan_frequency=self._current_scan_frequency,
                 position_feedback=self._constraints.has_position_feedback
             )
+            self._scan_data.new_data()
             self.__scan_start = time.time()
             self.__last_line = -1
             self.log.debug('Scan has been started.')
@@ -377,8 +385,10 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return int: error code (0:OK, -1:error)
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "stop_scan" called.')
             if self._scan_running:
                 self._scan_running = False
+                self._scan_data = None
                 self.log.debug('Scan has been stopped.')
             return 0
 
@@ -391,10 +401,10 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
 
     def get_scan_data(self):
         """
-
-        @return (bool, ScanData): Failure indicator (fail=True), ScanData instance used in the scan
+        @return ScanData: ScanData instance used in the scan
         """
         with self._thread_lock:
+            self.log.debug('Scanning probe dummy "get_scan_data" called.')
             elapsed = time.time() - self.__scan_start
             line_time = self._current_scan_resolution[0] / self._current_scan_frequency
             acquired_lines = int(np.floor(elapsed / line_time))
@@ -403,7 +413,8 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                     self.__last_line = 0
                 if self.__last_line < acquired_lines - 1:
                     for line_index in range(self.__last_line, acquired_lines):
-                        self._scan_data.add_line_data(self._scan_image[:, line_index], line_index)
+                        self._scan_data.add_line_data({ch: self._scan_image[:, line_index] for ch in
+                                                       self._constraints.channels}, line_index)
                     self.__last_line = acquired_lines - 1
             return self._scan_data
 
