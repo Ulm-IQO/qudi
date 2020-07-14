@@ -55,9 +55,9 @@ class ScanningProbeLogic(LogicBase):
 
     # config options
     _max_history_length = ConfigOption(name='max_history_length', default=10)
-    _max_scan_update_interval = ConfigOption(name='max_scan_update_interval', default=2)
+    _max_scan_update_interval = ConfigOption(name='max_scan_update_interval', default=5)
     _min_scan_update_interval = ConfigOption(name='min_scan_update_interval', default=0.25)
-    _position_update_interval = ConfigOption(name='position_update_interval', default=0.5)
+    _position_update_interval = ConfigOption(name='position_update_interval', default=1)
 
     # signals
     sigScanStateChanged = QtCore.Signal(bool, tuple)
