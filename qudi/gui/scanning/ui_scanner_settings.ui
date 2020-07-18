@@ -311,7 +311,7 @@
   <customwidget>
    <class>ScienSpinBox</class>
    <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
+   <header>qudi.core.gui.qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

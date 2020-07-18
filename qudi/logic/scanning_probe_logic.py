@@ -87,7 +87,6 @@ class ScanningProbeLogic(LogicBase):
         self._optimizer_settings['axes']['x'] = {'resolution': 15, 'range': 1e-6}
         self._optimizer_settings['axes']['y'] = {'resolution': 15, 'range': 1e-6}
         self._optimizer_settings['axes']['z'] = {'resolution': 15, 'range': 1e-6}
-        self._optimizer_settings['axes']['phi'] = {'resolution': 15, 'range': 1e-6}
 
         # Scan history
         self._curr_history_index = 0
@@ -151,7 +150,7 @@ class ScanningProbeLogic(LogicBase):
 
     @property
     def scanner_axes_names(self):
-        return tuple(self.scanner_constraints['axes'])
+        return tuple(self.scanner_constraints.axes)
 
     @property
     def scanner_constraints(self):

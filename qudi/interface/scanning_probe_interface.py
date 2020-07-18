@@ -351,7 +351,7 @@ class ScannerAxis:
     """
     """
 
-    def __init__(self, name, unit='', min_value=-np.inf, max_value=np.inf, min_step=-np.inf,
+    def __init__(self, name, unit='', min_value=-np.inf, max_value=np.inf, min_step=0,
                  max_step=np.inf, min_resolution=1, max_resolution=np.inf, min_frequency=0,
                  max_frequency=np.inf):
         if not isinstance(name, str):
