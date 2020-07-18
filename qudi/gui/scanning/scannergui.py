@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import time
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
@@ -33,7 +32,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.gui.qtwidgets.scan_plotwidget import ScanImageItem
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
-from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget
+from qudi.core.gui.qtwidgets.colorbar import ColorBar
 from qudi.core.module import GuiBase
 from qudi.core.gui.colordefs import ColorScaleInferno
 from qudi.core.gui.colordefs import QudiPalettePale as palette
@@ -247,7 +246,7 @@ class ScannerGui(GuiBase):
     _modtype = 'gui'
 
     # declare connectors
-    scanninglogic = Connector(interface='ScanningLogic')
+    _scanninglogic = Connector(name='scanninglogic', interface='ScanningProbeLogic')
 
     # config options for gui
     image_axes_padding = ConfigOption(name='image_axes_padding', default=0.02)
@@ -335,32 +334,32 @@ class ScannerGui(GuiBase):
         self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
 
         self.sigMoveScannerPosition.connect(
-            self.scanninglogic().set_scanner_target_position, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().set_scanner_target_position, QtCore.Qt.QueuedConnection)
         self.sigScannerSettingsChanged.connect(
-            self.scanninglogic().set_scanner_settings, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().set_scanner_settings, QtCore.Qt.QueuedConnection)
         self.sigOptimizerSettingsChanged.connect(
-            self.scanninglogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
-        self.sigToggleScan.connect(self.scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
+        self.sigToggleScan.connect(self._scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
 
         self._mw.action_history_forward.triggered.connect(
-            self.scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
         self._mw.action_history_back.triggered.connect(
-            self.scanninglogic().history_backwards, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().history_backwards, QtCore.Qt.QueuedConnection)
         self._mw.action_utility_full_range.triggered.connect(
-            self.scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
         self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
 
-        self.scanninglogic().sigScannerPositionChanged.connect(
+        self._scanninglogic().sigScannerPositionChanged.connect(
             self.scanner_position_updated, QtCore.Qt.QueuedConnection)
-        self.scanninglogic().sigScannerTargetChanged.connect(
+        self._scanninglogic().sigScannerTargetChanged.connect(
             self.scanner_target_updated, QtCore.Qt.QueuedConnection)
-        self.scanninglogic().sigScannerSettingsChanged.connect(
+        self._scanninglogic().sigScannerSettingsChanged.connect(
             self.update_scanner_settings, QtCore.Qt.QueuedConnection)
-        self.scanninglogic().sigOptimizerSettingsChanged.connect(
+        self._scanninglogic().sigOptimizerSettingsChanged.connect(
             self.update_optimizer_settings, QtCore.Qt.QueuedConnection)
-        self.scanninglogic().sigScanDataChanged.connect(
+        self._scanninglogic().sigScanDataChanged.connect(
             self.scan_data_updated, QtCore.Qt.QueuedConnection)
-        self.scanninglogic().sigScanStateChanged.connect(
+        self._scanninglogic().sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection)
 
         self.show()
@@ -381,12 +380,12 @@ class ScannerGui(GuiBase):
         self._mw.action_history_back.triggered.disconnect()
         self._mw.action_utility_full_range.triggered.disconnect()
         self._mw.action_utility_zoom.toggled.disconnect()
-        self.scanninglogic().sigScannerPositionChanged.disconnect()
-        self.scanninglogic().sigScannerTargetChanged.disconnect()
-        self.scanninglogic().sigScannerSettingsChanged.disconnect()
-        self.scanninglogic().sigOptimizerSettingsChanged.disconnect()
-        self.scanninglogic().sigScanDataChanged.disconnect()
-        self.scanninglogic().sigScanStateChanged.disconnect()
+        self._scanninglogic().sigScannerPositionChanged.disconnect()
+        self._scanninglogic().sigScannerTargetChanged.disconnect()
+        self._scanninglogic().sigScannerSettingsChanged.disconnect()
+        self._scanninglogic().sigOptimizerSettingsChanged.disconnect()
+        self._scanninglogic().sigScanDataChanged.disconnect()
+        self._scanninglogic().sigScanStateChanged.disconnect()
 
         self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
         self._window_state = bytearray(self._mw.saveState()).hex()
@@ -451,7 +450,7 @@ class ScannerGui(GuiBase):
         layout = self.scanner_control_dockwidget.widget().layout()
 
         self.axes_control_widgets = dict()
-        for index, axis_name in enumerate(self.scanninglogic().scanner_axes_names, 1):
+        for index, axis_name in enumerate(self._scanninglogic().scanner_axes_names, 1):
             label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
             label.setObjectName('{0}_axis_label'.format(axis_name))
             label.setFont(font)
@@ -532,7 +531,7 @@ class ScannerGui(GuiBase):
         layout = self._osd.scan_ranges_gridLayout
 
         self.optimizer_settings_axes_widgets = dict()
-        for index, axis_name in enumerate(self.scanninglogic().scanner_axes_names, 1):
+        for index, axis_name in enumerate(self._scanninglogic().scanner_axes_names, 1):
             label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
             label.setFont(font)
             label.setAlignment(QtCore.Qt.AlignRight)
@@ -624,7 +623,7 @@ class ScannerGui(GuiBase):
 
     def apply_scanner_constraints(self):
         """ Set limits on input widgets according to scanner hardware constraints. """
-        constraints = self.scanninglogic().scanner_constraints['axes']
+        constraints = self._scanninglogic().scanner_constraints['axes']
 
         # Apply constraints for every scannner axis
         for index, (axis, axis_dict) in enumerate(constraints.items()):
@@ -665,8 +664,8 @@ class ScannerGui(GuiBase):
         return
 
     def _add_scan_dockwidget(self, axes):
-        scanner_constraints = self.scanninglogic().scanner_constraints['axes']
-        optimizer_settings = self.scanninglogic().optimizer_settings
+        scanner_constraints = self._scanninglogic().scanner_constraints['axes']
+        optimizer_settings = self._scanninglogic().optimizer_settings
         axes = tuple(axes)
         if len(axes) == 1:
             dockwidget = Scan1dDockWidget(axes[0])
@@ -746,7 +745,7 @@ class ScannerGui(GuiBase):
                               If None (default) read the scanner setting from logic and update.
         """
         if not isinstance(settings, dict):
-            settings = self.scanninglogic().scanner_settings
+            settings = self._scanninglogic().scanner_settings
 
         if 'pixel_clock_frequency' in settings:
             self._ssd.pixel_clock_frequency_scienSpinBox.setValue(settings['pixel_clock_frequency'])
@@ -806,7 +805,7 @@ class ScannerGui(GuiBase):
             return
 
         if not isinstance(pos_dict, dict):
-            pos_dict = self.scanninglogic().scanner_position
+            pos_dict = self._scanninglogic().scanner_position
 
         self._update_position_display(pos_dict)
         return
@@ -827,7 +826,7 @@ class ScannerGui(GuiBase):
             return
 
         if not isinstance(pos_dict, dict):
-            pos_dict = self.scanninglogic().scanner_position
+            pos_dict = self._scanninglogic().scanner_position
 
         self._update_target_display(pos_dict)
         return
@@ -840,7 +839,7 @@ class ScannerGui(GuiBase):
         @param dict scan_data:
         """
         if not isinstance(scan_data, dict):
-            scan_data = self.scanninglogic().scan_data
+            scan_data = self._scanninglogic().scan_data
 
         for axes, data in scan_data.items():
             if len(axes) == 2:
@@ -990,7 +989,7 @@ class ScannerGui(GuiBase):
 
     def __get_data_channel_changed_func(self, ax):
         def set_data_channel():
-            self.scan_data_updated({ax: self.scanninglogic().scan_data[ax]})
+            self.scan_data_updated({ax: self._scanninglogic().scan_data[ax]})
         return set_data_channel
 
     @QtCore.Slot()
@@ -1046,7 +1045,7 @@ class ScannerGui(GuiBase):
     @QtCore.Slot(dict)
     def update_optimizer_settings(self, settings=None):
         if not isinstance(settings, dict):
-            settings = self.scanninglogic().optimizer_settings
+            settings = self._scanninglogic().optimizer_settings
 
         if 'settle_time' in settings:
             self._osd.init_settle_time_scienDSpinBox.blockSignals(True)
@@ -1090,7 +1089,7 @@ class ScannerGui(GuiBase):
             self._osd.optimization_sequence_lineEdit.blockSignals(True)
             self._osd.optimization_sequence_lineEdit.setText(','.join(settings['sequence']))
             self._osd.optimization_sequence_lineEdit.blockSignals(False)
-            constraints = self.scanninglogic().scanner_constraints
+            constraints = self._scanninglogic().scanner_constraints
             for seq_step in settings['sequence']:
                 is_1d_step = False
                 for axis, axis_constr in constraints.items():
