@@ -27,9 +27,9 @@ class DoubleSlider(QtWidgets.QSlider):
     """
 
     """
-    valueChanged = QtCore.Signal(float)
-    sliderMoved = QtCore.Signal(float)
-    rangeChanged = QtCore.Signal(float, float)
+    doubleValueChanged = QtCore.Signal(float)
+    doubleSliderMoved = QtCore.Signal(float)
+    doubleRangeChanged = QtCore.Signal(float, float)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -37,9 +37,9 @@ class DoubleSlider(QtWidgets.QSlider):
         self._minimum_value = 0
         self._maximum_value = 1
         super().setRange(0, self._step_number)
-        super().valueChanged.connect(self.__translate_value_changed)
-        super().sliderMoved.connect(self.__translate_slider_moved)
-        super().rangeChanged.connect(self.__translate_range_changed)
+        self.valueChanged.connect(self.__translate_value_changed)
+        self.sliderMoved.connect(self.__translate_slider_moved)
+        self.rangeChanged.connect(self.__translate_range_changed)
         return
 
     def setMinimum(self, min_val):
@@ -85,17 +85,17 @@ class DoubleSlider(QtWidgets.QSlider):
 
     @QtCore.Slot(int)
     def __translate_value_changed(self, int_val):
-        self.valueChanged.emit(
+        self.doubleValueChanged.emit(
             self.minimum() + (self.maximum() - self.minimum()) * (int_val / self._step_number))
         return
 
     @QtCore.Slot(int)
     def __translate_slider_moved(self, int_val):
-        self.sliderMoved.emit(
+        self.doubleSliderMoved.emit(
             self.minimum() + (self.maximum() - self.minimum()) * (int_val / self._step_number))
         return
 
     @QtCore.Slot()
     def __translate_range_changed(self):
-        self.rangeChanged.emit(self.minimum(), self.maximum())
+        self.doubleRangeChanged.emit(self.minimum(), self.maximum())
         return

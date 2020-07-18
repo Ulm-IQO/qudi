@@ -32,7 +32,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.gui.qtwidgets.scan_plotwidget import ScanImageItem
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
-from qudi.core.gui.qtwidgets.colorbar import ColorBar
+from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget
 from qudi.core.module import GuiBase
 from qudi.core.gui.colordefs import ColorScaleInferno
 from qudi.core.gui.colordefs import QudiPalettePale as palette
@@ -623,33 +623,33 @@ class ScannerGui(GuiBase):
 
     def apply_scanner_constraints(self):
         """ Set limits on input widgets according to scanner hardware constraints. """
-        constraints = self._scanninglogic().scanner_constraints['axes']
+        constraints = self._scanninglogic().scanner_constraints.axes
 
         # Apply constraints for every scannner axis
-        for index, (axis, axis_dict) in enumerate(constraints.items()):
+        for index, (axis, axis_constr) in enumerate(constraints.items()):
             # Set value ranges
-            res_range = (max(2, axis_dict['min_resolution']),
-                         min(2 ** 31 - 1, axis_dict['max_resolution']))
+            res_range = (max(2, axis_constr.min_resolution),
+                         min(2 ** 31 - 1, axis_constr.max_resolution))
             self.axes_control_widgets[axis]['res_spinbox'].setRange(*res_range)
-            self.axes_control_widgets[axis]['min_spinbox'].setRange(axis_dict['min_value'],
-                                                                    axis_dict['max_value'])
-            self.axes_control_widgets[axis]['max_spinbox'].setRange(axis_dict['min_value'],
-                                                                    axis_dict['max_value'])
-            self.axes_control_widgets[axis]['pos_spinbox'].setRange(axis_dict['min_value'],
-                                                                    axis_dict['max_value'])
-            self.axes_control_widgets[axis]['slider'].setRange(axis_dict['min_value'],
-                                                               axis_dict['max_value'])
-            self.axes_control_widgets[axis]['slider'].set_granularity(
-                round(
-                    (axis_dict['max_value'] - axis_dict['min_value']) / axis_dict['min_step']) + 1)
+            self.axes_control_widgets[axis]['min_spinbox'].setRange(*axis_constr.value_bounds)
+            self.axes_control_widgets[axis]['max_spinbox'].setRange(*axis_constr.value_bounds)
+            self.axes_control_widgets[axis]['pos_spinbox'].setRange(*axis_constr.value_bounds)
+            self.axes_control_widgets[axis]['slider'].setRange(*axis_constr.value_bounds)
+            if axis_constr.min_step > 0:
+                self.axes_control_widgets[axis]['slider'].set_granularity(
+                    round((axis_constr.max_value - axis_constr.min_value) / axis_constr.min_step) + 1
+                )
+            else:
+                self.axes_control_widgets[axis]['slider'].set_granularity(2**16-1)
             self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setRange(
-                0, axis_dict['max_value'] - axis_dict['min_value'])
+                0, axis_constr.max_value - axis_constr.min_value
+            )
             self.optimizer_settings_axes_widgets[axis]['res_spinbox'].setRange(*res_range)
             # Set units as SpinBox suffix
-            self.axes_control_widgets[axis]['min_spinbox'].setSuffix(axis_dict['unit'])
-            self.axes_control_widgets[axis]['max_spinbox'].setSuffix(axis_dict['unit'])
-            self.axes_control_widgets[axis]['pos_spinbox'].setSuffix(axis_dict['unit'])
-            self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setSuffix(axis_dict['unit'])
+            self.axes_control_widgets[axis]['min_spinbox'].setSuffix(axis_constr.unit)
+            self.axes_control_widgets[axis]['max_spinbox'].setSuffix(axis_constr.unit)
+            self.axes_control_widgets[axis]['pos_spinbox'].setSuffix(axis_constr.unit)
+            self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setSuffix(axis_constr.unit)
 
         # FIXME: Apply general scanner constraints
         return
@@ -1092,21 +1092,21 @@ class ScannerGui(GuiBase):
             constraints = self._scanninglogic().scanner_constraints
             for seq_step in settings['sequence']:
                 is_1d_step = False
-                for axis, axis_constr in constraints.items():
+                for axis, axis_constr in constraints.axes.items():
                     if seq_step == axis:
                         self.optimizer_dockwidget.plot_widget.setLabel(
-                            'bottom', axis, units=axis_constr['unit'])
+                            'bottom', axis, units=axis_constr.unit)
                         self.optimizer_dockwidget.plot_item.setData(np.zeros(10))
                         is_1d_step = True
                         break
                 if not is_1d_step:
-                    for axis, axis_constr in constraints.items():
+                    for axis, axis_constr in constraints.axes.items():
                         if seq_step.startswith(axis):
                             self.optimizer_dockwidget.scan_widget.setLabel(
-                                'bottom', axis, units=axis_constr['unit'])
+                                'bottom', axis, units=axis_constr.unit)
                             second_axis = seq_step.split(axis, 1)[-1]
                             self.optimizer_dockwidget.scan_widget.setLabel(
-                                'left', second_axis, units=constraints[second_axis]['unit'])
+                                'left', second_axis, units=constraints.axes[second_axis].unit)
                             self.optimizer_dockwidget.image_item.setImage(image=np.zeros((2, 2)))
                             break
         return

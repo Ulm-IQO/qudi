@@ -85,12 +85,12 @@
   <customwidget>
    <class>ScanPlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>qtwidgets.scan_plotwidget.h</header>
+   <header>qudi.core.gui.qtwidgets.scan_plotwidget.h</header>
   </customwidget>
   <customwidget>
    <class>ColorBarWidget</class>
    <extends>QWidget</extends>
-   <header>qtwidgets.colorbar.h</header>
+   <header>qudi.core.gui.qtwidgets.colorbar.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
