@@ -333,11 +333,17 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             if self._scan_running:
                 self.log.error('Can not start scan. Scan already in progress.')
                 return -1
-            number_of_spots = self._spots[self._current_scan_axes]['count']
-            positions = self._spots[self._current_scan_axes]['pos']
-            amplitudes = self._spots[self._current_scan_axes]['amp']
-            sigmas = self._spots[self._current_scan_axes]['sigma']
-            thetas = self._spots[self._current_scan_axes]['theta']
+            if len(self._current_scan_axes) == 1:
+                for axes, d in self._spots.items():
+                    if axes[0] == self._current_scan_axes[0]:
+                        sim_data = d
+            else:
+                sim_data = self._spots[self._current_scan_axes]
+            number_of_spots = sim_data['count']
+            positions = sim_data['pos']
+            amplitudes = sim_data['amp']
+            sigmas = sim_data['sigma']
+            thetas = sim_data['theta']
 
             x_values = np.linspace(self._current_scan_ranges[0][0],
                                    self._current_scan_ranges[0][1],
@@ -366,7 +372,10 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                                            pos=positions[i],
                                            sigma=sigmas[i],
                                            theta=thetas[i])
-                self._scan_image += gauss
+                if len(self._current_scan_axes) == 1:
+                    self._scan_image += gauss[:, 0]
+                else:
+                    self._scan_image += gauss
             self._scan_data = ScanData(
                 axes=tuple(self._constraints.axes.values()),
                 channels=tuple(self._constraints.channels.values()),
@@ -418,12 +427,15 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                 acquired_lines = min(int(np.floor(elapsed / line_time)),
                                      self._current_scan_resolution[1])
                 if acquired_lines > 0:
-                    if self.__last_line < 0:
-                        self.__last_line = 0
                     if self.__last_line < acquired_lines - 1:
+                        if self.__last_line < 0:
+                            self.__last_line = 0
                         for line_index in range(self.__last_line, acquired_lines):
-                            self._scan_data.add_line_data({ch: self._scan_image[:, line_index] for ch in
-                                                           self._constraints.channels}, line_index)
+                            self._scan_data.add_line_data(
+                                {ch: self._scan_image[:, line_index] for ch in
+                                 self._constraints.channels},
+                                line_index
+                            )
                         self.__last_line = acquired_lines - 1
                     if acquired_lines >= self._current_scan_resolution[1]:
                         self._scan_data.finish_scan()
@@ -434,11 +446,12 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                     if self.__last_line < 0:
                         self.__last_line = 0
                     if self.__last_line < acquired_lines - 1:
-                        start_index = self.__last_line + 1
+                        if self.__last_line < 0:
+                            self.__last_line = 0
                         self._scan_data.add_line_data(
-                            {ch: self._scan_image[start_index:acquired_lines, 0] for ch in
+                            {ch: self._scan_image[self.__last_line:acquired_lines] for ch in
                              self._constraints.channels},
-                            start_index
+                            self.__last_line
                         )
                         self.__last_line = acquired_lines - 1
                     if acquired_lines >= self._current_scan_resolution[0]:
