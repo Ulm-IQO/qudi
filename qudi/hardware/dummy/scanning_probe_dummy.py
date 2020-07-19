@@ -418,6 +418,8 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         """
         with self._thread_lock:
             self.log.debug('Scanning probe dummy "get_scan_data" called.')
+            if self._scan_data is None:
+                return None
             if self._scan_data.finished:
                 return self._scan_data
             elapsed = time.time() - self.__scan_start
