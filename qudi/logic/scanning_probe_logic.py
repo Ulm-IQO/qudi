@@ -407,23 +407,17 @@ class ScanningProbeLogic(LogicBase):
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, self.__current_scan)
                 self._start_timer()
-            print('Returning from toggle')
             return 0
 
     @QtCore.Slot()
     def _scan_loop(self):
-        print('SCAN LOOP')
         with self._thread_lock:
-            print('Scan loop in lock')
             if self.module_state() != 'locked':
-                print('Module not locked.')
                 return
 
             scan_data = self._scanner().get_scan_data()
-            print('scan data:', scan_data)
             # Terminate scan if finished
             if scan_data.finished:
-                print('scan stopped')
                 if self._scanner().stop_scan() < 0:
                     self.log.error('Unable to stop scan.')
                 self._stop_timer()
@@ -439,7 +433,6 @@ class ScanningProbeLogic(LogicBase):
                 self._scan_history.append(scan_data)
                 self._curr_history_index = len(self._scan_history) - 1
                 self._start_timer()
-
             self.sigScanDataChanged.emit(scan_data)
             self._start_timer()
             return
