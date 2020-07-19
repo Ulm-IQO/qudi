@@ -43,8 +43,8 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</normaloff>
-       <normalon>../../artwork/icons/qudiTheme/22x22/stop-scan.png</normalon>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</iconset>
+       <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/scan-xy-start.png</normaloff>
+       <normalon>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/stop-scan.png</normalon>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/scan-xy-start.png</iconset>
      </property>
      <property name="iconSize">
       <size>

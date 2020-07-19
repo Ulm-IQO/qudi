@@ -29,6 +29,7 @@ import qudi.core.gui.uic as uic
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
+from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.gui.qtwidgets.scan_plotwidget import ScanImageItem
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
@@ -260,8 +261,8 @@ class ScannerGui(GuiBase):
     _window_geometry = StatusVar(name='window_geometry', default=None)
 
     # signals
-    sigMoveScannerPosition = QtCore.Signal(dict, object)
-    sigScannerSettingsChanged = QtCore.Signal(dict)
+    sigSetScannerTarget = QtCore.Signal(dict, object)
+    sigScanSettingsChanged = QtCore.Signal(dict)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleScan = QtCore.Signal(tuple, bool)
 
@@ -304,11 +305,17 @@ class ScannerGui(GuiBase):
         # Initialize dialog windows
         self._init_optimizer_settings()
 
-        # Configure widgets according to available scan axes
+        # Configure widgets according to available scan axes and apply scanner constraints
         self._generate_axes_control_widgets()
 
-        # Set input widget value ranges and units according to scanner constraints
-        self.apply_scanner_constraints()
+        # Automatically generate scanning widgets for desired scans
+        scans = list()
+        axes = tuple(self._scanninglogic().scanner_axes)
+        for i, first_ax in enumerate(axes, 1):
+            for second_ax in axes[i:]:
+                scans.append((first_ax, second_ax))
+        for scan in scans:
+            self._add_scan_dockwidget(scan)
 
         # Initialize widget data
         self.update_scanner_settings()
@@ -333,34 +340,46 @@ class ScannerGui(GuiBase):
         # Connect signals
         self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
 
-        self.sigMoveScannerPosition.connect(
-            self._scanninglogic().set_scanner_target_position, QtCore.Qt.QueuedConnection)
-        self.sigScannerSettingsChanged.connect(
-            self._scanninglogic().set_scanner_settings, QtCore.Qt.QueuedConnection)
+        self.sigSetScannerTarget.connect(
+            self._scanninglogic().set_scanner_target_position, QtCore.Qt.QueuedConnection
+        )
+        self.sigScanSettingsChanged.connect(
+            self._scanninglogic().set_scan_settings, QtCore.Qt.QueuedConnection
+        )
         self.sigOptimizerSettingsChanged.connect(
-            self._scanninglogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().set_optimizer_settings, QtCore.Qt.QueuedConnection
+        )
         self.sigToggleScan.connect(self._scanninglogic().toggle_scan, QtCore.Qt.QueuedConnection)
 
         self._mw.action_history_forward.triggered.connect(
-            self._scanninglogic().history_forward, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().history_next, QtCore.Qt.QueuedConnection
+        )
         self._mw.action_history_back.triggered.connect(
-            self._scanninglogic().history_backwards, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().history_previous, QtCore.Qt.QueuedConnection
+        )
         self._mw.action_utility_full_range.triggered.connect(
-            self._scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
+            self._scanninglogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection
+        )
         self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
 
         self._scanninglogic().sigScannerPositionChanged.connect(
-            self.scanner_position_updated, QtCore.Qt.QueuedConnection)
+            self.scanner_position_updated, QtCore.Qt.QueuedConnection
+        )
         self._scanninglogic().sigScannerTargetChanged.connect(
-            self.scanner_target_updated, QtCore.Qt.QueuedConnection)
-        self._scanninglogic().sigScannerSettingsChanged.connect(
-            self.update_scanner_settings, QtCore.Qt.QueuedConnection)
+            self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        )
+        self._scanninglogic().sigScanSettingsChanged.connect(
+            self.update_scanner_settings, QtCore.Qt.QueuedConnection
+        )
         self._scanninglogic().sigOptimizerSettingsChanged.connect(
-            self.update_optimizer_settings, QtCore.Qt.QueuedConnection)
+            self.update_optimizer_settings, QtCore.Qt.QueuedConnection
+        )
         self._scanninglogic().sigScanDataChanged.connect(
-            self.scan_data_updated, QtCore.Qt.QueuedConnection)
+            self.scan_data_updated, QtCore.Qt.QueuedConnection
+        )
         self._scanninglogic().sigScanStateChanged.connect(
-            self.scan_state_updated, QtCore.Qt.QueuedConnection)
+            self.scan_state_updated, QtCore.Qt.QueuedConnection
+        )
 
         self.show()
         return
@@ -370,27 +389,35 @@ class ScannerGui(GuiBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._mw.action_restore_default_view.triggered.disconnect()
+        # Remember window position and geometry and close window
+        self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
+        self._window_state = bytearray(self._mw.saveState()).hex()
+        self._mw.close()
 
-        self.sigMoveScannerPosition.disconnect()
-        self.sigScannerSettingsChanged.disconnect()
+        # Disconnect signals
+        self.sigSetScannerTarget.disconnect()
+        self.sigScanSettingsChanged.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
+        self._mw.action_restore_default_view.triggered.disconnect()
         self._mw.action_history_forward.triggered.disconnect()
         self._mw.action_history_back.triggered.disconnect()
         self._mw.action_utility_full_range.triggered.disconnect()
         self._mw.action_utility_zoom.toggled.disconnect()
-        self._scanninglogic().sigScannerPositionChanged.disconnect()
-        self._scanninglogic().sigScannerTargetChanged.disconnect()
-        self._scanninglogic().sigScannerSettingsChanged.disconnect()
-        self._scanninglogic().sigOptimizerSettingsChanged.disconnect()
-        self._scanninglogic().sigScanDataChanged.disconnect()
-        self._scanninglogic().sigScanStateChanged.disconnect()
+        self._scanninglogic().sigScannerPositionChanged.disconnect(self.scanner_position_updated)
+        self._scanninglogic().sigScannerTargetChanged.disconnect(self.scanner_target_updated)
+        self._scanninglogic().sigScanSettingsChanged.disconnect(self.update_scanner_settings)
+        self._scanninglogic().sigOptimizerSettingsChanged.disconnect(self.update_optimizer_settings)
+        self._scanninglogic().sigScanDataChanged.disconnect(self.scan_data_updated)
+        self._scanninglogic().sigScanStateChanged.disconnect(self.scan_state_updated)
 
-        self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
-        self._window_state = bytearray(self._mw.saveState()).hex()
-        self._mw.close()
-        return 0
+        for scan in tuple(self.scan_1d_dockwidgets):
+            self._remove_scan_dockwidget(scan)
+        for scan in tuple(self.scan_2d_dockwidgets):
+            self._remove_scan_dockwidget(scan)
+        self._clear_axes_control_widgets()
+        self._clear_optimizer_axes_widgets()
+        return
 
     def show(self):
         """Make main window visible and put it above all other windows. """
@@ -450,41 +477,53 @@ class ScannerGui(GuiBase):
         layout = self.scanner_control_dockwidget.widget().layout()
 
         self.axes_control_widgets = dict()
-        for index, axis_name in enumerate(self._scanninglogic().scanner_axes_names, 1):
-            label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
-            label.setObjectName('{0}_axis_label'.format(axis_name))
+        for index, (ax_name, axis) in enumerate(self._scanninglogic().scanner_axes.items(), 1):
+            label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name.title()))
+            label.setObjectName('{0}_axis_label'.format(ax_name))
             label.setFont(font)
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
             res_spinbox = QtWidgets.QSpinBox()
-            res_spinbox.setObjectName('{0}_resolution_spinBox'.format(axis_name))
-            res_spinbox.setRange(2, 2 ** 31 - 1)
+            res_spinbox.setObjectName('{0}_resolution_spinBox'.format(ax_name))
+            res_spinbox.setRange(axis.min_resolution, min(2 ** 31 - 1, axis.max_resolution))
+            res_spinbox.setSuffix('px')
             res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             res_spinbox.setMinimumSize(50, 0)
             res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Preferred)
 
             min_spinbox = ScienDSpinBox()
-            min_spinbox.setObjectName('{0}_min_range_scienDSpinBox'.format(axis_name))
+            min_spinbox.setObjectName('{0}_min_range_scienDSpinBox'.format(ax_name))
+            min_spinbox.setRange(*axis.value_bounds)
+            min_spinbox.setSuffix(axis.unit)
             min_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             min_spinbox.setMinimumSize(75, 0)
             min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Preferred)
 
             max_spinbox = ScienDSpinBox()
-            max_spinbox.setObjectName('{0}_max_range_scienDSpinBox'.format(axis_name))
+            max_spinbox.setObjectName('{0}_max_range_scienDSpinBox'.format(ax_name))
+            max_spinbox.setRange(*axis.value_bounds)
+            max_spinbox.setSuffix(axis.unit)
             max_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             max_spinbox.setMinimumSize(75, 0)
             max_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Preferred)
 
             slider = DoubleSlider(QtCore.Qt.Horizontal)
-            slider.setObjectName('{0}_position_doubleSlider'.format(axis_name))
+            slider.setObjectName('{0}_position_doubleSlider'.format(ax_name))
+            slider.setRange(*axis.value_bounds)
+            if axis.min_step > 0:
+                slider.set_granularity(round((axis.max_value - axis.min_value) / axis.min_step) + 1)
+            else:
+                slider.set_granularity(2**16-1)
             slider.setMinimumSize(150, 0)
             slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
             pos_spinbox = ScienDSpinBox()
-            pos_spinbox.setObjectName('{0}_position_scienDSpinBox'.format(axis_name))
+            pos_spinbox.setObjectName('{0}_position_scienDSpinBox'.format(ax_name))
+            pos_spinbox.setRange(*axis.value_bounds)
+            pos_spinbox.setSuffix(axis.unit)
             pos_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             pos_spinbox.setMinimumSize(75, 0)
             pos_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
@@ -498,31 +537,59 @@ class ScannerGui(GuiBase):
             layout.addWidget(slider, index, 6)
             layout.addWidget(pos_spinbox, index, 7)
 
-            # Remember widgets references for later access
-            self.axes_control_widgets[axis_name] = dict()
-            self.axes_control_widgets[axis_name]['label'] = label
-            self.axes_control_widgets[axis_name]['res_spinbox'] = res_spinbox
-            self.axes_control_widgets[axis_name]['min_spinbox'] = min_spinbox
-            self.axes_control_widgets[axis_name]['max_spinbox'] = max_spinbox
-            self.axes_control_widgets[axis_name]['slider'] = slider
-            self.axes_control_widgets[axis_name]['pos_spinbox'] = pos_spinbox
+            # Connect signals
+            min_spinbox.editingFinished.connect(lambda: self.change_scan_range(ax_name))
+            max_spinbox.editingFinished.connect(lambda: self.change_scan_range(ax_name))
+            res_spinbox.editingFinished.connect(lambda: self.change_scan_resolution(ax_name))
+            slider.valueChanged.connect(self.__get_slider_update_func(ax_name, slider))
+            pos_spinbox.editingFinished.connect(
+                self.__get_target_spinbox_update_func(ax_name, pos_spinbox)
+            )
 
-        # layout.removeWidget(line)
+            # Remember widgets references for later access
+            self.axes_control_widgets[ax_name] = dict()
+            self.axes_control_widgets[ax_name]['label'] = label
+            self.axes_control_widgets[ax_name]['res_spinbox'] = res_spinbox
+            self.axes_control_widgets[ax_name]['min_spinbox'] = min_spinbox
+            self.axes_control_widgets[ax_name]['max_spinbox'] = max_spinbox
+            self.axes_control_widgets[ax_name]['slider'] = slider
+            self.axes_control_widgets[ax_name]['pos_spinbox'] = pos_spinbox
+
         layout.addWidget(self.scanner_control_dockwidget.widget().line, 0, 2, -1, 1)
         layout.addWidget(self.scanner_control_dockwidget.widget().line_2, 0, 5, -1, 1)
         layout.setColumnStretch(5, 1)
         self.scanner_control_dockwidget.widget().setMaximumHeight(
             self.scanner_control_dockwidget.widget().sizeHint().height())
+        return
 
-        # Connect signals
-        for axis, widget_dict in self.axes_control_widgets.items():
-            widget_dict['min_spinbox'].editingFinished.connect(self.change_scan_range)
-            widget_dict['max_spinbox'].editingFinished.connect(self.change_scan_range)
-            widget_dict['res_spinbox'].editingFinished.connect(self.change_scan_resolution)
-            widget_dict['slider'].valueChanged.connect(
-                self.__get_slider_update_func(axis, widget_dict['slider']))
-            widget_dict['pos_spinbox'].editingFinished.connect(
-                self.__get_target_spinbox_update_func(axis, widget_dict['pos_spinbox']))
+    def _clear_axes_control_widgets(self):
+        layout = self.scanner_control_dockwidget.widget().layout()
+
+        for axis in tuple(self.axes_control_widgets):
+            # Disconnect signals
+            self.axes_control_widgets[axis]['min_spinbox'].editingFinished.disconnect()
+            self.axes_control_widgets[axis]['max_spinbox'].editingFinished.disconnect()
+            self.axes_control_widgets[axis]['res_spinbox'].editingFinished.disconnect()
+            self.axes_control_widgets[axis]['slider'].valueChanged.disconnect()
+            self.axes_control_widgets[axis]['pos_spinbox'].editingFinished.disconnect()
+
+            # Remove from layout
+            layout.removeWidget(self.axes_control_widgets[axis]['label'])
+            layout.removeWidget(self.axes_control_widgets[axis]['min_spinbox'])
+            layout.removeWidget(self.axes_control_widgets[axis]['max_spinbox'])
+            layout.removeWidget(self.axes_control_widgets[axis]['res_spinbox'])
+            layout.removeWidget(self.axes_control_widgets[axis]['slider'])
+            layout.removeWidget(self.axes_control_widgets[axis]['pos_spinbox'])
+
+            # Mark widgets for deletion in Qt framework
+            self.axes_control_widgets[axis]['label'].deleteLater()
+            self.axes_control_widgets[axis]['min_spinbox'].deleteLater()
+            self.axes_control_widgets[axis]['max_spinbox'].deleteLater()
+            self.axes_control_widgets[axis]['res_spinbox'].deleteLater()
+            self.axes_control_widgets[axis]['slider'].deleteLater()
+            self.axes_control_widgets[axis]['pos_spinbox'].deleteLater()
+
+        self.axes_control_widgets = dict()
         return
 
     def _generate_optimizer_axes_widgets(self):
@@ -531,19 +598,22 @@ class ScannerGui(GuiBase):
         layout = self._osd.scan_ranges_gridLayout
 
         self.optimizer_settings_axes_widgets = dict()
-        for index, axis_name in enumerate(self._scanninglogic().scanner_axes_names, 1):
-            label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
+        for index, (ax_name, axis) in enumerate(self._scanninglogic().scanner_axes.items(), 1):
+            label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name))
             label.setFont(font)
             label.setAlignment(QtCore.Qt.AlignRight)
 
             range_spinbox = ScienDSpinBox()
             range_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            range_spinbox.setRange(0, axis.max_value - axis.min_value)
+            range_spinbox.setSuffix(axis.unit)
             range_spinbox.setMinimumSize(70, 0)
             range_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                         QtWidgets.QSizePolicy.Preferred)
 
             res_spinbox = QtWidgets.QSpinBox()
-            res_spinbox.setRange(2, 2 ** 31 - 1)
+            res_spinbox.setRange(axis.min_resolution, min(2 ** 31 - 1, axis.max_resolution))
+            res_spinbox.setSuffix('px')
             res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             res_spinbox.setMinimumSize(70, 0)
             res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
@@ -555,10 +625,27 @@ class ScannerGui(GuiBase):
             layout.addWidget(res_spinbox, index, 2)
 
             # Remember widgets references for later access
-            self.optimizer_settings_axes_widgets[axis_name] = dict()
-            self.optimizer_settings_axes_widgets[axis_name]['label'] = label
-            self.optimizer_settings_axes_widgets[axis_name]['range_spinbox'] = range_spinbox
-            self.optimizer_settings_axes_widgets[axis_name]['res_spinbox'] = res_spinbox
+            self.optimizer_settings_axes_widgets[ax_name] = dict()
+            self.optimizer_settings_axes_widgets[ax_name]['label'] = label
+            self.optimizer_settings_axes_widgets[ax_name]['range_spinbox'] = range_spinbox
+            self.optimizer_settings_axes_widgets[ax_name]['res_spinbox'] = res_spinbox
+        return
+
+    def _clear_optimizer_axes_widgets(self):
+        layout = self._osd.scan_ranges_gridLayout
+
+        for axis in tuple(self.optimizer_settings_axes_widgets):
+            # Remove from layout
+            layout.removeWidget(self.optimizer_settings_axes_widgets[axis]['label'])
+            layout.removeWidget(self.optimizer_settings_axes_widgets[axis]['range_spinbox'])
+            layout.removeWidget(self.optimizer_settings_axes_widgets[axis]['res_spinbox'])
+
+            # Mark widgets for deletion in Qt framework
+            self.optimizer_settings_axes_widgets[axis]['label'].deleteLater()
+            self.optimizer_settings_axes_widgets[axis]['range_spinbox'].deleteLater()
+            self.optimizer_settings_axes_widgets[axis]['res_spinbox'].deleteLater()
+
+        self.optimizer_settings_axes_widgets = dict()
         return
 
     @QtCore.Slot()
@@ -621,82 +708,59 @@ class ScannerGui(GuiBase):
         self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tilt_correction_dockwidget)
         return
 
-    def apply_scanner_constraints(self):
-        """ Set limits on input widgets according to scanner hardware constraints. """
-        constraints = self._scanninglogic().scanner_constraints.axes
-
-        # Apply constraints for every scannner axis
-        for index, (axis, axis_constr) in enumerate(constraints.items()):
-            # Set value ranges
-            res_range = (max(2, axis_constr.min_resolution),
-                         min(2 ** 31 - 1, axis_constr.max_resolution))
-            self.axes_control_widgets[axis]['res_spinbox'].setRange(*res_range)
-            self.axes_control_widgets[axis]['min_spinbox'].setRange(*axis_constr.value_bounds)
-            self.axes_control_widgets[axis]['max_spinbox'].setRange(*axis_constr.value_bounds)
-            self.axes_control_widgets[axis]['pos_spinbox'].setRange(*axis_constr.value_bounds)
-            self.axes_control_widgets[axis]['slider'].setRange(*axis_constr.value_bounds)
-            if axis_constr.min_step > 0:
-                self.axes_control_widgets[axis]['slider'].set_granularity(
-                    round((axis_constr.max_value - axis_constr.min_value) / axis_constr.min_step) + 1
-                )
-            else:
-                self.axes_control_widgets[axis]['slider'].set_granularity(2**16-1)
-            self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setRange(
-                0, axis_constr.max_value - axis_constr.min_value
-            )
-            self.optimizer_settings_axes_widgets[axis]['res_spinbox'].setRange(*res_range)
-            # Set units as SpinBox suffix
-            self.axes_control_widgets[axis]['min_spinbox'].setSuffix(axis_constr.unit)
-            self.axes_control_widgets[axis]['max_spinbox'].setSuffix(axis_constr.unit)
-            self.axes_control_widgets[axis]['pos_spinbox'].setSuffix(axis_constr.unit)
-            self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setSuffix(axis_constr.unit)
-
-        # FIXME: Apply general scanner constraints
-        return
-
     def _remove_scan_dockwidget(self, axes):
         if axes in self.scan_1d_dockwidgets:
             self._mw.removeDockWidget(self.scan_1d_dockwidgets[axes])
+            self.scan_1d_dockwidgets[axes].toggle_scan_button.clicked.disconnect()
+            self.scan_1d_dockwidgets[axes].deleteLater()
             del self.scan_1d_dockwidgets[axes]
         elif axes in self.scan_2d_dockwidgets:
             self._mw.removeDockWidget(self.scan_2d_dockwidgets[axes])
+            self.scan_2d_dockwidgets[axes].toggle_scan_button.clicked.disconnect()
+            self.scan_2d_dockwidgets[axes].plot_widget.crosshairs[
+                0].sigDraggedPosChanged.disconnect()
+            self.scan_2d_dockwidgets[axes].plot_widget.sigMouseAreaSelected.disconnect()
+            self.scan_2d_dockwidgets[axes].channel_comboBox.currentIndexChanged.disconnect()
+            self.scan_2d_dockwidgets[axes].deleteLater()
             del self.scan_2d_dockwidgets[axes]
         return
 
     def _add_scan_dockwidget(self, axes):
-        scanner_constraints = self._scanninglogic().scanner_constraints['axes']
+        axes_constr = self._scanninglogic().scanner_constraints.axes
         optimizer_settings = self._scanninglogic().optimizer_settings
         axes = tuple(axes)
         if len(axes) == 1:
+            if axes in self.scan_1d_dockwidgets:
+                self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
+                               'already created. Remove old widget first.'.format(axes))
+                return
             dockwidget = Scan1dDockWidget(axes[0])
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
             self.scan_1d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
             # Set axis labels
-            dockwidget.plot_widget.setLabel('bottom',
-                                            axes[0],
-                                            units=scanner_constraints[axes[0]]['unit'])
+            dockwidget.plot_widget.setLabel('bottom', axes[0], units=axes_constr[axes[0]].unit)
             dockwidget.plot_widget.setLabel('left', 'scan data', units='arb.u.')
             dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
         else:
+            if axes in self.scan_2d_dockwidgets:
+                self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
+                               'already created. Remove old widget first.'.format(axes))
+                return
             dockwidget = Scan2dDockWidget(axes)
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
             self.scan_2d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
             # Set axis labels
-            dockwidget.plot_widget.setLabel(
-                'bottom', axes[0], units=scanner_constraints[axes[0]]['unit'])
-            dockwidget.plot_widget.setLabel(
-                'left', axes[1], units=scanner_constraints[axes[1]]['unit'])
+            dockwidget.plot_widget.setLabel('bottom', axes[0], units=axes_constr[axes[0]].unit)
+            dockwidget.plot_widget.setLabel('left', axes[1], units=axes_constr[axes[1]].unit)
             dockwidget.plot_widget.add_crosshair(movable=True, min_size_factor=0.02)
             dockwidget.plot_widget.add_crosshair(movable=False,
                                                  pen={'color': '#00ffff', 'width': 1})
             dockwidget.plot_widget.bring_crosshair_on_top(0)
             dockwidget.plot_widget.crosshairs[0].set_allowed_range(
-                ((scanner_constraints[axes[0]]['min_value'],
-                  scanner_constraints[axes[0]]['max_value']),
-                 (scanner_constraints[axes[1]]['min_value'],
-                  scanner_constraints[axes[1]]['max_value'])))
+                (axes_constr[axes[0]].value_bounds, axes_constr[axes[1]].value_bounds)
+            )
             dockwidget.plot_widget.crosshairs[0].set_size(
                 (optimizer_settings['axes'][axes[0]]['range'],
                  optimizer_settings['axes'][axes[1]]['range']))
@@ -705,12 +769,15 @@ class ScannerGui(GuiBase):
             dockwidget.plot_widget.setAspectLocked(lock=True, ratio=1.0)
             dockwidget.plot_widget.toggle_zoom_by_selection(True)
             dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
-                self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0]))
-            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(tuple(axes)))
+                self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0])
+            )
+            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
             dockwidget.plot_widget.sigMouseAreaSelected.connect(
-                self.__get_range_from_selection_func(tuple(axes)))
+                self.__get_range_from_selection_func(axes)
+            )
             dockwidget.channel_comboBox.currentIndexChanged.connect(
-                self.__get_data_channel_changed_func(tuple(axes)))
+                self.__get_data_channel_changed_func(axes)
+            )
         return
 
     @property
@@ -745,20 +812,18 @@ class ScannerGui(GuiBase):
                               If None (default) read the scanner setting from logic and update.
         """
         if not isinstance(settings, dict):
-            settings = self._scanninglogic().scanner_settings
+            settings = self._scanninglogic().scan_settings
 
-        if 'pixel_clock_frequency' in settings:
-            self._ssd.pixel_clock_frequency_scienSpinBox.setValue(settings['pixel_clock_frequency'])
-        if 'backscan_points' in settings:
-            self._ssd.backscan_speed_scienSpinBox.setValue(settings['backscan_points'])
-        if 'scan_resolution' in settings:
-            for axis, resolution in settings['scan_resolution'].items():
+        if 'frequency' in settings:
+            self._ssd.pixel_clock_frequency_scienSpinBox.setValue(settings['frequency'])
+        if 'resolution' in settings:
+            for axis, resolution in settings['resolution'].items():
                 res_spinbox = self.axes_control_widgets[axis]['res_spinbox']
                 res_spinbox.blockSignals(True)
                 res_spinbox.setValue(resolution)
                 res_spinbox.blockSignals(False)
-        if 'scan_range' in settings:
-            for axis, axis_range in settings['scan_range'].items():
+        if 'range' in settings:
+            for axis, axis_range in settings['range'].items():
                 min_spinbox = self.axes_control_widgets[axis]['min_spinbox']
                 max_spinbox = self.axes_control_widgets[axis]['max_spinbox']
                 min_spinbox.blockSignals(True)
@@ -767,27 +832,29 @@ class ScannerGui(GuiBase):
                 max_spinbox.setValue(axis_range[1])
                 min_spinbox.blockSignals(False)
                 max_spinbox.blockSignals(False)
-        if 'scan_axes' in settings:
-            present_keys = set(self.scan_1d_dockwidgets)
-            present_keys.update(set(self.scan_2d_dockwidgets))
-
-            # Remove obsolete scan dockwidgets and images items
-            keys_to_delete = present_keys.difference(settings['scan_axes'])
-            for key in keys_to_delete:
-                self._remove_scan_dockwidget(key)
-
-            # Add new dockwidgets and image items, do not use set to keep ordering
-            keys_to_add = [key for key in settings['scan_axes'] if key not in present_keys]
-            for key in keys_to_add:
-                self._add_scan_dockwidget(key)
+        # if 'backscan_points' in settings:
+        #     self._ssd.backscan_speed_scienSpinBox.setValue(settings['backscan_points'])
+        # if 'scan_axes' in settings:
+        #     present_keys = set(self.scan_1d_dockwidgets)
+        #     present_keys.update(set(self.scan_2d_dockwidgets))
+        #
+        #     # Remove obsolete scan dockwidgets and images items
+        #     keys_to_delete = present_keys.difference(settings['scan_axes'])
+        #     for key in keys_to_delete:
+        #         self._remove_scan_dockwidget(key)
+        #
+        #     # Add new dockwidgets and image items, do not use set to keep ordering
+        #     keys_to_add = [key for key in settings['scan_axes'] if key not in present_keys]
+        #     for key in keys_to_add:
+        #         self._add_scan_dockwidget(key)
         return
 
-    def move_scanner_position(self, target_pos):
+    def set_scanner_target_position(self, target_pos):
         """
 
         @param dict target_pos:
         """
-        self.sigMoveScannerPosition.emit(target_pos, id(self))
+        self.sigSetScannerTarget.emit(target_pos, id(self))
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
@@ -800,8 +867,9 @@ class ScannerGui(GuiBase):
         @param int caller_id: The qudi module object id responsible for triggering this update
         """
         # If this update has been issued by this module, do not update display.
-        # This has already been done.
-        if caller_id == id(self):
+        # This has already been done before notifying the logic.
+        # Also ignore this call if the real momentary scanner position should not be shown
+        if caller_id == id(self) or not self._show_true_scanner_position:
             return
 
         if not isinstance(pos_dict, dict):
@@ -821,64 +889,78 @@ class ScannerGui(GuiBase):
         @param int caller_id: The qudi module object id responsible for triggering this update
         """
         # If this update has been issued by this module, do not update display.
-        # This has already been done.
+        # This has already been done before notifying the logic.
         if caller_id == id(self):
             return
 
         if not isinstance(pos_dict, dict):
-            pos_dict = self._scanninglogic().scanner_position
+            pos_dict = self._scanninglogic().scanner_target
 
         self._update_target_display(pos_dict)
         return
 
     @QtCore.Slot()
-    @QtCore.Slot(dict)
+    @QtCore.Slot(object)
     def scan_data_updated(self, scan_data=None):
         """
 
         @param dict scan_data:
         """
-        if not isinstance(scan_data, dict):
+        if not isinstance(scan_data, ScanData):
             scan_data = self._scanninglogic().scan_data
+        if scan_data is None:
+            return
 
-        for axes, data in scan_data.items():
-            if len(axes) == 2:
-                dockwidget = self.scan_2d_dockwidgets[axes]
-                if set(data.channel_names) != dockwidget.channel_set:
-                    old_channel = dockwidget.channel_comboBox.currentText()
-                    dockwidget.channel_comboBox.blockSignals(True)
-                    dockwidget.channel_comboBox.clear()
-                    dockwidget.channel_comboBox.addItems(data.channel_names)
-                    dockwidget.channel_set = set(data.channel_names)
-                    if old_channel in dockwidget.channel_set:
-                        dockwidget.channel_comboBox.setCurrentText(old_channel)
-                    dockwidget.channel_comboBox.blockSignals(False)
-                channel = dockwidget.channel_comboBox.currentText()
-                dockwidget.image_item.setImage(image=data.data[channel])
-                data_ranges_x, data_ranges_y = data.target_ranges
-                px_size_x = abs(data_ranges_x[1] - data_ranges_x[0]) / data.resolution[0]
-                px_size_y = abs(data_ranges_y[1] - data_ranges_y[0]) / data.resolution[1]
-                x_min = min(data_ranges_x) - px_size_x / 2
-                x_max = max(data_ranges_x) + px_size_x / 2
-                y_min = min(data_ranges_y) - px_size_y / 2
-                y_max = max(data_ranges_y) + px_size_y / 2
+        if scan_data.dimension == 2:
+            dockwidget = self.scan_2d_dockwidgets[scan_data.scan_axes]
+            if set(scan_data.channel_names) != dockwidget.channel_set:
+                old_channel = dockwidget.channel_comboBox.currentText()
+                dockwidget.channel_comboBox.blockSignals(True)
+                dockwidget.channel_comboBox.clear()
+                dockwidget.channel_comboBox.addItems(scan_data.channel_names)
+                dockwidget.channel_set = set(scan_data.channel_names)
+                if old_channel in dockwidget.channel_set:
+                    dockwidget.channel_comboBox.setCurrentText(old_channel)
+                else:
+                    dockwidget.channel_comboBox.setCurrentIndex(0)
+                dockwidget.channel_comboBox.blockSignals(False)
+            channel = dockwidget.channel_comboBox.currentText()
+            if scan_data.data is None:
+                dockwidget.image_item.setImage(image=np.zeros((0, 0)))
+            else:
+                dockwidget.image_item.setImage(image=scan_data.data[channel])
+                data_range_x, data_range_y = scan_data.scan_range
+                px_size_x = abs(data_range_x[1] - data_range_x[0]) / scan_data.scan_resolution[0]
+                px_size_y = abs(data_range_y[1] - data_range_y[0]) / scan_data.scan_resolution[1]
+                x_min = data_range_x[0] - px_size_x / 2
+                x_max = data_range_x[1] + px_size_x / 2
+                y_min = data_range_y[0] - px_size_y / 2
+                y_max = data_range_y[1] + px_size_y / 2
                 dockwidget.image_item.set_image_extent(((x_min, x_max), (y_min, y_max)))
-                dockwidget.colorbar.set_label(text='scan data', unit=data.channel_units[channel])
-            elif len(axes) == 1:
-                dockwidget = self.scan_1d_dockwidgets[axes]
-                if set(data.channel_names) != dockwidget.channel_set:
-                    old_channel = dockwidget.channel_comboBox.currentText()
-                    dockwidget.channel_comboBox.clear()
-                    dockwidget.channel_comboBox.addItems(data.channel_names)
-                    dockwidget.channel_set = set(data.channel_names)
-                    if old_channel in dockwidget.channel_set:
-                        dockwidget.channel_comboBox.setCurrentText(old_channel)
-                channel = dockwidget.channel_comboBox.currentText()
+            dockwidget.colorbar.set_label(text=channel, unit=scan_data.channel_units[channel])
+        elif scan_data.dimension == 1:
+            dockwidget = self.scan_1d_dockwidgets[scan_data.scan_axes]
+            if set(scan_data.channel_names) != dockwidget.channel_set:
+                old_channel = dockwidget.channel_comboBox.currentText()
+                dockwidget.channel_comboBox.blockSignals(True)
+                dockwidget.channel_comboBox.clear()
+                dockwidget.channel_comboBox.addItems(scan_data.channel_names)
+                dockwidget.channel_set = set(scan_data.channel_names)
+                if old_channel in dockwidget.channel_set:
+                    dockwidget.channel_comboBox.setCurrentText(old_channel)
+                else:
+                    dockwidget.channel_comboBox.setCurrentIndex(0)
+                dockwidget.channel_comboBox.blockSignals(False)
+            channel = dockwidget.channel_comboBox.currentText()
+            if scan_data.data is None:
+                dockwidget.plot_item.setData(np.zeros(1), np.zeros(1))
+            else:
                 dockwidget.plot_item.setData(
-                    np.linspace(*(data.target_ranges[0]), data.data[channel].size),
-                    data.data[channel])
-                dockwidget.plot_widget.setLabel(
-                    'left', 'scan data', units=data.channel_units[channel])
+                    np.linspace(*(scan_data.scan_range[0]), scan_data.scan_resolution[0]),
+                    scan_data.data[channel]
+                )
+            dockwidget.plot_widget.setLabel(
+                'left', channel, units=scan_data.channel_units[channel])
         return
 
     @QtCore.Slot(bool, tuple)
@@ -958,21 +1040,21 @@ class ScannerGui(GuiBase):
         def update_func(x):
             pos_dict = {ax: x}
             self._update_target_display(pos_dict, exclude_widget=slider)
-            self.move_scanner_position(pos_dict)
+            self.set_scanner_target_position(pos_dict)
         return update_func
 
     def __get_target_spinbox_update_func(self, ax, spinbox):
         def update_func():
             pos_dict = {ax: spinbox.value()}
             self._update_target_display(pos_dict, exclude_widget=spinbox)
-            self.move_scanner_position(pos_dict)
+            self.set_scanner_target_position(pos_dict)
         return update_func
 
     def __get_crosshair_update_func(self, ax, crosshair):
         def update_func(x, y):
             pos_dict = {ax[0]: x, ax[1]: y}
             self._update_target_display(pos_dict, exclude_widget=crosshair)
-            self.move_scanner_position(pos_dict)
+            self.set_scanner_target_position(pos_dict)
         return update_func
 
     def __get_toggle_scan_func(self, ax):
@@ -982,7 +1064,7 @@ class ScannerGui(GuiBase):
         def set_range_func(qrect):
             x_min, x_max = min(qrect.left(), qrect.right()), max(qrect.left(), qrect.right())
             y_min, y_max = min(qrect.top(), qrect.bottom()), max(qrect.top(), qrect.bottom())
-            self.sigScannerSettingsChanged.emit({'scan_range': {ax[0]: (x_min, x_max),
+            self.sigScanSettingsChanged.emit({'scan_range': {ax[0]: (x_min, x_max),
                                                                 ax[1]: (y_min, y_max)}})
             self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
@@ -1000,7 +1082,7 @@ class ScannerGui(GuiBase):
         axis = obj_name.rsplit('_', 3)[0]
         scan_range = (self.axes_control_widgets[axis]['min_spinbox'].value(),
                       self.axes_control_widgets[axis]['max_spinbox'].value())
-        self.sigScannerSettingsChanged.emit({'scan_range': {axis: scan_range}})
+        self.sigScanSettingsChanged.emit({'scan_range': {axis: scan_range}})
         return
 
     @QtCore.Slot()
@@ -1010,7 +1092,7 @@ class ScannerGui(GuiBase):
             return
         axis = obj_name.rsplit('_', 2)[0]
         scan_res = self.axes_control_widgets[axis]['res_spinbox'].value()
-        self.sigScannerSettingsChanged.emit({'scan_resolution': {axis: scan_res}})
+        self.sigScanSettingsChanged.emit({'scan_resolution': {axis: scan_res}})
         return
 
     @QtCore.Slot(bool)

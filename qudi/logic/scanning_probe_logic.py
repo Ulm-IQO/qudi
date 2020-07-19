@@ -50,7 +50,7 @@ class ScanningProbeLogic(LogicBase):
     # status vars
     _scan_ranges = StatusVar(name='scan_ranges', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
-    _scan_settings = StatusVar(name='scan_settings', default=None)
+    _scan_frequency = StatusVar(name='scan_frequency', default=None)
     _scan_history = StatusVar(name='scan_history', default=list())
 
     # config options
@@ -63,8 +63,6 @@ class ScanningProbeLogic(LogicBase):
     sigScanStateChanged = QtCore.Signal(bool, tuple)
     sigScannerPositionChanged = QtCore.Signal(dict, object)
     sigScannerTargetChanged = QtCore.Signal(dict, object)
-    sigScanRangesChanged = QtCore.Signal(dict)
-    sigScanResolutionChanged = QtCore.Signal(dict)
     sigScanSettingsChanged = QtCore.Signal(dict)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigScanDataChanged = QtCore.Signal(object)
@@ -109,9 +107,8 @@ class ScanningProbeLogic(LogicBase):
         if not isinstance(self._scan_resolution, dict):
             self._scan_resolution = {ax.name: max(ax.min_resolution, min(128, ax.max_resolution))
                                      for ax in constr.axes.values()}
-        if not isinstance(self._scan_settings, dict):
-            self._scan_settings = {
-                'frequency': min(ax.max_frequency for ax in constr.axes.values())}
+        if self._scan_frequency is None:
+            self._scan_frequency = min(ax.max_frequency for ax in constr.axes.values())
 
         self.__current_scan = None
         self.__scan_update_interval = 0
@@ -136,7 +133,8 @@ class ScanningProbeLogic(LogicBase):
 
     @property
     def scan_data(self):
-        return self._scanner().get_scan_data()
+        with self._thread_lock:
+            return self._scanner().get_scan_data()
 
     @property
     def scanner_position(self):
@@ -149,8 +147,12 @@ class ScanningProbeLogic(LogicBase):
             return self._scanner().get_target()
 
     @property
-    def scanner_axes_names(self):
-        return tuple(self.scanner_constraints.axes)
+    def scanner_axes(self):
+        return self.scanner_constraints.axes
+
+    @property
+    def scanner_channels(self):
+        return self.scanner_constraints.channels
 
     @property
     def scanner_constraints(self):
@@ -167,9 +169,16 @@ class ScanningProbeLogic(LogicBase):
             return self._scan_resolution.copy()
 
     @property
+    def scan_frequency(self):
+        return self._scan_frequency
+
+    @property
     def scan_settings(self):
         with self._thread_lock:
-            return self._scan_settings.copy()
+            settings = {'range': self._scan_ranges.copy(),
+                        'resolution': self._scan_resolution.copy(),
+                        'frequency': self._scan_frequency}
+            return settings
 
     @property
     def optimizer_settings(self):
@@ -177,12 +186,16 @@ class ScanningProbeLogic(LogicBase):
             return self._optimizer_settings.copy()
 
     @QtCore.Slot(dict)
+    def set_scan_settings(self, settings):
+        pass
+
+    @QtCore.Slot(dict)
     def set_scan_range(self, ranges):
         with self._thread_lock:
             if self.module_state() == 'locked':
                 self.log.warning('Scan is running. Unable to change scan ranges.')
                 new_ranges = self._scan_ranges.copy()
-                self.sigScanRangesChanged.emit(new_ranges)
+                self.sigScanSettingsChanged.emit({'range': new_ranges})
                 return new_ranges
 
             ax_constr = self.scanner_constraints.axes
@@ -190,7 +203,7 @@ class ScanningProbeLogic(LogicBase):
                 if ax not in self._scan_ranges:
                     self.log.error('Unknown axis "{0}" encountered.'.format(ax))
                     new_ranges = self._scan_ranges.copy()
-                    self.sigScanRangesChanged.emit(new_ranges)
+                    self.sigScanSettingsChanged.emit({'range': new_ranges})
                     return new_ranges
 
                 new_range = (
@@ -201,8 +214,8 @@ class ScanningProbeLogic(LogicBase):
                     new_range = (new_range[0], new_range[0])
                 self._scan_ranges[ax] = new_range
 
-            new_ranges = {ax: r for ax, r in self._scan_ranges if ax in ranges}
-            self.sigScanRangesChanged.emit(new_ranges)
+            new_ranges = {ax: r for ax, r in self._scan_ranges.items() if ax in ranges}
+            self.sigScanSettingsChanged.emit({'range': new_ranges})
             return new_ranges
 
     @QtCore.Slot(dict)
@@ -211,7 +224,7 @@ class ScanningProbeLogic(LogicBase):
             if self.module_state() == 'locked':
                 self.log.warning('Scan is running. Unable to change scan resolution.')
                 new_res = self._scan_resolution.copy()
-                self.sigScanResolutionChanged.emit(new_res)
+                self.sigScanSettingsChanged.emit({'resolution': new_res})
                 return new_res
 
             ax_constr = self.scanner_constraints.axes
@@ -219,7 +232,7 @@ class ScanningProbeLogic(LogicBase):
                 if ax not in self._scan_resolution:
                     self.log.error('Unknown axis "{0}" encountered.'.format(ax))
                     new_res = self._scan_resolution.copy()
-                    self.sigScanResolutionChanged.emit(new_res)
+                    self.sigScanSettingsChanged.emit({'resolution': new_res})
                     return new_res
 
                 new_res = (
@@ -231,32 +244,32 @@ class ScanningProbeLogic(LogicBase):
                 self._scan_ranges[ax] = new_res
 
             new_resolution = {ax: r for ax, r in self._scan_ranges if ax in resolution}
-            self.sigScanResolutionChanged.emit(new_resolution)
+            self.sigScanSettingsChanged.emit({'resolution': new_resolution})
             return new_resolution
 
     @QtCore.Slot(dict)
     def set_optimizer_settings(self, settings):
-        if 'axes' in settings:
-            for axis, axis_dict in settings['axes'].items():
-                self._optimizer_settings['axes'][axis].update(axis_dict)
-        if 'settle_time' in settings:
-            if settings['settle_time'] < 0:
-                self.log.error('Optimizer settle time must be positive number.')
-            else:
-                self._optimizer_settings['settle_time'] = float(settings['settle_time'])
-        if 'pixel_clock' in settings:
-            if settings['pixel_clock'] < 1:
-                self.log.error('Optimizer pixel clock must be integer number >= 1.')
-            else:
-                self._optimizer_settings['pixel_clock'] = int(settings['pixel_clock'])
-        if 'backscan_pts' in settings:
-            if settings['backscan_pts'] < 1:
-                self.log.error('Optimizer backscan points must be integer number >= 1.')
-            else:
-                self._optimizer_settings['backscan_pts'] = int(settings['backscan_pts'])
-        if 'sequence' in settings:
-            self._optimizer_settings['sequence'] = tuple(settings['sequence'])
-
+        # ToDo: Implement
+        # if 'axes' in settings:
+        #     for axis, axis_dict in settings['axes'].items():
+        #         self._optimizer_settings['axes'][axis].update(axis_dict)
+        # if 'settle_time' in settings:
+        #     if settings['settle_time'] < 0:
+        #         self.log.error('Optimizer settle time must be positive number.')
+        #     else:
+        #         self._optimizer_settings['settle_time'] = float(settings['settle_time'])
+        # if 'pixel_clock' in settings:
+        #     if settings['pixel_clock'] < 1:
+        #         self.log.error('Optimizer pixel clock must be integer number >= 1.')
+        #     else:
+        #         self._optimizer_settings['pixel_clock'] = int(settings['pixel_clock'])
+        # if 'backscan_pts' in settings:
+        #     if settings['backscan_pts'] < 1:
+        #         self.log.error('Optimizer backscan points must be integer number >= 1.')
+        #     else:
+        #         self._optimizer_settings['backscan_pts'] = int(settings['backscan_pts'])
+        # if 'sequence' in settings:
+        #     self._optimizer_settings['sequence'] = tuple(settings['sequence'])
         self.sigOptimizerSettingsChanged.emit(self.optimizer_settings)
         return
 
@@ -317,7 +330,7 @@ class ScanningProbeLogic(LogicBase):
                 settings = {'axes': tuple(scan_axes),
                             'range': tuple(self._scan_ranges[ax] for ax in scan_axes),
                             'resolution': tuple(self._scan_resolution[ax] for ax in scan_axes),
-                            'frequency': self._scan_settings['frequency']}
+                            'frequency': self._scan_frequency}
                 new_settings = self._scanner().configure_scan(settings)
                 if new_settings['axes'] != self.__current_scan:
                     self.log.error('Something went wrong while configuring scanner. Axes to scan '
@@ -332,28 +345,26 @@ class ScanningProbeLogic(LogicBase):
                     new = new_settings['range'][ax_index]
                     if old[0] != new[0] or old[1] != new[1]:
                         self._scan_ranges[ax] = tuple(new)
-                        self.sigScanRangesChanged.emit({ax: self._scan_ranges[ax]})
+                        self.sigScanSettingsChanged.emit({'range': {ax: self._scan_ranges[ax]}})
 
                     # Update scan resolution if needed
                     old = self._scan_resolution[ax]
                     new = new_settings['resolution'][ax_index]
                     if old != new:
                         self._scan_resolution[ax] = int(new)
-                        self.sigScanResolutionChanged.emit({ax: self._scan_resolution[ax]})
+                        self.sigScanSettingsChanged.emit(
+                            {'resolution': {ax: self._scan_resolution[ax]}})
 
                 # Update scan frequency if needed
-                old = self._scan_settings['frequency']
                 new = new_settings['frequency']
-                if old != new:
-                    self._scan_settings['frequency'] = float(new)
-                    self.sigScanSettingsChanged.emit(
-                        {'frequency': self._scan_settings['frequency']})
+                if self._scan_frequency != new:
+                    self._scan_frequency = float(new)
+                    self.sigScanSettingsChanged.emit({'frequency': self._scan_frequency})
 
                 line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
                 self.__scan_update_interval = max(
                     self._min_scan_update_interval,
-                    min(self._max_scan_update_interval,
-                        line_points / self._scan_settings['frequency'])
+                    min(self._max_scan_update_interval, line_points / self._scan_frequency)
                 )
 
                 # Try to start scanner
@@ -434,7 +445,7 @@ class ScanningProbeLogic(LogicBase):
             return
 
     @QtCore.Slot()
-    def history_backwards(self):
+    def history_previous(self):
         with self._thread_lock:
             if self._curr_history_index < 1:
                 self.log.warning('Unable to restore previous state from scan history. '
@@ -443,7 +454,7 @@ class ScanningProbeLogic(LogicBase):
         return self.restore_from_history(self._curr_history_index - 1)
 
     @QtCore.Slot()
-    def history_forward(self):
+    def history_next(self):
         with self._thread_lock:
             if self._curr_history_index >= len(self._history) - 1:
                 self.log.warning('Unable to restore next state from scan history. '
@@ -473,11 +484,11 @@ class ScanningProbeLogic(LogicBase):
                 self._scan_resolution[ax] = int(constr.clip_resolution(data.resolution[i]))
                 self._scan_ranges[ax] = tuple(
                     constr.clip_value(val) for val in data.target_ranges[i])
-            self._scan_settings['frequency'] = data.scan_frequency
+            self._scan_frequency = data.scan_frequency
             self._curr_history_index = index
-            self.sigScanRangesChanged.emit(self._scan_ranges.copy())
-            self.sigScanResolutionChanged.emit(self._scan_resolution.copy())
-            self.sigScanSettingsChanged.emit(self._scan_settings.copy())
+            self.sigScanSettingsChanged.emit({'range': self._scan_ranges.copy(),
+                                              'resolution': self._scan_resolution.copy(),
+                                              'frequency': self._scan_frequency})
             self.sigScanDataChanged.emit(data)
             return
 
