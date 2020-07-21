@@ -143,7 +143,6 @@ class ScanImageItem(ImageItem):
         else:
             self.orig_image = None
             if self._percentiles is not None:
-                print('image type:', image)
                 masked_image = np.ma.masked_invalid(image).compressed()
                 if masked_image.size > 0:
                     min_value = np.percentile(masked_image, self._percentiles[0])
