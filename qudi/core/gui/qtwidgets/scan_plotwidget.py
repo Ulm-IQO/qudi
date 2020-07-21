@@ -20,14 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import os
 import numpy as np
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets, QtGui
 from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
-from qudi.core.util.filters import scan_blink_correction
-from qudi.core.gui.colordefs import ColorScaleInferno
-from .colorbar import ColorBarWidget, ColorBarMode
 
-__all__ = ['ScanImageItem', 'ScanPlotWidget', 'ScanViewBox']
+from .colorbar import ColorBarWidget, ColorBarMode
+from ..colordefs import ColorScaleInferno
+from ...util.paths import get_artwork_dir
+from ...util.filters import scan_blink_correction
+
+__all__ = ('ScanImageItem', 'ScanPlotWidget', 'ScanViewBox', 'ScanWidget')
 
 
 class ScanImageItem(ImageItem):
@@ -668,13 +671,30 @@ class ScanWidget(QtWidgets.QWidget):
         self.setLayout(layout)
 
         self.toggle_scan_button = QtWidgets.QPushButton('Toggle Scan')
-        self.toggle_scan_button.setMinimumWidth(75)
+        self.toggle_scan_button.setMinimumWidth(self.toggle_scan_button.sizeHint().width())
+        self.toggle_scan_button.setCheckable(True)
+        self.toggle_scan_button.setFocusPolicy(QtCore.Qt.FocusPolicy.TabFocus)
+        # Try to load default icons
+        try:
+            icon_path = os.path.join(get_artwork_dir(), 'icons', 'qudiTheme', '22x22')
+            start_icon_path = os.path.join(icon_path, 'scan-xy-start.png')
+            stop_icon_path = os.path.join(icon_path, 'stop-scan.png')
+            icon = QtGui.QIcon(start_icon_path)
+            icon.addPixmap(QtGui.QPixmap(stop_icon_path),
+                           mode=QtGui.QIcon.Normal,
+                           state=QtGui.QIcon.On)
+            self.toggle_scan_button.setIcon(icon)
+            self.toggle_scan_button.setIconSize(QtCore.QSize(22, 22))
+            self.toggle_scan_button.setText('Scan')
+        except:
+            pass
         layout.addWidget(self.toggle_scan_button, 0, 0)
 
         self.channel_selection_combobox = QtWidgets.QComboBox()
         self.channel_selection_combobox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                                       QtWidgets.QSizePolicy.Preferred)
         layout.addWidget(self.channel_selection_combobox, 0, 1)
+        self.channel_selection_combobox.setVisible(False)
 
         self._plot_widget = ScanPlotWidget()
         self._image_item = ScanImageItem()
@@ -683,22 +703,24 @@ class ScanWidget(QtWidgets.QWidget):
         self._plot_widget.setMinimumHeight(100)
         self._plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                         QtWidgets.QSizePolicy.Expanding)
+        self._plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         layout.addWidget(self._plot_widget, 1, 0, 1, 2)
 
         self._colorbar_widget = ColorBarWidget()
         layout.addWidget(self._colorbar_widget, 1, 2)
-
-        self._channel_set = set()
-        self._image_data = None  # in case of multichannel data, save a reference here
 
         if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
             self._image_item.set_percentiles(self._colorbar_widget.percentiles)
         else:
             self._image_item.set_percentiles(None)
 
+        self._channel_units = dict()
+        self._image_data = dict()  # in case of multichannel data, save a reference here
+
         self._colorbar_widget.sigModeChanged.connect(self.__colorbar_mode_changed)
         self._colorbar_widget.sigLimitsChanged.connect(self.__colorbar_limits_changed)
         self._colorbar_widget.sigPercentilesChanged.connect(self.__colorbar_percentiles_changed)
+        self.channel_selection_combobox.currentIndexChanged.connect(self.__channel_changed)
 
     def __getattr__(self, name):
         if name in self.__plot_widget_wrapped:
@@ -716,35 +738,50 @@ class ScanWidget(QtWidgets.QWidget):
             if levels is not None and len(levels) == 2:
                 self._colorbar_widget.set_limits(*levels)
 
-    def set_image(self, image):
-        """
-
-        """
-        if image is None or len(image) == 0:
+    def set_data_channels(self, name_to_unit_map):
+        if name_to_unit_map is None:
+            self._channel_units = dict()
+            self.channel_selection_combobox.setVisible(False)
             self.channel_selection_combobox.blockSignals(True)
             self.channel_selection_combobox.clear()
             self.channel_selection_combobox.setVisible(False)
             self.channel_selection_combobox.blockSignals(False)
             self._image_item.setImage(image=None, autoLevels=False)
+            self._image_data = dict()
+        elif isinstance(name_to_unit_map, dict) and len(name_to_unit_map) > 0:
+            self._channel_units = name_to_unit_map.copy()
+            self.channel_selection_combobox.blockSignals(True)
+            self.channel_selection_combobox.clear()
+            self.channel_selection_combobox.addItems(tuple(self._channel_units))
+            self.channel_selection_combobox.setCurrentIndex(0)
+            self.channel_selection_combobox.blockSignals(False)
+            self.channel_selection_combobox.setVisible(True)
+            channel = self.channel_selection_combobox.currentText()
+            self.set_data_label(channel, unit=self._channel_units[channel])
+            self._image_item.setImage(image=None, autoLevels=False)
+            self._image_data = dict()
+        else:
+            raise ValueError('name_to_unit_map must be non-empty dict or None')
+        return
+
+    def set_image(self, image):
+        """
+
+        """
+        if image is None:
+            self._image_item.setImage(image=None, autoLevels=False)
+            self._image_data = dict()
             return
 
         if isinstance(image, dict):
-            self.channel_selection_combobox.setVisible(True)
-            if set(image) != set(self._channel_set):
-                self.channel_selection_combobox.blockSignals(True)
-                self.channel_selection_combobox.clear()
-                self.channel_selection_combobox.addItems(tuple(image))
-                self.channel_selection_combobox.setCurrentIndex(0)
-                self.channel_selection_combobox.blockSignals(False)
             self._image_data = image.copy()
-            img = self._image_data[self.channel_selection_combobox.currentText()]
+            channel = self.channel_selection_combobox.currentText()
+            if channel not in self._image_data:
+                self._image_item.setImage(image=None, autoLevels=False)
+                return
+            img = self._image_data[channel]
         else:
-            self.channel_selection_combobox.setVisible(False)
-            self.channel_selection_combobox.blockSignals(True)
-            self.channel_selection_combobox.clear()
-            self.channel_selection_combobox.blockSignals(False)
-            self._image_data = image
-            img = self._image_data
+            img = image
 
         # Set image with proper colorbar limits
         if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
@@ -757,6 +794,12 @@ class ScanWidget(QtWidgets.QWidget):
                                       autoLevels=False,
                                       levels=self._colorbar_widget.limits)
         return
+
+    def set_axis_label(self, axis, label=None, unit=None):
+        return self._plot_widget.setLabel(axis, label=label, units=unit)
+
+    def set_data_label(self, label, unit=None):
+        return self._colorbar_widget.set_label(label, unit)
 
     @QtCore.Slot(object)
     def __colorbar_mode_changed(self, mode):
@@ -776,3 +819,21 @@ class ScanWidget(QtWidgets.QWidget):
         levels = self._image_item.levels
         if levels is not None:
             self._colorbar_widget.set_limits(*levels)
+
+    @QtCore.Slot()
+    def __channel_changed(self):
+        channel = self.channel_selection_combobox.currentText()
+        channel_unit = self._channel_units.get(channel, '')
+        self.set_data_label(channel, unit=channel_unit)
+        image = self._image_data.get(channel, None)
+        if image is not None:
+            if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
+                self._image_item.setImage(image=image, autoLevels=False)
+                levels = self._image_item.levels
+                if levels is not None:
+                    self._colorbar_widget.set_limits(*levels)
+            else:
+                self._image_item.setImage(image=image,
+                                          autoLevels=False,
+                                          levels=self._colorbar_widget.limits)
+        return

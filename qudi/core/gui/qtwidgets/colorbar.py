@@ -132,6 +132,7 @@ class ColorBarWidget(QtWidgets.QWidget):
         self.cb_plot_widget.setMouseEnabled(x=False, y=False)
         self.cb_plot_widget.disableAutoRange()
         self.cb_plot_widget.setYRange(0, 1)
+        self.cb_plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
 
         self.absolute_radioButton = QtWidgets.QRadioButton('Absolute')
         self.absolute_radioButton.setAutoExclusive(True)
