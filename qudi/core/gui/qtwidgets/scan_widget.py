@@ -659,13 +659,12 @@ class ScanWidget(QtWidgets.QWidget):
     __plot_widget_wrapped = {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
                              'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair',
                              'hide_crosshair', 'show_crosshair', 'bring_crosshair_on_top',
-                             'crosshairs', 'sigMouseAreaSelected'}
+                             'crosshairs', 'sigMouseAreaSelected', 'autoRange'}
     __image_item_wrapped = {'set_image_extent', 'use_blink_correction', 'blink_correction_axis',
                             'sigMouseClicked'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         layout = QtWidgets.QGridLayout()
         layout.setColumnStretch(1, 2)
         self.setLayout(layout)
@@ -704,6 +703,7 @@ class ScanWidget(QtWidgets.QWidget):
         self._plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                         QtWidgets.QSizePolicy.Expanding)
         self._plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self._plot_widget.setAspectLocked(lock=True, ratio=1.0)
         layout.addWidget(self._plot_widget, 1, 0, 1, 2)
 
         self._colorbar_widget = ColorBarWidget()
@@ -796,7 +796,8 @@ class ScanWidget(QtWidgets.QWidget):
         return
 
     def set_axis_label(self, axis, label=None, unit=None):
-        return self._plot_widget.setLabel(axis, label=label, units=unit)
+        print(axis, label, unit)
+        return self._plot_widget.setLabel(axis, text=label, units=unit)
 
     def set_data_label(self, label, unit=None):
         return self._colorbar_widget.set_label(label, unit)
