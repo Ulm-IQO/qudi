@@ -30,12 +30,10 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
-from qudi.core.gui.qtwidgets.scan_plotwidget import ScanImageItem
+from qudi.core.gui.qtwidgets.scan_widget import ScanImageItem, ScanWidget
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
-from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget
 from qudi.core.module import GuiBase
-from qudi.core.gui.colordefs import ColorScaleInferno
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 
 
@@ -86,33 +84,20 @@ class Scan2dDockWidget(QtWidgets.QDockWidget):
     """ Create the 2D scan dockwidget based on the corresponding *.ui file.
     """
 
-    def __init__(self, axes_names):
+    def __init__(self, axes, channel_units):
         # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_2d_scan_widget.ui')
-
-        ax1 = axes_names[0][0].upper() + axes_names[0][1:]
-        ax2 = axes_names[1][0].upper() + axes_names[1][1:]
-        dock_title = '{0}-{1} Scan'.format(ax1, ax2)
-
+        dock_title = '{0}-{1} Scan'.format(axes[0].name.title(), axes[1].name.title())
         super().__init__(dock_title)
-        self.setObjectName('{0}_{1}_scan_dockWidget'.format(*axes_names))
+        self.setObjectName('{0}_{1}_scan_dockWidget'.format(axes[0].name, axes[1].name))
 
-        # Load UI file
-        widget = QtWidgets.QWidget()
-        uic.loadUi(ui_file, widget)
-        widget.setObjectName('{0}_{1}_scan_widget'.format(*axes_names))
+        self.scan_widget = ScanWidget()
+        self.toggle_scan_button = self.scan_widget.toggle_scan_button
+        self.channel_combobox = self.scan_widget.channel_selection_combobox
+        self.scan_widget.set_axis_label('bottom', label=axes[0].name.title(), unit=axes[0].unit)
+        self.scan_widget.set_axis_label('left', label=axes[1].name.title(), unit=axes[1].unit)
+        self.scan_widget.set_data_channels(channel_units)
 
-        self.toggle_scan_button = widget.toggle_scan_pushButton
-        self.channel_comboBox = widget.channel_comboBox
-        self.channel_set = set()
-        self.plot_widget = widget.image_scanPlotWidget
-        self.colorbar = widget.colorbar_colorBarWidget
-        self.image_item = ScanImageItem(image=np.zeros((2, 2)))
-        self.plot_widget.addItem(self.image_item)
-        self.colorbar.assign_image_item(self.image_item)
-
-        self.setWidget(widget)
+        self.setWidget(self.scan_widget)
         return
 
 
@@ -136,7 +121,7 @@ class Scan1dDockWidget(QtWidgets.QDockWidget):
         widget.setObjectName('{0}_scan_widget'.format(axis_name))
 
         self.toggle_scan_button = widget.toggle_scan_pushButton
-        self.channel_comboBox = widget.channel_comboBox
+        self.channel_combobox = widget.channel_comboBox
         self.channel_set = set()
         self.plot_widget = widget.scan_plotWidget
         self.plot_item = pg.PlotDataItem(x=np.arange(2), y=np.zeros(2), pen=pg.mkPen(palette.c1))
@@ -717,16 +702,18 @@ class ScannerGui(GuiBase):
         elif axes in self.scan_2d_dockwidgets:
             self._mw.removeDockWidget(self.scan_2d_dockwidgets[axes])
             self.scan_2d_dockwidgets[axes].toggle_scan_button.clicked.disconnect()
-            self.scan_2d_dockwidgets[axes].plot_widget.crosshairs[
+            self.scan_2d_dockwidgets[axes].scan_widget.crosshairs[
                 0].sigDraggedPosChanged.disconnect()
-            self.scan_2d_dockwidgets[axes].plot_widget.sigMouseAreaSelected.disconnect()
-            self.scan_2d_dockwidgets[axes].channel_comboBox.currentIndexChanged.disconnect()
+            self.scan_2d_dockwidgets[axes].scan_widget.sigMouseAreaSelected.disconnect()
+            self.scan_2d_dockwidgets[
+                axes].channel_selection_combobox.currentIndexChanged.disconnect()
             self.scan_2d_dockwidgets[axes].deleteLater()
             del self.scan_2d_dockwidgets[axes]
         return
 
     def _add_scan_dockwidget(self, axes):
-        axes_constr = self._scanninglogic().scanner_constraints.axes
+        constraints = self._scanninglogic().scanner_constraints
+        axes_constr = constraints.axes
         optimizer_settings = self._scanninglogic().optimizer_settings
         axes = tuple(axes)
         if len(axes) == 1:
@@ -752,43 +739,40 @@ class ScannerGui(GuiBase):
                 self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
                                'already created. Remove old widget first.'.format(axes))
                 return
-            dockwidget = Scan2dDockWidget(axes)
+            dockwidget = Scan2dDockWidget(
+                (axes_constr[axes[0]], axes_constr[axes[1]]),
+                {name: ch.unit for name, ch in constraints.channels.items()}
+            )
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
             self.scan_2d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-            # Set axis labels
-            dockwidget.plot_widget.setLabel('bottom', axes[0], units=axes_constr[axes[0]].unit)
-            dockwidget.plot_widget.setLabel('left', axes[1], units=axes_constr[axes[1]].unit)
-            dockwidget.plot_widget.add_crosshair(movable=True, min_size_factor=0.02)
-            dockwidget.plot_widget.add_crosshair(movable=False,
+            dockwidget.scan_widget.add_crosshair(movable=True, min_size_factor=0.02)
+            dockwidget.scan_widget.add_crosshair(movable=False,
                                                  pen={'color': '#00ffff', 'width': 1})
-            dockwidget.plot_widget.bring_crosshair_on_top(0)
-            dockwidget.plot_widget.crosshairs[0].set_allowed_range(
+            dockwidget.scan_widget.bring_crosshair_on_top(0)
+            dockwidget.scan_widget.crosshairs[0].set_allowed_range(
                 (axes_constr[axes[0]].value_bounds, axes_constr[axes[1]].value_bounds)
             )
-            dockwidget.plot_widget.crosshairs[0].set_size(
+            dockwidget.scan_widget.crosshairs[0].set_size(
                 (optimizer_settings['axes'][axes[0]]['range'],
-                 optimizer_settings['axes'][axes[1]]['range']))
+                 optimizer_settings['axes'][axes[1]]['range'])
+            )
             if not self.show_true_scanner_position:
-                dockwidget.plot_widget.hide_crosshair(1)
-            dockwidget.plot_widget.setAspectLocked(lock=True, ratio=1.0)
-            dockwidget.plot_widget.toggle_zoom_by_selection(True)
-            dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
-                self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0])
+                dockwidget.scan_widget.hide_crosshair(1)
+            dockwidget.scan_widget.toggle_zoom_by_selection(True)
+            dockwidget.scan_widget.crosshairs[0].sigDraggedPosChanged.connect(
+                self.__get_crosshair_update_func(axes, dockwidget.scan_widget.crosshairs[0])
             )
             dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
-            dockwidget.plot_widget.sigMouseAreaSelected.connect(
+            dockwidget.scan_widget.sigMouseAreaSelected.connect(
                 self.__get_range_from_selection_func(axes)
-            )
-            dockwidget.channel_comboBox.currentIndexChanged.connect(
-                self.__get_data_channel_changed_func(axes)
             )
             # Set initial scan image
             x_constr, y_constr = axes_constr[axes[0]], axes_constr[axes[1]]
-            dockwidget.image_item.setImage(
-                image=np.zeros((x_constr.min_resolution, y_constr.min_resolution))
+            dockwidget.scan_widget.set_image(
+                np.zeros((x_constr.min_resolution, y_constr.min_resolution))
             )
-            dockwidget.image_item.set_image_extent((x_constr.value_bounds, y_constr.value_bounds))
+            dockwidget.scan_widget.set_image_extent((x_constr.value_bounds, y_constr.value_bounds))
         return
 
     @property
@@ -807,10 +791,10 @@ class ScannerGui(GuiBase):
         self._show_true_scanner_position = show
         if self._show_true_scanner_position:
             for dockwidget in self.scan_2d_dockwidgets.values():
-                dockwidget.plot_widget.show_crosshair(1)
+                dockwidget.scan_widget.show_crosshair(1)
         else:
             for dockwidget in self.scan_2d_dockwidgets.values():
-                dockwidget.plot_widget.hide_crosshair(1)
+                dockwidget.scan_widget.hide_crosshair(1)
         return
 
     @QtCore.Slot()
@@ -924,22 +908,9 @@ class ScannerGui(GuiBase):
 
         if scan_data.dimension == 2:
             dockwidget = self.scan_2d_dockwidgets[scan_data.scan_axes]
-            if set(scan_data.channel_names) != dockwidget.channel_set:
-                old_channel = dockwidget.channel_comboBox.currentText()
-                dockwidget.channel_comboBox.blockSignals(True)
-                dockwidget.channel_comboBox.clear()
-                dockwidget.channel_comboBox.addItems(scan_data.channel_names)
-                dockwidget.channel_set = set(scan_data.channel_names)
-                if old_channel in dockwidget.channel_set:
-                    dockwidget.channel_comboBox.setCurrentText(old_channel)
-                else:
-                    dockwidget.channel_comboBox.setCurrentIndex(0)
-                dockwidget.channel_comboBox.blockSignals(False)
-            channel = dockwidget.channel_comboBox.currentText()
-            if scan_data.data is None:
-                dockwidget.image_item.setImage(image=np.zeros((0, 0)))
-            else:
-                dockwidget.image_item.setImage(image=scan_data.data[channel])
+            data = scan_data.data
+            dockwidget.image_item.set_image(data)
+            if data is not None:
                 data_range_x, data_range_y = scan_data.scan_range
                 px_size_x = abs(data_range_x[1] - data_range_x[0]) / scan_data.scan_resolution[0]
                 px_size_y = abs(data_range_y[1] - data_range_y[0]) / scan_data.scan_resolution[1]
@@ -947,23 +918,22 @@ class ScannerGui(GuiBase):
                 x_max = data_range_x[1] + px_size_x / 2
                 y_min = data_range_y[0] - px_size_y / 2
                 y_max = data_range_y[1] + px_size_y / 2
-                dockwidget.image_item.set_image_extent(((x_min, x_max), (y_min, y_max)))
-            dockwidget.colorbar.set_label(text=channel, unit=scan_data.channel_units[channel])
-            dockwidget.plot_widget.autoRange()
+                dockwidget.scan_widget.set_image_extent(((x_min, x_max), (y_min, y_max)))
+            dockwidget.scan_widget.autoRange()
         elif scan_data.dimension == 1:
             dockwidget = self.scan_1d_dockwidgets[scan_data.scan_axes]
             if set(scan_data.channel_names) != dockwidget.channel_set:
-                old_channel = dockwidget.channel_comboBox.currentText()
-                dockwidget.channel_comboBox.blockSignals(True)
-                dockwidget.channel_comboBox.clear()
-                dockwidget.channel_comboBox.addItems(scan_data.channel_names)
+                old_channel = dockwidget.channel_combobox.currentText()
+                dockwidget.channel_combobox.blockSignals(True)
+                dockwidget.channel_combobox.clear()
+                dockwidget.channel_combobox.addItems(scan_data.channel_names)
                 dockwidget.channel_set = set(scan_data.channel_names)
                 if old_channel in dockwidget.channel_set:
-                    dockwidget.channel_comboBox.setCurrentText(old_channel)
+                    dockwidget.channel_combobox.setCurrentText(old_channel)
                 else:
-                    dockwidget.channel_comboBox.setCurrentIndex(0)
-                dockwidget.channel_comboBox.blockSignals(False)
-            channel = dockwidget.channel_comboBox.currentText()
+                    dockwidget.channel_combobox.setCurrentIndex(0)
+                dockwidget.channel_combobox.blockSignals(False)
+            channel = dockwidget.channel_combobox.currentText()
             if scan_data.data is None:
                 dockwidget.plot_item.setData(np.zeros(1), np.zeros(1))
             else:
@@ -1008,7 +978,7 @@ class ScannerGui(GuiBase):
         """
         for axis, pos in pos_dict.items():
             for axes, dockwidget in self.scan_2d_dockwidgets.items():
-                crosshair = dockwidget.plot_widget.crosshairs[1]
+                crosshair = dockwidget.scan_widget.crosshairs[1]
                 ax1, ax2 = axes
                 if ax1 == axis:
                     crosshair_pos = (pos, crosshair.position[1])
@@ -1036,7 +1006,7 @@ class ScannerGui(GuiBase):
                 slider.setValue(pos)
                 slider.blockSignals(False)
             for axes, dockwidget in self.scan_2d_dockwidgets.items():
-                crosshair = dockwidget.plot_widget.crosshairs[0]
+                crosshair = dockwidget.scan_widget.crosshairs[0]
                 if crosshair is exclude_widget:
                     continue
                 ax1, ax2 = axes
@@ -1083,11 +1053,6 @@ class ScannerGui(GuiBase):
             self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
 
-    def __get_data_channel_changed_func(self, ax):
-        def set_data_channel():
-            self.scan_data_updated({ax: self._scanninglogic().scan_data[ax]})
-        return set_data_channel
-
     @QtCore.Slot()
     def change_scan_range(self, axis=None):
         if axis is None:
@@ -1117,7 +1082,7 @@ class ScannerGui(GuiBase):
             self._mw.action_utility_zoom.blockSignals(False)
 
         for dockwidget in self.scan_2d_dockwidgets.values():
-            dockwidget.plot_widget.toggle_selection(enable)
+            dockwidget.scan_widget.toggle_selection(enable)
         return
 
     @QtCore.Slot()
@@ -1171,7 +1136,7 @@ class ScannerGui(GuiBase):
             for scan_axes, dockwidget in self.scan_2d_dockwidgets.items():
                 if scan_axes[0] not in settings['axes'] and scan_axes[1] not in settings['axes']:
                     continue
-                crosshair = dockwidget.plot_widget.crosshairs[0]
+                crosshair = dockwidget.scan_widget.crosshairs[0]
                 if scan_axes[0] in settings['axes'] and 'range' in settings['axes'][scan_axes[0]]:
                     x_size = settings['axes'][scan_axes[0]]['range']
                 else:
