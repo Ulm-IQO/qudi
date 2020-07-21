@@ -175,10 +175,8 @@ class ScanData:
         if not all(isinstance(ch, ScannerChannel) for ch in channels):
             raise TypeError(
                 'Parameter "channels" must be iterable containing only ScannerChannel objects.')
-        if not all(
-                np.issubdtype(ch.dtype, np.floating) or np.issubdtype(ch.dtype, np.integer) for ch
-                in channels):
-            raise TypeError('channel dtypes must be either builtin or numpy integer/floating types')
+        if not all(np.issubdtype(ch.dtype, np.floating) for ch in channels):
+            raise TypeError('channel dtypes must be either builtin or numpy floating types')
 
         self._scan_axes = tuple(str(ax) for ax in scan_axes)
         self._scan_range = tuple((float(start), float(stop)) for (start, stop) in scan_range)
