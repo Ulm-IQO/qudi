@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+from enum import Enum
 from pyqtgraph import mkPen, mkBrush, GraphicsObject, PlotWidget
 from qtpy import QtCore, QtGui, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
@@ -48,7 +49,9 @@ class ColorBarItem(GraphicsObject):
         self.informViewBoundsChanged()
 
     def _set_brush(self):
-        grad = QtGui.QLinearGradient(0, self._min_val, 0, self._max_val)
+        # grad = QtGui.QLinearGradient(0, self._min_val, 0, self._max_val)
+        grad = QtGui.QLinearGradient(0, 0, 1, 1)
+        grad.setCoordinateMode(QtGui.QGradient.ObjectMode)
         for stop, color in zip(*self._cmap.getStops('float')):
             grad.setColorAt(1.0 - stop, QtGui.QColor(*[255 * c for c in color]))
         self._brush = mkBrush(QtGui.QBrush(grad))
@@ -78,7 +81,7 @@ class ColorBarItem(GraphicsObject):
         p = QtGui.QPainter(self._picture)
         p.setPen(self._pen)
         p.setBrush(self._brush)
-        rect = QtCore.QRectF(0, self._min_val, 1.0, self._max_val - self._min_val)
+        rect = QtCore.QRectF(0, self._min_val, 1, self._max_val - self._min_val)
         p.drawRect(rect)
         self._shape.addRect(rect)
         p.end()
@@ -101,39 +104,40 @@ class ColorBarItem(GraphicsObject):
         return self._shape
 
 
+class ColorBarMode(Enum):
+    ABSOLUTE = 0
+    PERCENTILE = 1
+
+
 class ColorBarWidget(QtWidgets.QWidget):
-    """
-    A widget containing a controllable colorbar which can be attached to an pyqtgraph ImageItem or
-    qudi ScanImageItem to synchronize the colorscale.
+    """ A widget containing a controllable colorbar for color-coded plots.
     """
 
-    sigRangeChanged = QtCore.Signal(float, float)  # min_val, max_val
+    sigLimitsChanged = QtCore.Signal(tuple)  # (min_val, max_val)
+    sigPercentilesChanged = QtCore.Signal(tuple)  # (low_percentile, high_percentile)
+    sigModeChanged = QtCore.Signal(object)
 
-    def __init__(self, parent=None, unit=None, label=None, image_item=None):
-        super().__init__(parent)
-        self._image_item = image_item
-        self._image_data = None
+    def __init__(self, *args, unit=None, label=None, absolute_range=None, percentile_range=None,
+                 mode=ColorBarMode.PERCENTILE, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.min_spinbox = ScienDSpinBox()
         self.min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                        QtWidgets.QSizePolicy.Fixed)
         self.min_spinbox.setAlignment(QtCore.Qt.AlignRight)
         self.min_spinbox.setMinimumWidth(75)
-        self.min_spinbox.setMinimum(0)
         self.min_spinbox.setValue(0)
         self.max_spinbox = ScienDSpinBox()
         self.max_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                        QtWidgets.QSizePolicy.Fixed)
         self.max_spinbox.setAlignment(QtCore.Qt.AlignRight)
         self.min_spinbox.setMinimumWidth(75)
-        self.max_spinbox.setMinimum(0)
-        self.max_spinbox.setValue(100)
+        self.max_spinbox.setValue(1)
         self.low_percentile_spinbox = ScienDSpinBox()
         self.low_percentile_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                                   QtWidgets.QSizePolicy.Fixed)
         self.low_percentile_spinbox.setAlignment(QtCore.Qt.AlignRight)
         self.low_percentile_spinbox.setMinimumWidth(75)
-        self.low_percentile_spinbox.setRange(0, 100)
         self.low_percentile_spinbox.setSuffix('%')
         self.low_percentile_spinbox.setValue(0)
         self.high_percentile_spinbox = ScienDSpinBox()
@@ -141,12 +145,22 @@ class ColorBarWidget(QtWidgets.QWidget):
                                                    QtWidgets.QSizePolicy.Fixed)
         self.high_percentile_spinbox.setAlignment(QtCore.Qt.AlignRight)
         self.high_percentile_spinbox.setMinimumWidth(75)
-        self.high_percentile_spinbox.setRange(0, 100)
         self.high_percentile_spinbox.setSuffix('%')
         self.high_percentile_spinbox.setValue(100)
         if unit is not None:
             self.max_spinbox.setSuffix(unit)
             self.min_spinbox.setSuffix(unit)
+        if absolute_range is not None:
+            self.min_spinbox.setRange(*absolute_range)
+            self.max_spinbox.setRange(*absolute_range)
+        if percentile_range is not None:
+            min_percentile = percentile_range[0] if 0 <= percentile_range[0] <= 100 else 0
+            max_percentile = percentile_range[1] if 0 <= percentile_range[1] <= 100 else 0
+            self.low_percentile_spinbox.setRange(min_percentile, max_percentile)
+            self.high_percentile_spinbox.setRange(min_percentile, max_percentile)
+        else:
+            self.low_percentile_spinbox.setRange(0, 100)
+            self.high_percentile_spinbox.setRange(0, 100)
 
         self.colorbar = ColorBarItem()
         self.cb_plot_widget = PlotWidget()
@@ -171,7 +185,10 @@ class ColorBarWidget(QtWidgets.QWidget):
         main_layout.addWidget(self.absolute_radioButton)
         main_layout.addWidget(self.percentile_radioButton)
 
-        self.percentile_radioButton.setChecked(True)
+        if mode is ColorBarMode.ABSOLUTE:
+            self.absolute_radioButton.setChecked(True)
+        else:
+            self.percentile_radioButton.setChecked(True)
 
         # main_layout.setSpacing(0)
         main_layout.setContentsMargins(1, 1, 1, 1)
@@ -183,94 +200,98 @@ class ColorBarWidget(QtWidgets.QWidget):
         self.max_spinbox.valueChanged.connect(self._absolute_value_changed)
         self.low_percentile_spinbox.valueChanged.connect(self._percentile_value_changed)
         self.high_percentile_spinbox.valueChanged.connect(self._percentile_value_changed)
-        self.percentile_radioButton.toggled.connect(self.refresh_colorscale)
-        self.absolute_radioButton.toggled.connect(self.refresh_colorscale)
-        if self._image_item is not None:
-            try:
-                self._image_item.sigImageDataChanged.connect(self.image_data_changed)
-            except AttributeError:
-                pass
+        self.percentile_radioButton.toggled.connect(self._mode_changed)
+        self.absolute_radioButton.toggled.connect(self._mode_changed)
         return
 
+    @property
+    def mode(self):
+        if self.absolute_radioButton.isChecked():
+            return ColorBarMode.ABSOLUTE
+        return ColorBarMode.PERCENTILE
+
+    @property
+    def limits(self):
+        return self.min_spinbox.value(), self.max_spinbox.value()
+
+    @property
+    def percentiles(self):
+        return self.low_percentile_spinbox.value(), self.high_percentile_spinbox.value()
+
+    # FIXME: Remove?
     def sizeHint(self):
         return QtCore.QSize(90, 100)
 
     def set_label(self, text, unit=None):
-        self.cb_plot_widget.setLabel('left', text=text, units=unit)
         if unit is not None:
             self.max_spinbox.setSuffix(unit)
             self.min_spinbox.setSuffix(unit)
-        return
-
-    def assign_image_item(self, item=None):
-        if self._image_item is not None:
-            try:
-                self._image_item.sigImageChanged.disconnect()
-            except (AttributeError, TypeError):
-                pass
-        self._image_item = item
-        if self._image_item is not None:
-            try:
-                self._image_item.sigImageDataChanged.connect(self.image_data_changed)
-            except AttributeError:
-                pass
-        return
+        return self.cb_plot_widget.setLabel('left', text=text, units=unit)
 
     def set_colormap(self, cmap=None):
-        self.colorbar.set_cmap(cmap=cmap)
-        return
+        return self.colorbar.set_cmap(cmap=cmap)
 
     def set_pen(self, pen=None):
-        self.colorbar.set_pen(pen)
-        return
+        return self.colorbar.set_pen(pen)
 
-    def image_data_changed(self, image):
-        self._image_data = image
-        self.refresh_colorscale()
-        return
+    @QtCore.Slot(float, float)
+    @QtCore.Slot(float, float, float, float)
+    def set_limits(self, min_value, max_value, low_percentile=None, high_percentile=None):
+        # Check and set percentile values in spinboxes
+        if (low_percentile is None) != (high_percentile is None):
+            raise ValueError('If percentile ranges should be changed, you must specify both low '
+                             'and high percentile values.')
+        elif low_percentile is not None:
+            self.low_percentile_spinbox.blockSignals(True)
+            self.high_percentile_spinbox.blockSignals(True)
+            self.low_percentile_spinbox.setValue(low_percentile)
+            self.high_percentile_spinbox.setValue(high_percentile)
+            self.low_percentile_spinbox.blockSignals(False)
+            self.high_percentile_spinbox.blockSignals(False)
 
-    @QtCore.Slot()
-    @QtCore.Slot(bool)
-    def refresh_colorscale(self, update=True, image=None):
-        if image is not None:
-            self._image_data = image
-        if not update:
-            return
-        # Get absolute data ranges for the colorbar
-        if self.percentile_radioButton.isChecked():
-            if self._image_data is None:
-                return
-            data = self._image_data[np.nonzero(self._image_data)]
-            if data.size == 0:
-                return
-            low_centile = self.low_percentile_spinbox.value()
-            high_centile = self.high_percentile_spinbox.value()
-            cb_min = np.percentile(data, low_centile)
-            cb_max = np.percentile(data, high_centile)
+        # Set absolute values in spinboxes and update colorbar
+        self.min_spinbox.blockSignals(True)
+        self.max_spinbox.blockSignals(True)
+        self.min_spinbox.setValue(min_value)
+        self.max_spinbox.setValue(max_value)
+        self.colorbar.set_range(self.min_spinbox.value(), self.max_spinbox.value())
+        self.min_spinbox.blockSignals(False)
+        self.max_spinbox.blockSignals(False)
+
+    @QtCore.Slot(object)
+    def set_mode(self, mode):
+        if not isinstance(mode, ColorBarMode):
+            raise TypeError('mode must be ColorBarMode enum.')
+        if mode is ColorBarMode.ABSOLUTE:
+            self.absolute_radioButton.setChecked(True)
         else:
-            cb_min = self.min_spinbox.value()
-            cb_max = self.max_spinbox.value()
-
-        # Adjust colorbar
-        self.colorbar.set_range(cb_min, cb_max)
-        # Adjust image color
-        if self._image_item is not None:
-            self._image_item.setLevels((cb_min, cb_max))
-        self.sigRangeChanged.emit(cb_min, cb_max)
+            self.percentile_radioButton.setChecked(True)
         return
 
     @QtCore.Slot()
     def _absolute_value_changed(self):
-        if self.absolute_radioButton.isChecked():
-            self.refresh_colorscale()
-        else:
+        min_val = self.min_spinbox.value()
+        max_val = self.max_spinbox.value()
+        self.colorbar.set_range(min_val, max_val)
+        if not self.absolute_radioButton.isChecked():
             self.absolute_radioButton.setChecked(True)
+            self.sigModeChanged.emit(ColorBarMode.ABSOLUTE)
+        self.sigLimitsChanged.emit((min_val, max_val))
         return
 
     @QtCore.Slot()
     def _percentile_value_changed(self):
-        if self.percentile_radioButton.isChecked():
-            self.refresh_colorscale()
-        else:
+        if not self.percentile_radioButton.isChecked():
             self.percentile_radioButton.setChecked(True)
+            self.sigModeChanged.emit(ColorBarMode.PERCENTILE)
+        self.sigPercentilesChanged.emit((self.low_percentile_spinbox.value(),
+                                         self.high_percentile_spinbox.value()))
+        return
+
+    @QtCore.Slot()
+    def _mode_changed(self):
+        if self.absolute_radioButton.isChecked():
+            self.sigModeChanged.emit(ColorBarMode.ABSOLUTE)
+        else:
+            self.sigModeChanged.emit(ColorBarMode.PERCENTILE)
         return

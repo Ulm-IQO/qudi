@@ -20,10 +20,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
+import numpy as np
+from qtpy import QtCore, QtWidgets
 from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
 from qudi.core.util.filters import scan_blink_correction
 from qudi.core.gui.colordefs import ColorScaleInferno
+from .colorbar import ColorBarWidget, ColorBarMode
 
 __all__ = ['ScanImageItem', 'ScanPlotWidget', 'ScanViewBox']
 
@@ -38,61 +40,117 @@ class ScanImageItem(ImageItem):
     single image dimension.
     """
     sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)
-    sigImageDataChanged = QtCore.Signal(object)
 
     def __init__(self, *args, **kwargs):
-        self.use_blink_correction = False
-        self.blink_correction_axis = 0
+        self._use_blink_correction = False
+        self._blink_correction_axis = 0
         self.orig_image = None
+        self._percentiles = None
         super().__init__(*args, **kwargs)
         # Change default colorscale
         self.setLookupTable(ColorScaleInferno().lut)
         return
 
-    def set_image_extent(self, extent):
+    @property
+    def use_blink_correction(self):
+        return self._use_blink_correction
+
+    @property
+    def blink_correction_axis(self):
+        return self._blink_correction_axis
+
+    @property
+    def percentiles(self):
+        return self._percentiles
+
+    def set_percentiles(self, percentiles):
+        if percentiles is None:
+            self._percentiles = None
+            return
+
+        self._percentiles = (min(percentiles), max(percentiles))
+        if self.image is not None:
+            masked_image = np.ma.masked_invalid(self.image).compressed()
+            if masked_image.size == 0:
+                return
+            min_value = np.percentile(masked_image, self._percentiles[0])
+            max_value = np.percentile(masked_image, self._percentiles[1])
+            self.setLevels((min_value, max_value))
+
+    def set_image_extent(self, extent, adjust_for_px_size=True):
+        """
+
+        """
         if len(extent) != 2:
             raise TypeError('Image extent must be iterable of length 2.')
         if len(extent[0]) != 2 or len(extent[1]) != 2:
             raise TypeError('Image extent for each axis must be iterable of length 2.')
-        x_min, x_max = sorted(extent[0])
-        y_min, y_max = sorted(extent[1])
+        x_min, x_max = min(extent[0]), max(extent[0])
+        y_min, y_max = min(extent[1]), max(extent[1])
+        if adjust_for_px_size:
+            if self.image is not None and self.image.shape[0] > 1 and self.image.shape[1] > 1:
+                half_px_x = (x_max - x_min) / (2 * (self.image.shape[0] - 1))
+                half_px_y = (y_max - y_min) / (2 * (self.image.shape[1] - 1))
+                x_min -= half_px_x
+                x_max += half_px_x
+                y_min -= half_px_y
+                y_max += half_px_y
         self.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
         return
 
-    def activate_blink_correction(self, set_active, axis=0):
+    def toggle_blink_correction(self, activate, axis=0):
         """
         De-/Activates the blink correction filter.
         Can filter out single pixel wide artifacts along a single image dimension.
 
-        @param bool set_active: activate (True) or deactivate (False) the filter
+        @param bool activate: activate (True) or deactivate (False) the filter
         @param int axis: Array dimension to apply the filter on (0 or 1)
         """
-        set_active = bool(set_active)
+        activate = bool(activate)
         axis = int(axis)
-        if self.use_blink_correction != set_active:
-            self.blink_correction_axis = axis
-            self.use_blink_correction = set_active
-            if set_active:
+        if not (0 <= axis < 2):
+            raise IndexError('axis index must be 0 or 1.')
+        if self._use_blink_correction != activate:
+            self._blink_correction_axis = axis
+            self._use_blink_correction = activate
+            if activate:
                 self.setImage(self.image, autoLevels=False)
             else:
                 self.setImage(self.orig_image, autoLevels=False)
-        elif axis != self.blink_correction_axis:
-            self.blink_correction_axis = axis
-            if self.use_blink_correction:
+        elif axis != self._blink_correction_axis:
+            self._blink_correction_axis = axis
+            if self._use_blink_correction:
                 self.setImage(self.orig_image, autoLevels=False)
         return
 
-    def setImage(self, image=None, autoLevels=None, **kwargs):
+    def setImage(self, image=None, **kwargs):
         """
         pg.ImageItem method override to apply optional filter when setting image data.
         """
-        if self.use_blink_correction:
-            self.orig_image = image
-            image = scan_blink_correction(image=image, axis=self.blink_correction_axis)
-        retval = super().setImage(image=image, autoLevels=autoLevels, **kwargs)
-        if image is not None:
-            self.sigImageDataChanged.emit(image)
-        return retval
+        if image is None:
+            return super().setImage(image=image, **kwargs)
+
+        if self._use_blink_correction:
+            self.orig_image = image.copy()
+            filt_image = scan_blink_correction(image=image, axis=self._blink_correction_axis)
+            if self._percentiles is not None:
+                masked_image = np.ma.masked_invalid(filt_image).compressed()
+                if masked_image.size > 0:
+                    min_value = np.percentile(masked_image, self._percentiles[0])
+                    max_value = np.percentile(masked_image, self._percentiles[1])
+                    kwargs['levels'] = (min_value, max_value)
+            super().setImage(image=filt_image, **kwargs)
+        else:
+            self.orig_image = None
+            if self._percentiles is not None:
+                print('image type:', image)
+                masked_image = np.ma.masked_invalid(image).compressed()
+                if masked_image.size > 0:
+                    min_value = np.percentile(masked_image, self._percentiles[0])
+                    max_value = np.percentile(masked_image, self._percentiles[1])
+                    kwargs['levels'] = (min_value, max_value)
+            super().setImage(image=image, **kwargs)
+        return
 
     def mouseClickEvent(self, ev):
         if not ev.double():
@@ -112,13 +170,12 @@ class ScanPlotWidget(PlotWidget):
     This class depends on the ScanViewBox class defined further below.
     This class can be promoted in the Qt designer.
     """
-    sigMouseAreaSelected = QtCore.Signal(QtCore.QRectF)  # mapped rectangle mouse cursor selection
+    sigMouseAreaSelected = QtCore.Signal(tuple, tuple)  # mapped mouse rubberband selection (x, y)
 
     def __init__(self, *args, **kwargs):
         kwargs['viewBox'] = ScanViewBox()  # Use custom pg.ViewBox subclass
         super().__init__(*args, **kwargs)
-        self.getViewBox().sigMouseAreaSelected.connect(self.sigMouseAreaSelected)
-        # self.getViewBox().sigRangeChanged.connect(self._constraint_crosshair_size)
+        self.getViewBox().sigMouseAreaSelected.connect(self.__translate_selection_rect)
         self.crosshairs = list()
 
     @property
@@ -172,6 +229,7 @@ class ScanPlotWidget(PlotWidget):
         crosshair = self.crosshairs.pop(index)
         # Remove crosshair from ViewBox
         crosshair.remove_from_view()
+        crosshair.deleteLater()
         return
 
     def hide_crosshair(self, index):
@@ -194,6 +252,14 @@ class ScanPlotWidget(PlotWidget):
         crosshair.hline.setZValue(10)
         crosshair.crosshair.setZValue(11)
         return
+
+    @QtCore.Slot(QtCore.QRectF)
+    def __translate_selection_rect(self, rect):
+        tmp_x = (rect.left(), rect.right())
+        tmp_y = (rect.top(), rect.bottom())
+        x_limits = min(tmp_x), max(tmp_x)
+        y_limits = min(tmp_y), max(tmp_y)
+        self.sigMouseAreaSelected.emit(x_limits, y_limits)
 
 
 class ScanViewBox(ViewBox):
@@ -570,3 +636,144 @@ class ScanCrosshair(QtCore.QObject):
         self.vline.setHoverPen(pen)
         self.hline.setHoverPen(pen)
         return
+
+
+class ScanWidget(QtWidgets.QWidget):
+    """
+    Extend the PlotWidget Class with more functionality used for qudi scan images.
+    Supported features:
+     - draggable/static crosshair with optional range and size constraints.
+     - zoom feature by rubberband selection
+     - rubberband area selection
+
+    This class depends on the ScanViewBox class defined further below.
+    This class can be promoted in the Qt designer.
+    """
+    # sigMouseAreaSelected = QtCore.Signal(tuple, tuple)  # x-range, y-range
+    # sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)  # mouse click event obj, coordinate
+
+    # wrapped attribute names from ScanPlotWidget object.
+    # Adjust this set if ScanPlotWidget class changes.
+    __plot_widget_wrapped = {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
+                             'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair',
+                             'hide_crosshair', 'show_crosshair', 'bring_crosshair_on_top',
+                             'crosshairs', 'sigMouseAreaSelected'}
+    __image_item_wrapped = {'set_image_extent', 'use_blink_correction', 'blink_correction_axis',
+                            'sigMouseClicked'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        layout = QtWidgets.QGridLayout()
+        layout.setColumnStretch(1, 2)
+        self.setLayout(layout)
+
+        self.toggle_scan_button = QtWidgets.QPushButton('Toggle Scan')
+        self.toggle_scan_button.setMinimumWidth(75)
+        layout.addWidget(self.toggle_scan_button, 0, 0)
+
+        self.channel_selection_combobox = QtWidgets.QComboBox()
+        self.channel_selection_combobox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                      QtWidgets.QSizePolicy.Preferred)
+        layout.addWidget(self.channel_selection_combobox, 0, 1)
+
+        self._plot_widget = ScanPlotWidget()
+        self._image_item = ScanImageItem()
+        self._plot_widget.addItem(self._image_item)
+        self._plot_widget.setMinimumWidth(100)
+        self._plot_widget.setMinimumHeight(100)
+        self._plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                        QtWidgets.QSizePolicy.Expanding)
+        layout.addWidget(self._plot_widget, 1, 0, 1, 2)
+
+        self._colorbar_widget = ColorBarWidget()
+        layout.addWidget(self._colorbar_widget, 1, 2)
+
+        self._channel_set = set()
+        self._image_data = None  # in case of multichannel data, save a reference here
+
+        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
+            self._image_item.set_percentiles(self._colorbar_widget.percentiles)
+        else:
+            self._image_item.set_percentiles(None)
+
+        self._colorbar_widget.sigModeChanged.connect(self.__colorbar_mode_changed)
+        self._colorbar_widget.sigLimitsChanged.connect(self.__colorbar_limits_changed)
+        self._colorbar_widget.sigPercentilesChanged.connect(self.__colorbar_percentiles_changed)
+
+    def __getattr__(self, name):
+        if name in self.__plot_widget_wrapped:
+            return getattr(self._plot_widget, name)
+        elif name in self.__image_item_wrapped:
+            return getattr(self._image_item, name)
+        raise AttributeError('No attribute "{0}" found in ScanWidget object.'.format(name))
+
+    def toggle_blink_correction(self, activate, axis=0):
+        if self._image_item.blink_correction_axis == axis and self._image_item.use_blink_correction == activate:
+            return
+        self._image_item.toggle_blink_correction(activate=activate, axis=axis)
+        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
+            levels = self._image_item.levels
+            if levels is not None and len(levels) == 2:
+                self._colorbar_widget.set_limits(*levels)
+
+    def set_image(self, image):
+        """
+
+        """
+        if image is None or len(image) == 0:
+            self.channel_selection_combobox.blockSignals(True)
+            self.channel_selection_combobox.clear()
+            self.channel_selection_combobox.setVisible(False)
+            self.channel_selection_combobox.blockSignals(False)
+            self._image_item.setImage(image=None, autoLevels=False)
+            return
+
+        if isinstance(image, dict):
+            self.channel_selection_combobox.setVisible(True)
+            if set(image) != set(self._channel_set):
+                self.channel_selection_combobox.blockSignals(True)
+                self.channel_selection_combobox.clear()
+                self.channel_selection_combobox.addItems(tuple(image))
+                self.channel_selection_combobox.setCurrentIndex(0)
+                self.channel_selection_combobox.blockSignals(False)
+            self._image_data = image.copy()
+            img = self._image_data[self.channel_selection_combobox.currentText()]
+        else:
+            self.channel_selection_combobox.setVisible(False)
+            self.channel_selection_combobox.blockSignals(True)
+            self.channel_selection_combobox.clear()
+            self.channel_selection_combobox.blockSignals(False)
+            self._image_data = image
+            img = self._image_data
+
+        # Set image with proper colorbar limits
+        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
+            self._image_item.setImage(image=img, autoLevels=False)
+            levels = self._image_item.levels
+            if levels is not None:
+                self._colorbar_widget.set_limits(*levels)
+        else:
+            self._image_item.setImage(image=img,
+                                      autoLevels=False,
+                                      levels=self._colorbar_widget.limits)
+        return
+
+    @QtCore.Slot(object)
+    def __colorbar_mode_changed(self, mode):
+        if mode is ColorBarMode.PERCENTILE:
+            self.__colorbar_percentiles_changed(self._colorbar_widget.percentiles)
+        else:
+            self.__colorbar_limits_changed(self._colorbar_widget.limits)
+
+    @QtCore.Slot(tuple)
+    def __colorbar_limits_changed(self, limits):
+        self._image_item.set_percentiles(None)
+        self._image_item.setLevels(limits)
+
+    @QtCore.Slot(tuple)
+    def __colorbar_percentiles_changed(self, percentiles):
+        self._image_item.set_percentiles(percentiles)
+        levels = self._image_item.levels
+        if levels is not None:
+            self._colorbar_widget.set_limits(*levels)
