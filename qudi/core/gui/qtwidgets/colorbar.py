@@ -23,90 +23,43 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from enum import Enum
-from pyqtgraph import mkPen, mkBrush, GraphicsObject, PlotWidget
+from pyqtgraph import mkPen, mkBrush, GraphicsObject, PlotWidget, BarGraphItem, mkColor
 from qtpy import QtCore, QtGui, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.colordefs import ColorScaleInferno
 
-__all__ = ['ColorBarWidget']
-
-
-class ColorBarItem(GraphicsObject):
-    def __init__(self, min_val=0, max_val=1, cmap=None, pen=None):
-        """
-        Graphics object to draw a colorbar inside a pyqtgraph PlotWidget
-        """
-        super().__init__()
-        self._min_val = float(min_val)
-        self._max_val = float(max_val)
-        self._cmap = ColorScaleInferno().cmap_normed if cmap is None else cmap
-        self._pen = mkPen('k') if pen is None else mkPen(pen)
-        self._brush = None
-        self._shape = None
-        self._picture = None
-        self._set_brush()
-        self.update()
-        self.informViewBoundsChanged()
-
-    def _set_brush(self):
-        # grad = QtGui.QLinearGradient(0, self._min_val, 0, self._max_val)
-        grad = QtGui.QLinearGradient(0, 0, 1, 1)
-        grad.setCoordinateMode(QtGui.QGradient.ObjectMode)
-        for stop, color in zip(*self._cmap.getStops('float')):
-            grad.setColorAt(1.0 - stop, QtGui.QColor(*[255 * c for c in color]))
-        self._brush = mkBrush(QtGui.QBrush(grad))
-        return
-
-    def set_range(self, min_val, max_val):
-        self._min_val = float(min_val)
-        self._max_val = float(max_val)
-        self._set_brush()
-        self.draw_picture()
-        self.informViewBoundsChanged()
-
-    def set_cmap(self, cmap=None):
-        self._cmap = ColorScaleInferno().cmap_normed if cmap is None else cmap
-        self._set_brush()
-        self.draw_picture()
-        return
-
-    def set_pen(self, pen=None):
-        self._pen = mkPen('k') if pen is None else mkPen(pen)
-        self.draw_picture()
-        return
-
-    def draw_picture(self):
-        self._picture = QtGui.QPicture()
-        self._shape = QtGui.QPainterPath()
-        p = QtGui.QPainter(self._picture)
-        p.setPen(self._pen)
-        p.setBrush(self._brush)
-        rect = QtCore.QRectF(0, self._min_val, 1, self._max_val - self._min_val)
-        p.drawRect(rect)
-        self._shape.addRect(rect)
-        p.end()
-        self.prepareGeometryChange()
-        return
-
-    def paint(self, p, *args):
-        if self._picture is None:
-            self.draw_picture()
-        self._picture.play(p)
-
-    def boundingRect(self):
-        if self._picture is None:
-            self.draw_picture()
-        return QtCore.QRectF(self._picture.boundingRect())
-
-    def shape(self):
-        if self._picture is None:
-            self.draw_picture()
-        return self._shape
+__all__ = ('ColorBarMode', 'ColorBarWidget')
 
 
 class ColorBarMode(Enum):
     ABSOLUTE = 0
     PERCENTILE = 1
+
+
+class ColorBarItem(BarGraphItem):
+    def __init__(self, parent=None, limits=(0, 1), cmap=None, pen=None):
+        limits = (float(min(limits)), float(max(limits)))
+        cmap = ColorScaleInferno().colormap if cmap is None else cmap
+        pen = mkPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen)) if pen is None else mkPen(pen)
+        grad = QtGui.QLinearGradient(0, 0, 0, 1)
+        grad.setCoordinateMode(QtGui.QGradient.ObjectMode)
+        for stop, color in zip(*cmap.getStops('float')):
+            grad.setColorAt(stop, QtGui.QColor(*color))
+        brush = mkBrush(QtGui.QBrush(grad))
+        height = abs(limits[1] - limits[0])
+        super().__init__(parent=parent,
+                         x=[0],
+                         y=[limits[0] + height / 2],
+                         height=[height],
+                         width=1.5,
+                         brush=brush,
+                         pen=pen)
+
+    def set_limits(self, min_val, max_val):
+        if max_val < min_val:
+            min_val, max_val = max_val, min_val
+        height = abs(max_val - min_val)
+        self.setOpts(y=[min_val + height / 2], height=[height])
 
 
 class ColorBarWidget(QtWidgets.QWidget):
@@ -162,14 +115,23 @@ class ColorBarWidget(QtWidgets.QWidget):
             self.low_percentile_spinbox.setRange(0, 100)
             self.high_percentile_spinbox.setRange(0, 100)
 
+        grad = QtGui.QLinearGradient(0, 0, 0, 1)
+        grad.setCoordinateMode(QtGui.QGradient.ObjectMode)
+        for stop, color in zip(*ColorScaleInferno().colormap.getStops('float')):
+            grad.setColorAt(stop, QtGui.QColor(*color))
+        self._cb_brush = mkBrush(QtGui.QBrush(grad))
+
         self.colorbar = ColorBarItem()
         self.cb_plot_widget = PlotWidget()
+        self.cb_plot_widget.hideButtons()
         self.cb_plot_widget.setMinimumWidth(75)
         self.cb_plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         self.cb_plot_widget.addItem(self.colorbar)
         self.cb_plot_widget.hideAxis('bottom')
         self.cb_plot_widget.setLabel('left', text=label, units=unit)
         self.cb_plot_widget.setMouseEnabled(x=False, y=False)
+        self.cb_plot_widget.disableAutoRange()
+        self.cb_plot_widget.setYRange(0, 1)
 
         self.absolute_radioButton = QtWidgets.QRadioButton('Absolute')
         self.absolute_radioButton.setAutoExclusive(True)
@@ -254,7 +216,11 @@ class ColorBarWidget(QtWidgets.QWidget):
         self.max_spinbox.blockSignals(True)
         self.min_spinbox.setValue(min_value)
         self.max_spinbox.setValue(max_value)
-        self.colorbar.set_range(self.min_spinbox.value(), self.max_spinbox.value())
+        min_val = self.min_spinbox.value()
+        max_val = self.max_spinbox.value()
+        self.colorbar.set_limits(min_val, max_val)
+        self.cb_plot_widget.setYRange(min_val, max_val)
+
         self.min_spinbox.blockSignals(False)
         self.max_spinbox.blockSignals(False)
 
@@ -272,7 +238,8 @@ class ColorBarWidget(QtWidgets.QWidget):
     def _absolute_value_changed(self):
         min_val = self.min_spinbox.value()
         max_val = self.max_spinbox.value()
-        self.colorbar.set_range(min_val, max_val)
+        self.colorbar.set_limits(min_val, max_val)
+        self.cb_plot_widget.setYRange(min_val, max_val)
         if not self.absolute_radioButton.isChecked():
             self.absolute_radioButton.setChecked(True)
             self.sigModeChanged.emit(ColorBarMode.ABSOLUTE)

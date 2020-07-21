@@ -32,12 +32,11 @@ class ColorScale:
         color_positions = np.linspace(0.0, 1.0, num=len(self.COLORS))
 
         self.colormap = pg.ColorMap(color_positions, self.COLORS.astype(int))
-        self.cmap_normed = pg.ColorMap(color_positions, self.COLORS_INV / 255)
 
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap().
-        # Return an RGB(A) lookup table (ndarray). Insert starting and stopping
-        # value and the number of points in the returned lookup table:
+        # get the LookUpTable (LUT), first two params should match the position scale extremes
+        # passed to ColorMap().
+        # Return an RGB(A) lookup table (ndarray). Insert starting and stopping value and the
+        # number of points in the returned lookup table:
         self.lut = self.colormap.getLookupTable(0, 1, 2000)
 
 
@@ -59,8 +58,6 @@ class ColorScaleRainbow(ColorScale):
         [255, 129,   0, 255],
         [255,  26,   0, 255]
         ], dtype=np.ubyte)
-
-    COLORS_INV = COLORS[::-1]
 
 # Shamelessly stolen from https://bids.github.io/colormap/
 # New matplotlib colormaps by Nathaniel J. Smith, Stefan van der Walt,
@@ -338,8 +335,6 @@ class ColorScaleMagma(ColorScale):
                [0.987053, 0.991438, 0.749504, 1.0]
                ], dtype=np.float)*255
 
-    COLORS_INV = COLORS[::-1]
-
 class ColorScaleInferno(ColorScale):
     """ Inferno color scale proposal for matplotlib default color scale """
     COLORS = np.array([
@@ -600,7 +595,7 @@ class ColorScaleInferno(ColorScale):
                  [0.982257, 0.994109, 0.631017, 1.0],
                  [0.988362, 0.998364, 0.644924, 1.0]
                  ], dtype=np.float)*255
-    COLORS_INV = COLORS[::-1]
+
 
 class ColorScalePlasma(ColorScale):
     """ Plasma color scale proposal for matplotlib default color scale """
@@ -862,7 +857,7 @@ class ColorScalePlasma(ColorScale):
                 [0.941896, 0.968590, 0.140956, 1.0],
                 [0.940015, 0.975158, 0.131326, 1.0]
                 ], dtype=np.float)*255
-    COLORS_INV = COLORS[::-1]
+
 
 class ColorScaleViridis(ColorScale):
     """ Viridis color scale proposal for matplotlib and winner (because it is green!) """
@@ -1124,7 +1119,6 @@ class ColorScaleViridis(ColorScale):
                  [0.983868, 0.904867, 0.136897, 1.0],
                  [0.993248, 0.906157, 0.143936, 1.0]
                  ], dtype=np.float)*255
-    COLORS_INV = COLORS[::-1]
 
 
 class QudiPalette:
