@@ -21,15 +21,23 @@ import os
 import sys
 
 __all__ = ('get_appdata_dir', 'get_default_config_dir', 'get_default_log_dir', 'get_home_dir',
-           'get_main_dir', 'get_userdata_dir')
+           'get_main_dir', 'get_userdata_dir', 'get_artwork_dir')
 
 
 def get_main_dir():
-    """ Returns the absolut path to the directory of the main software.
+    """ Returns the absolute path to the directory of the main software.
 
     @return string: path to the main tree of the software
     """
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+
+
+def get_artwork_dir():
+    """ Returns the absolute path to the qudi artwork directory
+
+    @return string: path to the artwork directory of qudi
+    """
+    return os.path.join(get_main_dir(), 'core', 'artwork')
 
 
 def get_home_dir():
