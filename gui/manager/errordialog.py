@@ -41,7 +41,7 @@ class ErrorDialog(QtWidgets.QDialog):
         """
         super().__init__()
         self.logWindow = logWindow
-        self.setWindowFlags(QtCore.Qt.Window)
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         # self.setWindowModality(QtCore.Qt.NonModal)
         self.setWindowTitle('Qudi Error')
         wid = QtWidgets.QDesktopWidget()
