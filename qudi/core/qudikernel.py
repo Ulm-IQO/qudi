@@ -31,7 +31,7 @@ import tempfile
 import errno
 
 from qudi.core.config import Configuration
-from qudi.core.util.paths import get_main_dir
+from qudi.core.util.paths import get_artwork_dir
 from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
@@ -122,7 +122,7 @@ def install_kernel():
             json.dump(kernel_dict, f, indent=1)
 
         # copy logo
-        logo_path = os.path.join(get_main_dir(), 'core', 'artwork', 'logo')
+        logo_path = os.path.join(get_artwork_dir(), 'logo')
         shutil.copy(os.path.join(logo_path, 'logo-qudi-32x32.png'),
                     os.path.join(resource_path, 'logo-32x32.png'))
         shutil.copy(os.path.join(logo_path, 'logo-qudi-32x32.png'),
