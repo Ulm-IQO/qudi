@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 from qtpy import QtCore, QtGui, QtWidgets
-from qudi.core.util.paths import get_main_dir
+from qudi.core.util.paths import get_artwork_dir
 from qudi.core.util.mutex import Mutex
 
 
@@ -46,7 +46,7 @@ class ModuleFrameWidget(QtWidgets.QWidget):
         self.reload_button.setObjectName('reloadButton')
 
         # Set icons for QToolButtons
-        icon_path = os.path.join(get_main_dir(), 'core', 'artwork', 'icons', 'oxygen', '22x22')
+        icon_path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
         self.cleanup_button.setIcon(QtGui.QIcon(os.path.join(icon_path, 'edit-clear.png')))
         self.deactivate_button.setIcon(QtGui.QIcon(os.path.join(icon_path, 'edit-delete.png')))
         self.reload_button.setIcon(QtGui.QIcon(os.path.join(icon_path, 'view-refresh.png')))

@@ -26,7 +26,7 @@ import platform
 from qtpy import QtCore, QtGui, QtWidgets
 from qudi.core.util.helpers import has_pyqtgraph
 from qudi.core.gui.main_gui.main_gui import QudiMainGui
-from qudi.core.util.paths import get_main_dir
+from qudi.core.util.paths import get_artwork_dir
 
 if has_pyqtgraph:
     import pyqtgraph as pg
@@ -45,7 +45,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.setIcon(QtWidgets.QApplication.instance().windowIcon())
         self.right_menu = QtWidgets.QMenu('Quit')
         self.left_menu = QtWidgets.QMenu('Manager')
-        iconpath = os.path.join(get_main_dir(), 'core', 'artwork', 'icons', 'oxygen', '22x22')
+        iconpath = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
         self.managericon = QtGui.QIcon()
         self.managericon.addFile(os.path.join(iconpath, 'go-home.png'), QtCore.QSize(16, 16))
         self.exiticon = QtGui.QIcon()
@@ -124,7 +124,7 @@ class Gui(QtCore.QObject):
     def _init_app_icon():
         """ Set up the Qudi application icon.
         """
-        iconpath = os.path.join(get_main_dir(), 'core', 'artwork', 'logo')
+        iconpath = os.path.join(get_artwork_dir(), 'logo')
         app_icon = QtGui.QIcon()
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
         app_icon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
@@ -160,7 +160,7 @@ class Gui(QtCore.QObject):
         # removed and the QT theme is being set to our artwork/icons folder for
         # all OSs.
         themepaths = QtGui.QIcon.themeSearchPaths()
-        themepaths.append(os.path.join(get_main_dir(), 'core', 'artwork', 'icons'))
+        themepaths.append(os.path.join(get_artwork_dir(), 'icons'))
         QtGui.QIcon.setThemeSearchPaths(themepaths)
         QtGui.QIcon.setThemeName(theme)
 

@@ -27,7 +27,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 import os
 import re
 from importlib.util import spec_from_loader, module_from_spec
-from qudi.core.util.paths import get_main_dir
+from qudi.core.util.paths import get_artwork_dir
 
 __all__ = ('loadUi',)
 
@@ -85,7 +85,7 @@ def convert_ui_to_absolute_paths(file_path):
 
     @param str file_path: The path to the .ui file to change
     """
-    path_prefix = os.path.join(get_main_dir(), 'core', 'artwork')
+    path_prefix = get_artwork_dir()
     with open(file_path, 'r') as file:
         ui_content = file.read()
     chunks = __artwork_path_pattern.split(ui_content)

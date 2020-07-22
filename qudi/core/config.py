@@ -38,6 +38,7 @@ import ruamel.yaml as yaml
 from io import BytesIO
 from qtpy import QtCore
 from qudi.core.util.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
+from qudi.core.util.paths import get_artwork_dir
 from warnings import warn
 
 
@@ -335,9 +336,7 @@ class Configuration(QtCore.QObject):
                     self._global_config[key] = [self._global_config[key]]
             elif key == 'stylesheet':
                 # FIXME: How should stylesheets be declared in config?
-                self._global_config[key] = os.path.join(get_main_dir(),
-                                                        'core',
-                                                        'artwork',
+                self._global_config[key] = os.path.join(get_artwork_dir(),
                                                         'styles',
                                                         'application',
                                                         self._global_config[key])

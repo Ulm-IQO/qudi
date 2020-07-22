@@ -26,7 +26,7 @@ from qudi.core.gui.main_gui.remotewidget import RemoteWidget
 from qudi.core.gui.main_gui.aboutqudidialog import AboutQudiDialog
 from qudi.core.gui.main_gui.consolesettingsdialog import ConsoleSettingsDialog
 from qudi.core.gui.main_gui.modulewidget import ModuleWidget
-from qudi.core.util.paths import get_main_dir
+from qudi.core.util.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
@@ -49,7 +49,7 @@ class QudiMainWindow(QtWidgets.QMainWindow):
 
         # Create actions
         # Toolbar actions
-        icon_path = os.path.join(get_main_dir(), 'core', 'artwork', 'icons', 'oxygen', '22x22')
+        icon_path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
         self.action_load_configuration = QtWidgets.QAction()
         self.action_load_configuration.setIcon(
             QtGui.QIcon(os.path.join(icon_path, 'document-open.png')))
