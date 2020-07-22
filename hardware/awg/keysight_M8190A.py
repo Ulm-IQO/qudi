@@ -60,7 +60,7 @@ class AWGM8190A(Base, PulserInterface):
     _assets_storage_path = ConfigOption(name='assets_storage_path', default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
                                        missing='warn')
     _sample_rate_div = ConfigOption(name='sample_rate_div', default=1, missing='warn')
-    _dac_resolution = 14        # 8190 supports 12 (speed) or 14 (precision)
+    _dac_resolution = ConfigOption(name='dac_resolution_bits', default='14', missing='warn')  # 8190 supports 12 (speed) or 14 (precision)
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
 
     # physical output channel mapping
@@ -428,7 +428,9 @@ class AWGM8190A(Base, PulserInterface):
         # Check if all waveforms to load are present on device memory
         if not set(load_dict.values()).issubset(self.get_waveform_names()):
             self.log.error('Unable to load waveforms into channels.\n'
-                           'One or more waveforms to load are missing on pc memory.')
+                           'One or more waveforms to load are missing on pc memory: {}'.format(
+                                                                            set(load_dict.values())
+            ))
             return self.get_loaded_assets()
 
         if load_dict == {}:
@@ -1117,9 +1119,7 @@ class AWGM8190A(Base, PulserInterface):
         :return:    np.array(dtype=int16)
         """
 
-        # todo: pulse generator does not output norm. values, but
-        # 4* voltage
-        # todo: check effect of mw_amplitude in "pulse generator settings" vs "predefined method"
+
         bitsize = int(2**self._dac_resolution)
         shiftbits = 16-self._dac_resolution   # 2 for marker, dac: 12 -> 2, dac: 14 -> 4
         min_intval = -bitsize/2
@@ -1215,13 +1215,14 @@ class AWGM8190A(Base, PulserInterface):
                 comb_samples = a_samples + d_samples
             else:
                 comb_samples = a_samples
-            filename = name + '_ch' + str(channel_index + 1) + '.bin'
+            filename = name + '_ch' + str(channel_index + 1) + '.bin'  # all names lowercase to avoid trouble
             waveforms.append(filename)
 
-            if filename in self.query('MMEM:CAT?'):
-                self.write(':MMEM:DEL "{0}"'.format(filename))
-
+            if channel_index == 0:
+                # deletes waveform, all channels
+                self.delete_waveform(filename.split("_ch")[0])
             self.write_bin(':MMEM:DATA "{0}", '.format(filename), comb_samples)
+            self.log.debug("Waveform {} written to {}".format(name, filename))
 
         self.check_dev_error()
 
@@ -1366,18 +1367,8 @@ class AWGM8190A(Base, PulserInterface):
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        waveform_list = list()
 
-        # get only the files from the dir and skip possible directories
-        log = os.listdir(self._pulsed_file_dir)
-        file_list = list()
-
-        for line in log:
-            file_list.append(line)
-        for filename in file_list:
-            if filename.endswith(('.wfm', '.wfmx', '.mat', '.bin')):
-                waveform_list.append(filename)
-        return waveform_list
+        return self.query('MMEM:CAT?').replace('"','').replace("'","").split(",")[2::3]
 
 
     def get_sequence_names(self):
@@ -1401,11 +1392,10 @@ class AWGM8190A(Base, PulserInterface):
                     sequence_list.append(self._remove_file_extension(filename))
         return sequence_list
 
-
     def delete_waveform(self, waveform_name):
         """ Delete the waveform with name "waveform_name" from the device memory.
 
-        @param str waveform_name: The name of the waveform to be deleted
+        @param str waveform_name: The name of the waveform to be deleted without _ch? postfix.
                                   Optionally a list of waveform names can be passed.
 
         @return list: a list of deleted waveform names.
@@ -1413,12 +1403,14 @@ class AWGM8190A(Base, PulserInterface):
         if isinstance(waveform_name, str):
             waveform_name = [waveform_name]
 
-        avail_waveforms = self.get_waveform_names()
+        avail_waveforms = self.get_waveform_names()   # incl _ch?.bin postfix
         deleted_waveforms = list()
 
         for name in waveform_name:
             for waveform in avail_waveforms:
-                if fnmatch(waveform, name+'_ch?.bin'): #TODO delete the files
+                if fnmatch(waveform.lower(), name.lower()+'_ch?.bin'):
+                    # delete case insensitive
+                    self.write(':MMEM:DEL "{0}"'.format(waveform))
                     deleted_waveforms.append(waveform)
 
         # clear the AWG if the deleted asset is the currently loaded asset
