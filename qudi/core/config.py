@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 This file contains the Qudi configuration file module.
 
@@ -303,6 +304,10 @@ class Configuration(QtCore.QObject):
     @property
     def stylesheet(self):
         return self._global_config.get('stylesheet', None)
+
+    @property
+    def default_data_dir(self):
+        return self._global_config.get('default_data_dir', None)
 
     @property
     def extension_paths(self):
