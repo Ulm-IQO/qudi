@@ -1,18 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi configuration file module.
-
-A configuration file is saved in YAML format. This module provides a loader
-and a dumper using an OrderedDict instead of the regular dict used by PyYAML.
-Additionally, it fixes a bug in PyYAML with scientific notation and allows
-to dump numpy dtypes and numpy ndarrays.
-
-The fix of the scientific notation is applied globally at module import.
-
-The idea of the implementation of the OrderedDict was taken from
-http://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
-
+This file contains data storage utilities for Qudi.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,6 +24,7 @@ import os
 import csv
 import copy
 import numpy as np
+from enum import Enum
 from datetime import datetime
 from qudi.core.util.paths import get_userdata_dir
 from qudi.core.application import Qudi
@@ -94,14 +84,49 @@ def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
     return daily_dir
 
 
+class ImageFormat(Enum):
+    PNG = 0
+    PDF = 1
+
+
+class DataFormat(Enum):
+    TEXT = 0
+    NPY = 1
+    NPZ = 2
+    XML = 3
+    HDF5 = 4
+
+
 class DataStorageBase:
     """ Base helper class to store (measurement)data on disk in a daily directory.
+    Data will always be saved in a tabular format with column headers. With most file formats rows
+    are appendable.
     """
-    def __init__(self, sub_directory=None):
+    __global_parameters = dict()
+
+    def __init__(self, data_headers=None, sub_directory=None, number_format='%.15e', delimiter='\t',
+                 data_format=DataFormat.TEXT, image_format=ImageFormat.PNG):
         """
-        @param str sub_directory: optional, Sub-directory name to use within daily data directory
+        @param tuple data_headers: optional, iterable of strings containing column headers
+        @param str sub_directory: optional, sub-directory name to use within daily data directory
+        @param str number_format: optional, number format specifier (mini-language) for text files
+        @param str delimiter: optional, column delimiter used in text files
+        @param DataFormat data_format: optional, data file format Enum
+        @param ImageFormat image_format: optional, image file format Enum
         """
+        if any(not isinstance(header, str) for header in data_headers):
+            raise TypeError('Data headers must be str type.')
+        if not isinstance(data_format, DataFormat):
+            raise TypeError('data_format must be DataFormat Enum')
+        if not isinstance(image_format, ImageFormat):
+            raise TypeError('image_format must be ImageFormat Enum')
+        self.data_headers = tuple(data_headers)
         self.sub_directory = sub_directory
+        self.number_format = number_format
+        self.delimiter = delimiter
+        self.data_format = data_format
+        self.image_format = image_format
+        return
 
     def get_data_directory(self, timestamp=None, create_missing=True):
         """ Create and return daily directory to save data in.
@@ -122,6 +147,60 @@ class DataStorageBase:
                 raise NotADirectoryError('Data directory not found: {0}'.format(path))
         return path
 
+    def save_data(self, *args, **kwargs):
+        raise Exception('save_data not implemented! Do not use DataStorageBase class directly.')
+
+    @classmethod
+    def get_global_parameters(cls):
+        """ Return a copy of the global parameters dict.
+        """
+        return cls._global_parameters.copy()
+
+    @classmethod
+    def set_global_parameter(cls, name, value, overwrite=False):
+        """ Set a single global parameter to save in all data file headers during this qudi session.
+        Parameter value is typecast into str.
+        """
+        if not isinstance(name, str):
+            raise TypeError('global parameter name must be str type.')
+        if not overwrite and name in cls.__global_parameters:
+            raise KeyError('global parameter "{0}" already set while overwrite flag is False.'
+                           ''.format(name))
+        cls.__global_parameters[name] = str(value)
+        return
+
+    @classmethod
+    def set_global_parameters(cls, params, overwrite=False):
+        """ Set multiple global parameters to save in all data file headers during this qudi
+        session.
+        Parameter value is typecast into str.
+        """
+        if any(not isinstance(name, str) for name in params):
+            raise TypeError('global parameter name must be str type.')
+        if not overwrite and any(name in cls.__global_parameters for name in params):
+            raise KeyError('global parameter already set while overwrite flag is False.')
+        cls.__global_parameters.update({name: str(value) for name, value in params.items()})
+        return
+
+    @classmethod
+    def remove_global_parameter(cls, name):
+        """ Remove a global parameter. Does not raise an error.
+        """
+        cls.__global_parameters.pop(name, None)
+        return
+
 
 class CsvDataStorage(DataStorageBase):
-    pass
+    """ Helper class to store (measurement)data on disk in a daily directory as CSV file.
+    """
+    def __init__(self, data_headers, sub_directory=None, number_format='%.15e',
+                 image_format=ImageFormat.PNG):
+        super().__init__(data_headers=data_headers,
+                         sub_directory=sub_directory,
+                         number_format=number_format,
+                         delimiter=',',
+                         data_format=DataFormat.TEXT,
+                         image_format=image_format)
+
+    def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
+        pass
