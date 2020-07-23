@@ -98,9 +98,10 @@ class DataFormat(Enum):
     """ File format for saving data to disk.
     """
     TEXT = 0
-    NPY = 1
-    XML = 2
-    HDF5 = 3
+    CSV = 1
+    NPY = 2
+    XML = 3
+    HDF5 = 4
 
 
 class DataStorageBase:
@@ -302,7 +303,7 @@ class CsvDataStorage(DataStorageBase):
                          number_format=number_format,
                          comments=comments,
                          delimiter=',',
-                         data_format=DataFormat.TEXT,
+                         data_format=DataFormat.CSV,
                          image_format=image_format)
 
     def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
