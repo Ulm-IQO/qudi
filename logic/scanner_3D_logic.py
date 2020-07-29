@@ -183,7 +183,7 @@ class Scanner3DLogic(GenericLogic):
                 self._ai_scanner = False
         else:
             self._ai_scanner = False
-        self._ai_axes = {"x": "x_pos_voltages", "y": "y_post_voltages", "z": "z_pos_voltages",
+        self._ai_axes = {"x": "x_pos_voltages", "y": "y_pos_voltages", "z": "z_pos_voltages",
                          self._ai_counter: "AI_counter_" + str(self._ai_counter)}
         self.current_ai_axes = []
         if self._ai_scanner:
@@ -397,7 +397,7 @@ class Scanner3DLogic(GenericLogic):
         self.signal_image_updated.emit()
         first_new_scan_position = self._image_scanner[self._scan_counter, 0, 0]
         self.move_to_position(
-            {"x": first_new_scan_position[1], "y": first_new_scan_position[0], "z": first_new_scan_position[2]},
+            {"x": first_new_scan_position[0], "y": first_new_scan_position[1], "z": first_new_scan_position[2]},
             tag="scan")
 
         # The clock freq for each point is given by the freq used to scan one whole line on the fast axis
@@ -455,7 +455,7 @@ class Scanner3DLogic(GenericLogic):
         with self.threadlock:
             if self.module_state() == 'locked':
                 self.stopRequested = True
-        self.signal_stop_scanning.emit()
+        #self.signal_stop_scanning.emit()
         return 0
 
     def _scan_line_3D(self):
@@ -606,7 +606,7 @@ class Scanner3DLogic(GenericLogic):
         # Todo: This only woks for one digital counter and one analog counter (not position feedback) so far. Fix!
         new_counts = []
         length_scan = self._dim_medium_axis
-        name_save_addition = "3D"
+        name_save_addition = ""
         data_counter = 0
 
         # Digital Counter Data
@@ -615,7 +615,10 @@ class Scanner3DLogic(GenericLogic):
             # sort data
             new_counts_uo = np.split(counts_digital[i], length_scan)  # split into single line pixel of medium axis
             new_counts_uo[1::2] = np.flip(new_counts_uo[1::2], 1)  # flip fast axis of every second pixel
+            if line_number % 2 != 0:  # every second line scans the opposite direction so the data has to be inverted
+                new_counts_uo = np.flip(new_counts_uo, 0)
             new_counts.append(np.concatenate(new_counts_uo))
+
             # save data
             self.save_to_npy("SPCM" + '_{0}_'.format(self._counts_ch[i].replace('/', '')) + name_save_addition,
                              np.split(new_counts[i], length_scan), line_number)
@@ -633,6 +636,9 @@ class Scanner3DLogic(GenericLogic):
                 # sort through analog input data
                 new_counts_a = np.split(counts_analog_ch[i], length_scan)  # split into single line pixel of medium axis
                 new_counts_a[1::2] = np.flip(new_counts_a[1::2], 1)  # flip fast axis of every second pixel
+                # every second line scans the opposite direction so the data has to be inverted
+                if line_number % 2 != 0:
+                    new_counts_a = np.flip(new_counts_a,0)
                 new_counts_analog[self.current_ai_axes[i]] = np.concatenate(new_counts_a)
 
             for key, value in new_counts_analog.items():
@@ -1179,13 +1185,13 @@ class Scanner3DLogic(GenericLogic):
         filelabel = 'scanner_3D_data'
         for n, ch in enumerate(self.get_scanner_count_channels()):
             self._save_logic.save_data(data,
-                                   filepath=filepath,
-                                   timestamp=timestamp,
-                                   parameters=parameters,
-                                   filelabel=filelabel+str(ch),
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   plotfig=figs[ch])
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel + str(ch),
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       plotfig=figs[ch])
 
         self.log.debug('Scan 3D Image saved.')
 
