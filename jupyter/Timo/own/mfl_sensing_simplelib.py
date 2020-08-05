@@ -180,15 +180,12 @@ class ExpDecoKnownPrecessionModel():
 
     ## INITIALIZER ##
 
-    def __init__(self, min_freq=0, invT2=0., eta_assym=1, read_phase=0.0):
+    def __init__(self, min_freq=0, invT2=0.):
         super(ExpDecoKnownPrecessionModel, self).__init__()
 
         self._min_freq = min_freq
         self._invT2 = invT2
-        if eta_assym is None:
-            eta_assym = 1
-        self._eta_assym = eta_assym
-        self._read_phase = read_phase
+        self._eta_assym = 1.0
 
         # Initialize a default scale matrix.
         self._Q = np.ones((self.n_modelparams,))
@@ -224,10 +221,6 @@ class ExpDecoKnownPrecessionModel():
             1,
             self._Q * (a - b)
         )
-
-    def update_read_phase(self, phase):
-        # avoid including read phase in expparams and set manually like this
-        self._read_phase = phase
 
     def update_timestep(self, modelparams, expparams):
         r"""
@@ -395,7 +388,7 @@ class ExpDecoKnownPrecessionModel():
 
         # ESSENTIAL STEP > the likelihoods (i.e. cosines with a damping exp term) are evaluated for all particles
         pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
-        l = np.exp(-t * self._invT2) * (np.cos((t * dw + self._read_phase) / 2) ** 2) + 0.5 * (1 - np.exp(-t * self._invT2))
+        l = np.exp(-t * self._invT2) * (np.cos(t * dw / 2) ** 2) + 0.5 * (1 - np.exp(-t * self._invT2))
 
         # prepare output dimensions st. plot_zs() works
         try:
@@ -598,6 +591,43 @@ class ExpDecoKnownMultimodePrecModel(MultimodePrecModel):
         return self.pr0_to_likelihood_array(outcomes, pr0)
 
 
+class NoisyGaussianExpDecoKnownMultimodePrecModel(ExpDecoKnownMultimodePrecModel):
+
+    def __init__(self, min_freq=0.0, max_freq=1.0, inv_T2=0, c_eff=1, n_rep=1e6):
+        super().__init__(min_freq, inv_T2)
+
+        self.c_eff = c_eff  # readout efficiency parameter c
+        self.n_rep = n_rep  # number of experimental repetitions
+
+    def likelihood(self, outcomes, modelparams, expparams, noisy=False, res_no_noise=None):
+
+        p = super().likelihood(outcomes, modelparams, expparams)
+        if not noisy:
+            return p
+
+        if p.shape != (2, 1, 1):
+            raise NotImplementedError("NoisyGaussian only implemented for 1d model. Shape: {}".format(p.shape))
+        z = p[0, 0, 0]  # value of interet
+        z, z_real = self.add_noise(z)
+        if type(res_no_noise) is list:
+            res_no_noise.append(z_real)
+
+        # prepare shape for output
+        pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
+        pr0[:, :] = z
+
+        return self.pr0_to_likelihood_array(outcomes, pr0)
+
+    def add_noise(self, z):
+        import random
+        noisy_z = z + np.random.normal(loc=0, scale=1. / np.sqrt(4 * self.c_eff ** 2 * self.n_rep))  # Degen 17 (eqn 37)
+
+        return noisy_z, z
+
+    def sample(self, z, n_samples=1e3):
+        return np.random.normal(loc=z, scale=1. / np.sqrt(4 * self.c_eff ** 2 * self.n_rep), size=int(n_samples))
+
+
 ####################################################
 ########## Hahn echo models
 ####################################################
@@ -727,14 +757,15 @@ class MultimodeHahnModel(qi.FiniteOutcomeModel):
         if len(modelparams.shape) == 1:
             modelparams = modelparams[..., np.newaxis]
 
-        t = expparams['t']  # us
+        t = expparams['t'] * 1e-6  # todo: / 2.  # s, tau -> t_evol in Zhao?
         # modelparams[:,0]: A_hfs [MHz rad]
         # modelparams[:,1]: phi_h01 [rad]
 
         h_0 = self._b_gauss
+        print("WARNING: h_1 only approximated.")
         h_1 = self._b_gauss - modelparams[:, 0] * 1e6 / self._gamma
-        theta_0 = self._gamma * h_0 * t * 1e-6
-        theta_1 = self._gamma * h_1 * t * 1e-6
+        theta_0 = self._gamma * h_0 * t
+        theta_1 = self._gamma * h_1 * t
         # gamma in Hz rad / G (w units)
 
         # Allocating first serves to make sure that a shape mismatch later
@@ -742,6 +773,281 @@ class MultimodeHahnModel(qi.FiniteOutcomeModel):
         pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
 
         l = 0.5 + 0.5 * (1 - 2 * np.sin(modelparams[:, 1]) ** 2 * np.sin(theta_0 / 2) ** 2 * np.sin(theta_1 / 2) ** 2)
+
+        try:
+            pr0[:, :] = l[..., np.newaxis]
+        except ValueError:
+            pr0[:, :] = l[np.newaxis, ...]
+
+        return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
+
+
+class MultimodeDDModel(qi.FiniteOutcomeModel):
+    r"""
+    ad hoc modification of the SimplePrecession model to include multimode capabilities in term of
+    an explicitly degenerate 2-param likelihood
+    """
+
+    ## INITIALIZER ##
+
+    def __init__(self, b_gauss, min_freq=0, T2_a=0, T2_b=0):
+        super().__init__()
+        self._min_freq = min_freq
+        self._b_gauss = b_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._t2_a = T2_a
+        self._t2_b = T2_b
+
+        if (self._t2_a == 0 and self._t2_b != 0) or \
+                (self._t2_b == 0 and self._t2_a != 0):
+            raise ValueError("Can't set only a single T2")
+
+    def simulate_experiment(self, modelparams, expparams, repeat=1, res_no_noise=None, full_result=False):
+        """
+        Provides a simulated binary outcome for an experiment, given the model (self), and its parameters
+
+        :param np.ndarray modelparams: Set of model parameter vectors to be
+                updated.
+        :param np.ndarray expparams: An experiment parameter array describing
+            the experiment that was just performed.
+        :param flaot repeat: how many times the experiment is repeated before an update is called, can be useful for majority voting schemes
+
+        :return int: single integer representing the experimental outcome
+        """
+
+        if self.is_n_outcomes_constant:
+            # In this case, all expparams have the same domain [0,1]
+            all_outcomes = np.array([0, 1])
+            try:
+                probabilities = self.likelihood(all_outcomes, modelparams, expparams, noisy=True,
+                                                res_no_noise=res_no_noise)
+                noisy = True
+            except TypeError:
+                noisy = False
+                probabilities = self.likelihood(all_outcomes, modelparams, expparams)
+            # probabilities = self.likelihood(all_outcomes, modelparams, expparams)
+            cdf = np.cumsum(probabilities, axis=0)
+            randnum = np.random.random((repeat, 1, modelparams.shape[0], expparams.shape[0]))
+            outcome_idxs = all_outcomes[np.argmax(cdf > randnum, axis=1)]
+            outcomes = all_outcomes[outcome_idxs]
+
+            if full_result:
+                if repeat > 1:
+                    raise NotImplementedError
+                else:
+                    if type(res_no_noise) is list and noisy:
+                        res_no_noise[0] = 1 - res_no_noise[0]
+                    elif type(res_no_noise) is list and not noisy:
+                        res_no_noise.append(1 - cdf[0, 0, 0])
+
+                    if res_no_noise:
+                        assert (len(res_no_noise) == 0 or len(res_no_noise) == 1)
+                    return 1 - cdf[0, 0, 0]  # defined mirrored
+        else:
+            # Loop over each experiment, sadly.
+            # Assume all domains have the same dtype
+            assert (self.are_expparam_dtypes_consistent(expparams))
+            dtype = self.domain(expparams[0, np.newaxis])[0].dtype
+            outcomes = np.empty((repeat, modelparams.shape[0], expparams.shape[0]), dtype=dtype)
+            for idx_experiment, single_expparams in enumerate(expparams[:, np.newaxis]):
+                all_outcomes = self.domain(single_expparams).values
+                probabilities = self.likelihood(all_outcomes, modelparams, single_expparams)
+                cdf = np.cumsum(probabilities, axis=0)[..., 0]
+                randnum = np.random.random((repeat, 1, modelparams.shape[0]))
+                outcomes[:, :, idx_experiment] = all_outcomes[np.argmax(cdf > randnum, axis=1)]
+
+        return outcomes[0, 0, 0] if repeat == 1 and expparams.shape[0] == 1 and modelparams.shape[0] == 1 else outcomes
+
+    ## PROPERTIES ##
+
+    @property
+    def n_modelparams(self):
+        return 2
+
+    @property
+    def modelparam_names(self):
+        return [r'\omega1', r'\omega2']
+
+    @property
+    def expparams_dtype(self):
+        return [('t', 'float'), ('n', 'int'), ('w1', 'float'), ('w2', 'float')]
+
+    @property
+    def is_n_outcomes_constant(self):
+        """
+        Returns ``True`` if and only if the number of outcomes for each
+        experiment is independent of the experiment being performed.
+
+        This property is assumed by inference engines to be constant for
+        the lifetime of a Model instance.
+        """
+        return True
+
+    ## METHODS ##
+
+    def are_models_valid(self, modelparams):
+        return np.all(modelparams > self._min_freq, axis=1)
+
+    def n_outcomes(self, expparams):
+        """
+        Returns an array of dtype ``uint`` describing the number of outcomes
+        for each experiment specified by ``expparams``.
+
+        :param numpy.ndarray expparams: Array of experimental parameters. This
+            array must be of dtype agreeing with the ``expparams_dtype``
+            property.
+        """
+        return 2
+
+    def likelihood(self, outcomes, modelparams, expparams):
+        # approximation: see labbook 20191114
+        # uses parameters: |A|, phi_01
+
+        # By calling the superclass implementation, we can consolidate
+        # call counting there.
+        super().likelihood(
+            outcomes, modelparams, expparams
+        )
+
+        # Possibly add a second axis to modelparams.
+        if len(modelparams.shape) == 1:
+            modelparams = modelparams[..., np.newaxis]
+
+        t = expparams['t'] * 1e-6 / 2.  # s, tau -> t_evol in Zhao
+        n_dd = expparams['n']
+        A_par = modelparams[:, 0] * 1e6  # A_par [Hz rad]
+        A_perp = modelparams[:, 1] * 1e6
+        A = np.sqrt(A_par ** 2 + A_perp ** 2)
+        A_as_B = A / self._gamma  # Hz rad --> Gauss
+        alpha = np.arccos(A_par / A)
+        B = self._b_gauss
+
+        h_0 = self._b_gauss
+        # assumes NV || B => B=0 along A_perp
+        h_1 = np.sqrt((B - A_par / self._gamma) ** 2 + (A_perp / self._gamma) ** 2)
+
+        phi_h01 = np.arcsin(A_as_B * np.sin(alpha) / (np.sqrt(B ** 2 - 2 * A_as_B * B * np.cos(alpha) + A_as_B ** 2)))
+
+        # gamma in Hz rad / G (w units)
+        theta_0 = self._gamma * h_0 * t
+        theta_1 = self._gamma * h_1 * t
+        alpha = np.arctan((np.sin(theta_0 / 2) * np.sin(theta_1 / 2) * np.sin(phi_h01)) /
+                          (np.cos(theta_0 / 2) * np.cos(theta_1 / 2) - np.sin(theta_0 / 2) * np.sin(
+                              theta_1 / 2) * np.cos(phi_h01))
+                          )
+        theta = 2 * np.arccos(np.cos(theta_0) * np.cos(theta_1) - np.sin(theta_0) * np.sin(theta_1) * np.cos(phi_h01)
+                              )
+
+        # Allocating first serves to make sure that a shape mismatch later
+        # will cause an error.
+        if modelparams.shape[0] == 1:
+            # calling with only expparams changing
+            pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
+        else:
+            # model and exp params change
+            # -> every line of model param corresponds to a line of exp params
+            # allows to parallize computation
+            pr0 = np.zeros((modelparams.shape[0], 1))
+
+        l_hahn = 1 - 2 * np.sin(phi_h01) ** 2 * np.sin(theta_0 / 2) ** 2 * np.sin(theta_1 / 2) ** 2
+        l_dd = 1 - 2 * np.sin(alpha) ** 2 * np.sin(n_dd * theta / 4) ** 2
+        l_corr = 0  # this is an approximation!
+
+        # if n_dd % 2 == 0: second expression, else, first
+        l_dd = (n_dd % 2) * (l_hahn * l_dd + l_corr) + (((n_dd + 1) % 2)) * l_dd
+        if self._t2_a is 0:  # guaranteed that both T2 == 0
+            l = 0.5 + 0.5 * l_dd
+        else:
+            # adapted from Taminiau (2012) Suppl, doesn't work well
+            # l =   0.5+0.5*np.exp(-n_dd*t/(self._t2_a))*l_dd #+ 0.5*(np.exp(-n_dd*t/(self._t2_b)))  # (np.exp(-n_dd*t/(self._t2_b)) np.exp(-n_dd*t/(self._t2_a))
+            # own: T2_a: decay of the modulation only. T2_b: decay of the baseline
+            l = 0.5 * (np.exp(-n_dd * t / (self._t2_a)) * (l_dd - 1)) + (0.5 * np.exp(-n_dd * t / (self._t2_b)) + 0.5)
+
+        try:
+            pr0[:, :] = l[..., np.newaxis]
+        except ValueError:
+            pr0[:, :] = l[np.newaxis, ...]
+
+        return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
+
+
+class MultimodeDDModel_valAngle(MultimodeDDModel):
+    r"""
+    ad hoc modification of the SimplePrecession model to include multimode capabilities in term of
+    an explicitly degenerate 2-param likelihood
+    """
+
+    ## INITIALIZER ##
+
+    def __init__(self, b_gauss, min_freq=0, T2_a=0, T2_b=0):
+        super().__init__(b_gauss, min_freq=0, T2_a=0, T2_b=0)
+        self._min_freq = min_freq
+        self._b_gauss = b_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._t2_a = T2_a
+        self._t2_b = T2_b
+
+        if (self._t2_a == 0 and self._t2_b != 0) or \
+                (self._t2_b == 0 and self._t2_a != 0):
+            raise ValueError("Can't set only a single T2")
+
+    def likelihood(self, outcomes, modelparams, expparams):
+        # approximation: see labbook 20191114
+        # uses parameters: |A|, phi_01
+
+        # By calling the superclass implementation, we can consolidate
+        # call counting there.
+        super().likelihood(
+            outcomes, modelparams, expparams
+        )
+
+        # Possibly add a second axis to modelparams.
+        if len(modelparams.shape) == 1:
+            modelparams = modelparams[..., np.newaxis]
+
+        t = expparams['t'] * 1e-6 / 2.  # s, tau -> t_evol in Zhao
+        n_dd = expparams['n']
+        A_abs = modelparams[:, 0] * 1e6  # A_par [Hz rad]
+        beta = modelparams[:, 1]
+        A_par = A_abs * np.cos(beta)
+        A_perp = A_abs * np.sin(beta)
+
+        A = np.sqrt(A_par ** 2 + A_perp ** 2)
+        A_as_B = A / self._gamma  # Hz rad --> Gauss
+        alpha = np.arccos(A_par / A)
+        B = self._b_gauss
+
+        h_0 = self._b_gauss
+        # assumes NV || B => B=0 along A_perp
+        h_1 = np.sqrt((B - A_par / self._gamma) ** 2 + (A_perp / self._gamma) ** 2)
+
+        phi_h01 = np.arcsin(A_as_B * np.sin(alpha) / (np.sqrt(B ** 2 - 2 * A_as_B * B * np.cos(alpha) + A_as_B ** 2)))
+
+        # gamma in Hz rad / G (w units)
+        theta_0 = self._gamma * h_0 * t
+        theta_1 = self._gamma * h_1 * t
+        alpha = np.arctan((np.sin(theta_0 / 2) * np.sin(theta_1 / 2) * np.sin(phi_h01)) /
+                          (np.cos(theta_0 / 2) * np.cos(theta_1 / 2) - np.sin(theta_0 / 2) * np.sin(
+                              theta_1 / 2) * np.cos(phi_h01))
+                          )
+        theta = 2 * np.arccos(np.cos(theta_0) * np.cos(theta_1) - np.sin(theta_0) * np.sin(theta_1) * np.cos(phi_h01)
+                              )
+
+        # Allocating first serves to make sure that a shape mismatch later
+        # will cause an error.
+        pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
+
+        l_hahn = 1 - 2 * np.sin(phi_h01) ** 2 * np.sin(theta_0 / 2) ** 2 * np.sin(theta_1 / 2) ** 2
+        l_dd = 1 - 2 * np.sin(alpha) ** 2 * np.sin(n_dd * theta / 4) ** 2
+        l_corr = 0  # this is an approximation!
+
+        # if n_dd % 2 == 0: second expression, else, first
+        l_dd = (n_dd % 2) * (l_hahn * l_dd + l_corr) + (((n_dd + 1) % 2)) * l_dd
+        if self._t2_a is 0:  # guaranteed that both T2 == 0
+            l = 0.5 + 0.5 * l_dd
+        else:
+            # adapted from Taminiau (2012) Suppl
+            l = 1 / 2 + 1 / 4 * np.exp(-n_dd * t / (self._t2_b)) + 1 / 4 * l_dd * np.exp(-n_dd * t / (self._t2_a))
 
         try:
             pr0[:, :] = l[..., np.newaxis]
@@ -968,10 +1274,11 @@ class AparrKnownHahnModel():
             modelparams = modelparams[..., np.newaxis]
 
         # get units rights (all SI)
-        t = expparams['t']  # us
+        # todo: might be / 2
+        t = expparams['t']  # /2.              # us
         A_abs = modelparams[:, 0]  # MHz rad, due to model scaling
 
-        tau = t * 1e-6  # s
+        tau = t * 1e-6 / 2.  # s
         A = A_abs * 1e6  # Hz rad
         alpha = np.arccos(self._a_par / A)
         A_par = A_abs * np.cos(alpha) * 1e6  # Hz rad
@@ -1014,11 +1321,9 @@ class AparrKnownHahnModel():
 class BKnownHahnModel():
     r"""
     Model that simulates a double sinusoidal coupling to a nuclear spin in low magnetic field
-    imposing a (known) decoherence as a user-defined parameter
 
     :param float min_freq: Impose a minimum frequency (often 0 to avoid degeneracies in the problem)
-    :param float invT2: If a dephasing time T_2* for the system is known, user can input its inverse here
-    """
+     """
 
     ## INITIALIZER ##
 
@@ -1315,65 +1620,6 @@ class stdPGH(qi.Heuristic):
 
         return eps
 
-class NonAdaptive_PGH(qi.Heuristic):
-
-    """
-    non-adaptive next tau and measurement phase as in Bonato (2015) Suppl.
-    """
-
-    def __init__(self, updater, inv_field='x_', t_field='t',
-                 inv_func=qi.expdesign.identity,
-                 t_func=qi.expdesign.identity,
-                 maxiters=10,
-                 other_fields=None,
-                 tau_0=20e-9,
-                 tau_short_to_long=True,
-                 n_taus=10,
-                 fix_readout_phase_rad=0,
-                 exp_base=2
-                 ):
-        super().__init__(updater)
-        self._x_ = inv_field
-        self._t = t_field
-        self._inv_func = inv_func
-        self._t_func = t_func
-        self._maxiters = maxiters
-        self._other_fields = other_fields if other_fields is not None else {}
-        self.tau_0 = tau_0
-        self.n_taus = n_taus
-        self.exp_base = exp_base
-
-        self.readout_phase_rad = fix_readout_phase_rad
-        self.tau_short_to_long = tau_short_to_long
-
-    def __call__(self, i_tau, m_phase, m_tot_phases):
-
-        # i_tau: counts from 0! (1 in paper)
-
-        tau_0 = self.tau_0
-        n_taus = self.n_taus
-
-        if (n_taus - (i_tau+1)) < 0:
-            # repeat last tau when hitting n_tau limit
-            i_tau = n_taus - 1
-
-        if not self.tau_short_to_long:
-            next_tau = tau_0 * self.exp_base**(n_taus - (i_tau+1))     # tau from long to short, as in paper
-        else:
-            next_tau = tau_0 * self.exp_base**i_tau
-
-        next_tau_s = next_tau
-
-        if self.readout_phase_rad is None:
-            try:
-                phi_read = m_phase * 2*np.pi / m_tot_phases
-            except ZeroDivisionError:
-                phi_read = 0
-        else:
-            phi_read = self.readout_phase_rad
-
-        # not in normal format of heuristics!
-        return (next_tau_s, phi_read)
 
 class T2RandPenalty_PGH(stdPGH):
     def __init__(self, updater, tau_thresh_rescale, inv_field='x_', t_field='t',
@@ -1437,12 +1683,112 @@ class T2RandPenalty_PGH(stdPGH):
         return tau_corrected_s
 
 
+class OptFish_T2RandPenalty_PGH(stdPGH):
+    def __init__(self, updater, tau_thresh_rescale, inv_field='x_', t_field='t',
+                 inv_func=qi.expdesign.identity,
+                 t_func=qi.expdesign.identity,
+                 maxiters=10,
+                 other_fields=None, scale_f=2.0):
+        """
+        Apply a penalty on taus calculated from stdPGH and rescale them to lower values.
+        :param tau_thresh_rescale: values above will be rescaled
+        :param scale_f: controls the cut off tau. tau_cut = tau_thresh_rescale + scale_f * tau_thresh_rescale
+                        = 2 -> tau_max = 3*tau_thresh_rescale
+        """
+
+        super().__init__(updater, inv_field, t_field, inv_func, t_func, maxiters, other_fields)
+        self.tau_thresh_rescale = tau_thresh_rescale
+        self.scale_f = scale_f
+
+    def __call__(self):
+        eps = super().__call__()
+        tau = float(eps['t'][0])  # us
+
+        tau = self.optimize_fisher_information(tau) * 1e6
+
+        # print("next tau_us= {}".format(tau))
+
+        if self.should_correct(tau):
+            eps['t'] = self.apply_penalty_randomized(tau * 1e-6) * 1e6
+
+        return eps
+
+    def should_correct(self, taus_s):
+        return True
+
+    def should_correct_randomized(self, tau_s):
+
+        if tau_s > self.tau_thresh_rescale:
+            rand = np.random.rand()  # [0, 1)
+            if rand > - np.exp(- tau_s / self.tau_thresh_rescale) + 1:  # -exp(-x)+1 < 1
+                return True
+
+        return False
+
+    def apply_penalty(self, tau_s):
+
+        if tau_s <= self.tau_thresh_rescale:
+            return tau_s
+
+        # rescale tau-t2* to 0... T2* (*scale_f)
+        tau_corrected_s = self.tau_thresh_rescale + (1 - np.exp(
+            - (tau_s / self.tau_thresh_rescale - 1))) * self.scale_f * self.tau_thresh_rescale  # 0 < -exp(-(x-1))+1 < 1
+
+        return tau_corrected_s
+
+    def apply_penalty_randomized(self, tau_s):
+        # randomly multiply scale with [0, 1)
+        # avoid that all very big taus get mapped to a single value
+
+        save_scale_f = self.scale_f
+        rand = np.random.rand()
+        self.scale_f *= rand
+        tau_corrected_s = self.apply_penalty(tau_s)
+        self.scale_f = save_scale_f
+
+        return tau_corrected_s
+
+    def optimize_fisher_information(self, tau_us):
+
+        west = self._updater.est_mean()  # Mhz rad
+
+        # based on current w_est, optimize FI over one Ramsey fringe
+        tau_min = tau_us - 2 * np.pi / west
+        if tau_min <= 0:
+            tau_min = 1e-9
+        tau_max = tau_us + 2 * np.pi / west
+        tau_list_us = np.linspace(tau_min, tau_max, 20)
+
+        # print("w= {}, tau_min= {}, uai_max: {}".format(west, tau_min, tau_max))
+
+        fi_list = [self.calc_fisher_information_at_w(west / (2 * np.pi),
+                                                     t_us=t) for i, t in enumerate(tau_list_us)]
+
+        idx_opt = np.argmax(fi_list)
+
+        return tau_list_us[idx_opt] * 1e-6
+
+    def calc_fisher_information_at_w(self, w_mhz, t_us=1):
+
+        expparams = np.empty((1,), dtype=[('t', '<f8'), ('w', '<f8')])  # tau (us)
+        expparams['t'] = t_us
+        expparams['w'] = 0
+
+        fi, _, w, _ = self._updater.calc_fisher_information(None, expparams, n_points=20)
+
+        idx = np.argmin(abs(w / (2 * np.pi) - w_mhz))
+
+        # print("t_us= {}, idx: {}".format(t_us, idx))
+
+        return fi[idx]
+
+
 def identity(arg): return arg
 
 
 class MultiPGH(qi.Heuristic):
 
-    def __init__(self, updater, oplist=None, norm='Frobenius', inv_field='x_', t_field='t',
+    def __init__(self, updater, oplist=None, norm='p1', inv_field='x_', t_field='t',
                  inv_func=identity,
                  t_func=identity,
                  maxiters=10,
@@ -1458,6 +1804,7 @@ class MultiPGH(qi.Heuristic):
         self._t_func = t_func
         self._maxiters = maxiters
         self._other_fields = other_fields if other_fields is not None else {}
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
 
     def __call__(self):
         idx_iter = 0
@@ -1486,7 +1833,12 @@ class MultiPGH(qi.Heuristic):
             eps[field_i] = self._inv_func(x)[0][idx_iter]
             idx_iter += 1
         if self._oplist is None:  # Standard QInfer geom distance
-            eps[self._t] = self._t_func(1 / self._updater.model.distance(x, xp))
+            if self._norm == 'p1':
+                eps[self._t] = self._t_func(1 / self._updater.model.distance(x, xp))
+            elif self._norm == 'Frobenius':
+                eps[self._t] = 1 / np.linalg.norm(x - xp)  # Frobenius norm
+            else:
+                raise RuntimeError("Unknown norm.")
         else:
             deltaH = getH(x, self._oplist) - getH(xp, self._oplist)
             if self._norm == 'Frobenius':
@@ -1498,6 +1850,97 @@ class MultiPGH(qi.Heuristic):
             else:
                 eps[self._t] = 1 / np.linalg.norm(deltaH)
                 raise RuntimeError("Unknown Norm: using Frobenius norm instead")
+        for field, value in self._other_fields.items():
+            eps[field] = value
+
+        return eps
+
+    def norm_mean_projection(self, x, xp):
+        return 0
+
+    def estimate_mean(self):
+        w1, w2 = self._updater.est_mean()  # Mhz rad
+
+        use_cheat = False
+        try:
+            w1_cheat, w2_cheat = self._cheat_w_true[0], self._cheat_w_true[1]
+            use_cheat = True
+            # print("Using cheat w1/w2= {}/ {} MHz".format(w1_cheat/(2*np.pi), w2_cheat/(2*np.pi)))
+        except:
+            use_cheat = False
+
+        if use_cheat:
+            return w1_cheat, w2_cheat
+        return w1, w2
+
+    def calc_tau_k(self, A_par_mhz, k_order=1, no_warning=False, b_gauss=None):
+        # (Taminiau (2012), valid for high B (w_l >> w_h)
+        # note: definition of tau = 1/2 tau_taminiau
+        if b_gauss is None:
+            omega_l = self._b_gauss * self._gamma  # Hz rad
+        else:
+            omega_l = b_gauss * self._gamma
+
+        k_order = np.asarray(k_order)
+
+        if not no_warning:
+            if np.any(A_par_mhz * 1e6 > (omega_l / (2 * np.pi))):
+                print("WARNING: Approximation invalid for low B")
+
+        # sign different than in Taminiau!
+        tau_res = 2 * (2 * k_order - 1) * np.pi / (2 * omega_l - 2 * np.pi * A_par_mhz * 1e6)
+        try:
+            tau_res[k_order == 0] = np.pi / omega_l
+        except TypeError:
+            if k_order == 0: return np.pi / omega_l
+
+        return tau_res
+
+    def round_up_to_mod(self, f, mod=2, min_int=2):
+        """
+        Rounds up to a multiplier. Eg. mod=4:
+        3->4, 4->4, 5->8, ...
+        """
+        rounded = np.round(f / mod) * mod
+        try:
+            rounded[rounded <= 0] = min_int
+        except TypeError:
+            if rounded < min_int: return int(min_int)
+
+        return int(rounded)
+
+
+class MultiEigenPGH(qi.Heuristic):
+    """
+    Calculate new tau based on eigenvalues of covariance matrix. (width in p space in direction of min/max spread)
+    """
+
+    def __init__(self, updater, oplist=None, inv_field='x_', t_field='t',
+                 inv_func=identity,
+                 t_func=identity,
+                 other_fields=None
+                 ):
+        super().__init__(updater)
+        self._updater = updater
+        self._oplist = oplist
+        self._x_ = inv_field
+        self._t = t_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._other_fields = other_fields if other_fields is not None else {}
+
+    def __call__(self):
+        cov_matrix = self._updater.est_covariance_mtx()
+        var_matrix = np.sqrt(abs(np.nan_to_num(cov_matrix)))
+        eig_vals = np.linalg.eig(var_matrix)[0]
+
+        eig_val_min = np.min(eig_vals)
+
+        eps = np.empty((1,), dtype=self._updater.model.expparams_dtype)
+        #         print("eps dtypes >", self._updater.model.expparams_dtype)
+
+        eps[self._t] = self._t_func(1 / eig_val_min)
+
         for field, value in self._other_fields.items():
             eps[field] = value
 
@@ -1616,6 +2059,1211 @@ class MultiHahnPGH(MultiPGH):
         eps[self._t] = tau
 
         return eps
+
+
+class MultiDDPGH(MultiPGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None
+                 ):
+        super().__init__(updater)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+
+    def __call__(self):
+        eps = super().__call__()  # eps[t_] ~ 1/sig_p
+        n_tau = 4 * eps[self._t]
+        eps[self._n] = np.random.randint(1, 16) * 2
+        eps[self._t] = n_tau / eps[self._n]
+
+        # return eps
+        return self.avoid_flat_likelihood(eps)
+
+    def avoid_flat_likelihood(self, eps):
+        return eps
+
+
+class MultiDD_EstAPlaceAtDip_PGH(MultiPGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None
+                 ):
+        super().__init__(updater)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+
+    def __call__(self):
+        eps = super().__call__()  # eps[t_] ~ 1/sig_p
+        n_tau = 4 * eps[self._t][0]  # us
+
+        Apar, Aperp = self._updater.est_mean()
+        # print("Current estimated Apar/Aperp: {}, {} MHz".format(Apar/(2*np.pi), Aperp/(2*np.pi)))
+
+        # place next experiment st. dip at position of expected dip
+        tau_k_us = self.calc_tau_k(Apar / (2 * np.pi), k_order=1) * 1e6
+        eps[self._t] = tau_k_us
+
+        eps[self._n] = self.round_up_to_mod(n_tau / tau_k_us)
+
+        # print("Choosing tau= {:.3f} us, n_tau= {:.3f} us, n= {}".format(tau_k_us, n_tau, eps[self._n]))
+
+        # return eps
+        return self.avoid_flat_likelihood(eps)
+
+    def avoid_flat_likelihood(self, eps):
+        return eps
+
+
+class MultiDD_EstAOptFish_PGH(MultiPGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None,
+                 n_pi_max=128,
+                 restr_ndd_mod=2,
+                 opt_mode='avg_idx'
+                 ):
+        super().__init__(updater)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._n_pi_max = n_pi_max
+        self._optimization_fi_mode = opt_mode
+        self._cheat_w_true = None
+        self._track_fi = []
+        self._restr_ndd_mod = restr_ndd_mod
+        self._calc_fi_mode = 'coarse_1'
+
+    def __call__(self, skip_optimize=False):
+        eps = super().__call__()  # eps[t_] ~ 1/sig_p
+        if skip_optimize:
+            return eps
+
+        i_epoch = len(self._track_fi)
+        bad_optimum = True
+        try:
+            fi_max = np.max(np.average(self._track_fi, axis=1))
+        except IndexError:
+            fi_max = -np.inf
+
+        i_trial, max_trial = 0, 10
+        while bad_optimum and i_trial < max_trial:
+            Apar, Aperp = self.estimate_mean()  # Mhz rad
+
+            t_evol_us = 4 * eps[self._t][0]  # us
+            if max_trial <= 1:
+                # break loop after first run
+                bad_optimum = False
+            if i_trial != 0:
+                # get new t_evol from posterior, attention: return eps[_t] is tau, not t_evol!
+                eps = super().__call__()  # eps[t_] ~ 1/sig_p
+                t_evol_us = 4 * eps[self._t][0]  # us
+            if i_trial == 1 and fi_max != -np.inf:
+                # try old settings
+                # todo: might be counterproductive, as fi calc in ealry epochs unaaccurate
+                eps = self._best_eps
+                t_evol_us = eps[self._t][0] * eps[self._n][0]  # us
+                fi_old = np.average(
+                    self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi), eps[self._t],
+                                                      eps[self._n]))
+                # print("Debug: Trying to go back to t_evol= {} us / {} ndd. Was/now FI= {} / {}".format(t_evol_us, eps[self._n][0],
+                #                                                                          fi_max, fi_old))
+
+            # todo: best way to enforce not too long tau?
+            t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
+            """
+            if t_evol_us > 2 * t2 *1e6:
+                eps[self._n] = self.round_up_to_mod(t_evol_us / (t2 * 1e6))
+                t_evol_us = t2*1e6
+
+            """
+            was_penalty_applied = False
+            while t_evol_us > 2 * t2 * 1e6 and t2 > 0:
+                t_evol_us -= t_evol_us / 2  # todo: fixed constants problematic
+                was_penalty_applied = True
+            # print("Current estimated Apar/Aperp: {}, {} MHz".format(Apar/(2*np.pi), Aperp/(2*np.pi)))
+
+            # for a given t_tot, find n with optimized fisher info
+            # from experience, only the first feq resonances optimize FI, so don't have to check low n_dd
+
+            k = 5
+            tau_res_k = self.calc_tau_k(Apar / (2 * np.pi), k, no_warning=True)
+            tau_res_0 = self.calc_tau_k(Apar / (2 * np.pi), 0, no_warning=True)
+            n_dd_min = self.round_up_to_mod(t_evol_us / (tau_res_k * 1e6) - 4, mod=self._restr_ndd_mod)
+            n_dd_max = self.round_up_to_mod(t_evol_us / (tau_res_0 * 1e6) + 4, min_int=16, mod=self._restr_ndd_mod)
+
+            # """
+            eps[self._t], eps[self._n] = self.optimize_fisher_information(t_evol_us, self._optimization_fi_mode,
+                                                                          n_dd_min=n_dd_min, n_dd_max=n_dd_max)
+            # """
+            # directly from resonance
+            """
+            tau_res = self.calc_tau_k(Apar/(2*np.pi), 1, no_warning=True)
+            n_dd = self.round_up_to_mod(t_evol_us/(tau_res*1e6))
+            eps[self._t] = tau_res * 1e6
+            eps[self._n] = n_dd
+            """
+            # print("Debug: Coarse FI opt, t_evol= {} us, n_dd: {}- {} => tau= {}, n= {} for A_par= {} MHz".format(
+            #                                                                            t_evol_us, n_dd_min, n_dd_max,
+            #                                                                           eps[self._t], eps[self._n],
+            #                                                                            Apar/(2*np.pi)))
+
+            # Currently, fine tuning decreases sensitivity!
+            debug_plots = False  # (t_evol_us == t2*1e6)
+            # extend n_dd search range to higher vals, when hitting t2
+            # no worries that we're overshooting t_evol here
+            # if t_evol_us == t2*1e6:
+            if t_evol_us > t2 * 1e6 or was_penalty_applied:  # todo: problematic
+                # make search range in sigma_n huge to find minimum somewhere around T_2
+                tau_i_us = eps[self._t]
+                n_i = eps[self._n]
+                n_t2half = t2 * 1e6 / (2 * tau_i_us)
+                sigma_i = self.round_up_to_mod(n_i - n_t2half, mod=self._restr_ndd_mod)
+                # go down until T_2
+                # print("Debug: at t_evol= {:.3f} us. N_dd: {} ({}-{})".format(t_evol_us, n_i, n_i-sigma_i, n_i+10))
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine(eps[self._t], eps[self._n],
+                                                                                   self._optimization_fi_mode,
+                                                                                   debug_plots=debug_plots,
+                                                                                   sigma_n=[sigma_i, 10])
+                """
+                print("[{}] Choosing tau= {} us, t_evol= {} us, n= {} ({}-{})".format(i_epoch,
+                                                                              eps[self._t], eps[self._n] * eps[self._t],
+                                                                            eps[self._n], eps[self._n]-sigma_i, eps[self._n]+10))
+                """
+            else:
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine(eps[self._t], eps[self._n],
+                                                                                   self._optimization_fi_mode,
+                                                                                   debug_plots=debug_plots,
+                                                                                   )
+            #
+
+            # new trial heuristic from knowing the resonances
+            # eps[self._t], eps[self._n] = self.optimize_fisher_information_2(n_tau, self._optimization_fi_mode)
+
+            fi_i = self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi), eps[self._t],
+                                                     eps[self._n])
+            # self.calc_fisher_information_at_A(Apar , Aperp / (2 * np.pi), t_us=tau_opt, n_dd=ndd_opt)
+
+            if len(self._track_fi) == 0 or not bad_optimum:
+                break
+
+            if np.average(fi_i) > fi_max / 2:
+                bad_optimum = False
+
+            i_trial += 1
+
+        if bad_optimum:
+            """
+            print("[{}] t_evol= {}, n= {} ({}-{}), fi= {}, max= {}, i_trial= {}/ {}".format(i_epoch,
+                                                                                            eps[self._t]*eps[self._n], eps[self._n],
+                                                                                       n_dd_min, n_dd_max,
+                                                                               np.average(fi_i), fi_max,
+                                                                            i_trial, max_trial))
+            """
+        else:
+            pass
+            """
+            #if np.average(fi_i) > fi_max:
+            print("Fine: [{}] t_evol= {}, tau= {} us, n= {} ({}-{}). New fi_max= {}".format(i_epoch,
+                                                                              eps[self._t] * eps[self._n], eps[self._t], eps[self._n],
+                                                                         n_dd_min, n_dd_max,
+                                                                          np.average(fi_i)))
+            """
+
+            # just to plot debug
+            # self.optimize_fisher_information_fine(eps[self._t], eps[self._n], self._optimization_fi_mode,
+            #                                      debug_plots=True)
+        if np.average(fi_i) > fi_max:
+            self._best_eps = eps
+        self._track_fi.append(fi_i)
+
+        return eps
+
+    def call_multiPGH(self):
+        return super().__call__()
+
+    def _optimize_fi(self, tau_array_us, ndd_array, opt_mode='idx_avg', debug_plots=False):
+
+        Apar, Aperp = self.estimate_mean()  # Mhz rad
+        tau = tau_array_us
+        n_dd = ndd_array
+        if np.any(n_dd[n_dd % self._restr_ndd_mod != 0]):
+            print("Warning: Found n_dd % {} != 0".format(self._restr_ndd_mod))
+
+        fi_list = self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi), tau_us=tau, n_dd=n_dd)
+
+        fi_par_vs_n = np.asarray([el[0] for el in fi_list])
+        fi_par_vs_n[np.isnan(fi_par_vs_n)] = -np.inf
+        fi_par_vs_n[np.isinf(fi_par_vs_n)] = -np.inf
+
+        fi_perp_vs_n = np.asarray([el[1] for el in fi_list])
+        fi_perp_vs_n[np.isnan(fi_perp_vs_n)] = -np.inf
+        fi_perp_vs_n[np.isinf(fi_perp_vs_n)] = -np.inf
+
+        fi_avg_vs_n = (fi_par_vs_n + fi_perp_vs_n) / 2
+        fi_avg_vs_n[np.isnan(fi_avg_vs_n)] = -np.inf
+        fi_avg_vs_n[np.isinf(fi_avg_vs_n)] = -np.inf
+
+        idx_par_opt = np.argmax(fi_par_vs_n)
+        idx_perp_opt = np.argmax(fi_perp_vs_n)
+
+        if opt_mode == 'idx_avg':
+            idx_avg_opt = int(np.average([idx_par_opt, idx_perp_opt]))
+        elif opt_mode == 'rand':
+            r = np.random.randint(0, 2)
+            if r is 0:
+                idx_avg_opt = idx_perp_opt
+            else:
+                idx_avg_opt = idx_par_opt
+        elif opt_mode == 'fi_trace':
+            # atm don't have full FI matrix, but diag elements are enough for its trace
+            # fi_avg_vs_n = [(el[0]+el[1]) for el in fi_list]
+            idx_avg_opt = np.argmax(fi_avg_vs_n)
+        else:
+            raise ValueError("Unknown optimization mode: {}".format(opt_mode))
+
+        import matplotlib.pyplot as plt
+        i_epoch = len(self._track_fi)
+        # make sure original data point is last in input array
+        if debug_plots and len(np.unique(n_dd)) == 1:
+            # call from _fine
+
+            tau_sweep = tau[:-1]
+            fi_sweep_sum = np.log(fi_par_vs_n[:-1] + fi_perp_vs_n[:-1])
+            fi_sweep_par = np.log(fi_par_vs_n[:-1])
+            fi_sweep_perp = np.log(fi_perp_vs_n[:-1])
+
+            plt.plot(tau_sweep, fi_sweep_sum, label="sum")
+            plt.plot(tau_sweep, fi_sweep_par, label="par")
+            plt.plot(tau_sweep, fi_sweep_perp, label="perrp")
+
+            ax = plt.gca()
+            ax.set_title('[{}] sum(FI) ={:.3f}, t_tot= {:.3f} us ({} grid points)'.format(i_epoch,
+                                                                                          np.log(
+                                                                                              fi_par_vs_n[idx_avg_opt] +
+                                                                                              fi_perp_vs_n[
+                                                                                                  idx_avg_opt]),
+                                                                                          tau[idx_avg_opt] * n_dd[
+                                                                                              idx_avg_opt],
+                                                                                          len(tau_sweep)))
+
+            plt.scatter(tau[-1], np.log(fi_par_vs_n[-1] + fi_perp_vs_n[-1]), label="init guess", color='yellow')
+            plt.axvline(tau[idx_avg_opt])
+            plt.legend()
+            plt.show()
+        elif debug_plots and len(np.unique(tau)) == 1:
+            n_sweep = n_dd[:-1]
+            fi_sweep_sum = np.log(fi_par_vs_n[:-1] + fi_perp_vs_n[:-1])
+            fi_sweep_par = np.log(fi_par_vs_n[:-1])
+            fi_sweep_perp = np.log(fi_perp_vs_n[:-1])
+
+            plt.plot(n_sweep, fi_sweep_sum, label="sum")
+            plt.plot(n_sweep, fi_sweep_par, label="par")
+            plt.plot(n_sweep, fi_sweep_perp, label="perrp")
+
+            ax = plt.gca()
+            ax.set_title('[{}] sum(FI) ={:.3f}, t_tot= {:.3f} us ({} grid points)'.format(i_epoch,
+                                                                                          np.log(
+                                                                                              fi_par_vs_n[idx_avg_opt] +
+                                                                                              fi_perp_vs_n[
+                                                                                                  idx_avg_opt]),
+                                                                                          tau[idx_avg_opt] * n_dd[
+                                                                                              idx_avg_opt],
+                                                                                          len(n_sweep)))
+
+            plt.scatter(n_dd[-1], np.log(fi_par_vs_n[-1] + fi_perp_vs_n[-1]), label="init guess", color='yellow')
+            plt.axvline(n_dd[idx_avg_opt])
+            plt.legend()
+            plt.show()
+        elif debug_plots:
+            import matplotlib.pyplot as plt
+            import matplotlib.tri as tri
+            fig, ax1 = plt.subplots()
+            x = tau
+            y = n_dd
+            z = np.log(fi_par_vs_n + fi_perp_vs_n)
+
+            # Perform linear interpolation of the data (x,y)
+            # on a grid defined by (xi,yi)
+            xi = np.linspace(np.min(x), np.max(x), 100)
+            yi = np.linspace(np.min(y), np.max(y), 100)
+            triang = tri.Triangulation(x, y)
+            interpolator = tri.LinearTriInterpolator(triang, z)
+            Xi, Yi = np.meshgrid(xi, yi)
+            zi = interpolator(Xi, Yi)
+
+            # Note that scipy.interpolate provides means to interpolate data on a grid
+            # as well. The following would be an alternative to the four lines above:
+            # from scipy.interpolate import griddata
+            # zi = griddata((x, y), z, (xi[None,:], yi[:,None]), method='linear')
+
+            ax1.contour(xi, yi, zi, levels=14, linewidths=0.5, colors='k')
+            cntr1 = ax1.contourf(xi, yi, zi, levels=14, cmap="RdBu_r")
+
+            fig.colorbar(cntr1, ax=ax1)
+            ax1.plot(x, y, 'ko', ms=0)
+            ax1.set(xlim=(np.min(x), np.max(x)), ylim=(np.min(y), np.max(y)))
+            ax1.set_title('[{}] sum(FI) ={:.3f}, t_tot= {:.3f} us ({} grid points)'.format(i_epoch,
+                                                                                           np.log(fi_par_vs_n[
+                                                                                                      idx_avg_opt] +
+                                                                                                  fi_perp_vs_n[
+                                                                                                      idx_avg_opt]),
+                                                                                           tau[idx_avg_opt] * n_dd[
+                                                                                               idx_avg_opt], len(x)))
+            plt.scatter(tau[idx_avg_opt], n_dd[idx_avg_opt])
+            plt.scatter(tau[-1], n_dd[-1], label="init guess", color='yellow')
+            plt.subplots_adjust(hspace=0.5)
+            plt.xlabel("tau (us)")
+            plt.legend()
+            plt.ylabel("n")
+            plt.show()
+
+        return tau[idx_avg_opt], n_dd[idx_avg_opt]  # us
+
+    def optimize_fisher_information(self, t_tot_us, opt_mode='idx_avg', n_dd_min=2, n_dd_max=None):
+
+        n_pi_max = self._n_pi_max
+        if n_dd_max:
+            # allow to speed up if known that high n don't hit resonance
+            if n_dd_max < self._n_pi_max:
+                n_pi_max = n_dd_max
+            if abs(n_pi_max - n_dd_min) <= 4:
+                n_pi_max += 4
+
+        while n_pi_max <= n_dd_min + 2:
+            n_pi_max += 4
+
+        Apar, Aperp = self.estimate_mean()  # Mhz rad
+
+        n_dd = self.get_ndd_range(n_dd_min, n_pi_max)
+        tau_us = np.ones(len(n_dd)) * (t_tot_us / n_dd)
+
+        tau_opt, ndd_opt = self._optimize_fi(tau_us, n_dd, opt_mode)
+
+        if t_tot_us / (self._n_pi_max) > self.calc_tau_k(Apar, 0, no_warning=True) * 1e6:
+            print("Warning: Loosing Lamor resonance {:.3f} us at " \
+                  "tau/t_tot= {:.3f}/ {:.3f} us. Increase n_pi_max!".format(
+                1e6 * self.calc_tau_k(Apar, 0, no_warning=True),
+                tau_opt, t_tot_us))
+
+        return tau_opt, ndd_opt
+
+    def get_ndd_range(self, ndd_min, ndd_max):
+
+        n_dd_min = ndd_min // int(self._restr_ndd_mod) * self._restr_ndd_mod
+        if n_dd_min < self._restr_ndd_mod:
+            n_dd_min = self._restr_ndd_mod
+        n_dd_max = 1 + int(np.ceil(ndd_max / self._restr_ndd_mod)) * self._restr_ndd_mod
+
+        return np.arange(n_dd_min, n_dd_max, self._restr_ndd_mod)
+
+    def estimate_tau_res_width(self, tau_res_k_1, n_dd):
+
+        sigma_f = 1 / (tau_res_k_1 * n_dd)
+        center_f = 1 / tau_res_k_1
+        left_f = center_f - sigma_f
+        right_f = center_f + sigma_f
+
+        return abs(1 / (right_f) - 1 / (left_f))
+
+    def estimate_tau_range(self, tau_res, n_dd, sigmas=1):
+        # based on Bonatos analytical solution for FI max
+
+        tau_fi_max_left = tau_res * (1 - 1 / n_dd)
+        tau_fi_max_right = tau_res * (1 + 1 / n_dd)
+
+        delta_tau = abs(tau_res - tau_fi_max_left)
+
+        scan_left = tau_fi_max_left - sigmas * delta_tau
+        scan_right = tau_fi_max_right + sigmas * delta_tau
+
+        # print("left {}, right {}, delta {}, sl {}, sr {}".format(tau_fi_max_right, tau_fi_max_right, delta_tau, scan_left, scan_right))
+
+        return scan_left, scan_right
+
+    def optimize_fisher_information_2(self, t_tot_us, opt_mode='idx_avg'):
+        """
+        For a fixed t_tot_us, find all first feq resonances tau_res and corresponding n_dd.
+        Around tau_res, search a few other tau values while adjusting n_dd for constant t_tot_us.
+        Of this grid, find the tau, n_dd combination with best FI.
+        :param t_tot_us:
+        :param opt_mode:
+        :return:
+        """
+        Apar, Aperp = self.estimate_mean()  # Mhz rad
+
+        k_res = np.arange(0, 5, 1)  # first n resonances
+        n_points = 20
+
+        tau_res = self.calc_tau_k(Apar / (2 * np.pi), k_res, no_warning=True)
+        n_dd = self.round_up_to_mod(np.ones(len(tau_res)) * t_tot_us / (tau_res * 1e6), mod=self._restr_ndd_mod)
+
+        sigma_tau = self.estimate_tau_res_width(self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True), n_dd)
+
+        add_taus, add_ns = [], []
+        for i, tau in enumerate(tau_res):
+            n_sigs = 2
+            if tau - n_sigs * sigma_tau[i] < 100e-9:
+                tau_left = 100e-9
+            else:
+                tau_left = tau - n_sigs * sigma_tau[i]
+            tau_right = tau + n_sigs * sigma_tau[i]
+            add_tau_i = np.linspace(tau_left, tau_right, n_points)
+
+            add_taus.append(add_tau_i)
+            add_n_i = self.round_up_to_mod(np.ones(len(add_tau_i)) * t_tot_us / (add_tau_i * 1e6),
+                                           mod=self._restr_ndd_mod)
+            add_ns.append(add_n_i)
+
+        tau_res_us = 1e6 * np.concatenate([tau_res, np.asarray(add_taus).flatten()])
+        n_dd = np.concatenate([n_dd, np.asarray(add_ns).flatten()])
+
+        # tau_grid, n_grid = np.meshgrid(np.unique(tau_res_us), np.unique(n_dd))
+        tau_grid, n_grid = np.meshgrid(np.unique(tau_res_us), np.arange(np.min(n_dd), np.max(n_dd), 2))
+        t_tot_us_grid = np.multiply(tau_grid, n_grid)
+
+        # filter out to big t_tot (except for very short anymwa)
+        tau_grid[np.logical_and(t_tot_us_grid > t_tot_us, n_grid > 2)] = np.nan
+        n_grid[np.logical_and(t_tot_us_grid > t_tot_us, n_grid > 2)] = np.nan
+
+        # remove nans
+        tau_grid = tau_grid[~np.isnan(tau_grid)]
+        n_grid = n_grid[~np.isnan(n_grid)]
+        # print("t_tot: {} us".format(t_tot_us))
+        # print("t_res= {}".format(tau_res * 1e6))
+        # print("tau res_us {}".format(tau_res_us.flatten()))
+        # print("tau_grid {}".format(tau_grid.flatten()))
+        # print("n_grid flatten {}".format(n_grid.flatten()))
+
+        # tau_opt, ndd_opt = self._optimize_fi(tau_res_us, n_dd, opt_mode)
+        tau_opt, ndd_opt = self._optimize_fi(tau_grid.flatten(), n_grid.flatten(), opt_mode)
+
+        # todo: self._n_pi_max has no effect anymore
+        """
+        if t_tot_us/(self._n_pi_max) > self.calc_tau_k(Apar, 0, no_warning=True) * 1e6:
+            print("Warning: Loosing Lamor resonance {:.3f} us at " \
+                  "tau/t_tot= {:.3f}/ {:.3f} us. Increase n_pi_max!".format(1e6*self.calc_tau_k(Apar, 0),
+                                                                    tau_opt, t_tot_us))
+        """
+
+        return tau_opt, ndd_opt
+
+    def optimize_fisher_information_fine(self, tau_us, n_dd, opt_mode='idx_avg',
+                                         sigma_n=[None, None], debug_plots=False):
+        """
+        Search around a given tau_us, n_dd symmetrically in n_dd and tau_us direction
+        """
+
+        n_points = 20
+        Apar, Aperp = self.estimate_mean()  # Mhz rad
+        t_evol_us = tau_us * n_dd
+        t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
+
+        tau_res_k1 = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
+        if tau_res_k1 * n_dd <= t2:
+            sigma_tau_us = 1e6 * 3 * self.estimate_tau_res_width(tau_res_k1, n_dd)
+        else:
+            # limit scan range to t2 line width
+            sigma_tau_us = 1e6 * 3 * self.estimate_tau_res_width(tau_res_k1,
+                                                                 self.round_up_to_mod(t2 / tau_res_k1,
+                                                                                      mod=self._restr_ndd_mod))
+
+        if sigma_tau_us < 0.15:
+            sigma_tau_us = 0.15
+        tau_left = tau_us - sigma_tau_us
+        tau_right = tau_us + sigma_tau_us
+
+        if sigma_n[0] is None:
+            # n_dd_left = self.round_up_to_mod(t_evol_us / (t2 * 1e6))
+            sigma_n_left = 50  # n_points    # todo: empirically for A_pepr= 50 kHz, should be more than 2pi reotation on nucleus
+            # if n_dd - sigma_n_left < n_dd_left:
+            n_dd_left = n_dd - sigma_n_left
+        else:
+            n_dd_left = n_dd - sigma_n[0]
+        # n_dd_left = n_dd - sigma_n
+        if sigma_n[1] is None:
+            n_dd_right = n_dd
+        else:
+            n_dd_right = n_dd + sigma_n[1]
+            # print("Debug: Extending sigma_n_right: {}".format(n_dd_right))
+
+        if n_dd_left < 2:
+            n_dd_left = 2
+
+        while tau_left <= 0:
+            tau_left += sigma_tau_us / 25
+
+        tau_arr = np.concatenate([np.linspace(tau_left, tau_right, n_points).flatten(), np.asarray(tau_us)])
+        n_dd_arr = np.concatenate([np.arange(n_dd_left, n_dd_right, self._restr_ndd_mod), np.asarray(n_dd)])
+        tau_grid, n_grid = np.meshgrid(tau_arr, n_dd_arr)
+
+        tau_opt, ndd_opt = self._optimize_fi(tau_grid.flatten(), n_grid.flatten(), opt_mode, debug_plots=debug_plots)
+
+        # fi_opt = np.log(self.calc_fisher_information_at_A(Apar/(2*np.pi), Aperp/(2*np.pi), tau_opt, ndd_opt))
+
+        # print("Fine optimization of tau: {}, -> {}. log(FI) -> {}, sigma_tau= {}".format(tau_us, tau_opt, fi_opt, tau_opt, ndd_opt))
+        """
+        if tau_us * n_dd > 200:
+            fi_opt =  self.calc_fisher_information_at_A(Apar/(2*np.pi), Aperp/(2*np.pi), t_us=tau_opt, n_dd=ndd_opt)
+            if np.average(fi_opt) > np.max(np.average(self._track_fi, axis=1)):
+                print("Debug: t_evol= {:.3f} us optimized to tau/ndd= {:.5f} us, {}. new max FI: {}".format(float(tau_us*n_dd), float(tau_opt), ndd_opt,
+                                                                                         np.average(fi_opt)))
+        """
+        return tau_opt, ndd_opt
+
+    def optimize_fisher_information_fine_3(self, tau_us, n_dd, opt_mode='idx_avg',
+                                           sigma_n=[None, None], debug_plots=False, n_points=10):
+        """
+        Search around a given tau_us, n_dd symmetrically in n_dd and tau_us direction
+        """
+
+        Apar, Aperp = self.estimate_mean()  # Mhz rad
+        t_evol_us = tau_us * n_dd
+        t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
+
+        tau_res_k1 = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
+
+        tau_left, tau_right = self.estimate_tau_range(tau_res_k1, n_dd, sigmas=3)
+        tau_left = tau_left * 1e6
+        tau_right = tau_right * 1e6
+
+        # DEBUG: fix tau to estimated resonance
+        # n_points = 10
+        # tau_left = (tau_res_k1 - 5e-9)*1e6
+        # tau_right = (tau_res_k1 + 5e-9)*1e6
+
+        if tau_left <= 0:
+            tau_left = tau_res_k1 * 1e6 / 10
+
+        if sigma_n[0] is None:
+            # n_dd_left = self.round_up_to_mod(t_evol_us / (t2 * 1e6))
+            sigma_n_left = 50  # n_points    # todo: empirically for A_pepr= 50 kHz, should be more than 2pi reotation on nucleus
+            # if n_dd - sigma_n_left < n_dd_left:
+            n_dd_left = n_dd - sigma_n_left
+        else:
+            n_dd_left = n_dd - sigma_n[0]
+        # n_dd_left = n_dd - sigma_n
+        if sigma_n[1] is None:
+            sigma_n_right = 0
+            n_dd_right = n_dd + sigma_n_right
+        else:
+            n_dd_right = n_dd + sigma_n[1]
+            # print("Debug: Extending sigma_n_right: {}".format(n_dd_right))
+
+        if n_dd_left < 2:
+            n_dd_left = 2
+        # if n_dd_right <= n_dd_left + self._restr_ndd_mod:
+        #    n_dd_right = n_dd_left + self._restr_ndd_mod
+        # print("Fine ranges: n_dd= {}-{}, tau= {}.{}".format(n_dd_left, n_dd_right, tau_left, tau_right))
+
+        if n_points > 1:
+            tau_arr = np.concatenate([np.linspace(tau_left, tau_right, n_points).flatten(), np.asarray(tau_us)])
+        else:
+            tau_arr = np.asarray(tau_us)
+        n_dd_arr = np.concatenate([self.get_ndd_range(n_dd_left, n_dd_right), np.asarray(n_dd)])
+        tau_grid, n_grid = np.meshgrid(tau_arr, n_dd_arr)
+
+        tau_opt, ndd_opt = self._optimize_fi(tau_grid.flatten(), n_grid.flatten(), opt_mode, debug_plots=debug_plots)
+
+        # fi_opt = np.log(self.calc_fisher_information_at_A(Apar/(2*np.pi), Aperp/(2*np.pi), tau_opt, ndd_opt))
+
+        # print("Fine optimization of tau: {}, -> {}. log(FI) -> {}, sigma_tau= {}".format(tau_us, tau_opt, fi_opt, tau_opt, ndd_opt))
+        """
+        if tau_us * n_dd > 200:
+            fi_opt =  self.calc_fisher_information_at_A(Apar/(2*np.pi), Aperp/(2*np.pi), t_us=tau_opt, n_dd=ndd_opt)
+            if np.average(fi_opt) > np.max(np.average(self._track_fi, axis=1)):
+                print("Debug: t_evol= {:.3f} us optimized to tau/ndd= {:.5f} us, {}. new max FI: {}".format(float(tau_us*n_dd), float(tau_opt), ndd_opt,
+                                                                                         np.average(fi_opt)))
+        """
+        return tau_opt, ndd_opt
+
+    def calc_fisher_information_at_A(self, A_par_mhz, A_perp_mhz, tau_us=1, n_dd=4):
+
+        try:
+            len_t = len(tau_us)
+            len_ndd = len(n_dd)
+        except:
+            len_t = 1
+            len_ndd = 1
+
+        if len_t != len_ndd:
+            raise ValueError("Params need to have same length. Len(t/n_dd)= {}/ {}".format(len_t, len_ndd))
+
+        expparams = np.empty((len_t,), dtype=[('t', '<f8'), ('n', '<i4'), ('w1', '<f8'), ('w2', '<f8')])  # tau (us)
+        expparams['t'] = tau_us
+        expparams['n'] = n_dd
+        expparams['w1'] = 0
+        expparams['w2'] = 0
+
+        # OLD, rather numerically unstable
+        if self._calc_fi_mode is "coarse_1":
+            n_points = 20
+
+            fi_par, fi_perp, a_par, a_perp = self._updater.calc_fisher_information(None, expparams, n_points=n_points)
+        elif self._calc_fi_mode is 'precise_1':
+            # NEW, should be more precise
+            n_points = 5  # how many required for good results with np.gradient?
+            A_arr = np.zeros((n_points, 2))
+            # biggest value of cov matrix as standard deviation
+            dA = np.sqrt(np.max(np.abs(self._updater.est_covariance_mtx()))) / (2 * np.pi) / 100  # mhz
+
+            A_arr[:, 0] = 2 * np.pi * np.linspace(A_par_mhz - dA, A_par_mhz + dA, n_points)
+            A_arr[:, 1] = 2 * np.pi * np.linspace(A_perp_mhz - dA, A_perp_mhz + dA, n_points)
+
+            fi_par, fi_perp, a_par, a_perp = self._updater.calc_fisher_information(A_arr, expparams, n_points=n_points)
+        else:
+            raise ValueError
+
+        idx_par = np.argmin(abs(a_par / (2 * np.pi) - A_par_mhz))
+        idx_perp = np.argmin(abs(a_perp / (2 * np.pi) - A_perp_mhz))
+
+        if idx_par == 0 or idx_perp == 0 or idx_par == n_points - 1 or idx_perp == n_points - 1:
+            print(
+                "Warning: Calculated A_par, A_perp= {}, {}. True: {}, {} at edge of current posterior. Idx: {}, {}. Make linspace wider!".format(
+                    a_par[idx_par], a_perp[idx_perp], 2 * np.pi * A_par_mhz, 2 * np.pi * A_perp_mhz, idx_par, idx_perp))
+            # print(a_par)
+            # print(a_perp)
+        # print("t_us= {}, n_dd= {}. Debug: idx: {}, {}".format(t_us, n_dd, idx_par, idx_perp))
+
+        if len_t == 1:
+            return fi_par[idx_par, idx_perp], fi_perp[idx_par, idx_perp]
+        else:
+            fi_list, fi_perp_list = [], []
+            for i_tndd in range(0, len_t):
+                fi_list.append([fi_par[idx_par, idx_perp, i_tndd], fi_perp[idx_par, idx_perp, i_tndd]])
+            return fi_list
+
+
+class MultiDD_EstAnResOptFish_PGH(MultiDD_EstAOptFish_PGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None,
+                 n_pi_max=128,
+                 restr_ndd_mod=2,
+                 opt_mode='avg_idx'
+                 ):
+        super().__init__(updater, B_gauss, oplist, norm, inv_field, t_field, n_field,
+                         inv_func, t_func, maxiters, other_fields, n_pi_max, restr_ndd_mod, opt_mode)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._n_pi_max = n_pi_max
+        self._optimization_fi_mode = opt_mode
+        self._cheat_w_true = None
+        self._track_fi = []
+        self._restr_ndd_mod = restr_ndd_mod
+
+    def __call__(self, skip_optimize=False):
+        eps = super().call_multiPGH()
+        if skip_optimize:
+            return eps
+
+        i_epoch = len(self._track_fi)
+        bad_optimum = True
+        try:
+            fi_max = np.max(np.average(self._track_fi, axis=1))
+        except IndexError:
+            fi_max = -np.inf
+
+        i_trial, max_trial = 0, 10
+        while bad_optimum and i_trial < max_trial:
+            Apar, Aperp = self.estimate_mean()  # Mhz rad
+
+            t_evol_us = 4 * eps[self._t][0]  # us
+            if max_trial <= 1:
+                # break loop after first run
+                bad_optimum = False
+            if i_trial != 0:
+                # get new t_evol from posterior, attention: return eps[_t] is tau, not t_evol!
+                eps = super().call_multiPGH()  # eps[t_] ~ 1/sig_p
+                t_evol_us = 4 * eps[self._t][0]  # us
+
+            # todo: best way to enforce not too long tau?
+            t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
+
+            was_penalty_applied = False
+            while t_evol_us > 2 * t2 * 1e6 and t2 > 0:
+                t_evol_us -= t_evol_us / 2  # todo: fixed constants problematic
+                was_penalty_applied = True
+            # print("Current estimated Apar/Aperp: {}, {} MHz".format(Apar/(2*np.pi), Aperp/(2*np.pi)))
+
+            # directly from resonance
+            tau_res = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
+            n_dd = self.round_up_to_mod(t_evol_us / (tau_res * 1e6), mod=self._restr_ndd_mod,
+                                        min_int=self._restr_ndd_mod)
+            eps[self._t] = tau_res * 1e6
+            eps[self._n] = n_dd
+
+            debug_plots = False  # (t_evol_us == t2*1e6)
+            if debug_plots:
+                print("Estimate res t_evol= {} us => tau= {}, n= {} for A_par= {} MHz".format(
+                    t_evol_us,
+                    eps[self._t], eps[self._n],
+                    Apar / (2 * np.pi)))
+
+            # extend n_dd search range to higher vals, when hitting t2
+            # no worries that we're overshooting t_evol here
+            # if t_evol_us == t2*1e6:
+            if t_evol_us > t2 * 1e6 or was_penalty_applied:  # todo: problematic
+                # make search range in sigma_n huge to find minimum somewhere around T_2
+                tau_i_us = eps[self._t]
+                n_i = eps[self._n]
+                n_t2half = t2 * 1e6 / (2 * tau_i_us)
+                sigma_i = self.round_up_to_mod(n_i - n_t2half, mod=self._restr_ndd_mod)
+                # go down until T_2
+                # print("Debug: at t_evol= {:.3f} us. N_dd: {} ({}-{})".format(t_evol_us, n_i, n_i-sigma_i, n_i+10))
+                # todo: test fine_3()
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine_3(eps[self._t], eps[self._n],
+                                                                                     self._optimization_fi_mode,
+                                                                                     debug_plots=debug_plots,
+                                                                                     sigma_n=[sigma_i, 10])
+                """
+                print("[{}] Choosing tau= {} us, t_evol= {} us, n= {} ({}-{})".format(i_epoch,
+                                                                              eps[self._t], eps[self._n] * eps[self._t],
+                                                                            eps[self._n], eps[self._n]-sigma_i, eps[self._n]+10))
+                """
+            else:
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine_3(eps[self._t], eps[self._n],
+                                                                                     self._optimization_fi_mode,
+                                                                                     debug_plots=debug_plots,
+                                                                                     )
+            #
+
+            # new trial heuristic from knowing the resonances
+            # eps[self._t], eps[self._n] = self.optimize_fisher_information_2(n_tau, self._optimization_fi_mode)
+
+            fi_i = self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi), eps[self._t],
+                                                     eps[self._n])
+            # self.calc_fisher_information_at_A(Apar , Aperp / (2 * np.pi), t_us=tau_opt, n_dd=ndd_opt)
+
+            if len(self._track_fi) == 0 or not bad_optimum:
+                break
+
+            if np.average(fi_i) > fi_max / 2:
+                bad_optimum = False
+
+            i_trial += 1
+
+        if bad_optimum:
+            """
+            print("[{}] t_evol= {}, n= {} ({}-{}), fi= {}, max= {}, i_trial= {}/ {}".format(i_epoch,
+                                                                                            eps[self._t]*eps[self._n], eps[self._n],
+                                                                                       n_dd_min, n_dd_max,
+                                                                               np.average(fi_i), fi_max,
+                                                                            i_trial, max_trial))
+            """
+        else:
+            pass
+            # """
+            # if np.average(fi_i) > fi_max:
+            if debug_plots:
+                print("Fine: [{}] t_evol= {}, tau= {} us, n= {}. New fi_max= {}".format(i_epoch,
+                                                                                        eps[self._t] * eps[self._n],
+                                                                                        eps[self._t], eps[self._n],
+                                                                                        np.average(fi_i)))
+            # """
+
+            # just to plot debug
+            # self.optimize_fisher_information_fine(eps[self._t], eps[self._n], self._optimization_fi_mode,
+            #                                      debug_plots=True)
+        if np.average(fi_i) > fi_max:
+            self._best_eps = eps
+        self._track_fi.append(fi_i)
+
+        return eps
+
+
+class MultiDD_EstResnUncOptFish1d_PGH(MultiDD_EstAOptFish_PGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None,
+                 n_pi_max=128,
+                 restr_ndd_mod=2,
+                 opt_mode='avg_idx'
+                 ):
+        super().__init__(updater, B_gauss, oplist, norm, inv_field, t_field, n_field,
+                         inv_func, t_func, maxiters, other_fields, n_pi_max, restr_ndd_mod, opt_mode)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._n_pi_max = n_pi_max
+        self._optimization_fi_mode = opt_mode
+        self._cheat_w_true = None
+        self._track_fi = []
+        self._restr_ndd_mod = restr_ndd_mod
+
+    def __call__(self, skip_optimize=False):
+        eps = super().call_multiPGH()
+        if skip_optimize:
+            return eps
+
+        i_epoch = len(self._track_fi)
+        bad_optimum = True
+        try:
+            fi_max = np.max(np.average(self._track_fi, axis=1))
+        except IndexError:
+            fi_max = -np.inf
+
+        i_trial, max_trial = 0, 10
+        while bad_optimum and i_trial < max_trial:
+            Apar, Aperp = self.estimate_mean()  # Mhz rad
+
+            t_evol_us = 4 * eps[self._t][0]  # us
+            if max_trial <= 1:
+                # break loop after first run
+                bad_optimum = False
+            if i_trial != 0:
+                # get new t_evol from posterior, attention: return eps[_t] is tau, not t_evol!
+                eps = super().call_multiPGH()  # eps[t_] ~ 1/sig_p
+                t_evol_us = 4 * eps[self._t][0]  # us
+
+            # todo: best way to enforce not too long tau?
+            t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
+
+            was_penalty_applied = False
+            while t_evol_us > 2 * t2 * 1e6 and t2 > 0:
+                t_evol_us -= t_evol_us / 2  # todo: fixed constants problematic
+                was_penalty_applied = True
+            # print("Current estimated Apar/Aperp: {}, {} MHz".format(Apar/(2*np.pi), Aperp/(2*np.pi)))
+
+            # directly from resonance
+            dA_par = np.sqrt((np.abs(self._updater.est_covariance_mtx()[0, 0])))  # MHz rad
+            Apar += np.random.normal(loc=0, scale=dA_par)
+
+            tau_res = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
+            # add uncertainty from variance of A_par
+
+            n_dd = self.round_up_to_mod(t_evol_us / (tau_res * 1e6), mod=self._restr_ndd_mod,
+                                        min_int=self._restr_ndd_mod)
+            eps[self._t] = tau_res * 1e6
+            eps[self._n] = n_dd
+
+            debug_plots = False  # (t_evol_us == t2*1e6)
+            if debug_plots:
+                print("Estimate res t_evol= {} us => tau= {}, n= {} for A_par= {} +- {} MHz".format(
+                    t_evol_us,
+                    eps[self._t], eps[self._n],
+                    Apar / (2 * np.pi),
+                    dA_par / (2 * np.pi)))
+
+            # extend n_dd search range to higher vals, when hitting t2
+            # no worries that we're overshooting t_evol here
+            # if t_evol_us == t2*1e6:
+            if t_evol_us > t2 * 1e6 or was_penalty_applied:  # todo: problematic
+                # make search range in sigma_n huge to find minimum somewhere around T_2
+                tau_i_us = eps[self._t]
+                n_i = eps[self._n]
+                n_t2half = t2 * 1e6 / (2 * tau_i_us)
+                sigma_i = self.round_up_to_mod(n_i - n_t2half, mod=self._restr_ndd_mod)
+                # go down until T_2
+                # print("Debug: at t_evol= {:.3f} us. N_dd: {} ({}-{})".format(t_evol_us, n_i, n_i-sigma_i, n_i+10))
+                # todo: test fine_3()
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine_3(eps[self._t], eps[self._n],
+                                                                                     self._optimization_fi_mode,
+                                                                                     debug_plots=debug_plots,
+                                                                                     sigma_n=[sigma_i, 10],
+                                                                                     n_points=1)
+                """
+                print("[{}] Choosing tau= {} us, t_evol= {} us, n= {} ({}-{})".format(i_epoch,
+                                                                              eps[self._t], eps[self._n] * eps[self._t],
+                                                                            eps[self._n], eps[self._n]-sigma_i, eps[self._n]+10))
+                """
+            else:
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine_3(eps[self._t], eps[self._n],
+                                                                                     self._optimization_fi_mode,
+                                                                                     debug_plots=debug_plots,
+                                                                                     n_points=1)
+            #
+
+            # new trial heuristic from knowing the resonances
+            # eps[self._t], eps[self._n] = self.optimize_fisher_information_2(n_tau, self._optimization_fi_mode)
+
+            fi_i = self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi), eps[self._t],
+                                                     eps[self._n])
+            # self.calc_fisher_information_at_A(Apar , Aperp / (2 * np.pi), t_us=tau_opt, n_dd=ndd_opt)
+
+            if len(self._track_fi) == 0 or not bad_optimum:
+                break
+
+            if np.average(fi_i) > fi_max / 2:
+                bad_optimum = False
+
+            i_trial += 1
+
+        if bad_optimum:
+            """
+            print("[{}] t_evol= {}, n= {} ({}-{}), fi= {}, max= {}, i_trial= {}/ {}".format(i_epoch,
+                                                                                            eps[self._t]*eps[self._n], eps[self._n],
+                                                                                       n_dd_min, n_dd_max,
+                                                                               np.average(fi_i), fi_max,
+                                                                            i_trial, max_trial))
+            """
+        else:
+            pass
+            # """
+            # if np.average(fi_i) > fi_max:
+            if debug_plots:
+                print("Fine: [{}] t_evol= {}, tau= {} us, n= {}. New fi_max= {}".format(i_epoch,
+                                                                                        eps[self._t] * eps[self._n],
+                                                                                        eps[self._t], eps[self._n],
+                                                                                        np.average(fi_i)))
+            # """
+
+            # just to plot debug
+            # self.optimize_fisher_information_fine(eps[self._t], eps[self._n], self._optimization_fi_mode,
+            #                                      debug_plots=True)
+        if np.average(fi_i) > fi_max:
+            self._best_eps = eps
+        self._track_fi.append(fi_i)
+
+        return eps
+
+
+class MultiDD_EstAOptFish_EigenPGH(MultiEigenPGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None,
+                 n_pi_max=128,
+                 opt_mode='avg_idx'
+                 ):
+        super().__init__(updater)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._n_pi_max = n_pi_max
+        self._optimization_fi_mode = opt_mode
+
+    def __call__(self):
+        eps = super().__call__()  # eps[t_] ~ 1/sig_p
+        n_tau = 4 * eps[self._t][0]  # us
+
+        # print("Current estimated Apar/Aperp: {}, {} MHz".format(Apar/(2*np.pi), Aperp/(2*np.pi)))
+
+        # for a given t_tot, find n with optimized fisher info
+        eps[self._t], eps[self._n] = self.optimize_fisher_information(n_tau, self._optimization_fi_mode)
+
+        # print("Choosing tau= {} us, n_tau= {} us, n= {}".format(eps[self._t], eps[self._n]*eps[self._t], eps[self._n]))
+
+        return eps
+
+    def optimize_fisher_information(self, t_tot_us, rand_opt_par_perp=False):
+
+        Apar, Aperp = self._updater.est_mean()  # Mhz rad
+
+        n_dd = np.arange(2, self._n_pi_max, 2)
+        tau = np.ones(len(n_dd)) * (t_tot_us / n_dd)
+
+        # todo: adapt to optimized code (see EstAOptFish PGH)
+        fi_list = [self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi),
+                                                     t_us=t, n_dd=n_dd[i]) for i, t in enumerate(tau)]
+        fi_par_vs_n = [el[0] for el in fi_list]
+        fi_perp_vs_n = [el[1] for el in fi_list]
+
+        idx_par_opt = np.argmax(fi_par_vs_n)
+        idx_perp_opt = np.argmax(fi_perp_vs_n)
+        # if peaks are close enough
+        # todo: think of better way
+        if not rand_opt_par_perp:
+            idx_avg_opt = int(np.average([idx_par_opt, idx_perp_opt]))
+        else:
+            r = np.random.randint(0, 2)
+            if r is 0:
+                idx_avg_opt = idx_perp_opt
+            else:
+                idx_avg_opt = idx_par_opt
+
+        return tau[idx_avg_opt], n_dd[idx_avg_opt]
+
+    def calc_fisher_information_at_A(self, A_par_mhz, A_perp_mhz, t_us=1, n_dd=4):
+        # todo: inherit
+
+        expparams = np.empty((1,), dtype=[('t', '<f8'), ('n', '<i4'), ('w1', '<f8'), ('w2', '<f8')])  # tau (us)
+        expparams['t'] = t_us
+        expparams['n'] = n_dd
+        expparams['w1'] = 0
+        expparams['w2'] = 0
+
+        fi_par, fi_perp, a_par, a_perp = self._updater.calc_fisher_information(None, expparams, n_points=20)
+
+        idx_par = np.argmin(abs(a_par / (2 * np.pi) - A_par_mhz))
+        idx_perp = np.argmin(abs(a_perp / (2 * np.pi) - A_perp_mhz))
+
+        # print("t_us= {}, n_dd= {}. Debug: idx: {}, {}".format(t_us, n_dd, idx_par, idx_perp))
+
+        return fi_par[idx_par, idx_perp], fi_perp[idx_par, idx_perp]
+
+
+class MultiDD_OptVar_PGH(MultiDD_EstAOptFish_PGH):
+
+    def __init__(self, updater, B_gauss, oplist=None, norm='Frobenius', inv_field='x_', t_field='t', n_field='n',
+                 inv_func=identity,
+                 t_func=identity,
+                 maxiters=10,
+                 other_fields=None,
+                 n_pi_max=128,
+                 rand_opt_par_perp=False
+                 ):
+        super().__init__(updater, B_gauss, oplist=oplist, norm=norm, inv_field=inv_field, t_field=t_field,
+                         n_field=n_field,
+                         n_pi_max=n_pi_max)
+        self._updater = updater
+        self._oplist = oplist
+        self._norm = norm
+        self._x_ = inv_field
+        self._t = t_field
+        self._n = n_field
+        self._inv_func = inv_func
+        self._t_func = t_func
+        self._maxiters = maxiters
+        self._other_fields = other_fields if other_fields is not None else {}
+        self._b_gauss = B_gauss
+        self._gamma = 1.07084e3 * 2 * np.pi  # 13-C, Hz/G, [w] = Hz rad
+        self._n_pi_max = n_pi_max
+        self._cheat_w_true = None
+
+    def __call__(self):
+        eps = super().__call__(skip_optimize=True)  # eps[t_] ~ 1/sig_p
+        n_tau = 4 * eps[self._t][0]  # us
+
+        # print("Current estimated Apar/Aperp: {}, {} MHz".format(Apar/(2*np.pi), Aperp/(2*np.pi)))
+
+        # for a given t_tot, find n with optimized fisher info
+        eps[self._t], eps[self._n] = self.optimize_variance(n_tau)
+
+        # print("Choosing tau= {} us, n_tau= {} us, n= {}".format(eps[self._t], eps[self._n]*eps[self._t], eps[self._n]))
+
+        return eps
+
+    def optimize_variance(self, t_tot_us):
+
+        n_dd = np.arange(2, self._n_pi_max, 2)
+        tau = np.ones(len(n_dd)) * (t_tot_us / n_dd)
+
+        var_list = [self.calc_variance(t_us=t, n_dd=n_dd[i], n_sample=50) for i, t in enumerate(tau)]
+
+        idx_opt = np.argmin(var_list)
+
+        print("Vars: {}".format(var_list))
+        print("DEBUG: opt var= {} @ tau= {} us, n_dd= {}".format(var_list[idx_opt], tau[idx_opt], n_dd[idx_opt]))
+
+        return tau[idx_opt], n_dd[idx_opt]
+
+    def calc_variance(self, t_us, n_dd, n_sample=10):
+
+        expparams = np.empty((1,), dtype=[('t', '<f8'), ('n', '<i4'), ('w1', '<f8'), ('w2', '<f8')])  # tau (us)
+        expparams['t'] = t_us
+        expparams['n'] = n_dd
+        expparams['w1'] = 0
+        expparams['w2'] = 0
+
+        outcomes = [0]  # todo: do we have to consider both?
+
+        # new weights shall not influence the running updater
+        new_updater = copy.deepcopy(self._updater)
+        new_updater._debug = "NEW"
+        orig_updater = copy.deepcopy(self._updater)
+        orig_updater._debug = "OLD"
+
+        self._updater = new_updater
+        self._updater.update(outcomes, expparams)
+
+        # metric of variance is set during construction of PGH
+        var_list = []
+        for i in range(n_sample):
+            eps = super().__call__(skip_optimize=True)  # call PFH without optimizing on anything
+            var_list.append(1 / eps[self._t])
+        var = np.average(var_list)
+
+        outcomes = [1]
+        self._updater = new_updater
+        self._updater.update(outcomes, expparams)
+
+        # metric of variance is set during construction of PGH
+        var_list = []
+        for i in range(n_sample):
+            eps = super().__call__(skip_optimize=True)  # call PFH without optimizing on anything
+            var_list.append(1 / eps[self._t])
+        var_1 = np.average(var_list)
+
+        self._updater = orig_updater
+
+        # print("Debug var= {} for t= {} us, n_dd= {}".format(var, t_us, n_dd))
+
+        del (new_updater)
+
+        return np.average([var, var_1])
 
 
 class T2_Thresh_MultiHahnPGH(MultiHahnPGH):
@@ -1782,12 +3430,6 @@ class basic_SMCUpdater(qi.Distribution):
 
     ## PROPERTIES #############################################################
 
-    def update_read_phase(self, phase):
-        try:
-            self.model.update_read_phase(phase)
-        except:
-            pass    # no phase adaption in model
-
     @property
     def n_particles(self):
         """
@@ -1891,6 +3533,7 @@ class basic_SMCUpdater(qi.Distribution):
         :type outcomes: int or an ndarray of dtype int.
         :param numpy.ndarray expparams: Experiments to be used for the hypothetical
             updates.
+
 
         :type weights: ndarray, shape (n_outcomes, n_expparams, n_particles)
         :param weights: Weights assigned to each particle in the posterior
@@ -2123,6 +3766,111 @@ class basic_SMCUpdater(qi.Distribution):
             cov /= (np.outer(dstd, dstd))
 
         return cov
+
+    def _calc_fi_2d(self, modelparams, expparams, n_points=None):
+
+        if modelparams is None:
+            # caluluate fi over whole prior
+            if n_points is None:
+                n_points = self.n_particles / 2
+
+            prior = self.sample(n=self.n_particles)
+            w1_min, w1_max = np.min(prior[:, 0]), np.max(prior[:, 0])
+            w2_min, w2_max = np.min(prior[:, 1]), np.max(prior[:, 1])
+
+        else:
+            w1_min, w1_max = np.min(modelparams[:, 0]), np.max(modelparams[:, 0])
+            w2_min, w2_max = np.min(modelparams[:, 1]), np.max(modelparams[:, 1])
+        """
+        # Right now worse performance
+        w1_est, w2_est = self.est_mean()  # Mhz rad
+        cov = np.sqrt(self.est_covariance_mtx())
+        w1_min, w1_max = w1_est-3*cov[0,0], w1_est+3*cov[0,0]
+        w2_min, w2_max = w1_est - 3* cov[0, 0], w1_est + 3* cov[0, 0]
+        """
+        # print("w1 {}, w2 {}".format(w1_est, w2_est))
+        # print("std w1 {}, w2 {}".format(cov[0,0], cov[1,1]))
+        # print("wi {} {}, w2 {} {}".format(w1_min, w1_max, w2_min, w2_max))
+        # print("w1 delta: {} w2 delta: {}".format(w1_max-w1_min, w2_max-w2_min))
+
+        w1 = np.linspace(w1_min, w1_max, int(n_points))  # [MHz rad]
+        w2 = np.linspace(w2_min, w2_max, int(n_points))
+        # print(w1)
+        # print(w2)
+
+        expparams_fix = (expparams.shape == (1,))
+        if expparams_fix:
+            # non parallel: expparams fixed at 1 value for t, n. Calc over space of w1, w2
+            w1_grid, w2_grid = np.meshgrid(w1, w2)
+            modelparams = np.zeros((len(w1) * len(w2), 2))
+            modelparams[:, 0] = w1_grid.flatten()
+            modelparams[:, 1] = w2_grid.flatten()
+            # print(modelparams.shape)
+        else:
+            # parallelized: Arrays for A_par, A_perp with every combination calculated
+            # (t, n): Every tuple set is calculated
+            exp_t_array = expparams['t']
+            exp_n_array = expparams['n']
+            w1_grid, w2_grid, t_grid = np.meshgrid(w1, w2, exp_t_array)
+            _, _, n_grid = np.meshgrid(w1, w2, exp_n_array)
+            modelparams = np.zeros((len(w1) * len(w2) * len(exp_t_array), 2))
+            modelparams[:, 0] = w1_grid.flatten()
+            modelparams[:, 1] = w2_grid.flatten()
+
+            expparams = np.empty((len(w1) * len(w2) * len(exp_t_array),),
+                                 dtype=[('t', '<f8'), ('n', '<i4'), ('w1', '<f8'), ('w2', '<f8')])  # tau (us)
+            expparams['t'] = t_grid.flatten()
+            expparams['n'] = n_grid.flatten()
+
+            # print("t2 in calc fi {} {}".format(self.model._t2_a,self.model._t2_a))
+
+        p_for_state = 1
+        p1 = self.model.likelihood(p_for_state, modelparams, expparams)
+        if expparams_fix:
+            p1 = p1.reshape(len(w1), len(w2))
+        else:
+            p1 = p1.reshape(len(w1), len(w2), len(exp_t_array))
+
+        # 2d, axis0: FI along A_par. axis1: along A_perp
+        d_p1_par = np.gradient(p1, (w1[1] - w1[0]) * 1e6, axis=0)
+        d_p1_perp = np.gradient(p1, (w2[1] - w2[0]) * 1e6, axis=1)
+
+        # fisher information assuming quantum projection noise only
+        return 1 / (p1 * (1 - p1)) * d_p1_par ** 2, 1 / (p1 * (1 - p1)) * d_p1_perp ** 2, w1, w2
+
+    def _calc_fi_1d(self, modelparams, expparams, n_points=None):
+        if n_points is None:
+            n_points = self.n_particles
+
+        prior = self.sample(n=self.n_particles)
+        w1_min, w1_max = np.min(prior[:, 0]), np.max(prior[:, 0])
+
+        w1 = np.linspace(w1_min, w1_max, int(n_points))  # [Hz rad]
+
+        modelparams = np.zeros((len(w1),))
+        modelparams[:] = w1
+
+        p_for_state = 1
+        p1 = self.model.likelihood(p_for_state, modelparams, expparams)[0].flatten()
+
+        d_p1 = np.gradient(p1, (w1[1] - w1[0]) * 1e6, axis=0)
+
+        # fisher information assuming quantum projection noise only
+        return 1 / (p1 * (1 - p1)) * d_p1 ** 2, w1
+
+    def calc_fisher_information(self, modelparams, expparams, n_points=None):
+        """
+        FI for fixed t, n_dd, B
+        :param modelparams:
+        :param expparams:
+        :return:
+        """
+        try:
+
+            fi, w = self._calc_fi_1d(modelparams, expparams, n_points=n_points)
+            return fi, None, w, None
+        except IndexError:
+            return self._calc_fi_2d(modelparams, expparams, n_points=n_points)
 
 
 ####################################################
