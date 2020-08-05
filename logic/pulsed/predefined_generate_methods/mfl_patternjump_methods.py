@@ -324,7 +324,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         return all_blocks, all_ensembles, sequence
 
-    def _gen_mfl_xy8_pjump_lin_sequencer(self, name="mfl_xy8_pjump", n_seq_sweeps=1000, tau_start=10e-9, tau_step=10e-9,num_of_points=10,
+    def _gen_mfl_xy8_pjump_lin_sequencer(self, name="mfl_xy8_pj", n_seq_sweeps=1000, tau_start=10e-9, tau_step=10e-9,num_of_points=10,
                                         xy8_order_start=1, xy8_order_stop=4, xy8_order_step=1,
                                           tau_first=50e-9, n_first=1, n_epochs=15, tau_list=False, phase_list=False,
                                           laser_name='laser_wait', laser_length=1e-6, wait_length=1e-6, ni_gate_length=-1e-9,
@@ -337,15 +337,24 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             tau_array = tau_start + np.arange(num_of_points) * tau_step
         else:
             tau_array = tau_list
+        if alternating:
+            # repeat every tau twice
+            tau_array = np.concatenate([tau_array, tau_array])
+            tau_array = np.sort(tau_array)
 
         n_xy8_array = np.arange(xy8_order_start, xy8_order_stop, xy8_order_step)
         # rows: iterate tau, cols: iterate n, tau_n[0][i_t,j_n] -> tau; tau_n[1][i_t,j_n] -> n_xy8
         tau_n_array = np.meshgrid(tau_array, n_xy8_array)
 
-        if phase_list:
+        if phase_list:  # in rad
             if len(phase_list) != len(tau_array):
                 raise ValueError("Length of tau_list= {} not equal length of phase_list= {}".format(
                     len(tau_array), len(tau_list)))
+
+        if phase_list and alternating:
+            raise ValueError("Currently either alternating or phase_list provided, not both.")
+        if alternating:
+            phase_list = [0, np.pi]*(len(tau_array)//2)
 
         general_params = locals()
         is_gated = self.gate_channel is not None
@@ -359,7 +368,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # swap all indicies relevant to jumptable, st. first epoch is in front of linear sequence table
         # in mfl_irq_logic the jumptable is constructed by order of 'controlled_variable_virtual'
         if phase_list:
-            phase_list = self._swap_pos(phase_list, 0, idx_first)
+            phase_list = list(self._swap_pos(phase_list, 0, idx_first))
         tau_n_array[0] = self._swap_pos(tau_n_array[0], 0, idx_first)
         tau_n_array[1] = self._swap_pos(tau_n_array[1], 0, idx_first)
 
@@ -370,6 +379,10 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         idle_name = 'idle'
         idle_blocks, idle_ensembles, _ = self._create_generic_idle(name=idle_name)
         idle_seq_params = self._get_default_seq_params({'repetitions': 1})
+
+        # laser init before first MW in every epoch. No readout!
+        laser0_name = 'laser_wait_0'
+        laser0_blocks, laser0_ensembles = self._create_init_laser_pulses(general_params, name=laser0_name)
 
         # epoch_done trigger by AWG (rear panel) sequence marker
         done_name = 'epoch_done'
@@ -384,27 +397,33 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         for i_flat in range(len(tau_n_array[0].flatten())):
             tau = tau_n_array[0].flatten()[i_flat]
             n_xy8 = tau_n_array[1].flatten()[i_flat]
+            # j: index of n, k: index of tau
             j, k = np.unravel_index(i_flat, (len_n, len_tau))
 
             if phase_list:
-                read_phase = phase_list[i_flat]
+                read_phase = phase_list[k]
             else:
                 read_phase = 0
 
-            # laser init before first MW in every epoch. No readout!
-            cur_name = 'laser_wait_0_' + str(i_flat)
-            cur_blocks, cur_ensembles = self._create_init_laser_pulses(general_params, name=cur_name)
-            cur_seq_params = self._get_default_seq_params({'repetitions': 0,
-                                                           'pattern_jump_address': self._get_current_jumptable_address()})
-            self._add_to_jumptable(cur_name)
-            self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
+            # laser before every MW block
+            laser0_seq_params = self._get_default_seq_params({'repetitions': 0,
+                                                              'pattern_jump_address': self._get_current_jumptable_address()})
+            self._add_to_jumptable(laser0_name)
+            self._add_to_seqtable(laser0_name, laser0_blocks, laser0_ensembles, laser0_seq_params)
 
-            # MW with laser after each Ramsey
-            cur_name = name + '_{}_n_{}_t_{}'.format(int(i_flat), int(j), int(k))
+            # MW with laser after each XY
+            cur_name = name + '_{}_n{}_t{}'.format(int(i_flat), int(j), int(k))
+            if alternating:
+                if read_phase == 0:
+                    cur_name = name + '_{}_n{}_t{}'.format(int(i_flat), int(j), int(k//2))
+                else:
+                    cur_name = name + '_{}_n{}_t{}a'.format(int(i_flat), int(j), int(k//2))
+
             cur_blocks, cur_ensembles, _ = self._create_single_xy8(name=cur_name, tau=tau, xy8_order=n_xy8,
                                                                       laser_length=laser_length,
                                                                       wait_length=wait_length,
-                                                                      ni_gate_length=ni_gate_length
+                                                                      ni_gate_length=ni_gate_length,
+                                                                      phase_readout_rad=read_phase
                                                                       )
 
             cur_seq_params = self._get_default_seq_params(
@@ -436,6 +455,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         sequence.measurement_information['controlled_variable_virtual'] = np.asarray(tau_n_array)
         if phase_list:
             sequence.measurement_information['read_phases'] = phase_list
+
 
         if not is_gated:
             contr_var = [0]
@@ -569,8 +589,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         created_blocks += created_blocks_tmp
         created_ensembles += created_ensembles_tmp
 
-        if general_params['alternating']:
-            raise NotImplemented("Look into repetitive_readout_methods.py if needed")
+        # todo: check if save
+        #if general_params['alternating']:
+        #    raise NotImplemented("Look into repetitive_readout_methods.py if needed")
 
         return created_blocks, created_ensembles
 
@@ -727,6 +748,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
     def _rad_to_deg(self, angle_rad):
         return angle_rad/(2*np.pi)*360
 
+    def _deg_to_rad(self, angle_deg):
+        return angle_deg/360 * 2*np.pi
+
     def _create_single_ramsey(self, name='ramsey', tau=500e-9, mw_phase=0.0,
                               laser_length=1500e-9, wait_length=1000e-9, ni_gate_length=-1e-9,
                               phase_readout_rad=0):
@@ -846,6 +870,11 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
+        pihalf_read = self._get_mw_element(length=rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=self._rad_to_deg(phase_readout_rad))
 
         pix_element = self._get_mw_element(length=rabi_period / 2,
                                            increment=0,
@@ -896,7 +925,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             if n != xy8_order - 1:
                 xy8_block.append(tau_element)
         xy8_block.append(tauhalf_element)
-        xy8_block.append(pihalf_element)
+        xy8_block.append(pihalf_read)
 
         if not use_ni_counter:  # normal, fastcounter acquisition
             if self.gate_channel:

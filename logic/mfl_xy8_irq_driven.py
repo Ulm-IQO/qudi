@@ -56,7 +56,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.sequence_name = None
         self.i_epoch = 0
         self.n_epochs = -1
-        self.n_est_ws = 1       # number of params to estimate
+        self.n_est_ws = 2       # number of params to estimate
         self.n_sweeps = None
         self.z_thresh = None    # for majority vote of Ramsey result
 
@@ -273,7 +273,8 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def init_mfl_algo(self, **kwargs):
 
-        t2star_s = kwargs.get('t2_s', None)
+        t2a_s = kwargs.get('t2a_s', None)
+        t2b_s = kwargs.get('t2b_s', None)
         freq_max_mhz = kwargs.get('freq_max_mhz', 10)
         eta_assym = kwargs.get('eta_assym', 1)
         resample_a = kwargs.get('resample_1', 0.98)
@@ -283,7 +284,7 @@ class MFL_IRQ_Driven(GenericLogic):
         freq_min = 0
         freq_max = 2 * np.pi * freq_max_mhz  # MHz rad
         # the expected T2, when 0 this is the ideal case
-        if t2star_s is None:
+        if t2_s is None:
             inv_T2 = 0
         else:
             inv_T2 = 1./(t2star_s * 1e6)
@@ -361,10 +362,19 @@ class MFL_IRQ_Driven(GenericLogic):
         for var_name in vars:
 
             filename = filenames_dict[var_name]
-            with open(filename, 'rb') as file:
-                loaded_dict[var_name] = pickle.load(file)
+            i_trial = 0
+            # lock acquired through meta_file, but files may not yet completed, wait here
+            while i_trial < 20:
+                try:
+                    #self.log.debug("[{}] Loading var {} form file {}".format(i_trial, var_name, filename))
+                    with open(filename, 'rb') as file:
+                        loaded_dict[var_name] = pickle.load(file)
+                    break
+                except:
+                    time.sleep(0.2)
+                    i_trial += 1
 
-        self.log.debug("Loaded qudi vars from {}: {}".format(filenames_dict, loaded_dict.keys()))
+        self.log.debug("Loaded qudi vars from {}: {}. Timeout: {}".format(filenames_dict, loaded_dict.keys(), i_trial>=20))
 
         return loaded_dict
 
@@ -404,6 +414,8 @@ class MFL_IRQ_Driven(GenericLogic):
 
         try:
             phases = seq.measurement_information['read_phases']
+            # phases are repeated for different n
+            phases = list(phases) * int(tau_n_arr[0][:,0].size)
         except KeyError:
             phases = []
 
@@ -972,7 +984,10 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return phase_real
 
-    def calc_jump_addr(self, tau, n, last_tau=None, readout_phase=None):
+    def calc_jump_addr(self, tau, n, last_tau=None, readout_phase=None, last_phase=None):
+
+        if self.is_calibmode_lintau:
+            n = np.min(self.jumptable['n'])
 
         _, n_val = self._find_nearest(self.jumptable['n'], n)
         jumptable_filter_n = [el[0] for el in zip(self.jumptable['tau'], self.jumptable['n']) if el[1] == n_val]
@@ -983,14 +998,15 @@ class MFL_IRQ_Driven(GenericLogic):
         except ValueError as e:
             self.log.error("Couldn't find next (tau, n). {}".format(str(e)))
 
-
         if self.is_calibmode_lintau:
             # calibration mode: play taus linear after each other
-            self.logger.warning("Untested code: Calibmode for XY8")
-            idx_jumptable, val = self._find_next_greatest(self.jumptable['tau'], last_tau)
+            if last_phase == np.max(self.jumptable['read_phase']):
+                idx_jumptable, tau_val = self._find_next_greatest(self.jumptable['tau'], last_tau)
+            else:
+                idx_jumptable, tau_val = self._find_nearest(self.jumptable['tau'], last_tau)
             if idx_jumptable is -1:
                 self.log.warning("No next greatest tau. Repeating from smallest tau.")
-                idx_jumptable, val = self._find_nearest(self.jumptable['tau'], 0)
+                idx_jumptable, tau_val = self._find_nearest(self.jumptable['tau'], 0)
 
         # search available phases for this tau
         # search all phases for idx assuming that taus are ordered
@@ -1006,8 +1022,15 @@ class MFL_IRQ_Driven(GenericLogic):
                                                           idx_start=idx_jumptable, idx_end=i_last)
         except KeyError:
             pass   # no readout phase available in jumptable
-        if val_phase != 0.:
-            self.logger.warning("Untested code: Readout phases for XY8")
+
+        if last_phase != None and self.is_calibmode_lintau:
+            idx_phase, val_phase = self._find_next_greatest(self.jumptable['read_phase'], last_phase,
+                                                            idx_start=idx_jumptable, idx_end=i_last)
+            if idx_phase is -1:
+                idx_jumptable, val_phase = self._find_nearest(self.jumptable['read_phase'], 0,
+                                                            idx_start=idx_jumptable, idx_end=i_last)
+            else:
+                idx_jumptable = idx_phase
 
         addr = self.jumptable['jump_address'][idx_jumptable]
         name_seqstep = self.jumptable['name'][idx_jumptable]
@@ -1067,14 +1090,26 @@ class MFL_IRQ_Driven(GenericLogic):
             search_array[0:idx_start] = np.nan
         if idx_end is not None:
             search_array[idx_end:] = np.nan
-
+            if idx_start == idx_end:
+                return idx_start, array[idx_start]
 
         idx = np.nanargmin((np.abs(search_array - value)))
         return idx, search_array[idx]
 
-    def _find_next_greatest(self, array, value):
+    def _find_next_greatest(self, array, value, idx_start=None, idx_end=None):
+        import copy as cp
+        # finds first occurence of closes value
+        search_array = np.asarray(cp.deepcopy(array))
 
-        dif = np.asarray(array, dtype=float) - value
+        # filter away indices to ignore
+        if idx_start is not None:
+            search_array[0:idx_start] = np.inf
+        if idx_end is not None:
+            search_array[idx_end:] = np.inf
+            if idx_start == idx_end:
+                return idx_start, array[idx_start]
+
+        dif = np.asarray(search_array, dtype=float) - value
         dif[dif <= 0] = np.inf
         idx = np.argmin(dif)
         val = array[idx]
@@ -1153,6 +1188,7 @@ class MFL_IRQ_Driven(GenericLogic):
             self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
 
         last_tau = self.taus[self.i_epoch, 0]           # get tau of experiment
+        last_phase = self.read_phases[self.i_epoch, 0]
         self.update_mfl(z_binary)
 
         # for next epoch
@@ -1160,7 +1196,8 @@ class MFL_IRQ_Driven(GenericLogic):
         phase_new_req = self.calc_phase_from_posterior()
         n_new_req = self.calc_n_from_posterior()
 
-        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, n_new_req, last_tau=last_tau, readout_phase=phase_new_req)
+        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, n_new_req, last_tau=last_tau,
+                                                  readout_phase=phase_new_req, last_phase =last_phase)
         real_tau, t_seq = self.get_ts(idx_jumptable)
         real_phase = self.get_phase(idx_jumptable)
 
@@ -1626,6 +1663,7 @@ if __name__ == '__main__':
     def test_edge_counter():
         t0 = time.perf_counter()
         cts_0 = 0
+        # testing counts for running edge counter
         for i in range(0, 50):
             t0_read = time.perf_counter()
             cts = mfl_logic.nicard.get_edge_counters()[0]
@@ -1640,6 +1678,7 @@ if __name__ == '__main__':
                 cts, t1 - t0, float(cts) / (1e3*(t1 - t0)), (t1_read - t0_read)*1e3))
             cts_0 = cts
 
+        # test time spent for re-init of an edge counter
         for i in range(0, 10):
             t0 = time.perf_counter()
             cts = mfl_logic.nicard.get_edge_counters()[0]
@@ -1651,7 +1690,7 @@ if __name__ == '__main__':
 
         mfl_logic.nicard.close_edge_counters()
 
-
-    #setup_ni_counter()
-    #test_edge_counter()
-
+    """
+    setup_ni_counter()
+    test_edge_counter()
+    """
