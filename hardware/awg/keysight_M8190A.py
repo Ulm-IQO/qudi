@@ -460,7 +460,6 @@ class AWGM8190A(Base, PulserInterface):
 
         self.set_trigger_mode('cont')
 
-        self.check_dev_error()
         return self.get_loaded_assets()
 
     def load_sequence(self, sequence_name):
@@ -560,7 +559,7 @@ class AWGM8190A(Base, PulserInterface):
         return retval
 
     def check_dev_error(self):
-        is_error = False
+
         has_error_occured = False
 
         for i in range(30):  # error buffer of device is 30
@@ -1231,6 +1230,8 @@ class AWGM8190A(Base, PulserInterface):
     def write_sequence(self, name, sequence_parameters):
         """
         Write a new sequence on the device memory.
+        If elements in the sequence are not available on the AWG yet, they will be
+        transfered from the PC.
 
         @param str name: the name of the waveform to be created/append to
         @param dict sequence_parameters: dictionary containing the parameters for a sequence
@@ -1259,7 +1260,6 @@ class AWGM8190A(Base, PulserInterface):
         num_steps = len(sequence_parameters)
 
         # define new sequence
-        self.clear_all()
         self.write(':FUNC1:MODE STS')  # activate the sequence mode
         self.write(':FUNC2:MODE STS')
         self.write(':STAB1:RES')  # Reset all sequence table entries to default values
@@ -1275,16 +1275,27 @@ class AWGM8190A(Base, PulserInterface):
         self.write(":SEQ1:NAME {:d}, '{}'".format(seq_id_ch1, name))
         self.write(":SEQ2:NAME {:d}, '{}'".format(seq_id_ch2, name))
 
+        loaded_segments_ch1 = self.get_loaded_assets_name(1, mode='segment')
+        loaded_segments_ch2 = self.get_loaded_assets_name(2, mode='segment')
+
         # transfer waveforms in sequence from local pc to segments in awg mem
         for waveform_tuple, param_dict in sequence_parameters:
             # todo: handle other than 2 chanels
             waveform_list = []
             waveform_list.append(waveform_tuple[0])
             waveform_list.append(waveform_tuple[1])
-            if not (self._remove_file_extension(waveform_tuple[0]) in self.get_loaded_assets_name(1, mode='segment') and
-                    self._remove_file_extension(waveform_tuple[1]) in self.get_loaded_assets_name(2, mode='segment')):
+            wave_ch1 = self._remove_file_extension(waveform_tuple[0])
+            wave_ch2 = self._remove_file_extension(waveform_tuple[1])
+            if not (wave_ch1 in loaded_segments_ch1 and
+                    wave_ch2 in loaded_segments_ch2):
+                self.log.debug("Couldn't find segments {} and {} on device for writing sequence {}. Loading...".format(
+                    wave_ch1, wave_ch2, name))
                 self.load_waveform(waveform_list, to_nextfree_segment=True)
+            else:
+                self.log.debug("Segments {} and {} already on device for writing sequence {}. Skipping load.".format(
+                    wave_ch1, wave_ch2, name))
 
+        self.log.debug("Loading of waveforms for sequence write finished.")
         """
         Manual: When using dynamic sequencing, the arm mode must be set to self-armed 
         and all advancement modes must be set to Auto. 
@@ -1351,6 +1362,8 @@ class AWGM8190A(Base, PulserInterface):
                                    seg_start_offset,
                                    seg_end_offset))
                 ctr_steps_written += 1
+
+                self.log.debug("Writing seqtable entry {}: {}".format(index, step))
 
             except Exception as e:
                 self.log.warning("Unknown error occured while writing to seq table: {}".format(str(e)))
