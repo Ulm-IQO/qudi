@@ -66,7 +66,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_status(self):
+    def get_microwave_status(self):
         """ Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
             the output state (stopped, running)
 

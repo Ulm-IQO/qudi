@@ -441,7 +441,7 @@ class ODMRLogic(GenericLogic):
                 if err_code < 0:
                     self.log.error('Activation of microwave output failed.')
 
-        mode, is_running = self._mw_device.get_status()
+        mode, is_running = self._mw_device.get_microwave_status()
         self.sigOutputStateUpdated.emit(mode, is_running)
         return mode, is_running
 
@@ -506,7 +506,7 @@ class ODMRLogic(GenericLogic):
             if err_code < 0:
                 self.log.error('Activation of microwave output failed.')
 
-        mode, is_running = self._mw_device.get_status()
+        mode, is_running = self._mw_device.get_microwave_status()
         self.sigOutputStateUpdated.emit(mode, is_running)
         return mode, is_running
 
@@ -529,7 +529,7 @@ class ODMRLogic(GenericLogic):
         if error_code < 0:
             self.log.error('Switching off microwave source failed.')
 
-        mode, is_running = self._mw_device.get_status()
+        mode, is_running = self._mw_device.get_microwave_status()
         self.sigOutputStateUpdated.emit(mode, is_running)
         return mode, is_running
 
@@ -592,7 +592,7 @@ class ODMRLogic(GenericLogic):
 
             odmr_status = self._start_odmr_counter()
             if odmr_status < 0:
-                mode, is_running = self._mw_device.get_status()
+                mode, is_running = self._mw_device.get_microwave_status()
                 self.sigOutputStateUpdated.emit(mode, is_running)
                 self.module_state.unlock()
                 return -1
@@ -640,7 +640,7 @@ class ODMRLogic(GenericLogic):
 
             odmr_status = self._start_odmr_counter()
             if odmr_status < 0:
-                mode, is_running = self._mw_device.get_status()
+                mode, is_running = self._mw_device.get_microwave_status()
                 self.sigOutputStateUpdated.emit(mode, is_running)
                 self.module_state.unlock()
                 return -1
