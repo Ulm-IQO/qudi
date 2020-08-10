@@ -1089,11 +1089,12 @@ class MFL_IRQ_Driven(GenericLogic):
             i_last += 1
 
         val_phase = 0.
-        try:
-            idx_jumptable, val_phase = self._find_nearest(self.jumptable['read_phase'], readout_phase,
-                                                          idx_start=idx_jumptable, idx_end=i_last)
-        except KeyError:
-            pass   # no readout phase available in jumptable
+        if not self.is_calibmode_lintau:
+            try:
+                idx_jumptable, val_phase = self._find_nearest(self.jumptable['read_phase'], readout_phase,
+                                                              idx_start=idx_jumptable, idx_end=i_last)
+            except KeyError:
+                pass   # no readout phase available in jumptable
 
         if last_phase != None and self.is_calibmode_lintau:
             idx_phase, val_phase = self._find_next_greatest(self.jumptable['read_phase'], last_phase,
@@ -1105,8 +1106,13 @@ class MFL_IRQ_Driven(GenericLogic):
                 idx_jumptable = idx_phase
 
         addr = self.jumptable['jump_address'][idx_jumptable]
-        name_seqstep = self.jumptable['name'][idx_jumptable]
+
+
         if not self.nolog_callback:
+            name_seqstep = self.jumptable['name'][idx_jumptable]
+            tau_val, _ = self.get_ts(idx_jumptable)
+            val_phase = self.get_phase(idx_jumptable)
+            n_val = self.get_n(idx_jumptable)
             self.log.info("Finding next tau= {} ns (req: {}), next n_pi= {} (req: {}), read_phase= {:.2f} in {} at jump address {} (0b{:012b})".
                           format(1e9*tau_val, 1e9*tau, n_val, n_pi, val_phase, name_seqstep, addr, addr))
 
@@ -1312,7 +1318,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.save_after_update(real_tau, tau_new_req, t_seq, real_n, n_new_req,
                                read_phase=real_phase, read_phase_req=phase_new_req)
         #"""
-        #addr = 66
+
 
         self.iterate_mfl()  # iterates i_epoch
 
