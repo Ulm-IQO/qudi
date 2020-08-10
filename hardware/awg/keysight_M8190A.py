@@ -184,6 +184,8 @@ class AWGM8190A(Base, PulserInterface):
         self.interleave = self.get_interleave()
         self.current_loaded_asset = ''
         self.current_status = 0
+        self._segment_table = [[],[]]   # [0]: ch1, [1]: ch2. Local, read-only copy of the device segment table
+        self._flag_segment_table_req_update = True   # local copy requires update
 
 
     def get_constraints(self):
@@ -455,6 +457,7 @@ class AWGM8190A(Base, PulserInterface):
             self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
             self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id_per_ch, name))
 
+            self._flag_segment_table_req_update = True
             self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
                 name, samples, chnl_num, segment_id_per_ch))
 
@@ -650,6 +653,7 @@ class AWGM8190A(Base, PulserInterface):
 
         self.write(':TRAC1:DEL:ALL')
         self.write(':TRAC2:DEL:ALL')
+        self._flag_segment_table_req_update = True
         self.current_loaded_asset = ''
 
         return
@@ -1278,19 +1282,26 @@ class AWGM8190A(Base, PulserInterface):
         loaded_segments_ch1 = self.get_loaded_assets_name(1, mode='segment')
         loaded_segments_ch2 = self.get_loaded_assets_name(2, mode='segment')
 
+        waves_loaded_here = []
         # transfer waveforms in sequence from local pc to segments in awg mem
         for waveform_tuple, param_dict in sequence_parameters:
-            # todo: handle other than 2 chanels
+            # todo: handle other than 2 channels
             waveform_list = []
             waveform_list.append(waveform_tuple[0])
             waveform_list.append(waveform_tuple[1])
             wave_ch1 = self._remove_file_extension(waveform_tuple[0])
             wave_ch2 = self._remove_file_extension(waveform_tuple[1])
+
             if not (wave_ch1 in loaded_segments_ch1 and
-                    wave_ch2 in loaded_segments_ch2):
+                    wave_ch2 in loaded_segments_ch2) \
+                    and not (wave_ch1 in waves_loaded_here and
+                    wave_ch2 in waves_loaded_here):
+
                 self.log.debug("Couldn't find segments {} and {} on device for writing sequence {}. Loading...".format(
                     wave_ch1, wave_ch2, name))
                 self.load_waveform(waveform_list, to_nextfree_segment=True)
+                waves_loaded_here.append(wave_ch1)
+                waves_loaded_here.append(wave_ch2)
             else:
                 self.log.debug("Segments {} and {} already on device for writing sequence {}. Skipping load.".format(
                     wave_ch1, wave_ch2, name))
@@ -1305,6 +1316,7 @@ class AWGM8190A(Base, PulserInterface):
         ctr_steps_written = 0
         goto_in_sequence = False
         for step, (wfm_tuple, seq_step) in enumerate(sequence_parameters, 1):
+
             try:
                 next_step = sequence_parameters[step + 1][1]
             except IndexError:
@@ -1339,6 +1351,11 @@ class AWGM8190A(Base, PulserInterface):
                 seg_loop_count = seq_step.repetitions + 1  # if repetitions = 0 then do it once
             seg_start_offset = 0    # play whole segement from start...
             seg_end_offset = 0xFFFFFFFF     # to end
+
+            self.log.debug("For sequence table step {} with {} reps: control: {}".format(step,
+                                                                                         seq_loop_count,
+                                                                                         control))
+
             segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1)
             segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2)
 
@@ -1361,6 +1378,7 @@ class AWGM8190A(Base, PulserInterface):
                                    segment_id_ch2,
                                    seg_start_offset,
                                    seg_end_offset))
+
                 ctr_steps_written += 1
 
                 self.log.debug("Writing seqtable entry {}: {}".format(index, step))
@@ -1373,7 +1391,6 @@ class AWGM8190A(Base, PulserInterface):
 
         return ctr_steps_written
 
-
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device incl. file extension.
         Keysight doesn't have mass memory, so name of sampled waveforms on pc.
@@ -1382,7 +1399,6 @@ class AWGM8190A(Base, PulserInterface):
         """
 
         return self.query('MMEM:CAT?').replace('"','').replace("'","").split(",")[2::3]
-
 
     def get_sequence_names(self):
         """ Retrieve the names (without file extension) of all uploaded sequence on the device.
@@ -1431,7 +1447,6 @@ class AWGM8190A(Base, PulserInterface):
             self.clear_all()
         return deleted_waveforms
 
-
     def delete_sequence(self, sequence_name):
         """ Delete the sequence with name "sequence_name" from the device memory.
 
@@ -1459,7 +1474,6 @@ class AWGM8190A(Base, PulserInterface):
             self.clear_all()
         return deleted_sequences
 
-
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
@@ -1468,7 +1482,6 @@ class AWGM8190A(Base, PulserInterface):
         Will always return False for pulse generator hardware without interleave.
         """
         return False
-
 
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
@@ -1488,7 +1501,6 @@ class AWGM8190A(Base, PulserInterface):
                          'Method call will be ignored.')
         return self.get_interleave()
 
-
     def reset(self):
         """ Reset the device.
 
@@ -1496,6 +1508,9 @@ class AWGM8190A(Base, PulserInterface):
         """
         self.write('*RST')
         self.write('*WAI')
+
+        self._flag_segment_table_req_update = True
+
         return 0
 
     def has_sequence_mode(self):
@@ -1590,7 +1605,6 @@ class AWGM8190A(Base, PulserInterface):
         else:
             return True
 
-
     def _get_all_channels(self):
         """
         Helper method to return a sorted list of all technically available channel descriptors
@@ -1626,7 +1640,47 @@ class AWGM8190A(Base, PulserInterface):
         """
         return [chnl for chnl in self._get_all_channels() if chnl.startswith('d')]
 
+    def update_segment_table(self):
+        segment_table_1 = self.read_segment_table(1)
+        segment_table_2 = self.read_segment_table(2)
+        self._segment_table[0] = segment_table_1
+        self._segment_table[1] = segment_table_2
+
+        self._flag_segment_table_req_update = False
+
+        return segment_table_1, segment_table_2
+
+    def get_segment_table(self, ch_num, force_from_local_copy=-1):
+
+        if force_from_local_copy < 0:
+            if self._flag_segment_table_req_update:
+                self.log.debug("Local segment table seems out-of-date. Fetching.")
+                segment_table_1, segment_table_2 = self.update_segment_table()
+            else:
+                segment_table_1, segment_table_2 = self._segment_table[0], self._segment_table[1]
+
+        else:
+            if force_from_local_copy == 1:
+                if self._flag_segment_table_req_update:
+                    self.log.warning("Forcing out-of-date local segment table that needs update")
+                segment_table_1, segment_table_2 = self._segment_table[0], self._segment_table[1]
+
+            elif force_from_local_copy == 0:
+                segment_table_1, segment_table_2 = self.update_segment_table()
+            else:
+                raise ValueError("Unexpected input for force_from_local_copy: {}".format(force_from_local_copy))
+
+        if ch_num == 1:
+            return segment_table_1
+        elif ch_num == 2:
+            return segment_table_2
+        else:
+            raise ValueError("Unexpected channel number: {}".format(ch_num))
+
     def read_segment_table(self, ch_num):
+
+        self.log.debug("Reading device segment table for ch {}".format(ch_num))
+
         names = self.get_loaded_assets_name(ch_num, mode='segment')
         ids = self.get_loaded_assets_id(ch_num, mode='segment')
 
@@ -1644,7 +1698,7 @@ class AWGM8190A(Base, PulserInterface):
     def get_segment_name(self, seg_id, ch_num):
         # awg 8190a has 2 separate sequencer per channel!
 
-        segment_table = self.read_segment_table(ch_num)
+        segment_table = self.get_segment_table(ch_num)
 
         try:
             idx_id = [row[0] for row in segment_table].index(seg_id)
@@ -1663,7 +1717,7 @@ class AWGM8190A(Base, PulserInterface):
         :return: -1 if not found
         """
 
-        segment_table = self.read_segment_table(ch_num)
+        segment_table = self.get_segment_table(ch_num)
 
         try:
             # np.array would allow slicing, but list comprehension probably better performance
@@ -1674,7 +1728,6 @@ class AWGM8190A(Base, PulserInterface):
             self.log.warning("Couldn't find waveform {} in ch {}".format(segment_waveform_name, ch_num))
             return -1
         return id
-
 
     def get_loaded_assets_num(self, ch_num, mode='segment'):
         if mode == 'segment':
@@ -1767,7 +1820,6 @@ class AWGM8190A(Base, PulserInterface):
         else:
             self.log.error("Unknown trigger polarity: {}".format(pol))
 
-
     def _remove_file_extension(self, filename):
         """
         Removes filename, even if dot in filename.
@@ -1786,7 +1838,6 @@ class AWGM8190A(Base, PulserInterface):
                 self.log.info("Folder was missing, so created: {}".format(path))
             except Exception as e:
                 self.log.warning("Couldn't create folder: {}. {}".format(path, str(e)))
-
 
     def sequence_set_start_segment(self, seqtable_id):
         # todo: need to implement? alernatively shuffle sequuence while generating
