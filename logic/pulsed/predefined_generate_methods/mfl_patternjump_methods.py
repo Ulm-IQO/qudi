@@ -861,7 +861,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # prevent granularity problems
         rabi_period = self._adjust_to_samplingrate(self.rabi_period, 8)  # s
-        tau = self._adjust_to_samplingrate(tau, 4)
+        real_tau = max(0, tau - self.rabi_period / 2)
+
+        tau = self._adjust_to_samplingrate(real_tau, 4)
 
 
         # create the elements
