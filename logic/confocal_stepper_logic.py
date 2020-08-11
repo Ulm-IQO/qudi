@@ -764,11 +764,18 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         """
         # Replace maybe already existing smoothed data with unsmoothed full data set to increase robustness
-        self.full_image_smoothed = self.full_image
-        self.full_image_back_smoothed = self.full_image_back
+        self.full_image_smoothed = self.full_image.copy()
+        self.full_image_back_smoothed = self.full_image_back.copy()
+
+        # do smoothing only for lines where actual data was measured
+        measured_lines_second_axis = 0
+        if self._step_counter== 0:
+            measured_lines_second_axis = self._steps_scan_second_line
+        else:
+            measured_lines_second_axis = self._step_counter
 
         # first axes smoothing using gaussian smoothing filter
-        for i in range(self._steps_scan_second_line):
+        for i in range(measured_lines_second_axis):
             self.full_image_smoothed[i, :, 0] = ndimage.filters.gaussian_filter(
                 self.full_image[i, :, 0], self._gaussian_smoothing_parameter)
             if not self._fast_scan:
@@ -782,7 +789,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         ones_array = np.ones(self._steps_scan_first_line)
         # average the second axis position for every scan of the first axis. It should be constant along
         # the first scan axis
-        for i in range(self._steps_scan_second_line):
+        for i in range(measured_lines_second_axis):
             average.append(norm.fit(self.full_image[i, :, 1])[0])
             if not self._fast_scan:
                 average_back.append(np.mean(self.full_image_back[i, :, 1]))
@@ -793,7 +800,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             smoothed_average_back = ndimage.filters.gaussian_filter(average_back, self._gaussian_smoothing_parameter)
 
         # generate new data of second axis along first axis and fill array
-        for i in range(self._steps_scan_second_line):
+        for i in range(measured_lines_second_axis):
             self.full_image_smoothed[i, :, 1] = ones_array * smoothed_average[i]
             if not self._fast_scan:
                 self.full_image_back_smoothed[i, :, 1] = ones_array * smoothed_average_back[i]
@@ -1296,7 +1303,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         if 0 > self._initialize_measurement(steps=self._steps_scan_first_line,
                                             frequency=self.axis_class[self._first_scan_axis].step_freq, ai_channels=
-                                           self._ai_scan_axes):
+                                            self._ai_scan_axes):
             return -1
 
         self._initialize_data_arrays_stepper()
@@ -2749,7 +2756,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         if 0 > self._initialize_measurement(steps=self._ramp_length,
                                             frequency=self._clock_frequency_3D, ai_channels=
-                                           self._ai_scan_axes):
+                                            self._ai_scan_axes):
             return -1
 
         # Initialize data
@@ -2898,7 +2905,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                             self.log.error("Moving of steppers failed,x")
                             # Todo: repair return values
                             return [-1], []
-
+                        time.sleep(1 / 5 * 1 / 10)  # 1/5 (1/scan freq) 1/10, only 1/10th of the APD signal is messed up,
+                        # so wait 1/10ths of the measurement time for attocube to calm down
                     # get data
                     count_result = self._counting_device.get_finite_counts()
                     if len(self._ai_scan_axes) > 0:
