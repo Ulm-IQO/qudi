@@ -298,8 +298,8 @@ class MFL_IRQ_Driven(GenericLogic):
         self.erase_mirrored = True
         self.log.warning("MFL configure with erase_mirrored(). Actually wrong for DD MFL!")
 
-        ndd_mod = 8   # due to XY8 limited granuality
-        n_pi_dd_max = 16000  # limited by the sequences on the AWG as well
+        self.ndd_mod = 8   # due to XY8 limited granuality
+        self.n_pi_dd_max = 16000  # limited by the sequences on the AWG as well
 
         n_particles = 10000
         freq_min = 2*np.pi*np.min([freq_min_1_mhz, freq_max_1_mhz, freq_min_2_mhz, freq_max_2_mhz]) # mhz rad
@@ -325,8 +325,10 @@ class MFL_IRQ_Driven(GenericLogic):
         self.mfl_updater.reset()
 
 
-        self.mfl_tau_from_heuristic = mfl_lib.MultiDD_EstResnUncOptFish1d_PGH(self.mfl_updater, b_gauss, inv_field=['w1','w2'], n_pi_max=n_pi_dd_max,
-                                            opt_mode='fi_trace', restr_ndd_mod=ndd_mod)
+        self.mfl_tau_from_heuristic = mfl_lib.MultiDD_EstResnUncOptFish1d_PGH(self.mfl_updater,
+                                                                b_gauss, inv_field=['w1','w2'],
+                                                                n_pi_max=self.n_pi_dd_max,
+                                                                opt_mode='fi_trace', restr_ndd_mod=self.ndd_mod)
 
 
     def get_epoch_done_trig_ch(self):
@@ -667,7 +669,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
         n_sweeps = self.n_sweeps
 
-        t_phase_s = self.taus[:, 0] * n_sweeps
+        t_phase_s = np.multiply(self.taus[:, 0], self.n_pi[:,0]) * n_sweeps
         t_seq_s = self.t_seqs[:, 0] * n_sweeps
         t_epoch_s = self.calc_epoch_runtime(is_start_to_end=False)
         t_epoch_s = np.asarray(self.extrapolate_first_t_epoch(t_epoch_s))
@@ -1066,19 +1068,22 @@ class MFL_IRQ_Driven(GenericLogic):
 
         if self.is_calibmode_lintau:
             n_pi = 8*np.min(self.jumptable['n'])
-            n_pi = 32  # manually fix to see resonances
+            n_pi = 32  # 32, manually fix to see resonances
 
         idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau, n_pi)
 
         if self.is_calibmode_lintau:
             # calibration mode: play taus linear after each other
             if last_phase == np.max(self.jumptable['read_phase']):
-                idx_jumptable, tau_val = self._find_next_greatest(self.jumptable['tau'], last_tau)
+                _, tau_val = self._find_next_greatest(self.jumptable['tau'], last_tau)
+                idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
             else:
-                idx_jumptable, tau_val = self._find_nearest(self.jumptable['tau'], last_tau)
+                _, tau_val = self._find_nearest(self.jumptable['tau'], last_tau)
+                idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
             if idx_jumptable is -1:
                 self.log.warning("No next greatest tau. Repeating from smallest tau.")
-                idx_jumptable, tau_val = self._find_nearest(self.jumptable['tau'], 0)
+                _, tau_val = self._find_nearest(self.jumptable['tau'], 0)
+                idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
 
         # search available phases for this tau
         # search all phases for idx assuming that taus are ordered
@@ -1423,11 +1428,14 @@ class PatternJumpAdapter(SerialInterface):
 
     strobe_ch = None  # implement in subclass '/dev1/port0/line25'
     data_ch = None  # implement in subclass '/dev1/port0/line17:24'
+    max_address = -1
 
     def __init__(self, *args, **kwargs):
         super().__init__()
         self.nitask_serial_out = None
         self.nitask_strobe_out = None
+        self._nitask_list = []
+
 
     def init_ni(self):
 
@@ -1436,6 +1444,8 @@ class PatternJumpAdapter(SerialInterface):
 
         self.nitask_serial_out = daq.TaskHandle()
         self.nitask_strobe_out = daq.TaskHandle()
+        self._nitask_list.append(self.nitask_serial_out)
+        self._nitask_list.append(self.nitask_strobe_out)
 
         try:
             daq.DAQmxCreateTask('d_serial_out', daq.byref(self.nitask_serial_out))
@@ -1464,12 +1474,13 @@ class PatternJumpAdapter(SerialInterface):
         return new_task_handle
 
     def stop_ni(self):
-        daq.DAQmxClearTask(self.nitask_serial_out)
-        daq.DAQmxClearTask(self.nitask_strobe_out)
+        for task in self._nitask_list:
+            daq.DAQmxClearTask(task)
 
-    def output_data(self, data):
+
+    def _output_direct(self, data):
         digital_data = daq.c_uint32(data << 17)
-        digital_read = daq.c_int32()    # dummy to feed to function
+        digital_read = daq.c_int32()  # dummy to feed to function
         n_samples = daq.c_int32(1)
 
         # value stays active at output
@@ -1477,7 +1488,16 @@ class PatternJumpAdapter(SerialInterface):
                                  0, daq.DAQmx_Val_GroupByChannel,
                                  np.array(digital_data), digital_read, None)
 
+
+    def output_data(self, data):
+
+        if data > self.max_address:
+            self.log.warning("Output address {} exceeds max {}".format(data, self.max_address))
+
+        self._output_direct(data)
         self.output_strobe()
+
+
 
     def output_bit(self, idx_bit, high=True):
         """
@@ -1527,6 +1547,7 @@ class PJAdapter_AWG70k(PatternJumpAdapter):
 
     strobe_ch = '/dev1/port0/line25'
     data_ch =   '/dev1/port0/line17:24'
+    max_address = 127
 
 
 class PJAdapter_AWG8190A(PatternJumpAdapter):
@@ -1537,8 +1558,66 @@ class PJAdapter_AWG8190A(PatternJumpAdapter):
     """
 
     strobe_ch = '/dev1/port0/line30'
-    data_ch =   '/dev1/port0/line17:29'  # 12 bits
+    data_ch =   '/dev1/port0/line17:29'  # 13 bits
     data_select_ch = '/dev1/port0/line31'
+    max_address = 2**19 - 1
+
+    def __init__(self):
+        super().__init__()
+        self.nitask_select_out = None
+
+    def init_ni(self):
+        super().init_ni()
+
+        if self.nitask_select_out is not None:
+            self.stop_ni()
+
+        self.nitask_select_out = daq.TaskHandle()
+        self._nitask_list.append(self.nitask_select_out)
+
+        try:
+            daq.DAQmxCreateTask('d_dselect_out', daq.byref(self.nitask_select_out))
+        except daq.DuplicateTaskError:
+            self.nitask_select_out = self.recreate_nitask('d_dselect_out', self.nitask_select_out)
+
+        daq.DAQmxCreateDOChan(self.nitask_select_out, self.data_select_ch, "", daq.DAQmx_Val_ChanForAllLines)
+        daq.DAQmxStartTask(self.nitask_select_out)
+
+
+    def output_data(self, data):
+        if data > self.max_address:
+            self.log.warning("Output address {} exceeds max {}".format(data, self.max_address))
+
+        # upper 6 bits
+        if data > 2**13 - 1:
+            self.output_data_select(1)
+            self._output_direct(data >> 13)
+            # lower 13 bits
+            self.output_data_select(0)
+        self._output_direct(data)
+
+        self.output_strobe()
+
+    def output_data_select(self, high=True):
+        """
+        :param idx_bit: counted from 0 from low to high. idx_bit=0 -> line17, idx_bit=7 -> line 24
+        :param high:
+        :return:
+        """
+        digital_data = daq.c_uint32(0x1)
+        digital_low = daq.c_uint32(0x0)
+        digital_read = daq.c_int32()  # dummy to feed to function
+        n_samples = daq.c_int32(1)
+
+        if high:
+            daq.DAQmxWriteDigitalU32(self.nitask_select_out, n_samples, True,
+                                     0, daq.DAQmx_Val_GroupByChannel,
+                                     np.array(digital_data), digital_read, None)
+        else:
+            daq.DAQmxWriteDigitalU32(self.nitask_select_out, n_samples, True,
+                                     0, daq.DAQmx_Val_GroupByChannel,
+                                     np.array(digital_low), digital_read, None)
+
 
 
 if __name__ == '__main__':
@@ -1675,7 +1754,7 @@ if __name__ == '__main__':
                        calibmode_lintau=calibmode_lintau, nowait_callback=nowait_callback, b0_gauss=b0_gauss)
         mfl_logic.meta_dict = meta_dict
 
-        mfl_logic.save_priors = True     # OK if callback slow
+        mfl_logic.save_priors = False     # OK if callback slow and hdd space doesn't matter
         tau_first_req, n_first_req = mfl_logic.get_first_tau_n()
 
         # can pull here, since waiting for lock makes sure that seqtable is available as temp file
