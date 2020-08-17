@@ -1256,3 +1256,17 @@ class PoiManagerLogic(GenericLogic):
             self.add_poi(pois[i])
             if self.poi_nametag is None:
                 time.sleep(0.1)
+
+    # Scripting zone
+    #
+    # The methods bellow are meant to be used be external script which have their own thread.
+
+    def optimise_poi_position_sync(self, name=None, update_roi_position=True):
+        """ Start an usual optimization procedure but wait for it to finish before returning
+
+        This method blocks the caller's thread and not this module's thread.
+        """
+        self.optimise_poi_position(name=name, update_roi_position=update_roi_position)
+        while self.optimiserlogic().module_state() != 'idle':
+            time.sleep(0.1)
+        return
