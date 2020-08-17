@@ -1037,3 +1037,13 @@ class ODMRLogic(GenericLogic):
             self.save_odmr_data(tag=name_tag)
 
         return self.odmr_plot_x, self.odmr_plot_y, fit_params
+
+    def stop_odmr_scan_sync(self):
+        """ Stop the acquistion normally but wait for it to be over before returning
+
+        This method blocks the caller's thread and not this module's thread.
+        """
+        self.stop_odmr_scan()
+        while self.module_state() == 'locked':
+            time.sleep(0.1)
+        return
