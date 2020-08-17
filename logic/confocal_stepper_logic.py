@@ -25,8 +25,8 @@ import time
 import datetime
 import math
 import numpy as np
-import os
-# import tables
+import os, fnmatch
+import sys
 import matplotlib.pyplot as plt
 from scipy import ndimage  # For gaussian smoothing of data
 from scipy.stats import norm  # To fit gaussian average to data
@@ -2198,12 +2198,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._off_set_x * self._steps_scan_first_line)  # Todo: this needs to be specified specifically for x
         parameters['First Axis Offset Direction'] = \
             self._first_scan_axis if self._off_set_direction else '-' + self._first_scan_axis
+        parameters["First Axis min Voltage"] = self.axis_class[self._first_scan_axis].voltage_range[0]
+        parameters["First Axis max Voltage"] = self.axis_class[self._first_scan_axis].voltage_range[1]
 
         parameters['Second Axis'] = self._second_scan_axis
         parameters['Second Axis Steps'] = self._steps_scan_second_line
         # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
+        parameters["Second Axis min Voltage"] = self.axis_class[self._second_scan_axis].voltage_range[0]
+        parameters["Second Axis max Voltage"] = self.axis_class[self._second_scan_axis].voltage_range[1]
         if self._3rd_direction_correction:
             parameters["Z correction up (steppers axis)"] = self._lines_correct_3rd_axis
         else:
@@ -2400,11 +2404,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         data = OrderedDict()
         data_back = OrderedDict()
         if self.map_scan_position and self._save_positions:
-            data['x position (mm)'] = self._3D_scan_pos_voltages[:, :, 0].flatten()
-            data['y position (mm)'] = self._3D_scan_pos_voltages[:, :, 1].flatten()
-            data_back['y position (mm)'] = self._3D_scan_pos_voltages_back[:, :, 1].flatten()
             if not self._fast_scan:
-                data_back['x position (mm)'] = self._3D_scan_pos_voltages_back[:, :, 0].flatten()
                 full_data = self.full_image  # else it will be none to reduce computation time = drawing time
                 full_data_back = self.full_image_back
         else:
@@ -2415,16 +2415,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
                 data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
                 full_data_back = None
-
-        for n, ch in enumerate(self.get_counter_count_channels()):
-            data['count rate {0} (Hz)'.format(ch)] = self._3D_stepping_raw_data.flatten()
-            if not self._fast_scan:
-                data_back['count rate {0} (Hz)'.format(ch)] = self._3D_stepping_raw_data_back.flatten()
-
-        if self._ai_scanner:
-            data["count rate AI (V)"] = self._3D_ai_counter_voltages.flatten()
-            if not self._fast_scan:
-                data_back["count rate AI (V)"] = self._3D_ai_counter_voltages_back.flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_stepper_data_3D'
@@ -3028,3 +3018,231 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._change_position('history')
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
+
+    def load_data(self, filepath, data_type="3D", position=True):
+        """Loads data from a given location and adds it to the history
+        @param str filepath: The location of the data to be loaded
+        @param str data_type: the type of data to be loaded
+        @param bool position: If true position data is also loaded, default: True
+
+        type of possible data to be loaded are:
+        "3D": 3D step scan data
+        "Finesse": Finesse scan data
+        "2D": 2D step scan data
+
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if not os.path.exists(filepath):
+            self.log.warning("the given file %s path does not exist", filepath)
+            return -1
+        if data_type not in ("3D", "2D", "Finesse"):
+            self.log.warning("The kind of measurement (%) chosen can no be loaded", data_type)
+            return -1
+
+        old_parameters = [self._fast_scan, self.map_scan_position, self._ai_scanner, self._steps_scan_first_line,
+                          self._steps_scan_second_line, self._ramp_length]
+        # save old data in case something doesnt work:
+        old_data = self.stepping_raw_data, self.stepping_raw_data_back, self._ai_counter_voltages, \
+                   self._ai_counter_voltages_back, self._scan_pos_voltages, self._scan_pos_voltages_back
+
+        data_files = os.listdir(filepath)
+        if data_type == "3D" or data_type == "Finesse":
+            file_name_addition = "3D_"
+        else:
+            file_name_addition = ""
+        data_dic = self._find_data_files_in_folder(data_files, file_name_addition)
+
+        data_exists = False
+        # check which data exists in the measurement loaded and adjust the class variable accordingly
+        if data_dic["SPCMB"]:
+            self._fast_scan = False
+        else:
+            self._fast_scan = True
+        if data_dic["Pos"] and position:
+            self.map_scan_position = True
+        else:
+            self.map_scan_position = False
+        if data_dic["APD"]:
+            self._ai_scanner = True
+        else:
+            self._ai_scanner = False
+
+        for key, element in data_dic.items():
+            if element:
+                data1 = np.load(element[0])
+                dat_shape = np.shape(data1)
+                self._steps_scan_first_line = dat_shape[0]
+                self._steps_scan_second_line = len(element)
+                self._initialize_data_arrays_stepper()
+                if data_type in ("3D", "Finesse"):
+                    self._ramp_length = dat_shape[1]
+                data_exists = True
+                break
+
+        if not data_exists:
+            # reset old parameters
+            self._fast_scan = old_parameters[0]
+            self.map_scan_position = old_parameters[1]
+            self._ai_scanner = old_parameters[2]
+            self.log.warning("There was no data that could by this program in the corresponding folder (%)", filepath)
+            return -1
+        self.filepath = filepath  # so that the data can not be resaved on a different false folder by accident
+
+        # load data
+        if data_type in ("3D", "Finesse"):
+            catch_error = self._load_3D_data(data_dic, dat_shape)
+        else:
+            catch_error = self._load_2D_data(data_dic, dat_shape)
+
+        if catch_error == -1:
+            self._fast_scan, self.map_scan_position, self._ai_scanner, self._steps_scan_first_line, \
+            self._steps_scan_second_line, self._ramp_length = old_parameters
+
+            self.log.error("It was not possible to load the data by this program in the corresponding folder (%)",
+                           filepath)
+            self.stepping_raw_data, self.stepping_raw_data_back, self._ai_counter_voltages, \
+            self._ai_counter_voltages_back, self._scan_pos_voltages, self._scan_pos_voltages_back = old_data
+            return -1
+
+        self.initialize_image()
+        self.update_image_data()
+        self.convert_voltage_to_position_for_image()
+        self.smooth_out_position_data()
+        self.signal_image_updated.emit()
+
+        return 0
+
+    def _find_data_files_in_folder(self, data_files, addition_3D=""):
+        """Sorts data files passed into a dictionary that the loading system of this class can handle.
+        The method will only catch and sort files that could have been generated by this class
+
+        @param List(str) data_files: List of data file names generated by this class
+        @param str addition_3D: the name addition necessary to identify different types of data for
+                                different measurements from this class:    Possible additions: "", "3D_"
+
+        Possible keys of the dictionary:
+            "APD", "APDB", "SPCM", "SPCMB", "Pos", "PosB"
+
+
+        @return dict
+        """
+        
+        APD = []
+        APD_back = []
+        SPCM = []
+        SPCM_back = []
+        voltages = []
+        voltages_back = []
+
+        for entry in sorted(data_files):
+            if fnmatch.fnmatch(entry, "*APD_" + addition_3D + "li*"):
+                APD.append(entry)
+            if fnmatch.fnmatch(entry, "*APD_back_" + addition_3D + "l*"):
+                APD_back.append(entry)
+            if fnmatch.fnmatch(entry, "*SPCM_" + addition_3D + "l*"):
+                SPCM.append(entry)
+            if fnmatch.fnmatch(entry, "*SPCM_back_" + addition_3D + "l*"):
+                SPCM_back.append(entry)
+            if fnmatch.fnmatch(entry, "*voltages_" + addition_3D + "l*"):
+                voltages.append(entry)
+            if fnmatch.fnmatch(entry, "*voltages_back_" + addition_3D + "l*"):
+                voltages_back.append(entry)
+        data_dic = {"APD": APD, "APDB": APD_back, "SPCM": SPCM, "SPCMB": SPCM_back, "Pos": voltages,
+                    "PosB": voltages_back}
+        return data_dic
+
+    def _load_3D_data(self, data_dic, shape_data):
+        """Loads 3D measurement data from files given in a dictionary and saves data in class objects
+        @param dict data_dic: dictionary of the data files sorted according to data types
+        @param tuple shape_data: the shape the data is going to have as returned for an array by np.shape()
+
+        Possible data types and corresponding keys:
+            "APD": voltages from an analog input for the image generated while scanning forward
+            "APDB": voltages from an analog input for the image generated while scanning backwards
+            "SPCM": counts from an digital input for the image generated while scanning forward
+            "SPCMB": counts from an digital input for the image generated while scanning backwards
+            "Pos":  2D (eg. x and y) voltages from an analog input for the image generated while scanning forward
+            "PosB": 2D (eg. x and y) voltages from an analog input for the image generated while scanning backwards
+
+        @return int: error code (0:OK, -1:error)
+        """
+        try:
+            for key, element in data_dic.items():
+                for line in range(shape_data[0]):
+                    if key == "APD":
+                        self._ai_counter_voltages[line] = np.mean(np.load(data_dic[key][line]), 1)
+                    elif key == "APDB":
+                        self._ai_counter_voltages_back[line] = np.mean(np.load(data_dic[key][line]), 1)
+                    elif key == "SPCM":
+                        self.stepping_raw_data[line] = np.mean(np.load(data_dic[key][line]), 1)
+                    elif key == "SPCMB":
+                        self.stepping_raw_data_back[line] = np.mean(np.load(data_dic[key][line]), 1)
+                    elif self.map_scan_position:
+                        if key == "Pos":
+                            temp_pos_data = np.mean(np.load(data_dic[key][line]), 2).tanspose()
+                            self._scan_pos_voltages[line] = temp_pos_data
+                        elif key == "PosB":
+                            temp_pos_data = np.mean(np.load(data_dic[key][line]), 2).tanspose()
+                            self._scan_pos_voltages_back[line] = temp_pos_data
+                        else:
+                            self.log.warning(
+                                "For the given key %s a data format to store and therefore load the data does not exist",
+                                key)
+                    else:
+                        self.log.warning(
+                            "For the given key %s a data format to store and therefore load the data does not exist",
+                            key)
+
+        except:
+            e = sys.exc_info()[0]
+            self.log.debug("_load_3D_data method didnt work but threw the following exception: %s", e)
+            return -1
+        return 0
+
+    def _load_2D_data(self, data_dic, shape_data):
+        """Loads 2D measurement data from files given in a dictionary and saves data in class objects
+        @param dict data_dic: dictionary of the data files sorted according to data types
+        @param tuple shape_data: the shape the data is going to have as returned for an array by np.shape()
+
+        Possible data types and corresponding keys:
+            "APD": voltages from an analog input for the image generated while scanning forward
+            "APDB": voltages from an analog input for the image generated while scanning backwards
+            "SPCM": counts from an digital input for the image generated while scanning forward
+            "SPCMB": counts from an digital input for the image generated while scanning backwards
+            "Pos":  2D (eg. x and y) voltages from an analog input for the image generated while scanning forward
+            "PosB": 2D (eg. x and y) voltages from an analog input for the image generated while scanning backwards
+
+        @return int: error code (0:OK, -1:error)
+        """
+        try:
+            for key, element in data_dic.items():
+                for line in range(shape_data[0]):
+                    if key == "APD":
+                        self._ai_counter_voltages[line] = np.load(data_dic[key][line])
+                    elif key == "APDB":
+                        self._ai_counter_voltages_back[line] = np.load(data_dic[key][line])
+                    elif key == "SPCM":
+                        self.stepping_raw_data[line] = np.load(data_dic[key][line])
+                    elif key == "SPCMB":
+                        self.stepping_raw_data_back[line] = np.load(data_dic[key][line])
+                    elif self.map_scan_position:
+                        if key == "Pos":
+                            temp_pos_data = np.load(data_dic[key][line]).tanspose()
+                            self._scan_pos_voltages[line] = temp_pos_data
+                        elif key == "PosB":
+                            temp_pos_data = np.load(data_dic[key][line]).tanspose()
+                            self._scan_pos_voltages_back[line] = temp_pos_data
+                        else:
+                            self.log.warning(
+                                "For the given key %s a data format to store and therefore load the data does not exist",
+                                key)
+                    else:
+                        self.log.warning(
+                            "For the given key %s a data format to store and therefore load the data does not exist",
+                            key)
+        except:
+            e = sys.exc_info()[0]
+            self.log.debug("_load_2D_data method didnt work but threw the following exception: %s", e)
+            return -1
+        return 0
