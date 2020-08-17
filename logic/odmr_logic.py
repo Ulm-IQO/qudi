@@ -365,7 +365,7 @@ class ODMRLogic(GenericLogic):
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
-    def set_cw_parameters(self, frequency, power):
+    def set_cw_parameters(self, frequency=None, power=None):
         """ Set the desired new cw mode parameters.
 
         @param float frequency: frequency to set in Hz
@@ -373,6 +373,9 @@ class ODMRLogic(GenericLogic):
 
         @return (float, float): actually set frequency in Hz, actually set power in dBm
         """
+        frequency = frequency if frequency is not None else self.cw_mw_frequency
+        power = power if power is not None else self.cw_mw_power
+
         if self.module_state() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
             constraints = self.get_hw_constraints()
             frequency_to_set = constraints.frequency_in_range(frequency)
@@ -387,7 +390,7 @@ class ODMRLogic(GenericLogic):
         self.sigParameterUpdated.emit(param_dict)
         return self.cw_mw_frequency, self.cw_mw_power
 
-    def set_sweep_parameters(self, start, stop, step, power):
+    def set_sweep_parameters(self, start=None, stop=None, step=None, power=None):
         """ Set the desired frequency parameters for list and sweep mode
 
         @param float start: start frequency to set in Hz
@@ -398,6 +401,11 @@ class ODMRLogic(GenericLogic):
         @return float, float, float, float: current start_freq, current stop_freq,
                                             current freq_step, current power
         """
+        start = start if start is not None else self.mw_start
+        stop = stop if stop is not None else self.mw_stop
+        step = step if step is not None else self.mw_step
+        power = power if power is not None else self.sweep_mw_power
+
         limits = self.get_hw_constraints()
         if self.module_state() != 'locked':
             if isinstance(start, (int, float)):
