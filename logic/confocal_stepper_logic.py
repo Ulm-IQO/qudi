@@ -2081,7 +2081,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         return self._step_counter
 
     ##################################### Handle Data ########################################
-    def initialize_image(self, get_axes = True):
+    def initialize_image(self, get_axes=True):
         """Initialization of the image.
 
         @return int: error code (0:OK, -1:error)
@@ -2154,6 +2154,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     def update_image_data(self):
         """Updates the images data
+        Takes the measured or loaded image data saved in the individual data arrays and combines them into one image
         """
         self.image_raw[:, :, 2] = self.stepping_raw_data
         if not self._fast_scan:
@@ -3035,6 +3036,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
+        # Todo:readout scan axis. for now it assumes they are the same axis as before.
+        # Todo: update voltage ranges for voltage conversion from info file, so far voltage conversion will be done
+        #  using current voltage ranges
+
         if not os.path.isdir(filepath):
             self.log.warning("the given file %s path does not exist", filepath)
             return -1
@@ -3130,6 +3135,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @param str addition_3D: the name addition necessary to identify different types of data for
                                 different measurements from this class:    Possible additions: "", "3D_"
 
+
         Possible keys of the dictionary:
             "APD", "APDB", "SPCM", "SPCMB", "Pos", "PosB"
 
@@ -3161,10 +3167,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     "PosB": voltages_back}
         return data_dic
 
-    def _load_3D_data(self, data_dic, shape_data, filepath):
+    def _load_3D_data(self, data_dic, shape_data, filepath=""):
         """Loads 3D measurement data from files given in a dictionary and saves data in class objects
         @param dict data_dic: dictionary of the data files sorted according to data types
         @param tuple shape_data: the shape the data is going to have as returned for an array by np.shape()
+        @param str filepath: file path from where the data is to be loaded
 
         Possible data types and corresponding keys:
             "APD": voltages from an analog input for the image generated while scanning forward
@@ -3176,24 +3183,32 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
+        if filepath != "":
+            if os.path.isdir(filepath):
+                filepath = filepath + "\\"
+            else:
+                self.log.warning("The given filepath %s is not a valid path", filepath)
+                return -1
+
         self.log.debug(np.shape(self._scan_pos_voltages))
         try:
             for key, element in data_dic.items():
                 for line in range(shape_data[0]):
                     if key == "APD":
-                        self._ai_counter_voltages[line] = np.mean(np.load(filepath + "\\" + data_dic[key][line]), 1)
+                        self._ai_counter_voltages[line] = np.mean(np.load(filepath + data_dic[key][line]), 1)
                     elif key == "APDB":
-                        self._ai_counter_voltages_back[line] = np.mean(np.load(filepath + "\\" + data_dic[key][line]),
+                        self._ai_counter_voltages_back[line] = np.mean(np.load(filepath + data_dic[key][line]),
                                                                        1)
                     elif key == "SPCM":
-                        self.stepping_raw_data[line] = np.mean(np.load(filepath + "\\" + data_dic[key][line]), 1)
+                        self.stepping_raw_data[line] = np.mean(np.load(filepath + data_dic[key][line]), 1)
                     elif key == "SPCMB":
-                        self.stepping_raw_data_back[line] = np.mean(np.load(filepath + "\\" + data_dic[key][line]), 1)
+                        self.stepping_raw_data_back[line] = np.mean(np.load(filepath + data_dic[key][line]), 1)
                     elif self.map_scan_position:
                         if key == "Pos":
-                            self._scan_pos_voltages[line] = np.mean(np.load(filepath + "\\" + data_dic[key][line]), 2).transpose()
+                            self._scan_pos_voltages[line] = np.mean(np.load(filepath + data_dic[key][line]),
+                                                                    2).transpose()
                         elif key == "PosB":
-                            temp_pos_data = np.mean(np.load(filepath + "\\" + data_dic[key][line]), 2).transpose()
+                            temp_pos_data = np.mean(np.load(filepath + data_dic[key][line]), 2).transpose()
                             self._scan_pos_voltages_back[line] = temp_pos_data
                         else:
                             self.log.warning(
@@ -3210,10 +3225,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
         return 0
 
-    def _load_2D_data(self, data_dic, shape_data):
+    def _load_2D_data(self, data_dic, shape_data, filepath=""):
         """Loads 2D measurement data from files given in a dictionary and saves data in class objects
         @param dict data_dic: dictionary of the data files sorted according to data types
         @param tuple shape_data: the shape the data is going to have as returned for an array by np.shape()
+        @param str filepath: file path from where the data is to be loaded
 
         Possible data types and corresponding keys:
             "APD": voltages from an analog input for the image generated while scanning forward
@@ -3225,23 +3241,30 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
+        if filepath != "":
+            if os.path.isdir(filepath):
+                filepath = filepath + "\\"
+            else:
+                self.log.warning("The given filepath %s is not a valid path", filepath)
+                return -1
+
         try:
             for key, element in data_dic.items():
                 for line in range(shape_data[0]):
                     if key == "APD":
-                        self._ai_counter_voltages[line] = np.load(data_dic[key][line])
+                        self._ai_counter_voltages[line] = np.load(filepath + data_dic[key][line])
                     elif key == "APDB":
-                        self._ai_counter_voltages_back[line] = np.load(data_dic[key][line])
+                        self._ai_counter_voltages_back[line] = np.load(filepath + data_dic[key][line])
                     elif key == "SPCM":
-                        self.stepping_raw_data[line] = np.load(data_dic[key][line])
+                        self.stepping_raw_data[line] = np.load(filepath + data_dic[key][line])
                     elif key == "SPCMB":
-                        self.stepping_raw_data_back[line] = np.load(data_dic[key][line])
+                        self.stepping_raw_data_back[line] = np.load(filepath + data_dic[key][line])
                     elif self.map_scan_position:
                         if key == "Pos":
-                            temp_pos_data = np.load(data_dic[key][line]).tanspose()
+                            temp_pos_data = np.load(filepath + data_dic[key][line]).transpose()
                             self._scan_pos_voltages[line] = temp_pos_data
                         elif key == "PosB":
-                            temp_pos_data = np.load(data_dic[key][line]).tanspose()
+                            temp_pos_data = np.load(filepath + data_dic[key][line]).transpose()
                             self._scan_pos_voltages_back[line] = temp_pos_data
                         else:
                             self.log.warning(

@@ -1056,6 +1056,7 @@ class ConfocalStepperGui(GUIBase):
             # self._stepper_logic.permanent_scan = False
             self._stepper_logic.stop_stepper()
 
+        #Todo: Step actions should only be enabled after the logic has signalled that it has actually stopped
         self.enable_step_actions()
 
     def step_start_clicked(self):
