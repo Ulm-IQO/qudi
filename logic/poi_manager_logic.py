@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import numpy as np
 import time
+import re
 
 from collections import OrderedDict
 from core.connector import Connector
@@ -1256,3 +1257,48 @@ class PoiManagerLogic(GenericLogic):
             self.add_poi(pois[i])
             if self.poi_nametag is None:
                 time.sleep(0.1)
+
+    # Scripting zone
+    #
+    # The methods bellow are meant to be used be external script which have their own thread.
+
+    def optimise_poi_position_sync(self, name=None, update_roi_position=True):
+        """ Start an usual optimization procedure but wait for it to finish before returning
+
+        This method blocks the caller's thread and not this module's thread.
+        """
+        self.optimise_poi_position(name=name, update_roi_position=update_roi_position)
+        while self.optimiserlogic().module_state() != 'idle':
+            time.sleep(0.1)
+        return
+
+    def get_poi_list(self, regexp='', check_in_range=False):
+        """ Get a list of all the POIs filtered by a given regular expression
+
+        @param (str) regexp: A regular expression to match POI names before returning
+        @param (bool) check_in_range: Only returns POI in range if True
+
+        To learn what is a regular expression, see : https://en.wikipedia.org/wiki/Regular_expression
+        """
+        r = re.compile(regexp)
+        result = [name for name in self.poi_names if r.search(name)]
+        if check_in_range:
+            result = [name for name in result if self.is_poi_in_range(name)]
+        return result
+
+    def is_poi_in_range(self, name, margin=0e-6, z_margin=0e-6):
+        """ Test if a given POI is in range of the scanner
+
+        @param (str) name: name of the poi to query
+        @param (float) margin: Margin (m) on the X and Y directions necessary to consider the POI in range
+        @param (float) z_margin: Margin (m) on the Z direction necessary to consider the POI in range
+
+        This method can be used when iterating over a lot of POI to check if they are currently in the scan range.
+        Margin can be applied to filter out POIs too close to the scanner edges.
+        """
+        if name is None or name not in self.poi_names:
+            return False
+        x, y, z = self.get_poi_position(name)
+        return self.scannerlogic().x_range[0] + margin <= x <= self.scannerlogic().x_range[1] - margin and \
+               self.scannerlogic().y_range[0] + margin <= y <= self.scannerlogic().y_range[1] - margin and \
+               self.scannerlogic().z_range[0] + z_margin <= z <= self.scannerlogic().y_range[1] - z_margin

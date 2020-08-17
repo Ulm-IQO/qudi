@@ -365,7 +365,7 @@ class ODMRLogic(GenericLogic):
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
-    def set_cw_parameters(self, frequency, power):
+    def set_cw_parameters(self, frequency=None, power=None):
         """ Set the desired new cw mode parameters.
 
         @param float frequency: frequency to set in Hz
@@ -373,6 +373,9 @@ class ODMRLogic(GenericLogic):
 
         @return (float, float): actually set frequency in Hz, actually set power in dBm
         """
+        frequency = frequency if frequency is not None else self.cw_mw_frequency
+        power = power if power is not None else self.cw_mw_power
+
         if self.module_state() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
             constraints = self.get_hw_constraints()
             frequency_to_set = constraints.frequency_in_range(frequency)
@@ -387,7 +390,7 @@ class ODMRLogic(GenericLogic):
         self.sigParameterUpdated.emit(param_dict)
         return self.cw_mw_frequency, self.cw_mw_power
 
-    def set_sweep_parameters(self, start, stop, step, power):
+    def set_sweep_parameters(self, start=None, stop=None, step=None, power=None):
         """ Set the desired frequency parameters for list and sweep mode
 
         @param float start: start frequency to set in Hz
@@ -398,6 +401,11 @@ class ODMRLogic(GenericLogic):
         @return float, float, float, float: current start_freq, current stop_freq,
                                             current freq_step, current power
         """
+        start = start if start is not None else self.mw_start
+        stop = stop if stop is not None else self.mw_stop
+        step = step if step is not None else self.mw_step
+        power = power if power is not None else self.sweep_mw_power
+
         limits = self.get_hw_constraints()
         if self.module_state() != 'locked':
             if isinstance(start, (int, float)):
@@ -994,33 +1002,30 @@ class ODMRLogic(GenericLogic):
 
         return fig
 
-    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, channel, runtime,
-                                 fit_function='No Fit', save_after_meas=True, name_tag=''):
-        """ An independant method, which can be called by a task with the proper input values
-            to perform an odmr measurement.
+    # Scripting zone
+    #
+    # The methods bellow are meant to be used be external script which have their own thread.
+
+    def perform_odmr_measurement(self, freq_start=None, freq_step=None, freq_stop=None, power=None, channel=0,
+                                 runtime=None, fit_function='No Fit', save_after_meas=True, name_tag=''):
+        """ An independent method, which can be called by a task or script to perform an odmr measurement.
 
         @return
         """
-        timeout = 30
         start_time = time.time()
         while self.module_state() != 'idle':
             time.sleep(0.5)
-            timeout -= (time.time() - start_time)
-            if timeout <= 0:
+            if time.time() - start_time > 30:
                 self.log.error('perform_odmr_measurement failed. Logic module was still locked '
                                'and 30 sec timeout has been reached.')
                 return tuple()
 
         # set all relevant parameter:
         self.set_sweep_parameters(freq_start, freq_stop, freq_step, power)
-        self.set_runtime(runtime)
+        if runtime is not None:
+            self.set_runtime(runtime)
 
-        # start the scan
         self.start_odmr_scan()
-
-        # wait until the scan has started
-        while self.module_state() != 'locked':
-            time.sleep(1)
         # wait until the scan has finished
         while self.module_state() == 'locked':
             time.sleep(1)
@@ -1037,3 +1042,13 @@ class ODMRLogic(GenericLogic):
             self.save_odmr_data(tag=name_tag)
 
         return self.odmr_plot_x, self.odmr_plot_y, fit_params
+
+    def stop_odmr_scan_sync(self):
+        """ Stop the acquistion normally but wait for it to be over before returning
+
+        This method blocks the caller's thread and not this module's thread.
+        """
+        self.stop_odmr_scan()
+        while self.module_state() == 'locked':
+            time.sleep(0.1)
+        return

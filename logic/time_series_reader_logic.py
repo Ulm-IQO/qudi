@@ -812,3 +812,32 @@ class TimeSeriesReaderLogic(GenericLogic):
             self.module_state.unlock()
             self.sigStatusChanged.emit(False, False)
         return 0
+
+    # Scripting zone
+    #
+    # The methods bellow are meant to be used be external script which have their own thread.
+
+    def get_average_value(self, duration):
+        """ Get the average value on a given duration over all channels
+
+        @param (float) duration: The approximate duration on which average should be computed.
+
+        @return (np.array): An array of the average value of each active channels
+
+        """
+        if duration > self.trace_window_size:
+            self.log.error('Trace window duration ({} s) is smaller that required duration ({} s)'.format(
+                self.trace_window_size, duration))
+        bins = int(duration * self.data_rate)
+        return self._trace_data[:, -bins:].mean(axis=1)
+
+    def get_average_value_recorded_data(self):
+        """ Get the average value of each channel on the currently recorded data
+
+        @return (np.array): An array of the average value of each active channels on the currently recorded data
+
+        """
+        if len(self._recorded_data) == 0:
+            self.log.error('There is no recorded data. Can not get average value.')
+        return np.concatenate(self._recorded_data, axis=1).mean(axis=1)
+
