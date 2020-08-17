@@ -1002,33 +1002,30 @@ class ODMRLogic(GenericLogic):
 
         return fig
 
-    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, channel, runtime,
-                                 fit_function='No Fit', save_after_meas=True, name_tag=''):
-        """ An independant method, which can be called by a task with the proper input values
-            to perform an odmr measurement.
+    # Scripting zone
+    #
+    # The methods bellow are meant to be used be external script which have their own thread.
+
+    def perform_odmr_measurement(self, freq_start=None, freq_step=None, freq_stop=None, power=None, channel=0,
+                                 runtime=None, fit_function='No Fit', save_after_meas=True, name_tag=''):
+        """ An independent method, which can be called by a task or script to perform an odmr measurement.
 
         @return
         """
-        timeout = 30
         start_time = time.time()
         while self.module_state() != 'idle':
             time.sleep(0.5)
-            timeout -= (time.time() - start_time)
-            if timeout <= 0:
+            if time.time() - start_time > 30:
                 self.log.error('perform_odmr_measurement failed. Logic module was still locked '
                                'and 30 sec timeout has been reached.')
                 return tuple()
 
         # set all relevant parameter:
         self.set_sweep_parameters(freq_start, freq_stop, freq_step, power)
-        self.set_runtime(runtime)
+        if runtime is not None:
+            self.set_runtime(runtime)
 
-        # start the scan
         self.start_odmr_scan()
-
-        # wait until the scan has started
-        while self.module_state() != 'locked':
-            time.sleep(1)
         # wait until the scan has finished
         while self.module_state() == 'locked':
             time.sleep(1)
