@@ -837,5 +837,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         @return (np.array): An array of the average value of each active channels on the currently recorded data
 
         """
+        if len(self._recorded_data) == 0:
+            self.log.error('There is no recorded data. Can not get average value.')
         return np.concatenate(self._recorded_data, axis=1).mean(axis=1)
 

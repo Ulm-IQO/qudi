@@ -1272,7 +1272,7 @@ class PoiManagerLogic(GenericLogic):
             time.sleep(0.1)
         return
 
-    def get_poi_list(self, regexp='*', check_in_range=False):
+    def get_poi_list(self, regexp='', check_in_range=False):
         """ Get a list of all the POIs filtered by a given regular expression
 
         @param (str) regexp: A regular expression to match POI names before returning
@@ -1281,9 +1281,9 @@ class PoiManagerLogic(GenericLogic):
         To learn what is a regular expression, see : https://en.wikipedia.org/wiki/Regular_expression
         """
         r = re.compile(regexp)
-        result = [name for name in self.poi_names if r.match(name)]
+        result = [name for name in self.poi_names if r.search(name)]
         if check_in_range:
-            result = [name for name in result if self.is_poi_in_range(result)]
+            result = [name for name in result if self.is_poi_in_range(name)]
         return result
 
     def is_poi_in_range(self, name, margin=0e-6, z_margin=0e-6):
