@@ -3121,6 +3121,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         self.initialize_image(get_axes=False)
         self.update_image_data()
+        self._step_counter  = self._steps_scan_second_line
         self.convert_voltage_to_position_for_image()
         self.smooth_out_position_data()
         self.signal_image_updated.emit()

@@ -865,8 +865,6 @@ class Scanner3DGui(GUIBase):
     def ready_clicked(self):
         """ Stop the scan if the state has switched to ready. """
         if self._scanner_logic.module_state() == 'locked':
-            # Todo: Needs to be implemented when option in logic exists
-            # self._scanner_logic.permanent_scan = False
             self._scanner_logic.stop_3D_scan()
 
         self.enable_scan_actions()
