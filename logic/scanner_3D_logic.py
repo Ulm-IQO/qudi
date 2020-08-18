@@ -620,7 +620,7 @@ class Scanner3DLogic(GenericLogic):
             new_counts.append(np.concatenate(new_counts_uo))
 
             # save data
-            self.save_to_npy("SPCM" + '_{0}_'.format(self._counts_ch[i].replace('/', '')) + name_save_addition,
+            self.save_to_npy("SPCM" + '_{0}'.format(self._counts_ch[i].replace('/', '')) + name_save_addition,
                              np.split(new_counts[i], length_scan), line_number)
             # make data available
             self.image_results[self._scan_counter, :, :, i] = np.split(new_counts[i], self._dim_medium_axis)
@@ -643,7 +643,7 @@ class Scanner3DLogic(GenericLogic):
 
             for key, value in new_counts_analog.items():
                 # save data
-                self.save_to_npy(self._ai_axes[key] + "_" + name_save_addition,
+                self.save_to_npy(self._ai_axes[key] + name_save_addition,
                                  np.split(value, length_scan), line_number)
                 # make data available
                 index_ai = self.current_ai_axes.index(key)
