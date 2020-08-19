@@ -66,6 +66,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.is_running_lock = Lock()       # released when all epochs done
         self.wait_for_start_lock = Lock()
         self.is_calibmode_lintau = False    # calibration mode
+        self.calibmode_mode = 'tau'
         self.is_no_qudi = False             # run in own thread, avoid all calls to qudi
 
         self.jumptable = None
@@ -200,11 +201,12 @@ class MFL_IRQ_Driven(GenericLogic):
             pickle.dump(mes, file)
 
     def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, nowait_callback=False,
-             z_thresh=0.5, calibmode_lintau=False, b0_gauss=None):
+             z_thresh=0.5, calibmode_lintau=False, b0_gauss=None, clin_mode='tau'):
 
         self.i_epoch = 0
         self.is_running = False
         self.is_calibmode_lintau = calibmode_lintau
+        self.calibmode_mode = clin_mode
         self.n_epochs = int(n_epochs)
         self.nolog_callback = nolog_callback
         self.nowait_callback = nowait_callback
@@ -1062,28 +1064,42 @@ class MFL_IRQ_Driven(GenericLogic):
         return 8*self.jumptable['n'][idx_jumptable]
 
 
+    def _calc_next_exp_linear(self, last_tau, last_n, n_val, tau_val, last_phase):
+        # calibration mode: play taus linear after each other
+        if last_phase == np.max(self.jumptable['read_phase']):
+            if self.calibmode_mode == 'tau':
+                _, tau_val = self._find_next_greatest(self.jumptable['tau'], last_tau)
+            elif self.calibmode_mode == 'n':
+                _, n_val = self._find_next_greatest(8*self.jumptable['n'], last_n)
 
+        else:
+            if self.calibmode_mode == 'tau':
+                _, tau_val = self._find_nearest(self.jumptable['tau'], last_tau)
+            elif self.calibmode_mode == 'n':
+                _, n_val = self._find_nearest(8*self.jumptable['n'], last_n)
 
-    def calc_jump_addr(self, tau, n_pi, last_tau=None, readout_phase=None, last_phase=None):
+        idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
+        if idx_jumptable is -1:
+            self.log.warning("No next greatest tau. Repeating from smallest tau.")
+            _, tau_val = self._find_nearest(self.jumptable['tau'], 0)
+            idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
 
-        if self.is_calibmode_lintau:
+        return idx_jumptable, n_val, tau_val
+
+    def calc_jump_addr(self, tau, n_pi, last_tau=None, last_n_pi=None, readout_phase=None, last_phase=None):
+
+        if self.is_calibmode_lintau and self.calibmode_mode == 'tau':
             n_pi = 8*np.min(self.jumptable['n'])
             n_pi = 32  # 32, manually fix to see resonances
+        elif self.is_calibmode_lintau and self.calibmode_mode == 'n':
+            tau = 442e-9
+            n_pi = 8*np.min(self.jumptable['n'])
 
         idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau, n_pi)
 
         if self.is_calibmode_lintau:
             # calibration mode: play taus linear after each other
-            if last_phase == np.max(self.jumptable['read_phase']):
-                _, tau_val = self._find_next_greatest(self.jumptable['tau'], last_tau)
-                idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
-            else:
-                _, tau_val = self._find_nearest(self.jumptable['tau'], last_tau)
-                idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
-            if idx_jumptable is -1:
-                self.log.warning("No next greatest tau. Repeating from smallest tau.")
-                _, tau_val = self._find_nearest(self.jumptable['tau'], 0)
-                idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau_val, n_val)
+            idx_jumptable, n_val, tau_val = self._calc_next_exp_linear(last_tau, last_n_pi, n_val, tau_val, last_phase)
 
         # search available phases for this tau
         # search all phases for idx assuming that taus are ordered
@@ -1297,6 +1313,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.timestamp(self.i_epoch, TimestampEvent.irq_start)
         last_tau = self.taus[self.i_epoch, 0]  # get tau of experiment
         last_phase = self.read_phases[self.i_epoch, 0]
+        last_n_pi = self.n_pi[self.i_epoch, 0]
         #"""
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result(wait_for_data=not self.nowait_callback)
@@ -1313,7 +1330,7 @@ class MFL_IRQ_Driven(GenericLogic):
         phase_new_req = self.calc_phase_from_posterior()
 
 
-        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, n_new_req, last_tau=last_tau,
+        idx_jumptable, addr = self.calc_jump_addr(tau_new_req, n_new_req, last_tau=last_tau, last_n_pi=last_n_pi,
                                                   readout_phase=phase_new_req, last_phase =last_phase)
         real_tau, t_seq = self.get_ts(idx_jumptable)
         real_phase = self.get_phase(idx_jumptable)
@@ -1751,7 +1768,8 @@ if __name__ == '__main__':
         nolog = False # not calibmode_lintau
 
         mfl_logic.init('mfl_xy8_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
-                       calibmode_lintau=calibmode_lintau, nowait_callback=nowait_callback, b0_gauss=b0_gauss)
+                       calibmode_lintau=calibmode_lintau, clin_mode='n',
+                       nowait_callback=nowait_callback, b0_gauss=b0_gauss)
         mfl_logic.meta_dict = meta_dict
 
         mfl_logic.save_priors = False     # OK if callback slow and hdd space doesn't matter
