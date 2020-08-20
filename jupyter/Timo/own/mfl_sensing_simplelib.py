@@ -2988,9 +2988,16 @@ class MultiDD_EstResnUncOptFish1d_PGH(MultiDD_EstAOptFish_PGH):
 
             # directly from resonance
             dA_par = np.sqrt((np.abs(self._updater.est_covariance_mtx()[0, 0])))  # MHz rad
+            Apar_noNoise = Apar
             Apar += np.random.normal(loc=0, scale=dA_par)
 
             tau_res = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
+            if tau_res <= 0:
+                tau_res = self.calc_tau_k(Apar_noNoise / (2 * np.pi), 1, no_warning=True)
+            if tau_res <= 0:
+                print("Warning: negative tau {} estimated as resonance from A_par= {} +- {} Mhz".format(tau_res,
+                                                                                                        Apar/(2*np.pi),
+                                                                                                        dA_par/(2*np.pi)))
             # add uncertainty from variance of A_par
 
             n_dd = self.round_up_to_mod(t_evol_us / (tau_res * 1e6), mod=self._restr_ndd_mod,
