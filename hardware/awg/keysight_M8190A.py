@@ -248,8 +248,8 @@ class AWGM8190A(Base, PulserInterface):
             constraints.waveform_length.default = 320
         elif self._dac_resolution == 14:
             constraints.waveform_length.step = 48
-            constraints.waveform_length.min = 240
-            constraints.waveform_length.default = 240
+            constraints.waveform_length.min = 288
+            constraints.waveform_length.default = 288
 
         constraints.a_ch_amplitude.min = 0.100     # Channels amplitude control single ended min
         constraints.a_ch_amplitude.max = 0.700      # Channels amplitude control single ended max
@@ -509,6 +509,7 @@ class AWGM8190A(Base, PulserInterface):
         self.write(":STAB2:SEQ:SEL 0")
         self.write(":STAB1:DYN ON")
         self.write(":STAB2:DYN ON")
+        # todo: for merging with master, seperate external sequence mode
         self.set_trigger_mode('trig')       # for external dynamic control, different for other usecase
 
         return 0
