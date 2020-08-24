@@ -21,13 +21,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import re
 import csv
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
+from abc import ABCMeta, abstractmethod
 from enum import Enum
 from datetime import datetime
-from PIL import Image, PngImagePlugin
 from matplotlib.backends.backend_pdf import PdfPages
 from qudi.core.util.paths import get_userdata_dir
 from qudi.core.application import Qudi
@@ -104,16 +105,21 @@ class DataFormat(Enum):
     HDF5 = 4
 
 
-class DataStorageBase:
+class DataStorageBase(metaclass=ABCMeta):
     """ Base helper class to store (measurement)data on disk in a daily directory.
     Data will always be saved in a tabular format with column headers. With most file formats rows
     are appendable.
     """
     __global_parameters = dict()
 
-    def __init__(self, column_headers='', sub_directory=None, number_format='%.15e', comments='# ',
-                 delimiter='\t', data_format=DataFormat.TEXT, image_format=ImageFormat.PNG):
+    # __int_regex = re.compile(r'\A[+-]?\d+\Z')
+    # __float_regex = re.compile(r'\A[+-]?\d+.\d+([eE][+-]?\d+)?\Z')
+
+    def __init__(self, root_dir=None, sub_directory=None, column_headers='', number_format='%.15e',
+                 comments='# ', delimiter='\t', data_format=DataFormat.TEXT,
+                 image_format=ImageFormat.PNG):
         """
+        @param str root_dir: optional, root-directory path for daily directory tree
         @param tuple|str column_headers: optional, iterable of strings containing column headers.
                                          If a single string is given, write it to file header
                                          without formatting.
@@ -135,115 +141,106 @@ class DataStorageBase:
             raise TypeError('Data headers must be str type.')
         else:
             self.column_headers = tuple(column_headers)
+        if root_dir is None:
+            self.root_dir = get_default_data_dir(create_missing=False)
+        else:
+            self.root_dir = root_dir
         self.sub_directory = sub_directory
         self.number_format = number_format
-        self.comments = str(comments)
+        self.comments = str(comments) if isinstance(comments, str) else None
         self.delimiter = delimiter
         self.data_format = data_format
         self.image_format = image_format
         return
 
-    def get_data_directory(self, timestamp=None, create_missing=True):
+    def get_daily_data_directory(self, timestamp=None, create_missing=True):
         """ Create and return daily directory to save data in.
 
         @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
         @param bool create_missing: optional, indicate if a directory should be created (True) or
                                     not (False)
         """
-        daily = get_daily_data_directory(timestamp=timestamp, create_missing=create_missing)
-        if self.sub_directory is None:
-            path = daily
-        else:
-            path = os.path.join(daily, self.sub_directory)
-        if not os.path.exists(path):
+        daily = get_daily_data_directory(root=self.root_dir,
+                                         timestamp=timestamp,
+                                         create_missing=create_missing)
+        path = daily if self.sub_directory is None else os.path.join(daily, self.sub_directory)
+        if not os.path.isdir(path):
             if create_missing:
                 os.makedirs(path, exist_ok=True)
             else:
                 raise NotADirectoryError('Data directory not found: {0}'.format(path))
         return path
 
-    def create_header(self, parameters, timestamp, include_column_header=True):
+    def create_header(self, parameters, timestamp, include_global_parameters=True,
+                      include_column_header=True):
         """
         """
-        # Gather all parameters (both global and provided) into a single dict
-        all_parameters = self.__global_parameters.copy()
-        all_parameters.update(parameters)
+        # Gather all parameters (both global and provided) into a single dict if needed
+        if include_global_parameters:
+            all_parameters = self.__global_parameters.copy()
+            all_parameters.update(parameters)
+        else:
+            all_parameters = parameters.copy()
 
-        header = self.comments + 'Saved Data on {0}.\n'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
-        header += '\nParameters:\n===========\n'
+        header_lines = list()
+        header_lines.append('Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
+        header_lines.append('')
+        header_lines.append('Parameters:')
+        header_lines.append('===========')
         for param, value in all_parameters.items():
             if isinstance(value, (float, np.floating)):
-                header += '{0}: {1:.16e}\n'.format(param, value)
+                header_lines.append('{0}: {1:.16e}'.format(param, value))
             elif isinstance(value, (int, np.integer)):
-                header += '{0}: {1:d}\n'.format(param, value)
+                header_lines.append('{0}: {1:d}'.format(param, value))
             else:
-                header += '{0}: {1}\n'.format(param, value)
-        header += '\nData:\n====='
+                header_lines.append('{0}: {1}'.format(param, value))
+        header_lines.append('')
+        header_lines.append('Data:')
+        header_lines.append('=====')
         if include_column_header:
             if isinstance(self.column_headers, str):
-                header += '\n' + self.column_headers
+                header_lines.append(self.column_headers)
             else:
-                header += '\n' + self.delimiter.join(self.column_headers)
-        if self.comments:
-            header = header.replace('\n', '{0}\n'.format(self.comments))
-        return header + '\n'
+                header_lines.append(self.delimiter.join(self.column_headers))
+        header_lines.append('')
 
-    @staticmethod
-    def create_image_metadata(timestamp):
-        # FIXME: Maybe we should put something meaningful here or get rid of it entirely...
-        metadata = dict()
-        metadata['Title'] = 'Measurement thumbnail produced by qudi'
-        metadata['Author'] = 'qudi - Software Suite'
-        metadata['Subject'] = 'Find more information on: https://github.com/Ulm-IQO/qudi'
-        metadata[
-            'Keywords'] = 'Python, Qt, experiment control, automation, measurement, framework, modular'
-        metadata['Producer'] = 'qudi - Software Suite'
-        metadata['CreationDate'] = timestamp.strftime('%Y%m%d-%H%M-%S')
-        metadata['ModDate'] = timestamp.strftime('%Y%m%d-%H%M-%S')
-        return metadata
+        line_sep = '\n' if self.comments is None else '\n{0}'.format(self.comments)
+        return line_sep.join(header_lines)
 
-    def create_file_path(self, timestamp, filename=None, nametag=None, file_extension=None):
+    def create_file_path(self, timestamp=None, filename=None, nametag=None, file_extension=None):
         """
         """
         if filename is None:
-            filename = timestamp.strftime('%Y%m%d-%H%M-%S')
-            if nametag is not None:
-                filename += '_{0}'.format(nametag)
+            if timestamp is None:
+                timestamp = datetime.now()
+            if nametag is None:
+                filename = timestamp.strftime('%Y%m%d-%H%M-%S')
+            else:
+                filename = '{0}_{1}'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), nametag)
         if file_extension is not None and not filename.endswith(file_extension):
             filename += file_extension if file_extension.startswith('.') else '.{0}'.format(
                 file_extension)
-        return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
+        return os.path.join(self.get_daily_data_directory(timestamp=timestamp, create_missing=True),
                             filename)
 
+    @abstractmethod
     def save_data(self, *args, **kwargs):
-        raise Exception('save_data not implemented! Do not use DataStorageBase class directly.')
+        pass
 
-    def save_thumbnail(self, mpl_figure, timestamp, filename=None, nametag=None):
-        # create Metadata
-        metadata = self.create_image_metadata(timestamp)
+    def save_thumbnail(self, mpl_figure, timestamp=None, filename=None, nametag=None):
         # Create file path
-        file_path = self.create_file_path(timestamp,
+        file_path = self.create_file_path(timestamp=timestamp,
                                           filename=filename,
                                           nametag=nametag,
                                           file_extension=self.image_format.value())
 
-        if self.image_format.PDF:
+        if self.image_format is ImageFormat.PDF:
             # Create the PdfPages object to which we will save the pages:
             with PdfPages(file_path) as pdf:
                 pdf.savefig(mpl_figure, bbox_inches='tight', pad_inches=0.05)
-                # We can also set the file's metadata via the PdfPages object:
-                pdf_metadata = pdf.infodict()
-                pdf_metadata.update(metadata)
-        elif self.image_format.PNG:
+        elif self.image_format is ImageFormat.PNG:
             # save the image as PNG
             mpl_figure.savefig(file_path, bbox_inches='tight', pad_inches=0.05)
-            # Use Pillow (an fork for PIL) to attach metadata to the PNG
-            png_image = Image.open(file_path)
-            png_metadata = PngImagePlugin.PngInfo()
-            for key, data in metadata.items():
-                png_metadata.add_text(key, data)
-            # save the picture again, this time including the metadata
-            png_image.save(file_path, "png", pnginfo=png_metadata)
         else:
             raise Exception('Unknown image format selected: "{0}"'.format(self.image_format))
 
@@ -251,8 +248,52 @@ class DataStorageBase:
         plt.close(mpl_figure)
         return file_path
 
-    def load_data(self, file_path):
-        raise Exception('load_data not implemented! Do not use DataStorageBase class directly.')
+    @abstractmethod
+    def load_data(self, *args, **kwargs):
+        """
+        @return np.ndarray, dict, tuple: Data as numpy array, extracted parameters, column headers
+        """
+        pass
+        # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
+        # raise Exception('Loading data is not fully implemented, yet.')
+        # parameters = dict()
+        # column_header = ''
+        # if self.data_format in (DataFormat.TEXT, DataFormat.CSV):
+        #     index = 0
+        #     in_params = False
+        #     in_data = False
+        #     with open(file_path, 'r', newline='') as file:
+        #         for line in file:
+        #             if not line.startswith(self.comments):
+        #                 file.seek(index)
+        #                 break
+        #             if line.endswith('Parameters:\n'):
+        #                 in_params = True
+        #             elif line.endswith('Data:\n'):
+        #                 in_data = True
+        #             if in_data and not line[len(self.comments):].startswith('====='):
+        #                 column_header += line[len(self.comments):]
+        #             elif in_params and ': ' in line:
+        #                 clean_param = line[len(self.comments):].strip()
+        #                 name, value_str = clean_param.rsplit(': ', 1)
+        #                 if self.__int_regex.match(value_str):
+        #                     parameters[name] = int(value_str)
+        #                 elif self.__float_regex.match(value_str):
+        #                     parameters[name] = float(value_str)
+        #                 else:
+        #                     parameters[name] = str(value_str)
+        #         reader = csv.reader(file, delimiter=self.delimiter)
+        #         data_array = np.asarray([data for data in reader])
+        #         if data_array.ndim > 1:
+        #             if data_array.shape[1] == 1:
+        #                 data_array = data_array[:, 0]
+        #                 headers = (column_header.strip(),) if column_header else tuple()
+        #             else:
+        #                 headers = tuple(
+        #                     it.strip() for it in column_header.split(self.delimiter) if it.strip())
+        #                 if len(headers) != data_array.shape[1]:
+        #                     headers = (column_header.strip(),) if column_header else tuple()
+        # return data_array, parameters, headers
 
     @classmethod
     def get_global_parameters(cls):
@@ -293,123 +334,123 @@ class DataStorageBase:
         return
 
 
-class CsvDataStorage(DataStorageBase):
-    """ Helper class to store (measurement)data on disk in a daily directory as CSV file.
-    """
-    def __init__(self, column_headers, sub_directory=None, number_format='%.15e', comments='# ',
-                 image_format=ImageFormat.PNG):
-        super().__init__(column_headers=column_headers,
-                         sub_directory=sub_directory,
-                         number_format=number_format,
-                         comments=comments,
-                         delimiter=',',
-                         data_format=DataFormat.CSV,
-                         image_format=image_format)
-
-    def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
-        """
-        """
-        # Create timestamp if missing
-        if timestamp is None:
-            timestamp = datetime.now()
-        # Determine full file path and create containing directories if needed
-        file_path = self.create_file_path(timestamp,
-                                          filename=filename,
-                                          nametag=nametag,
-                                          file_extension='.csv')
-        # Create header but do not include column headers if possible
-        header = self.create_header(parameters=parameters,
-                                    timestamp=timestamp,
-                                    include_column_header=isinstance(self.column_headers, str))
-        # Write out file
-        with open(file_path, 'w') as file:
-            # Write (commented) header
-            file.write(header)
-            # Write column headers if not already included in header string
-            if not isinstance(self.column_headers, str):
-                file.write(','.join(self.column_headers))
-            # Write numpy data array
-            np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
-        return file_path, timestamp
-
-    def load_data(self, file_path):
-        pass
-
-
-class TextDataStorage(DataStorageBase):
-    """ Helper class to store (measurement)data on disk in a daily directory as text file.
-    """
-    def __init__(self, column_headers, sub_directory=None, number_format='%.15e', comments='# ',
-                 delimiter='\t', image_format=ImageFormat.PNG):
-        super().__init__(column_headers=column_headers,
-                         sub_directory=sub_directory,
-                         number_format=number_format,
-                         comments=comments,
-                         delimiter=',',
-                         data_format=DataFormat.TEXT,
-                         image_format=image_format)
-
-    def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
-        """
-        """
-        # Create timestamp if missing
-        if timestamp is None:
-            timestamp = datetime.now()
-        # Determine full file path and create containing directories if needed
-        file_path = self.create_file_path(timestamp,
-                                          filename=filename,
-                                          nametag=nametag,
-                                          file_extension='.dat')
-        # Create header
-        header = self.create_header(parameters=parameters,
-                                    timestamp=timestamp,
-                                    include_column_header=True)
-        # Write out file
-        with open(file_path, 'w') as file:
-            # Write (commented) header
-            file.write(header)
-            # Write numpy data array
-            np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
-        return file_path, timestamp
-
-    def load_data(self, file_path):
-        pass
-
-
-class NumpyDataStorage(DataStorageBase):
-    """ Helper class to store (measurement)data on disk in a daily directory as binary .npy or
-    compressed .npz file.
-    """
-    def __init__(self, sub_directory=None, image_format=ImageFormat.PNG):
-        super().__init__(sub_directory=sub_directory,
-                         data_format=DataFormat.NPY,
-                         image_format=image_format)
-
-    def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
-        """
-        """
-        # Create timestamp if missing
-        if timestamp is None:
-            timestamp = datetime.now()
-        # Determine full file path and create containing directories if needed
-        file_path = self.create_file_path(timestamp,
-                                          filename=filename,
-                                          nametag=nametag,
-                                          file_extension='.npy')
-        param_file_path = file_path.rsplit('.npy', 1)[0] + '_parameters.txt'
-        # Create header to save in a separate text file
-        header = self.create_header(parameters=parameters,
-                                    timestamp=timestamp,
-                                    include_column_header=True)
-        with open(param_file_path, 'w') as file:
-            file.write(header)
-
-        # Write out data file
-        with open(file_path, 'wb') as file:
-            # Write numpy data array in binary format
-            np.save(file, data, allow_pickle=False, fix_imports=False)
-        return file_path, timestamp
-
-    def load_data(self, file_path):
-        pass
-
+# class CsvDataStorage(DataStorageBase):
+#     """ Helper class to store (measurement)data on disk in a daily directory as CSV file.
+#     """
+#     def __init__(self, column_headers, sub_directory=None, number_format='%.15e', comments='# ',
+#                  image_format=ImageFormat.PNG):
+#         super().__init__(column_headers=column_headers,
+#                          sub_directory=sub_directory,
+#                          number_format=number_format,
+#                          comments=comments,
+#                          delimiter=',',
+#                          data_format=DataFormat.CSV,
+#                          image_format=image_format)
+#
+#     def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
+#         """
+#         """
+#         # Create timestamp if missing
+#         if timestamp is None:
+#             timestamp = datetime.now()
+#         # Determine full file path and create containing directories if needed
+#         file_path = self.create_file_path(timestamp,
+#                                           filename=filename,
+#                                           nametag=nametag,
+#                                           file_extension='.csv')
+#         # Create header but do not include column headers if possible
+#         header = self.create_header(parameters=parameters,
+#                                     timestamp=timestamp,
+#                                     include_column_header=isinstance(self.column_headers, str))
+#         # Write out file
+#         with open(file_path, 'w') as file:
+#             # Write (commented) header
+#             file.write(header)
+#             # Write column headers if not already included in header string
+#             if not isinstance(self.column_headers, str):
+#                 file.write(','.join(self.column_headers))
+#             # Write numpy data array
+#             np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
+#         return file_path, timestamp
+#
+#     def load_data(self, file_path):
+#         pass
+#
+#
+# class TextDataStorage(DataStorageBase):
+#     """ Helper class to store (measurement)data on disk in a daily directory as text file.
+#     """
+#     def __init__(self, column_headers, sub_directory=None, number_format='%.15e', comments='# ',
+#                  delimiter='\t', image_format=ImageFormat.PNG):
+#         super().__init__(column_headers=column_headers,
+#                          sub_directory=sub_directory,
+#                          number_format=number_format,
+#                          comments=comments,
+#                          delimiter=',',
+#                          data_format=DataFormat.TEXT,
+#                          image_format=image_format)
+#
+#     def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
+#         """
+#         """
+#         # Create timestamp if missing
+#         if timestamp is None:
+#             timestamp = datetime.now()
+#         # Determine full file path and create containing directories if needed
+#         file_path = self.create_file_path(timestamp,
+#                                           filename=filename,
+#                                           nametag=nametag,
+#                                           file_extension='.dat')
+#         # Create header
+#         header = self.create_header(parameters=parameters,
+#                                     timestamp=timestamp,
+#                                     include_column_header=True)
+#         # Write out file
+#         with open(file_path, 'w') as file:
+#             # Write (commented) header
+#             file.write(header)
+#             # Write numpy data array
+#             np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
+#         return file_path, timestamp
+#
+#     def load_data(self, file_path):
+#         pass
+#
+#
+# class NumpyDataStorage(DataStorageBase):
+#     """ Helper class to store (measurement)data on disk in a daily directory as binary .npy or
+#     compressed .npz file.
+#     """
+#     def __init__(self, sub_directory=None, image_format=ImageFormat.PNG):
+#         super().__init__(sub_directory=sub_directory,
+#                          data_format=DataFormat.NPY,
+#                          image_format=image_format)
+#
+#     def save_data(self, data, parameters=None, filename=None, nametag=None, timestamp=None):
+#         """
+#         """
+#         # Create timestamp if missing
+#         if timestamp is None:
+#             timestamp = datetime.now()
+#         # Determine full file path and create containing directories if needed
+#         file_path = self.create_file_path(timestamp,
+#                                           filename=filename,
+#                                           nametag=nametag,
+#                                           file_extension='.npy')
+#         param_file_path = file_path.rsplit('.npy', 1)[0] + '_parameters.txt'
+#         # Create header to save in a separate text file
+#         header = self.create_header(parameters=parameters,
+#                                     timestamp=timestamp,
+#                                     include_column_header=True)
+#         with open(param_file_path, 'w') as file:
+#             file.write(header)
+#
+#         # Write out data file
+#         with open(file_path, 'wb') as file:
+#             # Write numpy data array in binary format
+#             np.save(file, data, allow_pickle=False, fix_imports=False)
+#         return file_path, timestamp
+#
+#     def load_data(self, file_path):
+#         pass
+#
