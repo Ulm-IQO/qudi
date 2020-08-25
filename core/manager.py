@@ -1157,6 +1157,17 @@ class Manager(QtCore.QObject):
             If the module is already loaded, just activate it.
             If the module is an active GUI module, show its window.
         """
+
+        if QtCore.QThread.currentThread() is not self.thread():
+            QtCore.QMetaObject.invokeMethod(
+                self,
+                'startModule',
+                QtCore.Qt.BlockingQueuedConnection,
+                QtCore.Q_ARG(str, str(base)),
+                QtCore.Q_ARG(str, str(key))
+            )
+            return self.tree['loaded'][base][key].module_state() == 'deactivated'
+
         deps = self.getRecursiveModuleDependencies(base, key)
         sorteddeps = toposort(deps)
         if len(sorteddeps) == 0:
