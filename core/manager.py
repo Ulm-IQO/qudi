@@ -1372,6 +1372,7 @@ class Manager(QtCore.QObject):
             self.realQuit()
 
     @QtCore.Slot()
+    @QtCore.Slot(bool)
     def realQuit(self, restart=False):
         """ Stop all modules, no questions asked. """
         deps = self.getAllRecursiveModuleDependencies(self.tree['loaded'])
