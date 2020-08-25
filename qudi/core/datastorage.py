@@ -38,7 +38,7 @@ def get_default_data_dir(create_missing=False):
     qudi instance and extract the desired root directory from the loaded config. If this fails, fall
     back to the default qudi userdata directory (usually user home dir).
 
-    @property:
+    @param bool create_missing: optional, flag indicating if directories will be created if missing
     """
     qudi = Qudi.instance()
     if qudi is None:
@@ -105,8 +105,13 @@ class DataFormat(Enum):
 
 
 class DataStorageBase(metaclass=ABCMeta):
-    """ Base helper class to store (measurement)data on disk. Creates daily directory structure to
-    store data in by default.
+    """ Base helper class to store (measurement)data on disk. Optionally creates daily directory
+    structure to store data in (default).
+    Subclasses provide the functionality to save and load measurement data
+    (including experiment metadata) to/from disc in a specific file format.
+    Metadata can include so called "global parameters" which are shared named parameters that can
+    be globally set in this Python process. These should represent parameters that are shared
+    across different kind of measurements.
     """
     __global_parameters = dict()
 
@@ -141,11 +146,13 @@ class DataStorageBase(metaclass=ABCMeta):
         return
 
     def get_data_directory(self, timestamp=None, create_missing=True):
-        """ Create and return directory path to save data in.
+        """ Create (optional) and return directory path to save data in.
 
         @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
         @param bool create_missing: optional, indicate if a directory should be created (True) or
                                     not (False)
+
+        @return str: Absolute path to the data directory
         """
         if self.use_daily_dir:
             daily = get_daily_data_directory(root=self.root_dir,
@@ -159,7 +166,14 @@ class DataStorageBase(metaclass=ABCMeta):
         return path
 
     def create_file_path(self, timestamp=None, filename=None, nametag=None):
-        """
+        """ Creates a generic filename if none has been given and constructs an absolute path to
+        the file to be saved. Creates all necessary directories along the way.
+
+        @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
+        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
+        @param str nametag: optional, nametag to include in the generic filename
+
+        @return str: Full absolute path of the data file
         """
         if filename is None:
             if timestamp is None:
@@ -174,6 +188,17 @@ class DataStorageBase(metaclass=ABCMeta):
                             filename)
 
     def save_thumbnail(self, mpl_figure, timestamp=None, filename=None, nametag=None):
+        """ Save a matplotlib figure visualizing the saved data in the image format provided.
+        Providing the same timestamp and nametag as was used for saving data will result in the same
+        generic file name (excluding the extension and provided no explicit filename is given).
+
+        @param matplotlib.figure.Figure mpl_figure: The matplotlib figure object to save as image
+        @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
+        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
+        @param str nametag: optional, nametag to include in the generic filename
+
+        @return str: Full absolute path of the saved image
+        """
         # Create file path
         file_path = self.create_file_path(timestamp=timestamp,
                                           filename=filename,
@@ -195,55 +220,34 @@ class DataStorageBase(metaclass=ABCMeta):
         return file_path
 
     @abstractmethod
-    def save_data(self, *args, **kwargs):
+    def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
+        """ This method must be implemented in a subclass. It should provide the facility to save an
+        entire measurement as a whole along with experiment parameters (to include e.g. in the file
+        header). The user can either specify an explicit filename or a generic one will be created.
+        If optional nametag and/or timestamp is provided, this will be used to create the generic
+        filename (only if filename parameter is omitted).
+
+        @param numpy.ndarray data: data array to be saved (must be 1D or 2D for text files)
+        @param dict parameters: optional, named parameters to be saved in the data header / metadata
+        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
+        @param str nametag: optional, nametag to include in the generic filename
+        @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
+
+        @return (str, datetime.datetime, tuple): Full file path, timestamp used, saved data shape
+        """
         pass
 
     @abstractmethod
-    def load_data(self, *args, **kwargs):
-        """
+    def load_data(self, file_path):
+        """ This method must be implemented in a subclass. It should provide the facility to load a
+        saved data set including the metadata/experiment parameters and column headers
+        (if possible).
+
+        @param str file_path: The path pointing to the data file to be loaded
+
         @return np.ndarray, dict, tuple: Data as numpy array, extracted parameters, column headers
         """
         pass
-        # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
-        # raise Exception('Loading data is not fully implemented, yet.')
-        # parameters = dict()
-        # column_header = ''
-        # if self.data_format in (DataFormat.TEXT, DataFormat.CSV):
-        #     index = 0
-        #     in_params = False
-        #     in_data = False
-        #     with open(file_path, 'r', newline='') as file:
-        #         for line in file:
-        #             if not line.startswith(self.comments):
-        #                 file.seek(index)
-        #                 break
-        #             if line.endswith('Parameters:\n'):
-        #                 in_params = True
-        #             elif line.endswith('Data:\n'):
-        #                 in_data = True
-        #             if in_data and not line[len(self.comments):].startswith('====='):
-        #                 column_header += line[len(self.comments):]
-        #             elif in_params and ': ' in line:
-        #                 clean_param = line[len(self.comments):].strip()
-        #                 name, value_str = clean_param.rsplit(': ', 1)
-        #                 if self.__int_regex.match(value_str):
-        #                     parameters[name] = int(value_str)
-        #                 elif self.__float_regex.match(value_str):
-        #                     parameters[name] = float(value_str)
-        #                 else:
-        #                     parameters[name] = str(value_str)
-        #         reader = csv.reader(file, delimiter=self.delimiter)
-        #         data_array = np.asarray([data for data in reader])
-        #         if data_array.ndim > 1:
-        #             if data_array.shape[1] == 1:
-        #                 data_array = data_array[:, 0]
-        #                 headers = (column_header.strip(),) if column_header else tuple()
-        #             else:
-        #                 headers = tuple(
-        #                     it.strip() for it in column_header.split(self.delimiter) if it.strip())
-        #                 if len(headers) != data_array.shape[1]:
-        #                     headers = (column_header.strip(),) if column_header else tuple()
-        # return data_array, parameters, headers
 
     @classmethod
     def get_global_parameters(cls):
@@ -329,9 +333,10 @@ class TextDataStorage(DataStorageBase):
         # Gather all parameters (both global and provided) into a single dict if needed
         if self.include_global_parameters:
             all_parameters = self.__global_parameters.copy()
-            all_parameters.update(parameters)
         else:
-            all_parameters = parameters.copy()
+            all_parameters = dict()
+        if parameters is not None:
+            all_parameters.update(parameters)
 
         header_lines = list()
         header_lines.append('Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
@@ -360,6 +365,16 @@ class TextDataStorage(DataStorageBase):
         return line_sep.join(header_lines)
 
     def new_data_file(self, *, parameters=None, filename=None, nametag=None, timestamp=None):
+        """ Create a new data file on disk and write header string to it. Will overwrite old files
+        silently if they have the same path.
+
+        @param dict parameters: optional, named parameters to be saved in the data header / metadata
+        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
+        @param str nametag: optional, nametag to include in the generic filename
+        @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
+
+        @return (str, datetime.datetime): Full file path, timestamp used
+        """
         # Create timestamp if missing
         if timestamp is None:
             timestamp = datetime.now()
@@ -373,7 +388,14 @@ class TextDataStorage(DataStorageBase):
         return file_path, timestamp
 
     def append_data_file(self, data, file_path=None):
-        """
+        """ Append single or multiple rows to an existing data file.
+        If no explicit file_path is given, data will be appended to the last file created with
+        "new_data_file()".
+
+        @param numpy.ndarray data: data array to be appended (1D: single row, 2D: multiple rows)
+        @param str file_path: optional, explicit file path to append to (default: last written file)
+
+        @return (int, int): Number of rows written, Number of columns written
         """
         if file_path is None:
             file_path = self._current_data_file
@@ -394,7 +416,7 @@ class TextDataStorage(DataStorageBase):
         return (1, data.shape[0]) if data.ndim == 1 else data.shape
 
     def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
-        """
+        """ See: DataStorageBase.save_data()
         """
         # Create new data file (overwrite old one if it exists)
         file_path, timestamp = self.new_data_file(parameters=parameters,
@@ -406,7 +428,48 @@ class TextDataStorage(DataStorageBase):
         return file_path, timestamp, (rows, columns)
 
     def load_data(self, file_path):
-        pass
+        """ See: DataStorageBase.load_data()
+        """
+        raise Exception('Not yet implemented!')
+        # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
+        # parameters = dict()
+        # column_header = ''
+        # if self.data_format in (DataFormat.TEXT, DataFormat.CSV):
+        #     index = 0
+        #     in_params = False
+        #     in_data = False
+        #     with open(file_path, 'r', newline='') as file:
+        #         for line in file:
+        #             if not line.startswith(self.comments):
+        #                 file.seek(index)
+        #                 break
+        #             if line.endswith('Parameters:\n'):
+        #                 in_params = True
+        #             elif line.endswith('Data:\n'):
+        #                 in_data = True
+        #             if in_data and not line[len(self.comments):].startswith('====='):
+        #                 column_header += line[len(self.comments):]
+        #             elif in_params and ': ' in line:
+        #                 clean_param = line[len(self.comments):].strip()
+        #                 name, value_str = clean_param.rsplit(': ', 1)
+        #                 if self.__int_regex.match(value_str):
+        #                     parameters[name] = int(value_str)
+        #                 elif self.__float_regex.match(value_str):
+        #                     parameters[name] = float(value_str)
+        #                 else:
+        #                     parameters[name] = str(value_str)
+        #         reader = csv.reader(file, delimiter=self.delimiter)
+        #         data_array = np.asarray([data for data in reader])
+        #         if data_array.ndim > 1:
+        #             if data_array.shape[1] == 1:
+        #                 data_array = data_array[:, 0]
+        #                 headers = (column_header.strip(),) if column_header else tuple()
+        #             else:
+        #                 headers = tuple(
+        #                     it.strip() for it in column_header.split(self.delimiter) if it.strip())
+        #                 if len(headers) != data_array.shape[1]:
+        #                     headers = (column_header.strip(),) if column_header else tuple()
+        # return data_array, parameters, headers
 
 
 class CsvDataStorage(TextDataStorage):
@@ -430,7 +493,7 @@ class CsvDataStorage(TextDataStorage):
         super().__init__(**kwargs)
 
     def create_header(self, parameters, timestamp):
-        """
+        """ See: TextDataStorage.create_header()
         """
         if isinstance(self.column_headers, str):
             header = super().create_header(parameters, timestamp, True)
@@ -441,7 +504,9 @@ class CsvDataStorage(TextDataStorage):
         return header
 
     def load_data(self, file_path):
-        pass
+        """ See: DataStorageBase.load_data()
+        """
+        raise Exception('Not yet implemented!')
 
 
 class NumpyDataStorage(DataStorageBase):
@@ -452,27 +517,16 @@ class NumpyDataStorage(DataStorageBase):
         kwargs['comments'] = None
         super().__init__(**kwargs)
 
-    def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
-        """
-        """
-        # Create new data file (overwrite old one if it exists)
-        file_path, timestamp = self.new_data_file(parameters=parameters,
-                                                  filename=filename,
-                                                  nametag=nametag,
-                                                  timestamp=timestamp)
-        # Append data to file
-        rows, columns = self.append_data_file(data)
-        return file_path, timestamp, (rows, columns)
-
     def create_header(self, parameters, timestamp, data_filename, include_column_headers=True):
         """
         """
         # Gather all parameters (both global and provided) into a single dict if needed
         if self.include_global_parameters:
             all_parameters = self.__global_parameters.copy()
-            all_parameters.update(parameters)
         else:
-            all_parameters = parameters.copy()
+            all_parameters = dict()
+        if parameters is not None:
+            all_parameters.update(parameters)
 
         header_lines = list()
         header_lines.append(
@@ -505,7 +559,12 @@ class NumpyDataStorage(DataStorageBase):
         return line_sep.join(header_lines)
 
     def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
-        """
+        """ Saves a binary file containing the data array.
+        Also saves alongside a text file containing the (global) parameters and column headers for
+        this data set. The filename of the text file will be the same as for the binary file
+        appended by "_parameters".
+
+        For more information see: DataStorageBase.save_data()
         """
         # Create timestamp if missing
         if timestamp is None:
@@ -528,4 +587,6 @@ class NumpyDataStorage(DataStorageBase):
         return file_path, timestamp, data.shape
 
     def load_data(self, file_path):
-        pass
+        """ See: DataStorageBase.load_data()
+        """
+        raise Exception('Not yet implemented!')
