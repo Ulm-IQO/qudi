@@ -58,8 +58,7 @@ class Qutau(Base, DataInStreamInterface):
         self.__buffer_size = 1
         self.__use_circular_buffer = False
         self.__streaming_mode = None
-        self.__active_channels = [1, 2]
-        self.last_time = time.time()
+        self.__active_channels = [1, 2]  # todo list from config
         # Data buffer
         self._data_buffer = np.empty(0, dtype=self.__data_type)
         self._has_overflown = False
@@ -857,14 +856,15 @@ class Qutau(Base, DataInStreamInterface):
                     data_array = np.append(data_array, data[0:len(self.available_channels)])
 
             # print(counter, available_samples, self._exp_time)
-            raw_data = data_array.reshape(self._exp_time * available_samples // exp_time, len(self.available_channels)).transpose()
+            raw_data = data_array.reshape(self._exp_time * available_samples // exp_time,
+                                          len(self.available_channels)).transpose()
             return_data = np.empty((available_samples, len(self.available_channels)))
             increment = int(self._exp_time // exp_time)
             try:
                 for i in range(available_samples):
-                    return_data[i] = np.sum(raw_data[:, increment * i:(i+1) * increment], axis=1)
+                    return_data[i] = np.sum(raw_data[:, increment * i:(i + 1) * increment], axis=1)
             except ValueError:
-                print(raw_data, available_samples, len(raw_data[0]//self._exp_time))
+                print(raw_data, available_samples, len(raw_data[0] // self._exp_time))
 
             return return_data.transpose()
         else:

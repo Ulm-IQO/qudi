@@ -3,6 +3,7 @@ import numpy as np
 import time
 from qtpy import QtCore
 import ctypes
+import threading
 
 from core.module import Base
 from core.configoption import ConfigOption
@@ -55,6 +56,10 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+
+        self.hardware_thread = QtCore.QThread()
+        self._start_measure = False
+        self._threadlock = Mutex()
         self._dll = ctypes.windll.LoadLibrary('tdcbase')
         self._number_of_gates = 0
         self.err_dict = {-1: 'unspecified error',
@@ -173,6 +178,7 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
         Sets the size of a ring buffer that stores the timestamps of the last detected events. The buffer's
         contents can be retrieved with TDC_getLastTimestamps. By default, the buffersize is 0. When the function
         is called, the buffer is cleared. """
+        # print(size)
         ans = self._dll.TDC_setTimestampBufferSize(size)
         if ans != 0:
             print("Error in TDC_setTimestampBufferSize: " + self.err_dict[ans])
@@ -204,7 +210,8 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
 
         """
         if self._number_of_gates:
-            timestamps = np.zeros((self._number_of_gates, int(self._bufferSize)), dtype=np.int64)
+            timestamps = np.zeros(int(self._bufferSize),
+                                  dtype=np.int64)  # np.concatenate(np.zeros((self._number_of_gates, int(self._bufferSize)), dtype=np.int64))
             channels = np.zeros(int(self._bufferSize), dtype=np.int8)
             valid = ctypes.c_int32()
 
@@ -217,10 +224,11 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
                                               channels.ctypes.data_as(ctypes.POINTER(ctypes.c_int8)),
                                               ctypes.byref(valid))
 
+        print("Writing", time.time() - curr_t)
         if ans != 0:  # "never fails"
             print("Error in TDC_getLastTimestamps: " + self.err_dict[ans])
 
-        return timestamps, channels, valid.value
+        return timestamps.value, channels.value, valid.value
 
     def setExposureTime(self, expTime):
         """Set exposure time in units of ms between 0...65635 """
@@ -236,7 +244,7 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
         ans = self._dll.TDC_getCoincCounters(data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
                                              ctypes.byref(update))
         b = time.time()
-        print(b-a)
+        print(b - a)
         if update.value == 1:
             return np.array(data)
         else:
@@ -246,8 +254,113 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
             return np.array(data)
         # return np.array([np.random.randint(1, 30)])
 
+    def setSignalConditioning(self, channel, conditioning, edge, term, threshold):
+        if edge:
+            edge_value = 1  # True: Rising
+        else:
+            edge_value = 0  # False: Falling
+        # conditioning
+        # self.SCOND_TTL= 1
+        # self. SCOND_LVTTL = 2
+        # self. SCOND_NIM = 3
+        # self. SCOND_MISC = 4
+        # scond_none = 5
+        ans = self._dll.TDC_configureSignalConditioning(channel, conditioning, edge_value, term, threshold)
+        if ans != 0:
+            print("Error in TDC_configureSignalConditioning: " + self.err_dict[ans])
+        return ans
+
+    def enableStartStop(self, enable):
+        """Enable Start Stop Histograms.
+
+        Enables the calculation of start stop histograms. When enabled, all incoming events contribute to the
+        histograms. When disabled, all corresponding functions are unavailable. Disabling saves a relevant amount of
+        memory and CPU load. The function implicitly clears the histograms. Use TDC_freezeBuffers to interrupt the
+        accumulation of events without clearing the functions and TDC_clearAllHistograms to clear without interrupt. """
+        if enable:
+            ena_value = 1
+        else:
+            ena_value = 0
+        ans = self._dll.TDC_enableStartStop(ena_value)
+        if ans != 0:
+            print("Error in TDC_enableStartStop: " + self.err_dict[ans])
+        return ans
+
+    def setHistogramParams(self, binWidth, binCount):
+        """Set Start Stop Histogram Parameters.
+
+        Sets parameters for the internally generated start stop histograms. If the function is not called,
+        default values are in place. When the function is called, all collected histogram data are cleared. """
+        self._StartStopBinCount = binCount
+        ans = self._dll.TDC_setHistogramParams(binWidth, binCount)
+        if ans != 0:
+            print("Error in TDC_setHistogramParams: " + self.err_dict[ans])
+        return ans
+
+    def getHistogramParams(self):
+        """Read back Start Stop Histogram Parameters.
+
+        Reads back the parameters that have been set with TDC_setHistogramParams. All output parameters may be NULL
+        to ignore the value. """
+        binWidth = ctypes.c_int32()
+        binCount = ctypes.c_int32()
+        ans = self._dll.TDC_getHistogramParams(ctypes.byref(binWidth), ctypes.byref(binCount))
+        if ans != 0:
+            print("Error in TDC_getHistogramParams: " + self.err_dict[ans])
+        return (binWidth.value, binCount.value)
+
+    def clearAllHistograms(self):
+        ans = self._dll.TDC_clearAllHistograms()
+        if ans != 0:
+            print("Error in TDC_clearAllHistograms: " + self.err_dict[ans])
+        return ans
+
+    def getHistogram(self, chanA, chanB, reset):
+        """Clear Start Stop Histograms.
+
+        Clears all internally generated start stop histograms, i.e. all bins are set to 0. """
+        if reset:
+            reset_value = 1
+        else:
+            reset_value = 0
+        data = np.zeros(self._StartStopBinCount, dtype=np.int32)
+        count = ctypes.c_int32()
+        tooSmall = ctypes.c_int32()
+        tooLarge = ctypes.c_int32()
+        starts = ctypes.c_int32()
+        stops = ctypes.c_int32()
+        expTime = ctypes.c_int64()
+        ans = self._dll.TDC_getHistogram(chanA, chanB, reset_value,
+                                         data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+                                         ctypes.byref(count), ctypes.byref(tooSmall), ctypes.byref(tooLarge),
+                                         ctypes.byref(starts), ctypes.byref(stops), ctypes.byref(expTime))
+        if ans != 0:
+            print("Error in TDC_getHistogram: " + self.err_dict[ans])
+
+        return data, count.value, tooSmall.value, tooLarge.value, starts.value, stops.value, expTime.value
+
+    def freezeBuffers(self, freeze):
+        """Freeze internal Buffers.
+
+        The function can be used to freeze the internal buffers, allowing to retrieve multiple histograms with the
+        same integration time. When frozen, no more events are added to the built-in histograms and timestamp buffer.
+        The coincidence counters are not affected. Initially, the buffers are not frozen. All types of histograms
+        calculated by software are affected. """
+        if freeze:
+            freeze_value = 1
+        else:
+            freeze_value = 0
+        ans = self._dll.TDC_freezeBuffers(freeze_value)
+        if ans != 0:
+            print("Error in TDC_freezeBuffers: " + self.err_dict[ans])
+
+        return ans
+
     def on_activate(self):
         ans = self.Initialize()
+        # self.setSignalConditioning(0, 2, 1, 1, 2)
+        # self.setSignalConditioning(1, 2, 1, 1, 2)
+        # self.setSignalConditioning(2, 3, False, 1)
         self.setChannels()
         self.setBufferSize(500)
         if ans != 0:
@@ -330,26 +443,11 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
         self._number_of_gates = number_of_gates
         self._number_of_bins = int(np.rint(record_length_s / bin_width_s))
         # print(int(np.rint(record_length_s / bin_width_s)))
-        self._bufferSize = int(np.rint(record_length_s / bin_width_s))
-        ans = self.setBufferSize(self._bufferSize)
-        self.counts_bin_array = np.zeros(self._number_of_bins)
-        self.start = 0
-        # if ans != 0:
-        #     print("Error in TDC_writeTimestamps: " + self.err_dict[ans])
-        # return ans
-
-        # record_length_qutau = record_length_s
-        # if self.gated:
-        #     # add time to account for AOM delay
-        #     no_of_bins = int((record_length_qutau + self.aom_delay) / self.set_binwidth(bin_width_s))
-        # else:
-        #     # subtract time to make sure no sequence trigger is missed
-        #     no_of_bins = int((record_length_qutau - self.trigger_safety) / self.set_binwidth(bin_width_s))
-        #
-        # self.set_length(no_of_bins, preset=1, cycles=number_of_gates)
-
-        # if filename is not None:
-        #     self._change_filename(filename)
+        self._bufferSize = int(np.rint(record_length_s / bin_width_s)) # calculate the lenght of the histogram array
+        # in multiples of bin
+        self._bin_size = int(bin_width_s / 81e-12)  # calculate the binning size in multiples of smallest bin size
+        self.enableStartStop(1)  # enable the start stop measurement
+        self.setHistogramParams(self._bin_size, self._bufferSize)  # set the bin size and buffer size
 
         return bin_width_s, record_length_s, number_of_gates
 
@@ -367,33 +465,28 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
 
     def start_measure(self):
         """ Start the fast counter. """
-        # ans = self.writeTimestamps()
-        ans = self.setBufferSize(self._bufferSize)
-        if ans != 0:
-            print("Error in TDC_writeTimestamps: " + self.err_dict[ans])
-        return ans
+        self.enableStartStop(1)  # enable start stop histogram of qutau
+        self.setHistogramParams(self._bin_size, self._bufferSize)  # set the histo params as above in config
+        self.freezeBuffers(0)  # release buffers to start histogram exposure
 
     def stop_measure(self):
         """ Stop the fast counter. """
-        # ans = self.stopwritingTimestamps()
-        # if ans != 0:
-        #     print("Error in TDC_writeTimestamps: " + self.err_dict[ans])
-        # return ans
-        pass
+        self.freezeBuffers(1)  # freezes all buffers
+        self.enableStartStop(0)  # stops all histogramms and clears the histo-buffer
 
     def pause_measure(self):
         """ Pauses the current measurement.
 
         Fast counter must be initially in the run state to make it pause.
         """
-        pass
+        self.freezeBuffers(1)  # freeze buffers
 
     def continue_measure(self):
         """ Continues the current measurement.
 
         If fast counter is in pause state, then fast counter will be continued.
         """
-        pass
+        self.freezeBuffers(0)  # release buffers
 
     def is_gated(self):
         """ Check the gated counting possibility.
@@ -428,41 +521,28 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
 
         If the hardware does not support these features, the values should be None
         """
-        timestamp, channel_array, _ = self.getLastTimestamps()
-        index_trigger = np.where(channel_array == self._trigger_channel)
-        timestamp_trigger = timestamp[index_trigger]
-        # trigger length in units of bin (0.081)
-        trigger_length = np.diff(timestamp_trigger)
-        # average_sequence_length = np.average(trigger_length)
-        index_count = np.where(channel_array == self._count_channel)
-        # calculate for each count event after a trigger event the time difference
-        for ii, ch in enumerate(channel_array):
-            if ch == self._trigger_channel:
-                self.start = timestamp[ii]
-            elif ch == self._count_channel:
-                bin_number = timestamp[ii] - self.start
-                if self._number_of_bins > bin_number > 0:
-                    self.counts_bin_array[bin_number] += 1
-
+        data, count, tooSmall, tooLarge, starts, stops, expTime = self.getHistogram(self._count_channel,
+                                                                                    self._trigger_channel, 0)
+        self.counts_bin_array = data
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}
 
         return self.counts_bin_array, info_dict
 
     # Slow Counter methods:
-
-    def get_constraints(self): # todo two get_constraints functions
-        """ Retrieve the hardware constrains from the counter device.
-
-        @return SlowCounterConstraints: object with constraints for the counter
-        """
-        constraints = SlowCounterConstraints() #todo in init
-        constraints.max_detectors = 8
-        constraints.min_count_frequency = 0.01526
-        constraints.max_count_frequency = 1000
-        constraints.counting_mode = [CountingMode.CONTINUOUS]  # todo not sure
-
-        return constraints
+    #
+    # def get_constraints(self): # todo two get_constraints functions
+    #     """ Retrieve the hardware constrains from the counter device.
+    #
+    #     @return SlowCounterConstraints: object with constraints for the counter
+    #     """
+    #     constraints = SlowCounterConstraints() #todo in init
+    #     constraints.max_detectors = 8
+    #     constraints.min_count_frequency = 0.01526
+    #     constraints.max_count_frequency = 1000
+    #     constraints.counting_mode = [CountingMode.CONTINUOUS]  # todo not sure
+    #
+    #     return constraints
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -518,7 +598,7 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
         """
         data = self.getCoincCounters()
         counter_data = np.array([[data[0]]]) / self._exp_time * 1000
-        # time.sleep(1/self._clock_frequency)
+
         return counter_data
 
     def get_counter_channels(self):
@@ -535,6 +615,7 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
         for ii, channel in enumerate(channels_string):
             if int(channel):
                 channel_array.append(ii)
+
         return channel_array
 
     def close_counter(self):
