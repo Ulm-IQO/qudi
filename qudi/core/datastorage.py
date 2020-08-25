@@ -29,8 +29,15 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum
 from datetime import datetime
 from matplotlib.backends.backend_pdf import PdfPages
-from qudi.core.util.paths import get_userdata_dir
-from qudi.core.application import Qudi
+try:
+    from qudi.core.util.paths import get_userdata_dir
+    from qudi.core.application import Qudi
+    __qudi_installed = True
+except ImportError:
+    __qudi_installed = False
+
+__all__ = ('get_default_data_dir', 'get_daily_data_directory', 'CsvDataStorage', 'DataFormat',
+           'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 
 def get_default_data_dir(create_missing=False):
@@ -40,13 +47,16 @@ def get_default_data_dir(create_missing=False):
 
     @param bool create_missing: optional, flag indicating if directories will be created if missing
     """
-    qudi = Qudi.instance()
-    if qudi is None:
-        path = os.path.join(get_userdata_dir(create_missing=create_missing), 'Data')
-    else:
-        path = qudi.configuration.default_data_dir
-        if path is None:
+    if __qudi_installed:
+        qudi = Qudi.instance()
+        if qudi is None:
             path = os.path.join(get_userdata_dir(create_missing=create_missing), 'Data')
+        else:
+            path = qudi.configuration.default_data_dir
+            if path is None:
+                path = os.path.join(get_userdata_dir(create_missing=create_missing), 'Data')
+    else:
+        path = os.path.join(os.path.abspath(os.path.expanduser('~')), 'Data')
     if create_missing and not os.path.exists(path):
         os.makedirs(path)
     return path
@@ -100,8 +110,8 @@ class DataFormat(Enum):
     TEXT = 0
     CSV = 1
     NPY = 2
-    XML = 3
-    HDF5 = 4
+    # XML = 3
+    # HDF5 = 4
 
 
 class DataStorageBase(metaclass=ABCMeta):
@@ -509,7 +519,7 @@ class CsvDataStorage(TextDataStorage):
         raise Exception('Not yet implemented!')
 
 
-class NumpyDataStorage(DataStorageBase):
+class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
     def __init__(self, **kwargs):
