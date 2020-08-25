@@ -493,6 +493,7 @@ class Manager(QtCore.QObject):
         """ Load configuration from file.
 
           @param str filename: path of file to be loaded
+          @param bool restart: should qudi be restarted after the reload of the config
         """
         maindir = self.getMainDir()
         configdir = os.path.join(maindir, 'config')
@@ -511,7 +512,7 @@ class Manager(QtCore.QObject):
         logger.info('Set loaded configuration to {0}'.format(filename))
         if restart:
             logger.info('Restarting Qudi after configuration reload.')
-            self.restart()
+            self.realQuit(restart=True)
 
     @QtCore.Slot(str, str)
     def reloadConfigPart(self, base, mod):
@@ -1358,7 +1359,7 @@ class Manager(QtCore.QObject):
             self.realQuit()
 
     @QtCore.Slot()
-    def realQuit(self):
+    def realQuit(self, restart=False):
         """ Stop all modules, no questions asked. """
         deps = self.getAllRecursiveModuleDependencies(self.tree['loaded'])
         sorteddeps = toposort(deps)
@@ -1379,21 +1380,7 @@ class Manager(QtCore.QObject):
                 logger.info('Deactivating module {0}.{1}'.format(base, module))
                 self.deactivateModule(base, module)
             QtCore.QCoreApplication.processEvents()
-        self.sigManagerQuit.emit(self, False)
-
-    @QtCore.Slot()
-    def restart(self):
-        """Nicely request that all modules shut down for application restart."""
-        for mbase,bdict in self.tree['loaded'].items():
-            for module in bdict:
-                try:
-                    if self.isModuleActive(mbase, module):
-                        self.deactivateModule(mbase, module)
-                except:
-                    logger.exception(
-                        'Module {0} failed to stop, continuing anyway.'.format(module))
-                QtCore.QCoreApplication.processEvents()
-        self.sigManagerQuit.emit(self, True)
+        self.sigManagerQuit.emit(self, bool(restart))
 
     @QtCore.Slot(object)
     def registerTaskRunner(self, reference):
