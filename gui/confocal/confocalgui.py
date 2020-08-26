@@ -249,9 +249,11 @@ class ConfocalGui(GUIBase):
         self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         # Add crosshair to the xy refocus scan
-        self._mw.xy_refocus_ViewWidget_2.toggle_crosshair(True, movable=False)
-        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic._initial_pos_x,
-                                                        self._optimizer_logic._initial_pos_y))
+        self._mw.xy_refocus_ViewWidget_2.toggle_crosshair(True, movable=True)
+        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.xy_refocus_ViewWidget_2.set_crosshair_size((self._optimizer_logic._X_values[1]-self._optimizer_logic._X_values[0],
+                                                            self._optimizer_logic._Y_values[1]-self._optimizer_logic._Y_values[0]))
+        self._mw.xy_refocus_ViewWidget_2.sigCrosshairDraggedPosChanged.connect(self.update_from_optimizer_xy)
 
         # Set the state button as ready button as default setting.
         self._mw.action_stop_scanning.setEnabled(False)
@@ -1115,6 +1117,17 @@ class ConfocalGui(GUIBase):
 
         self._scanning_logic.set_position('roixy', x=h_pos, y=v_pos)
         self._optimizer_logic.set_position('roixy', x=h_pos, y=v_pos)
+
+    def update_from_optimizer_xy(self, pos):
+        self._mw.xy_ViewWidget.set_crosshair_pos(pos)
+        h_pos, v_pos = pos.x(), pos.y()
+
+        self.update_slider_x(h_pos)
+        self.update_slider_y(v_pos)
+
+        self.update_input_x(h_pos)
+        self.update_input_y(v_pos)
+        self._scanning_logic.set_position('roixy', x=h_pos, y=v_pos)
 
     def update_from_roi_depth(self, pos):
         """The user manually moved the Z ROI, adjust all other GUI elements accordingly

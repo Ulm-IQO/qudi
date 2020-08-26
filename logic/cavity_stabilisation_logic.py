@@ -856,6 +856,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         maxV = max(self._start_voltage, self._end_voltage)
         self._scan_resolution = self.calculate_resolution(
             self._feedback_device.get_analogue_resolution(), [minV, maxV])
+        k = self._scan_resolution
         if self._scan_resolution == -1:
             self.log.error("Calculated scan resolution not possible")
             return -1
