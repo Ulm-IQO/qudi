@@ -38,6 +38,7 @@ class HardwarePull(QtCore.QObject):
 
     # signal to deliver the wavelength to the parent class
     sig_wavelength = QtCore.Signal(float, float)
+    sig_frequency = QtCore.Signal(float)
 
     def __init__(self, parentclass):
         super().__init__()
@@ -70,8 +71,11 @@ class HardwarePull(QtCore.QObject):
             temp1=float(self._parentclass._wavemeterdll.GetWavelength(0))
             temp2=float(self._parentclass._wavemeterdll.GetWavelength(0))
 
+            temp3=float(self._parentclass._wavemeterdll.GetFrequency(0))
+
             # send the data to the parent via a signal
             self.sig_wavelength.emit(temp1, temp2)
+            self.sig_frequency.emit(temp3)
 
 
 
@@ -116,6 +120,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # the current wavelength read by the wavemeter in nm (vac)
         self._current_wavelength = 0.0
         self._current_wavelength2 = 0.0
+        self._current_frequency = 0.0
 
 
     def on_activate(self):
@@ -145,6 +150,13 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # parameter data type of the GetWavelength function of the wavemeter
         self._wavemeterdll.GetWavelength.argtypes = [ctypes.c_double]
 
+        # define the use of the GetFrequency function of the wavemeter
+        #        self._GetFrequency = self._wavemeterdll.GetFrequency
+        # return data type of the GetFrequency function of the wavemeter
+        self._wavemeterdll.GetFrequency.restype = ctypes.c_double
+        # parameter data type of the GetFrequency function of the wavemeter
+        self._wavemeterdll.GetFrequency.argtypes = [ctypes.c_double]
+
         # define the use of the ConvertUnit function of the wavemeter
 #        self._ConvertUnit = self._wavemeterdll.ConvertUnit
         # return data type of the ConvertUnit function of the wavemeter
@@ -169,6 +181,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # connect the signals in and out of the threaded object
         self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
         self._hardware_pull.sig_wavelength.connect(self.handle_wavelength)
+        self._hardware_pull.sig_frequency.connect(self.handle_frequency)
 
         # start the event loop for the hardware
         self.hardware_thread.start()
@@ -180,6 +193,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
         self._hardware_pull.sig_wavelength.disconnect()
+        self._hardware_pull.sig_frequency.disconnect()
 
         try:
             # clean up by removing reference to the ctypes library object
@@ -199,6 +213,11 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         self._current_wavelength = wavelength1
         self._current_wavelength2 = wavelength2
+
+    def handle_frequency(self, frequency):
+        """ Function to save the frequency, when it comes in with a signal.
+        """
+        self._current_frequency = frequency
 
     def start_acqusition(self):
         """ Method to start the wavemeter software.
@@ -272,6 +291,17 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             # for vacuum just return the current wavelength
             return float(self._current_wavelength2)
         return -2.0
+
+    def get_current_frequency(self):
+        """ This method returns the current frequency.
+
+        @return float: frequency (or negative value for errors)
+        """
+
+        # return the current frequency
+        return float(self._current_frequency)
+
+
 
     def get_timing(self):
         """ Get the timing of the internal measurement thread.
