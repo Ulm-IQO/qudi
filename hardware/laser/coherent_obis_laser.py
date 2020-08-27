@@ -19,7 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.simple_laser_interface import SimpleLaserInterface
 from interface.simple_laser_interface import LaserState
 from interface.simple_laser_interface import ShutterState
@@ -38,9 +39,6 @@ class OBISLaser(Base, SimpleLaserInterface):
         com_port: 'COM3'
 
     """
-
-    _modclass = 'laser'
-    _modtype = 'hardware'
 
     eol = '\r'
     _model_name = 'UNKNOWN'
@@ -133,7 +131,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         minpower = float(self._communicate('SOUR:POW:LIM:LOW?'))
         maxpower = float(self._communicate('SOUR:POW:LIM:HIGH?'))
-        return (minpower, maxpower)
+        return minpower, maxpower
 
     def set_power(self, power):
         """ Set laser power
@@ -157,7 +155,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         low = self._communicate('SOUR:CURR:LIM:LOW?')
         high = self._communicate('SOUR:CURR:LIM:HIGH?')
 
-        return (float(low), float(high))
+        return float(low), float(high)
 
     def get_current(self):
         """ Cet current laser current

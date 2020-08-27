@@ -4,6 +4,99 @@
 
 Changes/New features:
 
+* Cleanup/Improvement/Debug of POI manager (logic and GUI)
+* New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
+image
+* Added an optional POI nametag to the POI manager. If you give this property a string value, all 
+new POIs will be named after this tag together with a consecutive integer index.
+* If using the POI manager, the currently selected active POI name will be added to savelogic as 
+global parameter. All saved data files will include this POI name in the header.
+* bug fix to how the flags are set for AWG70k
+* New POI automatic search tool added. If you click on the 'Auto POIs' tool button, POIs will be 
+automatically added in your scan image. This makes fluorescent emitter selections much faster and
+more accurately.
+* Replaced the old `pg.PlotWidget` subclass `PlotWidgetModified` with new subclasses 
+`ScanPlotWidget`, `ScanViewBox` (`pg.ViewBox`) and `ScanImageItem` (`pg.ImageItem`) to handle 
+coordinate transformations upon mouse click/drag and zooming internally. Also integrates the 
+draggable crosshair into the PlotWidget. This reduces code and improves readability in GUI modules.
+* Introduced blink correction filter to confocal and poimanager scan images (toggle in "view" menu). 
+Purely for displaying purposes; raw data is not affected by this filter.
+* Add `scan_blink_correction` filter to `core.utils.filters`
+* exposed the sequencegenerator-functions analyze_sequence and analyze_ensemble to be accessible via pulsedmaster
+* analyze functions can be called either with the appropriate objects or with the object name
+* while sampling a sequence, the ensembles are only sampled if they weren't already sampled before
+* Add `natural_sort` utility function to `core.util.helpers`
+* Bug fix to the gated extractor: now all the function parameters are loaded
+* Added a hardware file for power supply Keysight E3631A with a process control interface
+* Updated powermeter PM100D module to add ProcessInterface and wavelength support
+* Added two interfuses for interfaces process value and process control to modify the values based
+on an interpolated function
+* Changed ProcessInterface and ProcessControlInterface to use underscore case instead of CamelCase
+* Added hardware module to interface temperature controller Cryocon 22C
+* Added an optional parameter to connectors so that dependencies can be optional
+* Made ODMR logic an optional dependency in SpectrumLogic
+* Made some changes in the AWG7k file for sorting integers without natural sort
+* Removed additional scaling from sampling functions. They now return samples as as expected. 
+The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Introduced support of interface sensitive overloading of interface methods. This resolves 
+namespace conflicts within a hardware module inheriting multiple interfaces. See 
+_how_to_hardware_with_multiple_interfaces.md_ for detailed documentation.
+* Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
+* Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
+* Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* Add two different chirp functions to sampling functions and predefined methods
+* Adding Ocean optics spectrometer hardware module.
+* Removed the method `has_sequence_mode` from the `PulserInterface` 
+and rather added a `sequence_option` to the `PulserConstraints`.
+In `FORCED` mode the `SequenceGeneratorLogic` will create a default sequence around each stand-alone Ensemble.
+The potential sequence_options are: 
+  * `NON` (no sequence mode)
+  * `OPTIONAL` (sequence mode possible)
+  * `FORCED` (only output as sequence possible)
+* Added interfuse to correct geometrical aberration on scanner via polynomial transformations
+* added the option to do a purely analog ODMR scan.
+* Added new GUI, logic, interface and hardware modules to replace the "slow counter" tool in the 
+future. The new tools are designed to be able to stream any kind of time series data efficiently 
+for multiple analog and digital channels. See example config on how to set up the 
+time series/streaming modules (_time_series_gui.py_, _time_series_reader_logic.py_). 
+For a drop-in replacement of the obsolete slow counter together with a NI x-series card, 
+please use _ni_x_series_in_streamer.py_ as hardware module.
+* added multi channel option to process_interface and process_control_interface
+* added the option of an additional path for fit methods
+* added a hardware file for power supply  Teledyne T3PS3000
+* added pulse generator constraints to predefined
+* remove debug prints for flags in dummy pulser that were filling up the log
+* wider first column for ensemble and sequence editors to see long names and fixing header of first column in table of sequence editor
+* Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
+* Saving data in confocal GUI no longer freezes other GUI modules
+* Added save_pdf and save_png config options for save_logic
+* Fixed bug in spincore pulseblaster hardware that affected only old models
+* Added a netobtain in spincore pulseblaster hardware to speedup remote loading 
+* Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
+* reworked the QDPlotter to now contain fits and a scalable number of plots. Attention: custom notebooks might break by this change.
+* Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
+* Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
+* Fixed bug affecting interface overloading of Qudi modules
+*
+
+
+Config changes:
+
+* The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
+of the `SequenceGeneratorLogic` can now either be a string for a single path 
+or a list of strings for multiple paths.
+* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`
+* The connectors and file names of the GUI and logic modules of the QDPlotter have been changed.
+* QDPlotter now needs a new connection to the fit logic. 
+
+## Release 0.10
+Released on 14 Mar 2019
+Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.10
+
+Changes/New features:
+
+* Added support for Opal Kelly XEM6310-LX45 devices to HardwareSwitchFpga hardware module.
+* Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
 * Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
 * Added command line argument --logdir to specify the path to the logging directory
@@ -26,7 +119,9 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Bug fixes and support for SMD12 laser controller
 * For SMIQs added config options to additionally limit frequency and power. Added constraint for SMQ06B model.
 * Added live OMDR functionality to only calculate the average signal over a limited amount of scanned lines
-* New hardware file for Microwave source - Anritsu MG3691C has been added.
+* New hardware file for Microwave source - Anritsu MG3691C with SCPI commands has been added.
+* **Config Change:** Hardware file for mw_source_anritsu70GHz.py with class MicrowaveAnritsu70GHz was changed to file mw_source_anritsu_MG369x.py with class MicrowaveAnritsuMG369x to make it universal. Also hardware constraints are set per model.
+* Lock-In functionality was added to the ODMR counter and implemented for the NI-Card. All other hardware and interfuse with ODMRCounterInterface were updated.
 * New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
 * New hardware file for AWG - Keysight M3202A 1GS/s 4-channel PXIe AWG
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
@@ -37,8 +132,12 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Implement the switch interface for PulseBlasterESR-PRO devices.
 * Add possibility to set instruction delays in the config for PulseBlasterESR-PRO sequence generation.
 * Add a copy-paste config option to the docstrings of all current qudi hardware modules.
+* Add save logic features to add additional parameters saved with each data file
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
+    * analyze_sequence now returns all the necessary values to work with sequences.
+    * It is now possible to select no or analogue laser channels. In this case, the relevant block element gets marked as laser.
+    * Adding the possibility to reliably add flags to sequence steps and making them selectable in the GUI.
     * Bug fix for waveform generation larger than ~2 GSamples
     * Added chirp function to available analog shapes in pulsed measurements
     * Tab order in pulsed measurement GUI is now more useful

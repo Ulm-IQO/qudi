@@ -80,6 +80,13 @@ def ordered_load(stream, Loader=yaml.Loader):
         arrays = numpy.load(filename)
         return arrays['array']
 
+    def construct_frozenset(loader, node):
+        """
+        The frozenset constructor.
+        """
+        data = tuple(loader.construct_yaml_set(node))
+        return frozenset(data[0]) if data else frozenset()
+
     def construct_str(loader, node):
         """
         construct strings but if the string starts with 'array(' it tries
@@ -114,6 +121,9 @@ def ordered_load(stream, Loader=yaml.Loader):
             '!extndarray',
             construct_external_ndarray)
     OrderedLoader.add_constructor(
+        '!frozenset',
+        construct_frozenset)
+    OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
             construct_str)
 
@@ -140,33 +150,41 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         external_ndarray_counter = 0
 
-        def ignore_aliases(self, data):
+        def ignore_aliases(self, ignore_data):
             """
             ignore aliases and anchors
             """
             return True
 
-    def represent_ordereddict(dumper, data):
+    def represent_ordereddict(dumper, dict_data):
         """
         Representer for OrderedDict
         """
         return dumper.represent_mapping(
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            data.items())
+            dict_data.items())
 
-    def represent_int(dumper, data):
+    def represent_int(dumper, int_data):
         """
         Representer for numpy int dtypes
         """
-        return dumper.represent_int(numpy.asscalar(data))
+        return dumper.represent_int(numpy.asscalar(int_data))
 
-    def represent_float(dumper, data):
+    def represent_float(dumper, float_data):
         """
         Representer for numpy float dtypes
         """
-        return dumper.represent_float(numpy.asscalar(data))
+        return dumper.represent_float(numpy.asscalar(float_data))
 
-    def represent_ndarray(dumper, data):
+    def represent_frozenset(dumper, set_data):
+        """
+        Representer for frozenset
+        """
+        node = dumper.represent_set(set(set_data))
+        node.tag = '!frozenset'
+        return node
+
+    def represent_ndarray(dumper, array_data):
         """
         Representer for numpy ndarrays
         """
@@ -176,13 +194,13 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
             newpath = '{0}-{1:06}.npz'.format(
                 os.path.join(configdir, filename),
                 dumper.external_ndarray_counter)
-            numpy.savez_compressed(newpath, array=data)
+            numpy.savez_compressed(newpath, array=array_data)
             node = dumper.represent_str(newpath)
             node.tag = '!extndarray'
             dumper.external_ndarray_counter += 1
         except:
             with BytesIO() as f:
-                numpy.savez_compressed(f, array=data)
+                numpy.savez_compressed(f, array=array_data)
                 compressed_string = f.getvalue()
             node = dumper.represent_binary(compressed_string)
             node.tag = '!ndarray'
@@ -203,6 +221,7 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     OrderedDumper.add_representer(numpy.float64, represent_float)
     # OrderedDumper.add_representer(numpy.float128, represent_float)
     OrderedDumper.add_representer(numpy.ndarray, represent_ndarray)
+    OrderedDumper.add_representer(frozenset, represent_frozenset)
 
     # dump data
     return yaml.dump(data, stream, OrderedDumper, **kwds)
@@ -212,20 +231,20 @@ def load(filename):
     """
     Loads a config file
 
-    @param filename str: filename of config file
+    @param str filename: filename of config file
 
     Returns OrderedDict
     """
     with open(filename, 'r') as f:
         return ordered_load(f, yaml.SafeLoader)
 
+
 def save(filename, data):
     """
     saves data to filename in yaml format.
 
-    @param filename str: filename of config file
-    @param data OrderedDict: config values
+    @param str filename: filename of config file
+    @param OrderedDict data: config values
     """
     with open(filename, 'w') as f:
-        ordered_dump(data, stream=f, Dumper=yaml.SafeDumper,
-                default_flow_style=False)
+        ordered_dump(data, stream=f, Dumper=yaml.SafeDumper, default_flow_style=False)

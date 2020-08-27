@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from lmfit.models import Model
-from core.util.units import compute_ft
+from core.util.math import compute_ft
 
 
 ################################################################################
@@ -570,7 +570,7 @@ def estimate_sinewithoutoffset(self, x_axis, data, params):
 # Sine #
 ########
 
-def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a sine fit with a constant offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -594,9 +594,9 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = sine.fit(data, x=x_axis, params=params)
+        result = sine.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = sine.fit(data, x=x_axis, params=params)
+        result = sine.fit(data, x=x_axis, params=params, **kwargs)
         self.log.error('The sine fit did not work.\n'
                        'Error message: {0}\n'.format(result.message))
 
@@ -619,8 +619,8 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
                                     'error': result.params['frequency'].stderr,
                                     'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
 
-    result_str_dict['Phase'] = {'value': result.params['phase'].value,
-                                'error': result.params['phase'].stderr,
+    result_str_dict['Phase'] = {'value': 180/np.pi*result.params['phase'].value,
+                                'error': 180/np.pi*result.params['phase'].stderr,
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -680,7 +680,7 @@ def estimate_sine(self, x_axis, data, params):
 ##########################
 
 
-def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a sine exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -703,10 +703,10 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
 
-        result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
         self.log.error('The sineexponentialdecayoffset fit did not work.\n'
                        'Error message: {0}'.format(result.message))
 
@@ -744,8 +744,8 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
                                              result.params['amplitude'].stderr))*100,
                                    'unit': '%'}
 
-    result_str_dict['Phase'] = {'value': result.params['phase'].value,
-                                'error': result.params['phase'].stderr,
+    result_str_dict['Phase'] = {'value': 180/np.pi*result.params['phase'].value,
+                                'error': 180/np.pi*result.params['phase'].stderr,
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -856,7 +856,7 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 ###################################################
 
 
-def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -879,9 +879,9 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
+        result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
+        result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params, **kwargs)
         self.log.error('The sineexponentialdecay fit did not work.\n'
                        'Error message: {0}'.format(result.message))
 
@@ -919,8 +919,8 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
                                              result.params['amplitude'].stderr))*100,
                                    'unit': '%'}
 
-    result_str_dict['Phase'] = {'value': result.params['phase'].value,
-                                'error': result.params['phase'].stderr,
+    result_str_dict['Phase'] = {'value': 180/np.pi*result.params['phase'].value,
+                                'error': 180/np.pi*result.params['phase'].stderr,
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -965,7 +965,7 @@ def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
 ###########################################
 
 
-def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a two sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -988,11 +988,11 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = two_sine_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The twosineexpdecayoffset fit did not work. '
                          'Error message: {}'.format(str(result.message)))
-        result = two_sine_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_offset.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']
@@ -1059,12 +1059,12 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
                                              result.params[amp_string].stderr))*100,
                                    'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1119,7 +1119,7 @@ def estimate_sinedouble(self, x_axis, data, params):
 ################################################################################
 
 
-def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a two sine with one exponential decay offset fit on the provided
         data.
 
@@ -1143,11 +1143,11 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The sinedoublewithexpdecay fit did not work. '
                          'Error message: {}'.format(str(result.message)))
-        result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']
@@ -1214,12 +1214,12 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1289,7 +1289,7 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
 # Problem with stderr: x.stderr will always be 0 for this model!
 
 
-def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
 
@@ -1313,11 +1313,11 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The sinedoublewithtwoexpdecay fit did not work. '
                          'Error message: {}'.format(str(result.message)))
-        result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']
@@ -1384,12 +1384,12 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
-                                  'error': result.params['e1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['e1_phase'].value,
+                                  'error': 180/np.pi*result.params['e1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['e2_phase'].value,
-                                  'error': result.params['e2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['e2_phase'].value,
+                                  'error': 180/np.pi*result.params['e2_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Lifetime 1'] = {'value': result.params['e1_lifetime'].value,
@@ -1463,7 +1463,7 @@ def estimate_sinedoublewithtwoexpdecay(self, x_axis, data, params):
 #############################################
 
 
-def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a three sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -1486,11 +1486,11 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = two_sine_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The threesineexpdecayoffset fit did not work. '
                          'Error message: {}'.format(str(result.message)))
-        result = two_sine_offset.fit(data, x=x_axis, params=params)
+        result = two_sine_offset.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']
@@ -1587,16 +1587,16 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 3'] = {'value': result.params['s3_phase'].value,
-                                  'error': result.params['s3_phase'].stderr,
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['s3_phase'].value,
+                                  'error': 180/np.pi*result.params['s3_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1658,7 +1658,7 @@ def estimate_sinetriple(self, x_axis, data, params):
 ##########################################################################
 
 
-def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a three sine with one exponential decay offset fit on the provided
         data.
 
@@ -1681,11 +1681,11 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     params = self._substitute_params(initial_params=params, update_params=add_params)
     try:
-        result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The sinetriplewithexpdecay fit did not work. '
                          'Error message: {}'.format(str(result.message)))
-        result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']
@@ -1782,16 +1782,16 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 3'] = {'value': result.params['s3_phase'].value,
-                                  'error': result.params['s3_phase'].stderr,
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['s3_phase'].value,
+                                  'error': 180/np.pi*result.params['s3_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
@@ -1872,7 +1872,7 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
 #########################################################################
 
 
-def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a three sine with three exponential decay and offset fit on the
         provided data.
 
@@ -1896,11 +1896,11 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The twosinetwoexpdecayoffset fit did not work. '
                          'Error message: {}'.format(str(result.message)))
-        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']
@@ -1997,16 +1997,16 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
                                      'unit': '%'}
 
 
-    result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
-                                  'error': result.params['e1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['e1_phase'].value,
+                                  'error': 180/np.pi*result.params['e1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['e2_phase'].value,
-                                  'error': result.params['e2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['e2_phase'].value,
+                                  'error': 180/np.pi*result.params['e2_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 3'] = {'value': result.params['e3_phase'].value,
-                                  'error': result.params['e3_phase'].stderr,
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['e3_phase'].value,
+                                  'error': 180/np.pi*result.params['e3_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Lifetime 1'] = {'value': result.params['e1_lifetime'].value,

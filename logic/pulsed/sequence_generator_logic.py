@@ -25,15 +25,21 @@ import os
 import pickle
 import time
 import copy
+import traceback
 
 from qtpy import QtCore
 from collections import OrderedDict
-from core.module import StatusVar, Connector, ConfigOption
+from core.statusvariable import StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
+from core.util.helpers import natural_sort
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseBlockElement
-from logic.pulsed.pulse_objects import PulseObjectGenerator
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
+from interface.pulser_interface import SequenceOption
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -51,9 +57,6 @@ class SequenceGeneratorLogic(GenericLogic):
     waveform/sequence playback (pp-amplitude, sample rate, active channels etc.).
     """
 
-    _modclass = 'sequencegeneratorlogic'
-    _modtype = 'logic'
-
     # declare connectors
     pulsegenerator = Connector(interface='PulserInterface')
 
@@ -63,9 +66,9 @@ class SequenceGeneratorLogic(GenericLogic):
                                        missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
     # Optional additional paths to import from
-    additional_methods_dir = ConfigOption(name='additional_predefined_methods_path',
-                                          default=None,
-                                          missing='nothing')
+    _additional_methods_import_path = ConfigOption(name='additional_predefined_methods_path',
+                                                   default=None,
+                                                   missing='nothing')
     _sampling_functions_import_path = ConfigOption(name='additional_sampling_functions_path',
                                                    default=None,
                                                    missing='nothing')
@@ -112,14 +115,6 @@ class SequenceGeneratorLogic(GenericLogic):
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
 
-        # directory for additional generate methods to import
-        # (other than logic.predefined_generate_methods)
-        if 'additional_methods_dir' in config.keys():
-            if not os.path.exists(config['additional_methods_dir']):
-                self.log.error('Specified path "{0}" for import of additional generate methods '
-                               'does not exist.'.format(config['additional_methods_dir']))
-                self.additional_methods_dir = None
-
         # current pulse generator settings that are frequently used by this logic.
         # Save them here since reading them from device every time they are used may take some time.
         self.__activation_config = ('', set())  # Activation config name and set of active channels
@@ -129,6 +124,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self.__digital_levels = (dict(), dict())  # Tuple of two dict (<low_volt>, <high_volt>)
         # Dict keys are digital channel descriptors
         self.__interleave = False  # Flag to indicate use of interleave
+        # Set of available flags
+        self.__flags = set()
 
         # A flag indicating if sampling of a sequence is in progress
         self.__sequence_generation_in_progress = False
@@ -149,11 +146,42 @@ class SequenceGeneratorLogic(GenericLogic):
         if not os.path.exists(self._assets_storage_dir):
             os.makedirs(self._assets_storage_dir)
 
+        # directory for additional generate methods to import
+        # import path for generator modules from default dir (logic.predefined_generate_methods)
+        self._predefined_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'predefined_generate_methods')]
+
+        if self._additional_methods_import_path:
+            if isinstance(self._additional_methods_import_path, str):
+                self._additional_methods_import_path = [self._additional_methods_import_path]
+
+            if isinstance(self._additional_methods_import_path, (list, tuple, set)):
+                for method_import_path in self._additional_methods_import_path:
+                    if not os.path.exists(method_import_path):
+                        self.log.error('Specified path "{0}" for import of additional generate methods '
+                                       'does not exist.'.format(method_import_path))
+                    else:
+                        self._predefined_path_list.append(method_import_path)
+            else:
+                self.log.error('ConfigOption additional_predefined_methods_path needs to either be a string or '
+                               'a list of strings.')
+
         # Initialize SamplingFunctions class by handing over a list of paths to import
         # sampling functions from.
         sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_function_defs')]
-        if isinstance(self._sampling_functions_import_path, str):
-            sf_path_list.append(self._sampling_functions_import_path)
+        if self._sampling_functions_import_path:
+            if isinstance(self._sampling_functions_import_path, str):
+                self._sampling_functions_import_path = [self._sampling_functions_import_path]
+
+            if isinstance(self._sampling_functions_import_path, (list, tuple, set)):
+                for functions_import_path in self._sampling_functions_import_path:
+                    if not os.path.exists(functions_import_path):
+                        self.log.error('Specified path "{0}" for import of additional_sampling_functions_path '
+                                       'does not exist.'.format(functions_import_path))
+                    else:
+                        sf_path_list.append(functions_import_path)
+            else:
+                self.log.error('ConfigOption additional_sampling_functions_path needs to either be a string or '
+                               'a list of strings.')
         SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # Read back settings from device and update instance variables accordingly
@@ -239,6 +267,10 @@ class SequenceGeneratorLogic(GenericLogic):
     # Pulse generator control methods and properties
     ############################################################################
     @property
+    def predefined_methods_import_path(self):
+        return self._predefined_path_list
+
+    @property
     def pulse_generator_settings(self):
         settings_dict = dict()
         settings_dict['activation_config'] = tuple(self.__activation_config)
@@ -246,6 +278,7 @@ class SequenceGeneratorLogic(GenericLogic):
         settings_dict['analog_levels'] = tuple(self.__analog_levels)
         settings_dict['digital_levels'] = tuple(self.__digital_levels)
         settings_dict['interleave'] = bool(self.__interleave)
+        settings_dict['flags'] = set(self.__flags)
         return settings_dict
 
     @pulse_generator_settings.setter
@@ -260,11 +293,11 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @property
     def sampled_waveforms(self):
-        return self.pulsegenerator().get_waveform_names()
+        return netobtain(self.pulsegenerator().get_waveform_names())
 
     @property
     def sampled_sequences(self):
-        return self.pulsegenerator().get_sequence_names()
+        return netobtain(self.pulsegenerator().get_sequence_names())
 
     @property
     def analog_channels(self):
@@ -354,8 +387,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 # search the generation_parameters for channel specifiers and adjust them if they
                 # are no longer valid
                 changed_settings = dict()
-                ana_chnls = sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1]))
-                digi_chnls = sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1]))
+                ana_chnls = natural_sort(self.analog_channels)
+                digi_chnls = natural_sort(self.digital_channels)
                 for name in [setting for setting in self.generation_parameters if
                              setting.endswith('_channel')]:
                     channel = self.generation_parameters[name]
@@ -549,6 +582,9 @@ class SequenceGeneratorLogic(GenericLogic):
         # Read interleave flag from device
         self.__interleave = self.pulsegenerator().get_interleave()
 
+        # Read available flags from device
+        self.__flags = set(self.pulsegenerator().get_constraints().flags)
+
         # Notify new settings to listening module
         self.set_pulse_generator_settings()
         return
@@ -628,7 +664,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                      'Will add it but this could lead to unwanted effects.'
                                      ''.format(key))
             # Sanity checks
-            if 'laser_channel' in settings_dict:
+            if settings_dict.get('laser_channel'):
                 if settings_dict['laser_channel'] not in self.__activation_config[1]:
                     self.log.error('Unable to set laser channel "{0}".\nChannel to set is not part '
                                    'of the current channel activation config ({1}).'
@@ -721,6 +757,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.log.error('Failed to de-serialize PulseBlock "{0}" from file.'
                                ''.format(block_name))
                 os.remove(filepath)
+            except ModuleNotFoundError:
+                self.log.error('Failed to de-serialize PulseBlock "{0}" from file because of missing dependencies.\n'
+                               'For better debugging I dumped the traceback to debug.'.format(block_name))
+                self.log.debug('{0!s}'.format(traceback.format_exc()))
         return block
 
     def _update_blocks_from_file(self):
@@ -730,7 +770,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".block" and extract a sorted list of
         # PulseBlock names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-6] for f in scan if f.is_file and f.name.endswith('.block'))
+            names = natural_sort(f.name[:-6] for f in scan if f.is_file and f.name.endswith('.block'))
 
         # Load all blocks from file
         for block_name in names:
@@ -833,7 +873,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".ensemble" and extract a sorted list of
         # PulseBlockEnsemble names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.ensemble'))
+            names = natural_sort(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.ensemble'))
 
         # Get all waveforms currently stored on pulser hardware in order to delete outdated
         # sampling_information dicts
@@ -931,16 +971,61 @@ class SequenceGeneratorLogic(GenericLogic):
         @param str sequence_name: The name of the PulseSequence instance to de-serialize
         @return PulseSequence: The de-serialized PulseSequence instance
         """
-        sequence = None
         filepath = os.path.join(self._assets_storage_dir, '{0}.sequence'.format(sequence_name))
         if os.path.exists(filepath):
             try:
                 with open(filepath, 'rb') as file:
                     sequence = pickle.load(file)
+                # FIXME: Due to the pickling the dict namespace merging gets lost on the way.
+                # Restored it here but a better way needs to be found.
+                for step in range(len(sequence)):
+                    sequence[step].__dict__ = sequence[step]
             except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
                                ''.format(sequence_name))
                 os.remove(filepath)
+                return None
+
+        # Conversion for backwards compatibility
+        if len(sequence) > 0 and not isinstance(sequence[0].flag_high, list):
+            self.log.warning('Loading deprecated PulseSequence instances from disk. '
+                             'Attempting conversion to new format.\nIf you keep getting this '
+                             'message after reloading SequenceGeneratorLogic or restarting qudi, '
+                             'please regenerate the affected PulseSequence "{0}".'
+                             ''.format(sequence_name))
+            for step_no, step_params in enumerate(sequence):
+                # Try to convert "flag_high" step parameter
+                if isinstance(step_params.flag_high, str):
+                    if step_params.flag_high.upper() == 'OFF':
+                        sequence[step_no].flag_high = list()
+                    else:
+                        sequence[step_no].flag_high = [step_params.flag_high]
+                elif isinstance(step_params.flag_high, dict):
+                    sequence[step_no].flag_high = [flag for flag, state in
+                                                   step_params.flag_high.items() if state]
+                else:
+                    self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
+                                   '"flag_high" step parameter is of unknown type'
+                                   ''.format(sequence_name))
+                    os.remove(filepath)
+                    return None
+
+                # Try to convert "flag_trigger" step parameter
+                if isinstance(step_params.flag_trigger, str):
+                    if step_params.flag_trigger.upper() == 'OFF':
+                        sequence[step_no].flag_trigger = list()
+                    else:
+                        sequence[step_no].flag_trigger = [step_params.flag_trigger]
+                elif isinstance(step_params.flag_trigger, dict):
+                    sequence[step_no].flag_trigger = [flag for flag, state in
+                                                      step_params.flag_trigger.items() if state]
+                else:
+                    self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
+                                   '"flag_trigger" step parameter is of unknown type'
+                                   ''.format(sequence_name))
+                    os.remove(filepath)
+                    return None
+            self._save_sequence_to_file(sequence)
         return sequence
 
     def _update_sequences_from_file(self):
@@ -950,7 +1035,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".sequence" and extract a sorted list of
         # PulseSequence names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.sequence'))
+            names = natural_sort(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.sequence'))
 
         # Get all waveforms and sequences currently stored on pulser hardware in order to delete
         # outdated sampling_information dicts
@@ -1003,6 +1088,12 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         gen_method = self.generate_methods[predefined_sequence_name]
         gen_params = self.generate_method_params[predefined_sequence_name]
+        if 'name' not in gen_params:
+            self.log.error('Mandatory generation parameter "name" not found in generate method '
+                           '"{0}" arguments. Generation failed.'.format(predefined_sequence_name))
+            self.sigPredefinedSequenceGenerated.emit(None, False)
+            return
+
         # match parameters to method and throw out unwanted ones
         thrown_out_params = [param for param in kwargs_dict if param not in gen_params]
         for param in thrown_out_params:
@@ -1010,24 +1101,60 @@ class SequenceGeneratorLogic(GenericLogic):
         if thrown_out_params:
             self.log.debug('Unused params during predefined sequence generation "{0}":\n'
                            '{1}'.format(predefined_sequence_name, thrown_out_params))
+
         try:
             blocks, ensembles, sequences = gen_method(**kwargs_dict)
         except:
-            self.log.error('Generation of predefined sequence "{0}" failed.'
-                           ''.format(predefined_sequence_name))
+            self.log.exception('Generation of predefined sequence "{0}" failed with exception:'
+                               ''.format(predefined_sequence_name))
             self.sigPredefinedSequenceGenerated.emit(None, False)
-            raise
+            return
+
         # Save objects
         for block in blocks:
             self.save_block(block)
         for ensemble in ensembles:
             ensemble.sampling_information = dict()
             self.save_ensemble(ensemble)
+
+        if self.pulse_generator_constraints.sequence_option == SequenceOption.FORCED and len(sequences) < 1:
+            self.log.info('Adding default sequence for: {0:s}'.format(predefined_sequence_name))
+            self._add_default_sequence(ensembles, sequences)
+            if len(sequences) > 0:
+                self.log.debug('New default PulseSequence is: {0:s} length {1:d}'
+                               ''.format(sequences[0].name, len(sequences)))
+
         for sequence in sequences:
             sequence.sampling_information = dict()
             self.save_sequence(sequence)
-        self.sigPredefinedSequenceGenerated.emit(kwargs_dict.get('name'), len(sequences) > 0)
+
+        created_name = gen_params.get('name') if 'name' not in kwargs_dict else kwargs_dict['name']
+        self.sigPredefinedSequenceGenerated.emit(created_name, len(sequences) > 0)
         return
+
+    def _add_default_sequence(self, ensembles, sequences):
+        if not isinstance(ensembles, (list, tuple)) or len(ensembles) < 1:
+            self.log.error('It is not possible to create a default sequence, '
+                           'because there is no Ensemble to create it from.')
+            return
+        if len(ensembles) > 1:
+            self.log.warn('More then one Ensemble available for the default sequence. '
+                          'They will be chained together with one repetition each.')
+
+        measurement_info = ensembles[0].measurement_information.copy()
+        sequence = PulseSequence(name=ensembles[0].name, rotating_frame=False)
+        for ensemble in ensembles:
+            sequence.append(ensemble.name)
+            sequence[-1].repetitions = 0
+
+        sequence[-1].go_to = 1
+
+        # Trigger the calculation of parameters in the PulseSequence instance
+        sequence.refresh_parameters()
+        sequence.measurement_information = measurement_info
+
+        # Append PulseSequence to created_sequences list
+        sequences.append(sequence)
 
     # ---------------------------------------------------------------------------
     #                    END sequence/block generation
@@ -1051,15 +1178,11 @@ class SequenceGeneratorLogic(GenericLogic):
         if len(ensemble) == 0:
             return 0.0, 0, 0
 
-        # Determine the right laser channel to choose. For gated counting it should be the gate
-        # channel instead of the laser trigger.
-        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
-            'gate_channel'] else self.generation_parameters['laser_channel']
-
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+        # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
-        ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+        ens_lasers = min(len(info_dict['laser_rising_bins']), len(info_dict['laser_falling_bins']))
         return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
@@ -1076,24 +1199,18 @@ class SequenceGeneratorLogic(GenericLogic):
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
             'gate_channel'] else self.generation_parameters['laser_channel']
 
-        length_bins = 0
-        length_s = 0 if sequence.is_finite else np.inf
-        number_of_lasers = 0 if sequence.is_finite else -1
-        for seq_step in sequence:
-            ensemble = self.get_ensemble(name=seq_step.ensemble)
-            if ensemble is None:
-                length_bins = -1
-                length_s = np.inf
-                number_of_lasers = -1
-                break
-            info_dict = self.analyze_block_ensemble(ensemble=ensemble)
-            ens_bins = info_dict['number_of_samples']
-            ens_length = ens_bins / self.__sample_rate
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
-            length_bins += ens_bins
-            if sequence.is_finite:
-                length_s += ens_length * (seq_step.repetitions + 1)
-                number_of_lasers += ens_lasers * (seq_step.repetitions + 1)
+        info_dict = self.analyze_sequence(sequence=sequence)
+        length_bins = info_dict['number_of_samples']
+        length_s = length_bins / self.__sample_rate if sequence.is_finite else np.inf
+
+        if len(laser_channel) > 0 and laser_channel[0] == 'd' and sequence.is_finite:
+            number_of_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+        elif sequence.is_finite:
+            self.log.debug('Analog or no laser channel used. '
+                           'Given laser_channel: "{0}"'.format(laser_channel))
+            number_of_lasers = min(len(info_dict['laser_rising_bins']), len(info_dict['laser_falling_bins']))
+        else:
+            number_of_lasers = -1
         return length_s, length_bins, number_of_lasers
 
     def analyze_block_ensemble(self, ensemble):
@@ -1111,7 +1228,7 @@ class SequenceGeneratorLogic(GenericLogic):
         PulseBlocks are actually present in saved blocks and the channel activation matches the
         current pulse settings.
 
-        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py) or the name of one
         @return: number_of_samples (int): The total number of samples in a Waveform provided the
                                               current sample_rate and PulseBlockEnsemble object.
                  total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
@@ -1125,50 +1242,67 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
-        # memorize the channel state of the previous element
+        if isinstance(ensemble, str):
+            if ensemble not in self._saved_pulse_block_ensembles:
+                self.log.error('No saved PulseBlockEnsemble instance by the name "{0}" found. '
+                               'Returning empty dict.'.format(ensemble))
+                return dict()
+            ensemble = self.get_ensemble(ensemble)
+        elif not isinstance(ensemble, PulseBlockEnsemble):
+            self.log.error('Ensemble to analyze must either be of type PulseBlockEnsemble or the '
+                           'name of the ensemble. Returning empty dict')
+            return dict()
+
+        # Determine the right laser channel to choose. For gated counting it should be the gate
+        # channel instead of the laser trigger.
+        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
+            'gate_channel'] else self.generation_parameters['laser_channel']
+
+        # memorize the digital channel state of the previous element
         tmp_digital_high = dict()
+        # memorize the laser_on flag of the previous element (in case of non-digital laser channel)
+        tmp_laser_on = False
         # Set of used analog and digital channels
         digital_channels = set()
         analog_channels = set()
-        # check for active channels and initialize tmp_digital_high with the state of the very last
-        # element in the ensemble
-        if len(ensemble.block_list) > 0:
-            block = self.get_block(ensemble.block_list[0][0])
+        # check for active channels and initialize tmp_digital_high/tmp_laser_on with the state of
+        # the very last element in the ensemble
+        if len(ensemble) > 0:
+            block = self.get_block(ensemble[0][0])
             digital_channels = block.digital_channels
             analog_channels = block.analog_channels
-            block = self.get_block(ensemble.block_list[-1][0])
-            if len(block.element_list) > 0:
-                tmp_digital_high = block.element_list[-1].digital_high.copy()
+            block = self.get_block(ensemble[-1][0])
+            if len(block) > 0:
+                tmp_digital_high = block[-1].digital_high.copy()
+                tmp_laser_on = block[-1].laser_on
             else:
                 tmp_digital_high = {chnl: False for chnl in digital_channels}
+                tmp_laser_on = False
 
         # dicts containing the bins where the digital channels are rising/falling
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
+        laser_rising_bins = list()
+        laser_falling_bins = list()
 
         # Array to store the length in bins for all elements including repetitions in the order
-        # they are occuring in the waveform later on. (Must be int64 or it will overflow eventually)
-        elements_length_bins = np.empty(0, dtype='int64')
+        # they are occuring in the waveform later on.
+        elements_length_bins = list()
 
         # variables to keep track of the current timeframe
         current_end_time = 0.0
         current_start_bin = 0
 
-        # Loop through all blocks in the ensemble block_list
-        for block_name, reps in ensemble.block_list:
+        # Loop through all blocks in the ensemble
+        for block_name, reps in ensemble:
             # Get the stored PulseBlock instance
             block = self.get_block(block_name)
 
-            # Temporary array to hold the length in bins for all elements in the block (incl. reps)
-            tmp_length_bins = np.zeros((reps + 1) * len(block.element_list), dtype='int64')
-
-            # Iterate over all repetitions of the current block while keeping track of the
-            # current element index
-            unrolled_element_index = 0
+            # Iterate over all repetitions of the current block
             for rep_no in range(reps + 1):
                 # Iterate over the Block_Elements inside the current block
-                for element in block.element_list:
-                    # save bin position if a transition from low to high or vice versa has occured
+                for element in block:
+                    # save bin position if a transition from low to high or vice versa has occurred
                     # in a digital channel
                     if tmp_digital_high != element.digital_high:
                         for chnl, state in element.digital_high.items():
@@ -1178,6 +1312,13 @@ class SequenceGeneratorLogic(GenericLogic):
                                 digital_falling_bins[chnl].append(current_start_bin)
                         tmp_digital_high = element.digital_high.copy()
 
+                    if not laser_channel.startswith('d') and tmp_laser_on != element.laser_on:
+                        if not tmp_laser_on and element.laser_on:
+                            laser_rising_bins.append(current_start_bin)
+                        else:
+                            laser_falling_bins.append(current_start_bin)
+                        tmp_laser_on = element.laser_on
+
                     # Calculate length of the current element with current repetition count in sec
                     # and add this to the ideal end time for the sequence up until this point.
                     current_end_time += element.init_length_s + rep_no * element.increment_s
@@ -1186,20 +1327,25 @@ class SequenceGeneratorLogic(GenericLogic):
                     current_end_bin = int(np.rint(current_end_time * self.__sample_rate))
 
                     # append current element length in discrete bins to temporary array
-                    tmp_length_bins[unrolled_element_index] = current_end_bin - current_start_bin
+                    elements_length_bins.append(current_end_bin - current_start_bin)
 
                     # advance bin offset for next element
                     current_start_bin = current_end_bin
-                    # increment element counter
-                    unrolled_element_index += 1
 
-            # append element lengths (in bins) for this block to array
-            elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
+        elements_length_bins = np.array(elements_length_bins, dtype='int64')
 
-        # convert digital rising/falling indices to numpy.ndarrays
+        # convert rising/falling indices to numpy.ndarrays. Remove duplicates.
         for chnl in digital_channels:
+            digital_rising_bins[chnl] = sorted(set(digital_rising_bins[chnl]))
+            digital_falling_bins[chnl] = sorted(set(digital_falling_bins[chnl]))
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype='int64')
             digital_falling_bins[chnl] = np.array(digital_falling_bins[chnl], dtype='int64')
+        if laser_channel.startswith('d'):
+            laser_rising_bins = digital_rising_bins[laser_channel]
+            laser_falling_bins = digital_falling_bins[laser_channel]
+        else:
+            laser_rising_bins = np.array(sorted(set(laser_rising_bins)), dtype='int64')
+            laser_falling_bins = np.array(sorted(set(laser_falling_bins)), dtype='int64')
 
         return_dict = dict()
         return_dict['number_of_samples'] = np.sum(elements_length_bins)
@@ -1212,6 +1358,8 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return_dict['ideal_length'] = current_end_time
+        return_dict['laser_rising_bins'] = laser_rising_bins
+        return_dict['laser_falling_bins'] = laser_falling_bins
         return return_dict
 
     def analyze_sequence(self, sequence):
@@ -1229,7 +1377,7 @@ class SequenceGeneratorLogic(GenericLogic):
         PulseBlocks are actually present in saved blocks and the channel activation matches the
         current pulse settings.
 
-        @param sequence: A PulseSequence object (see logic.pulse_objects.py)
+        @param sequence: A PulseSequence object (see logic.pulse_objects.py) or the name of one
         @return: number_of_samples (int): The total number of samples in a Waveform provided the
                                               current sample_rate and PulseBlockEnsemble object.
                  total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
@@ -1243,40 +1391,192 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+        if isinstance(sequence, str):
+            if sequence not in self._saved_pulse_sequences:
+                self.log.error('No saved PulseSequence instance by the name "{0}" found. '
+                               'Returning empty dict.'.format(sequence))
+                return dict()
+            sequence = self.get_sequence(sequence)
+        elif not isinstance(sequence, PulseSequence):
+            self.log.error('Sequence to analyze must either be of type PulseSequence or the name '
+                           'of the sequence. Returning empty dict')
+            return dict()
+
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
             'gate_channel'] else self.generation_parameters['laser_channel']
 
-        # Determine channel activation
+        # Determine channel activation and the channel states of the very first and last element
         digital_channels = set()
         analog_channels = set()
+        last_digital_channel_state = {chnl: False for chnl in digital_channels}
+        last_laser_on_state = False
+
         if len(sequence) > 0:
             ensemble = self.get_ensemble(sequence[0].ensemble)
-            if len(ensemble.block_list) > 0:
-                block = self.get_block(ensemble.block_list[0][0])
+            if len(ensemble) > 0:
+                block = self.get_block(ensemble[0][0])
                 digital_channels = block.digital_channels
                 analog_channels = block.analog_channels
+            ensemble = self.get_ensemble(sequence[-1].ensemble)
+            if len(ensemble) > 0:
+                block = self.get_block(ensemble[-1][0])
+                if len(block) > 0:
+                    last_digital_channel_state = block[-1].digital_high.copy()
+                    last_laser_on_state = block[-1].laser_on
+
+        # Current bin offset with respect to the expected real time signal
+        starting_bin = 0
 
         # If the sequence does not contain infinite loop steps, determine the remaining parameters
-        # TODO: Implement this!
-        length_bins = 0
-        length_s = 0 if sequence.is_finite else np.inf
-        for seq_step in sequence:
+        step_length_bins = np.zeros(len(sequence), dtype='int64')
+        ideal_step_length = np.zeros(len(sequence), dtype='float64')
+        number_of_step_elements = np.zeros(len(sequence), dtype='int64')
+        step_elements_length_bins = list()
+        laser_rising_bins = list()
+        laser_falling_bins = list()
+        digital_rising_bins = {chnl: list() for chnl in digital_channels}
+        digital_falling_bins = {chnl: list() for chnl in digital_channels}
+        ensemble_name_set = set()
+        # Initialize the last channel state of the first sequence step as last channel state in the
+        # entire sequence.
+        step_last_digital_state = last_digital_channel_state
+        step_last_laser_on_state = last_laser_on_state
+
+        for step_no, seq_step in enumerate(sequence):
+            is_finite = seq_step.repetitions >= 0
+            # Get the PulseBlockEnsemble instance associated with this sequence step
             ensemble = self.get_ensemble(seq_step.ensemble)
+            # Get information about the current PulseBlockEnsemble instance
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+            # Set tmp helper variables
+            ensemble_name_set.add(ensemble.name)
+            reps = seq_step.repetitions + 1
             ens_bins = info_dict['number_of_samples']
-            ens_length = ens_bins / self.__sample_rate
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
-            length_bins += ens_bins
+            # Keep track of channel states at sequence step boundaries
+            prev_step_digital_state = step_last_digital_state.copy()
+            prev_step_laser_on_state = step_last_laser_on_state
+            tmp_block = self.get_block(ensemble[0][0])
+            step_first_digital_state = tmp_block[0].digital_high.copy()
+            step_first_laser_on_state = tmp_block[0].laser_on
+            tmp_block = self.get_block(ensemble[-1][0])
+            step_last_digital_state = tmp_block[-1].digital_high.copy()
+            step_last_laser_on_state = tmp_block[-1].laser_on
+            # Calculate sequence step information
+            step_length_bins[step_no] = ens_bins * reps if is_finite else -1
+            number_of_step_elements[step_no] = info_dict['number_of_elements'] * reps if is_finite else -1
+            ideal_step_length[step_no] = info_dict['ideal_length'] * reps if is_finite else np.inf
+            step_elements_length_bins.append(
+                [seq_step.repetitions, info_dict['elements_length_bins']])
+
+            # Get the digital channel rising/falling bin positions and concatenate them according
+            # to sequence step repetition count considering bin offsets.
+            # This will result in a sequence of rising and falling bins representing the real-time
+            # signal with all repetitions taken into account.
+            # Do that for every digital channel and only if the sequence is finite
             if sequence.is_finite:
-                length_s += ens_length * (seq_step.repetitions + 1)
+                for chnl in digital_channels:
+                    # Append rising/falling bin arrays for each step to a list in order to merge
+                    # them all later on into a single array. This is more efficient than having
+                    # an intermediate array.
+                    # Pay special attention to transitions from one sequence step to another.
+                    for iteration in range(reps):
+                        bin_offset = iteration * ens_bins + starting_bin
+                        rising_bins = info_dict['digital_rising_bins'][chnl] + bin_offset
+                        falling_bins = info_dict['digital_falling_bins'][chnl] + bin_offset
+                        if iteration == 0 and prev_step_digital_state[chnl] != step_last_digital_state[chnl]:
+                            if prev_step_digital_state[chnl] and not step_first_digital_state[chnl]:
+                                falling_bins = np.append(bin_offset, falling_bins)
+                            elif not prev_step_digital_state[chnl] and step_first_digital_state[chnl]:
+                                rising_bins = np.append(bin_offset, rising_bins)
+                            elif prev_step_digital_state[chnl] == step_first_digital_state[chnl]:
+                                if step_last_digital_state[chnl]:
+                                    falling_bins = falling_bins[1:]
+                                else:
+                                    rising_bins = rising_bins[1:]
+
+                        digital_rising_bins[chnl].append(rising_bins)
+                        digital_falling_bins[chnl].append(falling_bins)
+
+                # Append laser_bins arrays with bin offsets for each repetition analogous to the
+                # digital channels above.
+                if not laser_channel.startswith('d'):
+                    for iteration in range(reps):
+                        bin_offset = iteration * ens_bins + starting_bin
+                        rising_bins = info_dict['laser_rising_bins'] + bin_offset
+                        falling_bins = info_dict['laser_falling_bins'] + bin_offset
+                        if iteration == 0 and prev_step_laser_on_state != step_last_laser_on_state:
+                            if prev_step_laser_on_state and not step_first_laser_on_state:
+                                falling_bins = np.append(bin_offset, falling_bins)
+                            elif not prev_step_laser_on_state and step_first_laser_on_state:
+                                rising_bins = np.append(bin_offset, rising_bins)
+                            elif prev_step_laser_on_state == step_first_laser_on_state:
+                                if step_last_laser_on_state:
+                                    falling_bins = falling_bins[1:]
+                                else:
+                                    rising_bins = rising_bins[1:]
+                        laser_rising_bins.append(rising_bins)
+                        laser_falling_bins.append(falling_bins)
+
+                # Increment the current starting bin offset for the next sequence step
+                starting_bin += ens_bins * reps
+
+        # Concatenate all bin arrays in the respective lists to a single large array.
+        for channel in digital_channels:
+            if digital_rising_bins[channel]:
+                digital_rising_bins[channel] = np.unique(np.concatenate(digital_rising_bins[channel]))
+            else:
+                digital_rising_bins[channel] = np.empty(0, dtype='int64')
+            if digital_falling_bins[channel]:
+                digital_falling_bins[channel] = np.unique(np.concatenate(digital_falling_bins[channel]))
+            else:
+                digital_falling_bins[channel] = np.empty(0, dtype='int64')
+
+        if laser_channel.startswith('d'):
+            laser_rising_bins = digital_rising_bins[laser_channel]
+            laser_falling_bins = digital_falling_bins[laser_channel]
+        else:
+            laser_rising_bins = np.unique(np.concatenate(laser_rising_bins)) if laser_rising_bins else np.empty(0, dtype='int64')
+            laser_falling_bins = np.unique(np.concatenate(laser_falling_bins)) if laser_falling_bins else np.empty(0, dtype='int64')
+
+        # Sort out trailing or leading incomplete laser pulse
+        while len(laser_rising_bins) != len(laser_falling_bins):
+            if len(laser_rising_bins) > len(laser_falling_bins):
+                if laser_rising_bins[-1] >= laser_falling_bins[-1]:
+                    laser_rising_bins = laser_rising_bins[:-1]
+                else:
+                    laser_rising_bins = laser_rising_bins[1:]
+            else:
+                if laser_rising_bins[0] >= laser_falling_bins[0]:
+                    laser_falling_bins = laser_falling_bins[1:]
+                else:
+                    laser_falling_bins = laser_falling_bins[:-1]
+            self.log.warning('Incomplete trailing or leading laser pulses detected in sequence '
+                             '"{0}". Removed corresponding unpaired rising/falling flank from '
+                             'laser_rising/falling_bins array.\nThis can happen if the sequence '
+                             'starts and ends with an active laser pulse'.format(sequence.name))
 
         return_dict = dict()
         return_dict['digital_channels'] = digital_channels
         return_dict['analog_channels'] = analog_channels
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
+        return_dict['digital_rising_bins'] = digital_rising_bins
+        return_dict['digital_falling_bins'] = digital_falling_bins
+        return_dict['number_of_steps'] = len(sequence)
+        return_dict['number_of_samples'] = np.sum(step_length_bins)
+        return_dict['number_of_samples_per_step'] = step_length_bins
+        return_dict['number_of_ensembles'] = len(ensemble_name_set)
+        return_dict['ensemble_names'] = ensemble_name_set
+        return_dict['number_of_elements'] = np.sum(number_of_step_elements)
+        return_dict['number_of_elements_per_step'] = number_of_step_elements
+        return_dict['elements_length_bins_per_step'] = step_elements_length_bins
+        return_dict['ideal_length_per_step'] = ideal_step_length
+        return_dict['ideal_length'] = np.sum(ideal_step_length)
+        return_dict['laser_rising_bins'] = laser_rising_bins
+        return_dict['laser_falling_bins'] = laser_falling_bins
+
         return return_dict
 
     def _sampling_ensemble_sanity_check(self, ensemble):
@@ -1509,7 +1809,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         for chnl in pulse_function:
                             analog_samples[chnl][array_write_index:array_write_index + samples_to_add] = pulse_function[
                                                                                                              chnl].get_samples(
-                                time_arr) / self.__analog_levels[0][chnl]
+                                time_arr) / (self.__analog_levels[0][chnl] / 2)
 
                         # Free memory
                         if pulse_function:
@@ -1579,7 +1879,7 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.sampling_information = dict()
             ensemble.sampling_information.update(ensemble_info)
             ensemble.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
-            ensemble.sampling_information['waveforms'] = sorted(written_waveforms)
+            ensemble.sampling_information['waveforms'] = natural_sort(written_waveforms)
             self.save_ensemble(ensemble)
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
@@ -1591,7 +1891,7 @@ class SequenceGeneratorLogic(GenericLogic):
             self.module_state.unlock()
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigSampleEnsembleComplete.emit(ensemble)
-        return offset_bin, sorted(written_waveforms), ensemble_info
+        return offset_bin, natural_sort(written_waveforms), ensemble_info
 
     @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):
@@ -1672,7 +1972,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
-            if sequence.rotating_frame or seq_step.ensemble not in generated_ensembles:
+            if sequence.rotating_frame or \
+                    not self.get_ensemble(name_tag).sampling_information or \
+                    self.get_ensemble(name_tag).sampling_information['pulse_generator_settings'] != self.pulse_generator_settings:
+
                 offset_bin, waveform_list, ensemble_info = self.sample_pulse_block_ensemble(
                     ensemble=seq_step.ensemble,
                     offset_bin=offset_bin,
@@ -1693,6 +1996,14 @@ class SequenceGeneratorLogic(GenericLogic):
 
                 # Add created waveform names to the set
                 written_waveforms.update(waveform_list)
+            else:
+                self.log.debug('Waveform already sampled: {0}'.format(name_tag))
+                ensemble_info = self.get_ensemble(name_tag).sampling_information.copy()
+                del(ensemble_info['pulse_generator_settings'])
+                generated_ensembles[name_tag] = ensemble_info
+
+                # Add created waveform names to the set
+                written_waveforms.update(ensemble_info['waveforms'])
 
             # Append written sequence step to sequence_param_dict_list
             sequence_param_dict_list.append(
@@ -1712,8 +2023,9 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information.update(self.analyze_sequence(sequence))
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
-        sequence.sampling_information['waveforms'] = sorted(written_waveforms)
-        sequence.sampling_information['step_parameters'] = sequence_param_dict_list
+        sequence.sampling_information['waveforms'] = natural_sort(written_waveforms)
+        sequence.sampling_information['step_waveform_list'] = [step[0] for step in
+                                                               sequence_param_dict_list]
         self.save_sequence(sequence)
 
         self.log.info('Time needed for sampling and writing PulseSequence {0} to device: {1} sec.'

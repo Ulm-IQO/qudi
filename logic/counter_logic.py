@@ -25,7 +25,8 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from logic.generic_logic import GenericLogic
 from interface.slow_counter_interface import CountingMode
 from core.util.mutex import Mutex
@@ -54,11 +55,7 @@ class CounterLogic(GenericLogic):
     sigCountStatusChanged = QtCore.Signal(bool)
     sigCountingModeChanged = QtCore.Signal(CountingMode)
 
-
-    _modclass = 'CounterLogic'
-    _modtype = 'logic'
-
-    ## declare connectors
+    # declare connectors
     counter1 = Connector(interface='SlowCounterInterface')
     savelogic = Connector(interface='SaveLogic')
 
@@ -278,11 +275,12 @@ class CounterLogic(GenericLogic):
         self.sigSavingStatusChanged.emit(self._saving)
         return self._saving
 
-    def save_data(self, to_file=True, postfix=''):
+    def save_data(self, to_file=True, postfix='', save_figure=True):
         """ Save the counter trace data and writes it to a file.
 
         @param bool to_file: indicate, whether data have to be saved to file
         @param str postfix: an additional tag, which will be added to the filename upon save
+        @param bool save_figure: select whether png and pdf should be saved
 
         @return dict parameters: Dictionary which contains the saving parameters
         """
@@ -313,7 +311,10 @@ class CounterLogic(GenericLogic):
             data = {header: self._data_to_save}
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
-            fig = self.draw_figure(data=np.array(self._data_to_save))
+            if save_figure:
+                fig = self.draw_figure(data=np.array(self._data_to_save))
+            else:
+                fig = None
             self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
                                        filelabel=filelabel, plotfig=fig, delimiter='\t')
             self.log.info('Counter Trace saved to:\n{0}'.format(filepath))

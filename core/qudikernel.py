@@ -31,9 +31,13 @@ import tempfile
 
 import config
 
-from parentpoller import ParentPollerUnix, ParentPollerWindows
+try:
+    from .parentpoller import ParentPollerUnix, ParentPollerWindows
+except ImportError:
+    from parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
+
 
 class Qudi:
 
@@ -101,7 +105,7 @@ class Qudi:
             logging.info('load.cfg config file found at {0}'.format(loadConfigFile))
             try:
                 confDict = config.load(loadConfigFile)
-                if ('configfile' in confDict and isinstance(confDict['configfile'], str)):
+                if 'configfile' in confDict and isinstance(confDict['configfile'], str):
                     # check if this config file is existing
                     # try relative filenames
                     configFile = os.path.join(path, 'config', confDict['configfile'])
@@ -114,7 +118,7 @@ class Qudi:
                         return confDict['configfile']
                     else:
                         logging.critical('Couldn\'t find config file specified in load.cfg: {0}'
-                            ''.format(confDict['configfile']))
+                                         ''.format(confDict['configfile']))
             except Exception:
                 logging.exception('Error while handling load.cfg.')
         # try config/example/custom.cfg next
@@ -129,10 +133,10 @@ class Qudi:
 
     def getConfigFromFile(self, configfile):
         cfg = config.load(configfile)
-        if ('module_server' in cfg['global']):
-            if (not isinstance(cfg['global']['module_server'], dict)):
+        if 'module_server' in cfg['global']:
+            if not isinstance(cfg['global']['module_server'], dict):
                 raise Exception('"module_server" entry in "global" section of configuration'
-                    ' file is not a dictionary.')
+                                ' file is not a dictionary.')
             else:
                 # new style
                 server_address = cfg['global']['module_server'].get('address', 'localhost')
@@ -140,9 +144,9 @@ class Qudi:
                 certfile = cfg['global']['module_server'].get('certfile', None)
                 keyfile = cfg['global']['module_server'].get('keyfile', None)
 
-        elif ('serveraddress' in cfg['global']):
+        elif 'serveraddress' in cfg['global']:
             logging.warning('Deprecated remote server settings. Please update to new style.'
-                ' See documentation.')
+                            ' See documentation.')
             server_address = cfg['global'].get('serveraddress', 'localhost')
             server_port = cfg['global'].get('serverport', 12345)
             certfile = cfg['global'].get('certfile', None)
@@ -150,51 +154,52 @@ class Qudi:
 
         return server_address, server_port, certfile, keyfile
 
+
 def install_kernel():
-        from jupyter_client.kernelspec import KernelSpecManager
-        logging.info('Installing Qudi kernel.')
+    from jupyter_client.kernelspec import KernelSpecManager
+    logging.info('Installing Qudi kernel.')
 
-        try:
-            # prepare temporary kernelspec folder
-            tempdir = tempfile.mkdtemp(suffix='_kernels')
-            path = os.path.join(tempdir, 'qudi')
-            resourcepath = os.path.join(path, 'resources')
-            kernelpath = os.path.abspath(__file__)
-            os.mkdir(path)
-            os.mkdir(resourcepath)
+    try:
+        # prepare temporary kernelspec folder
+        tempdir = tempfile.mkdtemp(suffix='_kernels')
+        path = os.path.join(tempdir, 'qudi')
+        resourcepath = os.path.join(path, 'resources')
+        kernelpath = os.path.abspath(__file__)
+        os.mkdir(path)
+        os.mkdir(resourcepath)
 
-            kernel_dict = {
-                'argv': [sys.executable, kernelpath, '{connection_file}'],
-                'display_name': 'Qudi',
-                'language': 'python',
-                }
-            # write the kernelspe file
-            with open(os.path.join(path, 'kernel.json'), 'w') as f:
-                json.dump(kernel_dict, f, indent=1)
+        kernel_dict = {
+            'argv': [sys.executable, kernelpath, '{connection_file}'],
+            'display_name': 'Qudi',
+            'language': 'python',
+        }
+        # write the kernelspe file
+        with open(os.path.join(path, 'kernel.json'), 'w') as f:
+            json.dump(kernel_dict, f, indent=1)
 
-            # copy logo
-            logopath = os.path.abspath(os.path.join(os.path.dirname(kernelpath), '..', 'artwork', 'logo'))
-            shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
-            shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
+        # copy logo
+        logopath = os.path.abspath(os.path.join(os.path.dirname(kernelpath), '..', 'artwork', 'logo'))
+        shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
+        shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
 
-            # install kernelspec folder
-            kernel_spec_manager = KernelSpecManager()
-            dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
-            logging.info('Installed kernelspec qudi in {}'.format(dest))
-        except OSError as e:
-            if e.errno == errno.EACCES:
-                print(e, file=sys.stderr)
-                sys.exit(1)
-        finally:
-            if os.path.isdir(tempdir):
-                shutil.rmtree(tempdir)
+        # install kernelspec folder
+        kernel_spec_manager = KernelSpecManager()
+        dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
+        logging.info('Installed kernelspec qudi in {}'.format(dest))
+    except OSError as e:
+        if e.errno == errno.EACCES:
+            print(e, file=sys.stderr)
+            sys.exit(1)
+    finally:
+        if os.path.isdir(tempdir):
+            shutil.rmtree(tempdir)
 
 
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.INFO,
         format="[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s"
-        )
+    )
     if len(sys.argv) > 1:
         if sys.argv[1] == 'install':
             install_kernel()

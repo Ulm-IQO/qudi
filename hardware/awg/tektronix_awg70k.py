@@ -30,9 +30,11 @@ from collections import OrderedDict
 from ftplib import FTP
 from lxml import etree as ET
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_home_dir
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from core.util.helpers import natural_sort
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class AWG70K(Base, PulserInterface):
@@ -52,8 +54,6 @@ class AWG70K(Base, PulserInterface):
         # ftp_passwd: 'anonymous@' # optional, the password for ftp login
 
     """
-    _modclass = 'awg70k'
-    _modtype = 'hardware'
 
     # config options
     _visa_address = ConfigOption(name='awg_visa_address', missing='error')
@@ -65,7 +65,6 @@ class AWG70K(Base, PulserInterface):
     _ftp_dir = ConfigOption(name='ftp_root_dir', default='C:\\inetpub\\ftproot', missing='warn')
     _username = ConfigOption(name='ftp_login', default='anonymous', missing='warn')
     _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
-
 
     # translation dict from qudi trigger descriptor to device command
     __event_triggers = {'OFF': 'OFF', 'A': 'ATR', 'B': 'BTR', 'INT': 'INT'}
@@ -80,6 +79,12 @@ class AWG70K(Base, PulserInterface):
         self.awg_model = ''  # String describing the model
 
         self.ftp_working_dir = 'waves'  # subfolder of FTP root dir on AWG disk to work in
+
+        self.__max_seq_steps = 0
+        self.__max_seq_repetitions = 0
+        self.__min_waveform_length = 0
+        self.__max_waveform_length = 0
+        self.__installed_options = list()
         return
 
     def on_activate(self):
@@ -115,6 +120,8 @@ class AWG70K(Base, PulserInterface):
         self.__max_seq_repetitions = int(self.query('SLIS:SEQ:STEP:RCO:MAX?'))
         self.__min_waveform_length = int(self.query('WLIS:WAV:LMIN?'))
         self.__max_waveform_length = int(self.query('WLIS:WAV:LMAX?'))
+
+        self.__installed_options = self.query('*OPT?').split(',')
         return
 
     def on_deactivate(self):
@@ -232,35 +239,42 @@ class AWG70K(Base, PulserInterface):
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
         if self.awg_model == 'AWG70002A':
-            activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+            activation_config['all'] = frozenset(
+                {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
             # Usage of both channels but reduced markers (higher analog resolution)
-            activation_config['ch1_2mrk_ch2_1mrk'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_2mrk_ch2_0mrk'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2'}
-            activation_config['ch1_1mrk_ch2_2mrk'] = {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4'}
-            activation_config['ch1_0mrk_ch2_2mrk'] = {'a_ch1', 'a_ch2', 'd_ch3', 'd_ch4'}
-            activation_config['ch1_1mrk_ch2_1mrk'] = {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_0mrk_ch2_1mrk'] = {'a_ch1', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_1mrk_ch2_0mrk'] = {'a_ch1', 'd_ch1', 'a_ch2'}
+            activation_config['ch1_2mrk_ch2_1mrk'] = frozenset(
+                {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_2mrk_ch2_0mrk'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2'})
+            activation_config['ch1_1mrk_ch2_2mrk'] = frozenset(
+                {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4'})
+            activation_config['ch1_0mrk_ch2_2mrk'] = frozenset({'a_ch1', 'a_ch2', 'd_ch3', 'd_ch4'})
+            activation_config['ch1_1mrk_ch2_1mrk'] = frozenset({'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_0mrk_ch2_1mrk'] = frozenset({'a_ch1', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_1mrk_ch2_0mrk'] = frozenset({'a_ch1', 'd_ch1', 'a_ch2'})
             # Usage of channel 1 only:
-            activation_config['ch1_2mrk'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+            activation_config['ch1_2mrk'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             # Usage of channel 2 only:
-            activation_config['ch2_2mrk'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+            activation_config['ch2_2mrk'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
             # Usage of only channel 1 with one marker:
-            activation_config['ch1_1mrk'] = {'a_ch1', 'd_ch1'}
+            activation_config['ch1_1mrk'] = frozenset({'a_ch1', 'd_ch1'})
             # Usage of only channel 2 with one marker:
-            activation_config['ch2_1mrk'] = {'a_ch2', 'd_ch3'}
+            activation_config['ch2_1mrk'] = frozenset({'a_ch2', 'd_ch3'})
             # Usage of only channel 1 with no marker:
-            activation_config['ch1_0mrk'] = {'a_ch1'}
+            activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
             # Usage of only channel 2 with no marker:
-            activation_config['ch2_0mrk'] = {'a_ch2'}
+            activation_config['ch2_0mrk'] = frozenset({'a_ch2'})
         elif self.awg_model == 'AWG70001A':
-            activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+            activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             # Usage of only channel 1 with one marker:
-            activation_config['ch1_1mrk'] = {'a_ch1', 'd_ch1'}
+            activation_config['ch1_1mrk'] = frozenset({'a_ch1', 'd_ch1'})
             # Usage of only channel 1 with no marker:
-            activation_config['ch1_0mrk'] = {'a_ch1'}
+            activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
 
         constraints.activation_config = activation_config
+        if self._has_sequence_mode():
+            constraints.sequence_option = SequenceOption.OPTIONAL
+        else:
+            constraints.sequence_option = SequenceOption.NON
 
         # FIXME: additional constraint really necessary?
         constraints.dac_resolution = {'min': 8, 'max': 10, 'step': 1, 'unit': 'bit'}
@@ -340,7 +354,7 @@ class AWG70K(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in active_channels if chnl.startswith('a'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -426,7 +440,7 @@ class AWG70K(Base, PulserInterface):
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
         # Check if device has sequencer option installed
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
                            'installed.')
             return -1
@@ -439,7 +453,7 @@ class AWG70K(Base, PulserInterface):
                                'present in device memory.'.format(name, waveform_tuple))
                 return -1
 
-        active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameter_list)
 
@@ -479,12 +493,7 @@ class AWG70K(Base, PulserInterface):
                                    '"{1}".'.format(seq_step.go_to, num_steps))
                     return -1
             # Set flag states
-            if seq_step.flag_trigger != 'OFF':
-                    flag_list = [seq_step.flag_trigger]
-                    self.sequence_set_flags(name, step, flag_list, True)
-            elif seq_step.flag_high != 'OFF':
-                flag_list = [seq_step.flag_high]
-                self.sequence_set_flags(name, step, flag_list, False)
+            self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -501,7 +510,7 @@ class AWG70K(Base, PulserInterface):
         except visa.VisaIOError:
             query_return = None
             self.log.error('Unable to read waveform list from device. VisaIOError occured.')
-        waveform_list = sorted(query_return.split(',')) if query_return else list()
+        waveform_list = natural_sort(query_return.split(',')) if query_return else list()
         return waveform_list
 
     def get_sequence_names(self):
@@ -511,7 +520,7 @@ class AWG70K(Base, PulserInterface):
         """
         sequence_list = list()
 
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             return sequence_list
 
         try:
@@ -589,7 +598,7 @@ class AWG70K(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Check if all channels to load to are active
@@ -631,7 +640,7 @@ class AWG70K(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Check if number of sequence tracks matches the number of analog channels
@@ -705,7 +714,7 @@ class AWG70K(Base, PulserInterface):
         self.write('WLIS:WAV:DEL ALL')
         while int(self.query('*OPC?')) != 1:
             time.sleep(0.25)
-        if self.has_sequence_mode():
+        if self._has_sequence_mode():
             self.write('SLIS:SEQ:DEL ALL')
             while int(self.query('*OPC?')) != 1:
                 time.sleep(0.25)
@@ -1207,14 +1216,6 @@ class AWG70K(Base, PulserInterface):
                              'Method call will be ignored.')
         return False
 
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        options = self.query('*OPT?').split(',')
-        return '03' in options
-
     def reset(self):
         """Reset the device.
 
@@ -1253,7 +1254,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1275,7 +1276,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1297,7 +1298,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1314,7 +1315,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1334,7 +1335,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1362,7 +1363,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1376,27 +1377,29 @@ class AWG70K(Base, PulserInterface):
         self.write('SLIS:SEQ:STEP{0:d}:WINP "{1}", {2}'.format(step, sequence_name, trigger))
         return 0
 
-    def sequence_set_flags(self, sequence_name, step, flags=None, trigger=False):
+    def sequence_set_flags(self, sequence_name, step, flags_t=None, flags_h=None):
         """
         Set the flags in "flags" to HIGH (trigger=False) during the sequence step or let the flags
         send out a fixed duration trigger pulse (trigger=True). All other flags are set to LOW.
 
         @param str sequence_name: Name of the sequence to be edited
         @param int step: Sequence step to be edited
-        @param list flags: List of flag specifiers to be active during this sequence step
-        @param bool trigger: Whether the flag should be HIGH during the step (False) or send out a
-                             fixed length trigger pulse when starting to play the step (True).
+        @param list flags_t: List of flag trigger specifiers to be active during this sequence step, if both options are
+                             selected, the flag is set to trigger (PULS)
+        @param list flags_h: List of flag high specifiers to be active during this sequence step
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
 
         for flag in ('A', 'B', 'C', 'D'):
-            if flag in flags:
-                state = 'PULS' if trigger else 'HIGH'
+            if flag in flags_t:
+                state = 'PULS'
+            elif flag in flags_h:
+                state = 'HIGH'
             else:
                 state = 'LOW'
 
@@ -1416,7 +1419,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int last_step: The step number which 'jump to' has to be set to 'First'
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1464,7 +1467,7 @@ class AWG70K(Base, PulserInterface):
             for config in configs.values():
                 if len(largest_config) < len(config):
                     largest_config = config
-        return sorted(largest_config)
+        return natural_sort(largest_config)
 
     def _get_all_analog_channels(self):
         """
@@ -1677,3 +1680,6 @@ class AWG70K(Base, PulserInterface):
         # Calculates the length of the header and replace placeholder with actual number
         xml_header = xml_header.replace('XXXXXXXXX', str(len(xml_header)).zfill(9))
         return xml_header
+
+    def _has_sequence_mode(self):
+        return '03' in self.__installed_options

@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import TimeTagger as tt
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 import os
 
 
@@ -40,8 +41,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         timetagger_sum_channels: 4
 
     """
-    _modclass = 'TimeTaggerFastCounter'
-    _modtype = 'hardware'
 
     _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
     _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', missing='error')
@@ -59,7 +58,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         self._bin_width = 1
         self._record_length = int(4000)
 
-        if self._sum_channels == True:
+        if self._sum_channels:
             self._channel_combined = tt.Combiner(self._tagger, channels=[self._channel_apd_0, self._channel_apd_1])
             self._channel_apd = self._channel_combined.getChannel()
         else:
@@ -157,7 +156,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
         self.pulsed.stop()
 
-        return (bin_width_s, record_length_s, number_of_gates)
+        return bin_width_s, record_length_s, number_of_gates
 
     def start_measure(self):
         """ Start the fast counter. """
@@ -215,7 +214,9 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
-        return np.array(self.pulsed.getData(), dtype='int64')
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return np.array(self.pulsed.getData(), dtype='int64'), info_dict
 
 
     def get_status(self):
@@ -234,3 +235,4 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         """ Returns the width of a single timebin in the timetrace in seconds. """
         width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
+

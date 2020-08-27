@@ -25,8 +25,12 @@ Copyright:
 """
 
 import os
+import re
 import sys
 import atexit
+import importlib
+import logging
+import numpy as np
 
 # use setuptools parse_version if available and use distutils LooseVersion as
 # fallback
@@ -42,13 +46,10 @@ try:
 except ImportError:
     pass
 
-import importlib
-import logging
 logger = logging.getLogger(__name__)
 
+
 # Optional function for exiting immediately (with some manual teardown)
-
-
 def exit(exitcode=0):
     """
     Causes python to exit without garbage-collecting any objects, and thus
@@ -125,14 +126,13 @@ def import_check():
     missing. Make a warning about missing packages. Check versions.
     """
     # encode like: (python-package-name, repository-name, version)
-    vital_pkg = [('ruamel.yaml','ruamel.yaml', None),
-                 ('fysom','fysom', '2.1.4')]
-    opt_pkg = [('rpyc','rpyc', None),
-               ('pyqtgraph','pyqtgraph', None),
-               ('git','gitpython', None)]
+    vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
+                 ('fysom', 'fysom', '2.1.4')]
+    opt_pkg = [('rpyc', 'rpyc', None),
+               ('pyqtgraph', 'pyqtgraph', None),
+               ('git', 'gitpython', None)]
 
-
-    def check_package(pkg_name, repo_name, version, optional=False):
+    def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
         """
         Checks if a package is installed and if so whether it is new enough.
 
@@ -143,9 +143,9 @@ def import_check():
         @return: int, error code either 0 or 4.
         """
         try:
-            module = importlib.import_module(pkg_name)
+            module = importlib.import_module(check_pkg_name)
         except ImportError:
-            if (optional):
+            if optional:
                 additional_text = 'It is recommended to have this package installed. '
             else:
                 additional_text = ''
@@ -153,34 +153,33 @@ def import_check():
                 'No Package "{0}" installed! {2}Perform e.g.\n\n'
                 '    pip install {1}\n\n'
                 'in the console to install the missing package.'.format(
-                    pkg_name,
-                    repo_name,
+                    check_pkg_name,
+                    check_repo_name,
                     additional_text
                     ))
             return 4
-        if (version is not None):
+        if check_version is not None:
             # get package version number
             try:
                 module_version = module.__version__
             except AttributeError:
                 logger.warning('Package "{0}" does not have a __version__ '
                                'attribute. Ignoring version check!'.format(
-                                   pkg_name))
+                                   check_pkg_name))
                 return 0
             # compare version number
-            if (parse_version(module_version) < parse_version(version)):
+            if parse_version(module_version) < parse_version(check_version):
                 logger.error(
                     'Installed package "{0}" has version {1}, but version '
                     '{2} is required. Upgrade e.g. with \n\n'
                     '    pip install --upgrade {3}\n\n'
                     'in the console to upgrade to newest version.'.format(
-                        pkg_name,
+                        check_pkg_name,
                         module_version,
-                        version,
-                        repo_name))
+                        check_version,
+                        check_repo_name))
                 return 4
         return 0
-
 
     err_code = 0
     # check required packages
@@ -201,3 +200,107 @@ def import_check():
         check_package(pkg_name, repo_name, version, True)
 
     return err_code
+
+
+def natural_sort(iterable):
+    """
+    Sort an iterable of str in an intuitive, natural way (human/natural sort).
+    Use this to sort alphanumeric strings containing integers.
+
+    @param str[] iterable: Iterable with str items to sort
+    @return list: sorted list of strings
+    """
+    def conv(s):
+        return int(s) if s.isdigit() else s
+    try:
+        return sorted(iterable, key=lambda key: [conv(i) for i in re.split(r'(\d+)', key)])
+    except:
+        return sorted(iterable)
+
+
+def is_number(test_value):
+    """ Check whether passed value is a number
+
+    @return: bool, True if the passed value is a number, otherwise false.
+    """
+    return is_integer(test_value) or is_float(test_value) or is_complex(test_value)
+
+
+def is_integer(test_value):
+    """ Check all available integer representations.
+
+    @return: bool, True if the passed value is a integer, otherwise false.
+    """
+
+    return type(test_value) in [np.int, np.int8, np.int16, np.int32, np.int64,
+                                np.uint, np.uint8, np.uint16, np.uint32,
+                                np.uint64]
+
+
+def is_float(test_value):
+    """ Check all available float representations.
+
+    @return: bool, True if the passed value is a float, otherwise false.
+    """
+    return type(test_value) in [np.float, np.float16, np.float32, np.float64]
+
+
+def is_complex(test_value):
+    """ Check all available complex representations.
+
+    @return: bool, True if the passed value is a complex value, otherwise false.
+    """
+
+    return type(test_value) in [np.complex, np.complex64, np.complex128]
+
+
+def in_range(value, lower_limit, upper_limit):
+    """ Check if a value is in a given range an return closest possible value in range.
+    Also check the range.
+
+    @param value: value to be checked
+    @param lower_limit: lowest allowed value
+    @param upper_limit: highest allowed value
+    @return: value closest to value in range
+    """
+    if upper_limit > lower_limit:
+        u_limit = upper_limit
+        l_limit = lower_limit
+    else:
+        l_limit = upper_limit
+        u_limit = lower_limit
+
+    if value > u_limit:
+        return upper_limit
+    if value < l_limit:
+        return lower_limit
+    return value
+
+
+def csv_2_list(csv_string, str_2_val=None):
+    """
+    Parse a list literal (with or without square brackets) given as string containing
+    comma-separated int or float values to a python list.
+    (blanks before and after commas are handled)
+
+    @param str csv_string: scalar number literals as strings separated by a single comma and any number
+                       of blanks. (brackets are ignored)
+                       Example: '[1e-6,2.5e6, 42]' or '1e-6, 2e-6,   42'
+    @param function str_2_val: optional, function to use for casting substrings into single values.
+    @return list: list of float values. If optional str_2_val is given, type is invoked by this
+                  function.
+    """
+    if not isinstance(csv_string, str):
+        raise TypeError('string_2_list accepts only str type input.')
+
+    csv_string = csv_string.replace('[', '').replace(']', '')  # Remove square brackets
+    csv_string = csv_string.replace('(', '').replace(')', '')  # Remove round brackets
+    csv_string = csv_string.replace('{', '').replace('}', '')  # Remove curly brackets
+    csv_string = csv_string.strip().strip(',')  # Remove trailing/leading blanks and commas
+
+    # Cast each str value to float if no explicit cast function is given by parameter str_2_val.
+    if str_2_val is None:
+        csv_list = [float(val_str) for val_str in csv_string.split(',')]
+    else:
+        csv_list = [str_2_val(val_str.strip()) for val_str in csv_string.split(',')]
+    return csv_list

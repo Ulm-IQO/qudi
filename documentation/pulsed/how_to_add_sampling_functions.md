@@ -67,7 +67,7 @@ parameters must be saved as instance variables. (use default values if necessary
 4. Place the module containing your class definitions in the default directory to import from 
 (`./logic/pulsed/sampling_function_defs/`) or put it in a custom directory and specify the path
 in your config for the `SequenceGeneratorLogic` as ConfigOption 
-"additional_sampling_functions_path".
+"additional_sampling_functions_path". **Notice:** You can either specify a single path as string or multiple paths as list of strings.
 
 You can also simply add your new classes to an already existing module.
 

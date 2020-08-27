@@ -25,7 +25,7 @@ import numpy as np
 import os
 
 from collections import OrderedDict
-from core.module import StatusVar
+from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
 from .errordialog import ErrorDialog
 from gui.guibase import GUIBase
@@ -167,9 +167,9 @@ class ManagerGui(GUIBase):
         # remote widget
         # hide remote menu item if rpyc is not available
         self._mw.actionRemoteView.setVisible(self._manager.rm is not None)
-        if (self._manager.rm is not None):
+        if self._manager.rm is not None:
             self._mw.remoteWidget.remoteModuleListView.setModel(self._manager.rm.remoteModules)
-            if (self._manager.remote_server):
+            if self._manager.remote_server:
                 self._mw.remoteWidget.hostLabel.setText('Server URL:')
                 self._mw.remoteWidget.portLabel.setText(
                     'rpyc://{0}:{1}/'.format(self._manager.rm.server.host,
@@ -301,7 +301,7 @@ class ManagerGui(GUIBase):
         """ Create an IPython console widget and connect it to an IPython
         kernel.
         """
-        if (_has_pyqtgraph):
+        if _has_pyqtgraph:
             banner_modules = 'The numpy and pyqtgraph modules have already ' \
                              'been imported as ''np'' and ''pg''.'
         else:
@@ -451,11 +451,11 @@ Go, play.
             repo = Repo(get_main_dir())
             branch = repo.active_branch
             rev = str(repo.head.commit)
-            return (rev, str(branch))
+            return rev, str(branch)
 
         except Exception as e:
             print('Could not get git repo because:', e)
-            return ('unknown', -1)
+            return 'unknown', -1
 
     def fillTreeWidget(self, widget, value):
         """ Fill a QTreeWidget with the content of a dictionary

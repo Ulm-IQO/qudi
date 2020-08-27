@@ -24,7 +24,8 @@ import visa
 import numpy as np
 import time
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -50,9 +51,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         gpib_timeout: 10
 
     """
-
-    _modclass = 'MicrowaveSMR'
-    _modtype = 'hardware'
 
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
@@ -212,11 +210,11 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         mode, dummy = self.get_status()
 
         if 'list' in mode:
-            pow_list = self._ask(':LIST:POW?').strip().split(',')
+            power_list = self._ask(':LIST:POW?').strip().split(',')
 
             # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
             #FIXME: Correct that as soon as possible in the interface!!!
-            return np.array([float(pow) for pow in pow_list])
+            return np.array([float(power) for power in power_list])
 
         else:
             return float(self._ask(':POW?'))

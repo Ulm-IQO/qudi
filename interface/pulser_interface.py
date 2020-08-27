@@ -21,19 +21,32 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import abc
-from core.util.interfaces import InterfaceMetaclass, ScalarConstraint
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
+from core.interface import ScalarConstraint
+from enum import Enum
 
 
 class PulserInterface(metaclass=InterfaceMetaclass):
-    """ Interface class to define the abstract controls and
-    communication with all pulsing devices.
+    """ Interface class to define the abstract controls and communication with all pulsing devices.
+
+    A pulsing device is a device that will generate outputs, generally voltages, to control an experiment in a timely
+    resolved way. This is by example useful to control a modulator device with a short risetime on a very short
+    timescale.
+
+    An example in the lab is to use a pulser to send laser pulses of a given duration separated by another precisely
+     controlled duration.
+
+    This interface is used to program or or multiple sequences or waveform in the internal memory of a pulser hardware,
+    then load one and play it.
+    - It handles digital and analog outputs of any number.
+    - It handles both -
+        Waveform, where states (outputs) and durations of a waveform is programmed and played
+        Sequence, where states (outputs) and durations and instructions are used, where one can program at the hardware
+            level jumps and loops to create complex sequence with a limited device memory.
     """
 
-    _modtype = 'PulserInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_constraints(self):
         """
         Retrieve the hardware constrains from the Pulsing device.
@@ -127,15 +140,17 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
+        # IMPORTANT: Active channel sets must be of type frozenset to properly work as remote module
         activation_conf = OrderedDict()
-        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
-        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
-        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['yourconf'] = frozenset(
+            {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
+        activation_conf['different_conf'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
+        activation_conf['something_else'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
         constraints.activation_config = activation_conf
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def pulser_on(self):
         """ Switches the pulsing device on.
 
@@ -143,7 +158,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def pulser_off(self):
         """ Switches the pulsing device off.
 
@@ -151,7 +166,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
 
@@ -190,7 +205,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
         For devices that have a workspace (i.e. AWG) this will load the sequence from the device
@@ -211,7 +226,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_loaded_assets(self):
         """
         Retrieve the currently loaded asset names for each active channel of the device.
@@ -226,7 +241,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def clear_all(self):
         """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
@@ -234,7 +249,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
@@ -244,7 +259,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
 
@@ -255,7 +270,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
 
@@ -268,7 +283,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
@@ -294,7 +309,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel(s).
 
@@ -316,7 +331,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided/all channels.
 
@@ -341,7 +356,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
@@ -363,7 +378,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
@@ -382,7 +397,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_active_channels(self, ch=None):
         """
         Set the active/inactive channels for the pulse generator hardware.
@@ -413,7 +428,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
         """
@@ -426,7 +441,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         @param str name: the name of the waveform to be created/append to
         @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
                                     values are 1D numpy arrays of type float32 containing the
-                                    voltage samples.
+                                    voltage samples normalized to half Vpp (between -1 and 1).
         @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
                                      values are 1D numpy arrays of type bool containing the marker
                                      states.
@@ -443,19 +458,23 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def write_sequence(self, name, sequence_parameters):
         """
         Write a new sequence on the device memory.
 
         @param str name: the name of the waveform to be created/append to
-        @param dict sequence_parameters: dictionary containing the parameters for a sequence
+        @param list sequence_parameters: List containing tuples of length 2. Each tuple represents
+                                         a sequence step. The first entry of the tuple is a list of
+                                         waveform names (str); one for each channel. The second
+                                         tuple element is a SequenceStep instance containing the
+                                         sequencing parameters for this step.
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
 
@@ -463,7 +482,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
 
@@ -471,7 +490,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def delete_waveform(self, waveform_name):
         """ Delete the waveform with name "waveform_name" from the device memory.
 
@@ -482,7 +501,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def delete_sequence(self, sequence_name):
         """ Delete the sequence with name "sequence_name" from the device memory.
 
@@ -493,7 +512,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
@@ -503,7 +522,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
 
@@ -519,7 +538,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset(self):
         """ Reset the device.
 
@@ -527,13 +546,14 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
 
-        @return: bool, True for yes, False for no.
-        """
-        pass
+class SequenceOption(Enum):
+    """
+    Different options of the sequence mode in the pulser device.
+    """
+    NON = 0  # No sequence mode, only waveforms can be used
+    OPTIONAL = 1  # Pulser can either work with waveforms directly or use sequences for the output
+    FORCED = 2  # Output is only allowed for sequences. Waveforms might still be uploaded but not played.
 
 
 class PulserConstraints:
@@ -558,5 +578,5 @@ class PulserConstraints:
         self.event_triggers = list()
         self.flags = list()
 
-
         self.activation_config = dict()
+        self.sequence_option = SequenceOption.OPTIONAL

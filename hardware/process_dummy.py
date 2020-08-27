@@ -34,10 +34,6 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         module.Class: 'process_dummy.ProcessDummy'
 
     """
-
-    _modclass = 'Process'
-    _modtype = 'hardware'
-
     def on_activate(self):
         """ Activate module.
         """
@@ -53,47 +49,47 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         """
         pass
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Process value, here temperature.
 
             @return float: process value
         """
         return self.temperature
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Process unit, here kelvin.
 
             @return float: process unit
         """
-        return ('K', 'kelvin')
+        return 'K', 'kelvin'
 
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         """ Set control value, here heating power.
 
             @param flaot value: control value
         """
         self.pwmpower = value
 
-    def getControlValue(self):
+    def get_control_value(self):
         """ Get current control value, here heating power
 
             @return float: current control value
         """
         return self.pwmpower
 
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Get unit of control value.
 
             @return tuple(str): short and text unit of control value
         """
-        return ('%', 'percent')
+        return '%', 'percent'
 
-    def getControlLimits(self):
+    def get_control_limit(self):
         """ Get minimum and maximum of control value.
 
             @return tuple(float, float): minimum and maximum of control value
         """
-        return (-100, 100)
+        return -100, 100
 
     def _recalcTemp(self):
         """ Update current temperature based on model.
@@ -104,7 +100,6 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         if abs(dt) > 10:
             dt = 10*np.sign(dt)
         self.temperature = self.temperature + dt
-        # print(self.temperature, self.pwmpower, heatCapacity)
 
     def metalHeatCapacity(self, T):
         """ Calculate heat capacity of copper at given temperature.

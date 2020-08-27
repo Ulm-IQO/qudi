@@ -30,9 +30,10 @@ import sys
 import time
 
 from collections import OrderedDict
-from core.module import ConfigOption
+from core.configoption import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
@@ -118,14 +119,23 @@ class SaveLogic(GenericLogic):
 
     """
     A general class which saves all kinds of data in a general sense.
-    """
 
-    _modclass = 'savelogic'
-    _modtype = 'logic'
+    Example config for copy-paste:
+    
+    savelogic:
+        module.Class: 'save_logic.SaveLogic'
+        win_data_directory: 'C:/Data'   # DO NOT CHANGE THE DIRECTORY HERE! ONLY IN THE CUSTOM FILE!
+        unix_data_directory: 'Data/'
+        log_into_daily_directory: True
+        save_pdf: True
+        save_png: True
+    """
 
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
     log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')
+    save_pdf = ConfigOption('save_pdf', False)
+    save_png = ConfigOption('save_png', True)
 
     # Matplotlib style definition for saving plots
     mpl_qd_style = {
@@ -154,6 +164,8 @@ class SaveLogic(GenericLogic):
         'ytick.minor.visible': True,
         'savefig.dpi': '180'
         }
+
+    _additional_parameters = {}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -420,6 +432,8 @@ class SaveLogic(GenericLogic):
         if parameters is not None:
             # check whether the format for the parameters have a dict type:
             if isinstance(parameters, dict):
+                if isinstance(self._additional_parameters, dict):
+                    parameters = {**self._additional_parameters, **parameters}
                 for entry, param in parameters.items():
                     if isinstance(param, float):
                         header += '{0}: {1:.16e}\n'.format(entry, param)
@@ -507,43 +521,45 @@ class SaveLogic(GenericLogic):
             else:
                 metadata['CreationDate'] = time
                 metadata['ModDate'] = time
+            
+            if self.save_pdf:
+                # determine the PDF-Filename
+                fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
 
-            # determine the PDF-Filename
-            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+                # Create the PdfPages object to which we will save the pages:
+                # The with statement makes sure that the PdfPages object is closed properly at
+                # the end of the block, even if an Exception occurs.
+                with PdfPages(fig_fname_vector) as pdf:
+                    pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
 
-            # Create the PdfPages object to which we will save the pages:
-            # The with statement makes sure that the PdfPages object is closed properly at
-            # the end of the block, even if an Exception occurs.
-            with PdfPages(fig_fname_vector) as pdf:
-                pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
+                    # We can also set the file's metadata via the PdfPages object:
+                    pdf_metadata = pdf.infodict()
+                    for x in metadata:
+                        pdf_metadata[x] = metadata[x]
 
-                # We can also set the file's metadata via the PdfPages object:
-                pdf_metadata = pdf.infodict()
+            if self.save_png:
+                # determine the PNG-Filename and save the plain PNG
+                fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
+                plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
+
+                # Use Pillow (an fork for PIL) to attach metadata to the PNG
+                png_image = Image.open(fig_fname_image)
+                png_metadata = PngImagePlugin.PngInfo()
+
+                # PIL can only handle Strings, so let's convert our times
+                metadata['CreationDate'] = metadata['CreationDate'].strftime('%Y%m%d-%H%M-%S')
+                metadata['ModDate'] = metadata['ModDate'].strftime('%Y%m%d-%H%M-%S')
+
                 for x in metadata:
-                    pdf_metadata[x] = metadata[x]
+                    # make sure every value of the metadata is a string
+                    if not isinstance(metadata[x], str):
+                        metadata[x] = str(metadata[x])
 
-            # determine the PNG-Filename and save the plain PNG
-            fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
-            plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
+                    # add the metadata to the picture
+                    png_metadata.add_text(x, metadata[x])
 
-            # Use Pillow (an fork for PIL) to attach metadata to the PNG
-            png_image = Image.open(fig_fname_image)
-            png_metadata = PngImagePlugin.PngInfo()
-
-            # PIL can only handle Strings, so let's convert our times
-            metadata['CreationDate'] = metadata['CreationDate'].strftime('%Y%m%d-%H%M-%S')
-            metadata['ModDate'] = metadata['ModDate'].strftime('%Y%m%d-%H%M-%S')
-
-            for x in metadata:
-                # make sure every value of the metadata is a string
-                if not isinstance(metadata[x], str):
-                    metadata[x] = str(metadata[x])
-
-                # add the metadata to the picture
-                png_metadata.add_text(x, metadata[x])
-
-            # save the picture again, this time including the metadata
-            png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
+                # save the picture again, this time including the metadata
+                png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
 
             # close matplotlib figure
             plt.close(plotfig)
@@ -568,8 +584,7 @@ class SaveLogic(GenericLogic):
         return
 
     def get_daily_directory(self):
-        """
-        Creates the daily directory.
+        """ Gets or creates daily save directory.
 
           @return string: path to the daily directory.
 
@@ -581,38 +596,14 @@ class SaveLogic(GenericLogic):
         and the filepath is returned. There should be always a filepath
         returned.
         """
+        current_dir = os.path.join(
+            self.data_dir, 
+            time.strftime("%Y"), 
+            time.strftime("%m"),
+            time.strftime("%Y%m%d"))
 
-        # First check if the directory exists and if not then the default
-        # directory is taken.
-        if not os.path.exists(self.data_dir):
-                # Check if the default directory does exist. If yes, there is
-                # no need to create it, since it will overwrite the existing
-                # data there.
-                if not os.path.exists(self.data_dir):
-                    os.makedirs(self.data_dir)
-                    self.log.warning('The specified Data Directory in the '
-                            'config file does not exist. Using default for '
-                            '{0} system instead. The directory {1} was '
-                            'created'.format(self.os_system, self.data_dir))
-
-        # That is now the current directory:
-        current_dir = os.path.join(self.data_dir, time.strftime("%Y"), time.strftime("%m"))
-
-        folder_exists = False   # Flag to indicate that the folder does not exist.
-        if os.path.exists(current_dir):
-
-            # Get only the folders without the files there:
-            folderlist = [d for d in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, d))]
-            # Search if there is a folder which starts with the current date:
-            for entry in folderlist:
-                if (time.strftime("%Y%m%d") in (entry[:2])):
-                    current_dir = os.path.join(current_dir, str(entry))
-                    folder_exists = True
-                    break
-
-        if not folder_exists:
-            current_dir = os.path.join(current_dir, time.strftime("%Y%m%d"))
-            self.log.info('Creating directory for today\'s data in \n'
+        if not os.path.isdir(current_dir):
+            self.log.info("Creating directory for today's data:\n"
                     '{0}'.format(current_dir))
 
             # The exist_ok=True is necessary here to prevent Error 17 "File Exists"
@@ -631,6 +622,42 @@ class SaveLogic(GenericLogic):
         """
         dir_path = os.path.join(self.get_daily_directory(), module_name)
 
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        if not os.path.isdir(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
         return dir_path
+
+    def get_additional_parameters(self):
+        """ Method that return the additional parameters dictionary securely """
+        return self._additional_parameters.copy()
+
+    def update_additional_parameters(self, *args, **kwargs):
+        """
+        Method to update one or multiple additional parameters
+
+        @param dict args: Optional single positional argument holding parameters in a dict to
+                          update additional parameters from.
+        @param kwargs: Optional keyword arguments to be added to additional parameters
+        """
+        if len(args) == 0:
+            param_dict = kwargs
+        elif len(args) == 1 and isinstance(args[0], dict):
+            param_dict = args[0]
+            param_dict.update(kwargs)
+        else:
+            raise TypeError('"update_additional_parameters" takes exactly 0 or 1 positional '
+                            'argument of type dict.')
+
+        for key in param_dict.keys():
+            param_dict[key] = netobtain(param_dict[key])
+        self._additional_parameters.update(param_dict)
+        return
+
+    def remove_additional_parameter(self, key):
+        """
+        remove parameter from additional parameters
+
+        @param str key: The additional parameters key/name to delete
+        """
+        self._additional_parameters.pop(key, None)
+        return
+

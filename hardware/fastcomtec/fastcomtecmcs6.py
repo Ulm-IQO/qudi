@@ -25,7 +25,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 import time
@@ -159,6 +160,7 @@ class BOARDSETTING(ctypes.Structure):
                 ('fstchan',     ctypes.c_double),
                 ('timepreset',  ctypes.c_double), ]
 
+
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
@@ -175,8 +177,6 @@ class FastComtec(Base, FastCounterInterface):
 
     """
 
-    _modclass = 'FastComtec'
-    _modtype = 'hardware'
     gated = ConfigOption('gated', False, missing='warn')
     trigger_safety = ConfigOption('trigger_safety', 400e-9, missing='warn')
     aom_delay = ConfigOption('aom_delay', 390e-9, missing='warn')
@@ -288,7 +288,7 @@ class FastComtec(Base, FastCounterInterface):
         self.set_length(no_of_bins)
         self.set_cycles(number_of_gates)
 
-        return (self.get_binwidth(), self.get_length()*self.get_binwidth(), number_of_gates)
+        return self.get_binwidth(), self.get_length() * self.get_binwidth(), number_of_gates
 
     #card if running or halt or stopped ...
     def get_status(self):
@@ -413,8 +413,9 @@ class FastComtec(Base, FastCounterInterface):
         if self.gated and self.timetrace_tmp != []:
             time_trace = time_trace + self.timetrace_tmp
 
-        return time_trace
-
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return time_trace, info_dict
 
 
     # =========================================================================
@@ -432,7 +433,7 @@ class FastComtec(Base, FastCounterInterface):
 
 
     def get_data_testfile(self):
-        ''' Load data test file '''
+        """ Load data test file """
         data = np.loadtxt(os.path.join(get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
@@ -637,7 +638,7 @@ class FastComtec(Base, FastCounterInterface):
         if sequences is not None:
             self.set_sequences(sequences)
 
-        return (self.get_binwidth(), no_of_bins, self.get_cycles(), self.get_preset(), self.get_sequences())
+        return self.get_binwidth(), no_of_bins, self.get_cycles(), self.get_preset(), self.get_sequences()
 
 
 
@@ -712,9 +713,10 @@ class FastComtec(Base, FastCounterInterface):
         @return: just the input
         """
         # First set cycles to 1 to prevent crashes
-        if cycles == None:
-            cycles_old = self.get_cycles()
+
+        cycles_old = self.get_cycles() if cycles is None else cycles
         self.set_cycles(1)
+
         # Turn on or off sequential cycle mode
         if mode:
             cmd = 'sweepmode={0}'.format(hex(1978500))
@@ -722,10 +724,7 @@ class FastComtec(Base, FastCounterInterface):
             cmd = 'sweepmode={0}'.format(hex(1978496))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
-        if cycles == None:
-            self.set_cycles(cycles_old)
-        else:
-            self.set_cycles(cycles)
+        self.set_cycles(cycles_old)
 
         return mode, cycles
 

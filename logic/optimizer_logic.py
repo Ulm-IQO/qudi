@@ -24,7 +24,8 @@ import numpy as np
 import time
 
 from logic.generic_logic import GenericLogic
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 
 
@@ -32,9 +33,6 @@ class OptimizerLogic(GenericLogic):
 
     """This is the Logic class for optimizing scanner position on bright features.
     """
-
-    _modclass = 'optimizerlogic'
-    _modtype = 'logic'
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
@@ -387,7 +385,7 @@ class OptimizerLogic(GenericLogic):
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
-        xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
+        xy_fit_data = self.xy_refocus_image[:, :, 3+self.opt_channel].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
@@ -404,12 +402,11 @@ class OptimizerLogic(GenericLogic):
             self.optim_pos_y = self._initial_pos_y
             self.optim_sigma_x = 0.
             self.optim_sigma_y = 0.
-            # hier abbrechen
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
             if abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset:
-                if result_2D_gaus.best_values['center_x'] >= self.x_range[0] and result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
-                    if result_2D_gaus.best_values['center_y'] >= self.y_range[0] and result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
+                if self.x_range[0] <= result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
+                    if self.y_range[0] <= result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
                         self.optim_pos_x = result_2D_gaus.best_values['center_x']
                         self.optim_pos_y = result_2D_gaus.best_values['center_y']
                         self.optim_sigma_x = result_2D_gaus.best_values['sigma_x']
@@ -432,12 +429,11 @@ class OptimizerLogic(GenericLogic):
         # z-fit
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
-            adjusted_param = {}
-            adjusted_param['offset'] = {
+            adjusted_param = {'offset': {
                 'value': 1e-12,
                 'min': -self.z_refocus_line[:, self.opt_channel].max(),
                 'max': self.z_refocus_line[:, self.opt_channel].max()
-            }
+            }}
             result = self._fit_logic.make_gausspeaklinearoffset_fit(
                 x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line[:, self.opt_channel],
@@ -468,7 +464,7 @@ class OptimizerLogic(GenericLogic):
             # checks if new pos is too far away
             if abs(self._initial_pos_z - result.best_values['center']) < self._max_offset:
                 # checks if new pos is within the scanner range
-                if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
+                if self.z_range[0] <= result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
                     self.optim_sigma_z = result.best_values['sigma']
                     gauss, params = self._fit_logic.make_gaussianlinearoffset_model()

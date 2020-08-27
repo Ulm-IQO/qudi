@@ -20,72 +20,69 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class WavemeterInterface(metaclass=InterfaceMetaclass):
-    """ Define the controls for a wavemeter hardware."""
+    """ Define the controls for a wavemeter hardware.
 
-    _modclass = 'WavemeterInterface'
-    _modtype = 'interface'
+    Note: This interface is very similar in feature with slow counter
+    """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_acqusition(self):
         """ Method to start the wavemeter software.
 
-        @return int: error code (0:OK, -1:error)
+        @return (int): error code (0:OK, -1:error)
 
         Also the actual threaded method for getting the current wavemeter
         reading is started.
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_acqusition(self):
-        """ Stops the Wavemeter from measuring and kills the thread that queries
-            the data.
+        """ Stops the Wavemeter from measuring and kills the thread that queries the data.
 
-        @return int: error code (0:OK, -1:error)
+        @return (int): error code (0:OK, -1:error)
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_current_wavelength(self, kind="air"):
         """ This method returns the current wavelength.
 
-        @param str kind: can either be "air" or "vac" for the wavelength in air
-                         or vacuum, respectively.
+        @param (str) kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
 
-        @return float: wavelength (or negative value for errors)
+        @return (float): wavelength (or negative value for errors)
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.
 
-        @param str kind: can either be "air" or "vac" for the wavelength in air
-                         or vacuum, respectively.
+        @param (str) kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
 
         @return float: wavelength (or negative value for errors)
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_timing(self):
         """ Get the timing of the internal measurement thread.
 
-        @return float: clock length in second
+        @return (float): clock length in second
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_timing(self, timing):
         """ Set the timing of the internal measurement thread.
 
-        @param float timing: clock length in second
+        @param (float) timing: clock length in second
 
-        @return int: error code (0:OK, -1:error)
+        @return (int): error code (0:OK, -1:error)
         """
         pass

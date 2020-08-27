@@ -23,15 +23,12 @@ import scipy.integrate as integrate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from collections import OrderedDict
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 
 
 class TraceAnalysisLogic(GenericLogic):
     """ Perform a gated counting measurement with the hardware.  """
-
-    _modclass = 'TraceAnalysisLogic'
-    _modtype = 'logic'
 
     # declare connectors
     counterlogic1 = Connector(interface='CounterLogic')
@@ -270,7 +267,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         return probability, lost_events
 
-    def analyze_flip_prob3(self, trace, init_threshold=[1, 1], ana_threshold=[1, 1], analyze_mode='full'):
+    def analyze_flip_prob3(self, trace, init_threshold=None, ana_threshold=None, analyze_mode='full'):
         """General method, which analysis how often a value was changed from
            one data point to another in relation to a certain threshold.
         @param np.array trace: 1D trace of data
@@ -285,6 +282,8 @@ class TraceAnalysisLogic(GenericLogic):
                       float lifetime_dark: the lifetime in the dark state in s
                       float lifetime_bright: lifetime in the bright state in s
         """
+        init_threshold = init_threshold if init_threshold is not None else [1, 1]
+        ana_threshold = ana_threshold if ana_threshold is not None else [1, 1]
         no_flip = 0.0
         flip = 0.0
 
@@ -325,7 +324,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         return probability, lost_events
 
-    def analyze_flip_prob4(self, trace, bins=30, init_threshold = [1,1], ana_threshold = [1,1], analyze_mode='full'):
+    def analyze_flip_prob4(self, trace, bins=30, init_threshold = None, ana_threshold = None, analyze_mode='full'):
         """
         Method which calculates the histogram, the fidelity and the flip probability of a time trace.
         :param trace:
@@ -336,6 +335,8 @@ class TraceAnalysisLogic(GenericLogic):
         :return:
         """
 
+        init_threshold = init_threshold if init_threshold is not None else [1, 1]
+        ana_threshold = ana_threshold if ana_threshold is not None else [1, 1]
         self.calculate_histogram(trace, bins)
         axis = self.hist_data[0][:-1] + (self.hist_data[0][1] - self.hist_data[0][0]) / 2.
         data = self.hist_data[1]
@@ -507,15 +508,15 @@ class TraceAnalysisLogic(GenericLogic):
 
             # helper functions to get and analyze the timetrace
             def analog_digitial_converter(cut_off, data):
-                digital_trace = []
+                new_digital_trace = []
                 for data_point in data:
                     if data_point >= cut_off:
-                        digital_trace.append(1)
+                        new_digital_trace.append(1)
                     else:
-                        digital_trace.append(0)
-                return digital_trace
+                        new_digital_trace.append(0)
+                return new_digital_trace
 
-            def time_in_high_low(digital_trace, dt):
+            def time_in_high_low(raw_digital_trace, local_dt):
                 """
                 What I need this function to do is to get all consecutive {1, ... , n} 1s or 0s and add
                 them up and put into a list to later make a histogram from them.
@@ -524,25 +525,25 @@ class TraceAnalysisLogic(GenericLogic):
                 index = 0
                 index2 = 0
 
-                while (index < len(digital_trace)):
+                while index < len(raw_digital_trace):
                     occurances.append(0)
                     # start following the consecutive 1s
-                    while (digital_trace[index] == 1):
+                    while raw_digital_trace[index] == 1:
                         occurances[index2] += 1
-                        if index == (len(digital_trace) - 1):
+                        if index == (len(raw_digital_trace) - 1):
                             occurances = np.array(occurances)
-                            return occurances * dt
+                            return occurances * local_dt
                         else:
                             index += 1
-                    if digital_trace[index - 1] == 1:
+                    if raw_digital_trace[index - 1] == 1:
                         index2 += 1
                         occurances.append(0)
                     # start following the consecutive 0s
-                    while (digital_trace[index] == 0):
+                    while raw_digital_trace[index] == 0:
                         occurances[index2] -= 1
-                        if index == (len(digital_trace) - 1):
+                        if index == (len(raw_digital_trace) - 1):
                             occurances = np.array(occurances)
-                            return occurances * dt
+                            return occurances * local_dt
                         else:
                             index += 1
                     index2 += 1
@@ -631,8 +632,8 @@ class TraceAnalysisLogic(GenericLogic):
             data_smooth = filters.convolve1d(data, gauss / gauss.sum(), mode='mirror')
 
             # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-            function = InterpolatedUnivariateSpline(axis, data_smooth, k=1)
-            Integral = function.integral(axis[0], axis[-1])
+            fit_function = InterpolatedUnivariateSpline(axis, data_smooth, k=1)
+            Integral = fit_function.integral(axis[0], axis[-1])
             amp = data_smooth.max()
             sigma = Integral / amp / np.sqrt(2 * np.pi)
             amplitude = amp * sigma * np.sqrt(2 * np.pi)
@@ -916,10 +917,10 @@ class TraceAnalysisLogic(GenericLogic):
                 # go through the combined histogram array and the point which
                 # changes the sign. The transition from positive to negative values
                 # will get the threshold:
-                if difference_poissonian[i] < 0 and difference_poissonian[i + 1] >= 0:
+                if difference_poissonian[i] < 0 <= difference_poissonian[i + 1]:
                     trans_index = i
                     break
-                elif difference_poissonian[i] > 0 and difference_poissonian[i + 1] <= 0:
+                elif difference_poissonian[i] > 0 >= difference_poissonian[i + 1]:
                     trans_index = i
                     break
 
@@ -972,13 +973,13 @@ class TraceAnalysisLogic(GenericLogic):
         # this works if your data is normalized to the interval (-1,1)
         if distr == 'gaussian_normalized':
             # first some helper functions
-            def two_gaussian_intersect(m1, m2, std1, std2, amp1, amp2):
+            def two_gaussian_intersect(m1, m2, std1, std2, amplitude1, amplitude2):
                 """
                 function to calculate intersection of two gaussians
                 """
                 a = 1 / (2 * std1 ** 2) - 1 / (2 * std2 ** 2)
                 b = m2 / (std2 ** 2) - m1 / (std1 ** 2)
-                c = m1 ** 2 / (2 * std1 ** 2) - m2 ** 2 / (2 * std2 ** 2) - np.log(amp2 / amp1)
+                c = m1 ** 2 / (2 * std1 ** 2) - m2 ** 2 / (2 * std2 ** 2) - np.log(amplitude2 / amplitude1)
                 return np.roots([a, b, c])
 
             def gaussian(counts, amp, stdv, mean):
@@ -1038,8 +1039,7 @@ class TraceAnalysisLogic(GenericLogic):
                 fidelity = 0
                 threshold_fit = 0
                 param_dict = {}
-                new_dict = {}
-                new_dict['value'] = np.inf
+                new_dict = {'value': np.inf}
                 param_dict['chi_sqr'] = new_dict
 
             return threshold_fit, fidelity, param_dict

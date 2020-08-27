@@ -27,7 +27,8 @@ import visa
 import time
 import numpy as np
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -51,8 +52,6 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
     """
 
-    _modclass = 'MicrowaveAnritsu'
-    _modtype = 'hardware'
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
@@ -185,7 +184,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             stop = float(self._gpib_connection.query(':LIST:FREQ?').strip('\r\n'))
             self._gpib_connection.write(':LIST:IND 0')
             start = float(self._gpib_connection.query(':LIST:FREQ?').strip('\r\n'))
-            step = (stop - start) / (stop_index)
+            step = (stop - start) / stop_index
             return_val = np.arange(start, stop+step, step)
         return return_val
 

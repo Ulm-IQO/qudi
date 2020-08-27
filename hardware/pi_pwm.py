@@ -20,7 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.process_control_interface import ProcessControlInterface
 from core.util.mutex import Mutex
 
@@ -38,10 +39,6 @@ class PiPWM(Base, ProcessControlInterface):
         frequency: 100 # in Hz
 
     """
-
-    _modclass = 'ProcessControlInterface'
-    _modtype = 'hardware'
-
     channel = ConfigOption('channel', 0, missing='warn')
     freq = ConfigOption('frequency', 100)
 
@@ -134,7 +131,7 @@ class PiPWM(Base, ProcessControlInterface):
             GPIO.output(self.inbpin, True)
         self.p.ChangeDutyCycle(abs(duty))
 
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         """ Set control value for this controller.
 
             @param float value: control value, in this case duty cycle in percent
@@ -142,26 +139,26 @@ class PiPWM(Base, ProcessControlInterface):
         with self.threadlock:
             self.changeDutyCycle(value)
 
-    def getControlValue(self):
+    def get_control_value(self):
         """ Get control value for this controller.
 
             @return float: control value, in this case duty cycle in percent
         """
         return self.dutycycle
 
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Get unit for control value.
 
             @return tuple(str, str): short and text form of unit
         """
-        return ('%', 'percent')
+        return '%', 'percent'
 
-    def getControlLimits(self):
+    def get_control_limit(self):
         """ Get minimum and maxuimum value for control value.
 
             @return tuple(float, float): min and max control value
         """
-        return (-100, 100)
+        return -100, 100
 
 
 class PiPWMHalf(PiPWM):
@@ -173,9 +170,9 @@ class PiPWMHalf(PiPWM):
         #locking for thread safety
         self.threadlock = Mutex()
 
-    def getControlLimits(self):
+    def get_control_limit(self):
         """ Get minimum and maxuimum value for control value.
 
             @return tuple(float, float): min and max control value
         """
-        return (0, 100)
+        return 0, 100

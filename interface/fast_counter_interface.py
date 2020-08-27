@@ -20,17 +20,27 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class FastCounterInterface(metaclass=InterfaceMetaclass):
-    """ Interface class to define the controls for fast counting devices. """
+    """ Interface class to define the controls for fast counting devices.
 
-    _modtype = 'FastCounterInterface'
-    _modclass = 'interface'
+    A "fast counter" is a hardware device that count events with a "good" time resolution.
+    The goal is generally to detect when events happen after an time defining trigger. These events can be photons
+    arrival on a detector for example, and the trigger the start of the acquisition.
+    This type of hardware regularly records millions of repeated acquisition (ie sweeps) in a few seconds,
+    with one or multiple events per trigger (depending on the hardware constrains).
+    It can be used in two modes :
+    - "Gated" : The result is a 2d array where each line correspond to a single trigger with one or multiple events
+                in each line/box
+    - "Ungated" : Only the sum of the acquisition is acquired, building an histogram of the events times. This is
+                  generally enough for a lot of experiment, where a memory consuming 2d array is not necessary.
 
-    @abc.abstractmethod
+    """
+
+    @abstract_interface_method
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
 
@@ -75,16 +85,13 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
         """ Configuration of the fast counter.
 
-        @param float bin_width_s: Length of a single time bin in the time
-                                  trace histogram in seconds.
-        @param float record_length_s: Total length of the timetrace/each
-                                      single gate in seconds.
-        @param int number_of_gates: optional, number of gates in the pulse
-                                    sequence. Ignore for not gated counter.
+        @param float bin_width_s: Length of a single time bin in the time race histogram in seconds.
+        @param float record_length_s: Total length of the timetrace/each single gate in seconds.
+        @param int number_of_gates: optional, number of gates in the pulse sequence. Ignore for not gated counter.
 
         @return tuple(binwidth_s, record_length_s, number_of_gates):
                     binwidth_s: float the actual set binwidth in seconds
@@ -93,30 +100,29 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_status(self):
-        """ Receives the current status of the Fast Counter and outputs it as
-            return value.
+        """ Receives the current status of the hardware and outputs it as return value.
 
         0 = unconfigured
         1 = idle
         2 = running
         3 = paused
-      -1 = error state
+       -1 = error state
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_measure(self):
         """ Start the fast counter. """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_measure(self):
         """ Stop the fast counter. """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def pause_measure(self):
         """ Pauses the current measurement.
 
@@ -124,7 +130,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def continue_measure(self):
         """ Continues the current measurement.
 
@@ -132,7 +138,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def is_gated(self):
         """ Check the gated counting possibility.
 
@@ -141,7 +147,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
 
@@ -149,7 +155,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_data_trace(self):
         """ Polls the current timetrace data from the fast counter.
 
@@ -157,9 +163,15 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         The binning, specified by calling configure() in forehand, must be
         taken care of in this hardware class. A possible overflow of the
         histogram bins must be caught here and taken care of.
-        If the counter is NOT GATED it will return a 1D-numpy-array with
+        If the counter is NOT GATED it will return a tuple (1D-numpy-array, info_dict) with
             returnarray[timebin_index]
-        If the counter is GATED it will return a 2D-numpy-array with
+        If the counter is GATED it will return a tuple (2D-numpy-array, info_dict) with
             returnarray[gate_index, timebin_index]
+
+        info_dict is a dictionary with keys :
+            - 'elapsed_sweeps' : the elapsed number of sweeps
+            - 'elapsed_time' : the elapsed time in seconds
+
+        If the hardware does not support these features, the values should be None
         """
         pass

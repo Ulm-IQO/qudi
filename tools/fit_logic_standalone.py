@@ -55,10 +55,10 @@ import os
 
 #matplotlib.rcParams.update({'font.size': 12})
 
-from core.util.units import compute_ft
+from core.util.math import compute_ft
 
 
-class FitLogic():
+class FitLogic:
         """
         This file contains a test bed for implementation of new fit
         functions and estimators. Here one can also do stability checks
@@ -132,7 +132,7 @@ class FitLogic():
                                             twoD_fit_methods[str(method).split('_')[1]]=[]
                                 else: # this is oneD case
                                     try: # if there is a given estimator it will be set or added
-                                        if (str(method).split('_')[1] in oneD_fit_methods and str(method).split('_')[2] is not None):
+                                        if str(method).split('_')[1] in oneD_fit_methods and str(method).split('_')[2] is not None:
                                             oneD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])
                                         elif str(method).split('_')[2] is not None:
                                             oneD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
@@ -159,7 +159,7 @@ qudi_fitting = FitLogic()
 
 
 def N15_testing():
-    """ Test function to implement the estimator for the N15 fit with offset. """
+    """ Test fit_function to implement the estimator for the N15 fit with offset. """
     x_axis = np.linspace(2850, 2860, 101)*1e6
 
     mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
@@ -234,8 +234,8 @@ def N15_testing():
     plt.show()
 
     # integral of data:
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
-    Integral = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = fit_function.integral(x_axis[0], x_axis[-1])
 
     # assume both peaks contribute to the linewidth, so devive by 2:
     sigma = abs(Integral /(np.pi * minimum_level) )/2
@@ -343,8 +343,7 @@ def N14_testing():
     params['l2_sigma'].set(value=sigma)
     params['offset'].set(value=offset)
 
-    data_noisy=(mod.eval(x=x_axis, params=params) + \
-                7000*np.random.normal(size=x_axis.shape))
+    data_noisy = (mod.eval(x=x_axis, params=params) + 7000*np.random.normal(size=x_axis.shape))
 
     data_smooth_lorentz, offset = qudi_fitting.find_offset_parameter(x_axis, data_noisy)
 
@@ -420,8 +419,8 @@ def N14_testing():
     # integral of data corresponds to sqrt(2) * Amplitude * Sigma
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-    integrated_area = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    integrated_area = fit_function.integral(x_axis[0], x_axis[-1])
 
     # sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:
@@ -512,8 +511,7 @@ def N14_testing2():
     params['l2_sigma'].set(value=sigma)
     params['offset'].set(value=offset)
 
-    data_noisy=(mod.eval(x=x_axis, params=params) + \
-                5000*np.random.normal(size=x_axis.shape))
+    data_noisy = (mod.eval(x=x_axis, params=params) + 5000*np.random.normal(size=x_axis.shape))
 
     result = qudi_fitting.make_lorentziantriple_fit(x_axis, data_noisy,
                                                        estimator=qudi_fitting.estimate_lorentziantriple_N14)
@@ -792,7 +790,7 @@ def gaussianpeak_testing():
     # calculating the first moment of the gaussian distribution (which is the
     # mean value), since it is unreliable if the distribution begins or ends at
     # the edges of the data:
-    mean_val_calc =  np.sum(x_axis*(data_smoothed)) / np.sum(data_smoothed)
+    mean_val_calc = np.sum(x_axis * data_smoothed) / np.sum(data_smoothed)
     center_val = x_axis[np.argmax(data_smoothed)]
     params['center'].set(value=center_val,
                          min=center_min, max=center_max)
@@ -800,7 +798,7 @@ def gaussianpeak_testing():
     # params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
 
     # calculate the second moment of the gaussian distribution: int (x^2 * f(x) dx)
-    mom2 = np.sum((x_axis)**2 * (data_smoothed)) / np.sum(data_smoothed)
+    mom2 = np.sum(x_axis ** 2 * data_smoothed) / np.sum(data_smoothed)
 
     # and use the standard formula to obtain the standard deviation:
     #   sigma^2 = int( (x-mean)^2 f(x) dx ) = int (x^2 * f(x) dx) - mean^2
@@ -1506,9 +1504,9 @@ def double_lorentzdip_testing():
 
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level,
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level,
                                             k=smoothing_spline)
-    numerical_integral_0 = function.integral(x_axis[sigma0_argleft],
+    numerical_integral_0 = fit_function.integral(x_axis[sigma0_argleft],
                                              x_axis[sigma0_argright])
 
     lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
@@ -1787,8 +1785,8 @@ def lorentziandip_testing():
 
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-    numerical_integral = abs(function.integral(x_axis[0], x_axis[-1]))
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    numerical_integral = abs(fit_function.integral(x_axis[0], x_axis[-1]))
 
     if data_max > abs(data_min):
         qudi_fitting.log.warning('The lorentzian estimator set the peak to the minimal value, if '
@@ -2213,7 +2211,7 @@ def sine_testing():
 
     # values and bounds of initial parameters
     params['amplitude'].set(value=ampl_val)
-    params['frequency'].set(value=frequency_max, min=0.0, max=1/(stepsize)*3)
+    params['frequency'].set(value=frequency_max, min=0.0, max=1 / stepsize * 3)
     params['phase'].set(value=phase, min=-np.pi, max=np.pi)
     params['offset'].set(value=offset)
 
@@ -2268,8 +2266,7 @@ def sine_testing2():
 #        diff_array = np.delete(diff_array, index)
 #        print('diff_array',diff_array)
 
-    update_dict = {}
-    update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
+    update_dict = {'phase': {'vary': False, 'value': np.pi / 2.}}
 
     result = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_noisy,
                                               add_params=update_dict)
@@ -2339,7 +2336,7 @@ def sine_testing_data():
     #            convoluted time trace.
 
     for iter_s in range(iter_steps):
-        func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + (iter_s)/iter_steps *2*np.pi)
+        func_val = ampl_val * np.sin(2 * np.pi * frequency_max * x_axis + iter_s / iter_steps * 2 * np.pi)
         sum_res[iter_s] = np.abs(data_level - func_val).sum()
 #                sum_res[iter_s] = np.convolve(data_level, func_val, 'same').sum()
 
@@ -2356,7 +2353,7 @@ def sine_testing_data():
 
     params['offset'].set(value=offset)
     params['amplitude'].set(value=ampl_val)
-    params['frequency'].set(value=frequency_max, min=0.0, max=1/(stepsize)*3)
+    params['frequency'].set(value=frequency_max, min=0.0, max=1 / stepsize * 3)
     params['phase'].set(value=phase, min=-np.pi, max=np.pi)
 
     result =mod.fit(data, x=x_axis, params=params)
@@ -2600,11 +2597,11 @@ def double_poissonian_testing_data():
         print('interpol_factor', interpol_factor, 'len(x_axis)', len(x_axis))
 
     # Create the interpolation function, based on the data:
-    function = InterpolatedUnivariateSpline(x_axis, hist, k=1)
+    fit_function = InterpolatedUnivariateSpline(x_axis, hist, k=1)
     # adjust the x_axis to that:
     x_axis_interpol = np.linspace(x_axis[0],x_axis[-1],len(x_axis)*interpol_factor)
     # create actually the interpolated data:
-    interpol_hist = function(x_axis_interpol)
+    interpol_hist = fit_function(x_axis_interpol)
 
     # Use a gaussian function to convolve with the data, to smooth the
     # datatrace. Then the peak search algorithm performs much better.
