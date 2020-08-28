@@ -1484,7 +1484,7 @@ if __name__ == '__main__':
              ]
 
     #paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_M6.3\combine",]
-    paths = [r"E:\Data\2020\08\20200825\PulsedMeasurement\mfl_xy8.3\combine"]
+    paths = [r"E:\Data\2020\08\20200828\PulsedMeasurement\mfl_xy8_bayUpdate.1\combine"]
 
     for path in paths:
         path = path.replace("\\","/")
