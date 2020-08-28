@@ -1493,13 +1493,13 @@ if __name__ == '__main__':
     def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh, t2star_s=None, calibmode_lintau=False, freq_max_mhz=10
                                   , meta_dict=None, nowait_callback=False, eta_assym=1):
 
-        nolog = False # not calibmode_lintau
+        nolog = not calibmode_lintau
 
         mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
                        calibmode_lintau=calibmode_lintau, nowait_callback=nowait_callback)
         mfl_logic.meta_dict = meta_dict
 
-        mfl_logic.save_priors = False#True     # OK if callback slow
+        mfl_logic.save_priors = True     # OK if callback slow
         tau_first_req = mfl_logic.get_first_tau()
         # can pull here, since waiting for lock makes sure that seqtable is available as temp file
         mfl_logic.pull_jumptable(seqname=mfl_logic.sequence_name, load_vars_metafile=mfl_logic.qudi_vars_metafile)

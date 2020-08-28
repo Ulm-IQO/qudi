@@ -244,7 +244,17 @@ class MFL_IRQ_Driven(GenericLogic):
             mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
             mes.timer_interval = 9999  # basically disable analysis loop, pull manually instead
 
-    def setup_ni_edge_counter(self, channel='dev1/ctr1'):
+    def setup_ni_edge_counter(self, channel='dev1/ctr3'):
+        """
+        See nicard "X Series Signal Connections for Counters" NOT: "X series physical channel":
+        Counter  SOURCE Default
+        Dev1/ctr0  PFI 8
+        Dev1/ctr1  PFI 3
+        Dev1/ctr2  PFI 0
+        Dev1/ctr3  PFI 5
+
+        Dev1 is upper breakout board.
+        """
 
         ret = self.nicard.set_up_single_edge_counter(channel)
         if ret != 0:
@@ -306,6 +316,9 @@ class MFL_IRQ_Driven(GenericLogic):
         n_particles = 10000
         freq_min = 2*np.pi*np.min([freq_min_1_mhz, freq_max_1_mhz, freq_min_2_mhz, freq_max_2_mhz]) # mhz rad
 
+        # for photon model
+        self.z_phot_0 = 0.12
+        self.z_phot_1 = 0.09
 
         # to save for dumping
         self.mfl_n_particles = n_particles
@@ -322,15 +335,33 @@ class MFL_IRQ_Driven(GenericLogic):
                                                             [2*np.pi*freq_min_2_mhz, 2*np.pi*freq_max_2_mhz]]))
         self.mfl_model = mfl_lib.MultimodeDDModel(min_freq=freq_min,
                                                   T2_a=t2a_s, T2_b=t2b_s, b_gauss=b_gauss)  # freq_min atm not used by model
+        self.mfl_model = mfl_lib.MultimodeDDPhotModel(self.z_phot_0, self.z_phot_1, self.n_sweeps,
+                                                  min_freq=freq_min, T2_a=t2a_s, T2_b=t2b_s, b_gauss=b_gauss)  # freq_min atm not used by model
+
         self.mfl_updater = mfl_lib.basic_SMCUpdater(self.mfl_model, n_particles, self.mfl_prior, resample_a=resample_a,
                                                     resample_thresh=0.5)
+        self.mfl_updater = mfl_lib.SMCPhotUpdater(self.mfl_model, n_particles, self.mfl_prior, resample_a=resample_a,
+                                                    resample_thresh=0.5)
+
         self.mfl_updater.reset()
 
-
+        """
         self.mfl_tau_from_heuristic = mfl_lib.MultiDD_EstResnUncOptFish1d_PGH(self.mfl_updater,
                                                                 b_gauss, inv_field=['w1','w2'],
                                                                 n_pi_max=self.n_pi_dd_max,
                                                                 opt_mode='fi_trace', restr_ndd_mod=self.ndd_mod)
+        """
+        try:
+            restr_ndd_list = np.unique(8*self.jumptable['n'])
+        except:
+            restr_ndd_list = []
+
+        self.mfl_tau_from_heuristic = mfl_lib.MultiDD_EstAOptFish_PGH(self.mfl_updater,
+                                                                b_gauss, inv_field=['w1','w2'],
+                                                                n_pi_max=self.n_pi_dd_max,
+                                                                opt_mode='fi_trace', restr_ndd_mod=self.ndd_mod,
+                                                                norm_fisher=True, coarse_opt_k=0,
+                                                                restr_ndd_list=restr_ndd_list)
 
 
     def get_epoch_done_trig_ch(self):
@@ -1092,7 +1123,7 @@ class MFL_IRQ_Driven(GenericLogic):
             n_pi = 8*np.min(self.jumptable['n'])
             n_pi = 32  # 32, manually fix to see resonances
         elif self.is_calibmode_lintau and self.calibmode_mode == 'n':
-            tau = 442e-9
+            tau = 445e-9
             n_pi = 8*np.min(self.jumptable['n'])
 
         idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau, n_pi)
@@ -1158,6 +1189,28 @@ class MFL_IRQ_Driven(GenericLogic):
         self.timestamps[self._idx_timestamps][3] = float(event_type)
 
         self._idx_timestamps += 1
+
+    def binarize_result(self, z,  mode='majority', **kwargs):
+
+        if mode is 'majority':
+            return self.majority_vote(z, **kwargs)
+        elif mode is 'float_to_photons':
+            z_normed = self.pass_float(z, **kwargs)
+            return z_normed * self.n_sweeps
+        elif mode is 'full_float':
+            return self.pass_float(z, **kwargs)
+        else:
+            raise ValueError
+
+    def pass_float(self, z, read_phase=0., z_thresh=None):
+        if read_phase == 0.:
+            return z
+        elif read_phase == np.pi:
+            return self._flip_z_float(z)
+        else:
+            raise NotImplementedError("XY8 MFL only supports read_phase= 0 or pi. Got {}".format(
+                read_phase))
+
 
     def majority_vote(self, z, z_thresh=0.5, read_phase=0.):
         # Attention: votes high counts -> 1, opposite to common definition
@@ -1260,6 +1313,12 @@ class MFL_IRQ_Driven(GenericLogic):
         else:
             raise ValueError("Only binary input allowed, got {}".format(z_bin))
 
+    def _flip_z_float(self, z):
+        from scipy.interpolate import interp1d
+        mapper = interp1d([self.z_phot_0, self.z_phot_1], [self.z_phot_1, self.z_phot_0],
+                          fill_value='extrapolate')
+        return mapper(z)
+
 
     def update_mfl(self, z_bin, read_phase=0):
         # update posterior = prior * likelihood
@@ -1317,7 +1376,8 @@ class MFL_IRQ_Driven(GenericLogic):
         #"""
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result(wait_for_data=not self.nowait_callback)
-        z_binary = self.majority_vote(z, z_thresh=self.z_thresh, read_phase=last_phase)
+        z_binary = self.binarize_result(z, mode='float_to_photons',
+                                        z_thresh=self.z_thresh, read_phase=last_phase)
 
         self.save_before_update(z)
         if not self.nolog_callback:
@@ -1766,6 +1826,7 @@ if __name__ == '__main__':
                                   meta_dict=None, nowait_callback=False, eta_assym=1):
 
         nolog = False # not calibmode_lintau
+        mfl_logic.pull_jumptable(seqname=mfl_logic.sequence_name, load_vars_metafile=mfl_logic.qudi_vars_metafile)
 
         mfl_logic.init('mfl_xy8_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
                        calibmode_lintau=calibmode_lintau, clin_mode='n',
@@ -1775,8 +1836,6 @@ if __name__ == '__main__':
         mfl_logic.save_priors = False     # OK if callback slow and hdd space doesn't matter
         tau_first_req, n_first_req = mfl_logic.get_first_tau_n()
 
-        # can pull here, since waiting for lock makes sure that seqtable is available as temp file
-        mfl_logic.pull_jumptable(seqname=mfl_logic.sequence_name, load_vars_metafile=mfl_logic.qudi_vars_metafile)
 
         idx_jumptable_first, _, _ = mfl_logic.find_nearest_n_and_tau(tau_first_req, n_first_req)
         tau_first, t_seq_first = mfl_logic.get_ts(idx_jumptable_first)
@@ -1825,7 +1884,7 @@ if __name__ == '__main__':
 
 
     def setup_ni_counter():
-        mfl_logic.nicard.set_up_single_edge_counter('dev1/ctr1')  # PFI 3 on breakout
+        mfl_logic.nicard.set_up_single_edge_counter('dev1/ctr3')  # ctr1: PFI 3 on breakout
 
 
     def test_edge_counter(n_test=10):
@@ -1917,7 +1976,7 @@ if __name__ == '__main__':
     """
 
 
-    """
+    #"""
     setup_ni_counter()
     test_edge_counter()
-    """
+    #"""
