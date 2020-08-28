@@ -35,7 +35,7 @@ setup['gated'] = False
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
-setup['laser_delay'] = 510e-9       # aom delay
+setup['laser_delay'] = 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
 
 if setup['gated']:
@@ -60,9 +60,9 @@ setup['delay_length'] = setup['laser_delay'] - 30e-9#450e-9
 
 setup['channel_amp'] = 1.0
 setup['microwave_channel'] = 'a_ch1'
-setup['optimize_channel'] = '/Dev1/PFI9'
+setup['optimize_channel'] = '/Dev1/PFI0'
 
-setup['readout_end'] = 0.5e-6
+setup['readout_end'] = 0.3e-6
 
 setup['max_tau'] = 1e-3
 setup['max_tau_start'] = 1e-3
@@ -301,6 +301,7 @@ def prepare_qm(experiment, qm_dict, generate_new=True):
     if generate_new:
         generate_sample_upload(experiment, qm_dict)
     else:
+        logger.info("Loading stored experiment {} without re-generation.".format(qm_dict))
         load_into_channel(qm_dict['name'], sequence_mode=qm_dict['sequence_mode'])
 
         """
@@ -312,13 +313,19 @@ def prepare_qm(experiment, qm_dict, generate_new=True):
             raise e
         """
 
+
+    # todo: this seems to take forever for long sequences on awg8190
+    # do we need it at all?
+    """
+    logger.debug("Getting sequence length...")
     if not qm_dict['sequence_mode']:
         qm_dict['sequence_length'] = \
             pulsedmasterlogic.get_ensemble_info(pulsedmasterlogic.saved_pulse_block_ensembles[qm_dict['name']])[0]
     else:
         qm_dict['sequence_length'] = \
             pulsedmasterlogic.get_sequence_info(pulsedmasterlogic.saved_pulse_sequences[qm_dict['name']])[0]
-    # Set the parameters
+    """
+    # todo: fix warning "The set measurement_info did not contain all necessary info"
     set_parameters(qm_dict)
 
     logger.debug("Preparing experiment. qm_dict {}, memory_dict {}".format(qm_dict, memory_dict))
@@ -352,8 +359,7 @@ def generate_sample_upload(experiment, qm_dict):
 
         time.sleep(0.2)
         # sample the ensemble
-        while pulsedmasterlogic.status_dict['predefined_generation_busy']:
-            time.sleep(0.2)
+        sleep_until_abort("pulsedmasterlogic.status_dict['predefined_generation_busy']")
 
         not_found = False
         if qm_dict['name'] in pulsedmasterlogic.saved_pulse_block_ensembles:
@@ -380,7 +386,7 @@ def generate_sample_upload(experiment, qm_dict):
                 raise e
             # sample the sequence
             time.sleep(0.2)
-            while pulsedmasterlogic.status_dict['predefined_generation_busy']: time.sleep(0.2)
+            sleep_until_abort("pulsedmasterlogic.status_dict['predefined_generation_busy']")
 
             if qm_dict['name'] not in pulsedmasterlogic.saved_pulse_sequences:
                 pulsedmasterlogic.log.error("Couldn't find sequence {} in pulsedmasterlogic".format(qm_dict['name']))
@@ -403,18 +409,20 @@ def generate_sample_upload(experiment, qm_dict):
                 except:
                     pulsedmasterlogic.log.error('Generation failed')
                     return cause_an_error
-                while pulsedmasterlogic.status_dict['predefined_generation_busy']: time.sleep(0.2)
+
+                sleep_until_abort("pulsedmasterlogic.status_dict['predefined_generation_busy']")
+
                 if name not in pulsedmasterlogic.saved_pulse_block_ensembles: cause_an_error
                 pulsedmasterlogic.sample_ensemble(name, True)
-                while pulsedmasterlogic.status_dict['sampload_busy']: time.sleep(0.2)
+                sleep_until_abort("pulsedmasterlogic.status_dict['sampload_busy']")
             # load the sequence
             # generate
             write_sequence(sequence_name=qm_dict['name'], sequence_param_list=None, load=True)
 
     # wait till sequence is sampled
-    while pulsedmasterlogic.status_dict['sampload_busy']: time.sleep(0.2)
-    return
+    sleep_until_abort("pulsedmasterlogic.status_dict['sampload_busy']")
 
+    return
 
 def load_into_channel(name, sequence_mode):
 
@@ -448,18 +456,15 @@ def load_into_channel(name, sequence_mode):
             pulsedmasterlogic.log.error('Ensemble not found. Cannot load to channel')
 
     # wait until ensemble is loaded to channel
-    timeout_s = 100
-    is_timeout = False
-    t_start = time.time()
-    while pulsedmasterlogic.status_dict['loading_busy'] and not is_timeout:
-        time.sleep(0.5)
-        if time.time() - t_start > timeout_s:
-            is_timeout = True
-            logger.warning("Timed out while loading {}".format(name))
+    sleep_until_abort("pulsedmasterlogic.status_dict['loading_busy']", dt_s=0.5, timeout_s=100)
+
+    logger.debug("Loading to channel done.")
     return
 
 
 def set_parameters(qm_dict):
+
+    logger.debug("Setting parameters for asset {}: {}".format(qm_dict['name'], qm_dict))
 
     if not qm_dict['sequence_mode']:
         qm_dict['params'] = pulsedmasterlogic.saved_pulse_block_ensembles.get(qm_dict['name']).measurement_information
@@ -864,6 +869,18 @@ def save_parameters(save_tag='', save_dict=None):
 
 ######################################## Position optimize and laser functions #########################################
 
+def sleep_until_abort(condition_str, dt_s=0.2, timeout_s=-1):
+    timed_out = False
+    user_abort_code = 0
+
+    t_start = time.time()
+    while eval(condition_str) and user_abort_code == 0 and not timed_out:
+        time.sleep(dt_s)
+        if timeout_s >= 0 and t_start - time.time() > timeout_s:
+            timed_out = True
+            logger.warning("Timed out while waiting for {}".format(condition_str))
+        user_abort_code = handle_abort()
+
 def wait_for_cts(min_cts=10e3, timeout_s=2):
 
     # todo: waiting like this freezes qudi manager
@@ -903,32 +920,25 @@ def optimize_position():
     nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
     # perform refocus
     scannerlogic.stop_scanning()
+    time.sleep(0.2)
     crosshair_pos = scannerlogic.get_position()
     optimizerlogic.start_refocus(initial_pos=crosshair_pos)
 
-    timeout_s = 10
-    timeout = False
-    t_start = time.time()
-    while optimizerlogic.module_state() == 'idle' and not timeout:
-        time.sleep(0.2)
-        if time.time() - t_start > timeout_s:
-            timeout = True
-    while optimizerlogic.module_state() != 'idle'and not timeout:
-        time.sleep(0.2)
-        if time.time() - t_start > timeout_s:
-            timeout = True
+    sleep_until_abort("optimizerlogic.module_state() != 'idle'", timeout_s=10)
 
-    if abs(optimizerlogic.optim_pos_x - crosshair_pos[0])>1e-6 or \
-        abs(optimizerlogic.optim_pos_y - crosshair_pos[1])>1e-6 or \
-        abs(optimizerlogic.optim_pos_z - crosshair_pos[2])>1e-6:
-        optimize_position()
+    if abs(optimizerlogic.optim_pos_x - crosshair_pos[0])  > 1e-6 or \
+        abs(optimizerlogic.optim_pos_y - crosshair_pos[1]) > 1e-6 or \
+        abs(optimizerlogic.optim_pos_z - crosshair_pos[2]) > 1e-6:
+            optimize_position()
+            logger.debug("Repeating optimization")
     else:
 
         scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
                               z=optimizerlogic.optim_pos_z, a=0.0)
         time.sleep(0.5)
         # switch off laser
-        nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+        #logger.debug("Laser off")
+        #nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
         # pulsedmeasurementlogic.fast_counter_continue()
 
     time_stop_optimize = time.time()
@@ -947,10 +957,8 @@ def optimize_poi(poi):
     # perform refocus
     poimanagerlogic.optimise_poi_position(poi)
 
-    while optimizerlogic.module_state() == 'idle':
-        time.sleep(0.2)
-    while optimizerlogic.module_state() != 'idle':
-        time.sleep(0.2)
+    sleep_until_abort("optimizerlogic.module_state() == 'idle':")
+
     scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
                               z=optimizerlogic.optim_pos_z, a=0.0)
     time.sleep(0.5)
@@ -966,7 +974,7 @@ def optimize_poi(poi):
 
 def laser_on(pulser_on=True):
 
-    laser_on_awg()
+    # laser_on_awg()
     # Turns on the laser via nicard. If pulser_on the pulser is not stopped
     nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
     return
