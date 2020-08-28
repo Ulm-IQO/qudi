@@ -1955,6 +1955,8 @@ class SequenceGeneratorLogic(GenericLogic):
         # additional name tag, so keep the sampled files separate.
         offset_bin = 0  # that will be used for phase preservation
         for step_index, seq_step in enumerate(sequence):
+            t_start_step = time.time()
+
             if sequence.rotating_frame:
                 # to make something like 001
                 name_tag = seq_step.ensemble + '_' + str(step_index).zfill(3)
@@ -1967,6 +1969,7 @@ class SequenceGeneratorLogic(GenericLogic):
                     not self.get_ensemble(name_tag).sampling_information or \
                     self.get_ensemble(name_tag).sampling_information['pulse_generator_settings'] != self.pulse_generator_settings:
 
+                self.log.debug("Starting sampling seq step {} after {} s.".format(seq_step, time.time() - t_start_step))
                 offset_bin, waveform_list, ensemble_info = self.sample_pulse_block_ensemble(
                     ensemble=seq_step.ensemble,
                     offset_bin=offset_bin,
@@ -2000,9 +2003,15 @@ class SequenceGeneratorLogic(GenericLogic):
             sequence_param_dict_list.append(
                 (tuple(generated_ensembles[name_tag]['waveforms']), seq_step))
 
+            self.log.debug("Time in loop for sequence step {}: {} s".format(seq_step, time.time() - t_start_step))
+
         # pass the whole information to the sequence creation method:
+        self.log.debug("Starting to write sequence...")
+        t_start_write = time.time()
         steps_written = self.pulsegenerator().write_sequence(sequence.name,
                                                              sequence_param_dict_list)
+        self.log.debug("Done. Time for writing: {} s".format(time.time()-t_start_write))
+
         if steps_written != len(sequence_param_dict_list):
             self.log.error('Writing PulseSequence "{0}" to the device memory failed.\n'
                            'Returned number of sequence steps ({1:d}) does not match desired '
