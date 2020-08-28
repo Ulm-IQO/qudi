@@ -241,14 +241,14 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         idle_name = 'idle'
         idle_blocks, idle_ensembles, _ = self._create_generic_idle(name=idle_name)
-        idle_seq_params = self._get_default_seq_params({'repetitions': 1})
+        idle_seq_params = self._get_default_seq_params({'repetitions': 0})
 
         # epoch_done trigger by AWG (rear panel) sequence marker
         done_name = 'epoch_done'
         # repetitions > 0: too see on osci. irq triggers on rising edge, so doesn't matter performance wise
 
         done_blocks, done_ensembles, _ = self._create_generic_trigger('epoch_done', ['d_ch3'])
-        done_seq_params = self._get_default_seq_params({'repetitions': 32})
+        done_seq_params = self._get_default_seq_params({'repetitions': 0})
 
 
         # swap all indicies relevant to jumptable, st. first epoch is in front of linear sequence table
@@ -378,7 +378,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         idle_name = 'idle'
         idle_blocks, idle_ensembles, _ = self._create_generic_idle(name=idle_name)
-        idle_seq_params = self._get_default_seq_params({'repetitions': 1})
+        idle_seq_params = self._get_default_seq_params({'repetitions': 0})
 
         # laser init before first MW in every epoch. No readout!
         laser0_name = 'laser_wait_0'
@@ -389,7 +389,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # repetitions > 0: too see on osci. irq triggers on rising edge, so doesn't matter performance wise
 
         done_blocks, done_ensembles, _ = self._create_generic_trigger('epoch_done', ['d_ch3'])
-        done_seq_params = self._get_default_seq_params({'repetitions': 32})
+        done_seq_params = self._get_default_seq_params({'repetitions': 0})
 
         # generate xy8 for every n, tau
         len_n = len(tau_n_array[0][:,0])
