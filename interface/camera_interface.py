@@ -77,7 +77,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-
     @abstract_interface_method
     def get_acquired_data(self):
         """ Return an array of last acquired image.
@@ -92,7 +91,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def set_exposure(self, exposure):
         """ Set the exposure time in seconds
 
-        @param float time: desired new exposure time
+        @param float exposure: desired new exposure time
 
         @return float: setted new exposure time
         """
@@ -105,7 +104,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         @return float exposure time
         """
         pass
-
 
     @abstract_interface_method
     def set_gain(self, gain):
@@ -125,7 +123,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-
     @abstract_interface_method
     def get_ready_state(self):
         """ Is the camera ready for an acquisition ?
@@ -133,5 +130,3 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         @return bool: ready ?
         """
         pass
-
-

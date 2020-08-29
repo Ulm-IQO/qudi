@@ -44,6 +44,7 @@ _how_to_hardware_with_multiple_interfaces.md_ for detailed documentation.
 * Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
 * Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
 * Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* Add two different chirp functions to sampling functions and predefined methods
 * Adding Ocean optics spectrometer hardware module.
 * Removed the method `has_sequence_mode` from the `PulserInterface` 
 and rather added a `sequence_option` to the `PulserConstraints`.
@@ -54,6 +55,12 @@ The potential sequence_options are:
   * `FORCED` (only output as sequence possible)
 * Added interfuse to correct geometrical aberration on scanner via polynomial transformations
 * added the option to do a purely analog ODMR scan.
+* Added new GUI, logic, interface and hardware modules to replace the "slow counter" tool in the 
+future. The new tools are designed to be able to stream any kind of time series data efficiently 
+for multiple analog and digital channels. See example config on how to set up the 
+time series/streaming modules (_time_series_gui.py_, _time_series_reader_logic.py_). 
+For a drop-in replacement of the obsolete slow counter together with a NI x-series card, 
+please use _ni_x_series_in_streamer.py_ as hardware module.
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
 * added a hardware file for power supply  Teledyne T3PS3000
@@ -65,6 +72,14 @@ The potential sequence_options are:
 * Added save_pdf and save_png config options for save_logic
 * Added a config option to fastcomtec7887 module to support 7889 model
 * Added fastcomec 7887/9 support of dma mode through config option
+* Fixed bug in spincore pulseblaster hardware that affected only old models
+* Added a netobtain in spincore pulseblaster hardware to speedup remote loading 
+* Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
+* reworked the QDPlotter to now contain fits and a scalable number of plots. Attention: custom notebooks might break by this change.
+* Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
+* Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
+* Fixed bug affecting interface overloading of Qudi modules
+*
 
 
 Config changes:
@@ -72,7 +87,9 @@ Config changes:
 * The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
 of the `SequenceGeneratorLogic` can now either be a string for a single path 
 or a list of strings for multiple paths.
-* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`  
+* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`
+* The connectors and file names of the GUI and logic modules of the QDPlotter have been changed.
+* QDPlotter now needs a new connection to the fit logic. 
 
 ## Release 0.10
 Released on 14 Mar 2019

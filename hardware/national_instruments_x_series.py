@@ -1007,13 +1007,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         return retval
 
     def scanner_set_position(self, x=None, y=None, z=None, a=None):
-        """Move stage to x, y, z, a (where a is the fourth voltage channel).
+        """ Move stage to x, y, z, a (where a is the fourth channel).
 
-        #FIXME: No volts
-        @param float x: postion in x-direction (volts)
-        @param float y: postion in y-direction (volts)
-        @param float z: postion in z-direction (volts)
-        @param float a: postion in a-direction (volts)
+        @param float x: position in x-direction (in axis unit)
+        @param float y: position in y-direction (in axis unit)
+        @param float z: position in z-direction (in axis unit)
+        @param float a: position in a-direction (in axis unit)
 
         @return int: error code (0:OK, -1:error)
         """
