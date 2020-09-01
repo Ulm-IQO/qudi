@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi Manager class.
+This package provides the qudi logging facility. It facilitates Pythonic logging by joining Qt log
+into native Python logging. Also installs a logging handler that emits a Qt Signal to tap into
+every time a log event is registered.
+Automatically installs all important logging handlers for qudi to work but also allows for
+registering (and removal) of additional handlers.
+Installs a rotating log file handler to write log messages to disk.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,14 +24,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__version__ = '0.9'
 __all__ = ('cleanup_handlers',
            'file_handler',
            'get_handler',
            'get_logger',
            'init_rotating_file_handler',
-           'original_excepthook',
-           'register_exception_handler',
            'register_handler',
            'signal_handler',
            'unregister_handler',
@@ -37,7 +39,6 @@ import logging
 from logging.handlers import RotatingFileHandler
 from PySide2 import QtCore
 from qudi.core.logger.qt_handler import LogSignalHandler, qt_message_handler
-from qudi.core.logger.excepion_handler import original_excepthook, register_exception_handler
 
 # global variables
 _handlers = dict()
