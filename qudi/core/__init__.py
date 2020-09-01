@@ -19,20 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-# import os
-# import PySide2
-# dirname = os.path.dirname(PySide2.__file__)
-# plugin_path = os.path.join(dirname, 'plugins', 'platforms')
-# os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
-# os.environ['QT_API'] = 'pyside2'
+import functools as __functools
+from PySide2.QtCore import Slot
 
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.connector import Connector
 from qudi.core.module import Base, LogicBase, GuiBase
 from qudi.core.logger import get_logger
-from PySide2.QtCore import Slot
-import functools as __functools
 
 
 def qudi_slot(*args, **kwargs):
