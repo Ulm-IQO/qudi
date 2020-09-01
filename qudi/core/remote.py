@@ -33,6 +33,7 @@ from PySide2 import QtCore
 
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.models import DictTableModel
+from qudi.core import qudi_slot
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class RemoteModuleServer(QtCore.QObject):
     def is_running(self):
         return self._server is not None
 
-    @QtCore.Slot()
+    @qudi_slot()
     def run(self):
         """ Start the RPyC server
         """
@@ -181,7 +182,7 @@ class RemoteModuleServer(QtCore.QObject):
             logger.exception('Error during start of RemoteServer:')
             self._server = None
 
-    @QtCore.Slot()
+    @qudi_slot()
     def stop(self):
         """ Stop the RPyC server
         """
