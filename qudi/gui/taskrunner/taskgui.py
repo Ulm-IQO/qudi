@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.connector import Connector
 from core.module import GuiBase
-from qtpy import QtCore
+from PySide2 import QtCore
 from .taskwindow import TaskMainWindow
 
 

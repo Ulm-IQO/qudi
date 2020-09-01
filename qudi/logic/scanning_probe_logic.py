@@ -27,13 +27,14 @@ import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from qtpy import QtCore
+from PySide2 import QtCore
 
 from qudi.core.module import LogicBase
 from qudi.core.util.mutex import Mutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+from qudi.core import qudi_slot
 
 
 class ScanningProbeLogic(LogicBase):
@@ -185,11 +186,11 @@ class ScanningProbeLogic(LogicBase):
         with self._thread_lock:
             return self._optimizer_settings.copy()
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_scan_settings(self, settings):
         pass
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_scan_range(self, ranges):
         with self._thread_lock:
             if self.module_state() == 'locked':
@@ -218,7 +219,7 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanSettingsChanged.emit({'range': new_ranges})
             return new_ranges
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_scan_resolution(self, resolution):
         with self._thread_lock:
             if self.module_state() == 'locked':
@@ -247,7 +248,7 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanSettingsChanged.emit({'resolution': new_resolution})
             return new_resolution
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_optimizer_settings(self, settings):
         # ToDo: Implement
         # if 'axes' in settings:
@@ -273,8 +274,8 @@ class ScanningProbeLogic(LogicBase):
         self.sigOptimizerSettingsChanged.emit(self.optimizer_settings)
         return
 
-    @QtCore.Slot(dict)
-    @QtCore.Slot(dict, object)
+    @qudi_slot(dict)
+    @qudi_slot(dict, object)
     def set_scanner_target_position(self, pos_dict, caller_id=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -296,20 +297,20 @@ class ScanningProbeLogic(LogicBase):
             self.sigScannerTargetChanged.emit(new_pos, id(self) if caller_id is None else caller_id)
             return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def _update_scanner_position_loop(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 self.sigScannerPositionChanged.emit(self._scanner().get_position(), id(self))
                 self._start_timer()
 
-    @QtCore.Slot()
+    @qudi_slot()
     def update_scanner_position(self):
         with self._thread_lock:
             self.sigScannerPositionChanged.emit(self._scanner().get_position(), id(self))
 
-    @QtCore.Slot(bool)
-    @QtCore.Slot(bool, tuple)
+    @qudi_slot(bool)
+    @qudi_slot(bool, tuple)
     def toggle_scan(self, start, scan_axes=None):
         with self._thread_lock:
             if start and self.module_state() != 'idle':
@@ -409,7 +410,7 @@ class ScanningProbeLogic(LogicBase):
                 self._start_timer()
             return 0
 
-    @QtCore.Slot()
+    @qudi_slot()
     def _scan_loop(self):
         with self._thread_lock:
             if self.module_state() != 'locked':
@@ -437,7 +438,7 @@ class ScanningProbeLogic(LogicBase):
             self._start_timer()
             return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def history_previous(self):
         with self._thread_lock:
             if self._curr_history_index < 1:
@@ -446,7 +447,7 @@ class ScanningProbeLogic(LogicBase):
                 return
         return self.restore_from_history(self._curr_history_index - 1)
 
-    @QtCore.Slot()
+    @qudi_slot()
     def history_next(self):
         with self._thread_lock:
             if self._curr_history_index >= len(self._history) - 1:
@@ -455,7 +456,7 @@ class ScanningProbeLogic(LogicBase):
                 return
         return self.restore_from_history(self._curr_history_index + 1)
 
-    @QtCore.Slot(int)
+    @qudi_slot(int)
     def restore_from_history(self, index):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -485,15 +486,15 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanDataChanged.emit(data)
             return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def set_full_scan_ranges(self):
         scan_range = {ax: axis.value_bounds for ax, axis in self.scanner_constraints.axes.items()}
         return self.set_scan_range(scan_range)
 
-    @QtCore.Slot()
+    @qudi_slot()
     def _start_timer(self):
         self.__sigStartTimer.emit()
 
-    @QtCore.Slot()
+    @qudi_slot()
     def _stop_timer(self):
         self.__sigStopTimer.emit()
