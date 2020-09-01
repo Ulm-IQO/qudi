@@ -24,7 +24,7 @@ import weakref
 import logging
 import numpy as np
 
-from qtpy import QtCore
+from PySide2 import QtCore
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.util.network import netobtain
 

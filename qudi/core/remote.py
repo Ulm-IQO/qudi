@@ -29,7 +29,7 @@ import logging
 
 from rpyc.utils.authenticators import SSLAuthenticator
 from urllib.parse import urlparse
-from qtpy import QtCore
+from PySide2 import QtCore
 
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.models import DictTableModel

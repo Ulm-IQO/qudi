@@ -23,7 +23,7 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.module import LogicBase
-from qtpy import QtCore
+from PySide2 import QtCore
 
 
 class TestLogic2(LogicBase):

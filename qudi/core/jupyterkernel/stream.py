@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 import zmq
-from qtpy import QtCore
+from PySide2 import QtCore
 import logging
 import json
 import uuid

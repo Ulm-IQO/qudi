@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
+from PySide2 import QtCore
 import importlib
 
 from core.util.models import ListTableModel

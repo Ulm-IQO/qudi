@@ -25,7 +25,7 @@ import copy
 import weakref
 
 from functools import partial
-from qtpy import QtCore
+from PySide2 import QtCore
 
 from qudi.core.util.mutex import RecursiveMutex   # provides access serialization between threads
 from qudi.core.threadmanager import ThreadManager

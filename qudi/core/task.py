@@ -25,7 +25,7 @@ import logging
 import weakref
 import importlib
 from enum import Enum
-from qtpy import QtCore
+from PySide2 import QtCore
 
 from qudi.core.meta import TaskMetaclass
 from qudi.core.util.mutex import Mutex, RecursiveMutex

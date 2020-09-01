@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-from qtpy import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.main_gui.logwidget import LogWidget
 from qudi.core.gui.main_gui.remotewidget import RemoteWidget
 from qudi.core.gui.main_gui.aboutqudidialog import AboutQudiDialog

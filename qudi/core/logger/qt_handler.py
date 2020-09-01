@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ('LogSignalHandler', 'qt_message_handler')
 
 import logging
-from qtpy import QtCore
+from PySide2 import QtCore
 
 
 class QtSignaller(QtCore.QObject):

@@ -23,7 +23,7 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from qtpy import QtCore
+from PySide2 import QtCore
 import traceback
 import logging
 _logger = logging.getLogger(__name__)

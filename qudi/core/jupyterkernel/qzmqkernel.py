@@ -65,7 +65,7 @@ from qudi.core.jupyterkernel.helpers import *
 from qudi.core.jupyterkernel.events import EventManager, available_events
 from IPython.core.error import InputRejected
 
-from qtpy import QtCore
+from PySide2 import QtCore
 
 
 # TODO: When executing two cells at the same time (the second before first is finished)
