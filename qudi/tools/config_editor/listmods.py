@@ -25,7 +25,7 @@ import fnmatch
 import inspect
 import importlib
 
-from qtpy import QtCore
+from PySide2 import QtCore
 
 
 class Module(QtCore.QObject):

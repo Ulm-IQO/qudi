@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 
 import qudi.core.gui.uic as uic
 from qudi.core.connector import Connector
