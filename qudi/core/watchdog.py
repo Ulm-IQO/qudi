@@ -27,7 +27,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 import os
 import sys
 import signal
-from qtpy import QtCore
+from PySide2 import QtCore
 from qudi.core.parentpoller import ParentPollerWindows, ParentPollerUnix
 from qudi.core.logger import get_logger
 

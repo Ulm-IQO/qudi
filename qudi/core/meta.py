@@ -21,7 +21,7 @@ top-level directory of this distribution and at
 """
 
 from abc import ABCMeta
-from qtpy.QtCore import QObject
+from PySide2.QtCore import QObject
 
 __all__ = ('InterfaceMetaclass', 'QObjectMetaclass', 'TaskMetaclass')
 

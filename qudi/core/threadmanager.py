@@ -23,7 +23,7 @@ import logging
 import weakref
 from functools import partial
 from qudi.core.util.mutex import RecursiveMutex
-from qtpy import QtCore
+from PySide2 import QtCore
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 import zmq
-from qtpy import QtCore
+from PySide2 import QtCore
 import logging
 import json
 import uuid
@@ -30,6 +30,7 @@ import threading
 from threading import Thread, Lock, Event
 import time
 from qudi.core.util.mutex import Mutex
+from qudi.core import qudi_slot
 
 
 class QZMQStream(QtCore.QObject):
@@ -104,7 +105,7 @@ class QZMQHeartbeat(QtCore.QObject):
         self.stream = stream
         self.stream.sigMsgRecvd.connect(self.beat)
 
-    @QtCore.Slot(bytes)
+    @qudi_slot(bytes)
     def beat(self, msg):
         """ Send a message back.
 
