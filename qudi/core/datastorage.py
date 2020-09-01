@@ -123,7 +123,7 @@ class DataStorageBase(metaclass=ABCMeta):
     be globally set in this Python process. These should represent parameters that are shared
     across different kind of measurements.
     """
-    __global_parameters = dict()
+    _global_parameters = dict()
 
     def __init__(self, *, root_dir=None, sub_directory=None, file_extension='.dat',
                  use_daily_dir=True, include_global_parameters=True, image_format=ImageFormat.PNG):
@@ -271,10 +271,10 @@ class DataStorageBase(metaclass=ABCMeta):
         """
         if not isinstance(name, str):
             raise TypeError('global parameter name must be str type.')
-        if not overwrite and name in cls.__global_parameters:
+        if not overwrite and name in cls._global_parameters:
             raise KeyError('global parameter "{0}" already set while overwrite flag is False.'
                            ''.format(name))
-        cls.__global_parameters[name] = copy.deepcopy(value)
+        cls._global_parameters[name] = copy.deepcopy(value)
         return
 
     @classmethod
@@ -284,17 +284,17 @@ class DataStorageBase(metaclass=ABCMeta):
         """
         if any(not isinstance(name, str) for name in params):
             raise TypeError('global parameter name must be str type.')
-        if not overwrite and any(name in cls.__global_parameters for name in params):
+        if not overwrite and any(name in cls._global_parameters for name in params):
             raise KeyError('global parameter already set while overwrite flag is False.')
         for name, value in params.items():
-            cls.__global_parameters[name] = copy.deepcopy(value)
+            cls._global_parameters[name] = copy.deepcopy(value)
         return
 
     @classmethod
     def remove_global_parameter(cls, name):
         """ Remove a global parameter. Does not raise an error.
         """
-        cls.__global_parameters.pop(name, None)
+        cls._global_parameters.pop(name, None)
         return
 
 
@@ -322,7 +322,9 @@ class TextDataStorage(DataStorageBase):
         """
         super().__init__(**kwargs)
 
-        if isinstance(column_headers, str):
+        if not column_headers:
+            self.column_headers = None
+        elif isinstance(column_headers, str):
             self.column_headers = column_headers
         elif any(not isinstance(header, str) for header in column_headers):
             raise TypeError('Data column headers must be str type.')
@@ -337,12 +339,14 @@ class TextDataStorage(DataStorageBase):
         self.delimiter = delimiter
         self._current_data_file = None
 
-    def create_header(self, parameters, timestamp, include_column_headers=True):
+    def create_header(self, parameters=None, timestamp=None, include_column_headers=True):
         """
         """
+        if timestamp is None:
+            timestamp = datetime.now()
         # Gather all parameters (both global and provided) into a single dict if needed
         if self.include_global_parameters:
-            all_parameters = self.__global_parameters.copy()
+            all_parameters = self._global_parameters.copy()
         else:
             all_parameters = dict()
         if parameters is not None:
@@ -369,10 +373,11 @@ class TextDataStorage(DataStorageBase):
                 header_lines.append(self.column_headers)
             else:
                 header_lines.append(self.delimiter.join(self.column_headers))
-        header_lines.append('')
 
         line_sep = '\n{0}'.format('' if self.comments is None else self.comments)
-        return line_sep.join(header_lines)
+        header = '{0}{1}'.format('' if self.comments is None else self.comments,
+                                 line_sep.join(header_lines))
+        return header + '\n'
 
     def new_data_file(self, *, parameters=None, filename=None, nametag=None, timestamp=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
@@ -502,9 +507,11 @@ class CsvDataStorage(TextDataStorage):
         kwargs['delimiter'] = ','
         super().__init__(**kwargs)
 
-    def create_header(self, parameters, timestamp):
+    def create_header(self, parameters=None, timestamp=None):
         """ See: TextDataStorage.create_header()
         """
+        if timestamp is None:
+            timestamp = datetime.now()
         if isinstance(self.column_headers, str):
             header = super().create_header(parameters, timestamp, True)
         else:
@@ -527,12 +534,14 @@ class NpyDataStorage(DataStorageBase):
         kwargs['comments'] = None
         super().__init__(**kwargs)
 
-    def create_header(self, parameters, timestamp, data_filename, include_column_headers=True):
+    def create_header(self, data_filename, parameters=None, timestamp=None, include_column_headers=True):
         """
         """
+        if timestamp is None:
+            timestamp = datetime.now()
         # Gather all parameters (both global and provided) into a single dict if needed
         if self.include_global_parameters:
-            all_parameters = self.__global_parameters.copy()
+            all_parameters = self._global_parameters.copy()
         else:
             all_parameters = dict()
         if parameters is not None:
@@ -563,10 +572,11 @@ class NpyDataStorage(DataStorageBase):
                 header_lines.append(self.column_headers)
             else:
                 header_lines.append(self.delimiter.join(self.column_headers))
-        header_lines.append('')
 
         line_sep = '\n{0}'.format('' if self.comments is None else self.comments)
-        return line_sep.join(header_lines)
+        header = '{0}{1}'.format('' if self.comments is None else self.comments,
+                                 line_sep.join(header_lines))
+        return header + '\n'
 
     def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
         """ Saves a binary file containing the data array.
@@ -589,9 +599,9 @@ class NpyDataStorage(DataStorageBase):
 
         # Create header to save in a separate text file
         param_file_path = file_path.rsplit('.', 1)[0] + '_parameters.txt'
-        header = self.create_header(parameters=parameters,
-                                    timestamp=timestamp,
-                                    data_filename=os.path.split(file_path)[-1])
+        header = self.create_header(data_filename=os.path.split(file_path)[-1],
+                                    parameters=parameters,
+                                    timestamp=timestamp)
         with open(param_file_path, 'w') as file:
             file.write(header)
         return file_path, timestamp, data.shape
