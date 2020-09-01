@@ -37,7 +37,7 @@ import os
 import copy
 import ruamel.yaml as yaml
 from io import BytesIO
-from qtpy import QtCore
+from PySide2 import QtCore
 from qudi.core.util.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
 from qudi.core.util.paths import get_artwork_dir
 from warnings import warn

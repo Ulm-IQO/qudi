@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from qtpy import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 import numpy as np
 import re
 from decimal import Decimal as D  # Use decimal to avoid accumulating floating-point errors

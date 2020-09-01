@@ -23,7 +23,7 @@ import os
 import weakref
 import logging
 import platform
-from qtpy import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.util.helpers import has_pyqtgraph
 from qudi.core.gui.main_gui.main_gui import QudiMainGui
 from qudi.core.util.paths import get_artwork_dir

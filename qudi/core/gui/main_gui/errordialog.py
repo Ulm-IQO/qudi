@@ -23,7 +23,7 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from qtpy import QtWidgets, QtCore
+from PySide2 import QtWidgets, QtCore
 
 
 class ErrorDialog(QtWidgets.QDialog):

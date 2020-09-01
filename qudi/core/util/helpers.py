@@ -116,7 +116,7 @@ def import_check():
 
     # check qt
     try:
-        from qtpy.QtCore import Qt
+        from PySide2.QtCore import Qt
     except ImportError:
         _logger.error('No Qt bindungs detected! Perform e.g.\n\n    pip install PyQt5\n\n'
                       'in the console to install the missing package.')

@@ -24,7 +24,7 @@ import os
 import faulthandler
 import weakref
 
-from qtpy import QtCore, QtWidgets, API_NAME
+from PySide2 import QtCore, QtWidgets
 
 from qudi.core.logger import init_rotating_file_handler, get_logger
 from qudi.core.util.paths import get_main_dir, get_default_log_dir
@@ -215,8 +215,8 @@ class Qudi(QtCore.QObject):
             print('> Loading Qudi...')
 
             # Check Qt API
-            self.log.info('Used Qt API: {0}'.format(API_NAME))
-            print('> Used Qt API: {0}'.format(API_NAME))
+            self.log.info('Used Qt API: PySide2')
+            print('> Used Qt API: PySide2')
 
             # Get QApplication instance
             if self.no_gui:

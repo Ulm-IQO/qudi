@@ -20,16 +20,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy.QtCore import QCoreApplication
-from qtpy.QtCore import QThread
-from qtpy.QtCore import QTimer
-from qtpy.QtWidgets import QAbstractButton
-from qtpy.QtWidgets import QAbstractSlider
-from qtpy.QtWidgets import QComboBox
-from qtpy.QtWidgets import QDoubleSpinBox
-from qtpy.QtWidgets import QLineEdit
-from qtpy.QtWidgets import QPlainTextEdit
-from qtpy.QtWidgets import QSpinBox
+from PySide2.QtCore import QCoreApplication
+from PySide2.QtCore import QThread
+from PySide2.QtCore import QTimer
+from PySide2.QtWidgets import QAbstractButton
+from PySide2.QtWidgets import QAbstractSlider
+from PySide2.QtWidgets import QComboBox
+from PySide2.QtWidgets import QDoubleSpinBox
+from PySide2.QtWidgets import QLineEdit
+from PySide2.QtWidgets import QPlainTextEdit
+from PySide2.QtWidgets import QSpinBox
 
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 

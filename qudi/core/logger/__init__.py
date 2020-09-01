@@ -35,7 +35,7 @@ __all__ = ('cleanup_handlers',
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from qtpy import QtCore
+from PySide2 import QtCore
 from qudi.core.logger.qt_handler import LogSignalHandler, qt_message_handler
 from qudi.core.logger.excepion_handler import original_excepthook, register_exception_handler
 

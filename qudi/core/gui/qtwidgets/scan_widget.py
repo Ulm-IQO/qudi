@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import numpy as np
-from qtpy import QtCore, QtWidgets, QtGui
+from PySide2 import QtCore, QtWidgets, QtGui
 from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
 
 from .colorbar import ColorBarWidget, ColorBarMode

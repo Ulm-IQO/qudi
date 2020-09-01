@@ -23,7 +23,7 @@ import logging
 import copy
 from fysom import Fysom  # provides a finite state machine
 
-from qtpy import QtCore
+from PySide2 import QtCore
 from qudi.core.configoption import MissingOption, ConfigOption
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
