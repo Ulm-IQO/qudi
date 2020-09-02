@@ -188,7 +188,12 @@ class ScanningProbeLogic(LogicBase):
 
     @qudi_slot(dict)
     def set_scan_settings(self, settings):
-        pass
+        if 'range' in settings:
+            self.set_scan_range(settings['range'])
+        if 'resolution' in settings:
+            self.set_scan_resolution(settings['resolution'])
+        if 'frequency' in settings:
+            self.set_scan_frequency(settings['frequency'])
 
     @qudi_slot(dict)
     def set_scan_range(self, ranges):
@@ -236,17 +241,38 @@ class ScanningProbeLogic(LogicBase):
                     self.sigScanSettingsChanged.emit({'resolution': new_res})
                     return new_res
 
-                new_res = (
-                    min(ax_constr[ax].max_resolution, max(ax_constr[ax].min_resolution, ax_res[0])),
-                    min(ax_constr[ax].max_resolution, max(ax_constr[ax].min_resolution, ax_res[1]))
-                )
-                if new_res[0] > new_res[1]:
-                    new_res = (new_res[0], new_res[0])
-                self._scan_ranges[ax] = new_res
+                self._scan_resolution[ax] = min(ax_constr[ax].max_resolution,
+                                                max(ax_constr[ax].min_resolution, ax_res))
 
-            new_resolution = {ax: r for ax, r in self._scan_ranges if ax in resolution}
+            new_resolution = {ax: r for ax, r in self._scan_resolution.items() if ax in resolution}
             self.sigScanSettingsChanged.emit({'resolution': new_resolution})
             return new_resolution
+
+    @qudi_slot(dict)
+    def set_scan_frequency(self, frequency):
+        with self._thread_lock:
+            if self.module_state() == 'locked':
+                self.log.warning('Scan is running. Unable to change scan frequency.')
+                self.sigScanSettingsChanged.emit({'frequency': self._scan_frequency})
+                return self._scan_frequency
+
+            frequency = float(frequency)
+
+            # Check if frequency lies outside of maximum possible bounds
+            min_freq, max_freq = np.inf, -np.inf
+            for axis in self.scanner_constraints.axes.values():
+                if axis.min_frequency < min_freq:
+                    min_freq = axis.min_frequency
+                if axis.max_frequency > max_freq:
+                    max_freq = axis.max_frequency
+            if min_freq <= frequency <= max_freq:
+                self._scan_frequency = frequency
+            else:
+                self.log.error('Scan frequency to set outside of maximum allowed bounds [{0}, {1}] '
+                               'for all axes'.format(min_freq, max_freq))
+
+            self.sigScanSettingsChanged.emit({'frequency': self._scan_frequency})
+            return self._scan_frequency
 
     @qudi_slot(dict)
     def set_optimizer_settings(self, settings):

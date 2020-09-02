@@ -123,7 +123,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                                     min_frequency=min(self._frequency_ranges[ax]),
                                     max_frequency=max(self._frequency_ranges[ax])))
         channels = [ScannerChannel(name='fluorescence', unit='c/s', dtype=np.float64),
-                    ScannerChannel(name='APD events', unit='count', dtype=np.int64)]
+                    ScannerChannel(name='APD events', unit='count', dtype=np.float64)]
 
         self._constraints = ScanConstraints(axes=axes,
                                             channels=channels,
@@ -268,7 +268,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                                ''.format(set(self._position_ranges)))
             else:
                 move_distance = {ax: np.abs(pos - self._current_position[ax]) for ax, pos in
-                                 position}
+                                 position.items()}
                 if velocity is None:
                     move_time = 0.01
                 else:
