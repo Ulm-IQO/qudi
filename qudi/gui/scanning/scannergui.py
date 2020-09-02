@@ -168,6 +168,9 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self.scan_widget.addItem(self.image_item)
 
         self.setWidget(widget)
+        self.plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.scan_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.position_label.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         return
 
 
@@ -375,8 +378,8 @@ class ScannerGui(GuiBase):
         @return int: error code (0:OK, -1:error)
         """
         # Remember window position and geometry and close window
-        self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
-        self._window_state = bytearray(self._mw.saveState()).hex()
+        self._window_geometry = str(self._mw.saveGeometry().toHex(), encoding='utf-8')
+        self._window_state = str(self._mw.saveState().toHex(), encoding='utf-8')
         self._mw.close()
 
         # Disconnect signals
@@ -526,7 +529,7 @@ class ScannerGui(GuiBase):
             min_spinbox.editingFinished.connect(lambda: self.change_scan_range(ax_name))
             max_spinbox.editingFinished.connect(lambda: self.change_scan_range(ax_name))
             res_spinbox.editingFinished.connect(lambda: self.change_scan_resolution(ax_name))
-            slider.valueChanged.connect(self.__get_slider_update_func(ax_name, slider))
+            slider.doubleSliderMoved.connect(self.__get_slider_update_func(ax_name, slider))
             pos_spinbox.editingFinished.connect(
                 self.__get_target_spinbox_update_func(ax_name, pos_spinbox)
             )
@@ -705,8 +708,7 @@ class ScannerGui(GuiBase):
             self.scan_2d_dockwidgets[axes].scan_widget.crosshairs[
                 0].sigDraggedPosChanged.disconnect()
             self.scan_2d_dockwidgets[axes].scan_widget.sigMouseAreaSelected.disconnect()
-            self.scan_2d_dockwidgets[
-                axes].channel_selection_combobox.currentIndexChanged.disconnect()
+            self.scan_2d_dockwidgets[axes].channel_combobox.currentIndexChanged.disconnect()
             self.scan_2d_dockwidgets[axes].deleteLater()
             del self.scan_2d_dockwidgets[axes]
         return
@@ -909,16 +911,9 @@ class ScannerGui(GuiBase):
         if scan_data.dimension == 2:
             dockwidget = self.scan_2d_dockwidgets[scan_data.scan_axes]
             data = scan_data.data
-            dockwidget.image_item.set_image(data)
+            dockwidget.scan_widget.set_image(data)
             if data is not None:
-                data_range_x, data_range_y = scan_data.scan_range
-                px_size_x = abs(data_range_x[1] - data_range_x[0]) / scan_data.scan_resolution[0]
-                px_size_y = abs(data_range_y[1] - data_range_y[0]) / scan_data.scan_resolution[1]
-                x_min = data_range_x[0] - px_size_x / 2
-                x_max = data_range_x[1] + px_size_x / 2
-                y_min = data_range_y[0] - px_size_y / 2
-                y_max = data_range_y[1] + px_size_y / 2
-                dockwidget.scan_widget.set_image_extent(((x_min, x_max), (y_min, y_max)))
+                dockwidget.scan_widget.set_image_extent(scan_data.scan_range)
             dockwidget.scan_widget.autoRange()
         elif scan_data.dimension == 1:
             dockwidget = self.scan_1d_dockwidgets[scan_data.scan_axes]
@@ -1045,11 +1040,12 @@ class ScannerGui(GuiBase):
         return toggle_func
 
     def __get_range_from_selection_func(self, ax):
-        def set_range_func(qrect):
-            x_min, x_max = min(qrect.left(), qrect.right()), max(qrect.left(), qrect.right())
-            y_min, y_max = min(qrect.top(), qrect.bottom()), max(qrect.top(), qrect.bottom())
-            self.sigScanSettingsChanged.emit({'scan_range': {ax[0]: (x_min, x_max),
-                                                             ax[1]: (y_min, y_max)}})
+        def set_range_func(x_range, y_range):
+            x_min, x_max = min(x_range), max(x_range)
+            y_min, y_max = min(y_range), max(y_range)
+            self.sigScanSettingsChanged.emit(
+                {'range': {ax[0]: (x_min, x_max), ax[1]: (y_min, y_max)}}
+            )
             self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
 
@@ -1168,6 +1164,9 @@ class ScannerGui(GuiBase):
                             second_axis = seq_step.split(axis, 1)[-1]
                             self.optimizer_dockwidget.scan_widget.setLabel(
                                 'left', second_axis, units=constraints.axes[second_axis].unit)
-                            self.optimizer_dockwidget.image_item.setImage(image=np.zeros((2, 2)))
+                            self.optimizer_dockwidget.image_item.setImage(np.zeros((2, 2)))
+                            self.optimizer_dockwidget.image_item.set_image_extent(
+                                ((-0.5, 0.5), (-0.5, 0.5))
+                            )
                             break
         return

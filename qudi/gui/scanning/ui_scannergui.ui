@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1499</width>
-    <height>801</height>
+    <width>1440</width>
+    <height>864</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -32,7 +32,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1499</width>
+     <width>1440</width>
      <height>21</height>
     </rect>
    </property>
@@ -122,7 +122,7 @@
   <action name="action_scanner_settings">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Scanner Settings</string>
@@ -131,7 +131,7 @@
   <action name="action_close_window">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/application-exit.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/application-exit.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>Close window</string>
@@ -143,7 +143,7 @@
   <action name="action_optimizer_settings">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Optimizer Settings</string>
@@ -155,8 +155,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-select.png</normaloff>
-     <normalon>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/32x32/search_active.png</normalon>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-select.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-select.png</normaloff>
+     <normalon>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/32x32/search_active.png</normalon>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-select.png</iconset>
    </property>
    <property name="text">
     <string>Zoom</string>
@@ -204,7 +204,7 @@ Shortcut:Alt+O</string>
   <action name="action_optimize_position">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
    </property>
    <property name="text">
     <string>Optimize position</string>
@@ -248,7 +248,7 @@ Shortcut:Ctrl+Alt+X</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/correct-tilt.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/correct-tilt.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/correct-tilt.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/correct-tilt.png</iconset>
    </property>
    <property name="text">
     <string>Use tilt correction</string>
@@ -274,7 +274,7 @@ Shortcut:Ctrl+Alt+X</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-next.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-next.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-next.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-next.png</iconset>
    </property>
    <property name="text">
     <string>Forward</string>
@@ -293,7 +293,7 @@ Shortcut:Ctrl+R</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-previous.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-previous.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/go-previous.png</iconset>
    </property>
    <property name="text">
     <string>Backward</string>
@@ -320,7 +320,7 @@ Shortcut:Ctrl+Z</string>
   <action name="action_utility_full_range">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
    </property>
    <property name="text">
     <string>Full range</string>
@@ -351,7 +351,7 @@ Shortcut: Shift+R</string>
   <action name="action_display_settings">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>C:/Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Display Settings</string>

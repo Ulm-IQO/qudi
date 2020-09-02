@@ -796,7 +796,6 @@ class ScanWidget(QtWidgets.QWidget):
         return
 
     def set_axis_label(self, axis, label=None, unit=None):
-        print(axis, label, unit)
         return self._plot_widget.setLabel(axis, text=label, units=unit)
 
     def set_data_label(self, label, unit=None):
