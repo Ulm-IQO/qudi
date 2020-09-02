@@ -27,7 +27,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 import os
 import re
 from importlib.util import spec_from_loader, module_from_spec
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.util.paths import get_artwork_dir, get_appdata_dir
 
 __all__ = ('loadUi',)
 
@@ -47,7 +47,7 @@ def loadUi(file_path, base_widget):
     """
     # This step is a workaround because Qt Designer will only specify relative paths which is very
     # error prone if the user changes the cwd (e.g. os.chdir)
-    convert_ui_to_absolute_paths(file_path)
+    file_path = _convert_ui_to_absolute_paths(file_path)
 
     # Compile .ui-file into python code
     compiled = os.popen('pyside2-uic {0}'.format(file_path)).read()
@@ -78,12 +78,14 @@ def loadUi(file_path, base_widget):
     base_widget.__dict__.update(to_merge)
 
 
-def convert_ui_to_absolute_paths(file_path):
+def _convert_ui_to_absolute_paths(file_path):
     """ Converts the .ui file in order to change all relative path declarations containing the
-    keyword "core/artwork/" into absolute paths pointing to the qudi artwork data directory.
-    The original .ui file will be overwritten.
+    keyword "/artwork/" into absolute paths pointing to the qudi artwork data directory.
+    Creates a temporary file "converted.ui" in the qudi appdata directory.
+    The original .ui file will remain untouched.
 
     @param str file_path: The path to the .ui file to change
+    @return str: The file path of the (converted) .ui file to use
     """
     path_prefix = get_artwork_dir()
     with open(file_path, 'r') as file:
@@ -98,5 +100,8 @@ def convert_ui_to_absolute_paths(file_path):
     # Join into single string and write as new .ui file if something has changed
     if has_changed:
         ui_content = ''.join(chunks)
-        with open(file_path, 'w') as file:
+        tmp_file = os.path.join(get_appdata_dir(), 'converted.ui')
+        with open(tmp_file, 'w') as file:
             file.write(ui_content)
+        return tmp_file
+    return file_path
