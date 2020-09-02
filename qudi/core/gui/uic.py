@@ -100,8 +100,7 @@ def _convert_ui_to_absolute_paths(file_path):
     # Join into single string and write as new .ui file if something has changed
     if has_changed:
         ui_content = ''.join(chunks)
-        tmp_file = os.path.join(get_appdata_dir(), 'converted.ui')
-        with open(tmp_file, 'w') as file:
+        file_path = os.path.join(get_appdata_dir(), 'converted.ui')
+        with open(file_path, 'w') as file:
             file.write(ui_content)
-        return tmp_file
     return file_path
