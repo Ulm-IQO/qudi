@@ -62,6 +62,14 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def get_ready_state(self):
+        """ Is the camera ready for an acquisition ?
+
+        @return bool: ready ?
+        """
+        pass
+
+    @abstract_interface_method
     def start_single_acquisition(self):
         """ Start a single acquisition
 
@@ -106,27 +114,183 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_gain(self, gain):
-        """ Set the gain
+    def set_amplifiers(self, names):
+        """ Set the amplifier
 
-        @param float gain: desired new gain
+        @param list names: Set the amplifiers to be used.
 
-        @return float: new exposure gain
+        @return float:  bool success ?
         """
         pass
 
     @abstract_interface_method
-    def get_gain(self):
+    def get_amplifiers(self):
+        """ Get the currently used amplifiers
+
+        @return float: current gain
+        """
+        pass
+
+    @abstract_interface_method
+    def set_gains(self, gain_dict):
+        """ Set the gains of selected amplifiers
+
+        @param float gains: desired new gain {'preamp': 2}
+
+        @return float: new gain
+        """
+        pass
+
+    @abstract_interface_method
+    def get_gains(self):
         """ Get the gain
+
+        @return dictionary: Return a dictionary with amplifiers e.g. {'preamp': 2}
+        """
+        pass
+
+    @abstract_interface_method
+    def get_available_readout_speeds(self):
+        """
+        Readout speeds on the device
+        @return: list of available readout speeds on the device
+        """
+        pass
+
+    @abstract_interface_method
+    def set_readout_speeds(self, speed_dict):
+        """ Set the readout speed e.g. {'horizontal': 10e6, 'vertical':1e6} in Hz
 
         @return float: exposure gain
         """
         pass
 
     @abstract_interface_method
-    def get_ready_state(self):
-        """ Is the camera ready for an acquisition ?
-
-        @return bool: ready ?
+    def get_readout_speeds(self):
+        """
+        get the current readout speed e.g. {'horizontal': 1e6, 'vertical':3e6} in Hz
+        @return:
         """
         pass
+
+    @abstract_interface_method
+    def set_up_sensor_area(self, settings):
+        """
+        Binning and extracting a certain part of the sensor e.g. {'binning': (2,2), 'crop' (128, 256)} takes 4 pixels
+        together to 1 and takes from all the pixels and area of 128 by 256
+        @return:
+        """
+        pass
+
+    @abstract_interface_method
+    def get_sensor_area_settings(self):
+        """
+        Return the current binning and crop settings of the sensor e.g. {'binning': (2,2), 'crop' (128, 256)}
+        @return: dict of the sensor area settings
+        """
+        pass
+
+    @abstract_interface_method
+    def get_available_readout_modes(self):
+        """
+        Readout modes on the device
+        @return: list of available readout modes
+        """
+        pass
+
+    @abstract_interface_method
+    def set_readout_mode(self, readout_mode):
+        """
+        Set the readout mode of the camera ('single acquisition', 'kinetic series')
+        @param str readout_mode: readout mode to be set
+        @return: Success ?
+        """
+        pass
+
+    @abstract_interface_method
+    def get_readout_mode(self):
+        """
+        Set the readout mode of the camera
+        @return: Success ?
+        """
+        pass
+
+    @abstract_interface_method
+    def set_up_image_sequence(self, num_images, exposures):
+        """
+        Set up the camera for the acquisition of an image sequence.
+
+        @param float num_images: number of images to be taken
+        @param list exposures: list of length(num_images) containing the exposures to be used
+        @return:
+        """
+        pass
+
+    @abstract_interface_method
+    def acquire_image_sequence(self):
+        """
+        Takes a sequence of images
+        @return: numpy nd array of dimension (seq_length, px_x, px_y)  
+        """
+        pass
+
+    @abstract_interface_method
+    def get_available_trigger_modes(self):
+        """
+        Trigger modes on the device
+        @return: list of available trigger modes
+        """
+        pass
+
+    @abstract_interface_method
+    def set_up_triggering(self, trigger_mode):
+        """
+        Set the trigger mode ('Internal', 'External' ... )
+        @param str trigger_mode: Target trigger mode
+        @return: Success ?
+        """
+        pass
+
+    @abstract_interface_method
+    def get_trigger_mode(self):
+        """
+        Get the currently used trigger mode
+        @return: String of the set trigger mode
+        """
+        pass
+
+    @abstract_interface_method
+    def open_shutter(self):
+        """
+        Oen a shutter if the camera has a shutter
+        @return: Success ?
+        """
+        pass
+
+    @abstract_interface_method
+    def close_shutter(self):
+        """
+        Close the shutter if the camera has a shutter
+        @return: Success ?
+        """
+        pass
+
+    @abstract_interface_method
+    def set_temperature(self, temperature):
+        """
+        Sets the temperature of the camera
+        @param float temperature: Target temperature of the camera
+        @return: success?
+        """
+        pass
+
+    @abstract_interface_method
+    def get_temperature(self):
+        """
+        Gets the temperature of the camera
+        @return: success?
+        """
+        pass
+
+
+
