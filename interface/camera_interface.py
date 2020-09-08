@@ -230,7 +230,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def acquire_image_sequence(self):
         """
         Takes a sequence of images
-        @return: numpy nd array of dimension (seq_length, px_x, px_y)  
+        @return: numpy nd array of dimension (seq_length, px_x, px_y)
         """
         pass
 
