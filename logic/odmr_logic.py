@@ -1100,9 +1100,3 @@ class ODMRLogic(GenericLogic):
             self.save_odmr_data(tag=name_tag)
 
         return self.odmr_plot_x, self.odmr_plot_y, fit_params
-
-    def generate_freq_list(self):
-        freq_list = []
-        for mw_start, mw_step, mw_stop in zip(self.mw_starts, self.mw_steps, self.mw_stops):
-            freq_list = np.linspace(mw_start, mw_stop,  + 1)
-        return freq_list

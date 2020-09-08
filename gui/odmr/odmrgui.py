@@ -957,7 +957,7 @@ class ODMRGui(GUIBase):
         return
 
     def update_matrix_range(self):
-        self.matrix_range = self._mw
+        self.matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
         return
 
     def update_parameter(self, param_dict):
