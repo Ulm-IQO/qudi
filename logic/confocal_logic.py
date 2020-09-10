@@ -270,12 +270,16 @@ class ConfocalLogic(GenericLogic):
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
+    signal_save_started = QtCore.Signal()
     signal_xy_data_saved = QtCore.Signal()
     signal_depth_data_saved = QtCore.Signal()
     signal_tilt_correction_active = QtCore.Signal(bool)
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
     signal_position_changed = QtCore.Signal()
+
+    _signal_save_xy = QtCore.Signal(object, object)
+    _signal_save_depth = QtCore.Signal(object, object)
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -339,6 +343,9 @@ class ConfocalLogic(GenericLogic):
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
+
+        self._signal_save_xy.connect(self._save_xy_data, QtCore.Qt.QueuedConnection)
+        self._signal_save_depth.connect(self._save_depth_data, QtCore.Qt.QueuedConnection)
 
         self._change_position('activation')
 
@@ -845,7 +852,7 @@ class ConfocalLogic(GenericLogic):
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
 
-    def save_xy_data(self, colorscale_range=None, percentile_range=None):
+    def save_xy_data(self, colorscale_range=None, percentile_range=None, block=True):
         """ Save the current confocal xy data to file.
 
         Two files are created.  The first is the imagedata, which has a text-matrix of count values
@@ -857,8 +864,20 @@ class ConfocalLogic(GenericLogic):
 
         @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
 
-        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale 
+        
+        @param: bool block (optional) If False, return immediately; if True, block until save completes."""
+
+        if block:
+            self._save_xy_data(colorscale_range, percentile_range)
+        else:
+            self._signal_save_xy.emit(colorscale_range, percentile_range)
+
+    @QtCore.Slot(object, object)
+    def _save_xy_data(self, colorscale_range=None, percentile_range=None):
+        """ Execute save operation. Slot for _signal_save_xy.
         """
+        self.signal_save_started.emit()
         filepath = self._save_logic.get_path_for_module('Confocal')
         timestamp = datetime.datetime.now()
         # Prepare the metadata parameters (common to both saved files):
@@ -937,14 +956,30 @@ class ConfocalLogic(GenericLogic):
         self.signal_xy_data_saved.emit()
         return
 
-    def save_depth_data(self, colorscale_range=None, percentile_range=None):
+    def save_depth_data(self, colorscale_range=None, percentile_range=None, block=True):
         """ Save the current confocal depth data to file.
 
         Two files are created.  The first is the imagedata, which has a text-matrix of count values
         corresponding to the pixel matrix of the image.  Only count-values are saved here.
 
         The second file saves the full raw data with x, y, z, and counts at every pixel.
-        """
+
+        A figure is also saved.
+
+        @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
+
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale 
+        
+        @param: bool block (optional) If False, return immediately; if True, block until save completes."""
+        if block:
+            self._save_depth_data(colorscale_range, percentile_range)
+        else:
+            self._signal_save_depth.emit(colorscale_range, percentile_range)
+
+    @QtCore.Slot(object, object)
+    def _save_depth_data(self, colorscale_range=None, percentile_range=None):
+        """ Execute save operation. Slot for _signal_save_depth. """
+        self.signal_save_started.emit()
         filepath = self._save_logic.get_path_for_module('Confocal')
         timestamp = datetime.datetime.now()
         # Prepare the metadata parameters (common to both saved files):
