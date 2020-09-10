@@ -43,7 +43,7 @@ class AWGM8190A(Base, PulserInterface):
     Example config for copy-paste:
 
         myawg:
-            module.Class: 'awg.keysight_M8195A.AWGM8195A'
+            module.Class: 'awg.keysight_M8190A.AWGM8190A'
             awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
             awg_timeout: 20
             pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
@@ -1271,7 +1271,7 @@ class AWGM8190A(Base, PulserInterface):
         self.write(':STAB2:RES')
         self.write(':SEQ1:DEL:ALL')
         self.write(':SEQ2:DEL:ALL')
-        self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
+        #self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
 
         seq_id_ch1 = int(self.query(":SEQ1:DEF:NEW? {:d}".format(num_steps)))
         seq_id_ch2 = int(self.query(":SEQ2:DEF:NEW? {:d}".format(num_steps)))
@@ -1293,6 +1293,7 @@ class AWGM8190A(Base, PulserInterface):
             wave_ch1 = self._remove_file_extension(waveform_tuple[0])
             wave_ch2 = self._remove_file_extension(waveform_tuple[1])
 
+            # todo: check whath happsn for new sequence when there is already one with same name
             if not (wave_ch1 in loaded_segments_ch1 and
                     wave_ch2 in loaded_segments_ch2) \
                     and not (wave_ch1 in waves_loaded_here and
