@@ -215,8 +215,8 @@ class MFL_IRQ_Driven(GenericLogic):
         self.z_thresh = z_thresh
 
         self.init_arrays(self.n_epochs)
-        self.init_mfl_algo(b0_gauss=b0_gauss)    # this is a dummy init without parameter, call setup_new_run() after
-                                        # for xy8, we need to know b0 gauss already while dummy init
+        self.init_mfl_algo(b0_gauss=b0_gauss)   # this is a dummy init without parameter, call setup_new_run() after
+                                                # for xy8, we need to know b0 gauss already while dummy init
 
     def setup_new_run(self, tau_first, tau_first_req, n_first, n_first_req,
                       t_first_seq=None, cb_epoch_done=None, **kwargs_algo):
@@ -306,6 +306,9 @@ class MFL_IRQ_Driven(GenericLogic):
         resample_a = kwargs.get('resample_1', 0.98)
         resample_thresh = kwargs.get('resample_thresh', 0.5)
 
+        z_phot_0 = kwargs.get('z_phot_0', 0.12)
+        z_phot_1 = kwargs.get('z_phot_0', 0.09)
+
 
         self.erase_mirrored = True
         self.log.warning("MFL configure with erase_mirrored(). Actually wrong for DD MFL!")
@@ -317,8 +320,8 @@ class MFL_IRQ_Driven(GenericLogic):
         freq_min = 2*np.pi*np.min([freq_min_1_mhz, freq_max_1_mhz, freq_min_2_mhz, freq_max_2_mhz]) # mhz rad
 
         # for photon model
-        self.z_phot_0 = 0.12
-        self.z_phot_1 = 0.09
+        self.z_phot_0 = z_phot_0
+        self.z_phot_1 = z_phot_1
 
         # to save for dumping
         self.mfl_n_particles = n_particles
@@ -1822,7 +1825,7 @@ if __name__ == '__main__':
 
     def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh, t2a_s=None, t2b_s=None, calibmode_lintau=False,
                                   freq_min_1_mhz=0, freq_max_1_mhz=10, freq_min_2_mhz=0, freq_max_2_mhz=10,
-                                  b0_gauss=None,
+                                  b0_gauss=None, z_phot_0=0, z_phot_1=0,
                                   meta_dict=None, nowait_callback=False, eta_assym=1):
 
         nolog = False # not calibmode_lintau
@@ -1851,6 +1854,7 @@ if __name__ == '__main__':
                                 t_first_seq=t_seq_first, t2a_s=t2a_s, t2b_s=t2b_s,
                                 freq_min_1_mhz=freq_min_1_mhz, freq_max_1_mhz=freq_max_1_mhz,
                                 freq_min_2_mhz=freq_min_2_mhz, freq_max_2_mhz=freq_max_2_mhz,
+                                z_phot_0=z_phot_0, z_phot_1=z_phot_1,
                                 eta_assym=eta_assym, b0_gauss=b0_gauss)
 
         if mfl_logic._cur_pull_data_method is 'gated_2d':
@@ -1965,7 +1969,7 @@ if __name__ == '__main__':
                               t2a_s=params['t2a'], t2b_s=params['t2b'], calibmode_lintau=params['calibmode_lintau'],
                               freq_min_1_mhz=params['freq_min_1_mhz'], freq_max_1_mhz=params['freq_max_1_mhz'],
                               freq_min_2_mhz=params['freq_min_2_mhz'], freq_max_2_mhz=params['freq_max_2_mhz'],
-                              b0_gauss=params['b0_gauss'],
+                              b0_gauss=params['b0_gauss'], z_phot_0=params['z_phot_0'], z_phot_1=params['z_phot_1'],
                               meta_dict=meta, nowait_callback=params['nowait_callback'])
     join_mfl_seperate_thread()
 

@@ -289,6 +289,9 @@ class PhotonOutcomeModel(qi.Model):
         if len(np.shape(outcomes_ph)) == 0:
             outcomes_ph = np.array(outcomes_ph)[None]
 
+        if np.any(outcomes_ph == 0):
+            outcomes_ph[outcomes_ph == 0] = 1
+            print("Warning: Correcting received zero photons -> 1 ")
         # Dinani (2019), eqn (8)
         # outcomes[idx] * pr1 + (1 - outcomes[idx]) * pr0
 
@@ -2568,7 +2571,7 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
         if np.average(fi_i) > fi_max:
             self._best_eps = eps
         self._track_fi.append(fi_i)
-        self._track_entropy.append(self.calc_entropy())
+        #self._track_entropy.append(self.calc_entropy())
 
         return eps
 
