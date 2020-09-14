@@ -233,6 +233,7 @@ class ODMRGui(GUIBase):
         self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
         setattr(self._mw.odmr_control_DockWidget, 'ranges_groupBox', groupBox)
         self._mw.dockWidgetContents_3_grid_layout = self._mw.dockWidgetContents_3.layout()
+        self._mw.fit_range_SpinBox.valueChanged.connect(self.change_fit_range)
         # (QWidget * widget, int row, int column, Qt::Alignment alignment = Qt::Alignment())
 
         self._mw.dockWidgetContents_3_grid_layout.addWidget(groupBox, 7, 1, 1, 5)
@@ -339,7 +340,6 @@ class ODMRGui(GUIBase):
         # Internal user input changed signals
         self._mw.cw_frequency_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
 
-        dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
         self._mw.sweep_power_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
         self._mw.cw_power_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
         self._mw.runtime_DoubleSpinBox.editingFinished.connect(self.change_runtime)
@@ -545,10 +545,16 @@ class ODMRGui(GUIBase):
         stops = self.get_frequencies_from_spinboxes('stop')
         steps = self.get_frequencies_from_spinboxes('step')
         power = self._mw.sweep_power_DoubleSpinBox.value()
+
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
         self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges)
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges)
         self._odmr_logic.ranges += 1
+
+        # remove stuff that remained from the old range that might have been in place there
+        key = 'channel: {0}, range: {1}'.format(self.display_channel, self._odmr_logic.ranges - 1)
+        if key in self._odmr_logic.fits_performed:
+            self._odmr_logic.fits_performed.pop(key)
         return
 
     def remove_ranges_gui_elements_clicked(self):
@@ -574,14 +580,17 @@ class ODMRGui(GUIBase):
         steps = self.get_frequencies_from_spinboxes('step')
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
+
+        self._odmr_logic.range_to_fit -= 1
         self._odmr_logic.ranges -= 1
         max_val = self._odmr_logic.ranges - 1
         self._mw.fit_range_SpinBox.setMaximum(max_val)
-        if self._mw.fit_range_SpinBox.value() >  max_val:
+        if self._mw.fit_range_SpinBox.value() > max_val:
             self._mw.fit_range_SpinBox.setValue(max_val)
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
-        if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() >  max_val:
+        if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() > max_val:
             self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setValue(max_val)
+
         return
 
     def get_objects_from_groupbox_row(self, row):
@@ -616,7 +625,6 @@ class ODMRGui(GUIBase):
         return return_dict
 
     def get_freq_dspinboxes_from_groubpox(self, identifier):
-        n_rows = self._odmr_logic.ranges
         dspinboxes = []
         for name in self._mw.odmr_control_DockWidget.__dict__:
             box_name = identifier + '_freq_DoubleSpinBox'
@@ -816,14 +824,8 @@ class ODMRGui(GUIBase):
                 np.abs(selected_odmr_data_x[-1] - selected_odmr_data_x[0]),
                 odmr_matrix.shape[0])
             )
-        odmr_matrix_dp = odmr_matrix[:, self.display_channel]
-        x_data = self._odmr_logic.frequency_lists[matrix_range]
-        x_data_full_length = np.zeros(len(self._odmr_logic.final_freq_list))
-        start_pos = np.where(np.isclose(self._odmr_logic.final_freq_list,
-                                        self._odmr_logic.mw_starts[matrix_range]))[0][0]
-        x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
-        y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
-        odmr_matrix_range = odmr_matrix_dp[:, y_args]
+
+        odmr_matrix_range = self._odmr_logic.select_odmr_matrix_data(odmr_matrix, self.display_channel, matrix_range)
         self.odmr_matrix_image.setImage(
             image=odmr_matrix_range,
             axisOrder='row-major',
@@ -957,7 +959,12 @@ class ODMRGui(GUIBase):
         return
 
     def update_matrix_range(self):
-        self.matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
+        self._odmr_logic.matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
+        # need to update the plot that is showed
+        key = 'Matrix range: {}'.format(self._odmr_logic.matrix_range)
+        self.odmr_matrix_image.setImage(self._odmr_logic.select_odmr_matrix_data(self._odmr_logic.odmr_plot_xy,
+                                                                                 self.display_channel,
+                                                                                 self._odmr_logic.matrix_range))
         return
 
     def update_parameter(self, param_dict):
@@ -1079,6 +1086,10 @@ class ODMRGui(GUIBase):
 
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
+        return
+
+    def change_fit_range(self):
+        self._odmr_logic.fit_range = self._mw.fit_range_SpinBox.value()
         return
 
     def get_frequencies_from_row(self, row):
