@@ -178,9 +178,9 @@ def plot_eta_vs_t(mes_list, eta_mode='all', rolling_window=None, savepath=None, 
             axes.plot(x, y, label='median, window= {}'.format(rolling_window), linewidth=5)
 
             if not np.isnan(t_roll_ms):
-                idx_end_roll, _ = Tk_math.find_nearest(x, x[-1] - t_roll_ms*1e-3)
-                idx_start_avg, _ = Tk_math.find_nearest(x, x[-1] - 5*t_roll_ms*1e-3)
-                eta_min = np.median(y[idx_start_avg:idx_end_roll])
+                idx_end_roll, _ = Tk_math.find_nearest(x, x[-1] - 30*t_roll_ms*1e-3)
+                idx_start_avg, _ = Tk_math.find_nearest(x, x[-1] - 10*t_roll_ms*1e-3)
+                eta_min = np.min(y[:idx_end_roll])
             else:
                 eta_min = np.median(y[-10:])
             #eta_min = np.nanmin(y)
@@ -1484,7 +1484,11 @@ if __name__ == '__main__':
              ]
 
     #paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_M6.3\combine",]
-    paths = [r"E:\Data\2020\08\20200828\PulsedMeasurement\mfl_xy8_bayUpdate.1\combine"]
+    paths = [r"E:\Data\2020\09\20200914\PulsedMeasurement\mfl_xy8_BaysianFI_nsweeps=10k.11\combine"]
+
+    rolling_windows = '100ms'
+    rolling_windows = '10000ms'  # only [ms] allowed!
+    # rolling_windows = 1
 
     for path in paths:
         path = path.replace("\\","/")
@@ -1516,9 +1520,6 @@ if __name__ == '__main__':
         # MEDIAN OF MES LIST
         ######################
 
-        rolling_windows = '100ms'
-        rolling_windows = '10000ms'  # only [ms] allowed!
-        #rolling_windows = 1
 
         # eta and db
         #"""

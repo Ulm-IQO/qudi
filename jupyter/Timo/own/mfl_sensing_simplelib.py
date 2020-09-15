@@ -118,7 +118,7 @@ def particle_covariance_mtx(weights, locations):
     assert np.all(np.isfinite(cov))
     if not np.all(la.eig(cov)[0] >= 0):
         warnings.warn('Numerical error in covariance estimation causing positive semidefinite violation.',
-                      ApproximationWarning)
+                      RuntimeWarning)
 
     return cov
 
@@ -2464,10 +2464,6 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
 
             # todo: best way to enforce not too long tau?
             t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
-            """
-            if t_evol_us > 2 * t2 *1e6:
-                eps[self._n] = self.round_up_to_mod(t_evol_us / (t2 * 1e6))
-                t_evol_us = t2*1e6
 
             t_evol_us, was_penalty_applied = self.apply_t2_penalty(t_evol_us)
 
@@ -3153,7 +3149,7 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
                                     weights=self._updater.particle_weights, bins=[bins_x, bins_y],
                                     range=([w1_min, w1_max],
                                            [w2_min, w2_max]),
-                                    density=False)
+                                    normed=False)
 
         # norming to make it a pdf
         hist = np.multiply(hist, 1/np.sum(hist))
@@ -3903,7 +3899,7 @@ class basic_SMCUpdater(qi.Distribution):
                 "Extremely small n_ess encountered ({}). "
                 "Resampling is likely to fail. Consider adding particles, or "
                 "resampling more often.".format(ess),
-                ApproximationWarning
+                RuntimeWarning
             )
         if ess < self.n_particles * self.resample_thresh:
             self.resample()
@@ -4049,7 +4045,7 @@ class basic_SMCUpdater(qi.Distribution):
         if not np.all(weights >= 0):
             warnings.warn(
                 "Negative weights occured in particle approximation. Smallest weight observed == {}. Clipping weights.".format(
-                    np.min(weights)), ApproximationWarning)
+                    np.min(weights)), RuntimeWarning)
             np.clip(weights, 0, 1, out=weights)
 
         # Next, check if we have caused the weights to go to zero, as can
@@ -4062,11 +4058,11 @@ class basic_SMCUpdater(qi.Distribution):
                 return
             elif self._zero_weight_policy == 'warn':
                 warnings.warn("All particle weights are zero. This will very likely fail quite badly.",
-                              ApproximationWarning)
+                              RuntimeWarning)
             elif self._zero_weight_policy == 'error':
                 raise RuntimeError("All particle weights are zero.")
             elif self._zero_weight_policy == 'reset':
-                warnings.warn("All particle weights are zero. Resetting from initial prior.", ApproximationWarning)
+                warnings.warn("All particle weights are zero. Resetting from initial prior.", RuntimeWarning)
                 self.reset()
             else:
                 raise ValueError("Invalid zero-weight policy {} encountered.".format(self._zero_weight_policy))
@@ -4351,7 +4347,7 @@ class basic_SMCUpdater(qi.Distribution):
                                               weights=self.particle_weights, bins=n_bins,
                                               range=([w1_min, w1_max],
                                                      [w2_min, w2_max]),
-                                              density=False)
+                                              normed=False)
 
         hist = np.multiply(hist, 1/np.sum(hist))
 

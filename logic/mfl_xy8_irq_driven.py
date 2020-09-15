@@ -307,11 +307,11 @@ class MFL_IRQ_Driven(GenericLogic):
         resample_thresh = kwargs.get('resample_thresh', 0.5)
 
         z_phot_0 = kwargs.get('z_phot_0', 0.12)
-        z_phot_1 = kwargs.get('z_phot_0', 0.09)
+        z_phot_1 = kwargs.get('z_phot_1', 0.09)
 
 
         self.erase_mirrored = True
-        self.log.warning("MFL configure with erase_mirrored(). Actually wrong for DD MFL!")
+        #self.log.warning("MFL configure with erase_mirrored(). Actually wrong for DD MFL!")
 
         self.ndd_mod = 8   # due to XY8 limited granuality
         self.n_pi_dd_max = 16000  # limited by the sequences on the AWG as well
@@ -365,6 +365,12 @@ class MFL_IRQ_Driven(GenericLogic):
                                                                 opt_mode='fi_trace', restr_ndd_mod=self.ndd_mod,
                                                                 norm_fisher=True, coarse_opt_k=0,
                                                                 restr_ndd_list=restr_ndd_list)
+
+        # heuristic fine control
+        #self.mfl_tau_from_heuristic._calc_fi_mode = 'baysian_fi_1'
+        #self.mfl_tau_from_heuristic._calc_fi_npoints = 50
+        #self.mfl_tau_from_heuristic._n_fiopt_retrials = 1
+        self.mfl_tau_from_heuristic._t2_penalty_thresh = 3 * np.average([t2a_s, t2b_s])
 
 
     def get_epoch_done_trig_ch(self):
@@ -1332,7 +1338,8 @@ class MFL_IRQ_Driven(GenericLogic):
         tau_and_x = self.get_tau_and_x(last_tau, last_n)
 
         try:
-            self.mfl_updater.update(z_bin, tau_and_x)  # updates prior
+            if not self.is_calibmode_lintau:
+                self.mfl_updater.update(z_bin, tau_and_x)  # updates prior
         except RuntimeError as e:
             self.log.error("Updating mfl failed in epoch {}: {}".format(self.i_epoch, str(e)))
 
