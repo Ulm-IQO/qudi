@@ -216,10 +216,8 @@ class ODMRLogic(GenericLogic):
 
         if type(self.final_freq_list) == list:
             self.final_freq_list = np.array(final_freq_list)
-        if self.final_freq_list.all():
-            self.odmr_plot_x = np.array(self.final_freq_list)
-        else:
-            self.odmr_plot_x = np.array(final_freq_list)
+
+        self.odmr_plot_x = np.array(self.final_freq_list)
         self.odmr_plot_y = np.zeros([len(self.get_odmr_channels()), self.odmr_plot_x.size])
 
         self.odmr_plot_xy = np.zeros(

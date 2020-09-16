@@ -583,13 +583,14 @@ class ODMRGui(GUIBase):
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
 
-        self._odmr_logic.range_to_fit -= 1
+        # in case the removed range is the one selected for fitting right now adjust the value
         self._odmr_logic.ranges -= 1
-        max_val = self._odmr_logic.ranges - 1
-        self._mw.fit_range_SpinBox.setMaximum(max_val)
-        if self._mw.fit_range_SpinBox.value() > max_val:
-            self._mw.fit_range_SpinBox.setValue(max_val)
-        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+        max_val = self._odmr_logic.ranges
+        if self._odmr_logic.range_to_fit == max_val:
+            self._odmr_logic.range_to_fit = max_val
+            self._mw.fit_range_SpinBox.setMaximum(max_val)
+
+        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(max_val)
         if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() > max_val:
             self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setValue(max_val)
 
