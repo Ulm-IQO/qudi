@@ -4,6 +4,8 @@
 
 Changes/New features:
 
+* Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
+in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
