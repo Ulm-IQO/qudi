@@ -19,7 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 import numpy as np
 import os
 import pyqtgraph as pg
@@ -41,6 +40,7 @@ from functools import partial
 class ODMRMainWindow(QtWidgets.QMainWindow):
     """ The main window for the ODMR measurement GUI.
     """
+
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -55,6 +55,7 @@ class ODMRMainWindow(QtWidgets.QMainWindow):
 class ODMRSettingDialog(QtWidgets.QDialog):
     """ The settings dialog for ODMR measurements.
     """
+
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -92,7 +93,6 @@ class ODMRGui(GUIBase):
     sigDoFit = QtCore.Signal(str, object, object, int, int)
     sigSaveMeasurement = QtCore.Signal(str, list, list)
     sigAverageLinesChanged = QtCore.Signal(int)
-
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -144,7 +144,7 @@ class ODMRGui(GUIBase):
             start_freq_DoubleSpinBox.setMaximumWidth(100)
             setattr(self._mw.odmr_control_DockWidget, 'start_freq_DoubleSpinBox_{}'.format(row),
                     start_freq_DoubleSpinBox)
-            gridLayout.addWidget(start_label, row,  1, 1, 1)
+            gridLayout.addWidget(start_label, row, 1, 1, 1)
             gridLayout.addWidget(start_freq_DoubleSpinBox, row, 2, 1, 1)
             start_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
             # step
@@ -161,7 +161,7 @@ class ODMRGui(GUIBase):
             step_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
             setattr(self._mw.odmr_control_DockWidget, 'step_freq_DoubleSpinBox_{}'.format(row),
                     step_freq_DoubleSpinBox)
-            gridLayout.addWidget(step_label, row,  3, 1, 1)
+            gridLayout.addWidget(step_label, row, 3, 1, 1)
             gridLayout.addWidget(step_freq_DoubleSpinBox, row, 4, 1, 1)
 
             # stop
@@ -269,11 +269,11 @@ class ODMRGui(GUIBase):
             self._odmr_logic.odmr_plot_xy[:, self.display_channel],
             axisOrder='row-major')
         self.odmr_matrix_image.setRect(QtCore.QRectF(
-                self._odmr_logic.mw_starts[0],
-                0,
-                self._odmr_logic.mw_stops[0] - self._odmr_logic.mw_starts[0],
-                self._odmr_logic.number_of_lines
-            ))
+            self._odmr_logic.mw_starts[0],
+            0,
+            self._odmr_logic.mw_stops[0] - self._odmr_logic.mw_starts[0],
+            self._odmr_logic.number_of_lines
+        ))
 
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.odmr_plot_x,
                                           self._odmr_logic.odmr_plot_y[self.display_channel],
@@ -645,7 +645,6 @@ class ODMRGui(GUIBase):
 
         return all_spinboxes
 
-
     def get_frequencies_from_spinboxes(self, identifier):
         dspinboxes = self.get_freq_dspinboxes_from_groubpox(identifier)
         freqs = [dspinbox.value() for dspinbox in dspinboxes]
@@ -828,7 +827,7 @@ class ODMRGui(GUIBase):
                 0,
                 np.abs(selected_odmr_data_x[-1] - selected_odmr_data_x[0]),
                 odmr_matrix.shape[0])
-            )
+        )
 
         odmr_matrix_range = self._odmr_logic.select_odmr_matrix_data(odmr_matrix, self.display_channel, matrix_range)
         self.odmr_matrix_image.setImage(
