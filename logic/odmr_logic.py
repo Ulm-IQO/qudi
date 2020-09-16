@@ -216,7 +216,9 @@ class ODMRLogic(GenericLogic):
             final_freq_list.extend(freqs)
             self.frequency_lists.append(freqs)
 
-        if self.final_freq_list:
+        if type(self.final_freq_list) == list:
+            self.final_freq_list = np.array(final_freq_list)
+        if self.final_freq_list.all():
             self.odmr_plot_x = np.array(self.final_freq_list)
         else:
             self.odmr_plot_x = np.array(final_freq_list)
@@ -419,10 +421,10 @@ class ODMRLogic(GenericLogic):
     def set_sweep_parameters(self, starts, stops, steps, power):
         """ Set the desired frequency parameters for list and sweep mode
 
-        @param float starts: list of start frequencies to set in Hz
-        @param float stops: list of stop frequencies to set in Hz
-        @param float steps: list of step frequencies to set in Hz
-        @param float power: mw power to set in dBm
+        @param list starts: list of start frequencies to set in Hz
+        @param list stops: list of stop frequencies to set in Hz
+        @param list steps: list of step frequencies to set in Hz
+        @param list power: mw power to set in dBm
 
         @return list, list, list, float: current start_freq, current stop_freq,
                                             current freq_step, current power
@@ -508,13 +510,6 @@ class ODMRLogic(GenericLogic):
                 num_steps = int(np.rint((mw_stop - mw_start) / mw_step))
                 end_freq = mw_start + num_steps * mw_step
                 freq_list = np.linspace(mw_start, end_freq, num_steps + 1)
-                if np.abs(mw_stop - mw_start) / mw_step >= limits.list_maxentries:
-                    self.log.warning('Number of frequency steps too large for microwave device. '
-                                     'Lowering resolution to fit the maximum length.')
-                    mw_step = np.abs(mw_stop - mw_start) / (limits.list_maxentries - 1)
-                else:
-                    mw_step = (mw_stop - mw_start) / (len(freq_list) - 1)
-
 
                 # adjust the end frequency in order to have an integer multiple of step size
                 # The master module (i.e. GUI) will be notified about the changed end frequency
@@ -526,11 +521,14 @@ class ODMRLogic(GenericLogic):
                 used_stops.append(end_freq)
 
 
+            final_freq_list = np.array(final_freq_list)
+            if len(final_freq_list) >= limits.list_maxentries:
+                self.log.error('Number of frequency steps too large for microwave device.')
 
             freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(final_freq_list,
                                                                             self.sweep_mw_power)
 
-            self.final_freq_list = freq_list
+            self.final_freq_list = np.array(freq_list)
             self.mw_starts = used_starts
             self.mw_stops = used_stops
             self.mw_steps = used_steps
@@ -557,6 +555,7 @@ class ODMRLogic(GenericLogic):
 
                 param_dict = {'mw_starts': [mw_start], 'mw_stops': [mw_stop],
                               'mw_steps': [mw_step], 'sweep_mw_power': self.sweep_mw_power}
+                self.final_freq_list = np.arange(mw_start, mw_stop + mw_step, mw_step)
             else:
                 self.log.error('sweep mode only works for one frequency range.')
 
@@ -817,7 +816,6 @@ class ODMRLogic(GenericLogic):
 
             # Set plot slice of matrix
             self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :, :]
-            key = 'Matrix range: {}'.format(self.matrix_range)
 
             # Update elapsed time/sweeps
             self.elapsed_sweeps += 1
