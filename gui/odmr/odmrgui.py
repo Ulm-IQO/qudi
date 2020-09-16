@@ -201,6 +201,8 @@ class ODMRGui(GUIBase):
                 add_range_button.setText('Add Range')
                 add_range_button.setMinimumWidth(75)
                 add_range_button.setMaximumWidth(100)
+                if self._odmr_logic.mw_scanmode.name == 'SWEEP':
+                    add_range_button.setDisabled(True)
                 add_range_button.clicked.connect(self.add_ranges_gui_elements_clicked)
                 gridLayout.addWidget(add_range_button, row, 7, 1, 1)
                 setattr(self._mw.odmr_control_DockWidget, 'add_range_button',
@@ -783,7 +785,10 @@ class ODMRGui(GUIBase):
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
                 [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
-            self._mw.odmr_control_DockWidget.add_range_button.setEnabled(True)
+            if self._odmr_logic.mw_scanmode.name == 'SWEEP':
+                self._mw.odmr_control_DockWidget.add_range_button.setDisabled(True)
+            elif self._odmr_logic.mw_scanmode.name == 'LIST':
+                self._mw.odmr_control_DockWidget.add_range_button.setEnabled(True)
             self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(True)
             self._mw.runtime_DoubleSpinBox.setEnabled(True)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
