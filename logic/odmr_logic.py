@@ -48,10 +48,10 @@ class ODMRLogic(GenericLogic):
 
     # config option
     mw_scanmode = ConfigOption(
-                    'scanmode',
-                    'LIST',
-                    missing='warn',
-                    converter=lambda x: MicrowaveMode[x.upper()])
+        'scanmode',
+        'LIST',
+        missing='warn',
+        converter=lambda x: MicrowaveMode[x.upper()])
 
     clock_frequency = StatusVar('clock_frequency', 200)
     cw_mw_frequency = StatusVar('cw_mw_frequency', 2870e6)
@@ -132,8 +132,8 @@ class ODMRLogic(GenericLogic):
         self.odmr_raw_data = np.zeros(
             [self.number_of_lines,
              len(self._odmr_counter.get_odmr_channels()),
-            self.odmr_plot_x.size]
-            )
+             self.odmr_plot_x.size]
+        )
 
         # Switch off microwave and set CW frequency and power
         self.mw_off()
@@ -175,23 +175,23 @@ class ODMRLogic(GenericLogic):
             d1['Lorentzian dip'] = {
                 'fit_function': 'lorentzian',
                 'estimator': 'dip'
-                }
+            }
             d1['Two Lorentzian dips'] = {
                 'fit_function': 'lorentziandouble',
                 'estimator': 'dip'
-                }
+            }
             d1['N14'] = {
                 'fit_function': 'lorentziantriple',
                 'estimator': 'N14'
-                }
+            }
             d1['N15'] = {
                 'fit_function': 'lorentziandouble',
                 'estimator': 'N15'
-                }
+            }
             d1['Two Gaussian dips'] = {
                 'fit_function': 'gaussiandouble',
                 'estimator': 'dip'
-                }
+            }
             default_fits = OrderedDict()
             default_fits['1d'] = d1
             fc.load_from_dict(default_fits)
@@ -207,8 +207,6 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_odmr_plots(self):
         """ Initializing the ODMR plots (line and matrix). """
-
-
 
         final_freq_list = []
         for mw_start, mw_stop, mw_step in zip(self.mw_starts, self.mw_stops, self.mw_steps):
@@ -227,7 +225,6 @@ class ODMRLogic(GenericLogic):
         self.odmr_plot_xy = np.zeros(
             [self.number_of_lines, len(self.get_odmr_channels()), self.odmr_plot_x.size])
 
-
         range_to_fit = self.range_to_fit
 
         self.odmr_fit_x = np.arange(self.mw_starts[range_to_fit],
@@ -235,8 +232,6 @@ class ODMRLogic(GenericLogic):
                                     self.mw_steps[range_to_fit])
 
         self.odmr_fit_y = np.zeros(self.odmr_fit_x.size)
-
-
 
         self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
         current_fit = self.fc.current_fit
@@ -256,7 +251,7 @@ class ODMRLogic(GenericLogic):
             frequency = frequency / self._oversampling
 
         if self.module_state() != 'locked':
-            self.mw_trigger_pol, triggertime = self._mw_device.set_ext_trigger(trigger_pol, 1/frequency)
+            self.mw_trigger_pol, triggertime = self._mw_device.set_ext_trigger(trigger_pol, 1 / frequency)
         else:
             self.log.warning('set_trigger failed. Logic is locked.')
 
@@ -452,8 +447,6 @@ class ODMRLogic(GenericLogic):
                         else:
                             self.log.error("Sweep mode will only work with one frequency range.")
 
-
-
             if isinstance(power, (int, float)):
                 self.sweep_mw_power = limits.power_in_range(power)
         else:
@@ -506,7 +499,6 @@ class ODMRLogic(GenericLogic):
             used_steps = []
             used_stops = []
             for mw_start, mw_stop, mw_step in zip(self.mw_starts, self.mw_stops, self.mw_steps):
-
                 num_steps = int(np.rint((mw_stop - mw_start) / mw_step))
                 end_freq = mw_start + num_steps * mw_step
                 freq_list = np.linspace(mw_start, end_freq, num_steps + 1)
@@ -519,7 +511,6 @@ class ODMRLogic(GenericLogic):
                 used_starts.append(mw_start)
                 used_steps.append(mw_step)
                 used_stops.append(end_freq)
-
 
             final_freq_list = np.array(final_freq_list)
             if len(final_freq_list) >= limits.list_maxentries:
@@ -865,7 +856,6 @@ class ODMRLogic(GenericLogic):
                     self.log.warning('Fit function "{0}" not available in ODMRLogic fit container.'
                                      ''.format(fit_function))
 
-
         self.odmr_fit_x, self.odmr_fit_y, result = self.fc.do_fit(x_data, y_data)
         key = 'channel: {0}, range: {1}'.format(channel_index, fit_range)
         if fit_function != 'No Fit':
@@ -896,7 +886,6 @@ class ODMRLogic(GenericLogic):
                 filelabel_raw = '{0}_ODMR_data_ch{1}_raw'.format(tag, nch)
             else:
                 filelabel_raw = 'ODMR_data_ch{0}_raw'.format(nch)
-
 
             data_raw = OrderedDict()
             data_raw['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, nch, :]
@@ -947,14 +936,12 @@ class ODMRLogic(GenericLogic):
                 parameters['Channel'] = '{0}: {1}'.format(nch, channel)
                 parameters['frequency range'] = str(ii)
 
-
                 key = 'channel: {0}, range: {1}'.format(nch, ii)
                 if key in self.fits_performed.keys():
                     parameters['Fit function'] = self.fits_performed[key][3]
                     for name, param in self.fits_performed[key][2].params.items():
                         parameters[name] = str(param)
                 # add all fit parameter to the saved data:
-
 
                 fig = self.draw_figure(nch, ii,
                                        cbar_range=colorscale_range,
@@ -1062,10 +1049,10 @@ class ODMRLogic(GenericLogic):
             vmin=cbar_range[0],
             vmax=cbar_range[1],
             extent=[np.min(freq_data),
-                np.max(freq_data),
-                0,
-                self.number_of_lines
-                ],
+                    np.max(freq_data),
+                    0,
+                    self.number_of_lines
+                    ],
             aspect='auto',
             interpolation='nearest')
 
