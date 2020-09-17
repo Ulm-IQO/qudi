@@ -513,7 +513,9 @@ class ODMRLogic(GenericLogic):
             final_freq_list = np.array(final_freq_list)
             if len(final_freq_list) >= limits.list_maxentries:
                 self.log.error('Number of frequency steps too large for microwave device.')
-
+                mode, is_running = self._mw_device.get_status()
+                self.sigOutputStateUpdated.emit(mode, is_running)
+                return mode, is_running
             freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(final_freq_list,
                                                                             self.sweep_mw_power)
 
