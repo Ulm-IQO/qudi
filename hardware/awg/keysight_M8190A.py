@@ -28,7 +28,7 @@ import numpy as np
 import scipy.interpolate
 from fnmatch import fnmatch
 from collections import OrderedDict
-from abc import abstractmethod
+
 
 from core.module import Base
 from core.configoption import ConfigOption
@@ -36,12 +36,23 @@ from interface.pulser_interface import PulserInterface, PulserConstraints, Seque
 from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
 
-class AWGM819X(Base, PulserInterface):
-    """
-    A hardware module for AWG of the Keysight M819X series for generating
-    waveforms and sequences thereof.
-    """
+class AWGM8190A(Base, PulserInterface):
+    """ A hardware module for the Keysight M8190A series for generating
+        waveforms and sequences thereof.
 
+    Example config for copy-paste:
+
+        myawg:
+            module.Class: 'awg.keysight_M8190A.AWGM8190A'
+            awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
+            awg_timeout: 20
+            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
+            assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
+    """
+    _modclass = 'awgm8190a'
+    _modtype = 'hardware'
+
+    # config options
     _visa_address = ConfigOption(name='awg_visa_address', default='TCPIP0::localhost::hislip0::INSTR', missing='warn')
     _awg_timeout = ConfigOption(name='awg_timeout', default=20, missing='warn')
     _pulsed_file_dir = ConfigOption(name='pulsed_file_dir', default=os.path.join(get_home_dir(), 'pulsed_file_dir'),
@@ -49,8 +60,12 @@ class AWGM819X(Base, PulserInterface):
     _assets_storage_path = ConfigOption(name='assets_storage_path', default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
                                        missing='warn')
     _sample_rate_div = ConfigOption(name='sample_rate_div', default=1, missing='warn')
+    _dac_resolution = ConfigOption(name='dac_resolution_bits', default='14', missing='warn')  # 8190 supports 12 (speed) or 14 (precision)
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
-    _wave_mem_mode = 'pc_hdd'  # 'awg_segments'
+
+    # physical output channel mapping
+    ch_map = {'d_ch1': 'MARK1:SAMP', 'd_ch2': 'MARK2:SAMP', 'd_ch3': 'MARK1:SYNC', 'd_ch4': 'MARK2:SYNC'}
+    ch_map_a2d = {'a_ch1': ['d_ch1', 'd_ch3'], 'a_ch2': ['d_ch2', 'd_ch4']}     # corresponding marker channels
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -94,12 +109,12 @@ class AWGM819X(Base, PulserInterface):
             self._SERIALNUMBER = mess[2]
             self._FIRMWARE_VERSION = mess[3]
 
-            self.log.info('Load the device model "{0}" from "{1}" with '
-                          'serial number "{2}" and firmware version "{3}" '
+            self.log.info('Load the device model "{0}" from "{1}" with the '
+                          'serial number "{2}" and the firmware version "{3}" '
                           'successfully.'.format(self._MODEL, self._BRAND,
                                                  self._SERIALNUMBER,
                                                  self._FIRMWARE_VERSION))
-            self._sequence_mode = 'SEQ' in self.query('*OPT?').split(',')
+            self._sequence_mode  = 'SEQ' in self.query('*OPT?').split(',')
         self._init_device()
 
     def on_deactivate(self):
@@ -112,76 +127,50 @@ class AWGM819X(Base, PulserInterface):
             self.log.warning('Closing AWG connection using pyvisa failed.')
         self.log.info('Closed connection to AWG')
 
-    @property
-    @abstractmethod
-    def n_ch(self):
-        pass
-
-    @property
-    @property
-    def marker_on(self):
-        pass
-
-    def set_seq_mode(self, mode):
-        self.write_all_ch(":FUNC{}:MODE {}", mode, all_by_one={'m8195a': True})
-
-    def _set_dac_resolution(self):
-        pass
-
-    def _set_awg_mode(self):
-        pass
-
-    def _set_sample_rate_div(self):
-        pass
-
-    def _set_dac_amplifier_mode(self):
-        pass
-
-    @abstractmethod
-    def _write_output_on(self):
-        pass
-
-    @abstractmethod
-    def _get_digital_ch_cmd(self):
-        pass
 
     def _init_device(self):
         """ Run those methods during the initialization process."""
 
         self.reset()
-        constr = self.get_constraints()
 
-        self.write(':ROSC:SOUR INT')    # Chose source for reference clock
+        self.write(':ROSC:SOUR INT') # Chose source for reference clock
 
-        self._set_awg_mode()
-
-        # General procedure according to Sec. 8.22.6 in AWG8190A manual:
+        # Sec. 8.22.6 in manual:
         # To prepare your module for arbitrary waveform generation follow these steps:
         # 1. Select one of the direct modes (precision or speed mode) or one of the interpolated modes ((x3, x12, x24 and x48)
-
-        self._set_dac_resolution()
-        self._set_sample_rate_div()
-        self.set_seq_mode('ARB')
-
+        if self._dac_resolution == 12:
+            self.write(':TRAC1:DWID WSP')
+            self.write(':TRAC2:DWID WSP')
+        elif self._dac_resolution == 14:
+            self.write(':TRAC1:DWID WPR')
+            self.write(':TRAC2:DWID WPR')
+        else:
+            self.log.error("Unsupported DAC resolution: {}.".format(self._dac_resolution))
         # 2. Define one or multiple segments using the various forms of TRAC:DEF
         # done in load_waveform
+
         # 3. Fill the segments with values and marker data
         # empty at init
         # 4. Select the segment to be output in arbitrary waveform mode using
         self.write(':TRAC1:SEL 1')
         self.write(':TRAC2:SEL 1')
 
-        # Set the waveform directory on the local pc:
+        # Set the directory:
         self.write(':MMEM:CDIR "{0}"'.format(self._pulsed_file_dir))
+
+        constr = self.get_constraints()
 
         self.sample_rate = constr.sample_rate.default
         self.set_sample_rate(self.sample_rate)
 
-        self._set_dac_amplifier_mode()
+        # todo: implement choosing AMP
+        if self._dac_amp_mode != 'direct':
+            raise NotImplementedError("Non direct output '{}' not yet implemented."
+                                      .format(self._dac_amp_mode))
+        self.write(':OUTP1:ROUT DAC')
+        self.write(':OUTP2:ROUT DAC')
 
-        # unused channel (not in activation config) are ignored
-        ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default,
-                'a_ch3': constr.a_ch_amplitude.default, 'a_ch4': constr.a_ch_amplitude.default}
+        ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default}
         d_ampl_low = {'d_ch1': constr.d_ch_low.default, 'd_ch2': constr.d_ch_low.default,
                       'd_ch3': constr.d_ch_low.default, 'd_ch4': constr.d_ch_low.default}
         d_ampl_high = {'d_ch1': constr.d_ch_high.default, 'd_ch2': constr.d_ch_high.default,
@@ -198,7 +187,7 @@ class AWGM819X(Base, PulserInterface):
         self._segment_table = [[],[]]   # [0]: ch1, [1]: ch2. Local, read-only copy of the device segment table
         self._flag_segment_table_req_update = True   # local copy requires update
 
-    @abstractmethod
+
     def get_constraints(self):
         """
         Retrieve the hardware constrains from the Pulsing device.
@@ -227,7 +216,108 @@ class AWGM819X(Base, PulserInterface):
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
         sequence mode) just leave it out so that the default is used (only zeros).
         """
-        pass
+        constraints = PulserConstraints()
+
+        # The compatible file formats are hardware specific.
+        constraints.waveform_format = ['bin']
+        constraints.dac_resolution = {'min': 12, 'max': 14, 'step': 2,
+                                      'unit': 'bit'}
+
+        if self._MODEL != 'M8190A':
+            self.log.error('This driver is for Keysight M8190A only, but detected: {}'.format(
+                self._MODEL
+            ))
+
+        if self._dac_resolution == 12:
+            constraints.sample_rate.min = 125e6/self._sample_rate_div
+            constraints.sample_rate.max = 12e9/self._sample_rate_div
+            constraints.sample_rate.step = 1.0e7
+            constraints.sample_rate.default = 12e9/self._sample_rate_div
+        elif self._dac_resolution == 14:
+            constraints.sample_rate.min = 125e6/self._sample_rate_div
+            constraints.sample_rate.max = 8e9/self._sample_rate_div
+            constraints.sample_rate.step = 1.0e7
+            constraints.sample_rate.default = 8e9/self._sample_rate_div
+        else:
+            raise ValueError("Unsupported DAX resolution: {}".format(self._dac_resolution))
+
+        # manual 8.22.3 Waveform Granularity and Size
+        if self._dac_resolution == 12:
+            constraints.waveform_length.step = 64
+            constraints.waveform_length.min = 320
+            constraints.waveform_length.default = 320
+        elif self._dac_resolution == 14:
+            constraints.waveform_length.step = 48
+            constraints.waveform_length.min = 240
+            constraints.waveform_length.default = 240
+
+        constraints.a_ch_amplitude.min = 0.100     # Channels amplitude control single ended min
+        constraints.a_ch_amplitude.max = 0.700      # Channels amplitude control single ended max
+        if self._dac_resolution == 12:
+            constraints.a_ch_amplitude.step = 1.7090e-4  # for AWG8190: actually 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
+        elif self._dac_resolution == 14:
+            constraints.a_ch_amplitude.step = 4.2725e-5
+        constraints.a_ch_amplitude.default = 0.500
+
+        constraints.d_ch_low.min = -0.5
+        constraints.d_ch_low.max = 1.75
+        constraints.d_ch_low.step = 0.0002
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = -0.5
+        constraints.d_ch_high.max = 1.75
+        constraints.d_ch_high.step = 0.0002
+        constraints.d_ch_high.default = 1.5
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 16_000_000
+        constraints.waveform_num.default = 1
+        # The sample memory can be split into a maximum of 16 M waveform segments
+
+        # FIXME: Check the proper number for your device
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 4000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.sequence_option = SequenceOption.OPTIONAL
+        constraints.sequence_order = SequenceOrderOption.LINONLY
+
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65536
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
+        # ToDo: Check how many external triggers are available
+        # constraints.trigger_in.min = 0
+        # constraints.trigger_in.max = 1
+        # constraints.trigger_in.step = 1
+        # constraints.trigger_in.default = 0
+
+        # the name a_ch<num> and d_ch<num> are generic names, which describe
+        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
+        # are stated, where only the generic names should be used. The names
+        # for the different configurations can be customary chosen.
+
+        activation_config = OrderedDict()
+
+        if self._MODEL == 'M8190A':
+            # all allowed configs
+            # digital channels belong to analogue counterparts
+            activation_config['all'] = {'a_ch1', 'a_ch2',
+                                        'd_ch1', 'd_ch2', 'd_ch3', 'd_ch4'}
+            # sample marker are more accurate than sync markers -> lower d_ch numbers
+            activation_config['ch1_2mrk'] = {'a_ch1',
+                                            'd_ch1', 'd_ch3'}
+            activation_config['ch2_2mrk'] = {'a_ch2',
+                                             'd_ch2', 'd_ch4'}
+
+
+
+        constraints.activation_config = activation_config
+
+        return constraints
 
     def pulser_on(self):
         """ Switches the pulsing device on.
@@ -236,7 +326,8 @@ class AWGM819X(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
-        self._write_output_on()
+        self.write(':OUTP1:NORM ON')
+        self.write(':OUTP2:NORM ON')
 
         # Sec. 6.4 from manual:
         # In the program it is recommended to send the command for starting
@@ -315,8 +406,6 @@ class AWGM819X(Base, PulserInterface):
         being associated to a SINGLE wavfeorm asset.
         """
 
-        self.set_seq_mode('ARB')
-
         if isinstance(load_dict, list):
             new_dict = dict()
             for waveform in load_dict:
@@ -353,48 +442,28 @@ class AWGM819X(Base, PulserInterface):
 
         if not to_nextfree_segment:
             self.clear_all()
+        path = self._pulsed_file_dir
+        offset = 0
 
-        self._load_wave_from_memory(load_dict)
+        for chnl_num, waveform in load_dict.items():
+            name = waveform.split('.bin', 1)[0]
+            filepath = os.path.join(path, waveform)
+            # todo: potentially faster to write data from PC ram without storing to hdd first
+            data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
+            samples = len(data)
+            segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, samples)) \
+                        + '_ch{:d}'.format(chnl_num)
+            segment_id_per_ch = segment_id.rsplit("_ch",1)[0]
+            self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
+            self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id_per_ch, name))
+
+            self._flag_segment_table_req_update = True
+            self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
+                name, samples, chnl_num, segment_id_per_ch))
 
         self.set_trigger_mode('cont')
 
         return self.get_loaded_assets()
-
-    def _load_wave_from_memory(self, load_dict):
-        if self._wave_mem_mode == 'pc_hdd':
-            path = self._pulsed_file_dir
-            offset = 0
-
-            for chnl_num, waveform in load_dict.items():
-                name = waveform.split('.bin', 1)[0]
-                filepath = os.path.join(path, waveform)
-                # todo: potentially faster to write data from PC ram without storing to hdd first
-                data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
-                samples = len(data)
-                segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, samples)) \
-                             + '_ch{:d}'.format(chnl_num)
-                segment_id_per_ch = segment_id.rsplit("_ch", 1)[0]
-                self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
-                self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id_per_ch, name))
-
-                self._flag_segment_table_req_update = True
-                self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
-                    name, samples, chnl_num, segment_id_per_ch))
-        elif self._wave_mem_mode == 'awg_segments':
-
-            # todo: check required file naming. seems like segment number in filename
-            # we should replace with internal book keeping here
-            waveform = load_dict[0]
-            name = waveform
-            if name.split(',')[0] == name:
-                segment_id = 1
-            else:
-                segment_id = np.int(name.split(',')[0])
-            self.write(':TRAC:SEL {0}'.format(segment_id))
-
-
-        else:
-            raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -453,35 +522,43 @@ class AWGM819X(Base, PulserInterface):
         :return:
         """
         if mode is "cont":
-            self.write_all_ch(":INIT:CONT{}:STAT ON",  all_by_one={'m8195a': True})
-            self.write_all_ch(":INIT:GATE{}:STAT OFF", all_by_one={'m8195a': True})
+            self.write(":INIT:CONT1:STAT ON")
+            self.write(":INIT:GATE1:STAT OFF")
+            self.write(":INIT:CONT2:STAT ON")
+            self.write(":INIT:GATE2:STAT OFF")
         elif mode is "trig":
-            self.write_all_ch(":INIT:CONT{}:STAT OFF", all_by_one={'m8195a': True})
-            self.write_all_ch(":INIT:GATE{}:STAT OFF", all_by_one={'m8195a': True})
+            self.write(":INIT:CONT1:STAT OFF")
+            self.write(":INIT:GATE1:STAT OFF")
+            self.write(":INIT:CONT2:STAT OFF")
+            self.write(":INIT:GATE2:STAT OFF")
         elif mode is "gate":
-            self.write_all_ch(":INIT:CONT{}:STAT OFF", all_by_one={'m8195a': True})
-            self.write_all_ch(":INIT:GATE{}:STAT ON",  all_by_one={'m8195a': True})
+            self.write(":INIT:CONT1:STAT OFF")
+            self.write(":INIT:GATE1:STAT ON")
+            self.write(":INIT:CONT2:STAT OFF")
+            self.write(":INIT:GATE2:STAT ON")
         else:
             self.log.error("Unknown trigger mode: {}".format(mode))
 
     def get_trigger_mode(self):
-        cont = bool(int(self.query_all_ch(":INIT:CONT{}:STAT?", all_by_one={'m8195a': True})))
-        gate = bool(int(self.query_all_ch(":INIT:GATE{}:STAT?", all_by_one={'m8195a': True})))
+        cont_ch1 = bool(int(self.query(":INIT:CONT1:STAT?")))
+        cont_ch2 = bool(int(self.query(":INIT:CONT1:STAT?")))
+        gate_ch1 = bool(int(self.query(":INIT:GATE1:STAT?")))
+        gate_ch2 = bool(int(self.query(":INIT:GATE2:STAT?")))
 
-        if cont and not gate:
+        if cont_ch1 and cont_ch2 and not gate_ch1 and not gate_ch2:
             return "cont"
-        if not cont and not gate:
+        if not cont_ch1 and not cont_ch1 and not gate_ch1 and not gate_ch2:
             return "trig"
-        if not cont and gate:
+        if not cont_ch1 and not cont_ch2 and gate_ch1 and gate_ch2:
             return "gate"
 
-        self.log.warning("Unexpected trigger mode found. Cont {}, Gate {}".format(
-                            cont, gate)
+        self.log.warning("Unexpected trigger mode found. Cont (ch1/ch2): {}/{}, Gate {}/{}".format(
+                            cont_ch1, cont_ch2, gate_ch1, gate_ch2))
         return ""
 
     def get_dynamic_mode(self):
-        return self.query_all_ch(":STAB{}:DYN?", all_by_one={'m8195a': True})
-
+        retval = self.query(":STAB1:DYN?") and self.query(":STAB2:DYN?")
+        return retval
 
     def check_dev_error(self):
 
@@ -573,7 +650,8 @@ class AWGM819X(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        self.write_all_ch(':TRAC{}:DEL:ALL', all_by_one={'m8195a': True})
+        self.write(':TRAC1:DEL:ALL')
+        self.write(':TRAC2:DEL:ALL')
         self._flag_segment_table_req_update = True
         self.current_loaded_asset = ''
 
@@ -798,14 +876,16 @@ class AWGM819X(Base, PulserInterface):
         for chnl in low:
             if chnl not in digital_channels:
                 continue
+            d_ch_int = self._digital_ch_2_internal(chnl)
             low_val[chnl] = float(
-                self.query(self._get_digital_ch_cmd(chnl) + ':LOW?'))
+                self.query(':{}:VOLT:LOW?'.format(d_ch_int)))
         # get high marker levels
         for chnl in high:
             if chnl not in digital_channels:
                 continue
+            d_ch_int = self._digital_ch_2_internal(chnl)
             high_val[chnl] = float(
-                self.query(self._get_digital_ch_cmd(chnl) + ':HIGH?'))
+                self.query(':{}:VOLT:HIGH?'.format(d_ch_int)))
 
         return low_val, high_val
 
@@ -888,11 +968,11 @@ class AWGM819X(Base, PulserInterface):
         for chnl in low and high:
             if chnl not in digital_channels:
                 continue
-
+            d_ch_internal = self._digital_ch_2_internal(chnl)
             offs =(high[chnl] + low[chnl])/2
             ampl = high[chnl] - low[chnl]
-            self.write(self._get_digital_ch_cmd(chnl) + ':AMPL {}'.format(ampl))
-            self.write(self._get_digital_ch_cmd(chnl) + ':OFFS {}'.format(offs))
+            self.write('{0}:VOLT:AMPL {1}'.format(d_ch_internal, ampl))
+            self.write('{0}:VOLT:OFFS {1}'.format(d_ch_internal, offs))
 
         return self.get_digital_level()
 
@@ -1093,7 +1173,7 @@ class AWGM819X(Base, PulserInterface):
                              created waveform names
         """
 
-        waveforms = []
+        waveforms = list()
 
         # Sanity checks
         if len(analog_samples) == 0:
@@ -1120,61 +1200,35 @@ class AWGM819X(Base, PulserInterface):
                                      set(analog_samples.keys()).union(set(digital_samples.keys()))))
             return -1, waveforms
 
-        waveforms = self._write_wave_to_memory(name, analog_samples, digital_samples, active_analog)
+        self.write(':FUNC1:MODE ARB')  # set to arbitrary mode
+        self.write(':FUNC2:MODE ARB')
+
+        marker = True   # no reason to deactivate any marker for M8190A, as active makers do not impose restrcitions
+
+        for channel_index, channel_number in enumerate(active_analog):
+
+            self.log.debug('Max ampl, ch={0}: {1}'.format(channel_number, analog_samples[channel_number].max()))
+
+            a_samples = self.float_to_sample(analog_samples[channel_number])
+            marker_sample = digital_samples[self._analogue_ch_corresponding_digital_chs(channel_number)[0]]
+            marker_sync = digital_samples[self._analogue_ch_corresponding_digital_chs(channel_number)[1]]
+            d_samples = self.bool_to_sample(marker_sample, marker_sync)
+            if marker:
+                comb_samples = a_samples + d_samples
+            else:
+                comb_samples = a_samples
+            filename = name + '_ch' + str(channel_index + 1) + '.bin'  # all names lowercase to avoid trouble
+            waveforms.append(filename)
+
+            if channel_index == 0:
+                # deletes waveform, all channels
+                self.delete_waveform(filename.split("_ch")[0])
+            self.write_bin(':MMEM:DATA "{0}", '.format(filename), comb_samples)
+            self.log.debug("Waveform {} written to {}".format(name, filename))
 
         self.check_dev_error()
 
         return total_number_of_samples, waveforms
-
-    @abstractmethod
-    def _compile_bin_samples(self, analog_samples, digital_samples, ch_num):
-        """
-        Creates a binary sample output that combines analog and digital samples
-        from the sequence generator in the correct format.
-
-        :return binary samples as expected from awg hardware
-        """
-        pass
-
-    def _write_wave_to_memory(self, name, analog_samples, digital_samples, active_analog):
-
-        waveforms = []
-
-        for channel_index, channel_number in enumerate(active_analog):
-
-            comb_samples = self._compile_bin_samples(analog_samples, digital_samples, channel_number)
-
-            if self._wave_mem_mode == 'pc_hdd':
-
-                self.log.debug('Max ampl, ch={0}: {1}'.format(channel_number, analog_samples[channel_number].max()))
-
-                filename = name + '_ch' + str(channel_index + 1) + '.bin'  # all names lowercase to avoid trouble
-                waveforms.append(filename)
-
-                if channel_index == 0:
-                    # deletes waveform, all channels
-                    self.delete_waveform(filename.split("_ch")[0])
-                self.write_bin(':MMEM:DATA "{0}", '.format(filename), comb_samples)
-
-                self.log.debug("Waveform {} written to {}".format(name, filename))
-
-            elif self._wave_mem_mode == 'awg_segments':
-                # todo: avoid naming convention to write to specific segment
-                if name.split(',')[0] == name:
-                    segment_id = 1
-                else:
-                    segment_id = np.int(name.split(',')[0])
-
-                self.write(':TRAC{0}:DEF {1}, {2}, {3}'.format(int(channel_index + 1), segment_id, len(a_samples), 0))
-                self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(int(channel_index + 1), segment_id, 0), a_samples)
-                self.write(':TRAC:NAME {0}, "{1}"'.format(segment_id, name))  # name the segment
-                #print('hier', self.query(':TRAC:NAME? {0}'.format(int(segment_id))))
-                waveforms.append(name)
-
-            else:
-                raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
-
-        return waveforms
 
     def write_sequence(self, name, sequence_parameters):
         """
@@ -1215,7 +1269,7 @@ class AWGM819X(Base, PulserInterface):
         self.write(':STAB2:RES')
         self.write(':SEQ1:DEL:ALL')
         self.write(':SEQ2:DEL:ALL')
-        #self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
+        self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
 
         seq_id_ch1 = int(self.query(":SEQ1:DEF:NEW? {:d}".format(num_steps)))
         seq_id_ch2 = int(self.query(":SEQ2:DEF:NEW? {:d}".format(num_steps)))
@@ -1496,70 +1550,6 @@ class AWGM819X(Base, PulserInterface):
                                                                        values=values)
         self.awg.timeout = self._awg_timeout * 1000
         return int(enum_status_code)
-
-    def write_all_ch(self, command, *args, all_by_one=None):
-        """
-        :param command: visa command
-        :param all_by_one:  dict, eg. {"m8190a": False, "m8195a": True}. Set true when for
-                            the specific device one command, not separate with ch_nums is required.
-                            Eg. "TRAC:SEL" instead for "TRAC1:SEL" and "TRAC2:SEL"
-                            If device not listed, will default to False.
-        :param args:    replacement list which is filled into command
-        :return:
-        """
-
-        if all_by_one is None:
-            all_by_one = {'m8190a': False, 'm8195a': False}
-
-        single_cmd = False
-        if self._MODEL.lower() in all_by_one:
-            single_cmd = bool(all_by_one[self._MODEL.lower()])
-
-        if single_cmd:
-            # replace first braces that, usually to indicate channel
-            command = command.replace("{","", 1)
-            command = command.replace("}", "", 1)
-            self.write(command.format(*args))
-        else:
-            for i in range(0, self.n_ch):
-                self.write(command.format(i, *args))
-
-    def query_all_ch(self, command, *args, all_by_one=None):
-        """
-        :param command: visa command
-        :param all_by_one:  dict, eg. {"m8190a": False, "m8195a": True}. Set true when for
-                            the specific device one command, not separate with ch_nums is required.
-                            Eg. "TRAC:SEL" instead for "TRAC1:SEL" and "TRAC2:SEL"
-                            If device not listed, will default to False.
-        :param args:    replacement list which is filled into command
-        :return: response of all channels collapsed to single value if all channels equal
-                 error and response of first channel if otherwise
-        """
-
-        if all_by_one is None:
-            all_by_one = {'m8190a': False, 'm8195a': False}
-
-        single_cmd = False
-
-        if self._MODEL.lower() in all_by_one:
-            single_cmd = bool(all_by_one[self._MODEL.lower()])
-
-        if single_cmd:
-            # replace first braces that, usually to indicate channel
-            command = command.replace("{", "", 1)
-            command = command.replace("}", "", 1)
-
-            return self.query(command.format(*args))
-        else:
-            retlist = []
-            for i in range(0, self.n_ch):
-                retlist = self.query(command.format(i, *args))
-            collapsed_ret = np.unique(np.asarray(retlist))
-            if collapsed_ret.size > 1:
-                self.log.error("Unexpected non-identical response on channels: {}".format(retlist))
-
-            return collapsed_ret[0]
-
 
     def query(self, question, force_no_check=False):
         """ Asks the device a 'question' and receive and return an answer from it.
@@ -1851,410 +1841,3 @@ class AWGM819X(Base, PulserInterface):
     def sequence_set_start_segment(self, seqtable_id):
         # todo: need to implement? alernatively shuffle sequuence while generating
         pass
-
-class AWGM8195A(AWGM819X):
-    """ A hardware module for the Keysight M8190A series for generating
-          waveforms and sequences thereof.
-
-      Example config for copy-paste:
-
-          myawg:
-              module.Class: 'awg.keysight_M819X.AWGM8195A'
-              awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
-              awg_timeout: 20
-              pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
-              assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
-      """
-
-    _modclass = 'awgm8195a'
-    _modtype = 'hardware'
-
-    awg_mode = ConfigOption(name='awg_mode', default='FOUR', missing='warn')
-    sample_rate_div = ConfigOption(name='sample_rate_div', default=4, missing='warn')
-
-    # physical output channel mapping
-    ch_map = {'d_ch1': 3, 'd_ch2': 4}   # awg8195a: digital channels are analogue channels, only different config
-
-    @property
-    def n_ch(self):
-        return 4
-
-    @property
-    def awg_mode(self):
-        return self.query(':INST:DACM?')
-
-    @property
-    def marker_on(self):
-        if self.awg_mode == 'MARK':
-            return True
-        return False
-
-    def get_constraints(self):
-        """
-        Retrieve the hardware constrains from the Pulsing device.
-
-        @return constraints object: object with pulser constraints as attributes.
-
-        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
-        channel_config, ...) related to the pulse generator hardware to the caller.
-
-            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
-
-        If you are not sure about the meaning, look in other hardware files to get an impression.
-        If still additional constraints are needed, then they have to be added to the
-        PulserConstraints class.
-
-        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
-        Essentially it contains min/max values as well as min step size, default value and unit of
-        the parameter.
-
-        PulserConstraints.activation_config differs, since it contain the channel
-        configuration/activation information of the form:
-            {<descriptor_str>: <channel_set>,
-             <descriptor_str>: <channel_set>,
-             ...}
-
-        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
-        sequence mode) just leave it out so that the default is used (only zeros).
-        """
-        constraints = PulserConstraints()
-
-        # The compatible file formats are hardware specific.
-        constraints.waveform_format = ['bin8']
-
-        if self._MODEL == 'M8195A':
-            constraints.sample_rate.min = 53.76e9 / self._sample_rate_div
-            constraints.sample_rate.max = 65.0e9 / self._sample_rate_div
-            constraints.sample_rate.step = 1.0e7
-            constraints.sample_rate.default = 65.00e9 / self._sample_rate_div
-        else:
-            self.log.error('The current AWG model has no valid sample rate '
-                           'constraints')
-
-        # constraints.waveform_length.min = self.__min_waveform_length
-        # constraints.waveform_length.max = self.__max_waveform_length
-        constraints.waveform_length.step = 256
-        constraints.waveform_length.default = 1280
-
-        # constraints.waveform_length.step = 1    #TODO step is 256 but the import function repeats the waveform until
-        #                                         # granularity is fullfilled, may lead to memory issues, set to 256 if
-        #                                         # longer waveforms have to be uploaded.
-        # constraints.waveform_length.default = 1 # min length is 1280 but this is also handled by the import
-
-        constraints.a_ch_amplitude.min = 0.075
-        constraints.a_ch_amplitude.max = 1.0  # corresponds to 1Vpp, 50Ohm terminated
-        constraints.a_ch_amplitude.step = 0.0002
-        constraints.a_ch_amplitude.default = 0.5
-
-        constraints.d_ch_low.min = 0
-        constraints.d_ch_low.max = 1
-        constraints.d_ch_low.step = 0.0002
-        constraints.d_ch_low.default = 0.0
-
-        constraints.d_ch_high.min = 0
-        constraints.d_ch_high.max = 2
-        constraints.d_ch_high.step = 0.0002
-        constraints.d_ch_high.default = 1
-
-        # constraints.sampled_file_length.min = 256
-        # constraints.sampled_file_length.max = 2_000_000_000
-        # constraints.sampled_file_length.step = 256
-        # constraints.sampled_file_length.default = 256
-
-        constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16000000
-        constraints.waveform_num.default = 1
-        # The sample memory can be split into a maximum of 16 M waveform segments
-
-        # FIXME: Check the proper number for your device
-        constraints.sequence_num.min = 1
-        constraints.sequence_num.max = 4000
-        constraints.sequence_num.step = 1
-        constraints.sequence_num.default = 1
-
-        # If sequencer mode is available then these should be specified
-        constraints.repetitions.min = 0
-        constraints.repetitions.max = 65536
-        constraints.repetitions.step = 1
-        constraints.repetitions.default = 0
-
-        # ToDo: Check how many external triggers are available
-        # constraints.trigger_in.min = 0
-        # constraints.trigger_in.max = 1
-        # constraints.trigger_in.step = 1
-        # constraints.trigger_in.default = 0
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe
-        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used. The names
-        # for the different configurations can be customary chosen.
-        activation_config = OrderedDict()
-        if self._MODEL == 'M8195A':
-            awg_mode = self.awg_mode
-            if awg_mode == 'MARK':
-                activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
-            elif awg_mode == 'SING':
-                activation_config['all'] = frozenset({'a_ch1'})
-            elif awg_mode == 'DUAL':
-                activation_config['all'] = frozenset({'a_ch1', 'a_ch2'})
-            elif awg_mode == 'FOUR':
-                activation_config['all'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'})
-
-        constraints.activation_config = activation_config
-
-        # FIXME: additional constraint really necessary?
-        constraints.dac_resolution = {'min': 8, 'max': 8, 'step': 1, 'unit': 'bit'}
-
-        return constraints
-
-    def _set_awg_mode(self):
-        # set only on init by config option, not during runtime
-
-        awg_mode = self.awg_mode
-        self.write(':INSTrument:DACMode {0}'.format())  # TODO grab this setting from config
-
-        # set manual 1.5.5
-
-        if awg_mode == 'MARK':
-            raise NotImplementedError
-        elif awg_mode == 'SING':
-            raise NotImplementedError
-        elif awg_mode == 'DUAL':
-            raise NotImplementedError
-        elif awg_mode == 'FOUR':
-            self.write_all_ch(':TRAC{}:MMOD EXT')
-        else:
-            raise ValueError("Unknown mode: {}".format(awg_mode))
-
-    def _set_sample_rate_div(self):
-        self.write(':INST:MEM:EXT:RDIV DIV{0}'.format(self.sample_rate_div))  # TODO dependent on DACMode
-
-    def _write_output_on(self):
-        self.write_all_ch("OUTP{} ON")
-
-    def _compile_bin_samples(self, analog_samples, digital_samples, ch_num):
-
-        marker = self.marker_on
-        max_ampl = 0.5
-
-        # todo: write a proper float_to_div function
-        # todo: hard coded max_ampl looks werid
-        a_samples = (((analog_samples[ch_num] + max_ampl) / (2 * max_ampl) * 255) - 128).astype(
-            'int8')  # TODO insert Vpp here
-        if marker and ch_num == 'a_ch1':
-            d_samples = digital_samples['d_ch1'].astype('int8') + 2 * digital_samples['d_ch2'].astype(
-                'int8')  # TODO channels are hardcoded
-            comb_samples = np.zeros(2 * a_samples.size, dtype=np.int8)
-            comb_samples[::2] = a_samples
-            comb_samples[1::2] = d_samples
-        else:
-            comb_samples = a_samples  # TODO use interleaved_samples
-            # filename = name + '_ch' + str(channel_index + 1) + '_' + str(len(interleaved_samples)) + '.bin8'
-
-        return comb_samples
-
-    def _get_digital_ch_cmd(self, digital_ch_name):
-        d_ch_internal = self._digital_ch_2_internal(digital_ch_name)
-        return ':VOLT{0:d}'.format(d_ch_internal)
-
-class AWGM8190A(AWGM819X):
-    """ A hardware module for the Keysight M8190A series for generating
-        waveforms and sequences thereof.
-
-    Example config for copy-paste:
-
-        myawg:
-            module.Class: 'awg.keysight_M819X.AWGM8190A'
-            awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
-            awg_timeout: 20
-            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
-            assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
-    """
-
-    _modclass = 'awgm8190a'
-    _modtype = 'hardware'
-
-    _dac_resolution = ConfigOption(name='dac_resolution_bits', default='14',
-                                   missing='warn')  # 8190 supports 12 (speed) or 14 (precision)
-
-    # physical output channel mapping
-    ch_map = {'d_ch1': 'MARK1:SAMP', 'd_ch2': 'MARK2:SAMP', 'd_ch3': 'MARK1:SYNC', 'd_ch4': 'MARK2:SYNC'}
-    ch_map_a2d = {'a_ch1': ['d_ch1', 'd_ch3'], 'a_ch2': ['d_ch2', 'd_ch4']}     # corresponding marker channels
-
-    @property
-    def n_ch(self):
-        return 2
-
-    @property
-    def marker_on(self):
-        # no reason to deactivate any marker for M8190A, as active makers do not impose restrcitions
-        return True
-
-    def get_constraints(self):
-        """
-        Retrieve the hardware constrains from the Pulsing device.
-
-        @return constraints object: object with pulser constraints as attributes.
-
-        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
-        channel_config, ...) related to the pulse generator hardware to the caller.
-
-            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
-
-        If you are not sure about the meaning, look in other hardware files to get an impression.
-        If still additional constraints are needed, then they have to be added to the
-        PulserConstraints class.
-
-        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
-        Essentially it contains min/max values as well as min step size, default value and unit of
-        the parameter.
-
-        PulserConstraints.activation_config differs, since it contain the channel
-        configuration/activation information of the form:
-            {<descriptor_str>: <channel_set>,
-             <descriptor_str>: <channel_set>,
-             ...}
-
-        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
-        sequence mode) just leave it out so that the default is used (only zeros).
-        """
-        constraints = PulserConstraints()
-
-        # The compatible file formats are hardware specific.
-        constraints.waveform_format = ['bin']
-        constraints.dac_resolution = {'min': 12, 'max': 14, 'step': 2,
-                                      'unit': 'bit'}
-
-        if self._MODEL != 'M8190A':
-            self.log.error('This driver is for Keysight M8190A only, but detected: {}'.format(
-                self._MODEL
-            ))
-
-        if self._dac_resolution == 12:
-            constraints.sample_rate.min = 125e6 / self._sample_rate_div
-            constraints.sample_rate.max = 12e9 / self._sample_rate_div
-            constraints.sample_rate.step = 1.0e7
-            constraints.sample_rate.default = 12e9 / self._sample_rate_div
-        elif self._dac_resolution == 14:
-            constraints.sample_rate.min = 125e6 / self._sample_rate_div
-            constraints.sample_rate.max = 8e9 / self._sample_rate_div
-            constraints.sample_rate.step = 1.0e7
-            constraints.sample_rate.default = 8e9 / self._sample_rate_div
-        else:
-            raise ValueError("Unsupported DAX resolution: {}".format(self._dac_resolution))
-
-        # manual 8.22.3 Waveform Granularity and Size
-        if self._dac_resolution == 12:
-            constraints.waveform_length.step = 64
-            constraints.waveform_length.min = 320
-            constraints.waveform_length.default = 320
-        elif self._dac_resolution == 14:
-            constraints.waveform_length.step = 48
-            constraints.waveform_length.min = 240
-            constraints.waveform_length.default = 240
-
-        constraints.a_ch_amplitude.min = 0.100  # Channels amplitude control single ended min
-        constraints.a_ch_amplitude.max = 0.700  # Channels amplitude control single ended max
-        if self._dac_resolution == 12:
-            constraints.a_ch_amplitude.step = 1.7090e-4  # for AWG8190: actually 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
-        elif self._dac_resolution == 14:
-            constraints.a_ch_amplitude.step = 4.2725e-5
-        constraints.a_ch_amplitude.default = 0.500
-
-        constraints.d_ch_low.min = -0.5
-        constraints.d_ch_low.max = 1.75
-        constraints.d_ch_low.step = 0.0002
-        constraints.d_ch_low.default = 0.0
-
-        constraints.d_ch_high.min = -0.5
-        constraints.d_ch_high.max = 1.75
-        constraints.d_ch_high.step = 0.0002
-        constraints.d_ch_high.default = 1.5
-
-        constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16_000_000
-        constraints.waveform_num.default = 1
-        # The sample memory can be split into a maximum of 16 M waveform segments
-
-        # FIXME: Check the proper number for your device
-        constraints.sequence_num.min = 1
-        constraints.sequence_num.max = 4000
-        constraints.sequence_num.step = 1
-        constraints.sequence_num.default = 1
-
-        constraints.sequence_option = SequenceOption.OPTIONAL
-        constraints.sequence_order = SequenceOrderOption.LINONLY
-
-        # If sequencer mode is available then these should be specified
-        constraints.repetitions.min = 0
-        constraints.repetitions.max = 65536
-        constraints.repetitions.step = 1
-        constraints.repetitions.default = 0
-
-        # ToDo: Check how many external triggers are available
-        # constraints.trigger_in.min = 0
-        # constraints.trigger_in.max = 1
-        # constraints.trigger_in.step = 1
-        # constraints.trigger_in.default = 0
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe
-        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used. The names
-        # for the different configurations can be customary chosen.
-
-        activation_config = OrderedDict()
-
-        if self._MODEL == 'M8190A':
-            # all allowed configs
-            # digital channels belong to analogue counterparts
-            activation_config['all'] = {'a_ch1', 'a_ch2',
-                                        'd_ch1', 'd_ch2', 'd_ch3', 'd_ch4'}
-            # sample marker are more accurate than sync markers -> lower d_ch numbers
-            activation_config['ch1_2mrk'] = {'a_ch1',
-                                             'd_ch1', 'd_ch3'}
-            activation_config['ch2_2mrk'] = {'a_ch2',
-                                             'd_ch2', 'd_ch4'}
-
-        constraints.activation_config = activation_config
-
-        return constraints
-
-    def _set_dac_resolution(self):
-        if self._dac_resolution == 12:
-            self.write(':TRAC1:DWID WSP')
-            self.write(':TRAC2:DWID WSP')
-        elif self._dac_resolution == 14:
-            self.write(':TRAC1:DWID WPR')
-            self.write(':TRAC2:DWID WPR')
-        else:
-            self.log.error("Unsupported DAC resolution: {}.".format(self._dac_resolution))
-
-    def _set_dac_amplifier_mode(self):
-        # todo: implement choosing AMP
-        if self._dac_amp_mode != 'direct':
-            raise NotImplementedError("Non direct output '{}' not yet implemented."
-                                      .format(self._dac_amp_mode))
-        self.write(':OUTP1:ROUT DAC')
-        self.write(':OUTP2:ROUT DAC')
-
-    def _write_output_on(self):
-        self.write_all_ch("OUTP{} NORM ON")
-
-    def _compile_bin_samples(self, analog_samples, digital_samples, ch_num):
-
-        marker = self.marker_on
-
-        a_samples = self.float_to_sample(analog_samples[ch_num])
-        marker_sample = digital_samples[self._analogue_ch_corresponding_digital_chs(ch_num)[0]]
-        marker_sync = digital_samples[self._analogue_ch_corresponding_digital_chs(ch_num)[1]]
-        d_samples = self.bool_to_sample(marker_sample, marker_sync)
-        if marker:
-            comb_samples = a_samples + d_samples
-        else:
-            comb_samples = a_samples
-
-        return comb_samples
-
-    def _get_digital_ch_cmd(self, digital_ch_name):
-        d_ch_internal = self._digital_ch_2_internal(digital_ch_name)
-        return ':{}:VOLT'.format(d_ch_internal)
