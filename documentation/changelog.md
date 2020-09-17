@@ -223,6 +223,7 @@ This can be used to specify the axis labels for the measurement (excluding units
     * Introduced separate fit tools for each of the two plots in the pulsed analysis tab
     * Automatically clears fit data when changing the alternative plot type or starting a new 
       measurement.
+    * Added Keysight AWG8190A hardware file.
 
 Config changes:
 * **All** pulsed related logic module paths need to be changed because they have been moved in the logic
