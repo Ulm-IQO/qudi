@@ -586,9 +586,10 @@ class ODMRGui(GUIBase):
         # in case the removed range is the one selected for fitting right now adjust the value
         self._odmr_logic.ranges -= 1
         max_val = self._odmr_logic.ranges
+        self._mw.fit_range_SpinBox.setMaximum(max_val)
         if self._odmr_logic.range_to_fit == max_val:
             self._odmr_logic.range_to_fit = max_val
-            self._mw.fit_range_SpinBox.setMaximum(max_val)
+
 
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(max_val)
         if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() > max_val:
