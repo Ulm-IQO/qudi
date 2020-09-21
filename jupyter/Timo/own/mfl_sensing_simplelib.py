@@ -4262,8 +4262,8 @@ class basic_SMCUpdater(qi.Distribution):
             p1 = p1.reshape(len(w1), len(w2), len(exp_t_array))
 
         # 2d, axis0: FI along A_par. axis1: along A_perp
-        d_p1_par = np.gradient(p1, (w1[1] - w1[0]) * 1e6, axis=0)
-        d_p1_perp = np.gradient(p1, (w2[1] - w2[0]) * 1e6, axis=1)
+        d_p1_par = np.gradient(p1, (w1[1] - w1[0]) * 1e6, axis=1)
+        d_p1_perp = np.gradient(p1, (w2[1] - w2[0]) * 1e6, axis=0)
 
         if self.has_photon_model:
             # 1-p1= p0= k* N -> see PhD Schmitt
