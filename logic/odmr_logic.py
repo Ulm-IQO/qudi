@@ -489,7 +489,6 @@ class ODMRLogic(GenericLogic):
 
         limits = self.get_hw_constraints()
         param_dict = {}
-        self.frequency_lists = []
         self.final_freq_list = []
         if self.mw_scanmode == MicrowaveMode.LIST:
             final_freq_list = []
@@ -504,7 +503,6 @@ class ODMRLogic(GenericLogic):
                 # adjust the end frequency in order to have an integer multiple of step size
                 # The master module (i.e. GUI) will be notified about the changed end frequency
                 final_freq_list.extend(freq_list)
-                # self.frequency_lists.append(freq_list)
 
                 used_starts.append(mw_start)
                 used_steps.append(mw_step)
