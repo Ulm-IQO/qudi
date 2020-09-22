@@ -1107,6 +1107,10 @@ class ConfocalGui(GUIBase):
             self._mw.xy_ViewWidget.set_crosshair_pos(pos)
         h_pos, v_pos = pos
 
+        if self._scanning_logic.depth_img_is_xz:
+            self.update_roi_depth(h=h_pos)
+        else:
+            self.update_roi_depth(h=v_pos)
         self.update_slider_x(h_pos)
         self.update_slider_y(v_pos)
 
