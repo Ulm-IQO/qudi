@@ -590,7 +590,8 @@ class ODMRGui(GUIBase):
         if self._odmr_logic.range_to_fit > max_val:
             self._odmr_logic.range_to_fit = max_val
 
-
+        self._mw.fit_range_SpinBox.setMaximum(max_val)
+        
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(max_val)
         if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() > max_val:
             self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setValue(max_val)
