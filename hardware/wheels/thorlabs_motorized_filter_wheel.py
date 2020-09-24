@@ -22,13 +22,13 @@ from core.module import Base
 from core.configoption import ConfigOption
 
 
-class Main(Base):
+class ThorlabsMotorizedFilterWheel(Base):
     """ This class is implements communication with Thorlabs Motorized Filter Wheels
 
     Example config for copy-paste:
 
     thorlabs_wheel:
-        module.Class: 'wheels.thorlabs.Main'
+        module.Class: 'wheels.thorlabs_motorized_filter_wheel.ThorlabsMotorizedFilterWheel'
         interface: 'COM6'
 
     Description of the hardware provided by Thorlabs:
@@ -41,8 +41,10 @@ class Main(Base):
 
     interface = ConfigOption('interface', 'COM3', missing='error')
 
-    _rm = None
-    _inst = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._rm = None
+        self._inst = None
 
     def on_activate(self):
         """ Module activation method """
