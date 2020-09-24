@@ -51,17 +51,15 @@ class Cryocon(Base, ProcessInterface, PIDControllerInterface):
 
     """
 
-    _modtype = 'cryocon'
-    _modclass = 'hardware'
-
     _ip_address = ConfigOption('ip_address')
     _ip_port = ConfigOption('port', 5000)
     _timeout = ConfigOption('timeout', 5)
     _main_channel = ConfigOption('main_channel', 'A')
 
-    _inst = None
-
-    _stop_wait = True
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._inst = None
+        self._stop_wait = False
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
