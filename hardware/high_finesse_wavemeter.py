@@ -84,6 +84,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     high_finesse_wavemeter:
         module.Class: 'high_finesse_wavemeter.HighFinesseWavemeter'
         measurement_timing: 10.0 # in seconds
+        this version includes the get frequency function of HighFinesse
 
     """
 
