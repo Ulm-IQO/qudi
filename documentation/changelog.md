@@ -4,6 +4,8 @@
 
 Changes/New features:
 
+* Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
+in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
@@ -70,6 +72,8 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
+* Added a config option to fastcomtec7887 module to support 7889 model
+* Added fastcomec 7887/9 support of dma mode through config option
 * Fixed bug in spincore pulseblaster hardware that affected only old models
 * Added a netobtain in spincore pulseblaster hardware to speedup remote loading 
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
@@ -77,6 +81,8 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
 * Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
 * Fixed bug affecting interface overloading of Qudi modules
+* Added ScienDSpinbox and ScienSpinbox compatibility to mapper
+* Added missing metadata in saved raw data file of PulsedMeasurement module
 * Update hardware module controlling the cryocon temperature regulator
 *
 
