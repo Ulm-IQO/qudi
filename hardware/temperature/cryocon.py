@@ -102,6 +102,8 @@ class Cryocon(Base, ProcessInterface, PIDControllerInterface):
         try:
             response = self._inst.query(text)
         except visa.VisaIOError:
+            if self.module_state() != 'idle':
+                return None
             self.log.warning('Cryocon connexion lost, automatic attempt to reconnect...')
             self.open_resource()
             self._inst.query(text)
@@ -295,6 +297,9 @@ class Cryocon(Base, ProcessInterface, PIDControllerInterface):
     def get_control_unit(self):
         """ Return the unit that the value is set in as a tuple of ('abreviation', 'full unit name') """
         return 'W', 'Watt'
+
+    def get_control_limit(self):
+        pass
 
     def get_extra(self):
         """ Get the P, I and D terms computed bu the hardware if available
