@@ -98,6 +98,7 @@ class MFL_IRQ_Driven(GenericLogic):
                                    'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts,
                                    'ungated_sum_up_cts_nicard': self.pull_data_ungated_sum_up_cts_nicard}
         self._cur_pull_data_method = 'ungated_sum_up_cts_nicard'
+        self._binarize_mode = 'majority'
 
         # handling files to communicate with other threads
         self.qudi_vars_metafile = 'temp/mfl_meta.pkl'
@@ -310,7 +311,7 @@ class MFL_IRQ_Driven(GenericLogic):
         z_phot_1 = kwargs.get('z_phot_1', 0.09)
 
 
-        self.erase_mirrored = True
+        self.erase_mirrored = False
         #self.log.warning("MFL configure with erase_mirrored(). Actually wrong for DD MFL!")
 
         self.ndd_mod = 8   # due to XY8 limited granuality
@@ -322,6 +323,7 @@ class MFL_IRQ_Driven(GenericLogic):
         # for photon model
         self.z_phot_0 = z_phot_0
         self.z_phot_1 = z_phot_1
+        self._binarize_mode = 'float_to_photons'
 
         # to save for dumping
         self.mfl_n_particles = n_particles
@@ -367,11 +369,14 @@ class MFL_IRQ_Driven(GenericLogic):
                                                                 restr_ndd_list=restr_ndd_list)
 
         # heuristic fine control
-        #self.mfl_tau_from_heuristic._calc_fi_mode = 'baysian_fi_1'
-        #self.mfl_tau_from_heuristic._calc_fi_npoints = 50
-        #self.mfl_tau_from_heuristic._n_fiopt_retrials = 1
+        self.mfl_tau_from_heuristic._calc_fi_mode = 'baysian_fi_1'
+        self.mfl_tau_from_heuristic._calc_fi_npoints = 50
+        self.mfl_tau_from_heuristic._n_fiopt_retrials = 1
         self.mfl_tau_from_heuristic._t2_penalty_thresh = 3 * np.average([t2a_s, t2b_s])
 
+        self.mfl_tau_from_heuristic._fine_opt_n_points = 50
+        self.mfl_tau_from_heuristic._fine_opt_sigma_tau = 7
+        self.mfl_tau_from_heuristic._optimization_fi_mode = 'rand'
 
     def get_epoch_done_trig_ch(self):
         # qudi StatusVar is not available if not run as a qudi module
@@ -1131,9 +1136,14 @@ class MFL_IRQ_Driven(GenericLogic):
         if self.is_calibmode_lintau and self.calibmode_mode == 'tau':
             n_pi = 8*np.min(self.jumptable['n'])
             n_pi = 32  # 32, manually fix to see resonances
+            n_pi = 512
         elif self.is_calibmode_lintau and self.calibmode_mode == 'n':
             tau = 445e-9
             n_pi = 8*np.min(self.jumptable['n'])
+
+        # debug:
+        #if n_pi > 128:
+        #    n_pi = 128
 
         idx_jumptable, n_val, tau_val = self.find_nearest_n_and_tau(tau, n_pi)
 
@@ -1386,7 +1396,7 @@ class MFL_IRQ_Driven(GenericLogic):
         #"""
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result(wait_for_data=not self.nowait_callback)
-        z_binary = self.binarize_result(z, mode='float_to_photons',
+        z_binary = self.binarize_result(z, mode=self._binarize_mode,
                                         z_thresh=self.z_thresh, read_phase=last_phase)
 
         self.save_before_update(z)
@@ -1839,7 +1849,7 @@ if __name__ == '__main__':
         mfl_logic.pull_jumptable(seqname=mfl_logic.sequence_name, load_vars_metafile=mfl_logic.qudi_vars_metafile)
 
         mfl_logic.init('mfl_xy8_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
-                       calibmode_lintau=calibmode_lintau, clin_mode='n',
+                       calibmode_lintau=calibmode_lintau, clin_mode='tau', #'n',
                        nowait_callback=nowait_callback, b0_gauss=b0_gauss)
         mfl_logic.meta_dict = meta_dict
 
