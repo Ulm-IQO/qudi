@@ -202,7 +202,8 @@ class MFL_IRQ_Driven(GenericLogic):
             pickle.dump(mes, file)
 
     def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, nowait_callback=False,
-             z_thresh=0.5, calibmode_lintau=False, b0_gauss=None, clin_mode='tau'):
+             z_thresh=0.5, calibmode_lintau=False, b0_gauss=None, clin_mode='tau',
+             tau_first=None, xy8_n_first=None):
 
         self.i_epoch = 0
         self.is_running = False
@@ -214,6 +215,10 @@ class MFL_IRQ_Driven(GenericLogic):
         self.sequence_name = name
         self.n_sweeps = n_sweeps
         self.z_thresh = z_thresh
+
+        # if set via param dict and not from first prior
+        self.mfl_tau_first = tau_first
+        self.mfl_xy8_n_first = xy8_n_first
 
         self.init_arrays(self.n_epochs)
         self.init_mfl_algo(b0_gauss=b0_gauss)   # this is a dummy init without parameter, call setup_new_run() after
@@ -316,6 +321,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
         self.ndd_mod = 8   # due to XY8 limited granuality
         self.n_pi_dd_max = 16000  # limited by the sequences on the AWG as well
+
 
         n_particles = 10000
         freq_min = 2*np.pi*np.min([freq_min_1_mhz, freq_max_1_mhz, freq_min_2_mhz, freq_max_2_mhz]) # mhz rad
@@ -662,7 +668,10 @@ class MFL_IRQ_Driven(GenericLogic):
         :return:
         """
         if self.i_epoch == 0 and not self.is_running:
-            return self.calc_tau_n_from_posterior()
+            if self.mfl_tau_first and self.mfl_xy8_n_first:
+                return self.mfl_tau_first, 8*self.mfl_xy8_n_first
+            else:
+                return self.calc_tau_n_from_posterior()
         else:
             self.log.error("Can't get first tau if mfl already started.")
             raise RuntimeError("Can't get first tau if mfl already started.")
@@ -1134,11 +1143,16 @@ class MFL_IRQ_Driven(GenericLogic):
     def calc_jump_addr(self, tau, n_pi, last_tau=None, last_n_pi=None, readout_phase=None, last_phase=None):
 
         if self.is_calibmode_lintau and self.calibmode_mode == 'tau':
-            n_pi = 8*np.min(self.jumptable['n'])
-            n_pi = 32  # 32, manually fix to see resonances
-            n_pi = 512
+            if self.mfl_xy8_n_first:
+                n_pi = 8*self.mfl_xy8_n_first
+            else:
+                n_pi = 8*np.min(self.jumptable['n'])
+
         elif self.is_calibmode_lintau and self.calibmode_mode == 'n':
-            tau = 445e-9
+            if self.mfl_tau_first:
+                tau = self.mfl_tau_first
+            else:
+                tau = 445e-9
             n_pi = 8*np.min(self.jumptable['n'])
 
         # debug:
@@ -1841,21 +1855,23 @@ if __name__ == '__main__':
         return success
 
     def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh, t2a_s=None, t2b_s=None, calibmode_lintau=False,
+                                  calibmode_mode=None,
                                   freq_min_1_mhz=0, freq_max_1_mhz=10, freq_min_2_mhz=0, freq_max_2_mhz=10,
                                   b0_gauss=None, z_phot_0=0, z_phot_1=0,
+                                  tau_first=None, xy8_n_first=None,
                                   meta_dict=None, nowait_callback=False, eta_assym=1):
 
         nolog = False # not calibmode_lintau
         mfl_logic.pull_jumptable(seqname=mfl_logic.sequence_name, load_vars_metafile=mfl_logic.qudi_vars_metafile)
 
         mfl_logic.init('mfl_xy8_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
-                       calibmode_lintau=calibmode_lintau, clin_mode='tau', #'n',
-                       nowait_callback=nowait_callback, b0_gauss=b0_gauss)
+                       calibmode_lintau=calibmode_lintau, clin_mode=calibmode_mode,
+                       nowait_callback=nowait_callback, b0_gauss=b0_gauss,
+                       tau_first=tau_first, xy8_n_first=xy8_n_first)
         mfl_logic.meta_dict = meta_dict
 
         mfl_logic.save_priors = False     # OK if callback slow and hdd space doesn't matter
         tau_first_req, n_first_req = mfl_logic.get_first_tau_n()
-
 
         idx_jumptable_first, _, _ = mfl_logic.find_nearest_n_and_tau(tau_first_req, n_first_req)
         tau_first, t_seq_first = mfl_logic.get_ts(idx_jumptable_first)
@@ -1863,9 +1879,9 @@ if __name__ == '__main__':
         # shortest tau mfl algo may choose, problem: shorter than tau_first causes rounding issues
 
         logger.info("Setting up mfl started at {}. n_sweeps= {}, n_epochs={}, z_thresh={}, t2a= {}, t2b= {} us."
-                    " First tau from flat prior {} ns, eta_assym= {}, Meta: {}".format(
+                    " from flat prior tau_first= {} ns, n_pi_first= {}, eta_assym= {}, Meta: {}".format(
                 meta['t_start'], n_sweeps, n_epochs, z_thresh, t2a_s*1e6, t2b_s*1e6,
-                1e9*tau_first, eta_assym, meta_dict))
+                1e9*tau_first, n_first, eta_assym, meta_dict))
 
         mfl_logic.setup_new_run(tau_first, tau_first_req, n_first, n_first_req,
                                 t_first_seq=t_seq_first, t2a_s=t2a_s, t2b_s=t2b_s,
@@ -1987,6 +2003,7 @@ if __name__ == '__main__':
                               freq_min_1_mhz=params['freq_min_1_mhz'], freq_max_1_mhz=params['freq_max_1_mhz'],
                               freq_min_2_mhz=params['freq_min_2_mhz'], freq_max_2_mhz=params['freq_max_2_mhz'],
                               b0_gauss=params['b0_gauss'], z_phot_0=params['z_phot_0'], z_phot_1=params['z_phot_1'],
+                              calibmode_mode=params['calibmode_mode'], tau_first=params['tau_first'], xy8_n_first=params['xy8_n_first'],
                               meta_dict=meta, nowait_callback=params['nowait_callback'])
     join_mfl_seperate_thread()
 
