@@ -1745,7 +1745,7 @@ class AWGM8190A(Base, PulserInterface):
         else:
             splitted = raw_str.rsplit(',')
 
-            return int(len(splitted)/2)
+        return int(len(splitted)/2)
 
     def get_loaded_assets_name(self, ch_num, mode='segment'):
 
@@ -1756,7 +1756,8 @@ class AWGM8190A(Base, PulserInterface):
             if mode == 'segment':
                 names.append(self.query(':TRAC{:d}:NAME? {:d}'.format(ch_num, i+1)))
             elif mode == 'sequence':
-                names.append(self.query(':SEQ{:d}:NAME? {:d}'.format(ch_num, i)))
+                seq_id = self.get_loaded_assets_id(ch_num, mode)[i]
+                names.append(self.query(':SEQ{:d}:NAME? {:d}'.format(ch_num, seq_id)))
             else:
                 self.log.warn("Unknown assets mode: {}".format(mode))
                 return 0
