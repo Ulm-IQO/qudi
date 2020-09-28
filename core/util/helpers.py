@@ -128,7 +128,7 @@ def import_check():
     # encode like: (python-package-name, repository-name, version)
     vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
                  ('fysom', 'fysom', '2.1.4')]
-    opt_pkg = [('rpyc', 'rpyc', None),
+    opt_pkg = [('rpyc', 'rpyc', '4.0.2'),
                ('pyqtgraph', 'pyqtgraph', None),
                ('git', 'gitpython', None)]
 
@@ -167,6 +167,9 @@ def import_check():
                                'attribute. Ignoring version check!'.format(
                                    check_pkg_name))
                 return 0
+            # if version number is a tuple, convert to string
+            if isinstance(module_version, tuple):
+                module_version = '.'.join([str(v) for v in module_version])
             # compare version number
             if parse_version(module_version) < parse_version(check_version):
                 logger.error(
