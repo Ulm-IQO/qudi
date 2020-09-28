@@ -33,12 +33,27 @@ def sort_fname_with_free_var(fname_list, free_var_list):
     return fname_list_s, free_var_list_s
 
 
-def load_mult_mes_freevar(path, varpos_in_str=0, incl_subdir=True, filter_str=None, excl_filter_str=None):
+def load_mult_mes_freevar(path, varpos_in_str=0, incl_subdir=True, filter_str=None, excl_filter_str=None,
+                          parent_dir_level=0):
+    """
+
+    :param path:
+    :param varpos_in_str:
+    :param incl_subdir:
+    :param filter_str:
+    :param excl_filter_str:
+    :param parent_dir_level: # 0: file name, 1: first parent folder
+    :return:
+    """
     files = Tk_file.get_dir_items(path, incl_subdir=incl_subdir)
     fname_list = Tk_string.filter_str(files, filter_str, excl_filter_str)
 
     try:
-        varList = [Tk_string.find_num_in_str(os.path.basename(f))[varpos_in_str] for f in fname_list]
+        varList = []
+        for f in fname_list:
+            mes_id_str = Tk_file.split_path_to_folder(f)[::-1][parent_dir_level]
+            varList.append(Tk_string.find_num_in_str(mes_id_str)[varpos_in_str])
+
     except IndexError:
         raise IndexError("Error while extracting float out of file name. Make sure only data in folder!")
 
@@ -212,7 +227,7 @@ def plot_ser_2d(dir, fname, ser, interpolation='nearest', label_xy=(None,None)):
         #print "[WARNING]: /2d/ folder already existing. Abort saving."
         pass
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(6,4))
     plot_2d(ser.axes, ser.data, fig, interpolation, label_xy=label_xy)
     fig.savefig(dir + "/" + fname)
     plt.close('all')
@@ -226,9 +241,11 @@ def plot_ser_2d(dir, fname, ser, interpolation='nearest', label_xy=(None,None)):
 
 
 def create_2d_to_dir(path, varpos_in_str=0, dir=None, label_xy=('t',None),
-                     x_axis_str='tau', y_axis_str='z1', normalize_rows=False):
+                     x_axis_str='tau', y_axis_str='z1', normalize_rows=False,
+                     parent_dir_level=0):
 
-    flist, varlist = load_mult_mes_freevar(path, varpos_in_str=varpos_in_str, filter_str='pulsed_measurement.dat')
+    flist, varlist = load_mult_mes_freevar(path, varpos_in_str=varpos_in_str, filter_str='pulsed_measurement.dat',
+                                           parent_dir_level=parent_dir_level)
     ser_list = load_ser_list(flist, varlist, x_axis_str=x_axis_str, y_axis_str=y_axis_str, normalize_rows=normalize_rows)
 
     if len(ser_list) != 1:
@@ -242,6 +259,7 @@ logging.basicConfig()
 activate_loggers([__name__], level=logging.DEBUG)
 
 
-create_2d_to_dir(r"E:\Data\2020\07\20200727\PulsedMeasurement\mult_tausweeps", varpos_in_str=4, label_xy=('t',"z1"))
-create_2d_to_dir(r"E:\Data\2020\07\20200727\PulsedMeasurement\mult_tausweeps", y_axis_str="z2-z1", label_xy=('t',"z2-z1"),
-                                                                                varpos_in_str=4)
+create_2d_to_dir(r"E:\Data\2020\09\20200925\PulsedMeasurement\mfl_calibs_mult_tausweeps", varpos_in_str=1, label_xy=('t',"n_pi"),
+                 parent_dir_level=1)
+create_2d_to_dir(r"E:\Data\2020\09\20200925\PulsedMeasurement\mfl_calibs_mult_tausweeps", y_axis_str="z2-z1", label_xy=('t',"n_pi"),
+                                                                                varpos_in_str=1, parent_dir_level=1)

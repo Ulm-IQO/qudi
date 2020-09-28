@@ -2426,6 +2426,9 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
         self._calc_fi_npoints = calc_fi_npoints
         self._t2_penalty_thresh = 0
         self._n_fiopt_retrials = 1
+        self._fine_opt_n_points = 50
+        self._fine_opt_sigma_tau = 3
+
 
     def __call__(self, skip_optimize=False):
         eps = super().__call__()  # eps[t_] ~ 1/sig_p
@@ -2481,56 +2484,68 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
                 n_dd_max = self.round_up_to_mod(t_evol_us / (tau_res_0 * 1e6) + 4, min_int=16, mod=self._restr_ndd_mod)
 
                 # """
-                eps[self._t], eps[self._n] = self.optimize_fisher_information(t_evol_us, self._optimization_fi_mode,
+                tau_guess_us, ndd_guess = self.optimize_fisher_information(t_evol_us, self._optimization_fi_mode,
                                                                               n_dd_min=n_dd_min, n_dd_max=n_dd_max)
             else:
                 # directly from resonance
                 tau_res = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
                 n_dd = self.round_up_to_mod(t_evol_us / (tau_res * 1e6),
-                                            mod=self._restr_ndd_mod, min_int=self._restr_ndd_mod)
-                eps[self._t] = tau_res * 1e6
-                eps[self._n] = n_dd
+                                            mod=self._restr_ndd_mod, min_int=self._restr_ndd_mod, max_int=self._n_pi_max)
 
                 n_dd_min = n_dd
                 n_dd_max = n_dd
+                tau_guess_us = tau_res * 1e6
+                ndd_guess = n_dd
 
-            """
-            print("Debug: Coarse FI opt, t_evol= {} us, n_dd: {}- {} => tau= {}, n= {} for A_par= {} MHz".format(
+
+            #"""
+            print("Coarse FI opt, t_evol= {} us, n_dd: {}- {} => tau= {}, n= {} for A_par= {} MHz".format(
                                                                                         t_evol_us, n_dd_min, n_dd_max,
-                                                                                       eps[self._t], eps[self._n],
+                                                                                       tau_guess_us, ndd_guess,
                                                                                         Apar/(2*np.pi)))
-            """
+            #"""
             # Currently, fine tuning decreases sensitivity!
             debug_plots = False  # (t_evol_us == t2*1e6)
             # extend n_dd search range to higher vals, when hitting t2
             # no worries that we're overshooting t_evol here
 
+
+
             if t_evol_us > t2/2 * 1e6 or was_penalty_applied:
                 # make search range in sigma_n huge to find minimum somewhere around T_2
-                tau_i_us = eps[self._t]
-                n_i = eps[self._n]
-                n_t2half = t2 * 1e6 / (2 * tau_i_us)
-                sigma_i = self.round_up_to_mod(n_i - n_t2half, mod=self._restr_ndd_mod, min_int=self._restr_ndd_mod)
+                n_t2half = t2 * 1e6 / (2 * tau_guess_us)
+                sigma_i = self.round_up_to_mod(ndd_guess - n_t2half, mod=self._restr_ndd_mod, min_int=self._restr_ndd_mod)
+                print("Extending t_evol > t2/2= {} us search reach down to n= {}-{}= {}".format(t2/2 * 1e6,
+                                                                                                ndd_guess, sigma_i,
+                                                                                                ndd_guess-sigma_i))
                 # go down until T_2
                 # print("Debug: at t_evol= {:.3f} us. N_dd: {} ({}-{})".format(t_evol_us, n_i, n_i-sigma_i, n_i+10))
-                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine(eps[self._t], eps[self._n],
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine(tau_guess_us, ndd_guess,
                                                                                    self._optimization_fi_mode,
                                                                                    debug_plots=debug_plots,
                                                                                    sigma_n=[sigma_i, 10])
-
+                """
                 print("[{}] Choosing tau= {} us, t_evol= {} us, n= {} ({}-{})".format(i_epoch,
                                                                                       eps[self._t],
                                                                                       eps[self._n] * eps[self._t],
                                                                                       eps[self._n],
                                                                                       eps[self._n] - sigma_i,
                                                                                       eps[self._n] + 10))
+                """
 
             else:
-                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine(eps[self._t], eps[self._n],
+                eps[self._t], eps[self._n] = self.optimize_fisher_information_fine(tau_guess_us, ndd_guess,
                                                                                    self._optimization_fi_mode,
                                                                                    debug_plots=debug_plots,
                                                                                    )
             #
+            print("[{}] Fine opt: tau/t_evol/n_dd= {} us/ {} us / {} -> {} us/ {} us / {} ".format(i_epoch,
+                                                                                  tau_guess_us,
+                                                                                  ndd_guess * tau_guess_us,
+                                                                                  ndd_guess,
+                                                                                  eps[self._t],
+                                                                                  eps[self._t]*eps[self._n],
+                                                                                  eps[self._n]))
 
             fi_i = self.calc_fisher_information_at_A(Apar / (2 * np.pi), Aperp / (2 * np.pi), eps[self._t],
                                                      eps[self._n])
@@ -2592,6 +2607,13 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
 
         return t_evol_us, was_penalty_applied
 
+    def fi_to_sensitivity(self, fi, t_evol):
+        # Degen, Reinhard (2017), close to (58)
+        gamma = 2 * np.pi * 2.8e6  # -> Hz per Gauss
+        dB = 1 / (gamma * np.sqrt(fi))  # G
+
+        return 1e5 * dB * np.sqrt(t_evol)  # -> nT / sqrt(Hz)
+
     def _optimize_fi(self, tau_array_us, ndd_array, opt_mode='idx_avg', debug_plots=False):
 
         Apar, Aperp = self.estimate_mean()  # Mhz rad
@@ -2629,18 +2651,33 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
 
         if opt_mode == 'idx_avg':
             idx_avg_opt = int(np.average([idx_par_opt, idx_perp_opt]))
+        elif opt_mode == 'par':
+            idx_avg_opt = idx_par_opt
+            debug_plots = False
+        elif opt_mode == 'perp':
+            idx_avg_opt = idx_perp_opt
         elif opt_mode == 'rand':
             r = np.random.randint(0, 2)
             if r is 0:
                 idx_avg_opt = idx_perp_opt
+                #print("Debug: Optimizting perp")
             else:
                 idx_avg_opt = idx_par_opt
+                debug_plots = False
         elif opt_mode == 'fi_trace':
             # atm don't have full FI matrix, but diag elements are enough for its trace
             # fi_avg_vs_n = [(el[0]+el[1]) for el in fi_list]
             idx_avg_opt = np.argmax(fi_avg_vs_n)
         else:
             raise ValueError("Unknown optimization mode: {}".format(opt_mode))
+
+        if debug_plots:
+            print("Debug: A_par/A_perp= {}, {} Mhz. tau: [{},{}, dt= {}], n_dd: [{},{}, dn={}]".format(
+                Apar / (2 * np.pi), Aperp / (2 * np.pi), np.min(tau_array_us), np.max(tau_array_us),
+                tau_array_us[1] - tau_array_us[0],
+                np.min(ndd_array), np.max(ndd_array), ndd_array[1] - ndd_array[0]))
+            print("Debug: mode {}, dA {}".format(self._calc_fi_mode,
+                                                 np.sqrt(np.max(np.abs(self._updater.est_covariance_mtx()))) / (2 * np.pi) / 10000))  # mhz))
 
         import matplotlib.pyplot as plt
         i_epoch = len(self._track_fi)
@@ -2701,7 +2738,7 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
             fig, ax1 = plt.subplots()
             x = tau
             y = n_dd
-            z = np.log(fi_par_vs_n + fi_perp_vs_n)
+            z = np.log(fi_par_vs_n)
 
             # Perform linear interpolation of the data (x,y)
             # on a grid defined by (xi,yi)
@@ -2723,11 +2760,13 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
             fig.colorbar(cntr1, ax=ax1)
             ax1.plot(x, y, 'ko', ms=0)
             ax1.set(xlim=(np.min(x), np.max(x)), ylim=(np.min(y), np.max(y)))
-            ax1.set_title('[{}] sum(FI) ={:.3f}, t_tot= {:.3f} us ({} grid points)'.format(i_epoch,
-                                                                                           np.log(fi_par_vs_n[
-                                                                                                      idx_avg_opt] +
-                                                                                                  fi_perp_vs_n[
-                                                                                                      idx_avg_opt]),
+            fi = fi_par_vs_n[idx_avg_opt] #+  fi_perp_vs_n[ idx_avg_opt]
+            if self._norm_fi:
+                fi = fi * t_evol[idx_avg_opt]
+            eta = self.fi_to_sensitivity(fi, t_evol[idx_avg_opt])
+            ax1.set_title('[{}] FI ={:.3f}, eta= {:.3f} nT, t_tot= {:.3f} us ({} grid points)'.format(i_epoch,
+                                                                                           np.log(fi),
+                                                                                           eta,
                                                                                            tau[idx_avg_opt] * n_dd[
                                                                                                idx_avg_opt], len(x)))
             plt.scatter(tau[idx_avg_opt], n_dd[idx_avg_opt])
@@ -2887,25 +2926,21 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
         Search around a given tau_us, n_dd symmetrically in n_dd and tau_us direction
         """
 
-        n_points = 50  # 20
+        n_points = self._fine_opt_n_points  # 20
         Apar, Aperp = self.estimate_mean()  # Mhz rad
         t_evol_us = tau_us * n_dd
         t2 = np.average([self._updater.model._t2_a, self._updater.model._t2_b])  # todo: think of better
 
         tau_res_k1 = self.calc_tau_k(Apar / (2 * np.pi), 1, no_warning=True)
         if tau_res_k1 * n_dd <= t2:
-            sigma_tau_us = 1e6 * 3 * self.estimate_tau_res_width(tau_res_k1, n_dd)
-            #print("Debug: taus scan width: {} us".format(sigma_tau_us))
+            sigma_tau_us = self._fine_opt_sigma_tau * 1e6* self.estimate_tau_res_width(tau_res_k1, n_dd)
+            #sigma_tau_us = 0.02
         else:
             # limit scan range to t2 line width
-            sigma_tau_us = 1e6 * 3 * self.estimate_tau_res_width(tau_res_k1,
+            sigma_tau_us = self._fine_opt_sigma_tau * 1e6 * self.estimate_tau_res_width(tau_res_k1,
                                                                  self.round_up_to_mod(t2 / tau_res_k1,
                                                                                       mod=self._restr_ndd_mod))
-            #bug: limiting smallest tau scan width: {} us. Init t_evol= {} us".format(sigma_tau_us,
-            #                                                                                    tau_res_k1 * n_dd *1e6))
 
-        #if sigma_tau_us < 0.15:
-        #    sigma_tau_us = 0.15
         tau_left = tau_us - sigma_tau_us
         tau_right = tau_us + sigma_tau_us
 
@@ -2928,8 +2963,8 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
         while tau_left <= 0:
             tau_left += sigma_tau_us / 25
 
-        tau_arr = np.concatenate([np.linspace(tau_left, tau_right, n_points).flatten(), np.asarray(tau_us)])
-        n_dd_arr = np.concatenate([ndd_range, np.asarray(n_dd)])
+        tau_arr = np.concatenate([np.linspace(tau_left, tau_right, n_points).flatten(), np.asarray(tau_us).flatten()])
+        n_dd_arr = np.concatenate([ndd_range, np.asarray(n_dd).flatten()])
         tau_grid, n_grid = np.meshgrid(tau_arr, n_dd_arr)
 
         tau_opt, ndd_opt = self._optimize_fi(tau_grid.flatten(), n_grid.flatten(), opt_mode, debug_plots=debug_plots)
@@ -4261,14 +4296,15 @@ class basic_SMCUpdater(qi.Distribution):
         else:
             p1 = p1.reshape(len(w1), len(w2), len(exp_t_array))
 
-        # 2d, axis0: FI along A_par. axis1: along A_perp
+        # 2d derivative
         d_p1_par = np.gradient(p1, (w1[1] - w1[0]) * 1e6, axis=1)
         d_p1_perp = np.gradient(p1, (w2[1] - w2[0]) * 1e6, axis=0)
 
-        if self.has_photon_model:
+        #if self.has_photon_model:
+        if False:
             # 1-p1= p0= k* N -> see PhD Schmitt
             # is not absolute FI, but 1/k off. As this is a constant shouldn't matter for optimization.
-            return 1 / (1-p1) * d_p1_par ** 2, 1 / ((1 - p1)) * d_p1_perp ** 2, w1, w2
+            return 1 / (1-p1) * d_p1_par ** 2, 1 / (1 - p1) * d_p1_perp ** 2, w1, w2
         else:         # fisher information assuming quantum projection noise only
             return 1 / (p1 * (1 - p1)) * d_p1_par ** 2, 1 / (p1 * (1 - p1)) * d_p1_perp ** 2, w1, w2
 

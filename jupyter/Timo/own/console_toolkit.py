@@ -119,6 +119,7 @@ class Tk_file():
 
     @staticmethod
     def split_path_to_folder(path):
+        # can probably replace by os.path.normpath(fname_list[0]).split(os.path.sep)
         # https://stackoverflow.com/questions/3167154/how-to-split-a-dos-path-into-its-components-in-python
         folders = []
         while 1:

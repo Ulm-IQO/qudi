@@ -178,7 +178,7 @@ def plot_eta_vs_t(mes_list, eta_mode='all', rolling_window=None, savepath=None, 
             axes.plot(x, y, label='median, window= {}'.format(rolling_window), linewidth=5)
 
             if not np.isnan(t_roll_ms):
-                idx_end_roll, _ = Tk_math.find_nearest(x, x[-1] - 30*t_roll_ms*1e-3)
+                idx_end_roll, _ = Tk_math.find_nearest(x, x[-1] - 3*t_roll_ms*1e-3)
                 idx_start_avg, _ = Tk_math.find_nearest(x, x[-1] - 10*t_roll_ms*1e-3)
                 eta_min = np.min(y[:idx_end_roll])
             else:
@@ -820,6 +820,71 @@ def plot_prior_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick_labe
         #plt.locator_params(nbins=2)  # 4 ticks only, not working
 
         save_fig(savepath)
+
+
+def plot_likelihood_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick_label_digits=3):
+    # shaddows jupyter notebbok code
+
+    # load data
+    priors = loaded_mes.mes.priors
+
+    n_rows, n_col = _get_prior_plotsize(epochs_idx, always_show_err=False)
+    fig, axs = plt.subplots(n_rows, n_col, figsize=(6 * n_col, 3.5 * n_rows))
+    try:
+        axs.flatten()
+    except AttributeError:
+        # only one plot -> manually create array
+        arr = np.zeros([1, 1], dtype=object)
+        arr[0, 0] = axs
+        axs = arr
+
+    idx_plot = 0
+    for i, p in enumerate(priors):
+        epoch = i
+        if epoch in epochs_idx:
+            particle_locations = priors[epoch]
+
+            omega_1 = np.linspace(min(particle_locations[:, 0]), max(particle_locations[:, 0]), 50)
+            omega_2 = np.linspace(min(particle_locations[:, 1]), max(particle_locations[:, 1]), 50)
+
+            x_grid, y_grid = np.meshgrid(omega_1, omega_2)
+
+            z_bin = 1
+            x, y = get_likelihood(epoch, x_grid.flatten(), y_grid.flatten(), exp_outcome=z_bin)
+            y_2d = y.reshape(len(omega_1), len(omega_2))
+
+            plt.subplot(n_rows, n_col, idx_plot + 1)
+            plt.imshow(y_2d, vmin=0, extent=[omega_1[0] / (2 * np.pi), omega_1[-1] / (2 * np.pi),
+                                             omega_2[0] / (2 * np.pi), omega_2[-1] / (2 * np.pi)],
+                       cmap='plasma', aspect='auto', origin='lower')
+
+            ax_cur = plt.gca()
+            ax_cur.tick_params(labelleft=False)
+            plt.colorbar()
+            plt.title("L({:.0f}|B)".format(z_bin))
+            ax_cur.set_xlabel("$\gamma B_1 / 2 \pi \ \mathrm{(MHz)}$")
+            ax_cur.set_ylabel("$\gamma B_2 / 2 \pi \ \mathrm{(MHz)}$")
+            # only 2 ticks each axis
+            ax_cur.set_xticks([np.min(omega_1), np.max(omega_1)])
+            ax_cur.set_yticks([np.min(omega_2), np.max(omega_2)])
+            from matplotlib.ticker import FormatStrFormatter
+            ax_cur.yaxis.set_major_formatter(FormatStrFormatter('%.{}f'.format(int(tick_label_digits))))
+            ax_cur.xaxis.set_major_formatter(FormatStrFormatter('%.{}f'.format(int(tick_label_digits))))
+
+            # ax_cur.set_xticks([0, 5])
+            # ax_cur.set_yticks([0., 5])
+            # ax_cur.set_xticks([0.536, 0.567])
+            # ax_cur.set_yticks([0.604, 0.632])
+            # fig.colorbar(img)
+
+            idx_plot += 1
+
+    # plt.tight_layout()
+    plt.legend()
+    # plt.locator_params(nbins=2)  # 4 ticks only, not working
+
+    save_fig(savepath)
+
 
 def plot_z_vs_tau(mes, t_phase_max=None, fit_params={}, savepath=None, fig_handle=None, subplot_specifier=None):
     t_total_phase, t_total_seq, t_total = mes.get_total_times()
@@ -1484,10 +1549,10 @@ if __name__ == '__main__':
              ]
 
     #paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_M6.3\combine",]
-    paths = [r"E:\Data\2020\09\20200914\PulsedMeasurement\mfl_xy8_BaysianFI_nsweeps=10k.11\combine"]
+    paths = [r"E:\Data\2020\09\20200921\PulsedMeasurement\mfl_xy8_baysianfi_nsweeps=800.0\combine"]
 
     rolling_windows = '100ms'
-    rolling_windows = '10000ms'  # only [ms] allowed!
+    rolling_windows = '5000ms'  # only [ms] allowed!
     # rolling_windows = 1
 
     for path in paths:
@@ -1512,7 +1577,7 @@ if __name__ == '__main__':
         #"""
         # priors
         #plot_prior_2d(mes_list[0], epochs_idx=[0], n_bins=50, savepath=path + '/' + 'priors_0.png', tick_label_digits=1)
-        #plot_prior_2d(mes_list[0], epochs_idx=[500], n_bins=50, savepath=path + '/' + 'priors_500.png')
+        plot_prior_2d(mes_list[0], epochs_idx=[500], n_bins=50, savepath=path + '/' + 'priors_500.png')
 
         # overhead times
         plot_overhead_times(mes_list[0], savepath=path + '/' + 'overhead.png')
