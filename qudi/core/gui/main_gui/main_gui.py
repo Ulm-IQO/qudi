@@ -145,6 +145,7 @@ class QudiMainGui(GuiBase):
         qudi_main.configuration.sigConfigChanged.connect(self.update_config_widget)
         qudi_main.module_manager.sigManagedModulesChanged.connect(self.update_configured_modules)
         qudi_main.module_manager.sigModuleStateChanged.connect(self.update_module_state)
+        qudi_main.module_manager.sigModuleAppDataChanged.connect(self.update_module_app_data)
         # Console settings
         self.mw.console_settings_dialog.accepted.connect(self.console_apply_settings)
         self.mw.console_settings_dialog.rejected.connect(self.console_keep_settings)
@@ -153,7 +154,8 @@ class QudiMainGui(GuiBase):
         self.mw.module_widget.sigReloadModule.connect(qudi_main.module_manager.reload_module)
         self.mw.module_widget.sigDeactivateModule.connect(
             qudi_main.module_manager.deactivate_module)
-        self.mw.module_widget.sigCleanupModule.connect(qudi_main.module_manager.clear_module_status)
+        self.mw.module_widget.sigCleanupModule.connect(
+            qudi_main.module_manager.clear_module_app_data)
 
     def _disconnect_signals(self):
         qudi_main = self._qudi_main
@@ -168,6 +170,7 @@ class QudiMainGui(GuiBase):
         qudi_main.configuration.sigConfigChanged.disconnect(self.update_config_widget)
         qudi_main.module_manager.sigManagedModulesChanged.disconnect(self.update_configured_modules)
         qudi_main.module_manager.sigModuleStateChanged.disconnect(self.update_module_state)
+        qudi_main.module_manager.sigModuleAppDataChanged.disconnect(self.update_module_app_data)
         # Console settings
         self.mw.console_settings_dialog.accepted.disconnect()
         self.mw.console_settings_dialog.rejected.disconnect()
@@ -395,6 +398,10 @@ class QudiMainGui(GuiBase):
     def update_module_state(self, base, name, state):
         self.mw.module_widget.update_module_state(base, name, state)
         return
+
+    @QtCore.Slot(str, str, bool)
+    def update_module_app_data(self, base, name, exists):
+        self.mw.module_widget.update_module_app_data(base, name, exists)
 
     def get_qudi_version(self):
         """ Try to determine the software version in case the program is in a git repository.

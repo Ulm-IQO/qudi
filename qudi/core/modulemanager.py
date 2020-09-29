@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import os
 import logging
 import importlib
 import copy
@@ -30,7 +31,7 @@ from PySide2 import QtCore
 from qudi.core.util.mutex import RecursiveMutex   # provides access serialization between threads
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.remote import start_sharing_module, stop_sharing_module, get_remote_module_instance
-from qudi.core.module import Base
+from qudi.core.module import Base, get_module_app_data_path
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class ModuleManager(QtCore.QObject):
     _lock = RecursiveMutex()
 
     sigModuleStateChanged = QtCore.Signal(str, str, str)
+    sigModuleAppDataChanged = QtCore.Signal(str, str, bool)
     sigManagedModulesChanged = QtCore.Signal(dict)
 
     def __new__(cls, *args, **kwargs):
@@ -134,6 +136,7 @@ class ModuleManager(QtCore.QObject):
                 return
             self._modules[module_name].deactivate()
             self._modules[module_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
+            self._modules[module_name].sigAppDataChanged.disconnect(self.sigModuleAppDataChanged)
             self.refresh_module_links()
             if self._modules[module_name].allow_remote_access:
                 stop_sharing_module(module_name)
@@ -157,6 +160,7 @@ class ModuleManager(QtCore.QObject):
                 return
             module = ManagedModule(self._qudi_main_ref, name, base, configuration)
             module.sigStateChanged.connect(self.sigModuleStateChanged)
+            module.sigAppDataChanged.connect(self.sigModuleAppDataChanged)
             self._modules[name] = module
             self.refresh_module_links()
             # Register module in remote module service if module should be shared
@@ -191,7 +195,7 @@ class ModuleManager(QtCore.QObject):
             if module_name not in self._modules:
                 logger.error('No module named "{0}" found in managed qudi modules. '
                              'Module activation aborted.'.format(module_name))
-                return
+                return False
             return self._modules[module_name].activate()
 
     def deactivate_module(self, module_name):
@@ -199,7 +203,7 @@ class ModuleManager(QtCore.QObject):
             if module_name not in self._modules:
                 logger.error('No module named "{0}" found in managed qudi modules. '
                              'Module deactivation aborted.'.format(module_name))
-                return
+                return False
             return self._modules[module_name].deactivate()
 
     def reload_module(self, module_name):
@@ -207,12 +211,24 @@ class ModuleManager(QtCore.QObject):
             if module_name not in self._modules:
                 logger.error('No module named "{0}" found in managed qudi modules. '
                              'Module reload aborted.'.format(module_name))
-                return
+                return False
             return self._modules[module_name].reload()
 
-    def clear_module_status(self, module_name):
-        # ToDo: implement together with module Base class
-        pass
+    def clear_module_app_data(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Can not clear module app status.'.format(module_name))
+                return False
+            return self._modules[module_name].clear_module_app_data()
+
+    def has_app_data(self, module_name):
+        with self._lock:
+            if module_name not in self._modules:
+                logger.error('No module named "{0}" found in managed qudi modules. '
+                             'Can not check for app status file.'.format(module_name))
+                return False
+            return self._modules[module_name].has_app_data()
 
     def start_all_modules(self):
         with self._lock:
@@ -240,6 +256,7 @@ class ManagedModule(QtCore.QObject):
      connection of the module.
     """
     sigStateChanged = QtCore.Signal(str, str, str)
+    sigAppDataChanged = QtCore.Signal(str, str, bool)
 
     _lock = RecursiveMutex()  # Single mutex shared across all ManagedModule instances
 
@@ -326,10 +343,7 @@ class ManagedModule(QtCore.QObject):
 
     @property
     def status_file_path(self):
-        with self._lock:
-            if self._instance is not None:
-                return self._instance.module_status_file_path
-            return None
+        return get_module_app_data_path(self.class_name, self.module_base, self.name)
 
     @property
     def is_loaded(self):
@@ -442,6 +456,21 @@ class ManagedModule(QtCore.QObject):
     def module_thread_name(self):
         return 'mod-{0}-{1}'.format(self._base, self._name)
 
+    @property
+    def has_app_data(self):
+        with self._lock:
+            return os.path.exists(self.status_file_path)
+
+    @QtCore.Slot()
+    def clear_module_app_data(self):
+        with self._lock:
+            try:
+                os.remove(self.status_file_path)
+            except OSError:
+                return False
+            self.sigAppDataChanged.emit(self._base, self._name, self.has_app_data)
+            return True
+
     @QtCore.Slot()
     def activate(self):
         if QtCore.QThread.currentThread() is not self.thread():
@@ -505,6 +534,7 @@ class ManagedModule(QtCore.QObject):
                                  ''.format(self._base, self._name))
                 return False
             self.sigStateChanged.emit(self._base, self._name, self.state)
+            self.sigAppDataChanged.emit(self._base, self._name, self.has_app_data)
             return True
 
     @QtCore.Slot()
@@ -556,6 +586,7 @@ class ManagedModule(QtCore.QObject):
                 success = False
             success = success and self._disconnect()
             self.sigStateChanged.emit(self._base, self._name, self.state)
+            self.sigAppDataChanged.emit(self._base, self._name, self.has_app_data)
             return success
 
     @QtCore.Slot()

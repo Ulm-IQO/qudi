@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import os
 import logging
 import copy
 from fysom import Fysom  # provides a finite state machine
@@ -31,7 +32,10 @@ from qudi.core.util.mutex import Mutex
 from qudi.core.util.paths import get_appdata_dir
 from qudi.core.config import load, save
 
-import os
+
+def get_module_app_data_path(cls_name, module_base, module_name):
+    file_name = 'status-{0}_{1}_{2}.cfg'.format(cls_name, module_base, module_name)
+    return os.path.join(get_appdata_dir(), file_name)
 
 
 class ModuleStateMachine(Fysom, QtCore.QObject):
@@ -247,8 +251,10 @@ class Base(QtCore.QObject):
         @param object event: Fysom event object
         """
         # Load status variables from disk only if this module is one of gui, logic or hardware base
-        file_path = self.module_status_file_path
-        if file_path is not None:
+        if self._module_meta.get('base', None) in ('gui', 'logic', 'hardware'):
+            file_path = get_module_app_data_path(self.__class__.__name__,
+                                                 self._module_meta['base'],
+                                                 self._module_meta['name'])
             try:
                 variables = load(file_path) if os.path.isfile(file_path) else dict()
             except:
@@ -285,8 +291,10 @@ class Base(QtCore.QObject):
             raise
         finally:
             # save status vars even if deactivation failed
-            file_path = self.module_status_file_path
-            if file_path is not None:
+            if self._module_meta.get('base', None) in ('gui', 'logic', 'hardware'):
+                file_path = get_module_app_data_path(self.__class__.__name__,
+                                                     self._module_meta['base'],
+                                                     self._module_meta['name'])
                 # collect StatusVar values into dictionary
                 variables = dict()
                 for attr_name, var in self._module_meta['status_variables'].items():
@@ -320,15 +328,6 @@ class Base(QtCore.QObject):
         Returns whether the module shall be started in a thread.
         """
         return self._threaded
-
-    @property
-    def module_status_file_path(self):
-        if self._module_meta.get('base', None) not in ('gui', 'logic', 'hardware'):
-            return None
-        file_name = 'status-{0}_{1}_{2}.cfg'.format(self.__class__.__name__,
-                                                    self._module_meta['base'],
-                                                    self._module_meta['name'])
-        return os.path.join(get_appdata_dir(), file_name)
 
     def _send_balloon_message(self, title, message, time=None, icon=None):
         qudi_main = self.__qudi_main_weakref()

@@ -119,6 +119,11 @@ class ModuleFrameWidget(QtWidgets.QWidget):
         self.status_label.setText('Module is {0}'.format(state))
         return
 
+    def set_module_app_data(self, exists):
+        if not self.reload_button.isEnabled():
+            self.cleanup_button.setEnabled(exists)
+        return
+
     @QtCore.Slot()
     def activate_clicked(self):
         self.sigActivateClicked.emit(self._module_name)
@@ -143,6 +148,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         super().__init__(*args, **kwargs)
         self._lock = Mutex()
         self._module_states = dict()
+        self._module_app_data = dict()
         self._module_names = list()
 
     def rowCount(self, parent):
@@ -156,13 +162,14 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         name = self._module_names[row]
         state = self._module_states[name]
+        app_data = self._module_app_data[name]
         if role == QtCore.Qt.DisplayRole:
-            return name, state
+            return name, state, app_data
 
     def flags(self, index):
         return QtCore.Qt.ItemNeverHasChildren | QtCore.Qt.ItemIsEnabled
 
-    def append_module(self, name, state):
+    def append_module(self, name, state, app_data):
         with self._lock:
             if name in self._module_states:
                 raise Exception(
@@ -170,6 +177,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self.beginInsertRows(len(self._module_names))
             self._module_names.append(name)
             self._module_states[name] = state
+            self._module_app_data[name] = app_data
             self.endInsertRows()
 
     def remove_module(self, name):
@@ -180,12 +188,16 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self.beginRemoveRows(row, row + 1)
             del self._module_names[row]
             del self._module_states[name]
+            del self._module_app_data[name]
             self.endRemoveRows()
 
-    def reset_modules(self, state_dict):
+    def reset_modules(self, state_dict, app_data_dict):
+        if set(state_dict) != set(app_data_dict):
+            raise Exception('state_dict and app_data_dict must contain exactly the same keys.')
         with self._lock:
             self.beginResetModel()
             self._module_states = state_dict.copy()
+            self._module_app_data = app_data_dict.copy()
             self._module_names = list(state_dict)
             self.endResetModel()
 
@@ -195,6 +207,17 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 raise Exception('Can not change module state in ModuleListModel. No module by the '
                                 'name "{0}" found.'.format(name))
             self._module_states[name] = state
+            row = self._module_names.index(name)
+            self.dataChanged.emit(self.createIndex(row, 0),
+                                  self.createIndex(row + 1, 0),
+                                  (QtCore.Qt.DisplayRole,))
+
+    def change_app_data(self, name, exists):
+        with self._lock:
+            if name not in self._module_app_data:
+                raise Exception('Can not change module app status in ModuleListModel. No module by '
+                                'the name "{0}" found.'.format(name))
+            self._module_app_data[name] = exists
             row = self._module_names.index(name)
             self.dataChanged.emit(self.createIndex(row, 0),
                                   self.createIndex(row + 1, 0),
@@ -229,6 +252,7 @@ class ModuleListItemDelegate(QtWidgets.QStyledItemDelegate):
         if data:
             editor.set_module_name(data[0])
             editor.set_module_state(data[1])
+            editor.set_module_app_data(data[2])
 
     def setModelData(self, editor, model, index):
         pass
@@ -239,9 +263,10 @@ class ModuleListItemDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         """
         """
-        name, state = index.data()
+        name, state, app_data = index.data()
         self.render_widget.set_module_name(name)
         self.render_widget.set_module_state(state)
+        self.render_widget.set_module_app_data(app_data)
         self.render_widget.setGeometry(option.rect)
         painter.save()
         painter.translate(option.rect.topLeft())
@@ -310,9 +335,16 @@ class ModuleWidget(QtWidgets.QTabWidget):
     def update_modules(self, modules_dict):
         for base, model in self.list_models.items():
             model.reset_modules(
-                {name: mod.state for name, mod in modules_dict.items() if mod.module_base == base})
+                {name: mod.state for name, mod in modules_dict.items() if mod.module_base == base},
+                {name: mod.has_app_data for name, mod in modules_dict.items() if
+                 mod.module_base == base}
+            )
         return
 
     @QtCore.Slot(str, str, str)
     def update_module_state(self, base, name, state):
         self.list_models[base].change_module_state(name, state)
+
+    @QtCore.Slot(str, str, bool)
+    def update_module_app_data(self, base, name, exists):
+        self.list_models[base].change_app_data(name, exists)
