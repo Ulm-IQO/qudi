@@ -138,21 +138,23 @@ class ScanData:
     Object representing all data associated to a SPM measurement.
     """
 
-    def __init__(self, axes, channels, scan_axes, scan_range, scan_resolution, scan_frequency,
-                 position_feedback=False):
+    def __init__(self, channels, scan_axes, scan_range, scan_resolution, scan_frequency,
+                 position_feedback_axes=None):
         """
 
-        @param ScannerAxis[] axes: ScannerAxis objects for scanned and positional feedback axes
         @param ScannerChannel[] channels: ScannerChannel objects involved in this scan
-        @param str[] scan_axes: name of the axes involved in the scan
+        @param ScannerAxis[] scan_axes: ScannerAxis instances involved in the scan
         @param float[][2] scan_range: inclusive range for each scan axis
         @param int[] scan_resolution: planned number of points for each scan axis
-        @param float scan_frequency: Scan frequency of the fast axis
-        @param bool position_feedback: optional, if the scanner position is saved for each pixel
+        @param float scan_frequency: Scan pixel frequency of the fast axis
+        @param ScannerAxis[] position_feedback_axes: optional, axes for which to acquire position
+                                                     feedback during the scan.
         """
         # Sanity checking
         if not (0 < len(scan_axes) <= 2):
             raise ValueError('ScanData can only be used for 1D or 2D scans.')
+        if len(channels) < 1:
+            raise ValueError('At least one data channel must be specified for a valid scan.')
         if len(scan_axes) != len(scan_range):
             raise ValueError('Parameters "scan_axes" and "scan_range" must have same len. Given '
                              '{0:d} and {1:d}, respectively.'.format(len(scan_axes),
@@ -161,11 +163,9 @@ class ScanData:
             raise ValueError('Parameters "scan_axes" and "scan_resolution" must have same len. '
                              'Given {0:d} and {1:d}, respectively.'.format(len(scan_axes),
                                                                            len(scan_resolution)))
-        if not all(isinstance(ax, ScannerAxis) for ax in axes):
-            raise TypeError('Parameter "axes" must be iterable containing only ScannerAxis objects')
-        if not set(scan_axes).issubset(ax.name for ax in axes):
-            raise ValueError('Parameter "scan_axes" ({0}) must contain a subset of available axes.'
-                             ''.format(scan_axes))
+        if not all(isinstance(ax, ScannerAxis) for ax in scan_axes):
+            raise TypeError(
+                'Parameter "scan_axes" must be iterable containing only ScannerAxis objects')
         if not all(len(ax_range) == 2 for ax_range in scan_range):
             raise TypeError(
                 'Parameter "scan_range" must be iterable containing only value pairs (len=2).')
@@ -178,33 +178,53 @@ class ScanData:
         if not all(np.issubdtype(ch.dtype, np.floating) for ch in channels):
             raise TypeError('channel dtypes must be either builtin or numpy floating types')
 
-        self._scan_axes = tuple(str(ax) for ax in scan_axes)
+        self._scan_axes = tuple(scan_axes)
         self._scan_range = tuple((float(start), float(stop)) for (start, stop) in scan_range)
         self._scan_resolution = tuple(int(res) for res in scan_resolution)
         self._scan_frequency = float(scan_frequency)
-        self._axes_units = {ax.name: ax.unit for ax in axes}
-        self._channel_units = {ch.name: ch.unit for ch in channels}
-        self._channel_dtypes = {ch.name: ch.dtype for ch in channels}
-        self._position_feedback = bool(position_feedback)
+        self._channels = tuple(channels)
+        if position_feedback_axes is None:
+            self._position_feedback_axes = None
+        else:
+            self._position_feedback_axes = tuple(position_feedback_axes)
 
-        self.timestamp = None
+        self._timestamp = None
         self._data = None
         self._position_data = None
-        self._finished = False
+        self._is_finished = False
         # TODO: Automatic interpolation onto rectangular grid needs to be implemented
         return
 
+    def __copy__(self):
+        new_inst = ScanData(channels=self._channels,
+                            scan_axes=self._scan_axes,
+                            scan_range=self._scan_range,
+                            scan_resolution=self._scan_resolution,
+                            scan_frequency=self._scan_frequency,
+                            position_feedback_axes=self._position_feedback_axes)
+        new_inst._timestamp = self._timestamp
+        new_inst._is_finished = self._is_finished
+        if self._data is not None:
+            new_inst._data = self._data.copy()
+        if self._position_data is not None:
+            new_inst._position_data = self._position_data.copy()
+        return new_inst
+
+    def __deepcopy__(self, memodict={}):
+        return self.copy()
+
+    def __eq__(self, other):
+        if not isinstance(other, ScanData):
+            raise NotImplemented
+
+        attrs = ('_is_finished', '_timestamp', '_scan_frequency', '_scan_axes', '_scan_range',
+                 '_scan_resolution', '_channels', '_position_feedback_axes', '_data',
+                 '_position_data', '_timestamp')
+        return all(getattr(self, a) == getattr(other, a) for a in attrs)
+
     @property
     def scan_axes(self):
-        return self._scan_axes
-
-    @property
-    def axes_names(self):
-        return tuple(self._axes_units)
-
-    @property
-    def axes_units(self):
-        return self._axes_units.copy()
+        return tuple(ax.name for ax in self._scan_axes)
 
     @property
     def scan_range(self):
@@ -215,102 +235,124 @@ class ScanData:
         return self._scan_resolution
 
     @property
-    def channel_names(self):
-        return tuple(self._channel_units)
-
-    @property
-    def channel_units(self):
-        return self._channel_units.copy()
-
-    @property
     def scan_frequency(self):
         return self._scan_frequency
 
     @property
+    def channels(self):
+        return tuple(ch.name for ch in self._channels)
+
+    @property
+    def channel_units(self):
+        return {ch.name: ch.unit for ch in self._channels}
+
+    @property
+    def axes_units(self):
+        units = {ax.name: ax.unit for ax in self._scan_axes}
+        if self.has_position_feedback:
+            units.update({ax.name: ax.unit for ax in self._position_feedback_axes})
+        return units
+
+    @property
     def data(self):
-        if self._data is not None:
-            return self._data.copy()
-        return None
+        return self._data
 
     @property
     def position_data(self):
-        if self._position_feedback and self._position_data is not None:
-            return self._position_data.copy()
-        return None
+        return self._position_data
 
     @property
-    def finished(self):
-        return self._finished
+    def has_position_feedback(self):
+        return bool(self._position_feedback_axes)
 
     @property
-    def dimension(self):
+    def is_finished(self):
+        return self._is_finished
+
+    @property
+    def scan_dimension(self):
         return len(self._scan_axes)
 
-    def new_data(self, timestamp=None):
+    def new_scan(self, timestamp=None):
         """
 
         @param timestamp:
         """
         if timestamp is None:
-            self.timestamp = datetime.datetime.now()
+            self._timestamp = datetime.datetime.now()
         elif isinstance(timestamp, datetime.datetime):
-            self.timestamp = timestamp
+            self._timestamp = timestamp
         else:
-            raise TypeError('Parameter "timestamp" must be datetime.datetime object.')
+            raise TypeError('Optional parameter "timestamp" must be datetime.datetime object.')
 
-        if self._position_feedback:
-            self._position_data = {ax: np.full(self._scan_resolution, np.nan) for ax in
-                                   self._axes_units}
+        if self.has_position_feedback:
+            self._position_data = {ax.name: np.full(self._scan_resolution, np.nan) for ax in
+                                   self._position_feedback_axes}
         else:
             self._position_data = None
-        self._data = {ch: np.full(self._scan_resolution, np.nan, dtype=dtype) for ch, dtype in
-                      self._channel_dtypes.items()}
-        self._finished = False
-        return
-
-    def add_line_data(self, data, line_index, offset=0, position_data=None):
-        if self._finished:
-            raise IndexError('Scan already finished. Can not add more data.')
-        if set(data) != set(self._channel_units):
-            raise KeyError(
-                'data dict must contain all data channels {0}.'.format(self.channel_names))
-        if self._position_feedback:
-            if position_data is None:
-                raise ValueError('position_data must be given along with scan data.')
-            if set(position_data) != set(self._axes_units):
-                raise KeyError(
-                    'position_data dict must contain all axes {0}.'.format(self.axes_names))
-        data_iter = iter(data.values())
-        data_length = len(next(data_iter))
-        if any(len(arr) != data_length for arr in data_iter):
-            raise ValueError('data arrays to add must have the same length for all channels.')
-
-        if self.dimension == 1:
-            stop_index = data_length + line_index
-            if stop_index > self._scan_resolution[0]:
-                raise IndexError('Scan data to add exceeds scan line length.')
-            # Add scan data
-            for ch, arr in data.items():
-                self._data[ch][line_index:stop_index] = arr
-            # Add position data
-            if self._position_feedback:
-                for ax, arr in position_data.items():
-                    self._position_data[ax][line_index:stop_index] = arr
-        else:
-            stop_index = data_length + offset
-            if stop_index > self._scan_resolution[0]:
-                raise IndexError('Scan data to add exceeds scan line length.')
-            # Add scan data
-            for ch, arr in data.items():
-                self._data[ch][offset:stop_index, line_index] = arr
-            # Add position data
-            if self._position_feedback:
-                for ax, arr in position_data.items():
-                    self._position_data[ax][offset:stop_index, line_index] = arr
+        self._data = {
+            ch.name: np.full(self._scan_resolution, np.nan, dtype=ch.dtype) for ch in self._channels
+        }
+        self._is_finished = False
         return
 
     def finish_scan(self):
-        self._finished = True
+        self._is_finished = True
+
+    def copy(self):
+        new_inst = ScanData(channels=self._channels,
+                            scan_axes=self._scan_axes,
+                            scan_range=self._scan_range,
+                            scan_resolution=self._scan_resolution,
+                            scan_frequency=self._scan_frequency,
+                            position_feedback_axes=self._position_feedback_axes)
+        new_inst._timestamp = self._timestamp
+        new_inst._is_finished = self._is_finished
+        if self._data is not None:
+            new_inst._data = {ch: arr.copy() for ch, arr in self._data.items()}
+        if self._position_data is not None:
+            new_inst._position_data = {ch: arr.copy() for ch, arr in self._position_data.items()}
+        return new_inst
+
+    def to_dict(self):
+        dict_repr = {
+            'scan_axes': tuple(ax.to_dict() for ax in self._scan_axes),
+            'scan_range': self._scan_range,
+            'scan_resolution': self._scan_resolution,
+            'scan_frequency': self._scan_frequency,
+            'channels': tuple(ch.to_dict() for ch in self._channels),
+            'position_feedback_axes': None if self._position_feedback_axes is None else tuple(
+                ax.to_dict() for ax in self._position_feedback_axes),
+            'timestamp': None if self._timestamp is None else self._timestamp.timestamp(),
+            'data': None if self._data is None else {ch: d.copy() for ch, d in self._data.items()},
+            'position_data': None if self._position_data is None else {ax: d.copy() for ax, d in
+                                                                       self._position_data.items()},
+            'is_finished': self._is_finished
+        }
+        return dict_repr
+
+    @classmethod
+    def from_dict(cls, dict_repr):
+        scan_axes = tuple(ScannerAxis.from_dict(ax) for ax in dict_repr['scan_axes'])
+        if dict_repr['position_feedback_axes'] is None:
+            position_feedback_axes = None
+        else:
+            position_feedback_axes = tuple(
+                ScannerAxis.from_dict(ax) for ax in dict_repr['position_feedback_axes']
+            )
+        channels = tuple(ScannerChannel.from_dict(ch) for ch in dict_repr['channels'])
+        new_inst = cls(channels=channels,
+                       scan_axes=scan_axes,
+                       scan_range=dict_repr['scan_range'],
+                       scan_resolution=dict_repr['scan_resolution'],
+                       scan_frequency=dict_repr['scan_frequency'],
+                       position_feedback_axes=position_feedback_axes)
+        new_inst._data = dict_repr['data']
+        new_inst._position_data = dict_repr['position_data']
+        new_inst._is_finished = dict_repr['is_finished']
+        if dict_repr['timestamp'] is not None:
+            new_inst._timestamp = datetime.datetime.fromtimestamp(dict_repr['timestamp'])
+        return new_inst
 
 
 class ScannerChannel:
@@ -323,11 +365,18 @@ class ScannerChannel:
             raise ValueError('Parameter "name" must be non-empty str.')
         if not isinstance(unit, str):
             raise TypeError('Parameter "unit" must be of type str.')
+        # FIXME: Implement proper numpy type checking
         if not isinstance(dtype, type):
             raise TypeError('Parameter "dtype" must be numpy-compatible type.')
         self._name = name
         self._unit = unit
         self._dtype = dtype
+
+    def __eq__(self, other):
+        if not isinstance(other, ScannerChannel):
+            raise NotImplemented
+        attrs = ('_name', '_unit', '_dtype')
+        return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
     def name(self):
@@ -341,41 +390,48 @@ class ScannerChannel:
     def dtype(self):
         return self._dtype
 
-    def copy(self):
-        return ScannerChannel(name=self._name, unit=self._unit, dtype=self._dtype)
+    def to_dict(self):
+        return {'name': self._name, 'unit': self._unit, 'dtype': self._dtype.__name__}
+
+    @classmethod
+    def from_dict(cls, dict_repr):
+        dict_repr['dtype'] = getattr(np, dict_repr['dtype'])
+        return ScannerChannel(**dict_repr)
 
 
 class ScannerAxis:
     """
     """
 
-    def __init__(self, name, unit='', min_value=-np.inf, max_value=np.inf, min_step=0,
-                 max_step=np.inf, min_resolution=1, max_resolution=np.inf, min_frequency=0,
-                 max_frequency=np.inf):
+    def __init__(self, name, unit='', value_range=(-np.inf, np.inf), step_range=(0, np.inf),
+                 resolution_range=(1, np.inf), frequency_range=(0, np.inf)):
         if not isinstance(name, str):
             raise TypeError('Parameter "name" must be of type str.')
-        if len(name) < 1:
+        if name == '':
             raise ValueError('Parameter "name" must be non-empty str.')
         if not isinstance(unit, str):
             raise TypeError('Parameter "unit" must be of type str.')
-        if not isinstance(min_resolution, int):
-            raise TypeError('Parameter "min_resolution" must be of type int.')
-        if not isinstance(max_resolution, int):
-            raise TypeError('Parameter "max_resolution" must be of type int.')
-        if max_resolution < min_resolution:
-            raise ValueError('Parameter "max_resolution" must be >= "min_resolution".')
-        if max_step < min_step:
-            raise ValueError('Parameter "max_step" must be >= "min_step".')
-        if max_value < min_value:
-            raise ValueError('Parameter "max_value" must be >= "min_value".')
-        if max_frequency < min_frequency:
-            raise ValueError('Parameter "max_frequency" must be >= "min_frequency".')
+        if not (len(value_range) == len(step_range) == len(resolution_range) == len(
+                frequency_range) == 2):
+            raise ValueError('Range parameters must be iterables of length 2')
+
         self._name = name
         self._unit = unit
-        self._resolution_bounds = (int(min_resolution), int(max_resolution))
-        self._step_bounds = (float(min_step), float(max_step))
-        self._value_bounds = (float(min_value), float(max_value))
-        self._frequency_bounds = (float(min_frequency), float(max_frequency))
+        self._resolution_range = (int(min(resolution_range)), int(max(resolution_range)))
+        self._step_range = (float(min(step_range)), float(max(step_range)))
+        self._value_range = (float(min(value_range)), float(max(value_range)))
+        self._frequency_range = (float(min(frequency_range)), float(max(frequency_range)))
+
+    def __eq__(self, other):
+        if not isinstance(other, ScannerAxis):
+            raise NotImplemented
+        attrs = ('_name',
+                 '_unit',
+                 '_resolution_range',
+                 '_step_range',
+                 '_value_range',
+                 '_frequency_range')
+        return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
     def name(self):
@@ -386,52 +442,52 @@ class ScannerAxis:
         return self._unit
 
     @property
-    def resolution_bounds(self):
-        return self._resolution_bounds
+    def resolution_range(self):
+        return self._resolution_range
 
     @property
     def min_resolution(self):
-        return self._resolution_bounds[0]
+        return self._resolution_range[0]
 
     @property
     def max_resolution(self):
-        return self._resolution_bounds[1]
+        return self._resolution_range[1]
 
     @property
-    def step_bounds(self):
-        return self._step_bounds
+    def step_range(self):
+        return self._step_range
 
     @property
     def min_step(self):
-        return self._step_bounds[0]
+        return self._step_range[0]
 
     @property
     def max_step(self):
-        return self._step_bounds[1]
+        return self._step_range[1]
 
     @property
-    def value_bounds(self):
-        return self._value_bounds
+    def value_range(self):
+        return self._value_range
 
     @property
     def min_value(self):
-        return self._value_bounds[0]
+        return self._value_range[0]
 
     @property
     def max_value(self):
-        return self._value_bounds[1]
+        return self._value_range[1]
 
     @property
-    def frequency_bounds(self):
-        return self._frequency_bounds
+    def frequency_range(self):
+        return self._frequency_range
 
     @property
     def min_frequency(self):
-        return self._frequency_bounds[0]
+        return self._frequency_range[0]
 
     @property
     def max_frequency(self):
-        return self._frequency_bounds[1]
+        return self._frequency_range[1]
 
     def clip_value(self, value):
         if value < self.min_value:
@@ -447,17 +503,25 @@ class ScannerAxis:
             return self.max_resolution
         return res
 
-    def copy(self):
-        return ScannerAxis(name=self._name,
-                           unit=self._unit,
-                           min_value=self.min_value,
-                           max_value=self.max_value,
-                           min_step=self.min_step,
-                           max_step=self.max_step,
-                           min_resolution=self.min_resolution,
-                           max_resolution=self.max_resolution,
-                           min_frequency=self.min_frequency,
-                           max_frequency=self.max_frequency)
+    def clip_frequency(self, freq):
+        if freq < self.min_frequency:
+            return self.min_frequency
+        elif freq > self.max_frequency:
+            return self.max_frequency
+        return freq
+
+    def to_dict(self):
+        dict_repr = {'name': self._name,
+                     'unit': self._unit,
+                     'value_range': self._value_range,
+                     'step_range': self._step_range,
+                     'resolution_range': self._resolution_range,
+                     'frequency_range': self._frequency_range}
+        return dict_repr
+
+    @classmethod
+    def from_dict(cls, dict_repr):
+        return ScannerAxis(**dict_repr)
 
 
 class ScanConstraints:
