@@ -114,14 +114,10 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             dist = max(ax_range) - min(ax_range)
             axes.append(ScannerAxis(name=ax,
                                     unit='m',
-                                    min_value=min(ax_range),
-                                    max_value=max(ax_range),
-                                    min_step=0,
-                                    max_step=dist,
-                                    min_resolution=min(self._resolution_ranges[ax]),
-                                    max_resolution=max(self._resolution_ranges[ax]),
-                                    min_frequency=min(self._frequency_ranges[ax]),
-                                    max_frequency=max(self._frequency_ranges[ax])))
+                                    value_range=ax_range,
+                                    step_range=(0, dist),
+                                    resolution_range=self._resolution_ranges[ax],
+                                    frequency_range=self._frequency_ranges[ax]))
         channels = [ScannerChannel(name='fluorescence', unit='c/s', dtype=np.float64),
                     ScannerChannel(name='APD events', unit='count', dtype=np.float64)]
 
@@ -376,16 +372,20 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                     self._scan_image += gauss[:, 0]
                 else:
                     self._scan_image += gauss
+
+            if self._constraints.has_position_feedback:
+                feedback_axes = tuple(self._constraints.axes.values())
+            else:
+                feedback_axes = None
             self._scan_data = ScanData(
-                axes=tuple(self._constraints.axes.values()),
                 channels=tuple(self._constraints.channels.values()),
-                scan_axes=self._current_scan_axes,
+                scan_axes=tuple(self._constraints.axes[ax] for ax in self._current_scan_axes),
                 scan_range=self._current_scan_ranges,
                 scan_resolution=self._current_scan_resolution,
                 scan_frequency=self._current_scan_frequency,
-                position_feedback=self._constraints.has_position_feedback
+                position_feedback_axes=feedback_axes
             )
-            self._scan_data.new_data()
+            self._scan_data.new_scan()
             self.__scan_start = time.time()
             self.__last_line = -1
             return 0
@@ -420,24 +420,23 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             self.log.debug('Scanning probe dummy "get_scan_data" called.')
             if self._scan_data is None:
                 return None
-            if self._scan_data.finished:
+            if self._scan_data.is_finished:
                 return self._scan_data
             elapsed = time.time() - self.__scan_start
             line_time = self._current_scan_resolution[0] / self._current_scan_frequency
 
-            if self._scan_data.dimension == 2:
+            if self._scan_data.scan_dimension == 2:
                 acquired_lines = min(int(np.floor(elapsed / line_time)),
                                      self._current_scan_resolution[1])
                 if acquired_lines > 0:
                     if self.__last_line < acquired_lines - 1:
                         if self.__last_line < 0:
                             self.__last_line = 0
-                        for line_index in range(self.__last_line, acquired_lines):
-                            self._scan_data.add_line_data(
-                                {ch: self._scan_image[:, line_index] for ch in
-                                 self._constraints.channels},
-                                line_index
-                            )
+
+                        for ch in self._constraints.channels:
+                            tmp = self._scan_image[:, self.__last_line:acquired_lines]
+                            self._scan_data.data[ch][:, self.__last_line:acquired_lines] = tmp
+
                         self.__last_line = acquired_lines - 1
                     if acquired_lines >= self._current_scan_resolution[1]:
                         self._scan_data.finish_scan()

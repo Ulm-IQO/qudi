@@ -36,6 +36,8 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core import qudi_slot
 
+from qudi.interface.scanning_probe_interface import ScanData
+
 
 class ScanningProbeLogic(LogicBase):
     """
@@ -104,7 +106,7 @@ class ScanningProbeLogic(LogicBase):
 
         # scanner settings
         if not isinstance(self._scan_ranges, dict):
-            self._scan_ranges = {ax.name: ax.value_bounds for ax in constr.axes.values()}
+            self._scan_ranges = {ax.name: ax.value_range for ax in constr.axes.values()}
         if not isinstance(self._scan_resolution, dict):
             self._scan_resolution = {ax.name: max(ax.min_resolution, min(128, ax.max_resolution))
                                      for ax in constr.axes.values()}
@@ -121,6 +123,8 @@ class ScanningProbeLogic(LogicBase):
         self.__sigStartTimer.connect(self.__timer.start)
         self.__sigStopTimer.connect(self.__timer.stop)
         self.__timer.start()
+
+        self._curr_history_index = len(self._scan_history) - 1 if self._scan_history else 0
         return
 
     def on_deactivate(self):
@@ -132,10 +136,20 @@ class ScanningProbeLogic(LogicBase):
         self.__sigStopTimer.disconnect()
         return
 
+    @_scan_history.representer
+    def __scan_history_to_dicts(self, history):
+        return [data.to_dict() for data in history]
+
+    @_scan_history.constructor
+    def __scan_history_from_dicts(self, history_dicts):
+        return [ScanData.from_dict(hist_dict) for hist_dict in history_dicts]
+
     @property
     def scan_data(self):
         with self._thread_lock:
-            return self._scanner().get_scan_data()
+            if self.module_state() == 'locked' or not self._scan_history:
+                return self._scanner().get_scan_data()
+            return self._scan_history[self._curr_history_index]
 
     @property
     def scanner_position(self):
@@ -444,7 +458,7 @@ class ScanningProbeLogic(LogicBase):
 
             scan_data = self._scanner().get_scan_data()
             # Terminate scan if finished
-            if scan_data.finished:
+            if scan_data.is_finished:
                 if self._scanner().stop_scan() < 0:
                     self.log.error('Unable to stop scan.')
                 self._stop_timer()
@@ -476,7 +490,7 @@ class ScanningProbeLogic(LogicBase):
     @qudi_slot()
     def history_next(self):
         with self._thread_lock:
-            if self._curr_history_index >= len(self._history) - 1:
+            if self._curr_history_index >= len(self._scan_history) - 1:
                 self.log.warning('Unable to restore next state from scan history. '
                                  'Already at latest history entry.')
                 return
@@ -501,11 +515,14 @@ class ScanningProbeLogic(LogicBase):
             ax_constr = self.scanner_constraints.axes
             for i, ax in enumerate(data.scan_axes):
                 constr = ax_constr[ax]
-                self._scan_resolution[ax] = int(constr.clip_resolution(data.resolution[i]))
+                self._scan_resolution[ax] = int(constr.clip_resolution(data.scan_resolution[i]))
                 self._scan_ranges[ax] = tuple(
-                    constr.clip_value(val) for val in data.target_ranges[i])
+                    constr.clip_value(val) for val in data.scan_range[i])
             self._scan_frequency = data.scan_frequency
             self._curr_history_index = index
+            print({'range': self._scan_ranges.copy(),
+                                              'resolution': self._scan_resolution.copy(),
+                                              'frequency': self._scan_frequency})
             self.sigScanSettingsChanged.emit({'range': self._scan_ranges.copy(),
                                               'resolution': self._scan_resolution.copy(),
                                               'frequency': self._scan_frequency})

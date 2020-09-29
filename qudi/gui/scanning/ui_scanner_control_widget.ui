@@ -19,8 +19,21 @@
   <property name="windowTitle">
    <string>Scanner Control</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="5">
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0">
+   <item row="0" column="5" rowspan="2">
+    <widget class="Line" name="line_2">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="7">
     <widget class="QLabel" name="position_label">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -36,7 +49,7 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="1" rowspan="2">
+   <item row="0" column="2" rowspan="2">
     <widget class="Line" name="line">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -49,7 +62,23 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
+   <item row="0" column="3" colspan="2">
+    <widget class="QLabel" name="scanrange_label">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Scan Range</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
     <widget class="QLabel" name="resolution_label">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -77,32 +106,16 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="4" rowspan="2">
-    <widget class="Line" name="line_2">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2" colspan="2">
-    <widget class="QLabel" name="scanrange_label">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+   <item row="0" column="6">
+    <widget class="QLabel" name="dummy_label">
+     <property name="enabled">
+      <bool>false</bool>
      </property>
      <property name="text">
-      <string>Scan Range</string>
+      <string/>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
+     <property name="textInteractionFlags">
+      <set>Qt::NoTextInteraction</set>
      </property>
     </widget>
    </item>
