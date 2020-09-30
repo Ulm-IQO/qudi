@@ -209,6 +209,7 @@ class ODMRLogic(GenericLogic):
         """ Initializing the ODMR plots (line and matrix). """
 
         final_freq_list = []
+        self.frequency_lists = []
         for mw_start, mw_stop, mw_step in zip(self.mw_starts, self.mw_stops, self.mw_steps):
             freqs = np.arange(mw_start, mw_stop + mw_step, mw_step)
             final_freq_list.extend(freqs)
