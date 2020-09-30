@@ -1149,30 +1149,6 @@ class Manager(QtCore.QObject):
             If the module is an active GUI module, show its window.
         """
 
-        print(base,
-              key,
-              'not equal' if QtCore.QThread.currentThread() is not self.thread() else 'equal',
-              QtCore.QThread.currentThread(),
-              self.thread())
-        if QtCore.QThread.currentThread() is not self.thread():
-            print('invoke')
-            QtCore.QMetaObject.invokeMethod(
-                self,
-                'startModule',
-                QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(str, str(base)),
-                QtCore.Q_ARG(str, str(key))
-            )
-            QtCore.QCoreApplication.instance().processEvents()
-            start_time = time.time()
-            while time.time() - start_time < 3:
-                if key in self.tree['loaded'].get(base, dict):
-                    return self.tree['loaded'][base][key].module_state() == 'deactivated'
-                else:
-                    time.sleep(0.1)
-            print('return because of timeout')
-            return -2
-
         deps = self.getRecursiveModuleDependencies(base, key)
         sorteddeps = toposort(deps)
         if len(sorteddeps) == 0:
