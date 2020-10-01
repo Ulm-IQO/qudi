@@ -1198,7 +1198,7 @@ class MFL_IRQ_Driven(GenericLogic):
             tau_val, _ = self.get_ts(idx_jumptable)
             val_phase = self.get_phase(idx_jumptable)
             n_val = self.get_n(idx_jumptable)
-            self.log.info("Finding next tau= {} ns (req: {}), next n_pi= {} (req: {}), read_phase= {:.2f} in {} at jump address {} (0b{:012b})".
+            self.log.info("Finding next tau= {} ns (req: {}), next n_pi= {} (req: {}), read_phase= {:.2f} in {} at jump address {} (0b{:019b})".
                           format(1e9*tau_val, 1e9*tau, n_val, n_pi, val_phase, name_seqstep, addr, addr))
 
         return idx_jumptable, addr
@@ -1414,8 +1414,14 @@ class MFL_IRQ_Driven(GenericLogic):
                                         z_thresh=self.z_thresh, read_phase=last_phase)
 
         self.save_before_update(z)
+        seqtable_addr = 'na'
         if not self.nolog_callback:
-            self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
+            try:
+                seqtable_addr = self.pulsedmasterlogic().pulsedmeasurementlogic().pulsegenerator().get_sequencer_state(1)
+            except: pass
+            self.log.info("MFL callback invoked in epoch {} @ addr {}. z= {} -> {}".format(self.i_epoch,
+                                                                                           seqtable_addr,
+                                                                                           z, z_binary))
 
         self.update_mfl(z_binary, read_phase=last_phase)
 
@@ -1528,6 +1534,15 @@ class SerialInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def output_data(self, data):
         pass
+
+    @property
+    def log(self):
+        """
+        Allows to override base logger in case not called from qudi.
+        """
+        import logging
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__, self.__class__.__name__))
 
 import PyDAQmx as daq
 import numpy as np
@@ -1698,13 +1713,33 @@ class PJAdapter_AWG8190A(PatternJumpAdapter):
     def output_data(self, data):
         if data > self.max_address:
             self.log.warning("Output address {} exceeds max {}".format(data, self.max_address))
-
+        """
+        Data_Select
+        The data select signal controls which part of the 19 bit internal sequencer index is loaded 
+        from the Data_In pins. If Data_Select is 1 only the Data_In bits 5..0 are used to load 
+        bits 18..13 of the sequencer index. If Data_Select is 0 the Data_In bits 12..0 are loaded 
+        to internal sequencer index 12..0. To load the full 19 sequence index bits first the upper
+        part needs to be loaded (Data_Select = 1) then the lower part.
+        Load
+        A rising edge on the Load signal latches the data present at the Data_In pins
+        into the respective internal registers. If the Data_Select pin is low the loaded sequencer index
+        is passed to the sequencer for execution.
+                
+        """
         # upper 6 bits
         if data > 2**13 - 1:
-            self.output_data_select(1)
-            self._output_direct(data >> 13)
-            # lower 13 bits
-            self.output_data_select(0)
+            self.log.debug("addr {}, total: 0x{:019b}, upper: 0x{:06b}, lower {:013b} ({:d})".format(
+                data, data, data >> 13, data & 0b1111111111111, data & 0b1111111111111))
+
+        self.output_data_select(1)
+        self._output_direct(data >> 13)
+
+        # strobe will not advance when data select high
+        # attention: strobe also triggers the advancement trigger
+        self.output_strobe()
+
+        # lower 13 bits
+        self.output_data_select(0)
         self._output_direct(data)
 
         self.output_strobe()
@@ -1715,8 +1750,8 @@ class PJAdapter_AWG8190A(PatternJumpAdapter):
         :param high:
         :return:
         """
-        digital_data = daq.c_uint32(0x1)
-        digital_low = daq.c_uint32(0x0)
+        digital_data = daq.c_uint32(0xffffffff)
+        digital_low = daq.c_uint32(0b0)
         digital_read = daq.c_int32()  # dummy to feed to function
         n_samples = daq.c_int32(1)
 
