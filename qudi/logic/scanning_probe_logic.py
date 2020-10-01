@@ -573,43 +573,42 @@ class ScanningProbeLogic(LogicBase):
             # if self._scan_history[self._curr_history_index] is scan_data:
             #     if self._curr_history_index == history_index:
 
-        ds = TextDataStorage(column_headers='Image (columns is X, rows is Y)',
-                             number_format='%.18e',
-                             comments='# ',
-                             delimiter='\t',
-                             sub_directory='Scanning',
-                             file_extension='.dat',
-                             image_format=ImageFormat.PNG,
-                             include_global_parameters=True,
-                             use_daily_dir=True)
+            ds = TextDataStorage(column_headers='Image (columns is X, rows is Y)',
+                                 number_format='%.18e',
+                                 comments='# ',
+                                 delimiter='\t',
+                                 sub_directory='Scanning',
+                                 file_extension='.dat',
+                                 image_format=ImageFormat.PNG,
+                                 include_global_parameters=True,
+                                 use_daily_dir=True)
 
-        # ToDo: Add meaningful metadata if missing
-        parameters = {'x-axis name': scan_data.scan_axes[0],
-                      'x-axis unit': scan_data.axes_units[scan_data.scan_axes[0]],
-                      'x-axis min': scan_data.scan_range[0][0],
-                      'x-axis max': scan_data.scan_range[0][1],
-                      'x-axis resolution': scan_data.scan_resolution[0],
-                      'y-axis name': scan_data.scan_axes[1],
-                      'y-axis unit': scan_data.axes_units[scan_data.scan_axes[1]],
-                      'y-axis min': scan_data.scan_range[1][0],
-                      'y-axis max': scan_data.scan_range[1][1],
-                      'y-axis resolution': scan_data.scan_resolution[1],
-                      'pixel scan frequency': scan_data.scan_frequency
-                      }
+            # ToDo: Add meaningful metadata if missing
+            parameters = {'x-axis name': scan_data.scan_axes[0],
+                          'x-axis unit': scan_data.axes_units[scan_data.scan_axes[0]],
+                          'x-axis min': scan_data.scan_range[0][0],
+                          'x-axis max': scan_data.scan_range[0][1],
+                          'x-axis resolution': scan_data.scan_resolution[0],
+                          'y-axis name': scan_data.scan_axes[1],
+                          'y-axis unit': scan_data.axes_units[scan_data.scan_axes[1]],
+                          'y-axis min': scan_data.scan_range[1][0],
+                          'y-axis max': scan_data.scan_range[1][1],
+                          'y-axis resolution': scan_data.scan_resolution[1],
+                          'pixel scan frequency': scan_data.scan_frequency
+                          }
 
-        # Save data to file
-        timestamp = datetime.datetime.now()
-        for channel, data in scan_data.data.items():
-            nametag = '{0}_{1}{2}_scan'.format(channel, *scan_data.scan_axes)
-            ds.save_data(data, parameters=parameters, nametag=nametag, timestamp=timestamp)
+            # Save data and thumbnail to file
+            timestamp = datetime.datetime.now()
+            for channel, data in scan_data.data.items():
+                # data
+                nametag = '{0}_{1}{2}_scan'.format(channel, *scan_data.scan_axes)
+                ds.save_data(data, parameters=parameters, nametag=nametag, timestamp=timestamp)
+                # thumbnail
+                figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
+                ds.save_thumbnail(mpl_figure=figure, timestamp=timestamp, nametag=nametag)
 
-        # Save thumbnails to file
-        for channel, data in scan_data.data.items():
-            figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
-            ds.save_thumbnail(mpl_figure=figure, timestamp=timestamp, nametag=nametag)
-
-        self.log.debug('Scan image saved.')
-        return
+            self.log.debug('Scan image saved.')
+            return
 
     def draw_2d_scan_figure(self, scan_data, channel, cbar_range=None):
         """ Create a 2-D color map figure of the scan image.
