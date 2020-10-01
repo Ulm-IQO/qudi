@@ -175,13 +175,14 @@ class DataStorageBase(metaclass=ABCMeta):
             os.makedirs(path, exist_ok=True)
         return path
 
-    def create_file_path(self, timestamp=None, filename=None, nametag=None):
+    def create_file_path(self, timestamp=None, filename=None, nametag=None, file_extension=None):
         """ Creates a generic filename if none has been given and constructs an absolute path to
         the file to be saved. Creates all necessary directories along the way.
 
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
         @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
+        @param str file_extension: optional, the file extension to use
 
         @return str: Full absolute path of the data file
         """
@@ -192,8 +193,12 @@ class DataStorageBase(metaclass=ABCMeta):
                 filename = timestamp.strftime('%Y%m%d-%H%M-%S')
             else:
                 filename = '{0}_{1}'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), nametag)
-        if self.file_extension is not None and not filename.endswith(self.file_extension):
-            filename += self.file_extension
+        if file_extension is None:
+            file_extension = self.file_extension
+        elif not file_extension.startswith('.'):
+            file_extension = '.' + file_extension
+        if file_extension is not None and not filename.endswith(file_extension):
+            filename += file_extension
         return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
                             filename)
 
@@ -213,7 +218,7 @@ class DataStorageBase(metaclass=ABCMeta):
         file_path = self.create_file_path(timestamp=timestamp,
                                           filename=filename,
                                           nametag=nametag,
-                                          file_extension=self.image_format.value())
+                                          file_extension=self.image_format.value)
 
         if self.image_format is ImageFormat.PDF:
             # Create the PdfPages object to which we will save the pages:
