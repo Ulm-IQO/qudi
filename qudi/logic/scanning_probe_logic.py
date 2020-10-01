@@ -35,6 +35,8 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core import qudi_slot
+from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
 
 from qudi.interface.scanning_probe_interface import ScanData
 
@@ -48,7 +50,6 @@ class ScanningProbeLogic(LogicBase):
 
     # declare connectors
     _scanner = Connector(name='scanner', interface='ScanningProbeInterface')
-    # savelogic = Connector(interface='SaveLogic')
 
     # status vars
     _scan_ranges = StatusVar(name='scan_ranges', default=None)
@@ -69,6 +70,7 @@ class ScanningProbeLogic(LogicBase):
     sigScanSettingsChanged = QtCore.Signal(dict)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigScanDataChanged = QtCore.Signal(object)
+    sigSaveDataState = QtCore.Signal(bool)
 
     __sigStopTimer = QtCore.Signal()
     __sigStartTimer = QtCore.Signal()
@@ -541,3 +543,136 @@ class ScanningProbeLogic(LogicBase):
     @qudi_slot()
     def _stop_timer(self):
         self.__sigStopTimer.emit()
+
+    @qudi_slot(str)
+    def save_1d_scan(self, axis):
+        pass
+
+    @qudi_slot(str, object)
+    def save_2d_scan(self, axes, color_range=None):
+        axes = tuple(str(ax).lower() for ax in axes)
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                self.log.error('Unable to save 2D scan. Measurement/Saving already in progress.')
+                return
+
+            # Try to find most recent scan data
+            scan_data = None
+            for history_index, data in reversed(list(enumerate(self._scan_history))):
+                if data.scan_axes == axes:
+                    scan_data = data
+                    break
+            if scan_data is None:
+                self.log.error(
+                    'Unable to save 2D scan. No scan data available for axes {0}.'.format(axes))
+                return
+
+            self.sigScanDataChanged.emit(scan_data)
+            self.sigSaveDataState.emit(True)
+            # ToDo: Update history index to newest relevant entry
+            # if self._scan_history[self._curr_history_index] is scan_data:
+            #     if self._curr_history_index == history_index:
+
+        ds = TextDataStorage(column_headers='Image (columns is X, rows is Y)',
+                             number_format='%.18e',
+                             comments='# ',
+                             delimiter='\t',
+                             sub_directory='Scanning',
+                             file_extension='.dat',
+                             image_format=ImageFormat.PNG,
+                             include_global_parameters=True,
+                             use_daily_dir=True)
+
+        # ToDo: Add meaningful metadata if missing
+        parameters = {'x-axis name': scan_data.scan_axes[0],
+                      'x-axis unit': scan_data.axes_units[scan_data.scan_axes[0]],
+                      'x-axis min': scan_data.scan_range[0][0],
+                      'x-axis max': scan_data.scan_range[0][1],
+                      'x-axis resolution': scan_data.scan_resolution[0],
+                      'y-axis name': scan_data.scan_axes[1],
+                      'y-axis unit': scan_data.axes_units[scan_data.scan_axes[1]],
+                      'y-axis min': scan_data.scan_range[1][0],
+                      'y-axis max': scan_data.scan_range[1][1],
+                      'y-axis resolution': scan_data.scan_resolution[1],
+                      'pixel scan frequency': scan_data.scan_frequency
+                      }
+
+        # Save data to file
+        timestamp = datetime.datetime.now()
+        for channel, data in scan_data.data.items():
+            nametag = '{0}_{1}{2}_scan'.format(channel, *scan_data.scan_axes)
+            ds.save_data(data, parameters=parameters, nametag=nametag, timestamp=timestamp)
+
+        # Save thumbnails to file
+        for channel, data in scan_data.data.items():
+            figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
+            ds.save_thumbnail(mpl_figure=figure, timestamp=timestamp, nametag=nametag)
+
+        self.log.debug('Scan image saved.')
+        return
+
+    def draw_2d_scan_figure(self, scan_data, channel, cbar_range=None):
+        """ Create a 2-D color map figure of the scan image.
+
+        @return fig: a matplotlib figure object to be saved to file.
+        """
+        image_arr = scan_data.data[channel]
+        scan_axes = scan_data.scan_axes
+        scanner_pos = self._scanner().get_target()
+
+        # If no colorbar range was given, take full range of data
+        if cbar_range is None:
+            cbar_range = (image_arr.min(), image_arr.max())
+
+        # ToDo: Scale data and axes in a suitable and general way (with utils)
+
+        # Use qudi style
+        plt.style.use(mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        # Create image plot
+        cfimage = ax.imshow(image_arr.transpose(),
+                            cmap='inferno',  # FIXME: reference the right place in qudi
+                            origin='lower',
+                            vmin=cbar_range[0],
+                            vmax=cbar_range[1],
+                            interpolation='none',
+                            extent=(*scan_data.scan_range[0], *scan_data.scan_range[1]))
+
+        ax.set_aspect(1)
+        ax.set_xlabel(scan_axes[0] + ' position ({0})'.format(scan_data.axes_units[scan_axes[0]]))
+        ax.set_ylabel(scan_axes[1] + ' position ({0})'.format(scan_data.axes_units[scan_axes[1]]))
+        ax.spines['bottom'].set_position(('outward', 10))
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.get_xaxis().tick_bottom()
+        ax.get_yaxis().tick_left()
+
+        # draw the scanner position if defined
+        # ToDo: Check if scanner position is within image boundaries. Don't draw if not the case.
+        trans_xmark = mpl.transforms.blended_transform_factory(ax.transData, ax.transAxes)
+        trans_ymark = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
+        ax.annotate('',
+                    xy=(scanner_pos[scan_axes[0]], 0),
+                    xytext=(scanner_pos[scan_axes[0]], -0.01),
+                    xycoords=trans_xmark,
+                    arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
+        ax.annotate('',
+                    xy=(0, scanner_pos[scan_axes[1]]),
+                    xytext=(-0.01, scanner_pos[scan_axes[1]]),
+                    xycoords=trans_ymark,
+                    arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
+
+        # Draw the colorbar
+        cbar = plt.colorbar(cfimage, shrink=0.8)  #, fraction=0.046, pad=0.08, shrink=0.75)
+        if scan_data.channel_units[channel]:
+            cbar.set_label('{0} ({1})'.format(channel, scan_data.channel_units[channel]))
+        else:
+            cbar.set_label('{0}'.format(channel))
+
+        # remove ticks from colorbar for cleaner image
+        cbar.ax.tick_params(which=u'both', length=0)
+        return fig
