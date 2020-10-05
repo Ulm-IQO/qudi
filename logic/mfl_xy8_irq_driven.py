@@ -329,7 +329,7 @@ class MFL_IRQ_Driven(GenericLogic):
         # for photon model
         self.z_phot_0 = z_phot_0
         self.z_phot_1 = z_phot_1
-        self._binarize_mode = 'float_to_photons'
+
 
         # to save for dumping
         self.mfl_n_particles = n_particles
@@ -347,10 +347,11 @@ class MFL_IRQ_Driven(GenericLogic):
         self.mfl_model = mfl_lib.MultimodeDDModel(min_freq=freq_min,
                                                   T2_a=t2a_s, T2_b=t2b_s, b_gauss=b_gauss)  # freq_min atm not used by model
         self.mfl_model = mfl_lib.MultimodeDDPhotModel(self.z_phot_0, self.z_phot_1, self.n_sweeps,
-                                                  min_freq=freq_min, T2_a=t2a_s, T2_b=t2b_s, b_gauss=b_gauss)  # freq_min atm not used by model
+                                                 min_freq=freq_min, T2_a=t2a_s, T2_b=t2b_s, b_gauss=b_gauss)  # freq_min atm not used by model
 
-        self.mfl_updater = mfl_lib.basic_SMCUpdater(self.mfl_model, n_particles, self.mfl_prior, resample_a=resample_a,
-                                                    resample_thresh=0.5)
+        #self.mfl_updater = mfl_lib.basic_SMCUpdater(self.mfl_model, n_particles, self.mfl_prior, resample_a=resample_a,
+        #                                            resample_thresh=0.5)
+        self._binarize_mode = 'float_to_photons'
         self.mfl_updater = mfl_lib.SMCPhotUpdater(self.mfl_model, n_particles, self.mfl_prior, resample_a=resample_a,
                                                     resample_thresh=0.5)
 
