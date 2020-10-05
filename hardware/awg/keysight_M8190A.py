@@ -1272,6 +1272,7 @@ class AWGM8190A(Base, PulserInterface):
         self.write(':SEQ1:DEL:ALL')
         self.write(':SEQ2:DEL:ALL')
         #self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
+        self.write(':ARM:DYNP:WIDT ALLB')
 
         seq_id_ch1 = int(self.query(":SEQ1:DEF:NEW? {:d}".format(num_steps)))
         seq_id_ch2 = int(self.query(":SEQ2:DEF:NEW? {:d}".format(num_steps)))
