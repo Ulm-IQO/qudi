@@ -16,6 +16,13 @@ kwargs = {'manager': None, 'name': None}
 config = {}
 fitlogic = FitLogic(**kwargs, config=config)
 
+import imp
+qudi_dir = 'C:/Users/Setup3-PC/Desktop/qudi/'
+path_mfl_lib = qudi_dir + '/jupyter/Timo/own/mfl_sensing_simplelib.py'
+
+
+mfl_lib = imp.load_source('packages', path_mfl_lib)
+
 #### Type defs ####
 
 LoadedMes = namedtuple('Mes', 'mes filename')
@@ -759,7 +766,10 @@ def plot_b_hist(mes_list, savepath=None, filter_str_success='combine'):
 def _get_prior_plotsize(epochs_idx=[], always_show_err=False):
     # shaddows jupyter notebook code
 
-    plot_all = not epochs_idx
+    plot_all = False
+    if not list(epochs_idx):
+        plot_all = True
+
     epochs_error = []  # not known in experiments
     n_plots = len(track_priors) if plot_all else len(epochs_idx)
     n_plots += 2 * len(epochs_error)
@@ -800,6 +810,11 @@ def plot_prior_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick_labe
                 ax_cur.set_title(label)
                 ax_cur.set_xlabel("$\gamma B_1 / 2 \pi \ \mathrm{(MHz)}$")
                 ax_cur.set_ylabel("$\gamma B_2 / 2 \pi \ \mathrm{(MHz)}$")
+                ax_cur.set_ylabel("")
+
+                # disable left tick label (shared left prior, likelihood)
+                #ax_cur.tick_params(labelleft=False)
+
                 # only 2 ticks each axis
                 ax_cur.set_xticks([np.min(xedge), np.max(xedge)])
                 ax_cur.set_yticks([np.min(yedge), np.max(yedge)])
@@ -809,8 +824,8 @@ def plot_prior_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick_labe
 
                 #ax_cur.set_xticks([0, 5])
                 #ax_cur.set_yticks([0., 5])
-                #ax_cur.set_xticks([0.536, 0.567])
-                #ax_cur.set_yticks([0.604, 0.632])
+                ax_cur.set_xticks([0.536, 0.568])
+                ax_cur.set_yticks([0.604, 0.633])
                 #fig.colorbar(img)
 
                 idx_plot += 1
@@ -822,7 +837,7 @@ def plot_prior_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick_labe
         save_fig(savepath)
 
 
-def plot_likelihood_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick_label_digits=3):
+def plot_likelihood_2d(loaded_mes, epochs_idx=[], savepath=None, tick_label_digits=3, omega_mhz=[]):
     # shaddows jupyter notebbok code
 
     # load data
@@ -842,31 +857,46 @@ def plot_likelihood_2d(loaded_mes, epochs_idx=[], n_bins=50, savepath=None, tick
     for i, p in enumerate(priors):
         epoch = i
         if epoch in epochs_idx:
-            particle_locations = priors[epoch]
+            particle_locations = priors[epoch]  # MHz
 
-            omega_1 = np.linspace(min(particle_locations[:, 0]), max(particle_locations[:, 0]), 50)
-            omega_2 = np.linspace(min(particle_locations[:, 1]), max(particle_locations[:, 1]), 50)
+            if not list(omega_mhz):
+                omega_1 = np.linspace(min(particle_locations[:, 0]), max(particle_locations[:, 0]), 100)  # MHz
+                omega_2 = np.linspace(min(particle_locations[:, 1]), max(particle_locations[:, 1]), 100)
+            else:
+                omega_1 = omega_mhz[0]  # MHz
+                omega_2 = omega_mhz[1]
+
 
             x_grid, y_grid = np.meshgrid(omega_1, omega_2)
 
             z_bin = 1
-            x, y = get_likelihood(epoch, x_grid.flatten(), y_grid.flatten(), exp_outcome=z_bin)
+            # models don't get saved /serialized, so recreate:
+            loaded_mes.mes.mfl_model = mfl_lib.MultimodePrecModel(min_freq=0)
+            x, y = loaded_mes.mes.get_likelihood([2*np.pi*x_grid.flatten(), 2*np.pi*y_grid.flatten()],
+                                                  idx_epoch=epoch, exp_outcome=z_bin)
             y_2d = y.reshape(len(omega_1), len(omega_2))
 
             plt.subplot(n_rows, n_col, idx_plot + 1)
-            plt.imshow(y_2d, vmin=0, extent=[omega_1[0] / (2 * np.pi), omega_1[-1] / (2 * np.pi),
-                                             omega_2[0] / (2 * np.pi), omega_2[-1] / (2 * np.pi)],
+            plt.imshow(y_2d, vmin=0, extent=[omega_1[0], omega_1[-1],
+                                             omega_2[0], omega_2[-1]],
                        cmap='plasma', aspect='auto', origin='lower')
 
+            # plt.colorbar()
+
             ax_cur = plt.gca()
+            # disable left tick label (shared with prior)
             ax_cur.tick_params(labelleft=False)
-            plt.colorbar()
-            plt.title("L({:.0f}|B)".format(z_bin))
+
+
+
+            plt.title(r"$L({:.0f}|B,\tau)$".format(z_bin))
+            #plt.title(r"$L({:.0f}|B,\tau) {}$".format(z_bin, epoch))
             ax_cur.set_xlabel("$\gamma B_1 / 2 \pi \ \mathrm{(MHz)}$")
             ax_cur.set_ylabel("$\gamma B_2 / 2 \pi \ \mathrm{(MHz)}$")
+            ax_cur.set_ylabel("")
             # only 2 ticks each axis
-            ax_cur.set_xticks([np.min(omega_1), np.max(omega_1)])
-            ax_cur.set_yticks([np.min(omega_2), np.max(omega_2)])
+            ax_cur.set_xticks([omega_1[0], omega_1[-1] ])
+            ax_cur.set_yticks([omega_2[0], omega_2[-1] ])
             from matplotlib.ticker import FormatStrFormatter
             ax_cur.yaxis.set_major_formatter(FormatStrFormatter('%.{}f'.format(int(tick_label_digits))))
             ax_cur.xaxis.set_major_formatter(FormatStrFormatter('%.{}f'.format(int(tick_label_digits))))
@@ -1495,7 +1525,7 @@ if __name__ == '__main__':
     # font in text mode
     rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'], 'size': 11.5})
     # for inset figures
-    #rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'], 'size': 7})
+    rc('font',**{'family':'sans-serif','sans-serif':['Helvetica'], 'size': 7})
     # font in math mode: computer modern
     plt.rcParams["mathtext.fontset"] = "cm"
 
@@ -1507,14 +1537,14 @@ if __name__ == '__main__':
     #rc('text', usetex=True) # use external miktex renderer
     #rc('text.latex', preamble=','.join(r'\usepackage{txfonts}\usepackage{lmodern}'.split()))
 
-    save_svg = False
-    disable_legend = False
+    save_svg = True
+    disable_legend = True
     # for puplicattions
     figsize_cm = [8.6, 3/4*8.6]                 # single fig
     #figsize_cm = [1/2*8.6, 1/2*3/4*8.6]        # inset
-    #figsize_cm = [1/4*3/4*8.6, 1/4*3/4*8.6]    # quadtatic small inset
-    #figsize_cm = [8.6, 4]                       # wide screen
-    #overwrite_figsize = np.asarray(figsize_cm)*0.394  # in inches
+    figsize_cm = [1/4*3/4*8.6, 1/4*3/4*8.6]     # quadtatic small inset
+    #figsize_cm = [8.6, 4]                      # wide screen
+    overwrite_figsize = np.asarray(figsize_cm)*0.394  # in inches
 
 
     # basic plotting of combined mfl data
@@ -1525,31 +1555,8 @@ if __name__ == '__main__':
     #path = "E:/Data/2019/11/20191104/PulsedMeasurement/_2d_mfl_M6.3/combine"
 
 
-    paths = ["E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.4",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.5",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.6",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.7",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.8",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.9",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.10",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.11",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.12",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.13",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.14",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.15",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.16",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.17",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.10",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.19",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.20",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.21",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.22",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.23",
-             "E:/Data/2020/02/20200205/PulsedMeasurement/NV_M2_dB_byFit_vs_t_phase/combine/mfl_n_sweeps=20_na_g=1_f=0_fail.24",
-             ]
-
     #paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_M6.3\combine",]
-    paths = [r"E:\Data\2020\09\20200921\PulsedMeasurement\mfl_xy8_baysianfi_nsweeps=800.0\combine"]
+    paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_m6.3_duplicate_for_plotting"]
 
     rolling_windows = '100ms'
     rolling_windows = '5000ms'  # only [ms] allowed!
@@ -1558,7 +1565,8 @@ if __name__ == '__main__':
     for path in paths:
         path = path.replace("\\","/")
 
-        mes_list, mes_list_fail, mes_list_all = load_from_dir(path, excl_params=['priors','likelihoods'], load_fails=True)
+        mes_list, mes_list_fail, mes_list_all = load_from_dir(path, load_fails=True, excl_params=[])
+        #mes_list, mes_list_fail, mes_list_all = load_from_dir(path, excl_params=['priors','likelihoods'], load_fails=True)
 
         # SINGLE MES
         #####################
@@ -1576,8 +1584,25 @@ if __name__ == '__main__':
         #continue
         #"""
         # priors
+        idx_epoch_plots = np.arange(0,500,4)
         #plot_prior_2d(mes_list[0], epochs_idx=[0], n_bins=50, savepath=path + '/' + 'priors_0.png', tick_label_digits=1)
-        plot_prior_2d(mes_list[0], epochs_idx=[500], n_bins=50, savepath=path + '/' + 'priors_500.png')
+        plot_prior_2d(mes_list[1], epochs_idx=[500], n_bins=50, savepath=path + '/' + 'priors_500.png')
+        #plot_prior_2d(mes_list[0], epochs_idx=idx_epoch_plots, savepath=path + '/' + 'prior.png', n_bins=50,
+        #             )
+
+        plot_likelihood_2d(mes_list[0], epochs_idx=idx_epoch_plots, savepath=path + '/' + 'likelihoods.png')
+        #plot_likelihood_2d(mes_list[0], epochs_idx=idx_epoch_plots, savepath=path + '/' + 'likelihoods.png',
+        #                    omega_mhz=[omega_1, omega_1])
+
+        # paper
+        omega_1 = np.linspace(0, 5, 100)
+        plot_likelihood_2d(mes_list[0], epochs_idx=[16], savepath=path + '/' + 'likelihoods_0.png',
+                            omega_mhz=[omega_1, omega_1], tick_label_digits=1)
+        omega_1 = np.linspace(0.536, 0.568, 100)
+        omega_2 = np.linspace(0.603, 0.633, 100)
+        plot_likelihood_2d(mes_list[0], epochs_idx=[496], savepath=path + '/' + 'likelihoods_500.png',
+                           omega_mhz=[omega_1, omega_2], tick_label_digits=3)
+        exit(0)
 
         # overhead times
         plot_overhead_times(mes_list[0], savepath=path + '/' + 'overhead.png')

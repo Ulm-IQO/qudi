@@ -259,7 +259,7 @@ logging.basicConfig()
 activate_loggers([__name__], level=logging.DEBUG)
 
 
-create_2d_to_dir(r"E:\Data\2020\09\20200925\PulsedMeasurement\mfl_calibs_mult_tausweeps", varpos_in_str=1, label_xy=('t',"n_pi"),
+create_2d_to_dir(r"E:\Data\2020\10\20201001\PulsedMeasurement\mfl_calibs_mult_tausweeps.1", varpos_in_str=1, label_xy=('t',"n_pi"),
                  parent_dir_level=1)
-create_2d_to_dir(r"E:\Data\2020\09\20200925\PulsedMeasurement\mfl_calibs_mult_tausweeps", y_axis_str="z2-z1", label_xy=('t',"n_pi"),
+create_2d_to_dir(r"E:\Data\2020\10\20201001\PulsedMeasurement\mfl_calibs_mult_tausweeps.1", y_axis_str="z2-z1", label_xy=('t',"n_pi"),
                                                                                 varpos_in_str=1, parent_dir_level=1)

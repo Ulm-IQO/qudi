@@ -5,6 +5,7 @@ qudi_path = "C:/Users/Setup3-PC/Desktop/qudi"
 os.chdir(qudi_path)
 from logic.mfl_irq_driven import MFL_IRQ_Driven
 from logic.mfl_xy8_irq_driven import MFL_IRQ_Driven as MFL_XY8_IRQ_Driven
+from logic.mfl_multi_irq_driven import MFL_Multi_IRQ_Driven
 
 from abc import abstractstaticmethod
 
@@ -63,11 +64,13 @@ class Tk_file():
         """
         mes_dict = Tk_file.load_pickle(filename)
 
-        if not 'xy8' in mes_dict['sequence_name']:
-            mes = MFL_IRQ_Driven(None, no_super=True, manager=None, name=None)
-        else:
+        if 'mfl_ramsey_pjump' in mes_dict['sequence_name'] in mes_dict['sequence_name'] and mes_dict['bs'].shape[1] == 2:
+            mes = MFL_Multi_IRQ_Driven(None, no_super=True, manager=None, name=None)
+        elif 'xy8' in mes_dict['sequence_name']:
             mes = MFL_XY8_IRQ_Driven(None, no_super=True, manager=None, name=None)
-            #logger.debug("Loading result file as XY8 file")
+        else:
+            mes = MFL_IRQ_Driven(None, no_super=True, manager=None, name=None)
+
         mes.__dict__.update(mes_dict)
 
         for ekey in excl_keys:
