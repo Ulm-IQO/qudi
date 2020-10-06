@@ -583,4 +583,3 @@ class PulserConstraints:
 
         self.activation_config = dict()
         self.sequence_option = SequenceOption.OPTIONAL
-        self.sequence_order = SequenceOrderOption.ARB

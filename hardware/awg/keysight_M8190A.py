@@ -281,7 +281,9 @@ class AWGM8190A(Base, PulserInterface):
         constraints.sequence_num.default = 1
 
         constraints.sequence_option = SequenceOption.OPTIONAL
-        constraints.sequence_order = SequenceOrderOption.LINONLY
+        # temporary property to check from outside
+        # not available in pulser interface or any other awg
+        constraints.sequence_order = "LINONLY"  #SequenceOrderOption.LINONLY
 
         # If sequencer mode is available then these should be specified
         constraints.repetitions.min = 0
@@ -1269,7 +1271,7 @@ class AWGM8190A(Base, PulserInterface):
         self.write(':STAB2:RES')
         self.write(':SEQ1:DEL:ALL')
         self.write(':SEQ2:DEL:ALL')
-        self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
+        #self.write(':ARM:DYNP:WIDT LOW')  # Only use lower 13 bits of dynamic input
 
         seq_id_ch1 = int(self.query(":SEQ1:DEF:NEW? {:d}".format(num_steps)))
         seq_id_ch2 = int(self.query(":SEQ2:DEF:NEW? {:d}".format(num_steps)))
