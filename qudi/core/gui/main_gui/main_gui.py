@@ -31,6 +31,7 @@ from qudi.core.remote import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
+from qudi.core.logger import signal_handler
 from PySide2 import QtCore, QtWidgets, QtGui
 
 try:
@@ -76,7 +77,7 @@ class QudiMainGui(GuiBase):
         self.mw = QudiMainWindow()
         self._restore_window_pos(self.mw)
         # Create error dialog for error message popups
-        self.error_dialog = ErrorDialog(self)
+        self.error_dialog = ErrorDialog(self.mw)
 
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
@@ -131,6 +132,7 @@ class QudiMainGui(GuiBase):
         return qudi_main
 
     def _connect_signals(self):
+        signal_handler.sigMessageLogged.connect(self.handle_log_entry, QtCore.Qt.QueuedConnection)
         qudi_main = self._qudi_main
         # Connect up the main windows actions
         self.mw.action_quit.triggered.connect(qudi_main.prompt_quit, QtCore.Qt.QueuedConnection)
@@ -180,6 +182,8 @@ class QudiMainGui(GuiBase):
         self.mw.module_widget.sigDeactivateModule.disconnect()
         self.mw.module_widget.sigCleanupModule.disconnect()
 
+        signal_handler.sigMessageLogged.disconnect(self.handle_log_entry)
+
     def _init_remote_modules_widget(self):
         remote_server = self._qudi_main.remote_server
         # hide remote modules menu action if RemoteModuleServer is not available
@@ -225,13 +229,13 @@ class QudiMainGui(GuiBase):
 
     def handle_log_entry(self, entry):
         """
-        Forward log entry to log widget and show an error popup if it is an error message.
+        Show an error popup if the log entry is error level and above.
 
-        @param dict entry: Log entry
+        @param logging.LogRecord entry: log record as returned from logging module
         """
-        self.mw.log_widget.add_entry(entry)
-        if entry['level'] == 'error' or entry['level'] == 'critical':
-            self.error_dialog.show(entry)
+        print(entry.levelname)
+        if entry.levelname in ('error', 'critical'):
+            self.error_dialog.new_error(entry)
         return
 
     def start_ipython(self):
