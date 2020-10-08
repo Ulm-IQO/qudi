@@ -85,6 +85,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added missing metadata in saved raw data file of PulsedMeasurement module
 * Update hardware module controlling the cryocon temperature regulator
 * Added a hardware file to interface Thorlabs filter wheels via scripts
+* Bug fixes to core: made error messages sticky, respecting dependencies when restarting.
 *
 
 
