@@ -25,7 +25,11 @@ from core.meta import InterfaceMetaclass
 
 
 class SwitchInterface(metaclass=InterfaceMetaclass):
-    """ Methods to control slow (mechaincal) laser switching devices. """
+    """ Methods to control slow (mechanical) laser switching devices.
+
+    Warning: This interface use CamelCase. This is should not be done in future versions. See more info here :
+    documentation/programming_style.md
+    """
 
     @abstract_interface_method
     def getNumberOfSwitches(self):
@@ -49,10 +53,8 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration
-                                   parameter
-          @param str switchState: state ['On', 'Off'] for which to get
-                                  calibration parameter
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
 
           @return str: calibration parameter fir switch and state.
         """
@@ -62,10 +64,8 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
     def setCalibration(self, switchNumber, state, value):
         """ Set calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration
-                                   parameter
-          @param str switchState: state ['On', 'Off'] for which to get
-                                  calibration parameter
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
           @param int value: calibration parameter to be set.
 
           @return bool: True if suceeds, False otherwise
@@ -97,7 +97,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """ Give switching time for switch.
 
           @param int switchNumber: number of switch
-
+s
           @return float: time needed for switch state change
         """
         pass

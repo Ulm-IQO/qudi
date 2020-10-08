@@ -376,6 +376,7 @@ class TripleSinProduct(SamplingBase):
 class Chirp(SamplingBase):
     """
     Object representing a chirp element
+    Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp
     """
     params = OrderedDict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
@@ -413,6 +414,82 @@ class Chirp(SamplingBase):
                         time_array - time_array[0]) / time_diff / 2) + phase_rad)
         return samples_arr
 
+class AllenEberlyChirp(SamplingBase):
+
+    """
+    The Allen-Eberly model involves a sech amplitude shape and a tanh shaped detuning
+    It has very good properties in terms of adiabaticity and is often preferable to the standard
+    Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
+    More information about the Allen-Eberly model can be found in:
+    L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
+    Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
+    """
+    params = OrderedDict()
+    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
+    params['start_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                            'type': float}
+    params['stop_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                           'type': float}
+    params['tau_pulse'] = {'unit': '', 'init': 0.1e-6, 'min': 0.0, 'max': np.inf,
+                           'type': float}
+
+    def __init__(self, amplitude=None, phase=None, start_freq=None, stop_freq=None, tau_pulse=None):
+        if amplitude is None:
+            self.amplitude = self.params['amplitude']['init']
+        else:
+            self.amplitude = amplitude
+        if phase is None:
+            self.phase = self.params['phase']['init']
+        else:
+            self.phase = phase
+        if start_freq is None:
+            self.start_freq = self.params['start_freq']['init']
+        else:
+            self.start_freq = start_freq
+        if stop_freq is None:
+            self.stop_freq = self.params['stop_freq']['init']
+        else:
+            self.stop_freq = stop_freq
+        if tau_pulse is None:
+            self.tau_pulse = self.params['tau_pulse']['init']
+        else:
+            self.tau_pulse = tau_pulse
+        return
+
+    def get_samples(self, time_array):
+        phase_rad = np.deg2rad(self.phase)  # initial phase
+        freq_range_max = self.stop_freq - self.start_freq  # frequency range
+        t_start = time_array[0]  # start time of the pulse
+        pulse_duration = time_array[-1] - time_array[0]  # pulse duration
+        freq_center = (self.stop_freq + self.start_freq) / 2  # central frequency
+        tau_run = self.tau_pulse  # tau to use for the sample generation, tau_pulse = truncation_ratio * pulse_duration
+        # tau_run characterizes the pulse shape, which is sech((t - mu)/tau_run) when mu is the center of the pulse
+        # tau_run also characterizes the detuning shape, which is tanh((t - mu)/tau_run)
+        # tau_run / pulse_duration = truncation ratio should ideally be 0.1 or <0.2. Higher values - worse truncation
+
+        # conversion for AWG to actually output the specified voltage
+        amp_conv = 2 * self.amplitude  # amplitude, corrected from parabola pulse estimation
+
+        # define a sech function as it is not included in the numpy package
+        def sech(current_time):
+            return 1 / np.cosh(current_time)
+
+        # define a function to calculate the Rabi frequency as a function of time
+        def rabi_sech_envelope(current_time):
+            return amp_conv * sech((current_time - t_start - (pulse_duration / 2)) / tau_run)
+
+        # define a function to calculate the phase Phi(t) for the specific pulse parameters
+        def phi_tanh_chirp(current_time):
+            return (2 * np.pi * freq_range_max / 2) * tau_run * np.log(
+                np.cosh((current_time - t_start - (pulse_duration / 2)) / tau_run) *
+                sech(pulse_duration / (2 * tau_run)))
+
+        # calculate the samples array
+        samples_arr = rabi_sech_envelope(time_array) * \
+                      np.cos(phase_rad + 2 * np.pi * freq_center * (time_array - t_start) +
+                             phi_tanh_chirp(time_array))
+        return samples_arr
 
 # FIXME: Not implemented yet!
 # class ImportedSamples(object):
