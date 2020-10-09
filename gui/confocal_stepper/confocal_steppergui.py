@@ -38,73 +38,6 @@ from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from core.util import units
 from qtwidgets.scan_plotwidget import ScanImageItem
 
-
-class CrossROI(pg.ROI):
-    """ Create a Region of interest, which is a zoomable rectangular.
-
-    @param float pos: optional parameter to set the position
-    @param float size: optional parameter to set the size of the roi
-
-    Have a look at:
-    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
-    """
-    sigUserRegionUpdate = QtCore.Signal(object)
-    sigMachineRegionUpdate = QtCore.Signal(object)
-
-    def __init__(self, pos, size, **args):
-        """Create a ROI with a central handle."""
-        self.userDrag = False
-        pg.ROI.__init__(self, pos, size, **args)
-        # That is a relative position of the small box inside the region of
-        # interest, where 0 is the lowest value and 1 is the higherst:
-        center = [0.5, 0.5]
-        # Translate the center to the intersection point of the crosshair.
-        self.addTranslateHandle(center)
-
-        self.sigRegionChangeStarted.connect(self.startUserDrag)
-        self.sigRegionChangeFinished.connect(self.stopUserDrag)
-        self.sigRegionChanged.connect(self.regionUpdateInfo)
-
-    def setPos(self, pos, update=True, finish=False):
-        """Sets the position of the ROI.
-
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-
-        Changed finish from parent class implementation to not disrupt user dragging detection.
-        """
-        super().setPos(pos, update=update, finish=finish)
-
-    def setSize(self, size, update=True, finish=True):
-        """
-        Sets the size of the ROI
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-        """
-        super().setSize(size, update=update, finish=finish)
-
-    def handleMoveStarted(self):
-        """ Handles should always be moved by user."""
-        super().handleMoveStarted()
-        self.userDrag = True
-
-    def startUserDrag(self, roi):
-        """ROI has started being dragged by user."""
-        self.userDrag = True
-
-    def stopUserDrag(self, roi):
-        """ROI has stopped being dragged by user"""
-        self.userDrag = False
-
-    def regionUpdateInfo(self, roi):
-        """When the region is being dragged by the user, emit the corresponding signal."""
-        # Todo: Check
-        if self.userDrag:
-            self.sigUserRegionUpdate.emit(roi)
-        else:
-            self.sigMachineRegionUpdate.emit(roi)
-
-
 class CrossLine(pg.InfiniteLine):
     """ Construct one line for the Crosshair in the plot.
 
@@ -375,37 +308,25 @@ class ConfocalStepperGui(GUIBase):
         step_image_data = self._stepper_logic.image_raw[:, :, 2]
         ini_pos_x_crosshair = len(step_image_data) / 2
         ini_pos_y_crosshair = len(step_image_data) / 2
-        self.roi = CrossROI(
-            [
-                ini_pos_x_crosshair - ini_pos_x_crosshair * 0.1,
-                ini_pos_y_crosshair - ini_pos_y_crosshair * 0.1,
-            ],
-            [ini_pos_y_crosshair * 0.05
-                , ini_pos_y_crosshair * 0.05],
-            pen={'color': "F0F", 'width': 1},
-            removable=True
-        )
 
-        self._mw.step_scan_ViewWidget.addItem(self.roi)
-        self._mw.step_scan_ViewWidget_2.addItem(self.roi)
+        # Create crosshair for xy image:
+        self._roi_size_x = 3
+        self._roi_size_y = 3
+        self._mw.step_scan_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.step_scan_ViewWidget.set_crosshair_min_size_factor(0.02)
+        self._mw.step_scan_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.step_scan_ViewWidget.set_crosshair_size(
+            (self._roi_size_x, self._roi_size_y))
+        # connect the drag event of the crosshair with a change in scanner position:
+        self._mw.step_scan_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi)
 
-        # create horizontal and vertical line as a crosshair in image:
-        self.hline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
-                               angle=0, pen={'color': palette.green, 'width': 1})
-        self.vline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
-                               angle=90, pen={'color': palette.green, 'width': 1})
-
-        # connect the change of a region with the adjustment of the crosshair:
-        self.roi.sigRegionChanged.connect(self.hline.adjust)
-        self.roi.sigRegionChanged.connect(self.vline.adjust)
-        self.roi.sigUserRegionUpdate.connect(self.update_from_roi)
-        # self.roi.sigRegionChangeFinished.connect(self.roi_bounds_check)
-
-        # add the configured crosshair to the Widget
-        self._mw.step_scan_ViewWidget.addItem(self.hline)
-        self._mw.step_scan_ViewWidget.addItem(self.vline)
-        self._mw.step_scan_ViewWidget_2.addItem(self.hline)
-        self._mw.step_scan_ViewWidget_2.addItem(self.vline)
+        self._mw.step_scan_ViewWidget_2.toggle_crosshair(True, movable=True)
+        self._mw.step_scan_ViewWidget_2.set_crosshair_min_size_factor(0.02)
+        self._mw.step_scan_ViewWidget_2.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.step_scan_ViewWidget_2.set_crosshair_size(
+            (self._roi_size_x, self._roi_size_y))
+        # connect the drag event of the crosshair with a change in scanner position:
+        self._mw.step_scan_ViewWidget_2.sigCrosshairDraggedPosChanged.connect(self.update_from_roi)
 
         # Set up and connect count channel combobox
         scan_channels = self._stepper_logic.get_counter_count_channels()
@@ -1745,11 +1666,12 @@ class ConfocalStepperGui(GUIBase):
             self.disable_3D_parameters()
 
     ################## ROI ######################
-    def update_from_roi(self, roi):
+    def update_from_roi(self, pos):
         """The user manually moved the ROI (region of interest), adjust all other GUI elements accordingly
 
         @params object roi: PyQtGraph ROI object
         """
+        pos = (pos.x(), pos.y())
         # Todo: Add option if backward picture is shown
         if self._stepper_logic.map_scan_position and not self._currently_stepping:
             # This is a safety precaution
@@ -1757,21 +1679,32 @@ class ConfocalStepperGui(GUIBase):
             self._feedback_axis["y"].setValue(self._mw.y_position_doubleSpinBox.value())
             self._feedback_axis["z"].setValue(self._mw.z_position_doubleSpinBox.value())
 
-            # Find position of ROI
-            h_step_pos = int(roi.pos()[0])
-            v_step_pos = int(roi.pos()[1])
+            pos = self.roi_bounds_check(pos)
 
-            if h_step_pos < 0:
-                h_step_pos = 0
-            elif h_step_pos > self._stepper_logic._steps_scan_first_line - 1:
-                h_step_pos = self._stepper_logic._steps_scan_first_line - 1
-
-            if v_step_pos < 0:
-                v_step_pos = 0
-            elif v_step_pos > self._stepper_logic._steps_scan_second_line - 1:
-                v_step_pos = self._stepper_logic._steps_scan_first_line - 1
-            h_pos = self._stepper_logic.full_image_smoothed[v_step_pos, h_step_pos, 0]
-            v_pos = self._stepper_logic.full_image_smoothed[v_step_pos, h_step_pos, 1]
+            h_pos = self._stepper_logic.full_image_smoothed[pos[0], pos[1], 0]
+            v_pos = self._stepper_logic.full_image_smoothed[pos[0], pos[1], 1]
 
             self._feedback_axis[self._stepper_logic._first_scan_axis].setValue(h_pos * 1e-3)
             self._feedback_axis[self._stepper_logic._second_scan_axis].setValue(v_pos * 1e-3)
+
+            self._mw.step_scan_ViewWidget.set_crosshair_pos((pos[0], pos[1]))
+            self._mw.step_scan_ViewWidget_2.set_crosshair_pos((pos[0], pos[1]))
+
+    def roi_bounds_check(self, pos):
+        """ Ensures that the chosen positions are inside the current position limit
+        """
+        pos = int(pos[0]), int(pos[1])
+        p0 = pos[0]
+        p1 = pos[1]
+        if pos[0] < 0:
+            p0 = 0
+        elif pos[0] > self._stepper_logic._steps_scan_first_line - 1:
+            p0 = self._stepper_logic._steps_scan_first_line - 1
+
+        if pos[1] < 0:
+            p1 = 0
+        elif pos[1] > self._stepper_logic._steps_scan_second_line - 1:
+            p1 = self._stepper_logic._steps_scan_first_line - 1
+
+
+        return p0, p1
