@@ -31,73 +31,35 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
     documentation/programming_style.md
     """
 
+    @property
     @abstract_interface_method
-    def getNumberOfSwitches(self):
-        """ Gives the number of switches connected to this hardware.
+    def name(self):
+        pass
 
-          @return int: number of swiches on this hardware
-        """
+    @property
+    @abstract_interface_method
+    def states(self):
+        pass
+
+    @states.setter
+    @abstract_interface_method
+    def states(self, value):
+        pass
+
+    @property
+    @abstract_interface_method
+    def names_of_states(self):
+        pass
+
+    @property
+    @abstract_interface_method
+    def number_of_switches(self):
         pass
 
     @abstract_interface_method
-    def getSwitchState(self, switchNumber):
-        """ Gives state of switch.
-
-          @param int switchNumber: number of switch
-
-          @return bool: True if on, False if off, None on error
-        """
+    def get_state(self, number_of_switch):
         pass
 
     @abstract_interface_method
-    def getCalibration(self, switchNumber, state):
-        """ Get calibration parameter for switch.
-
-          @param int switchNumber: number of switch for which to get calibration parameter
-          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
-
-          @return str: calibration parameter fir switch and state.
-        """
-        pass
-
-    @abstract_interface_method
-    def setCalibration(self, switchNumber, state, value):
-        """ Set calibration parameter for switch.
-
-          @param int switchNumber: number of switch for which to get calibration parameter
-          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
-          @param int value: calibration parameter to be set.
-
-          @return bool: True if suceeds, False otherwise
-        """
-        pass
-
-    @abstract_interface_method
-    def switchOn(self, switchNumber):
-        """ Switch on.
-
-          @param int switchNumber: number of switch to be switched
-
-          @return bool: True if suceeds, False otherwise
-        """
-        pass
-
-    @abstract_interface_method
-    def switchOff(self, switchNumber):
-        """ Switch off.
-
-          @param int switchNumber: number of switch to be switched
-
-          @return bool: True if suceeds, False otherwise
-        """
-        pass
-
-    @abstract_interface_method
-    def getSwitchTime(self, switchNumber):
-        """ Give switching time for switch.
-
-          @param int switchNumber: number of switch
-s
-          @return float: time needed for switch state change
-        """
+    def set_state(self, number_of_switch, state):
         pass

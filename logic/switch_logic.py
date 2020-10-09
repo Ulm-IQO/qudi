@@ -20,40 +20,54 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from logic.generic_logic import GenericLogic
-from collections import OrderedDict
+from core.connector import Connector
 
 
 class SwitchLogic(GenericLogic):
     """ Logic module aggregating multiple hardware switches.
     """
+    switch = Connector(interface='SwitchInterface', optional=True)
+    switch0 = Connector(interface='SwitchInterface', optional=True)
+    switch1 = Connector(interface='SwitchInterface', optional=True)
+    switch2 = Connector(interface='SwitchInterface', optional=True)
+    switch3 = Connector(interface='SwitchInterface', optional=True)
+    switch4 = Connector(interface='SwitchInterface', optional=True)
+    switch5 = Connector(interface='SwitchInterface', optional=True)
+    switch6 = Connector(interface='SwitchInterface', optional=True)
+    switch7 = Connector(interface='SwitchInterface', optional=True)
+    switch8 = Connector(interface='SwitchInterface', optional=True)
+    switch9 = Connector(interface='SwitchInterface', optional=True)
 
-    def __init__(self, config, **kwargs):
-        """ Create logic object
-
-          @param dict config: configuration in a dict
-          @param dict kwargs: additional parameters as a dict
-        """
-        super().__init__(config=config, **kwargs)
-
-        # dynamic number of 'in' connectors depending on config
-        if 'connect' in config:
-            for connector in config['connect']:
-                self.connectors[connector] = OrderedDict()
-                self.connectors[connector]['class'] = 'SwitchInterface'
-                self.connectors[connector]['object'] = None
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hw_switches = list()
 
     def on_activate(self):
         """ Prepare logic module for work.
         """
-        self.switches = dict()
-        for connector in self.connectors:
-            hwname = self.get_connector(connector)._name
-            self.switches[hwname] = dict()
-            for i in range(self.get_connector(connector).getNumberOfSwitches()):
-                self.switches[hwname][i] = self.get_connector(connector)
+        if self.switch.is_connected:
+            self._hw_switches.append(self.switch)
+
+        for i in range(10):
+            if getattr(self, f'switch{i:d}').is_connected:
+                self._hw_switches.append(getattr(self, f'switch{i:d}'))
 
     def on_deactivate(self):
         """ Deactivate modeule.
         """
-        self.switches = dict()
+        self._hw_switches = list()
 
+    @property
+    def names_of_states(self):
+        return [switch().names_of_states for switch in self._hw_switches]
+
+    @property
+    def names_of_switches(self):
+        return [switch().name for switch in self._hw_switches]
+
+    @property
+    def states(self):
+        return [switch().states for switch in self._hw_switches]
+
+    def set_state(self, hardware_index, switch_index, state):
+        self._hw_switches[hardware_index]().set_state(switch_index, state)
