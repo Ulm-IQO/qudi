@@ -19,9 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 from core.module import Base
 from interface.switch_interface import SwitchInterface
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
+import numpy as np
 import time
 
 
@@ -32,58 +34,75 @@ class SwitchDummy(Base, SwitchInterface):
 
     switch_dummy:
         module.Class: 'switches.switch_dummy.SwitchDummy'
+        number_of_switches: 3
 
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    _number_of_switches = ConfigOption(name='number_of_switches', default=1, missing='nothing')
+    _names_of_states = ConfigOption(name='names_of_states', default=['On', 'Off'], missing='nothing')
+    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
 
-        self.switchState = [False, False, False]
-        self.switchCalibration = dict()
-        self.switchCalibration['On'] = [0.9, 0.8, 0.88]
-        self.switchCalibration['Off'] = [0.15, 0.3, 0.2]
+    _states = StatusVar(name='states', default=None)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def on_activate(self):
-        pass
+
+        if self._hardware_name is None:
+            self._hardware_name = self._name
+
+        if np.shape(self._names_of_states) == (2,):
+            self._names_of_states = [list(self._names_of_states)] * int(self.number_of_switches)
+        elif np.shape(self._names_of_states) == (int(self.number_of_switches), 2):
+            self._names_of_states = list(self._names_of_states)
+        else:
+            self.log.error(f'names_of_states must either be a list of two names for the states [high, low] '
+                           f'which are applied to all switched or it must be a list '
+                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
+
+        # initialize channels to saved status if requested
+        if self._reset_states:
+            self.states = False
+
+        if self.states is None or len(self.states) != self.number_of_switches:
+            self.states = [False] * int(self.number_of_switches)
 
     def on_deactivate(self):
         pass
 
-    def getNumberOfSwitches(self):
-        """ Gives the number of switches connected to this hardware.
-        """
-        return len(self.switchState)
+    @property
+    def name(self):
+        return self._hardware_name
 
-    def getSwitchState(self, switchNumber):
-        """
-        """
-        return self.switchState[switchNumber]
+    @property
+    def states(self):
+        return self._states.copy()
 
-    def getCalibration(self, switchNumber, state):
-        """
-        """
-        return self.switchCalibration[state][switchNumber]
+    @states.setter
+    def states(self, value):
+        print(np.shape(value))
+        pass
 
-    def setCalibration(self, switchNumber, state, value):
-        """
-        """
-        self.switchCalibration[state][switchNumber] = value
+    @property
+    def names_of_states(self):
+        return self._names_of_states.copy()
 
-    def switchOn(self, switchNumber):
-        """
-        """
-        self.switchState[switchNumber] = True
-        time.sleep(self.getSwitchTime(switchNumber))
-        self.log.info('{0} switch {1}: On'.format(self._name, switchNumber))
-        return self.switchState[switchNumber]
+    @property
+    def number_of_switches(self):
+        return self._number_of_switches
 
-    def switchOff(self, switchNumber):
-        """
-        """
-        self.switchState[switchNumber] = False
-        time.sleep(self.getSwitchTime(switchNumber))
-        self.log.info('{0} switch {1}: Off'.format(self._name, switchNumber))
-        return self.switchState[switchNumber]
+    def get_state(self, index_of_switch):
+        if 0 <= index_of_switch < self.number_of_switches:
+            return self._states[int(index_of_switch)]
+        self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
+        return False
 
-    def getSwitchTime(self, switchNumber):
-        return 0.5
+    def set_state(self, index_of_switch, state):
+        print(self._hardware_name, index_of_switch, state)
+        if 0 <= index_of_switch < self.number_of_switches:
+            self._states[int(index_of_switch)] = bool(state)
+        else:
+            self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
+        return self._states[int(index_of_switch)]
