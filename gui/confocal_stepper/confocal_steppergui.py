@@ -347,6 +347,7 @@ class ConfocalStepperGui(GUIBase):
         self._currently_stepping = False
         # Get the image for the display from the logic.
         self.step_image = pg.ImageItem(image=self._stepper_logic.image_raw[:, :, 2], axisOrder='row-major')
+        self.step_image_2 = pg.ImageItem(image=self._stepper_logic.image_raw[:, :, 2], axisOrder='row-major')
         # Todo: Add option to see data from other counter later
 
         # set up scan line plot
@@ -357,12 +358,15 @@ class ConfocalStepperGui(GUIBase):
         self.step_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
         # self._mw.scanLineGraphicsView.addItem(self.step_line_plot)
 
-        # Add the display item  ViewWidget, which was defined in the UI file:
-        self._mw.ViewWidget.addItem(self.step_image)
+        # Add the display item  step_scan_ViewWidget(s), which was defined in the UI file:
+        self._mw.step_scan_ViewWidget.addItem(self.step_image)
+        self._mw.step_scan_ViewWidget_2.addItem(self.step_image_2)
 
         # Label the axes:
-        self._mw.ViewWidget.setLabel('bottom', units='Steps')
-        self._mw.ViewWidget.setLabel('left', units='Steps')
+        self._mw.step_scan_ViewWidget.setLabel('bottom', units='Steps')
+        self._mw.step_scan_ViewWidget.setLabel('left', units='Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('bottom', units='Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('left', units='Steps')
 
         # Create Region of Interest for xy image and add to Image Widget:
         # Get the image for the display from the logic
@@ -380,7 +384,8 @@ class ConfocalStepperGui(GUIBase):
             removable=True
         )
 
-        self._mw.ViewWidget.addItem(self.roi)
+        self._mw.step_scan_ViewWidget.addItem(self.roi)
+        self._mw.step_scan_ViewWidget_2.addItem(self.roi)
 
         # create horizontal and vertical line as a crosshair in image:
         self.hline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
@@ -395,21 +400,41 @@ class ConfocalStepperGui(GUIBase):
         # self.roi.sigRegionChangeFinished.connect(self.roi_bounds_check)
 
         # add the configured crosshair to the Widget
-        self._mw.ViewWidget.addItem(self.hline)
-        self._mw.ViewWidget.addItem(self.vline)
+        self._mw.step_scan_ViewWidget.addItem(self.hline)
+        self._mw.step_scan_ViewWidget.addItem(self.vline)
+        self._mw.step_scan_ViewWidget_2.addItem(self.hline)
+        self._mw.step_scan_ViewWidget_2.addItem(self.vline)
 
         # Set up and connect count channel combobox
         scan_channels = self._stepper_logic.get_counter_count_channels()
         for n, ch in enumerate(scan_channels):
             self._mw.count_channel_ComboBox.addItem(str(ch), n)
+            self._mw.count_channel_ComboBox_2.addItem(str(ch), n)
 
         self._mw.count_channel_ComboBox.activated.connect(self.update_count_channel)
         self.count_channel = int(self._mw.count_channel_ComboBox.currentData())
+        self._mw.count_channel_ComboBox_2.activated.connect(self.update_count_channel_2)
+        self.count_channel_2 = int(self._mw.count_channel_ComboBox_2.currentData())
 
         self._mw.count_direction_ComboBox.addItem("Forward", True)
         self._mw.count_direction_ComboBox.addItem("Backward", False)
         self._mw.count_direction_ComboBox.activated.connect(self.update_count_direction)
         self.count_direction = bool(self._mw.count_direction_ComboBox.currentIndex())
+        self._mw.count_direction_ComboBox_2.addItem("Forward", True)
+        self._mw.count_direction_ComboBox_2.addItem("Backward", False)
+        self._mw.count_direction_ComboBox_2.activated.connect(self.update_count_direction_2)
+        self.count_direction_2 = bool(self._mw.count_direction_ComboBox_2.currentIndex())
+
+        self._mw.data_display_type_ComboBox.activated.connect(self.update_data_display_type)
+        self._mw.data_display_type_ComboBox.addItem("Average", True)
+        self._mw.data_display_type_ComboBox.addItem("Extremum", False)
+        self._mw.data_display_type_ComboBox.addItem("Median Extremum Difference",False)
+        self._mw.data_display_type_ComboBox.addItem("Laser Corrected", False)
+        self._mw.data_display_type_ComboBox_2.activated.connect(self.update_data_display_type_2)
+        self._mw.data_display_type_ComboBox_2.addItem("Average", True)
+        self._mw.data_display_type_ComboBox_2.addItem("Extremum", False)
+        self._mw.data_display_type_ComboBox_2.addItem("Median Extremum Difference",False)
+        self._mw.data_display_type_ComboBox_2.addItem("Laser Corrected", False)
 
         #################################################################
         #           Connect the colorbar and their actions              #
@@ -419,31 +444,48 @@ class ConfocalStepperGui(GUIBase):
         self.my_colors = ColorScaleInferno()
 
         self.step_image.setLookupTable(self.my_colors.lut)
+        self.step_image_2.setLookupTable(self.my_colors.lut)
+
 
         # Create colorbars and add them at the desired place in the GUI. Add
         # also units to the colorbar.
 
         self.cb = ColorBar(self.my_colors.cmap_normed, width=50, cb_min=0, cb_max=100)
-        self._mw.cb_ViewWidget.addItem(self.cb)
-        self._mw.cb_ViewWidget.hideAxis('bottom')
-        self._mw.cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
-        self._mw.cb_ViewWidget.setMouseEnabled(x=False, y=False)
+        self._mw.step_scan_cb_ViewWidget.addItem(self.cb)
+        self._mw.step_scan_cb_ViewWidget.hideAxis('bottom')
+        self._mw.step_scan_cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
+        self._mw.step_scan_cb_ViewWidget.setMouseEnabled(x=False, y=False)
+
+        self.cb_2 = ColorBar(self.my_colors.cmap_normed, width=50, cb_min=0, cb_max=100)
+        self._mw.step_scan_cb_ViewWidget_2.addItem(self.cb_2)
+        self._mw.step_scan_cb_ViewWidget_2.hideAxis('bottom')
+        self._mw.step_scan_cb_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
+        self._mw.step_scan_cb_ViewWidget_2.setMouseEnabled(x=False, y=False)
 
         self._mw.sigPressKeyBoard.connect(self.keyPressEvent)
         # Connect the emitted signal of an image change from the logic with
         # a refresh of the GUI picture:
         self._stepper_logic.signal_image_updated.connect(self.refresh_image)
         self._stepper_logic.signal_image_updated.connect(self.refresh_scan_line)
+
+        #TODO: Test this, implement this
+
         # self._stepper_logic.sigImageInitialized.connect(self.adjust_window)
 
         # Connect the buttons and inputs for the xy colorbar
         self._mw.cb_manual_RadioButton.clicked.connect(self.update_cb_range)
         self._mw.cb_centiles_RadioButton.clicked.connect(self.update_cb_range)
+        self._mw.cb_manual_RadioButton_2.clicked.connect(self.update_cb_range)
+        self._mw.cb_centiles_RadioButton_2.clicked.connect(self.update_cb_range)
 
         self._mw.cb_min_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_manual)
         self._mw.cb_max_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_manual)
         self._mw.cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_centiles)
         self._mw.cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_centiles)
+        self._mw.cb_min_DoubleSpinBox_2.valueChanged.connect(self.shortcut_to_cb_manual_2)
+        self._mw.cb_max_DoubleSpinBox_2.valueChanged.connect(self.shortcut_to_cb_manual_2)
+        self._mw.cb_low_percentile_DoubleSpinBox_2.valueChanged.connect(self.shortcut_to_cb_centiles_2)
+        self._mw.cb_high_percentile_DoubleSpinBox_2.valueChanged.connect(self.shortcut_to_cb_centiles_2)
 
     def init_position_feedback_UI(self):
         """
@@ -759,8 +801,10 @@ class ConfocalStepperGui(GUIBase):
         else:
             self._mw.step_direction_comboBox.setCurrentIndex(axes)
         # Label the axes:
-        self._mw.ViewWidget.setLabel('bottom', units=current_axes[0] + ' Steps')
-        self._mw.ViewWidget.setLabel('left', units=current_axes[1] + ' Steps')
+        self._mw.step_scan_ViewWidget.setLabel('bottom', units=current_axes[0] + ' Steps')
+        self._mw.step_scan_ViewWidget.setLabel('left', units=current_axes[1] + ' Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('bottom', units=current_axes[0] + ' Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('left', units=current_axes[1] + ' Steps')
 
     ################## Step Scan ##################
     def get_cb_range(self):
@@ -787,7 +831,28 @@ class ConfocalStepperGui(GUIBase):
 
         cb_range = [cb_min, cb_max]
 
-        return cb_range
+        #do the same for the color bar range of the second image
+        if self._mw.cb_manual_RadioButton_2.isChecked() or np.max(
+                self.step_image_2.image) == 0.0:
+            cb_min_2 = self._mw.cb_min_DoubleSpinBox_2.value()
+            cb_max_2 = self._mw.cb_max_DoubleSpinBox_2.value()
+
+        # Otherwise, calculate cb range from percentiles.
+        else:
+            # Exclude any zeros (which are typically due to unfinished scan)
+            image_nonzero = self.step_image_2.image[np.nonzero(self.step_image_2.image)]
+
+            # Read centile range
+            low_centile = self._mw.cb_low_percentile_DoubleSpinBox_2.value()
+            high_centile = self._mw.cb_high_percentile_DoubleSpinBox_2.value()
+
+            cb_min_2 = np.percentile(image_nonzero, low_centile)
+            cb_max_2 = np.percentile(image_nonzero, high_centile)
+
+        cb_range = [cb_min, cb_max]
+        cb_range_2 = [cb_min_2, cb_max_2]
+
+        return cb_range, cb_range_2
 
     def refresh_colorbar(self):
         """ Adjust the image colorbar.
@@ -796,8 +861,10 @@ class ConfocalStepperGui(GUIBase):
         and highest value in the image or predefined ranges. Note that you can
         invert the colorbar if the lower border is bigger then the higher one.
         """
-        cb_range = self.get_cb_range()
+        cb_range, cb_range_2 = self.get_cb_range()
         self.cb.refresh_colorbar(cb_range[0], cb_range[1])
+        self.cb_2.refresh_colorbar(cb_range_2[0], cb_range_2[1])
+
 
     ################## Hardware Parameters ##################
     def measure_stepper_hardware_values(self):
@@ -1005,17 +1072,11 @@ class ConfocalStepperGui(GUIBase):
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
-        # For now they will just be enabled by default
 
-        # if self._scanning_logic._zscan_continuable is True:
-        #    self._mw.action_scan_depth_resume.setEnabled(True)
+        # if self._scanning_logic._scan_continuable is True:
+        #    self._mw.action_scan_resume.setEnabled(True)
         # else:
-        #    self._mw.action_scan_depth_resume.setEnabled(False)
-
-        # if self._scanning_logic._xyscan_continuable is True:
-        #    self._mw.action_scan_xy_resume.setEnabled(True)
-        # else:
-        #    self._mw.action_scan_xy_resume.setEnabled(False)
+        #    self._mw.action_scan_resume.setEnabled(False)
 
         # Disable Position feedback buttons which can't be used during step scan
         self._mw.get_all_positions_pushButton.setEnabled(True)
@@ -1065,8 +1126,10 @@ class ConfocalStepperGui(GUIBase):
         # update axes (both for position feedback and plot display)
         self._h_axis = self._stepper_logic._scan_axes[0]
         self._v_axis = self._stepper_logic._scan_axes[1]
-        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
-        self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        self._mw.step_scan_ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.step_scan_ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('left', units=self._v_axis + 'Steps')
 
         self.disable_step_actions()
         self.update_stepper_hardware_values()
@@ -1084,8 +1147,10 @@ class ConfocalStepperGui(GUIBase):
         # update axes (both for position feedback and plot display)
         self._h_axis = self._stepper_logic._scan_axes[0]
         self._v_axis = self._stepper_logic._scan_axes[1]
-        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
-        self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        self._mw.step_scan_ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.step_scan_ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('left', units=self._v_axis + 'Steps')
 
         self.disable_step_actions()
         self.disable_3D_parameters()
@@ -1098,8 +1163,11 @@ class ConfocalStepperGui(GUIBase):
         # update axes (both for position feedback and plot display)
         self._h_axis = self._stepper_logic._scan_axes[0]
         self._v_axis = self._stepper_logic._scan_axes[1]
-        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
-        self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        self._mw.step_scan_ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.step_scan_ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.step_scan_ViewWidget_2.setLabel('left', units=self._v_axis + 'Steps')
+
         # as the program can only do one scan direction for the Finesse scan set fast scan state
         self._mw._fast_scan_checkBox.setCheckState(True)
         self.update_fast_scan_option()
@@ -1161,9 +1229,23 @@ class ConfocalStepperGui(GUIBase):
         self.count_channel = int(self._mw.count_channel_ComboBox.itemData(index,
                                                                           QtCore.Qt.UserRole))
         if self.count_channel == 1:
-            self._mw.cb_ViewWidget.setLabel('left', 'Volt', units='V')
+            self._mw.step_scan_cb_ViewWidget.setLabel('left', 'Volt', units='V')
         else:
-            self._mw.cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
+            self._mw.step_scan_cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
+
+        self.refresh_image()
+
+    def update_count_channel_2(self, index):
+        """ The displayed channel for the image was changed, refresh the displayed image.
+
+            @param index int: index of selected channel item in combo box
+        """
+        self.count_channel_2 = int(self._mw.count_channel_ComboBox_2.itemData(index,
+                                                                          QtCore.Qt.UserRole))
+        if self.count_channel == 1:
+            self._mw.step_scan_cb_ViewWidget_2.setLabel('left', 'Volt', units='V')
+        else:
+            self._mw.step_scan_cb_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         self.refresh_image()
 
@@ -1176,14 +1258,43 @@ class ConfocalStepperGui(GUIBase):
                                                                                QtCore.Qt.UserRole))
         self.refresh_image()
 
+    def update_count_direction_2(self, index):
+        """ The displayed direction for the image was changed, refresh the displayed image.
+
+            @param index int: index of selected channel item in combo box
+        """
+        self.count_direction_2 = bool(self._mw.count_direction_ComboBox_2.itemData(index,
+                                                                               QtCore.Qt.UserRole))
+        self.refresh_image()
+
+    def update_data_display_type(self, index):
+        display_type = int(self._mw.data_display_type_ComboBox.itemData(index, QtCore.Qt.UserRole))
+        self.log.warning("This tool isnt implemented yet")
+        pass
+
+    def update_data_display_type_2(self, index):
+        display_type = int(self._mw.data_display_type_ComboBox_2.itemData(index, QtCore.Qt.UserRole))
+        self.log.warning("This tool isnt implemented yet")
+        pass
+
     def shortcut_to_cb_manual(self):
         """The absolute counts range for the colour bar was edited, update."""
         self._mw.cb_manual_RadioButton.setChecked(True)
         self.update_cb_range()
 
+    def shortcut_to_cb_manual_2(self):
+        """The absolute counts range for the colour bar was edited, update."""
+        self._mw.cb_manual_RadioButton_2.setChecked(True)
+        self.update_cb_range()
+
     def shortcut_to_cb_centiles(self):
         """The centiles range for the colour bar was edited, update."""
         self._mw.cb_centiles_RadioButton.setChecked(True)
+        self.update_cb_range()
+
+    def shortcut_to_cb_centiles_2(self):
+        """The centiles range for the colour bar was edited, update."""
+        self._mw.cb_centiles_RadioButton_2.setChecked(True)
         self.update_cb_range()
 
     def update_cb_range(self):
@@ -1197,6 +1308,7 @@ class ConfocalStepperGui(GUIBase):
         Every time the stepper is stepping a line the image is rebuild and updated in the GUI.
         """
         self.step_image.getViewBox().updateAutoRange()
+        self.step_image_2.getViewBox().updateAutoRange()
         # Todo: this needs to have a check for the stepping direction and the correct data has to
         #  be chosen
 
@@ -1205,14 +1317,17 @@ class ConfocalStepperGui(GUIBase):
         else:
             step_image_data = self._stepper_logic.image_raw_back[:, :, 2 + self.count_channel]
 
-        # else:
-        #    step_image_data = self._stepper_logic.image_raw_back[:, :, 2]
-        cb_range = self.get_cb_range()
+        if self.count_direction_2:
+            step_image_data_2 = self._stepper_logic.image_raw[:, :, 2 + self.count_channel_2]
+        else:
+            step_image_data_2 = self._stepper_logic.image_raw_back[:, :, 2 + self.count_channel_2]
+
+        cb_range, cb_range_2 = self.get_cb_range()
 
         # Now update image with new color scale, and update colorbar
         self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
-        cb_range = self.get_cb_range()
-        self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
+        cb_range, cb_range_2 = self.get_cb_range()
+        self.step_image_2.setImage(image=step_image_data_2, levels=(cb_range_2[0], cb_range_2[1]))
         self.refresh_colorbar()
 
         # Unlock state widget if scan is finished
@@ -1228,6 +1343,7 @@ class ConfocalStepperGui(GUIBase):
         if fast_scan:
             self.update_count_direction(0)
         self._mw.count_direction_ComboBox.setDisabled(fast_scan)
+        self._mw.count_direction_ComboBox_2.setDisabled(fast_scan)
 
     def update_from_key(self, x=None, y=None, z=None):
         """The user pressed a key to move the crosshair, adjust all GUI elements.
@@ -1451,7 +1567,7 @@ class ConfocalStepperGui(GUIBase):
 
     def save_step_scan_data(self):
         """ Run the save routine from the logic to save the confocal stepper data."""
-        cb_range = self.get_cb_range()
+        cb_range, cb_range_2 = self.get_cb_range()
 
         # Percentile range is None, unless the percentile scaling is selected in GUI.
         pcile_range = None

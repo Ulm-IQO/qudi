@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>975</width>
-    <height>979</height>
+    <width>1391</width>
+    <height>1897</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -27,8 +27,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>975</width>
-     <height>21</height>
+     <width>1391</width>
+     <height>36</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -973,10 +973,16 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="step_scan_dockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="minimumSize">
     <size>
-     <width>201</width>
-     <height>440</height>
+     <width>292</width>
+     <height>612</height>
     </size>
    </property>
    <property name="floating">
@@ -986,7 +992,7 @@
     <string>Step Scan</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
     <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -995,7 +1001,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0">
          <item>
-          <widget class="ScanPlotWidget" name="ViewWidget">
+          <widget class="ScanPlotWidget" name="step_scan_ViewWidget">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>
@@ -1011,6 +1017,9 @@
            </item>
            <item>
             <widget class="QComboBox" name="count_direction_ComboBox"/>
+           </item>
+           <item>
+            <widget class="QComboBox" name="data_display_type_ComboBox"/>
            </item>
            <item>
             <widget class="ScienDSpinBox" name="cb_max_DoubleSpinBox">
@@ -1078,7 +1087,7 @@
             </widget>
            </item>
            <item>
-            <widget class="PlotWidget" name="cb_ViewWidget">
+            <widget class="PlotWidget" name="scb_ViewWidget">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
                <horstretch>0</horstretch>
@@ -1715,7 +1724,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>632</width>
+     <width>859</width>
      <height>170</height>
     </size>
    </property>
@@ -1729,7 +1738,7 @@
     <string>Hardware Parameters</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_7">
     <property name="sizePolicy">
@@ -2311,7 +2320,7 @@
     <string>Position Feedback</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>2</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_10">
     <layout class="QGridLayout" name="gridLayout_4">
@@ -3114,6 +3123,223 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="step_scan_dockWidget_2">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string extracomment="here you can display other things from the same step scan again, eg. a different measurement channel">Step Scan 2nd View</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <widget class="QWidget" name="horizontalLayoutWidget">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>19</y>
+       <width>661</width>
+       <height>543</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="ScanPlotWidget" name="step_scan_ViewWidget_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QComboBox" name="count_channel_ComboBox_2"/>
+        </item>
+        <item>
+         <widget class="QComboBox" name="count_direction_ComboBox_2"/>
+        </item>
+        <item>
+         <widget class="QComboBox" name="data_display_type_ComboBox_2"/>
+        </item>
+        <item>
+         <widget class="ScienDSpinBox" name="cb_max_DoubleSpinBox_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="mouseTracking">
+           <bool>true</bool>
+          </property>
+          <property name="acceptDrops">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="accelerated">
+           <bool>true</bool>
+          </property>
+          <property name="suffix">
+           <string>c/s</string>
+          </property>
+          <property name="minimum">
+           <double>-1000000000.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>1000000000.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>100000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="ScienDSpinBox" name="cb_high_percentile_DoubleSpinBox_2">
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="minimum">
+           <double>0.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>100.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="PlotWidget" name="step_scan_cb_ViewWidget_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="ScienDSpinBox" name="cb_low_percentile_DoubleSpinBox_2">
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="minimum">
+           <double>0.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>0.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="ScienDSpinBox" name="cb_min_DoubleSpinBox_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="mouseTracking">
+           <bool>true</bool>
+          </property>
+          <property name="acceptDrops">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="accelerated">
+           <bool>true</bool>
+          </property>
+          <property name="suffix">
+           <string>c/s</string>
+          </property>
+          <property name="minimum">
+           <double>-1000000000.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>10000000.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>1000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="cb_centiles_RadioButton_2">
+          <property name="text">
+           <string>Percentiles</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="cb_manual_RadioButton_2">
+          <property name="text">
+           <string>Manual</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+  </widget>
   <action name="actionSave_Step_Scan">
    <property name="icon">
     <iconset>
@@ -3542,12 +3768,12 @@
   <tabstop>count_direction_ComboBox</tabstop>
   <tabstop>cb_max_DoubleSpinBox</tabstop>
   <tabstop>cb_high_percentile_DoubleSpinBox</tabstop>
-  <tabstop>cb_ViewWidget</tabstop>
+  <tabstop>scb_ViewWidget</tabstop>
   <tabstop>cb_low_percentile_DoubleSpinBox</tabstop>
   <tabstop>cb_min_DoubleSpinBox</tabstop>
   <tabstop>cb_centiles_RadioButton</tabstop>
   <tabstop>cb_manual_RadioButton</tabstop>
-  <tabstop>ViewWidget</tabstop>
+  <tabstop>step_scan_ViewWidget</tabstop>
   <tabstop>tilt_set_01_pushButton</tabstop>
   <tabstop>tilt_01_x_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_01_y_pos_doubleSpinBox</tabstop>
