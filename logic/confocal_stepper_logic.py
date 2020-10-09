@@ -3036,7 +3036,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo:readout scan axis. for now it assumes they are the same axis as before.
         # Todo: update voltage ranges for voltage conversion from info file, so far voltage conversion will be done
         #  using current voltage ranges
 
@@ -3109,6 +3108,26 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         else:
             catch_error = self._load_2D_data(data_dic, dat_shape)
 
+        if catch_error == 0:
+            # set correct scan axes
+            info_path = "\\".join(filepath.split("\\")[:-1])
+            data_info_file = None
+            for element in os.listdir(info_path):
+                if fnmatch.fnmatch(element, "*_parameters.dat"):
+                    data_info_file = element
+                    break
+            if data_info_file is not None:
+                with open(info_path + "\\" + data_info_file) as file:
+                    data_infos = file.readlines()
+
+                for element in data_infos:
+                    if fnmatch.fnmatch(element, "#First Axis:*"):
+                        self._first_scan_axis = element.split(" ")[-1][0]
+                    if fnmatch.fnmatch(element, "#Second Axis:*"):
+                        self._second_scan_axis = element.split(" ")[-1][0]
+            else:
+                self.log.warning("the data info file is missing, therefore the axis can not be set correctly!")
+
         if catch_error == -1:
             self._fast_scan, self.map_scan_position, self._ai_scanner, self._steps_scan_first_line, \
             self._steps_scan_second_line, self._ramp_length = old_parameters
@@ -3121,7 +3140,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         self.initialize_image(get_axes=False)
         self.update_image_data()
-        self._step_counter  = self._steps_scan_second_line
+        self._step_counter = self._steps_scan_second_line
         self.convert_voltage_to_position_for_image()
         self.smooth_out_position_data()
         self.signal_image_updated.emit()
@@ -3194,7 +3213,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.log.debug(np.shape(self._scan_pos_voltages))
         try:
             for key, element in data_dic.items():
-                for line in range(shape_data[0]):
+                for line in range(self._steps_scan_second_line):
                     if key == "APD":
                         self._ai_counter_voltages[line] = np.mean(np.load(filepath + data_dic[key][line]), 1)
                     elif key == "APDB":

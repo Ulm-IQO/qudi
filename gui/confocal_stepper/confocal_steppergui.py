@@ -239,6 +239,7 @@ class ConfocalStepperGui(GUIBase):
         self._lab= ConfocalStepperLabBookWindow(self._stepper_logic)
         self._mw.action_show_labbook.triggered.connect(self.show_labbook)
 
+
         ###################################################################
         #               Configuring the dock widgets                      #
         ###################################################################
@@ -272,6 +273,7 @@ class ConfocalStepperGui(GUIBase):
         # with the methods:
         self._mw.action_Settings.triggered.connect(self.menu_settings)
         self._mw.actionSave_Step_Scan.triggered.connect(self.save_step_scan_data)
+        self._mw.action_load_data.triggered.connect(self.load_data)
 
         #################################################################
         #                           Actions                             #
@@ -1179,6 +1181,24 @@ class ConfocalStepperGui(GUIBase):
 
     def show_labbook(self):
         self._lab.show()
+
+    def load_data(self):
+        """Method for when the File -> Load Data action is clicked"""
+        fname = QtWidgets.QFileDialog.getOpenFileName(self, 'Open data folder', QtWidgets.QFileDialog.ShowDirsOnly)
+        self.log.info("the directory chosen is: %s",fname)
+        dir_paths = fname.split("\\")
+        if dir_paths[-2]=="ConfocalStepper_3D":
+            data_type = "3D"
+        elif dir_paths[-2] ==  "ConfocalStepper_finesse":
+            data_type = "Finesse"
+        elif dir_paths[-2] == "ConfocalStepper":
+            data_type= "2D"
+        else:
+            self.log.warning("The chosen dir path '%s' does not contain usable data", fname)
+            return -1
+
+        self._stepper_logic.signal_load_data(fname, data_type)
+
 
     def menu_settings(self):
         """ This method opens the settings menu. """

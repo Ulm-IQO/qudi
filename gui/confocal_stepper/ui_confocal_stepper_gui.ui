@@ -38,6 +38,8 @@
     <addaction name="actionSave_Step_Scan"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
+    <addaction name="action_load_data"/>
+    <addaction name="separator"/>
     <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menu_Options">
@@ -3714,6 +3716,11 @@
   <action name="action_show_labbook">
    <property name="text">
     <string>Show Labbook</string>
+   </property>
+  </action>
+  <action name="action_load_data">
+   <property name="text">
+    <string>Load Data</string>
    </property>
   </action>
  </widget>
