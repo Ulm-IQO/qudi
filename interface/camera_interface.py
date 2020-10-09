@@ -70,6 +70,24 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def binning_available(self):
+        """
+        Given the current state of the camera (selected settings ) is
+        hardware wise binning possible.
+        @return bool avail: True if yes False if No
+        """
+        pass
+
+    @abstract_interface_method
+    def crop_available(self):
+        """
+        Given the current state of the camera (selected settings) is
+        hardware wise crop possible
+        @return bool avail: True if yes False if No
+        """
+        pass
+
+    @abstract_interface_method
     def start_single_acquisition(self):
         """ Start a single acquisition
 
@@ -191,6 +209,67 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def get_bit_depth(self):
+        """
+        Return the current
+        @return:
+        """
+        pass
+
+    @abstract_interface_method
+    def set_ad_channel(self, channel):
+        """
+        Depending if the camera has different ad converters select one.
+        @param int channel: New channel to be used
+        @return int error code: (0: OK, -1: error)
+        """
+        pass
+
+    @abstract_interface_method
+    def get_ad_channel(self):
+        """
+        Return the currently used ad channel
+        @return int ad_channel: Number used to identify channel
+        """
+        pass
+
+    @abstract_interface_method
+    def get_quantum_efficiency(self, wavelength):
+        """
+        Return the quantum efficiency at a given wavelength.
+        @param float wavelength: Wavelength of light falling on the sensor.
+        @return: float quantum efficiency between 0 and 1
+        """
+        pass
+
+    @abstract_interface_method
+    def set_operating_wavelength(self, wavelength):
+        """
+        Let the camera know which wavelength you are operating at.
+        @param float wavelength: Wavelength of light falling on the sensor.
+        @return int error code: (0:OK, -1:error)
+        """
+        pass
+
+    @abstract_interface_method
+    def set_count_convert_mode(self, mode):
+        """
+        Some cameras can be set up to show different outputs.
+        @param string mode: i.e. 'Counts', 'Electrons' or 'Photons'
+        @return int error code: (0:OK, -1:error)
+        """
+        pass
+
+    @abstract_interface_method
+    def get_count_convert_mode(self):
+        """
+        Get the currently set count convert mode.
+        The GUI will make use of this to display what is recorded.
+        @return string mode: i.e. 'Counts', 'Electrons' or 'Photons'
+        """
+        pass
+
+    @abstract_interface_method
     def get_available_readout_modes(self):
         """
         Readout modes on the device
@@ -199,7 +278,24 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_readout_mode(self, readout_mode):
+    def set_read_mode(self, read_mode):
+        """
+        Set the read mode of the device (i.e. Image, Full Vertical Binning, Single-Track)
+        @param str read_mode: Read mode to be set
+        @return:
+        """
+        pass
+
+    @abstract_interface_method
+    def get_read_mode(self):
+        """
+        Get the read mode of the device (i.e. Image, Full Vertical Binning, Single-Track)
+        @return:
+        """
+        pass
+
+    @abstract_interface_method
+    def set_acquisition_mode(self, readout_mode):
         """
         Set the readout mode of the camera ('single acquisition', 'kinetic series')
         @param str readout_mode: readout mode to be set
@@ -208,10 +304,10 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_readout_mode(self):
+    def get_acquisition_mode(self):
         """
-        Set the readout mode of the camera
-        @return: Success ?
+        Get the acquisition mode of the camera
+        @return: string acquisition mode of the camera
         """
         pass
 
