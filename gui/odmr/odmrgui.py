@@ -119,6 +119,8 @@ class ODMRGui(GUIBase):
         constraints = self._odmr_logic.get_hw_constraints()
 
         # Adjust range of scientific spinboxes above what is possible in Qt Designer
+        self._mw.cw_frequency_DoubleSpinBox.setMaximum(constraints.max_frequency)
+        self._mw.cw_frequency_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.cw_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.cw_power_DoubleSpinBox.setMinimum(constraints.min_power)
         self._mw.sweep_power_DoubleSpinBox.setMaximum(constraints.max_power)
