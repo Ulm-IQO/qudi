@@ -112,7 +112,7 @@ class LogTableModel(QtCore.QAbstractTableModel):
         # Compose message to display
         message = record.message if hasattr(record, 'message') else record.msg
         if record.exc_info is not None:
-            message += '\n{0}'.format(traceback.format_exception(*record.exc_info)[-1][:-1])
+            message += '\n\n{0}'.format(traceback.format_exception(*record.exc_info)[-1][:-1])
             tb = '\n'.join(traceback.format_exception(*record.exc_info)[:-1])
             if tb:
                 message += '\n{0}'.format(tb)
