@@ -79,6 +79,7 @@ class ErrorDialog(QtWidgets.QDialog):
             QtCore.Qt.TextSelectableByMouse | QtCore.Qt.LinksAccessibleByMouse
         )
         self.msg_label.setWordWrap(True)
+        self.msg_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         self.msg_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                      QtWidgets.QSizePolicy.Expanding)
         scroll_area.setWidget(self.msg_label)
