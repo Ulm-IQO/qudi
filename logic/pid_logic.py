@@ -31,8 +31,17 @@ from qtpy import QtCore
 
 
 class PIDLogic(GenericLogic):
-    """
-    Control a process via software PID.
+    """ Logic module to monitor and control a PID process
+
+    Example config:
+
+    pidlogic:
+        module.Class: 'pid_logic.PIDLogic'
+        timestep: 0.1
+        connect:
+            controller: 'softpid'
+            savelogic: 'savelogic'
+
     """
 
     # declare connectors
