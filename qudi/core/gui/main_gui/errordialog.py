@@ -115,13 +115,12 @@ class ErrorDialog(QtWidgets.QDialog):
         @param logging.LogRecord data: log record as returned from logging module
         """
         with self._thread_lock:
-            if data.levelname in self._stylesheet_map:
-                self._error_queue.append(data)
-                if self.isVisible():
-                    self._update_next_button()
-                else:
-                    self.setGeometry(*self._default_size)
-                    self.show_next_error()
+            self._error_queue.append(data)
+            if self.isVisible():
+                self._update_next_button()
+            else:
+                self.setGeometry(*self._default_size)
+                self.show_next_error()
 
     @QtCore.Slot()
     def show_next_error(self):
