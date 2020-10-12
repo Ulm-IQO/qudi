@@ -233,7 +233,6 @@ class QudiMainGui(GuiBase):
 
         @param logging.LogRecord entry: log record as returned from logging module
         """
-        print(entry.levelname)
         if entry.levelname in ('error', 'critical'):
             self.error_dialog.new_error(entry)
         return
