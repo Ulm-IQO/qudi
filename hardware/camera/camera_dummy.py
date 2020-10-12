@@ -90,6 +90,27 @@ class CameraDummy(Base, CameraInterface):
             self._live = True
             self._acquiring = False
 
+    def get_ready_state(self):
+        """ Is the camera ready for an acquisition ?
+
+        @return bool: ready ?
+        """
+        return not (self._live or self._acquiring)
+
+    def binning_available(self):
+        """
+
+        @return:
+        """
+        return False
+
+    def crop_available(self):
+        """
+
+        @return:
+        """
+        return False
+
     def start_single_acquisition(self):
         """ Start a single acquisition
 
@@ -111,7 +132,6 @@ class CameraDummy(Base, CameraInterface):
         self._live = False
         self._acquiring = False
 
-
     def get_acquired_data(self):
         """ Return an array of last acquired image.
 
@@ -125,12 +145,11 @@ class CameraDummy(Base, CameraInterface):
     def set_exposure(self, exposure):
         """ Set the exposure time in seconds
 
-        @param float time: desired new exposure time
-
-        @return float: setted new exposure time
+        @param float exposure: desired new exposure time
+        @return float exposure: new exposure time
         """
         self._exposure = exposure
-        return self._exposure
+        return True
 
     def get_exposure(self):
         """ Get the exposure time in seconds
@@ -140,6 +159,14 @@ class CameraDummy(Base, CameraInterface):
         return self._exposure
 
 
+    def set_amplifiers(self, names):
+        """
+
+        @param list names:
+        @return float: boold success?
+        """
+
+        return True
     def set_gain(self, gain):
         """ Set the gain
 
@@ -158,11 +185,6 @@ class CameraDummy(Base, CameraInterface):
         return self._gain
 
 
-    def get_ready_state(self):
-        """ Is the camera ready for an acquisition ?
 
-        @return bool: ready ?
-        """
-        return not (self._live or self._acquiring)
 
 

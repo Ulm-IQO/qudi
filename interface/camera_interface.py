@@ -119,7 +119,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
         @param float exposure: desired new exposure time
 
-        @return float: setted new exposure time
+        @return float:  bool success ?
         """
         pass
 
@@ -356,9 +356,17 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def has_shutter(self):
+        """
+        Query the camera if a shutter exists.
+        @return boolean: True if yes, False if not
+        """
+        pass
+
+    @abstract_interface_method
     def open_shutter(self):
         """
-        Oen a shutter if the camera has a shutter
+        Open the shutter
         @return: Success ?
         """
         pass
@@ -372,10 +380,34 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
+    def has_temperature_control(self):
+        """
+        Query the camera if it has temperature control
+        @return boolen: True if yes, False if not
+        """
+        pass
+
+    @abstract_interface_method
     def set_temperature(self, temperature):
         """
         Sets the temperature of the camera
         @param float temperature: Target temperature of the camera
+        @return: success?
+        """
+        pass
+
+    @abstract_interface_method
+    def start_temperature_control(self):
+        """
+        Start the temperature control of the camera
+        @return: success?
+        """
+        pass
+
+    @abstract_interface_method
+    def stop_temperature_control(self):
+        """
+        Start the temperature control of the camera
         @return: success?
         """
         pass
