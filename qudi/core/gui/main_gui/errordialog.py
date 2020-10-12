@@ -17,10 +17,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-Derived form ACQ4:
-Copyright 2010  Luke Campagnola
-Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
 import traceback
@@ -36,32 +32,52 @@ class ErrorDialog(QtWidgets.QDialog):
       you can see the traceback for an exception.
     """
 
-    def __init__(self, parent=None):
-        """ Create an ErrorDialog object
+    _stylesheet_map = {'error'   : 'font-weight: bold; color: #F11000;',
+                       'critical': 'font-weight: bold; color: #FF00FF;'}
 
-        @param object log_window: reference to log_window object that this popup belongs to
+    def __init__(self, *args, **kwargs):
+        """ Create an ErrorDialog object
         """
-        super().__init__(parent)
+        super().__init__(*args, **kwargs)
 
         self._thread_lock = RecursiveMutex()
         self._error_queue = deque()  # queued individual error messages to display
 
         # Set up dialog window
         self.setWindowTitle('Qudi Error')
-        self.setWindowFlags(QtCore.Qt.Dialog | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags((QtCore.Qt.Dialog |
+                             QtCore.Qt.WindowStaysOnTopHint |
+                             QtCore.Qt.CustomizeWindowHint |
+                             QtCore.Qt.WindowSystemMenuHint |
+                             QtCore.Qt.WindowTitleHint) & (~QtCore.Qt.WindowCloseButtonHint))
         screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
         screen_width = screen_size.width()
         screen_height = screen_size.height()
-        self.setGeometry((screen_width * 3) // 8,
-                         (screen_height * 3) // 8,
-                         screen_width // 4,
-                         screen_height // 4)
+        self._default_size = ((screen_width * 3) // 8,
+                              (screen_height * 3) // 8,
+                              screen_width // 4,
+                              screen_height // 4)
+        self.setGeometry(*self._default_size)
         self.setMinimumSize(screen_width // 6, screen_height // 8)
 
-        # Set up message label widget
+        # Set up header label widget
+        self.header_label = QtWidgets.QLabel()
+        self.header_label.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.header_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse | QtCore.Qt.LinksAccessibleByMouse
+        )
+        self.header_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                     QtWidgets.QSizePolicy.Preferred)
+
+        # Set up scrollable message label widget
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setWidgetResizable(True)
+        scroll_area.setFocusPolicy(QtCore.Qt.NoFocus)
         self.msg_label = QtWidgets.QLabel()
+        self.msg_label.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.msg_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse | QtCore.Qt.LinksAccessibleByMouse
+        )
         self.msg_label.setWordWrap(True)
         self.msg_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                      QtWidgets.QSizePolicy.Expanding)
@@ -73,19 +89,15 @@ class ErrorDialog(QtWidgets.QDialog):
         # Set up buttons and group them in a layout
         self.dismiss_button = QtWidgets.QPushButton('Dismiss')
         self.next_button = QtWidgets.QPushButton('Show next error')
-        self.log_button = QtWidgets.QPushButton('Show log...')
         btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.addStretch()
-        btn_layout.addWidget(self.dismiss_button)
         btn_layout.addWidget(self.next_button)
-        btn_layout.addWidget(self.log_button)
-        # btn_layout.addStretch()
-        # self.next_button.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-        #                                QtWidgets.QSizePolicy.Fixed)
+        btn_layout.addWidget(self.dismiss_button)
 
         # Set up dialog main layout and add all widgets to it
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.setContentsMargins(3, 3, 3, 3)
+        main_layout.addWidget(self.header_label)
         main_layout.addWidget(scroll_area)
         main_layout.addWidget(self.disable_checkbox)
         main_layout.addLayout(btn_layout)
@@ -94,7 +106,7 @@ class ErrorDialog(QtWidgets.QDialog):
         # Connect button click signals to slots
         self.dismiss_button.clicked.connect(self.accept)
         self.next_button.clicked.connect(self.show_next_error)
-        self.log_button.clicked.connect(self.log_clicked)
+        self.accepted.connect(self._accepted_callback)
 
     @QtCore.Slot(object)
     def new_error(self, data):
@@ -103,10 +115,13 @@ class ErrorDialog(QtWidgets.QDialog):
         @param logging.LogRecord data: log record as returned from logging module
         """
         with self._thread_lock:
-            self._error_queue.append(data)
-            self._update_next_button()
-            if not self.isVisible():
-                self.show_next_error()
+            if data.levelname in self._stylesheet_map:
+                self._error_queue.append(data)
+                if self.isVisible():
+                    self._update_next_button()
+                else:
+                    self.setGeometry(*self._default_size)
+                    self.show_next_error()
 
     @QtCore.Slot()
     def show_next_error(self):
@@ -117,71 +132,17 @@ class ErrorDialog(QtWidgets.QDialog):
                 time_str = datetime.fromtimestamp(err.created).strftime('%Y-%m-%d %H:%M:%S')
                 message = err.message if hasattr(err, 'message') else err.msg
                 if err.exc_info is not None:
-                    message += '\n{0}'.format(traceback.format_exception(*err.exc_info)[-1][:-1])
+                    message += '\n\n{0}'.format(traceback.format_exception(*err.exc_info)[-1][:-1])
                     tb = '\n'.join(traceback.format_exception(*err.exc_info)[:-1])
                     if tb:
                         message += '\n{0}'.format(tb)
 
-                self.msg_label.setText(
-                    'Error in {0} ({1}):\n\n{2}'.format(err.name, time_str, message)
-                )
+                self.header_label.setStyleSheet(self._stylesheet_map[err.levelname])
+                self.header_label.setText('Error in {0} ({1}):'.format(err.name, time_str))
+                self.msg_label.setText(message)
                 if self.enabled:
                     self.show()
-                    # self.raise_()
                     self.activateWindow()
-
-    # def show(self, entry):
-    #     """ Show a log entry in a popup window.
-    #
-    #     @param dict entry: log entry in dictionary form
-    #     """
-    #     # Return early if disabled
-    #     if self.disabled:
-    #         return
-    #
-    #     # extract list of exceptions
-    #     exceptions = list()
-    #     key = 'exception'
-    #     exc = entry
-    #     while key in exc:
-    #         exc = exc[key]
-    #         if exc is None:
-    #             break
-    #         # ignore this error if it was generated on the command line.
-    #         tb = exc.get('traceback', ['', ''])
-    #         if len(tb) > 1 and 'File "<stdin>"' in tb[1]:
-    #             return
-    #
-    #         if exc is None:
-    #             break
-    #         key = 'oldExc'
-    #         if exc['message'] == 'None':
-    #             continue
-    #         elif exc['message'].startswith('HelpfulException'):
-    #             # FIXME: Should be possible to remove this case (not used in qudi)
-    #             msg = exc['message'].lstrip('HelpfulException: ')
-    #             exceptions.append('<b>{0}</b>'.format(self.clean_text(msg)))
-    #         else:
-    #             exceptions.append(self.clean_text(exc['message']))
-    #
-    #     msg = '<b>{0}</b><br>'.format(entry['message']) + '<br>'.join(exceptions)
-    #
-    #     if self.isVisible():
-    #         self.messages.append(msg)
-    #         self._update_next_button()
-    #     else:
-    #         w = QtWidgets.QApplication.activeWindow()
-    #         self.msg_label.setText(msg)
-    #         self.open()
-    #         self._update_next_button()
-    #         if w is not None:
-    #             cp = w.geometry().center()
-    #             self.setGeometry(cp.x() - self.width() // 2,
-    #                              cp.y() - self.height() // 2,
-    #                              self.width(),
-    #                              self.height())
-    #     self.raise_()
-    #     self.activateWindow()
 
     @property
     def enabled(self):
@@ -189,42 +150,35 @@ class ErrorDialog(QtWidgets.QDialog):
 
         @return bool: Flag indicating enabled (True) or disabled (False) error message popups
         """
-        return not self.disable_checkbox.isChecked()
+        with self._thread_lock:
+            return not self.disable_checkbox.isChecked()
 
     @QtCore.Slot(bool)
     def set_enabled(self, enable):
-        self.disable_checkbox.setChecked(not bool(enable))
-
-    # @staticmethod
-    # def clean_text(text):
-    #     """ Return a string with some special characters escaped for HTML.
-    #
-    #     @param str text: string to sanitize
-    #     @return str: string with special characters replaced by HTML escape sequences
-    #     """
-    #     text = text.replace('&', '&amp;')
-    #     text = text.replace('>', '&gt;')
-    #     text = text.replace('<', '&lt;')
-    #     return text.replace('\n', '<br/>\n')
-
-    def closeEvent(self, ev):
-        """ Specify close event action. Extends the parent class closeEvent handler to delete all
-        pending messages.
-
-        @param QEvent ev: event from event handler
-        """
-        self._error_queue.clear()
-        return super().closeEvent(ev)
+        with self._thread_lock:
+            self.disable_checkbox.setChecked(not bool(enable))
 
     @QtCore.Slot()
-    def log_clicked(self):
-        """ Marks messages as accepted and shows log window.
-        """
-        self.accept()
-        self.parent().show()
+    def _accepted_callback(self):
+        with self._thread_lock:
+            self._error_queue.clear()
 
     def _update_next_button(self):
-        msg_number = len(self._error_queue) - 1
-        self.next_button.setText('Show next error ({0:d} more)'.format(msg_number))
-        self.next_button.setEnabled(msg_number > 0)
-        return
+        with self._thread_lock:
+            msg_number = len(self._error_queue)
+            btn_enabled = self.next_button.isEnabled()
+            self.next_button.setText('Show next error ({0:d} more)'.format(msg_number))
+            if msg_number == 0 and btn_enabled:
+                self.next_button.setEnabled(False)
+                self.dismiss_button.setFocus()
+            elif msg_number > 0 and not btn_enabled:
+                self.next_button.setEnabled(True)
+                self.next_button.setFocus()
+
+    @QtCore.Slot()
+    def reject(self):
+        """ Override reject slot in order to prevent rejection of this QDialog.
+        """
+        if not self.dismiss_button.hasFocus():
+            self.dismiss_button.setFocus()
+

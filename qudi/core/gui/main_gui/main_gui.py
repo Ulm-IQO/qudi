@@ -77,7 +77,7 @@ class QudiMainGui(GuiBase):
         self.mw = QudiMainWindow()
         self._restore_window_pos(self.mw)
         # Create error dialog for error message popups
-        self.error_dialog = ErrorDialog(self.mw)
+        self.error_dialog = ErrorDialog()
 
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
