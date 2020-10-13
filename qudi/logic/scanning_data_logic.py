@@ -146,9 +146,11 @@ class ScanningDataLogic(LogicBase):
                 self.log.exception('Unable to restore scan history with index "{0}"'.format(index))
                 return
 
-            settings = {'range': data.scan_range,
-                        'resolution': data.scan_resolution,
-                        'frequency': {data.scan_range[0]: data.scan_frequency}}
+            settings = {
+                'range': {ax: data.scan_range[i] for i, ax in enumerate(data.scan_axes)},
+                'resolution': {ax: data.scan_resolution[i] for i, ax in enumerate(data.scan_axes)},
+                'frequency': {data.scan_axes[0]: data.scan_frequency}
+            }
             self._scan_logic().set_scan_settings(settings)
 
             self._curr_history_index = max(0,
@@ -165,6 +167,11 @@ class ScanningDataLogic(LogicBase):
     @qudi_slot(bool, tuple)
     def update_scan_state(self, running, axes=None):
         with self._thread_lock:
+            if self._ignore_new_data:
+                self._curr_scan_data = None
+                self._scan_in_progress = False
+                return
+
             if self._scan_in_progress and not running and axes == self._curr_scan_data.scan_axes:
                 self._scan_history.append(self._curr_scan_data)
                 self._curr_scan_data = None

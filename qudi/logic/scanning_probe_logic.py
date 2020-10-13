@@ -376,7 +376,7 @@ class ScanningProbeLogic(LogicBase):
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, self.__current_scan_data.scan_axes)
 
-            self.sigScanDataChanged.emit(self.__current_scan_data.scan_axes)
+            self.sigScanDataChanged.emit(self.__current_scan_data)
             self._start_timer()
             return
 

@@ -47,7 +47,6 @@ class ScanningOptimizeLogic(LogicBase):
 
     # status variables
     _scan_sequence = StatusVar(name='scan_sequence', default=None)
-    _settle_time = StatusVar(name='settle_time', default=1)
     _data_channel = StatusVar(name='data_channel', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
     _scan_range = StatusVar(name='scan_range', default=None)
@@ -59,31 +58,57 @@ class ScanningOptimizeLogic(LogicBase):
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
     sigOptimizeScanDataChanged = QtCore.Signal(object)
 
+    _sigNextSequenceStep = QtCore.Signal()
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self._thread_lock = RecursiveMutex()
 
-        self._scan_in_progress = False
+        self._stashed_scan_settings = dict()
+        self._sequence_index = 0
         self._curr_scan_data = dict()
-
-        # optimize settings
-
+        self._stop_requested = True
         return
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        axes = self._scan_logic().scanner_axes
+        channels = self._scan_logic().scanner_channels
+
+        # optimize settings
+        if not isinstance(self._scan_range, dict):
+            self._scan_range = {ax.name: abs(ax.value_range[1] - ax.value_range[0]) / 100 for ax in
+                                axes.values()}
+        if not isinstance(self._scan_resolution, dict):
+            self._scan_resolution = {ax.name: max(ax.min_resolution, min(16, ax.max_resolution))
+                                     for ax in axes.values()}
+        if not isinstance(self._scan_frequency, dict):
+            self._scan_frequency = {ax.name: max(ax.min_frequency, min(50, ax.max_frequency)) for ax
+                                    in axes.values()}
+        if self._scan_sequence is None:
+            avail_axes = tuple(axes.values())
+            if len(avail_axes) >= 3:
+                self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name),
+                                       (avail_axes[2].name,)]
+            elif len(avail_axes) == 2:
+                self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name)]
+            elif len(avail_axes) == 1:
+                self._scan_sequence = [(avail_axes[0].name,)]
+            else:
+                self._scan_sequence = list()
+        if self._data_channel is None:
+            self._data_channel = tuple(channels.values())[0]
+
+        self._sigNextSequenceStep.connect(self._next_sequence_step, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
         """ Reverse steps of activation
         """
+        self._sigNextSequenceStep.disconnect()
         return
-
-    @property
-    def settle_time(self):
-        return self._settle_time
 
     @property
     def data_channel(self):
@@ -103,12 +128,13 @@ class ScanningOptimizeLogic(LogicBase):
 
     @property
     def optimize_settings(self):
-        return {'settle_time': self._settle_time,
-                'scan_frequency': self.scan_frequency,
+        return {'scan_frequency': self.scan_frequency,
                 'data_channel': self._data_channel,
                 'scan_range': self.scan_range,
-                'scan_resolution': self.scan_resolution}
+                'scan_resolution': self.scan_resolution,
+                'scan_sequence': self._scan_sequence}
 
+    @qudi_slot(dict)
     def set_optimize_settings(self, settings):
         """
         """
@@ -118,12 +144,6 @@ class ScanningOptimizeLogic(LogicBase):
                 self.log.error('Can not change optimize settings. Optimization still in progress.')
             else:
                 settings_update = dict()
-                if 'settle_time' in settings:
-                    if settings['settle_time'] < 0:
-                        self.log.error('optimizer "settle_time" must not be negative.')
-                    else:
-                        self._settle_time = float(settings['settle_time'])
-                    settings_update['settle_time'] = self._settle_time
                 if 'scan_frequency' in settings:
                     self._scan_frequency.update(settings['scan_frequency'])
                     settings_update['scan_frequency'] = self.scan_frequency
@@ -140,23 +160,31 @@ class ScanningOptimizeLogic(LogicBase):
             self.sigOptimizeSettingsChanged.emit(settings_update)
             return settings_update
 
+    @qudi_slot()
     def start_optimize(self):
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to start optimization sequence. Optimizer still running.')
                 self.sigOptimizeStateChanged.emit(True)
-                return True
+                return -1
 
             # ToDo: Sanity checks for settings go here
 
+            self.module_state().lock()
+
             # stash old scanner settings
-            old_scan_settings = self._scan_logic().scan_settings
+            self._stashed_scan_settings = self._scan_logic().scan_settings
 
             # Set scan ranges
-            actual_setting = self._scan_logic().set_scan_range(self._scan_range)
-            if any(val != self._scan_range[ax] for ax, val in actual_setting.items()):
+            curr_pos = self._scan_logic().scanner_target
+            optim_ranges = {ax: (pos - self._scan_range[ax] / 2, pos + self._scan_range[ax] / 2) for
+                            ax, pos in curr_pos.items()}
+            actual_setting = self._scan_logic().set_scan_range(optim_ranges)
+            if any(val != optim_ranges[ax] for ax, val in actual_setting.items()):
                 self.log.warning('Some optimize scan ranges have been changed by the scanner.')
-                self.set_optimize_settings({'scan_range': actual_setting})
+                self.set_optimize_settings(
+                    {'scan_range': {ax: abs(r[1] - r[0]) for ax, r in actual_setting.items()}}
+                )
 
             # Set scan frequency
             actual_setting = self._scan_logic().set_scan_frequency(self._scan_frequency)
@@ -164,27 +192,81 @@ class ScanningOptimizeLogic(LogicBase):
                 self.log.warning('Some optimize scan frequencies have been changed by the scanner.')
                 self.set_optimize_settings({'scan_frequency': actual_setting})
 
-            # Set scan frequency
-            actual_setting = self._scan_logic().set_scan_frequency(self._scan_frequency)
-            if any(val != self._scan_frequency[ax] for ax, val in actual_setting.items()):
+            # Set scan resolution
+            actual_setting = self._scan_logic().set_scan_resolution(self._scan_resolution)
+            if any(val != self._scan_resolution[ax] for ax, val in actual_setting.items()):
                 self.log.warning(
-                    'Some optimize scan frequencies have been changed by the scanner.')
-                self.set_optimize_settings({'scan_frequency': actual_setting})
+                    'Some optimize scan resolutions have been changed by the scanner.')
+                self.set_optimize_settings({'scan_resolution': actual_setting})
 
-            # Iterate through scan sequence and perform corresponding scans and gaussian fits
-            for sequence in self._scan_sequence:
-                # Peform 1D scan
-                if len(sequence) == 1:
-                    ax = sequence[0]
-                    self._scan_logic().set_scan_settings({'resolution': self._scan_resolution[ax],
-                                                          'frequency': }
-                    )
-                # Perform 2D scan
-                elif len(sequence) == 2:
+            # Ignore following scans for scan history
+            self._data_logic().toggle_ignore_new_data(True)
 
-                else:
-                    self.log.warning(
-                        'Optimize scan sequence must contain only tuples of len 1 or 2. '
-                        'Ignoring optimization step.'
-                    )
+            self._sequence_index = 0
+            self._stop_requested = False
+            self._sigNextSequenceStep.emit()
+            return 0
+
+    @qudi_slot()
+    def _next_sequence_step(self):
+        with self._thread_lock:
+            if self.module_state() == 'idle':
+                return
+
+            if self._scan_logic().toggle_scan(True, self._scan_sequence[self._sequence_index]) < 0:
+                self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
+                    self._scan_sequence[self._sequence_index])
+                )
+                self._stop_requested = True
+                self._data_logic().toggle_ignore_new_data(False)
+                self._scan_logic().set_scan_settings(self._stashed_scan_settings)
+                self._stashed_scan_settings = dict()
+                self._curr_scan_data = dict()
+                self.module_state().unlock()
+                self.sigOptimizeStateChanged.emit(False)
+            return
+
+    @qudi_slot(object)
+    def _scan_data_changed(self, data):
+        with self._thread_lock:
+            if self.module_state() == 'idle':
+                return
+
+            self._curr_scan_data[data.scan_axes] = data
+            return
+
+    @qudi_slot(bool, tuple)
+    def _scan_state_changed(self, is_running, axes):
+        with self._thread_lock:
+            if is_running or self.module_state() == 'idle':
+                return
+
+            # ToDo: Perform fit on last scan data and move scanner target position
+
+            self._sequence_index += 1
+
+            # Terminate optimize sequence if finished
+            if self._stop_requested or self._sequence_index >= len(self._scan_sequence):
+                self._stop_requested = True
+                self._data_logic().toggle_ignore_new_data(False)
+                self._scan_logic().set_scan_settings(self._stashed_scan_settings)
+                self._stashed_scan_settings = dict()
+                self._curr_scan_data = dict()
+                self.module_state().unlock()
+                self.sigOptimizeStateChanged.emit(False)
+            else:
+                self._sigNextSequenceStep.emit()
+            return
+
+    @qudi_slot()
+    def stop_optimize(self):
+        with self._thread_lock:
+            if self.module_state() == 'idle':
+                self.log.error('Unable to stop optimization sequence. Optimizer is not running.')
+                self.sigOptimizeStateChanged.emit(False)
+                return -1
+
+            self._stop_requested = True
+            seq_index = min(self._sequence_index, len(self._scan_sequence) - 1)
+            return self._scan_logic().toggle_scan(False, self._scan_sequence[seq_index])
 
