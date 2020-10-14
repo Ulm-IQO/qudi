@@ -1681,8 +1681,8 @@ class ConfocalStepperGui(GUIBase):
 
             pos = self.roi_bounds_check(pos)
 
-            h_pos = self._stepper_logic.full_image_smoothed[pos[0], pos[1], 0]
-            v_pos = self._stepper_logic.full_image_smoothed[pos[0], pos[1], 1]
+            h_pos = self._stepper_logic.full_image_smoothed[pos[1], pos[0], 0]
+            v_pos = self._stepper_logic.full_image_smoothed[pos[1], pos[0], 1]
 
             self._feedback_axis[self._stepper_logic._first_scan_axis].setValue(h_pos * 1e-3)
             self._feedback_axis[self._stepper_logic._second_scan_axis].setValue(v_pos * 1e-3)
@@ -1698,13 +1698,12 @@ class ConfocalStepperGui(GUIBase):
         p1 = pos[1]
         if pos[0] < 0:
             p0 = 0
-        elif pos[0] > self._stepper_logic._steps_scan_first_line - 1:
-            p0 = self._stepper_logic._steps_scan_first_line - 1
+        elif pos[0] > self._stepper_logic._steps_scan_second_line - 1:
+            p0 = self._stepper_logic._steps_scan_second_line - 1
 
         if pos[1] < 0:
             p1 = 0
-        elif pos[1] > self._stepper_logic._steps_scan_second_line - 1:
+        elif pos[1] > self._stepper_logic._steps_scan_first_line - 1:
             p1 = self._stepper_logic._steps_scan_first_line - 1
-
 
         return p0, p1
