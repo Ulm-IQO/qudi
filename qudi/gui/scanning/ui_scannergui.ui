@@ -125,7 +125,7 @@
      <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>Scanner Settings</string>
+    <string>Scan Settings</string>
    </property>
   </action>
   <action name="action_close_window">
