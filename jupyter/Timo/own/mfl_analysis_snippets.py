@@ -185,9 +185,9 @@ def plot_eta_vs_t(mes_list, eta_mode='all', rolling_window=None, savepath=None, 
             axes.plot(x, y, label='median, window= {}'.format(rolling_window), linewidth=5)
 
             if not np.isnan(t_roll_ms):
-                idx_end_roll, _ = Tk_math.find_nearest(x, x[-1] - 3*t_roll_ms*1e-3)
-                idx_start_avg, _ = Tk_math.find_nearest(x, x[-1] - 10*t_roll_ms*1e-3)
-                eta_min = np.min(y[:idx_end_roll])
+                idx_end_roll, _ = Tk_math.find_nearest(x, x[-1] - 1*t_roll_ms*1e-3)
+                idx_start_avg, _ = Tk_math.find_nearest(x, x[-1] - 5*t_roll_ms*1e-3)
+                eta_min = np.min(y[idx_start_avg:idx_end_roll])
             else:
                 eta_min = np.median(y[-10:])
             #eta_min = np.nanmin(y)
@@ -397,14 +397,18 @@ def plot_b_vs_epoch(mes_list, savepath=None, is_unit_ut=True):
         file = el.filename
         parent_dir, _ = Tk_file.get_parent_dir(file)
 
+        """
+        buggy for mes with covariance matrices
         try:
             x_epochs = 1 + np.asarray(range(len(mes.taus) + 1))  # plot "before first epoch", start from x=1
-            b_mhz = np.concatenate([mes.data_before_first_epoch['b_mhz'][:,np.newaxis],     mes.bs[:,:]])  # 2nd index: all params
+            b_mhz = np.concatenate([mes.data_before_first_epoch['b_mhz'][np.newaxis,:],     mes.bs[:,:]])  # 2nd index: all params
             db_mhz = np.concatenate([mes.data_before_first_epoch['db_mhz'],   mes.dbs[:,:]])
         except KeyError:
-            x_epochs = 1 + np.asarray(range(len(mes.taus)))
-            b_mhz =  mes.bs[:,:]
-            db_mhz = mes.dbs[:,:]
+        """
+        x_epochs = 1 + np.asarray(range(len(mes.taus)))
+        b_mhz =  mes.bs[:,:]
+        db_mhz = mes.dbs[:,:]
+
 
         #b_khz = mes.bs[:,:]*1e3  # 2nd index: all params
         #db_khz = mes.dbs[:,:]*1e3
@@ -418,7 +422,7 @@ def plot_b_vs_epoch(mes_list, savepath=None, is_unit_ut=True):
             db = db_mhz
 
         # plot single trace
-        label = parent_dir.replace("n_sweeps=500_", "")
+        label = parent_dir
         """
         plt.plot(x_epochs, b_mhz,
                     label="{}".format(label), color='C{}'.format(i % num_colors))
@@ -647,7 +651,7 @@ def plot_b_vs_runs(mes_list, taxis=False, savepath=None):
     # plot diff
     if n_params > 1:
         n_params = 0
-        plt.subplot(n_plots, 1, n_params+1)
+        plt.subplot(n_plots, 1, i+2)
         b_diff = abs(b_mhz_runs[:, 1]-b_mhz_runs[:, 0])
         db_diff =  np.sqrt(db_mhz_runs[:, 0]**2 + db_mhz_runs[:, 1]**2)
         plt.plot(x, b_diff,
@@ -660,7 +664,6 @@ def plot_b_vs_runs(mes_list, taxis=False, savepath=None):
         plt.fill_between(x, b_diff - db_diff, b_diff + db_diff,
                          alpha=0.3, edgecolor=None, facecolor='C{}'.format(i+1 % num_colors), antialiased=True,
                          )
-        plt.ylabel("$\Delta B_{0,1}$ $\mathrm{(kHz)}$")
         plt.ylabel("$\Delta B_{0,1}$ $\mathrm{(kHz)}$")
 
 
@@ -1537,14 +1540,14 @@ if __name__ == '__main__':
     #rc('text', usetex=True) # use external miktex renderer
     #rc('text.latex', preamble=','.join(r'\usepackage{txfonts}\usepackage{lmodern}'.split()))
 
-    save_svg = True
-    disable_legend = True
+    save_svg = False
+    disable_legend = False
     # for puplicattions
     figsize_cm = [8.6, 3/4*8.6]                 # single fig
     #figsize_cm = [1/2*8.6, 1/2*3/4*8.6]        # inset
-    figsize_cm = [1/4*3/4*8.6, 1/4*3/4*8.6]     # quadtatic small inset
+    #figsize_cm = [1/4*3/4*8.6, 1/4*3/4*8.6]     # quadtatic small inset
     #figsize_cm = [8.6, 4]                      # wide screen
-    overwrite_figsize = np.asarray(figsize_cm)*0.394  # in inches
+    #overwrite_figsize = np.asarray(figsize_cm)*0.394  # in inches
 
 
     # basic plotting of combined mfl data
@@ -1556,10 +1559,10 @@ if __name__ == '__main__':
 
 
     #paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_M6.3\combine",]
-    paths = [r"E:\Data\2019\11\20191104\PulsedMeasurement\_2d_mfl_m6.3_duplicate_for_plotting"]
+    paths = [r"E:\Data\2020\10\20201007\PulsedMeasurement\combine"]
 
     rolling_windows = '100ms'
-    rolling_windows = '5000ms'  # only [ms] allowed!
+    rolling_windows = '1000ms'  # only [ms] allowed!
     # rolling_windows = 1
 
     for path in paths:
@@ -1582,7 +1585,7 @@ if __name__ == '__main__':
         #plot_fit_params_vs_tphase(mes_list[0], savepath=path + '/' + 'fit_params_vs_t_phase_2.png', fit_params=fit_params,
         #                          aggregate_data_factor=4, omit_epoch_factor=4)
         #continue
-        #"""
+        """
         # priors
         idx_epoch_plots = np.arange(0,500,4)
         #plot_prior_2d(mes_list[0], epochs_idx=[0], n_bins=50, savepath=path + '/' + 'priors_0.png', tick_label_digits=1)
@@ -1603,7 +1606,7 @@ if __name__ == '__main__':
         plot_likelihood_2d(mes_list[0], epochs_idx=[496], savepath=path + '/' + 'likelihoods_500.png',
                            omega_mhz=[omega_1, omega_2], tick_label_digits=3)
         exit(0)
-
+        """
         # overhead times
         plot_overhead_times(mes_list[0], savepath=path + '/' + 'overhead.png')
 
@@ -1624,15 +1627,14 @@ if __name__ == '__main__':
         #"""
         # b
         plot_b_hist(mes_list_all, savepath=path + '/' + 'B_hist.png')
-        """
+        #"""
         plot_b_vs_epoch(mes_list, savepath=path + '/' + 'B_vs_epochs.png', is_unit_ut=False)
         plot_b_vs_runs(mes_list, savepath=path + '/' + 'B_vs_runs.png', taxis=False)
         plot_b_vs_runs(mes_list, savepath=path + '/' + 'B_vs_t_run.png', taxis=True)
 
-        plot_b_hist(mes_list_all, savepath=path + '/' + 'B_hist.png')
 
-        plot_eta_vs_B(mes_list, savepath=path + '/' + 'eta_vs_B.png')
-        """
+        #plot_eta_vs_B(mes_list, savepath=path + '/' + 'eta_vs_B.png')
+        #"""
 
         # taus
         #plot_hist_taus(mes_list, savepath=path + '/' + 'hist_taus.png')
