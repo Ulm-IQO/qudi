@@ -344,14 +344,17 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    def get_images(self, start_image, stop_image):
+    @abstract_interface_method
+    def get_images(self, start_index, stop_index):
         """
-        Read the latest acquired images
+        Read the images between start_index and stop_index from the buffer.
 
-        @param:
-        @return:
+        @param int start_index: Index of the first image
+        @param int stop_index: Index of the last image
+        @return: numpy nd array of dimension (stop_index - start_index + 1, px_x, px_y)
         """
         pass
+
     @abstract_interface_method
     def get_available_trigger_modes(self):
         """

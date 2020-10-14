@@ -436,6 +436,25 @@ class CameraDummy(Base, CameraInterface):
                                                      * self._exposure * self._gain * self._exposures[image]
         return data
 
+    def get_images(self, start_index, stop_index):
+        """
+        Read the images between start_index and stop_index from the buffer.
+
+        @param int start_index: Index of the first image
+        @param int stop_index: Index of the last image
+        @return: numpy nd array of dimension (stop_index - start_index, px_x, px_y)
+        """
+        num_images = stop_index - start_index + 1
+        if self._acquisition_mode == 'Kinetic Series':
+            qe = self.get_quantum_efficiency(self._wave_length)
+            data = np.zeros((num_images,
+                            self._cur_resolution[0], self._cur_resolution[1]))
+            if self._data_acquistion == 'random images':
+                for image in range(num_images):
+                    data[image, :, :] = qe * np.random.random(self._cur_resolution)\
+                                        * self._exposure * self._gain * self._exposures[image]
+        return
+
     def get_available_trigger_modes(self):
         """
         Trigger modes on the device
