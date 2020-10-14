@@ -88,16 +88,19 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def start_single_acquisition(self):
-        """ Start a single acquisition
+    def start_acquisition(self):
+        """
+        Start an acquisition. The acquisition settings
+        will determine if you record a single image, or image sequence.
 
-        @return bool: Success ?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
     @abstract_interface_method
     def stop_acquisition(self):
-        """ Stop/abort live or single acquisition
+        """
+        Stop/abort live or single acquisition
 
         @return bool: Success ?
         """
@@ -105,7 +108,8 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def get_acquired_data(self):
-        """ Return an array of last acquired image.
+        """
+        Return an array of last acquired image.
 
         @return numpy array: image data in format [[row],[row]...]
 
@@ -115,7 +119,8 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def set_exposure(self, exposure):
-        """ Set the exposure time in seconds
+        """
+        Set the exposure time in seconds
 
         @param float exposure: desired new exposure time
 
@@ -125,69 +130,67 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
     @abstract_interface_method
     def get_exposure(self):
-        """ Get the exposure time in seconds
-
+        """
+        Get the exposure time in seconds
         @return float exposure time
         """
         pass
 
     @abstract_interface_method
-    def set_amplifiers(self, names):
-        """ Set the amplifier
+    def set_amplifiers(self, amp_gain_dict):
+        """
+        Set up the chain of amplifiers with corresponding gains
+        @param dict ampg_gain_dict: Set the amplifiers to be used with corresponding gains
+        @return int error code: (0: OK, -1: error)
+        """
+        pass
 
-        @param list names: Set the amplifiers to be used.
-
-        @return float:  bool success ?
+    @abstract_interface_method
+    def get_available_amplifiers(self):
+        """
+        Return a list of available amplifiers
+        @return list amplifiers: List of the available amplifiers
         """
         pass
 
     @abstract_interface_method
     def get_amplifiers(self):
-        """ Get the currently used amplifiers
-
-        @return float: current gain
         """
-        pass
-
-    @abstract_interface_method
-    def set_gains(self, gain_dict):
-        """ Set the gains of selected amplifiers
-
-        @param float gains: desired new gain {'preamp': 2}
-
-        @return float: new gain
-        """
-        pass
-
-    @abstract_interface_method
-    def get_gains(self):
-        """ Get the gain
-
-        @return dictionary: Return a dictionary with amplifiers e.g. {'preamp': 2}
+        Get the currently used amplifiers
+        @return list: list of the currently used amplifiers
         """
         pass
 
     @abstract_interface_method
     def get_available_readout_speeds(self):
         """
-        Readout speeds on the device
+        Readout speeds the device is capable of.
         @return: list of available readout speeds on the device
         """
         pass
 
     @abstract_interface_method
     def set_readout_speeds(self, speed_dict):
-        """ Set the readout speed e.g. {'horizontal': 10e6, 'vertical':1e6} in Hz
-
-        @return float: exposure gain
+        """
+        Set the readout speed e.g. {'horizontal': 10e6, 'vertical':1e6} in Hz
+        @return int error code: (0: OK, -1: error)
         """
         pass
 
     @abstract_interface_method
     def get_readout_speeds(self):
         """
-        get the current readout speed e.g. {'horizontal': 1e6, 'vertical':3e6} in Hz
-        @return:
+        Get the current readout speed e.g. {'horizontal': 1e6, 'vertical':3e6} in Hz
+        @return dict readout_speeds: Dictionary with horizontal
+                                     and vertical readout speed
+        """
+        pass
+
+    @abstract_interface_method
+    def get_readout_time(self):
+        """
+        Return how long the readout of a single image will take
+        @return float time: Time it takes to read out an image from the sensor
         """
         pass
 
@@ -196,14 +199,15 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         Binning and extracting a certain part of the sensor e.g. {'binning': (2,2), 'crop' (128, 256)} takes 4 pixels
         together to 1 and takes from all the pixels and area of 128 by 256
-        @return:
+        @return int error code: (0: OK, -1: error)
         """
         pass
 
     @abstract_interface_method
     def get_sensor_area_settings(self):
         """
-        Return the current binning and crop settings of the sensor e.g. {'binning': (2,2), 'crop' (128, 256)}
+        Return the current binning and crop settings of the sensor e.g.
+        {'binning': (2, 2), 'crop': ((128, 256), (150, 300))}
         @return: dict of the sensor area settings
         """
         pass
@@ -211,8 +215,17 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     @abstract_interface_method
     def get_bit_depth(self):
         """
+        Bit depth the camera has
         Return the current
-        @return:
+        @return int bit_depth: Number of bits the AD converter has.
+        """
+        pass
+
+    @abstract_interface_method
+    def get_num_ad_channels(self):
+        """
+        Get the number of ad channels
+        @return int num_ad_channels: number of ad channels
         """
         pass
 
@@ -273,7 +286,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_available_readout_modes(self):
         """
         Readout modes on the device
-        @return: list of available readout modes
+        @return: list read_modes: containing available readout modes
         """
         pass
 
@@ -282,7 +295,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         Set the read mode of the device (i.e. Image, Full Vertical Binning, Single-Track)
         @param str read_mode: Read mode to be set
-        @return:
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -290,7 +303,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_read_mode(self):
         """
         Get the read mode of the device (i.e. Image, Full Vertical Binning, Single-Track)
-        @return:
+        @return string read_mode: string containing the current read_mode
         """
         pass
 
@@ -299,7 +312,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         Set the readout mode of the camera ('single acquisition', 'kinetic series')
         @param str readout_mode: readout mode to be set
-        @return: Success ?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -312,24 +325,33 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_up_image_sequence(self, num_images, exposures):
+    def set_up_image_sequence(self, num_sequences, num_images, exposures):
         """
         Set up the camera for the acquisition of an image sequence.
 
-        @param float num_images: number of images to be taken
-        @param list exposures: list of length(num_images) containing the exposures to be used
-        @return:
+        @param int num_sequences: Number of sequences to be recorded
+        @param int num_images: Number of images to be taken
+        @param list exposures: List of length(num_images) containing the exposures to be used
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
     @abstract_interface_method
     def acquire_image_sequence(self):
         """
-        Takes a sequence of images
-        @return: numpy nd array of dimension (seq_length, px_x, px_y)
+        Reads image sequence from the camera
+        @return: numpy nd array of dimension (num_seq, seq_length, px_x, px_y)
         """
         pass
 
+    def get_images(self, start_image, stop_image):
+        """
+        Read the latest acquired images
+
+        @param:
+        @return:
+        """
+        pass
     @abstract_interface_method
     def get_available_trigger_modes(self):
         """
@@ -339,11 +361,11 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_up_triggering(self, trigger_mode):
+    def set_up_trigger_mode(self, trigger_mode):
         """
         Set the trigger mode ('Internal', 'External' ... )
         @param str trigger_mode: Target trigger mode
-        @return: Success ?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -367,7 +389,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def open_shutter(self):
         """
         Open the shutter
-        @return: Success ?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -375,7 +397,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def close_shutter(self):
         """
         Close the shutter if the camera has a shutter
-        @return: Success ?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -392,7 +414,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         Sets the temperature of the camera
         @param float temperature: Target temperature of the camera
-        @return: success?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -400,15 +422,15 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def start_temperature_control(self):
         """
         Start the temperature control of the camera
-        @return: success?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
     @abstract_interface_method
     def stop_temperature_control(self):
         """
-        Start the temperature control of the camera
-        @return: success?
+        Stop the temperature control of the camera
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
@@ -416,7 +438,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_temperature(self):
         """
         Gets the temperature of the camera
-        @return: success?
+        @return int error code: (0:OK, -1:error)
         """
         pass
 
