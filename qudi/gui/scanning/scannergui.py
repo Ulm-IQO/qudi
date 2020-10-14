@@ -174,32 +174,6 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         return
 
 
-class TiltCorrectionDockWidget(QtWidgets.QDockWidget):
-    """ Create the tilt correction dockwidget based on the corresponding *.ui file.
-    """
-
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_tilt_correction_widget.ui')
-
-        super().__init__('Tilt Correction')
-        self.setObjectName('tilt_correction_dockWidget')
-
-        # Load UI file
-        widget = QtWidgets.QWidget()
-        uic.loadUi(ui_file, widget)
-        widget.setObjectName('tilt_correction_widget')
-
-        widget.setMaximumWidth(widget.sizeHint().width())
-
-        self.setWidget(widget)
-
-        # FIXME: This widget needs to be redesigned for arbitrary axes. Disable it for now.
-        self.widget().setEnabled(False)
-        return
-
-
 class ScannerSettingDialog(QtWidgets.QDialog):
     """ Create the ScannerSettingsDialog window, based on the corresponding *.ui file."""
 
@@ -268,7 +242,6 @@ class ScannerGui(GuiBase):
 
         # References to static dockwidgets
         self.optimizer_dockwidget = None
-        self.tilt_correction_dockwidget = None
         self.scanner_control_dockwidget = None
         return
 
@@ -466,18 +439,17 @@ class ScannerGui(GuiBase):
             self._mw.action_view_optimizer.setChecked)
         self._mw.action_view_optimizer.triggered[bool].connect(
             self.optimizer_dockwidget.setVisible)
-        self.tilt_correction_dockwidget = TiltCorrectionDockWidget()
-        self.tilt_correction_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
-        self.tilt_correction_dockwidget.visibilityChanged.connect(
-            self._mw.action_view_tilt_correction.setChecked)
-        self._mw.action_view_tilt_correction.triggered[bool].connect(
-            self.tilt_correction_dockwidget.setVisible)
+
         self.scanner_control_dockwidget = ScannerControlDockWidget()
         self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
         self.scanner_control_dockwidget.visibilityChanged.connect(
             self._mw.action_view_scanner_control.setChecked)
         self._mw.action_view_scanner_control.triggered[bool].connect(
             self.scanner_control_dockwidget.setVisible)
+
+        self._mw.util_toolBar.visibilityChanged.connect(
+            self._mw.action_view_toolbar.setChecked)
+        self._mw.action_view_toolbar.triggered[bool].connect(self._mw.util_toolBar.setVisible)
 
     def _generate_axes_control_widgets(self):
         font = QtGui.QFont()
@@ -770,9 +742,10 @@ class ScannerGui(GuiBase):
         self.scanner_control_dockwidget.setFloating(False)
         self.scanner_control_dockwidget.show()
         self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.scanner_control_dockwidget)
-        self.tilt_correction_dockwidget.setFloating(False)
-        self.tilt_correction_dockwidget.hide()
-        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tilt_correction_dockwidget)
+
+        # Return toolbar to default position
+        self._mw.util_toolBar.show()
+        self._mw.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self._mw.util_toolBar)
         return
 
     def _remove_scan_dockwidget(self, axes):
