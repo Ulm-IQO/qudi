@@ -205,7 +205,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             if self._scan_running:
                 self.log.error('Unable to configure scan parameters while scan is running. '
                                'Stop scanning and try again.')
-                return self.scan_settings
+                return True, self.scan_settings
 
             axes = scan_settings.get('axes', self._current_scan_axes)
             ranges = tuple(
@@ -218,11 +218,11 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                 if not set(axes).issubset(self._position_ranges):
                     self.log.error('Unknown axes names encountered. Valid axes are: {0}'
                                    ''.format(set(self._position_ranges)))
-                    return self.scan_settings
+                    return True, self.scan_settings
 
             if len(axes) != len(ranges) or len(axes) != len(resolution):
                 self.log.error('"axes", "range" and "resolution" must have same length.')
-                return self.scan_settings
+                return True, self.scan_settings
             for i, ax in enumerate(axes):
                 for axis_constr in self._constraints.axes.values():
                     if ax == axis_constr.name:
@@ -230,23 +230,23 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                 if ranges[i][0] < axis_constr.min_value or ranges[i][1] > axis_constr.max_value:
                     self.log.error('Scan range out of bounds for axis "{0}". Maximum possible range'
                                    ' is: {1}'.format(ax, axis_constr.value_bounds))
-                    return self.scan_settings
+                    return True, self.scan_settings
                 if resolution[i] < axis_constr.min_resolution or resolution[i] > axis_constr.max_resolution:
                     self.log.error('Scan resolution out of bounds for axis "{0}". Maximum possible '
                                    'range is: {1}'.format(ax, axis_constr.resolution_bounds))
-                    return self.scan_settings
+                    return True, self.scan_settings
                 if i == 0:
                     if frequency < axis_constr.min_frequency or frequency > axis_constr.max_frequency:
                         self.log.error('Scan frequency out of bounds for fast axis "{0}". Maximum '
                                        'possible range is: {1}'
                                        ''.format(ax, axis_constr.frequency_bounds))
-                        return self.scan_settings
+                        return True, self.scan_settings
 
             self._current_scan_resolution = tuple(resolution)
             self._current_scan_ranges = ranges
             self._current_scan_axes = tuple(axes)
             self._current_scan_frequency = frequency
-            return self.scan_settings
+            return False, self.scan_settings
 
     def move_absolute(self, position, velocity=None):
         """ Move the scanning probe to an absolute position as fast as possible or with a defined
