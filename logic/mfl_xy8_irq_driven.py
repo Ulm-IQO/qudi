@@ -342,6 +342,9 @@ class MFL_IRQ_Driven(GenericLogic):
         self.mfl_resample_thresh = resample_thresh
         self.mfl_eta_assym = eta_assym
 
+        self.mfl_true_oemga_1_mhz = kwargs.get('true_omega_1_mhz', None) #-0.685
+        self.mfl_true_oemga_2_mhz = kwargs.get('true_omega_2_mhz', None) #0.150
+
         self.mfl_prior = qi.UniformDistribution(np.asarray([[2*np.pi*freq_min_1_mhz, 2*np.pi*freq_max_1_mhz],
                                                             [2*np.pi*freq_min_2_mhz, 2*np.pi*freq_max_2_mhz]]))
         self.mfl_model = mfl_lib.MultimodeDDModel(min_freq=freq_min,
@@ -368,12 +371,15 @@ class MFL_IRQ_Driven(GenericLogic):
         except:
             restr_ndd_list = []
 
+        #self.mfl_restr_ndd_list = restr_ndd_list[restr_ndd_list <= 176]
+        self.mfl_restr_ndd_list = restr_ndd_list
+
         self.mfl_tau_from_heuristic = mfl_lib.MultiDD_EstAOptFish_PGH(self.mfl_updater,
                                                                 b_gauss, inv_field=['w1','w2'],
                                                                 n_pi_max=self.n_pi_dd_max,
                                                                 opt_mode='fi_trace', restr_ndd_mod=self.ndd_mod,
                                                                 norm_fisher=True, coarse_opt_k=0,
-                                                                restr_ndd_list=restr_ndd_list)
+                                                                restr_ndd_list=self.mfl_restr_ndd_list)
 
         # heuristic fine control
         self.mfl_tau_from_heuristic._calc_fi_mode = 'baysian_fi_1'
@@ -1032,9 +1038,16 @@ class MFL_IRQ_Driven(GenericLogic):
     def calc_tau_n_from_posterior(self):
         if  self.is_calibmode_lintau:
             return -1, -1
-        tau_and_x = self.mfl_tau_from_heuristic()
-        tau = tau_and_x['t']    # us
-        n = tau_and_x['n']  # us
+        try:
+            tau_and_x = self.mfl_tau_from_heuristic()
+            tau = tau_and_x['t']    # us
+            n = tau_and_x['n']  # us
+        except RuntimeError:  #
+            tau = self.taus[self.i_epoch,:]*1e6
+            n = self.n_pi[self.i_epoch,0]
+            self.log.warning("PGH failed in epoch {}, repeating last mes tau= {} us, n_pi= {}".format(
+                self.i_epoch, tau, n
+            ))
         tau = tau[0] * 1e-6     # s
 
         #tau = 3500e-9   # DEBUG
@@ -1185,6 +1198,7 @@ class MFL_IRQ_Driven(GenericLogic):
         if last_phase != None and self.is_calibmode_lintau:
             idx_phase, val_phase = self._find_next_greatest(self.jumptable['read_phase'], last_phase,
                                                             idx_start=idx_jumptable, idx_end=i_last)
+
             if idx_phase is -1:
                 idx_jumptable, val_phase = self._find_nearest(self.jumptable['read_phase'], 0,
                                                             idx_start=idx_jumptable, idx_end=i_last)
@@ -1237,7 +1251,7 @@ class MFL_IRQ_Driven(GenericLogic):
             raise ValueError
 
     def pass_float(self, z, read_phase=0., z_thresh=None):
-        if read_phase == 0.:
+        if read_phase == 0:
             return z
         elif read_phase == np.pi:
             return self._flip_z_float(z)
@@ -1397,6 +1411,35 @@ class MFL_IRQ_Driven(GenericLogic):
                 (self.mfl_updater.particle_locations[:, 1] > self.mfl_frq_max_2_mhz * 2 * np.pi)] = 0
 
 
+    def compare_with_sim(self, z, tau, n_dd):
+
+        z_sim = -1
+
+        if self.nolog_callback:
+            return z_sim
+        try:
+            if self.i_epoch == 0:
+                self.z_sim_exp = []
+            locs = np.zeros([1, 2])  # updater.particle_locations
+            locs[0, 0] = self.mfl_true_oemga_1_mhz * 2 * np.pi
+            locs[0, 1] = self.mfl_true_oemga_2_mhz * 2 * np.pi
+
+            expparams = np.empty((1,), dtype=[('t', '<f8'), ('n', '<i4'), ('w1', '<f8'), ('w2', '<f8')])  # tau (us)
+            expparams['t'] = tau*1e6    # us
+            expparams['n'] = n_dd
+            expparams['w1'] = 0
+            expparams['w2'] = 0
+
+            z_sim = self.mfl_model.simulate_experiment(locs, expparams, full_result=True)
+
+            self.z_sim_exp.append([z_sim, z])
+
+            self.log.info("z= {}, expected z_sim= {}".format(z, z_sim))
+        except:
+            pass
+
+        return z_sim
+
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
 
         # done here, because before mes uploaded info not available and mes directly starts after upload atm
@@ -1423,12 +1466,15 @@ class MFL_IRQ_Driven(GenericLogic):
             self.log.info("MFL callback invoked in epoch {} @ addr {}. z= {} -> {}".format(self.i_epoch,
                                                                                            seqtable_addr,
                                                                                            z, z_binary))
+            z_sim = self.compare_with_sim(z_binary, last_tau, last_n_pi)
+
 
         self.update_mfl(z_binary, read_phase=last_phase)
+        #self.update_mfl(z_sim, read_phase=last_phase)
 
         # for next epoch
         tau_new_req, n_new_req = self.calc_tau_n_from_posterior()
-        phase_new_req = self.calc_phase_from_posterior()
+        phase_new_req = 0#self.calc_phase_from_posterior()
 
 
         idx_jumptable, addr = self.calc_jump_addr(tau_new_req, n_new_req, last_tau=last_tau, last_n_pi=last_n_pi,
@@ -1895,6 +1941,7 @@ if __name__ == '__main__':
                                   freq_min_1_mhz=0, freq_max_1_mhz=10, freq_min_2_mhz=0, freq_max_2_mhz=10,
                                   b0_gauss=None, z_phot_0=0, z_phot_1=0,
                                   tau_first=None, xy8_n_first=None,
+                                  true_omega_1_mhz=None, true_omega_2_mhz=None,
                                   meta_dict=None, nowait_callback=False, eta_assym=1):
 
         nolog = False # not calibmode_lintau
@@ -1924,7 +1971,8 @@ if __name__ == '__main__':
                                 freq_min_1_mhz=freq_min_1_mhz, freq_max_1_mhz=freq_max_1_mhz,
                                 freq_min_2_mhz=freq_min_2_mhz, freq_max_2_mhz=freq_max_2_mhz,
                                 z_phot_0=z_phot_0, z_phot_1=z_phot_1,
-                                eta_assym=eta_assym, b0_gauss=b0_gauss)
+                                eta_assym=eta_assym, b0_gauss=b0_gauss,
+                                true_omega_1_mhz=true_omega_1_mhz, true_omega_2_mhz=true_omega_2_mhz)
 
         if mfl_logic._cur_pull_data_method is 'gated_2d':
             mfl_logic.fastcounter.change_sweep_mode(gated=True, is_single_sweeps=False,
@@ -2040,7 +2088,8 @@ if __name__ == '__main__':
                               freq_min_2_mhz=params['freq_min_2_mhz'], freq_max_2_mhz=params['freq_max_2_mhz'],
                               b0_gauss=params['b0_gauss'], z_phot_0=params['z_phot_0'], z_phot_1=params['z_phot_1'],
                               calibmode_mode=params['calibmode_mode'], tau_first=params['tau_first'], xy8_n_first=params['xy8_n_first'],
-                              meta_dict=meta, nowait_callback=params['nowait_callback'])
+                              meta_dict=meta, nowait_callback=params['nowait_callback'],
+                              true_omega_1_mhz=params['true_omega_1_mhz'], true_omega_2_mhz=params['true_omega_2_mhz'])
     join_mfl_seperate_thread()
 
     exit(0)
