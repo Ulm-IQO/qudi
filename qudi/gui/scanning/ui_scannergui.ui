@@ -174,9 +174,16 @@ Shortcut:Alt+O</string>
    </property>
   </action>
   <action name="action_optimize_position">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
+     <normaloff>../../core/artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>
+     <normalon>../../core/artwork/icons/qudiTheme/22x22/stop-scan.png</normalon>../../core/artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
    </property>
    <property name="text">
     <string>Optimize position</string>

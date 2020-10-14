@@ -94,8 +94,8 @@ class ScanningProbeLogic(LogicBase):
         self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
         self.__timer.setSingleShot(True)
         self.__timer.timeout.connect(self._update_scanner_position_loop, QtCore.Qt.QueuedConnection)
-        self.__sigStartTimer.connect(self.__timer.start)
-        self.__sigStopTimer.connect(self.__timer.stop)
+        self.__sigStartTimer.connect(self.__timer.start, QtCore.Qt.QueuedConnection)
+        self.__sigStopTimer.connect(self.__timer.stop, QtCore.Qt.QueuedConnection)
         self.__timer.start()
         return
 
@@ -362,6 +362,7 @@ class ScanningProbeLogic(LogicBase):
                 return
 
             self.__current_scan_data = self._scanner().get_scan_data()
+            self.sigScanDataChanged.emit(self.__current_scan_data)
             # Terminate scan if finished
             if self.__current_scan_data.is_finished or self.__scan_stop_requested:
                 if self._scanner().stop_scan() < 0:
@@ -374,9 +375,9 @@ class ScanningProbeLogic(LogicBase):
                     self._update_scanner_position_loop, QtCore.Qt.QueuedConnection
                 )
                 self.module_state.unlock()
+                self.sigScanDataChanged.emit(self.__current_scan_data)
                 self.sigScanStateChanged.emit(False, self.__current_scan_data.scan_axes)
 
-            self.sigScanDataChanged.emit(self.__current_scan_data)
             self._start_timer()
             return
 
