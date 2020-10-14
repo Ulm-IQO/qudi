@@ -212,7 +212,7 @@ class ScannerGui(GuiBase):
     _optimize_logic = Connector(name='optimize_logic', interface='ScanningOptimizeLogic')
 
     # config options for gui
-    # default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
+    _default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
 
     # status vars
     _show_true_scanner_position = StatusVar(name='show_true_scanner_position', default=True)
@@ -472,6 +472,8 @@ class ScannerGui(GuiBase):
                                       QtWidgets.QSizePolicy.Preferred)
 
             min_spinbox = ScienDSpinBox()
+            if self._default_position_unit_prefix is not None:
+                min_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
             min_spinbox.setObjectName('{0}_min_range_scienDSpinBox'.format(ax_name))
             min_spinbox.setRange(*axis.value_range)
             min_spinbox.setSuffix(axis.unit)
@@ -481,6 +483,8 @@ class ScannerGui(GuiBase):
                                       QtWidgets.QSizePolicy.Preferred)
 
             max_spinbox = ScienDSpinBox()
+            if self._default_position_unit_prefix is not None:
+                max_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
             max_spinbox.setObjectName('{0}_max_range_scienDSpinBox'.format(ax_name))
             max_spinbox.setRange(*axis.value_range)
             max_spinbox.setSuffix(axis.unit)
@@ -500,6 +504,8 @@ class ScannerGui(GuiBase):
             slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
             pos_spinbox = ScienDSpinBox()
+            if self._default_position_unit_prefix is not None:
+                pos_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
             pos_spinbox.setObjectName('{0}_position_scienDSpinBox'.format(ax_name))
             pos_spinbox.setRange(*axis.value_range)
             pos_spinbox.setSuffix(axis.unit)
@@ -578,6 +584,8 @@ class ScannerGui(GuiBase):
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
             range_spinbox = ScienDSpinBox()
+            if self._default_position_unit_prefix is not None:
+                range_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
             range_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             range_spinbox.setRange(0, axis.max_value - axis.min_value)
             range_spinbox.setSuffix(axis.unit)
