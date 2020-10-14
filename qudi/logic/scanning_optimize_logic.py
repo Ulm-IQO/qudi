@@ -99,7 +99,7 @@ class ScanningOptimizeLogic(LogicBase):
             else:
                 self._scan_sequence = list()
         if self._data_channel is None:
-            self._data_channel = tuple(channels.values())[0]
+            self._data_channel = tuple(channels.values())[0].name
 
         self._sigNextSequenceStep.connect(self._next_sequence_step, QtCore.Qt.QueuedConnection)
         return

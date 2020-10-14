@@ -262,6 +262,7 @@ class ScannerGui(GuiBase):
         # References to automatically generated GUI elements
         self.axes_control_widgets = None
         self.optimizer_settings_axes_widgets = None
+        self.scanner_settings_axes_widgets = None
         self.scan_2d_dockwidgets = None
         self.scan_1d_dockwidgets = None
 
@@ -280,8 +281,7 @@ class ScannerGui(GuiBase):
         self.scan_2d_dockwidgets = dict()
         self.scan_1d_dockwidgets = dict()
 
-        # Initialize main window and dialogues
-        self._ssd = ScannerSettingDialog()
+        # Initialize main window
         self._mw = ConfocalMainWindow()
 
         # Initialize fixed dockwidgets
@@ -289,6 +289,7 @@ class ScannerGui(GuiBase):
 
         # Initialize dialog windows
         self._init_optimizer_settings()
+        self._init_scanner_settings()
 
         # Configure widgets according to available scan axes and apply scanner constraints
         self._generate_axes_control_widgets()
@@ -423,12 +424,37 @@ class ScannerGui(GuiBase):
         # Create dynamically created widgets
         self._generate_optimizer_axes_widgets()
 
+        # Constraint dialog size
+        self._osd.layout().setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+
         # Connect the action of the settings window with the code:
         self._osd.accepted.connect(self.change_optimizer_settings)
         self._osd.rejected.connect(self.update_optimizer_settings)
         self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.change_optimizer_settings)
         return
+
+    def _init_scanner_settings(self):
+        """
+        """
+        # Create the Settings dialog
+        self._ssd = ScannerSettingDialog()
+
+        # Connect MainWindow actions
+        self._mw.action_scanner_settings.triggered.connect(lambda x: self._ssd.exec_())
+
+        # Create dynamically created widgets
+        self._generate_settings_axes_widgets()
+
+        # Constraint dialog size
+        self._ssd.layout().setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+
+        # Connect the action of the settings dialog with the GUI module:
+        self._ssd.accepted.connect(self.change_scanner_settings)
+        self._ssd.rejected.connect(self.restore_scanner_settings)
+        self._ssd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.change_scanner_settings
+        )
 
     def _init_static_dockwidgets(self):
         self.optimizer_dockwidget = OptimizerDockWidget()
@@ -457,7 +483,6 @@ class ScannerGui(GuiBase):
         font = QtGui.QFont()
         font.setBold(True)
         layout = self.scanner_control_dockwidget.widget().layout()
-
         self.axes_control_widgets = dict()
         for index, (ax_name, axis) in enumerate(self._scanning_logic().scanner_axes.items(), 1):
             label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name.title()))
@@ -468,7 +493,7 @@ class ScannerGui(GuiBase):
             res_spinbox = QtWidgets.QSpinBox()
             res_spinbox.setObjectName('{0}_resolution_spinBox'.format(ax_name))
             res_spinbox.setRange(axis.min_resolution, min(2 ** 31 - 1, axis.max_resolution))
-            res_spinbox.setSuffix(' px')
+            res_spinbox.setSuffix('px')
             res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             res_spinbox.setMinimumSize(50, 0)
             res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
@@ -546,7 +571,6 @@ class ScannerGui(GuiBase):
 
     def _clear_axes_control_widgets(self):
         layout = self.scanner_control_dockwidget.widget().layout()
-
         for axis in tuple(self.axes_control_widgets):
             # Disconnect signals
             self.axes_control_widgets[axis]['min_spinbox'].editingFinished.disconnect()
@@ -575,14 +599,10 @@ class ScannerGui(GuiBase):
         return
 
     def _generate_optimizer_axes_widgets(self):
-        font = QtGui.QFont()
-        font.setBold(True)
         layout = self._osd.scan_ranges_gridLayout
-
         self.optimizer_settings_axes_widgets = dict()
         for index, (ax_name, axis) in enumerate(self._scanning_logic().scanner_axes.items(), 1):
             label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name))
-            label.setFont(font)
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
             range_spinbox = ScienDSpinBox()
@@ -595,7 +615,7 @@ class ScannerGui(GuiBase):
 
             res_spinbox = QtWidgets.QSpinBox()
             res_spinbox.setRange(axis.min_resolution, min(2 ** 31 - 1, axis.max_resolution))
-            res_spinbox.setSuffix(' px')
+            res_spinbox.setSuffix('px')
             res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             res_spinbox.setMinimumSize(70, 0)
             res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
@@ -604,7 +624,7 @@ class ScannerGui(GuiBase):
             freq_spinbox = ScienDSpinBox()
             freq_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             freq_spinbox.setRange(*axis.frequency_range)
-            freq_spinbox.setSuffix(' Hz')
+            freq_spinbox.setSuffix('Hz')
             freq_spinbox.setMinimumSize(70, 0)
             freq_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                        QtWidgets.QSizePolicy.Preferred)
@@ -625,7 +645,6 @@ class ScannerGui(GuiBase):
 
     def _clear_optimizer_axes_widgets(self):
         layout = self._osd.scan_ranges_gridLayout
-
         for axis in tuple(self.optimizer_settings_axes_widgets):
             # Remove from layout
             layout.removeWidget(self.optimizer_settings_axes_widgets[axis]['label'])
@@ -640,6 +659,56 @@ class ScannerGui(GuiBase):
             self.optimizer_settings_axes_widgets[axis]['freq_spinbox'].deleteLater()
 
         self.optimizer_settings_axes_widgets = dict()
+        return
+
+    def _generate_settings_axes_widgets(self):
+        layout = self._ssd.axes_settings_gridLayout
+        self.scanner_settings_axes_widgets = dict()
+        for index, (ax_name, axis) in enumerate(self._scanning_logic().scanner_axes.items(), 2):
+            label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name))
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+            forward_spinbox = ScienDSpinBox()
+            forward_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            forward_spinbox.setRange(*axis.frequency_range)
+            forward_spinbox.setSuffix('Hz')
+            forward_spinbox.setMinimumSize(70, 0)
+            forward_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                          QtWidgets.QSizePolicy.Preferred)
+
+            backward_spinbox = ScienDSpinBox()
+            backward_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            backward_spinbox.setRange(*axis.frequency_range)
+            backward_spinbox.setSuffix('Hz')
+            backward_spinbox.setMinimumSize(70, 0)
+            backward_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                           QtWidgets.QSizePolicy.Preferred)
+
+            # Add to layout
+            layout.addWidget(label, index, 0)
+            layout.addWidget(forward_spinbox, index, 1)
+            layout.addWidget(backward_spinbox, index, 2)
+
+            # Remember widgets references for later access
+            self.scanner_settings_axes_widgets[ax_name] = {'label'           : label,
+                                                           'forward_spinbox' : forward_spinbox,
+                                                           'backward_spinbox': backward_spinbox}
+        return
+
+    def _clear_settings_axes_widgets(self):
+        layout = self._ssd.axes_settings_gridLayout
+        for axis in tuple(self.scanner_settings_axes_widgets):
+            # Remove from layout
+            layout.removeWidget(self.scanner_settings_axes_widgets[axis]['label'])
+            layout.removeWidget(self.scanner_settings_axes_widgets[axis]['forward_spinbox'])
+            layout.removeWidget(self.scanner_settings_axes_widgets[axis]['backward_spinbox'])
+
+            # Mark widgets for deletion in Qt framework
+            self.scanner_settings_axes_widgets[axis]['label'].deleteLater()
+            self.scanner_settings_axes_widgets[axis]['forward_spinbox'].deleteLater()
+            self.scanner_settings_axes_widgets[axis]['backward_spinbox'].deleteLater()
+
+        self.scanner_settings_axes_widgets = dict()
         return
 
     @QtCore.Slot()
@@ -821,6 +890,20 @@ class ScannerGui(GuiBase):
         return
 
     @QtCore.Slot()
+    def change_scanner_settings(self):
+        """ ToDo: Document
+        """
+        forward_freq = {ax: w_dict['forward_spinbox'].value() for ax, w_dict in
+                        self.scanner_settings_axes_widgets.items()}
+        self.sigScanSettingsChanged.emit({'frequency': forward_freq})
+
+    @QtCore.Slot()
+    def restore_scanner_settings(self):
+        """ ToDo: Document
+        """
+        self.update_scanner_settings({'frequency': self._scanning_logic().scan_frequency})
+
+    @QtCore.Slot()
     @QtCore.Slot(dict)
     def update_scanner_settings(self, settings=None):
         """
@@ -850,6 +933,9 @@ class ScannerGui(GuiBase):
                 max_spinbox.setValue(axis_range[1])
                 min_spinbox.blockSignals(False)
                 max_spinbox.blockSignals(False)
+        if 'frequency' in settings:
+            for axis, frequency in settings['frequency'].items():
+                self.scanner_settings_axes_widgets[axis]['forward_spinbox'].setValue(frequency)
         return
 
     def set_scanner_target_position(self, target_pos):
