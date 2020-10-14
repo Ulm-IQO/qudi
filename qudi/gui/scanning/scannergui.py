@@ -26,6 +26,7 @@ import pyqtgraph as pg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 import qudi.core.gui.uic as uic
+from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
@@ -222,8 +223,9 @@ class ScannerGui(GuiBase):
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict, object)
     sigScanSettingsChanged = QtCore.Signal(dict)
-    sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleScan = QtCore.Signal(bool, tuple)
+    sigOptimizerSettingsChanged = QtCore.Signal(dict)
+    sigToggleOptimize = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -304,7 +306,11 @@ class ScannerGui(GuiBase):
             self._scanning_logic().set_scan_settings, QtCore.Qt.QueuedConnection
         )
         self.sigToggleScan.connect(self._scanning_logic().toggle_scan, QtCore.Qt.QueuedConnection)
+        self.sigToggleOptimize.connect(
+            self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
+        )
 
+        self._mw.action_optimize_position.triggered[bool].connect(self.toggle_optimize)
         self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
         self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
         self._mw.action_utility_full_range.triggered.connect(
@@ -335,6 +341,12 @@ class ScannerGui(GuiBase):
         self._data_logic().sigScanDataChanged.connect(
             self.scan_data_updated, QtCore.Qt.QueuedConnection
         )
+        self._optimize_logic().sigOptimizeStateChanged.connect(
+            self.optimize_state_updated, QtCore.Qt.QueuedConnection
+        )
+        self._optimize_logic().sigOptimizeScanDataChanged.connect(
+            self.optimize_data_updated, QtCore.Qt.QueuedConnection
+        )
 
         # FIXME: Dirty workaround for strange pyqtgraph autoscale behaviour
         for dockwidget in self.scan_2d_dockwidgets.values():
@@ -358,6 +370,8 @@ class ScannerGui(GuiBase):
         self.sigScannerTargetChanged.disconnect()
         self.sigScanSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
+        self.sigToggleOptimize.disconnect()
+        self._mw.action_optimize_position.triggered[bool].disconnect()
         self._mw.action_restore_default_view.triggered.disconnect()
         self._mw.action_history_forward.triggered.disconnect()
         self._mw.action_history_back.triggered.disconnect()
@@ -368,6 +382,8 @@ class ScannerGui(GuiBase):
         self._scanning_logic().sigScanSettingsChanged.disconnect(self.update_scanner_settings)
         self._scanning_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
         self._scanning_logic().sigScanStateChanged.disconnect(self.scan_state_updated)
+        self._optimize_logic().sigOptimizeScanDataChanged.disconnect(self.optimize_data_updated)
+        self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
         self._data_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
 
         for scan in tuple(self.scan_1d_dockwidgets):
@@ -973,7 +989,6 @@ class ScannerGui(GuiBase):
     @QtCore.Slot(object)
     def scan_data_updated(self, scan_data=None):
         """
-
         @param dict scan_data:
         """
         if not isinstance(scan_data, ScanData):
@@ -1015,29 +1030,79 @@ class ScannerGui(GuiBase):
 
     @QtCore.Slot(bool, tuple)
     def scan_state_updated(self, is_running, scan_axes):
-        if is_running:
-            for axes, dockwidget in self.scan_2d_dockwidgets.items():
-                if axes == scan_axes:
-                    dockwidget.toggle_scan_button.setChecked(True)
-                else:
-                    dockwidget.toggle_scan_button.setEnabled(False)
-            for axes, dockwidget in self.scan_1d_dockwidgets.items():
-                if axes == scan_axes:
-                    dockwidget.toggle_scan_button.setChecked(True)
-                else:
-                    dockwidget.toggle_scan_button.setEnabled(False)
+        self._toggle_enable_scan_actions_buttons(not is_running)
+        if self._optimize_logic().module_state() == 'idle':
+            dockwidget = self.scan_2d_dockwidgets.get(scan_axes, None)
+            if dockwidget is not None:
+                dockwidget.toggle_scan_button.setChecked(is_running)
+                dockwidget.toggle_scan_button.setEnabled(True)
         else:
-            for axes, dockwidget in self.scan_2d_dockwidgets.items():
-                if axes == scan_axes:
-                    dockwidget.toggle_scan_button.setChecked(False)
-                else:
-                    dockwidget.toggle_scan_button.setEnabled(True)
-            for axes, dockwidget in self.scan_1d_dockwidgets.items():
-                if axes == scan_axes:
-                    dockwidget.toggle_scan_button.setChecked(False)
-                else:
-                    dockwidget.toggle_scan_button.setEnabled(True)
+            self._mw.action_optimize_position.setEnabled(True)
         return
+
+    @QtCore.Slot(bool)
+    def optimize_state_updated(self, is_running):
+        self._mw.action_optimize_position.setChecked(is_running)
+        if is_running:
+            try:
+                self._scanning_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
+            except RuntimeError:
+                pass
+        else:
+            self._scanning_logic().sigScanDataChanged.connect(
+                self.scan_data_updated, QtCore.Qt.QueuedConnection
+            )
+        return
+
+    @QtCore.Slot(object)
+    def optimize_data_updated(self, scan_data=None):
+        """
+        @param dict scan_data:
+        """
+        # if not isinstance(scan_data, ScanData):
+        #     scan_data = self._scanning_logic().scan_data
+        # if scan_data is None:
+        #     return
+        #
+        # if scan_data.scan_dimension == 2:
+        #     dockwidget = self.scan_2d_dockwidgets[scan_data.scan_axes]
+        #     data = scan_data.data
+        #     dockwidget.scan_widget.set_image(data)
+        #     if data is not None:
+        #         dockwidget.scan_widget.set_image_extent(scan_data.scan_range)
+        #     dockwidget.scan_widget.autoRange()
+        # elif scan_data.scan_dimension == 1:
+        #     dockwidget = self.scan_1d_dockwidgets[scan_data.scan_axes]
+        #     if set(scan_data.channel_names) != dockwidget.channel_set:
+        #         old_channel = dockwidget.channel_combobox.currentText()
+        #         dockwidget.channel_combobox.blockSignals(True)
+        #         dockwidget.channel_combobox.clear()
+        #         dockwidget.channel_combobox.addItems(scan_data.channel_names)
+        #         dockwidget.channel_set = set(scan_data.channel_names)
+        #         if old_channel in dockwidget.channel_set:
+        #             dockwidget.channel_combobox.setCurrentText(old_channel)
+        #         else:
+        #             dockwidget.channel_combobox.setCurrentIndex(0)
+        #         dockwidget.channel_combobox.blockSignals(False)
+        #     channel = dockwidget.channel_combobox.currentText()
+        #     if scan_data.data is None:
+        #         dockwidget.plot_item.setData(np.zeros(1), np.zeros(1))
+        #     else:
+        #         dockwidget.plot_item.setData(
+        #             np.linspace(*(scan_data.scan_range[0]), scan_data.scan_resolution[0]),
+        #             scan_data.data[channel]
+        #         )
+        #     dockwidget.plot_widget.setLabel(
+        #         'left', channel, units=scan_data.channel_units[channel])
+        # return
+        print('optimize data')
+
+    @QtCore.Slot(bool)
+    def toggle_optimize(self, enabled):
+        """
+        """
+        self._toggle_enable_scan_actions_buttons(not enabled)
+        self.sigToggleOptimize.emit(enabled)
 
     def _update_position_display(self, pos_dict):
         """
@@ -1086,6 +1151,17 @@ class ScannerGui(GuiBase):
                     crosshair.set_position(crosshair_pos)
         return
 
+    def _toggle_enable_scan_actions_buttons(self, enable):
+        self._mw.action_utility_zoom.setEnabled(enable)
+        self._mw.action_utility_full_range.setEnabled(enable)
+        self._mw.action_history_back.setEnabled(enable)
+        self._mw.action_history_forward.setEnabled(enable)
+        self._mw.action_optimize_position.setEnabled(enable)
+        for axes, dockwidget in self.scan_2d_dockwidgets.items():
+            dockwidget.toggle_scan_button.setEnabled(enable)
+        for axes, dockwidget in self.scan_1d_dockwidgets.items():
+            dockwidget.toggle_scan_button.setEnabled(enable)
+
     def __get_slider_update_func(self, ax, slider):
         def update_func(x):
             pos_dict = {ax: x}
@@ -1109,6 +1185,7 @@ class ScannerGui(GuiBase):
 
     def __get_toggle_scan_func(self, ax):
         def toggle_func(enabled):
+            self._toggle_enable_scan_actions_buttons(not enabled)
             self.sigToggleScan.emit(enabled, ax)
         return toggle_func
 

@@ -90,8 +90,9 @@ class ScanningOptimizeLogic(LogicBase):
         if self._scan_sequence is None:
             avail_axes = tuple(axes.values())
             if len(avail_axes) >= 3:
-                self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name),
-                                       (avail_axes[2].name,)]
+                self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name)]
+                # self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name),
+                #                        (avail_axes[2].name,)]
             elif len(avail_axes) == 2:
                 self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name)]
             elif len(avail_axes) == 1:
@@ -102,6 +103,12 @@ class ScanningOptimizeLogic(LogicBase):
             self._data_channel = tuple(channels.values())[0].name
 
         self._sigNextSequenceStep.connect(self._next_sequence_step, QtCore.Qt.QueuedConnection)
+        self._scan_logic().sigScanStateChanged.connect(
+            self._scan_state_changed, QtCore.Qt.QueuedConnection
+        )
+        self._scan_logic().sigScanDataChanged.connect(
+            self._scan_data_changed, QtCore.Qt.QueuedConnection
+        )
         return
 
     def on_deactivate(self):
@@ -160,6 +167,13 @@ class ScanningOptimizeLogic(LogicBase):
             self.sigOptimizeSettingsChanged.emit(settings_update)
             return settings_update
 
+    @qudi_slot(bool)
+    def toggle_optimize(self, start):
+        if start:
+            return self.start_optimize()
+        else:
+            return self.stop_optimize()
+
     @qudi_slot()
     def start_optimize(self):
         with self._thread_lock:
@@ -170,7 +184,7 @@ class ScanningOptimizeLogic(LogicBase):
 
             # ToDo: Sanity checks for settings go here
 
-            self.module_state().lock()
+            self.module_state.lock()
 
             # stash old scanner settings
             self._stashed_scan_settings = self._scan_logic().scan_settings
@@ -204,12 +218,14 @@ class ScanningOptimizeLogic(LogicBase):
 
             self._sequence_index = 0
             self._stop_requested = False
+            self.sigOptimizeStateChanged.emit(True)
             self._sigNextSequenceStep.emit()
             return 0
 
     @qudi_slot()
     def _next_sequence_step(self):
         with self._thread_lock:
+            print('_next_sequence_step')
             if self.module_state() == 'idle':
                 return
 
@@ -222,13 +238,14 @@ class ScanningOptimizeLogic(LogicBase):
                 self._scan_logic().set_scan_settings(self._stashed_scan_settings)
                 self._stashed_scan_settings = dict()
                 self._curr_scan_data = dict()
-                self.module_state().unlock()
+                self.module_state.unlock()
                 self.sigOptimizeStateChanged.emit(False)
             return
 
     @qudi_slot(object)
     def _scan_data_changed(self, data):
         with self._thread_lock:
+            print('_scan_data_changed')
             if self.module_state() == 'idle':
                 return
 
@@ -238,6 +255,7 @@ class ScanningOptimizeLogic(LogicBase):
     @qudi_slot(bool, tuple)
     def _scan_state_changed(self, is_running, axes):
         with self._thread_lock:
+            print('_scan_state_changed')
             if is_running or self.module_state() == 'idle':
                 return
 
@@ -252,7 +270,7 @@ class ScanningOptimizeLogic(LogicBase):
                 self._scan_logic().set_scan_settings(self._stashed_scan_settings)
                 self._stashed_scan_settings = dict()
                 self._curr_scan_data = dict()
-                self.module_state().unlock()
+                self.module_state.unlock()
                 self.sigOptimizeStateChanged.emit(False)
             else:
                 self._sigNextSequenceStep.emit()
