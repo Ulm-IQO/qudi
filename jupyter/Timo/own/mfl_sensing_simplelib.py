@@ -2809,7 +2809,7 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
 
         return tau_opt, ndd_opt
 
-    def get_ndd_range(self, ndd_min, ndd_max, rest_ndd_list=[]):
+    def get_ndd_range(self, ndd_min, ndd_max, force_ndd=[], rest_ndd_list=[]):
 
         n_dd_min = ndd_min // int(self._restr_ndd_mod) * self._restr_ndd_mod
         if n_dd_min < self._restr_ndd_mod:
@@ -2823,10 +2823,17 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
 
         # + 1 to inculde stop point
         ndd_range = np.arange(n_dd_min, n_dd_max + 1, self._restr_ndd_mod)
+        ndd_range = np.concatenate([ndd_range, np.asarray(force_ndd).flatten()])
         if (np.asarray(rest_ndd_list).flatten()).size == 0:
             return ndd_range
         else:
-            return [el for el in ndd_range if el in np.unique(rest_ndd_list)]
+            # only if rest_ndd_list
+            ndd_range = [el for el in ndd_range if el in np.unique(rest_ndd_list)]
+            # range not in rest list
+            if not ndd_range:
+                return rest_ndd_list
+            else:
+                return ndd_range
 
 
     def estimate_tau_res_width(self, tau_res_k_1, n_dd):
@@ -2958,13 +2965,13 @@ class MultiDD_EstAOptFish_PGH(MultiPGH):
             n_dd_right = n_dd + sigma_n[1]
             # print("Debug: Extending sigma_n_right: {}".format(n_dd_right))
 
-        ndd_range = self.get_ndd_range(n_dd_left, n_dd_right, self._restr_ndd_list)
+        ndd_range = self.get_ndd_range(n_dd_left, n_dd_right, rest_ndd_list=self._restr_ndd_list, force_ndd=[n_dd])
 
         while tau_left <= 0:
             tau_left += sigma_tau_us / 25
 
         tau_arr = np.concatenate([np.linspace(tau_left, tau_right, n_points).flatten(), np.asarray(tau_us).flatten()])
-        n_dd_arr = np.concatenate([ndd_range, np.asarray(n_dd).flatten()])
+        n_dd_arr = ndd_range
         tau_grid, n_grid = np.meshgrid(tau_arr, n_dd_arr)
 
         tau_opt, ndd_opt = self._optimize_fi(tau_grid.flatten(), n_grid.flatten(), opt_mode, debug_plots=debug_plots)
