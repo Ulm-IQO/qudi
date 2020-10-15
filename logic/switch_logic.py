@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
+from qtpy import QtWidgets, QtGui, QtCore
 
 
 class SwitchLogic(GenericLogic):
@@ -37,6 +38,8 @@ class SwitchLogic(GenericLogic):
     switch7 = Connector(interface='SwitchInterface', optional=True)
     switch8 = Connector(interface='SwitchInterface', optional=True)
     switch9 = Connector(interface='SwitchInterface', optional=True)
+
+    sig_switch_updated = QtCore.Signal(list)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -62,8 +65,16 @@ class SwitchLogic(GenericLogic):
         return [switch().names_of_states for switch in self._hw_switches]
 
     @property
-    def names_of_switches(self):
+    def names_of_hardware(self):
         return [switch().name for switch in self._hw_switches]
+
+    @property
+    def names_of_switches(self):
+        return [switch().names_of_switches for switch in self._hw_switches]
+
+    @property
+    def number_of_switches(self):
+        return [switch().number_of_switches for switch in self._hw_switches]
 
     @property
     def states(self):
@@ -71,3 +82,4 @@ class SwitchLogic(GenericLogic):
 
     def set_state(self, hardware_index, switch_index, state):
         self._hw_switches[hardware_index]().set_state(switch_index, state)
+        self.sig_switch_updated.emit(self.states)
