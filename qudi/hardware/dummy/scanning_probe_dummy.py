@@ -449,11 +449,14 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                     if self.__last_line < acquired_lines - 1:
                         if self.__last_line < 0:
                             self.__last_line = 0
-                        self._scan_data.add_line_data(
-                            {ch: self._scan_image[self.__last_line:acquired_lines] for ch in
-                             self._constraints.channels},
-                            self.__last_line
-                        )
+                        for ch in self._constraints.channels:
+                            tmp = self._scan_image[self.__last_line:acquired_lines]
+                            self._scan_data.data[ch][self.__last_line:acquired_lines] = tmp
+                        # self._scan_data.add_line_data(
+                        #     {ch: self._scan_image[self.__last_line:acquired_lines] for ch in
+                        #      self._constraints.channels},
+                        #     self.__last_line
+                        # )
                         self.__last_line = acquired_lines - 1
                     if acquired_lines >= self._current_scan_resolution[0]:
                         self._scan_data.finish_scan()

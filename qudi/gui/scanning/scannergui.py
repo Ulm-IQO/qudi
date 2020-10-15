@@ -1048,6 +1048,46 @@ class ScannerGui(GuiBase):
                 self._scanning_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
             except RuntimeError:
                 pass
+            curr_pos = self._scanning_logic().scanner_target
+            axes_constr = self._scanning_logic().scanner_axes
+            channel_constr = self._scanning_logic().scanner_channels
+            optim_settings = self._optimize_logic().optimize_settings
+            for seq_step in self._optimize_logic().scan_sequence:
+                if len(seq_step) == 1:
+                    axis = seq_step[0]
+                    channel = optim_settings['data_channel']
+                    self.optimizer_dockwidget.plot_widget.setLabel(
+                        'bottom', axis, units=axes_constr[axis].unit
+                    )
+                    self.optimizer_dockwidget.plot_widget.setLabel(
+                        'left', channel, units=channel_constr[channel].unit
+                    )
+                    self.optimizer_dockwidget.plot_widget.removeItem(
+                        self.optimizer_dockwidget.fit_plot_item
+                    )
+                    self.optimizer_dockwidget.plot_item.setData(
+                        np.zeros(optim_settings['scan_resolution'][axis])
+                    )
+                elif len(seq_step) == 2:
+                    x_axis, y_axis = seq_step
+                    x_extent = optim_settings['scan_range'][x_axis] / 2
+                    y_extent = optim_settings['scan_range'][y_axis] / 2
+                    self.optimizer_dockwidget.scan_widget.setLabel(
+                        'bottom', x_axis, units=axes_constr[x_axis].unit
+                    )
+                    self.optimizer_dockwidget.scan_widget.setLabel(
+                        'left', y_axis, units=axes_constr[y_axis].unit
+                    )
+                    self.optimizer_dockwidget.scan_widget.crosshairs[0].set_position(
+                        (curr_pos[x_axis], curr_pos[y_axis])
+                    )
+                    self.optimizer_dockwidget.image_item.setImage(
+                        np.zeros((optim_settings['scan_resolution'][x_axis],
+                                  optim_settings['scan_resolution'][y_axis]))
+                    )
+                    self.optimizer_dockwidget.image_item.set_image_extent(
+                        ((-x_extent, x_extent), (-y_extent, y_extent))
+                    )
         else:
             self._scanning_logic().sigScanDataChanged.connect(
                 self.scan_data_updated, QtCore.Qt.QueuedConnection
@@ -1059,43 +1099,25 @@ class ScannerGui(GuiBase):
         """
         @param dict scan_data:
         """
-        # if not isinstance(scan_data, ScanData):
-        #     scan_data = self._scanning_logic().scan_data
-        # if scan_data is None:
-        #     return
-        #
-        # if scan_data.scan_dimension == 2:
-        #     dockwidget = self.scan_2d_dockwidgets[scan_data.scan_axes]
-        #     data = scan_data.data
-        #     dockwidget.scan_widget.set_image(data)
-        #     if data is not None:
-        #         dockwidget.scan_widget.set_image_extent(scan_data.scan_range)
-        #     dockwidget.scan_widget.autoRange()
-        # elif scan_data.scan_dimension == 1:
-        #     dockwidget = self.scan_1d_dockwidgets[scan_data.scan_axes]
-        #     if set(scan_data.channel_names) != dockwidget.channel_set:
-        #         old_channel = dockwidget.channel_combobox.currentText()
-        #         dockwidget.channel_combobox.blockSignals(True)
-        #         dockwidget.channel_combobox.clear()
-        #         dockwidget.channel_combobox.addItems(scan_data.channel_names)
-        #         dockwidget.channel_set = set(scan_data.channel_names)
-        #         if old_channel in dockwidget.channel_set:
-        #             dockwidget.channel_combobox.setCurrentText(old_channel)
-        #         else:
-        #             dockwidget.channel_combobox.setCurrentIndex(0)
-        #         dockwidget.channel_combobox.blockSignals(False)
-        #     channel = dockwidget.channel_combobox.currentText()
-        #     if scan_data.data is None:
-        #         dockwidget.plot_item.setData(np.zeros(1), np.zeros(1))
-        #     else:
-        #         dockwidget.plot_item.setData(
-        #             np.linspace(*(scan_data.scan_range[0]), scan_data.scan_resolution[0]),
-        #             scan_data.data[channel]
-        #         )
-        #     dockwidget.plot_widget.setLabel(
-        #         'left', channel, units=scan_data.channel_units[channel])
-        # return
-        print('optimize data')
+        print('OPTIMIZE DATA UPDATE')
+        if scan_data is None:
+            return
+        if not isinstance(scan_data, ScanData):
+            self.log.error('Parameter "scan_data" must be ScanData instance. '
+                           'Unable to display optimizer scan data.')
+
+        if scan_data.scan_dimension == 2:
+            self.optimizer_dockwidget.image_item.setImage(
+                scan_data.data[self._optimize_logic().data_channel]
+            )
+            if scan_data.data is not None:
+                self.optimizer_dockwidget.image_item.set_image_extent(scan_data.scan_range)
+            self.optimizer_dockwidget.scan_widget.autoRange()
+        elif scan_data.scan_dimension == 1:
+            x_data = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
+            y_data = scan_data.data[self._optimize_logic().data_channel]
+            self.optimizer_dockwidget.plot_item.setData(x_data, y_data)
+        return
 
     @QtCore.Slot(bool)
     def toggle_optimize(self, enabled):

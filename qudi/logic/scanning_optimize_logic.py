@@ -90,9 +90,8 @@ class ScanningOptimizeLogic(LogicBase):
         if self._scan_sequence is None:
             avail_axes = tuple(axes.values())
             if len(avail_axes) >= 3:
-                self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name)]
-                # self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name),
-                #                        (avail_axes[2].name,)]
+                self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name),
+                                       (avail_axes[2].name,)]
             elif len(avail_axes) == 2:
                 self._scan_sequence = [(avail_axes[0].name, avail_axes[1].name)]
             elif len(avail_axes) == 1:
@@ -134,12 +133,16 @@ class ScanningOptimizeLogic(LogicBase):
         return self._scan_resolution.copy()
 
     @property
+    def scan_sequence(self):
+        return self._scan_sequence.copy()
+
+    @property
     def optimize_settings(self):
         return {'scan_frequency': self.scan_frequency,
                 'data_channel': self._data_channel,
                 'scan_range': self.scan_range,
                 'scan_resolution': self.scan_resolution,
-                'scan_sequence': self._scan_sequence}
+                'scan_sequence': self.scan_sequence}
 
     @qudi_slot(dict)
     def set_optimize_settings(self, settings):
@@ -250,6 +253,7 @@ class ScanningOptimizeLogic(LogicBase):
                 return
 
             self._curr_scan_data[data.scan_axes] = data
+            self.sigOptimizeScanDataChanged.emit(data)
             return
 
     @qudi_slot(bool, tuple)
