@@ -57,9 +57,6 @@ class ScanningProbeLogic(LogicBase):
     sigScanSettingsChanged = QtCore.Signal(dict)
     sigScanDataChanged = QtCore.Signal(object)
 
-    __sigStopTimer = QtCore.Signal()
-    __sigStartTimer = QtCore.Signal()
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -94,8 +91,6 @@ class ScanningProbeLogic(LogicBase):
         self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
         self.__timer.setSingleShot(True)
         self.__timer.timeout.connect(self._update_scanner_position_loop, QtCore.Qt.QueuedConnection)
-        self.__sigStartTimer.connect(self.__timer.start, QtCore.Qt.QueuedConnection)
-        self.__sigStopTimer.connect(self.__timer.stop, QtCore.Qt.QueuedConnection)
         self.__timer.start()
         return
 
@@ -104,8 +99,6 @@ class ScanningProbeLogic(LogicBase):
         """
         self.__timer.stop()
         self.__timer.timeout.disconnect()
-        self.__sigStartTimer.disconnect()
-        self.__sigStopTimer.disconnect()
         if self.module_state() != 'idle':
             self._scanner().stop_scan()
         return
@@ -388,8 +381,18 @@ class ScanningProbeLogic(LogicBase):
 
     @qudi_slot()
     def _start_timer(self):
-        self.__sigStartTimer.emit()
+        if self.thread() is not QtCore.QThread.currentThread():
+            QtCore.QMetaObject.invokeMethod(self.__timer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            self.__timer.start()
 
     @qudi_slot()
     def _stop_timer(self):
-        self.__sigStopTimer.emit()
+        if self.thread() is not QtCore.QThread.currentThread():
+            QtCore.QMetaObject.invokeMethod(self.__timer,
+                                            'stop',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            self.__timer.stop()
