@@ -16,19 +16,20 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QScrollArea" name="scrollArea">
+     <widget class="QScrollArea" name="scroll_area">
       <property name="widgetResizable">
        <bool>true</bool>
       </property>
-      <widget class="QWidget" name="scrollAreaWidgetContents">
+      <widget class="QWidget" name="scroll_area_widget">
        <property name="geometry">
         <rect>
          <x>0</x>
          <y>0</y>
          <width>446</width>
-         <height>562</height>
+         <height>555</height>
         </rect>
        </property>
+       <layout class="QVBoxLayout" name="verticalLayout"/>
       </widget>
      </widget>
     </item>
@@ -40,7 +41,7 @@
      <x>0</x>
      <y>0</y>
      <width>466</width>
-     <height>18</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">

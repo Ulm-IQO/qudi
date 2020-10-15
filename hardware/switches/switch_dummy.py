@@ -41,6 +41,7 @@ class SwitchDummy(Base, SwitchInterface):
     _number_of_switches = ConfigOption(name='number_of_switches', default=1, missing='nothing')
     _names_of_states = ConfigOption(name='names_of_states', default=['On', 'Off'], missing='nothing')
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
     _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
 
     _states = StatusVar(name='states', default=None)
@@ -61,6 +62,11 @@ class SwitchDummy(Base, SwitchInterface):
             self.log.error(f'names_of_states must either be a list of two names for the states [high, low] '
                            f'which are applied to all switched or it must be a list '
                            f'of length {self._number_of_switches} with elements of the aforementioned shape.')
+
+        if np.shape(self._names_of_switches) == (int(self.number_of_switches), ):
+            self._names_of_switches = list(self._names_of_switches)
+        else:
+            self._names_of_switches = [str(index + 1) for index in range(int(self.number_of_switches))]
 
         # initialize channels to saved status if requested
         if self._reset_states:
@@ -90,6 +96,10 @@ class SwitchDummy(Base, SwitchInterface):
         return self._names_of_states.copy()
 
     @property
+    def names_of_switches(self):
+        return self._names_of_switches.copy()
+
+    @property
     def number_of_switches(self):
         return self._number_of_switches
 
@@ -100,9 +110,9 @@ class SwitchDummy(Base, SwitchInterface):
         return False
 
     def set_state(self, index_of_switch, state):
-        print(self._hardware_name, index_of_switch, state)
         if 0 <= index_of_switch < self.number_of_switches:
             self._states[int(index_of_switch)] = bool(state)
         else:
             self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
+        print(self._hardware_name, index_of_switch, state, self._states[int(index_of_switch)])
         return self._states[int(index_of_switch)]

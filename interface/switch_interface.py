@@ -56,6 +56,11 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
     def number_of_switches(self):
         pass
 
+    @property
+    @abstract_interface_method
+    def names_of_switches(self):
+        pass
+
     @abstract_interface_method
     def get_state(self, number_of_switch):
         pass
