@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
 from qtpy import QtWidgets, QtGui, QtCore
+import numpy as np
 
 
 class SwitchLogic(GenericLogic):
@@ -60,6 +61,13 @@ class SwitchLogic(GenericLogic):
         """
         self._hw_switches = list()
 
+    def _switch(self, index):
+        if 0 <= index < len(self._hw_switches):
+            return self._hw_switches[int(index)]()
+        self.log.error(f'The index of the hardware was {index} '
+                       f'but needs to be in the range from 0 to {self.number_of_hardware - 1}.')
+        return None
+
     @property
     def names_of_states(self):
         return [switch().names_of_states for switch in self._hw_switches]
@@ -77,9 +85,55 @@ class SwitchLogic(GenericLogic):
         return [switch().number_of_switches for switch in self._hw_switches]
 
     @property
+    def number_of_hardware(self):
+        return len(self._hw_switches)
+
+    @property
     def states(self):
         return [switch().states for switch in self._hw_switches]
 
-    def set_state(self, hardware_index, switch_index, state):
-        self._hw_switches[hardware_index]().set_state(switch_index, state)
-        self.sig_switch_updated.emit(self.states)
+    @states.setter
+    def states(self, value):
+        print(np.shape(value))
+        if np.isscalar(value):
+            for index, hw_switch in enumerate(self._hw_switches):
+                hw_switch().states = value
+            self.sig_switch_updated.emit(self.states)
+        elif np.shape(value) == (self.number_of_hardware,):
+            for index, hw_switch in enumerate(self._hw_switches):
+                if np.isscalar(value[index]) or len(value[index]) == hw_switch().number_of_switches:
+                    hw_switch().states = value[index]
+                else:
+                    self.log.error(f'The dimension of the switch named "{hw_switch().name}" was {len(value[index])} '
+                                   f'but needs to be {hw_switch().number_of_switches}.')
+            self.sig_switch_updated.emit(self.states)
+        else:
+            self.log.error(f'The length of the first dimension of the states was {len(value)} '
+                           f'but needs to be {self.number_of_hardware}.')
+
+    def set_state(self, hardware_index=None, switch_index=None, state=False):
+        if hardware_index is None:
+            self.states = state
+        else:
+            if switch_index is None:
+                self._switch(hardware_index).states = state
+                self.sig_switch_updated.emit(self.states)
+            else:
+                self._switch(hardware_index).set_state(switch_index, state)
+                self.sig_switch_updated.emit(self.states)
+
+    def get_state(self, hardware_index, switch_index):
+        if 0 <= hardware_index < self.number_of_hardware \
+                and 0 <= switch_index < self._switch(hardware_index).number_of_switches:
+            return self._switch(hardware_index).get_state(switch_index)
+
+        if not 0 <= hardware_index < self.number_of_hardware:
+            self.log.error(f'The hardware_index was {hardware_index} '
+                           f'but needs to be in the range from 0 to {self.number_of_hardware - 1}.')
+        elif not 0 <= switch_index < self._switch(hardware_index).number_of_switches:
+            self.log.error(f'The switch_index of the hardware {self._switch(hardware_index).name} was {switch_index} '
+                           f'but needs to be in the range from 0 to '
+                           f'{self._switch(hardware_index).number_of_switches - 1}.')
+        else:
+            self.log.error('Error in get_state.')
+        return False

@@ -55,25 +55,25 @@ class SwitchDummy(Base, SwitchInterface):
             self._hardware_name = self._name
 
         if np.shape(self._names_of_states) == (2,):
-            self._names_of_states = [list(self._names_of_states)] * int(self.number_of_switches)
-        elif np.shape(self._names_of_states) == (int(self.number_of_switches), 2):
+            self._names_of_states = [list(self._names_of_states)] * self.number_of_switches
+        elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
             self._names_of_states = list(self._names_of_states)
         else:
             self.log.error(f'names_of_states must either be a list of two names for the states [high, low] '
                            f'which are applied to all switched or it must be a list '
                            f'of length {self._number_of_switches} with elements of the aforementioned shape.')
 
-        if np.shape(self._names_of_switches) == (int(self.number_of_switches), ):
+        if np.shape(self._names_of_switches) == (self.number_of_switches,):
             self._names_of_switches = list(self._names_of_switches)
         else:
-            self._names_of_switches = [str(index + 1) for index in range(int(self.number_of_switches))]
+            self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
 
         # initialize channels to saved status if requested
         if self._reset_states:
             self.states = False
 
         if self.states is None or len(self.states) != self.number_of_switches:
-            self.states = [False] * int(self.number_of_switches)
+            self.states = [False] * self.number_of_switches
 
     def on_deactivate(self):
         pass
@@ -88,8 +88,13 @@ class SwitchDummy(Base, SwitchInterface):
 
     @states.setter
     def states(self, value):
-        print(np.shape(value))
-        pass
+        if np.isscalar(value):
+            self._states = [bool(value)] * self.number_of_switches
+        else:
+            if len(value) != self.number_of_switches:
+                self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
+            else:
+                self._states = [bool(state) for state in value]
 
     @property
     def names_of_states(self):
@@ -101,7 +106,7 @@ class SwitchDummy(Base, SwitchInterface):
 
     @property
     def number_of_switches(self):
-        return self._number_of_switches
+        return int(self._number_of_switches)
 
     def get_state(self, index_of_switch):
         if 0 <= index_of_switch < self.number_of_switches:
@@ -112,7 +117,7 @@ class SwitchDummy(Base, SwitchInterface):
     def set_state(self, index_of_switch, state):
         if 0 <= index_of_switch < self.number_of_switches:
             self._states[int(index_of_switch)] = bool(state)
-        else:
-            self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
-        print(self._hardware_name, index_of_switch, state, self._states[int(index_of_switch)])
-        return self._states[int(index_of_switch)]
+            return self._states[int(index_of_switch)]
+
+        self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
+        return -1
