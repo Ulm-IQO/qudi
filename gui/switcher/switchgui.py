@@ -69,6 +69,10 @@ class SwitchGui(GUIBase):
         """
         self.switchlogic().sig_switch_updated.disconnect(self._switch_updated)
 
+        for hw_index, switch_widgets in enumerate(self._widgets):
+            for sw_index, widgets in enumerate(switch_widgets):
+                widgets['on_button'].disconnect()
+
         self.saveWindowPos(self._mw)
         self._mw.close()
 
