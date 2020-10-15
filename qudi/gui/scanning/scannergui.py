@@ -1099,24 +1099,25 @@ class ScannerGui(GuiBase):
         """
         @param dict scan_data:
         """
-        print('OPTIMIZE DATA UPDATE')
         if scan_data is None:
             return
         if not isinstance(scan_data, ScanData):
             self.log.error('Parameter "scan_data" must be ScanData instance. '
                            'Unable to display optimizer scan data.')
 
+        data = scan_data.data[self._optimize_logic().data_channel]
+        nan_mask = np.isnan(data)
+        if nan_mask.all():
+            return
+
         if scan_data.scan_dimension == 2:
-            self.optimizer_dockwidget.image_item.setImage(
-                scan_data.data[self._optimize_logic().data_channel]
-            )
+            self.optimizer_dockwidget.image_item.setImage(data)
             if scan_data.data is not None:
                 self.optimizer_dockwidget.image_item.set_image_extent(scan_data.scan_range)
             self.optimizer_dockwidget.scan_widget.autoRange()
         elif scan_data.scan_dimension == 1:
-            x_data = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
-            y_data = scan_data.data[self._optimize_logic().data_channel]
-            self.optimizer_dockwidget.plot_item.setData(x_data, y_data)
+            x_data = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])[~nan_mask]
+            self.optimizer_dockwidget.plot_item.setData(x_data, data[~nan_mask])
         return
 
     @QtCore.Slot(bool)
