@@ -24,7 +24,6 @@ from interface.switch_interface import SwitchInterface
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 import numpy as np
-import time
 
 
 class SwitchDummy(Base, SwitchInterface):
@@ -39,7 +38,7 @@ class SwitchDummy(Base, SwitchInterface):
     """
 
     _number_of_switches = ConfigOption(name='number_of_switches', default=1, missing='nothing')
-    _names_of_states = ConfigOption(name='names_of_states', default=['On', 'Off'], missing='nothing')
+    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
     _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')

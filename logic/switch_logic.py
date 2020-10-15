@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
-from qtpy import QtWidgets, QtGui, QtCore
+from qtpy import QtCore
 import numpy as np
 
 
