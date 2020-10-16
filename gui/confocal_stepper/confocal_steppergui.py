@@ -518,75 +518,6 @@ class ConfocalStepperGui(GUIBase):
         self._mw.y_steps_InputWidget.valueChanged.connect(self.change_y_steps_range)
         self._mw.z_steps_InputWidget.valueChanged.connect(self.change_z_steps_range)
 
-        # These connect to confocal logic such that the piezos are moved
-        # Setup the Sliders:
-        # Calculate the needed Range for the sliders. The image ranges coming
-        # from the Logic module must be in meters.
-        # 1 nanometer resolution per one change, units are meters
-        self.slider_res = 1e-9
-
-        # How many points are needed for that kind of resolution:
-        num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[
-            0]) / self.slider_res
-        num_of_points_y = (self._scanning_logic.y_range[1] - self._scanning_logic.y_range[
-            0]) / self.slider_res
-        num_of_points_z = (self._scanning_logic.z_range[1] - self._scanning_logic.z_range[
-            0]) / self.slider_res
-
-        # Set a Range for the sliders:
-        self._mw.x_piezo_SliderWidget.setRange(0, num_of_points_x)
-        self._mw.y_piezo_SliderWidget.setRange(0, num_of_points_y)
-        self._mw.z_piezo_SliderWidget.setRange(0, num_of_points_z)
-
-        # Just to be sure, set also the possible maximal values for the spin
-        # boxes of the current values:
-        self._mw.x_piezo_InputWidget.setRange(self._scanning_logic.x_range[0],
-                                              self._scanning_logic.x_range[1])
-        self._mw.y_piezo_InputWidget.setRange(self._scanning_logic.y_range[0],
-                                              self._scanning_logic.y_range[1])
-        self._mw.z_piezo_InputWidget.setRange(self._scanning_logic.z_range[0],
-                                              self._scanning_logic.z_range[1])
-
-        # Predefine the maximal and minimal image range as the default values
-        # for the display of the range:
-        self._mw.x_piezo_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
-        self._mw.x_piezo_max_InputWidget.setValue(self._scanning_logic.image_x_range[1])
-        self._mw.y_piezo_min_InputWidget.setValue(self._scanning_logic.image_y_range[0])
-        self._mw.y_piezo_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
-        self._mw.z_piezo_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
-        self._mw.z_piezo_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
-
-        # set the maximal ranges for the image range from the logic:
-        self._mw.x_piezo_min_InputWidget.setRange(self._scanning_logic.x_range[0],
-                                                  self._scanning_logic.x_range[1])
-        self._mw.x_piezo_max_InputWidget.setRange(self._scanning_logic.x_range[0],
-                                                  self._scanning_logic.x_range[1])
-        self._mw.y_piezo_min_InputWidget.setRange(self._scanning_logic.y_range[0],
-                                                  self._scanning_logic.y_range[1])
-        self._mw.y_piezo_max_InputWidget.setRange(self._scanning_logic.y_range[0],
-                                                  self._scanning_logic.y_range[1])
-        self._mw.z_piezo_min_InputWidget.setRange(self._scanning_logic.z_range[0],
-                                                  self._scanning_logic.z_range[1])
-        self._mw.z_piezo_max_InputWidget.setRange(self._scanning_logic.z_range[0],
-                                                  self._scanning_logic.z_range[1])
-
-        if self.default_meter_prefix:
-            self._mw.x_piezo_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_piezo_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_piezo_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-
-            self._mw.x_piezo_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.x_piezo_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_piezo_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_piezo_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_piezo_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_piezo_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-
-        # Handle slider movements by user:
-        self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_x)
-        self._mw.y_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_y)
-        self._mw.z_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_z)
-
         # Add Step Directions
         self._mw.step_direction_comboBox.addItem("XY", "xy")
         self._mw.step_direction_comboBox.addItem("XZ", "xz")
@@ -912,13 +843,6 @@ class ConfocalStepperGui(GUIBase):
         self._mw.action_scan_3D_resume.setEnabled(False)
         self._mw.action_scan_Finesse_start.setEnabled(False)
 
-        self._mw.x_piezo_min_InputWidget.setEnabled(False)
-        self._mw.x_piezo_max_InputWidget.setEnabled(False)
-        self._mw.y_piezo_min_InputWidget.setEnabled(False)
-        self._mw.y_piezo_max_InputWidget.setEnabled(False)
-        self._mw.z_piezo_min_InputWidget.setEnabled(False)
-        self._mw.z_piezo_max_InputWidget.setEnabled(False)
-
         self._mw.x_steps_InputWidget.setEnabled(False)
         self._mw.y_steps_InputWidget.setEnabled(False)
         self._mw.z_steps_InputWidget.setEnabled(False)
@@ -957,13 +881,6 @@ class ConfocalStepperGui(GUIBase):
         #        self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
-
-        self._mw.x_piezo_min_InputWidget.setEnabled(True)
-        self._mw.x_piezo_max_InputWidget.setEnabled(True)
-        self._mw.y_piezo_min_InputWidget.setEnabled(True)
-        self._mw.y_piezo_max_InputWidget.setEnabled(True)
-        self._mw.z_piezo_min_InputWidget.setEnabled(True)
-        self._mw.z_piezo_max_InputWidget.setEnabled(True)
 
         self._mw.x_steps_InputWidget.setEnabled(True)
         self._mw.y_steps_InputWidget.setEnabled(True)
@@ -1313,73 +1230,6 @@ class ConfocalStepperGui(GUIBase):
         new_axes = self._mw.step_direction_comboBox.currentData()
         if direction:
             new_axes = self._inverted_axes[new_axes]
-        self._scanning_logic._inverted_scan = direction
-        self._scanning_logic.set_scan_axes(new_axes)
-        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
-
-    def update_from_input_x_piezo(self):
-        """ The user changed the number in the x piezo position spin box, adjust all
-            other GUI elements."""
-        #todo: this is not connected to anything yet.
-        x_pos = self._mw.x_piezo_InputWidget.value()
-        self.update_slider_piezo_x(x_pos)
-        self._scanning_logic.set_position('xinput', x=x_pos)
-
-    def update_from_input_y_piezo(self):
-        """ The user changed the number in the y piezo position spin box, adjust all
-            other GUI elements."""
-        y_pos = self._mw.y_piezo_InputWidget.value()
-        self.update_piezo_slider_y(y_pos)
-        self._scanning_logic.set_position('yinput', y=y_pos)
-
-    def update_from_input_z_piezo(self):
-        """ The user changed the number in the z piezo position spin box, adjust all
-           other GUI elements."""
-        z_pos = self._mw.z_current_InputWidget.value()
-        self.update_slider_piezo_z(z_pos)
-        self._scanning_logic.set_position('zinput', z=z_pos)
-
-    def update_input_x_piezo(self, x_pos):
-        """ Update the displayed x-value.
-
-        @param float x_pos: the current value of the x position in m
-        """
-        # Convert x_pos to number of points for the slider:
-        self._mw.x_piezo_InputWidget.setValue(x_pos)
-
-    def update_input_y_piezo(self, y_pos):
-        """ Update the displayed y-value.
-
-        @param float y_pos: the current value of the y position in m
-        """
-        # Convert x_pos to number of points for the slider:
-        self._mw.y_piezo_InputWidget.setValue(y_pos)
-
-    def update_input_z_piezo(self, z_pos):
-        """ Update the displayed z-value.
-
-        @param float z_pos: the current value of the z position in m
-        """
-        # Convert x_pos to number of points for the slider:
-        self._mw.z_piezo_InputWidget.setValue(z_pos)
-
-    def update_from_piezo_slider_x(self, sliderValue):
-        """The user moved the x piezo slider, adjust the other GUI elements.
-
-        @params int sliderValue: slider piezo position, a quantized whole number
-        """
-        x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
-        self.update_input_x_piezo(x_pos)
-        self._scanning_logic.set_position('xslider', x=x_pos)
-
-    def update_from_piezo_slider_y(self, sliderValue):
-        """The user moved the y piezo slider, adjust the other GUI elements.
-
-        @params int sliderValue: slider piezo position, a quantized whole number
-        """
-        y_pos = self._scanning_logic.y_range[0] + sliderValue * self.slider_res
-        self.update_input_y_piezo(y_pos)
-        self._scanning_logic.set_position('yslider', y=y_pos)
 
     def update_from_piezo_slider_z(self, sliderValue):
         """The user moved the z piezo slider, adjust the other GUI elements.
@@ -1428,26 +1278,6 @@ class ConfocalStepperGui(GUIBase):
         """ Update the z steps range in the logic according to the GUI.
         """
         self._stepper_logic.axis_class['z'].steps_direction = self._mw.z_steps_InputWidget.value()
-
-    # Todo: did not do this yet
-    def change_x_piezo_range(self):
-        """ Adjust the piezo range for x in the logic. """
-        self._scanning_logic.image_x_range = [
-            self._mw.x_piezo_min_InputWidget.value(),
-            self._mw.x_piezo_max_InputWidget.value()]
-
-    def change_y_piezo_range(self):
-        """ Adjust the piezo range for y in the logic.
-        """
-        self._scanning_logic.image_y_range = [
-            self._mw.y_piezo_min_InputWidget.value(),
-            self._mw.y_piezo_max_InputWidget.value()]
-
-    def change_z_piezo_range(self):
-        """ Adjust the piezo range for z in the logic. """
-        self._scanning_logic.image_z_range = [
-            self._mw.z_piezo_min_InputWidget.value(),
-            self._mw.z_piezo_max_InputWidget.value()]
 
     ################## Scan Line ##################
     def refresh_scan_line(self):
