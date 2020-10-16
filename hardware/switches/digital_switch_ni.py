@@ -131,12 +131,22 @@ class DigitalSwitchNI(Base, SwitchInterface):
     @states.setter
     def states(self, value):
         if np.isscalar(value):
-            self.set_state(index_of_switch=None, state=False)
+            self._states = [bool(value)] * self.number_of_switches
         else:
             if len(value) != self.number_of_switches:
                 self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
+                return
             else:
                 self._states = [bool(state) for state in value]
+
+        with self.lock:
+            with nidaqmx.Task('NISwitchTask' + self.name) as switch_task:
+                binary = 0
+                for chan, state in enumerate(self._states):
+                    switch_task.do_channels.add_do_chan(self._channels[chan])
+                    binary += int(2 ** chan)
+                switch_task.write(binary, auto_start=True)
+                time.sleep(self._switch_time)
 
     @property
     def names_of_states(self):
@@ -177,10 +187,8 @@ class DigitalSwitchNI(Base, SwitchInterface):
                            f' but was {index_of_switch}.')
             return -3
 
-        with self.lock:
-            with nidaqmx.Task('NISwitchTask' + self.name) as switch_task:
-                for chan in index_of_switch:
-                    self._states[chan] = bool(state)
-                    switch_task.do_channels.add_do_chan(self._channels[chan])
-                switch_task.write(bool(state), auto_start=True)
-                time.sleep(self._switch_time)
+        new_state = self.states.copy()
+        for chan in index_of_switch:
+            new_state[chan] = bool(state)
+        self.states = new_state
+        return state
