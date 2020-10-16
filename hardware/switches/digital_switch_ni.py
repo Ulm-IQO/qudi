@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import re
 import numpy as np
-from qtpy import QtCore
 import nidaqmx
 from core.module import Base
 from core.configoption import ConfigOption
@@ -51,7 +50,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
     _switch_time = ConfigOption(name='switch_time', default=0.1, missing='nothing')
     _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
 
-    _names_of_states = ConfigOption(name='names_of_states', default=['On', 'Off'], missing='nothing')
+    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
 
@@ -114,7 +113,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
         # initialize channels to saved _states if requested
         if not self._reset_states:
             for index, channel in enumerate(self._channels):
-                self.set_state(channel=index, on=self._states[index])
+                self.set_state(index_of_switch=index, state=self._states[index])
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -132,7 +131,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
     @states.setter
     def states(self, value):
         if np.isscalar(value):
-            self.set_state(channel=None, on=value)
+            self.set_state(index_of_switch=None, state=False)
         else:
             if len(value) != self.number_of_switches:
                 self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
@@ -159,10 +158,10 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     def set_state(self, index_of_switch=None, state=False):
         if index_of_switch is None:
-            channel = list(range(self._number_of_channels))
+            index_of_switch = list(range(self._number_of_channels))
         elif isinstance(index_of_switch, int):
             if 0 <= index_of_switch < self._number_of_channels:
-                channel = [index_of_switch]
+                index_of_switch = [index_of_switch]
             else:
                 self.log.error(f'A switch was requested on channel {index_of_switch} '
                                f'while the number of channels is only {self._number_of_channels}.')
