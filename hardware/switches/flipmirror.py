@@ -96,6 +96,8 @@ class FlipMirror(Base, SwitchInterface):
 
         if self.states is None or len(self.states) != self.number_of_switches:
             self.states = [False] * self.number_of_switches
+        else:
+            self.states = self._states
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
