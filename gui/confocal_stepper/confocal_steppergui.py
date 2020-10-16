@@ -185,7 +185,6 @@ class ConfocalStepperGui(GUIBase):
         self.init_position_feedback_UI()
         self.init_step_parameters_UI()
         self.init_3D_step_scan_parameters()
-        self.init_tilt_correction_UI()
 
         # Set the state button as ready button as default setting.
         self._mw.action_step_stop.setEnabled(False)
@@ -193,7 +192,6 @@ class ConfocalStepperGui(GUIBase):
         self._mw.action_scan_3D_start.setEnabled(True)
         self._mw.action_scan_3D_resume.setEnabled(False)
         self._mw.action_scan_Finesse_start.setEnabled(True)
-
 
         # Connect other signals from the logic with an update of the gui
 
@@ -349,15 +347,15 @@ class ConfocalStepperGui(GUIBase):
         self.count_direction_2 = bool(self._mw.count_direction_ComboBox_2.currentIndex())
 
         self._mw.data_display_type_ComboBox.activated.connect(self.update_data_display_type)
-        self._mw.data_display_type_ComboBox.addItem("Average", True)
-        self._mw.data_display_type_ComboBox.addItem("Extremum", False)
-        self._mw.data_display_type_ComboBox.addItem("Median Extremum Difference",False)
-        self._mw.data_display_type_ComboBox.addItem("Laser Corrected", False)
+        self._mw.data_display_type_ComboBox.addItem("Average", 0)
+        self._mw.data_display_type_ComboBox.addItem("Extremum", 1)
+        self._mw.data_display_type_ComboBox.addItem("Median Extremum Difference", 2)
+        self._mw.data_display_type_ComboBox.addItem("Laser Corrected", 3)
         self._mw.data_display_type_ComboBox_2.activated.connect(self.update_data_display_type_2)
-        self._mw.data_display_type_ComboBox_2.addItem("Average", True)
-        self._mw.data_display_type_ComboBox_2.addItem("Extremum", False)
-        self._mw.data_display_type_ComboBox_2.addItem("Median Extremum Difference",False)
-        self._mw.data_display_type_ComboBox_2.addItem("Laser Corrected", False)
+        self._mw.data_display_type_ComboBox_2.addItem("Average", 0)
+        self._mw.data_display_type_ComboBox_2.addItem("Extremum", 1)
+        self._mw.data_display_type_ComboBox_2.addItem("Median Extremum Difference", 2)
+        self._mw.data_display_type_ComboBox_2.addItem("Laser Corrected", 3)
 
         #################################################################
         #           Connect the colorbar and their actions              #
@@ -391,7 +389,7 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic.signal_image_updated.connect(self.refresh_image)
         self._stepper_logic.signal_image_updated.connect(self.refresh_scan_line)
 
-        #TODO: Test this, implement this
+        # TODO: Test this, implement this
 
         # self._stepper_logic.sigImageInitialized.connect(self.adjust_window)
 
@@ -544,10 +542,12 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.scan_resolution_3D_spinBox.setValue(self._stepper_logic.scan_resolution_3D)
 
-        self._mw.smoothing_steps_3D_spinBox.setRange(0, 500) # todo: this needs to be adjusted according to the steps used for
+        self._mw.smoothing_steps_3D_spinBox.setRange(0,
+                                                     500)  # todo: this needs to be adjusted according to the steps used for
         # one scan it can not be higher than half the amount of steps for one scan ramp
         self._mw.smoothing_steps_3D_spinBox.setValue(self._stepper_logic._3D_smoothing_steps)
-        self._mw.smoothing_steps_3D_spinBox.editingFinished.connect(self.smoothing_steps_3D_changed, QtCore.Qt.QueuedConnection)
+        self._mw.smoothing_steps_3D_spinBox.editingFinished.connect(self.smoothing_steps_3D_changed,
+                                                                    QtCore.Qt.QueuedConnection)
 
         # setting up check box for the maximal scan resolution and cavity mode
         self._mw.max_scan_resolution_3D_checkBox.toggled.connect(self.toggle_scan_resolution_3D)
@@ -559,9 +559,10 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.scan_resolution_3D_spinBox.valueChanged.connect(self.scan_resolution_3D_changed)
 
-        #Todo: is there a maximally possible scan freq?
+        # Todo: is there a maximally possible scan freq?
         self._mw.finesse_scan_freq_doubleSpinBox.setValue(self._stepper_logic.finesse_scan_freq)
-        self._mw.finesse_scan_freq_doubleSpinBox.editingFinished.connect(self.finesse_scan_freq_changed, QtCore.Qt.QueuedConnection)
+        self._mw.finesse_scan_freq_doubleSpinBox.editingFinished.connect(self.finesse_scan_freq_changed,
+                                                                         QtCore.Qt.QueuedConnection)
 
         # setting GUI elements enabled
         self._mw.startV_3D_spinBox.setEnabled(True)
@@ -575,7 +576,8 @@ class ConfocalStepperGui(GUIBase):
         # setting up the LCD Displays for the scan speed (V/s) and the maximal scan resolution
         self._mw.scan_speed_3D_DisplayWidget.display(np.abs(self._stepper_logic.end_voltage_3D -
                                                             self._stepper_logic.start_voltage_3D) *
-                                                     self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
+                                                     self._stepper_logic.axis_class[
+                                                         self._stepper_logic._first_scan_axis].step_freq)
         self._mw.maximal_scan_resolution_3D_DisplayWidget.display(self._stepper_logic.calculate_resolution(
             16, [self._stepper_logic.start_voltage_3D,
                  self._stepper_logic.end_voltage_3D]))
@@ -595,7 +597,7 @@ class ConfocalStepperGui(GUIBase):
         @param object event: qtpy.QtCore.QEvent object.
         """
         pass
-        #todo: update from key needs to be adjusted for confocal stepper
+        # todo: update from key needs to be adjusted for confocal stepper
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
         position = self._scanning_logic.get_position()  # in meters
@@ -677,7 +679,7 @@ class ConfocalStepperGui(GUIBase):
 
         cb_range = [cb_min, cb_max]
 
-        #do the same for the color bar range of the second image
+        # do the same for the color bar range of the second image
         if self._mw.cb_manual_RadioButton_2.isChecked() or np.max(
                 self.step_image_2.image) == 0.0:
             cb_min_2 = self._mw.cb_min_DoubleSpinBox_2.value()
@@ -711,7 +713,6 @@ class ConfocalStepperGui(GUIBase):
         self.cb.refresh_colorbar(cb_range[0], cb_range[1])
         self.cb_2.refresh_colorbar(cb_range_2[0], cb_range_2[1])
 
-
     ################## Hardware Parameters ##################
     def measure_stepper_hardware_values(self):
         self._mw.x_amplitude_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].get_stepper_amplitude())
@@ -735,7 +736,8 @@ class ConfocalStepperGui(GUIBase):
             self._mw.z_dcin_checkBox.setCheckState(self._stepper_logic.axis_class["z"].get_dc_mode())
         else:
             self._mw.z_dcin_checkBox.setCheckState(False)
-        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
+        self._mw.scan_frequency_3D_lcdNumber.display(
+            self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     def update_stepper_hardware_values(self):
         self._stepper_logic.axis_class["x"].set_stepper_amplitude(self._mw.x_amplitude_doubleSpinBox.value())
@@ -748,7 +750,8 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic.axis_class["x"].set_dc_mode(self._mw.x_dcin_checkBox.checkState())
         self._stepper_logic.axis_class["y"].set_dc_mode(self._mw.y_dcin_checkBox.checkState())
         self._stepper_logic.axis_class["z"].set_dc_mode(self._mw.z_dcin_checkBox.checkState())
-        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
+        self._mw.scan_frequency_3D_lcdNumber.display(
+            self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     ################## Position Feedback ##################
 
@@ -1015,20 +1018,19 @@ class ConfocalStepperGui(GUIBase):
     def load_data(self):
         """Method for when the File -> Load Data action is clicked"""
         fname = QtWidgets.QFileDialog.getOpenFileName(self, 'Open data folder', QtWidgets.QFileDialog.ShowDirsOnly)
-        self.log.info("the directory chosen is: %s",fname)
+        self.log.info("the directory chosen is: %s", fname)
         dir_paths = fname.split("\\")
-        if dir_paths[-2]=="ConfocalStepper_3D":
+        if dir_paths[-2] == "ConfocalStepper_3D":
             data_type = "3D"
-        elif dir_paths[-2] ==  "ConfocalStepper_finesse":
+        elif dir_paths[-2] == "ConfocalStepper_finesse":
             data_type = "Finesse"
         elif dir_paths[-2] == "ConfocalStepper":
-            data_type= "2D"
+            data_type = "2D"
         else:
             self.log.warning("The chosen dir path '%s' does not contain usable data", fname)
             return -1
 
         self._stepper_logic.signal_load_data(fname, data_type)
-
 
     def menu_settings(self):
         """ This method opens the settings menu. """
@@ -1091,8 +1093,8 @@ class ConfocalStepperGui(GUIBase):
             @param index int: index of selected channel item in combo box
         """
         self.count_channel_2 = int(self._mw.count_channel_ComboBox_2.itemData(index,
-                                                                          QtCore.Qt.UserRole))
-        if self.count_channel == 1:
+                                                                              QtCore.Qt.UserRole))
+        if self.count_channel_2 == 1:
             self._mw.step_scan_cb_ViewWidget_2.setLabel('left', 'Volt', units='V')
         else:
             self._mw.step_scan_cb_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
@@ -1114,7 +1116,7 @@ class ConfocalStepperGui(GUIBase):
             @param index int: index of selected channel item in combo box
         """
         self.count_direction_2 = bool(self._mw.count_direction_ComboBox_2.itemData(index,
-                                                                               QtCore.Qt.UserRole))
+                                                                                   QtCore.Qt.UserRole))
         self.refresh_image()
 
     def update_data_display_type(self, index):
