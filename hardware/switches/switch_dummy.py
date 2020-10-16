@@ -34,7 +34,9 @@ class SwitchDummy(Base, SwitchInterface):
     switch_dummy:
         module.Class: 'switches.switch_dummy.SwitchDummy'
         number_of_switches: 3
-
+        names_of_states: ['down', 'up']
+        names_of_switches: ['one', 'two', 'one']
+        name: 'First'
     """
 
     _number_of_switches = ConfigOption(name='number_of_switches', default=1, missing='nothing')
@@ -58,7 +60,7 @@ class SwitchDummy(Base, SwitchInterface):
         elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
             self._names_of_states = list(self._names_of_states)
         else:
-            self.log.error(f'names_of_states must either be a list of two names for the states [high, low] '
+            self.log.error(f'names_of_states must either be a list of two names for the states [low, high] '
                            f'which are applied to all switched or it must be a list '
                            f'of length {self._number_of_switches} with elements of the aforementioned shape.')
 
