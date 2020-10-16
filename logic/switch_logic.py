@@ -45,6 +45,7 @@ class SwitchLogic(GenericLogic):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._hw_switches = list()
+        self._magic_commands = dict()
 
     def on_activate(self):
         """ Prepare logic module for work.
@@ -55,6 +56,8 @@ class SwitchLogic(GenericLogic):
         for i in range(10):
             if getattr(self, f'switch{i:d}').is_connected:
                 self._hw_switches.append(getattr(self, f'switch{i:d}'))
+
+        self._build_magic()
 
     def on_deactivate(self):
         """ Deactivate modeule.
@@ -137,3 +140,75 @@ class SwitchLogic(GenericLogic):
         else:
             self.log.error('Error in get_state.')
         return False
+
+    def _build_magic(self):
+        self._magic_commands = dict()
+        names_of_hardware = [name.lower().replace(' ', '_') for name in self.names_of_hardware]
+        for hw_index, hardware in enumerate(names_of_hardware):
+            if names_of_hardware.count(hardware) > 1:
+                self.log.warning(f'Hardware hardware "{hardware}" not unambiguous, adding numbers to the hardware.')
+                occurences = [i for i, x in enumerate(names_of_hardware) if x == hardware]
+                for i, position in enumerate(occurences):
+                    names_of_hardware[position] = hardware + str(i + 1)
+
+        names_of_states = [[[name.lower().replace(' ', '_') for name in switch]
+                            for switch in hardware]
+                           for hardware in self.names_of_states]
+        flat_states = list()
+        names_of_switches = [[name.lower().replace(' ', '_') for name in hardware]
+                             for hardware in self.names_of_switches]
+        flat_switches = list()
+        for hw_index, hardware in enumerate(names_of_switches):
+            for sw_index, switch in enumerate(hardware):
+                if hardware.count(switch) > 1:
+                    self.log.warning(f'Switch name "{switch}" not unambiguous '
+                                     f'for hardware "{names_of_hardware[hw_index]}", adding numbers to the switch.')
+                    occurences = [i for i, x in enumerate(hardware) if x == switch]
+                    for i, position in enumerate(occurences):
+                        hardware[position] = switch + str(i + 1)
+
+                if names_of_states[hw_index][sw_index][0] == names_of_states[hw_index][sw_index][1]:
+                    self.log.warning(f'State name "{names_of_states[hw_index][sw_index][0]}" '
+                                     f'of switch "{names_of_switches[hw_index][sw_index]}" '
+                                     f'in "{names_of_hardware[hw_index]}" is not unambiguous '
+                                     f'using "down" and "up" instead.')
+                    names_of_states[hw_index][sw_index][0] = 'down'
+                    names_of_states[hw_index][sw_index][1] = 'up'
+
+                flat_switches.extend(
+                    [names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][0],
+                     names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][1]])
+                flat_states.extend([names_of_states[hw_index][sw_index][0], names_of_states[hw_index][sw_index][1]])
+
+        for hw_index, hardware in enumerate(names_of_switches):
+            for sw_index, switch in enumerate(hardware):
+                if flat_states.count(names_of_states[hw_index][sw_index][0]) == 1:
+                    self._magic_commands[names_of_states[hw_index][sw_index][0]] = [hw_index, sw_index, False]
+                if flat_states.count(names_of_states[hw_index][sw_index][1]) == 1:
+                    self._magic_commands[names_of_states[hw_index][sw_index][1]] = [hw_index, sw_index, True]
+
+                down = names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][0]
+                if flat_switches.count(down) == 1:
+                    self._magic_commands[down] = [hw_index, sw_index, False]
+                up = names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][1]
+                if flat_switches.count(up) == 1:
+                    self._magic_commands[up] = [hw_index, sw_index, True]
+
+                self._magic_commands[names_of_hardware[hw_index] + '.'
+                                     + names_of_switches[hw_index][sw_index] + '.'
+                                     + names_of_states[hw_index][sw_index][0]] = [hw_index, sw_index, False]
+
+                self._magic_commands[names_of_hardware[hw_index] + '.'
+                                     + names_of_switches[hw_index][sw_index] + '.'
+                                     + names_of_states[hw_index][sw_index][1]] = [hw_index, sw_index, True]
+
+        self.log.info(f'The following switch magic commands are available: {list(self._magic_commands)}')
+
+    def magic(self, command):
+        command = str(command).lower().replace(' ', '_')
+        if command in self._magic_commands:
+            self.set_state(self._magic_commands[command][0],
+                           self._magic_commands[command][1],
+                           self._magic_commands[command][2])
+        else:
+            self.log.error(f'Your command "{command}" was not among the magic commands: {list(self._magic_commands)}')
