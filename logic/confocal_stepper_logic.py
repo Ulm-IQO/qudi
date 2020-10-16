@@ -2954,42 +2954,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("main axis %s is not an axis %s of the stepper", main_axis, self.axis)
             return [-1], []
 
-    #################################### Tilt correction ########################################
-
-    @QtCore.Slot()
-    def set_tilt_point1(self):
-        """ Gets the first reference point for tilt correction."""
-        pass
-        self.point1 = np.array(self._scanning_device.get_scanner_position()[:3])
-        self.signal_tilt_correction_update.emit()
-
-    @QtCore.Slot()
-    def set_tilt_point2(self):
-        """ Gets the second reference point for tilt correction."""
-        pass
-        self.point2 = np.array(self._scanning_device.get_scanner_position()[:3])
-        self.signal_tilt_correction_update.emit()
-
-    @QtCore.Slot()
-    def set_tilt_point3(self):
-        """Gets the third reference point for tilt correction."""
-        pass
-        self.point3 = np.array(self._scanning_device.get_scanner_position()[:3])
-        self.signal_tilt_correction_update.emit()
-
-    @QtCore.Slot(bool)
-    def set_tilt_correction(self, enabled):
-        """ Set tilt correction in tilt interfuse.
-
-            @param bool enabled: whether we want to use tilt correction
-        """
-        self._scanning_device.tiltcorrection = enabled
-        self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[
-            0]
-        self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[
-            1]
-        self.signal_tilt_correction_active.emit(enabled)
-
     ################################# Move through History ########################################
 
     def history_forward(self):

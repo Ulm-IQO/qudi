@@ -651,14 +651,6 @@ class ConfocalStepperGui(GUIBase):
         self._mw.finesse_scan_freq_doubleSpinBox.setEnabled(True)
         # todo: connect smoothing parameter
 
-    def init_tilt_correction_UI(self):
-        # Hide tilt correction window
-        self._mw.tilt_correction_dockWidget.hide()
-
-        self._mw.thrid_axis_correction_checkBox.stateChanged.connect(self._correct_3rd_axis_changed)
-        self._mw.move_3rd_axis_up_checkBox.stateChanged.connect(self._correction_direction_3rd_axis_changed)
-        self._mw.correct_every_x_lines_tilt_spinBox.valueChanged.connect(self._correction_nth_line_3rd_axis_changed)
-
     def show(self):
         """Make window visible and put it above all other windows. """
         self._mw.show()
@@ -1583,32 +1575,6 @@ class ConfocalStepperGui(GUIBase):
         freq = self._mw.finesse_scan_freq_doubleSpinBox.value()
         self._stepper_logic.finesse_scan_freq = freq
 
-    ################## Tilt Correction ##################
-    def _correct_3rd_axis_changed(self):
-        """Change the state of the 3rd axis tilt correction.
-        Sets logic variable true or false, depending on what the user has clicked.
-        """
-        self._stepper_logic.correct_third_axis_for_tilt = self._mw.thrid_axis_correction_checkBox.checkState()
-
-    def _correction_direction_3rd_axis_changed(self):
-        """Change the tilt correction direction of the 3rd axis.
-        Sets logic variable true (move axis up) or false (move axis down), depending on what the user has clicked.
-        """
-        self._stepper_logic._3rd_direction_correction = self._mw.move_3rd_axis_up_checkBox.checkState()
-
-    def _correction_nth_line_3rd_axis_changed(self):
-        """Change the tilt correction direction of the 3rd axis.
-        Sets logic variable true (move axis up) or false (move axis down), depending on what the user has clicked.
-        """
-        value = self._mw.correct_every_x_lines_tilt_spinBox.value()
-        if value == 0:
-            self._stepper_logic.correct_third_axis_for_tilt = False
-            self._mw.correct_every_x_lines_tilt_spinBox.setValue(100)
-            self._mw.thrid_axis_correction_checkBox.setChecked(False)
-            self.log.info("correcting every 0th lines is not possible, so the correction was turned off and the "
-                          "value set to a possible value")
-        self._stepper_logic._lines_correct_3rd_axis = value
-
     ################## Settings ##################
     def switch_hardware(self):
         """ Switches the hardware state. """
@@ -1621,19 +1587,16 @@ class ConfocalStepperGui(GUIBase):
         self._mw.step_dockWidget.show()
         self._mw.scan_control_dockWidget.show()
         self._mw.hardware_dockWidget.show()
-        self._mw.tilt_correction_dockWidget.hide()
         # self._mw.scanLineDockWidget.hide()
 
         # re-dock any floating dock widgets
         self._mw.step_dockWidget.setFloating(False)
         self._mw.scan_control_dockWidget.setFloating(False)
         self._mw.hardware_dockWidget.setFloating(False)
-        self._mw.tilt_correction_dockWidget.setFloating(False)
         # self._mw.scanLineDockWidget.setFloating(False)
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.step_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.tilt_correction_dockWidget)
         # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.hardware_dockWidget)
 
