@@ -53,10 +53,9 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     _names_of_states = ConfigOption(name='names_of_states', default=['On', 'Off'], missing='nothing')
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
+    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
 
     _states = StatusVar(name='states', default=None)
-
-    sig_statesUpdated = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         """ Create the digital switch output control module
@@ -75,6 +74,10 @@ class DigitalSwitchNI(Base, SwitchInterface):
     def on_activate(self):
         """ Prepare module, connect to hardware.
         """
+
+        self._hardware_name = 'NICard' + self._channel.replace('/', ' ') \
+            if self._hardware_name is None else self._hardware_name
+
         if not self._channel.__contains__(':'):
             self._number_of_channels = 1
             self._channels.append(self._channel)
@@ -95,7 +98,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
         elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
             self._names_of_states = list(self._names_of_states)
         else:
-            self.log.error(f'names_of_states must either be a list of two names for the states [high, low] '
+            self.log.error(f'names_of_states must either be a list of two names for the states [low, high] '
                            f'which are applied to all switched or it must be a list '
                            f'of length {self._number_of_switches} with elements of the aforementioned shape.')
 
@@ -120,7 +123,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     @property
     def name(self):
-        return 'NICard' + self._channel.replace('/', ' ')
+        return self._hardware_name
 
     @property
     def states(self):
