@@ -60,7 +60,7 @@ class SwitchLogic(GenericLogic):
         self._build_magic()
 
     def on_deactivate(self):
-        """ Deactivate modeule.
+        """ Deactivate module.
         """
         self._hw_switches = list()
 
@@ -97,7 +97,6 @@ class SwitchLogic(GenericLogic):
 
     @states.setter
     def states(self, value):
-        print(np.shape(value))
         if np.isscalar(value):
             for index, hw_switch in enumerate(self._hw_switches):
                 hw_switch().states = value
@@ -116,16 +115,67 @@ class SwitchLogic(GenericLogic):
 
     def set_state(self, hardware_index=None, switch_index=None, state=False):
         if hardware_index is None:
+            if isinstance(state, str):
+                self.log.error(f'You set the state "{state}" for undefined hardware.')
+                return -11
             self.states = state
         else:
+            if isinstance(hardware_index, str):
+                try:
+                    hardware_index = self.__names_of_hardware.index(hardware_index.lower().replace(' ', '_'))
+                except ValueError:
+                    self.log.error(f'keyword "{hardware_index}" not found. Options are: {self.__names_of_hardware}')
+                    return -1
             if switch_index is None:
+                if isinstance(state, str) \
+                        and self.__names_of_states[hardware_index][1:] == self.__names_of_states[hardware_index][:-1]:
+                    try:
+                        state = self.__names_of_states[hardware_index][0].index(state.lower().replace(' ', '_'))
+                    except ValueError:
+                        self.log.error(f'keyword "{state}" not found. '
+                                       f'Options are: {self.__names_of_states[hardware_index][0]}')
+                        return -4
+                if isinstance(state, str):
+                    self.log.error(f'You set the state "{state}" for undefined switches.')
+                    return -12
                 self._switch(hardware_index).states = state
                 self.sig_switch_updated.emit(self.states)
             else:
+                if isinstance(switch_index, str):
+                    try:
+                        switch_index = self.__names_of_switches[hardware_index].index(
+                            switch_index.lower().replace(' ', '_'))
+                    except ValueError:
+                        self.log.error(f'keyword "{switch_index}" not found. '
+                                       f'Options are: {self.__names_of_switches[hardware_index]}')
+                        return -2
+                if isinstance(state, str):
+                    try:
+                        state = self.__names_of_states[hardware_index][switch_index].index(
+                            state.lower().replace(' ', '_'))
+                    except ValueError:
+                        self.log.error(f'keyword "{state}" not found. '
+                                       f'Options are: {self.__names_of_states[hardware_index][switch_index]}')
+                        return -3
                 self._switch(hardware_index).set_state(switch_index, state)
                 self.sig_switch_updated.emit(self.states)
 
     def get_state(self, hardware_index, switch_index):
+        if isinstance(hardware_index, str):
+            try:
+                hardware_index = self.__names_of_hardware.index(hardware_index.lower().replace(' ', '_'))
+            except ValueError:
+                self.log.error(f'keyword "{hardware_index}" not found. Options are: {self.__names_of_hardware}')
+                return -1
+        if isinstance(switch_index, str):
+            try:
+                switch_index = self.__names_of_switches[hardware_index].index(
+                    switch_index.lower().replace(' ', '_'))
+            except ValueError:
+                self.log.error(f'keyword "{switch_index}" not found. '
+                               f'Options are: {self.__names_of_switches[hardware_index]}')
+                return -2
+
         if 0 <= hardware_index < self.number_of_hardware \
                 and 0 <= switch_index < self._switch(hardware_index).number_of_switches:
             return self._switch(hardware_index).get_state(switch_index)
@@ -143,64 +193,68 @@ class SwitchLogic(GenericLogic):
 
     def _build_magic(self):
         self._magic_commands = dict()
-        names_of_hardware = [name.lower().replace(' ', '_') for name in self.names_of_hardware]
-        for hw_index, hardware in enumerate(names_of_hardware):
-            if names_of_hardware.count(hardware) > 1:
+        self.__names_of_hardware = [name.lower().replace(' ', '_') for name in self.names_of_hardware]
+        for hw_index, hardware in enumerate(self.__names_of_hardware):
+            if self.__names_of_hardware.count(hardware) > 1:
                 self.log.warning(f'Hardware hardware "{hardware}" not unambiguous, adding numbers to the hardware.')
-                occurences = [i for i, x in enumerate(names_of_hardware) if x == hardware]
+                occurences = [i for i, x in enumerate(self.__names_of_hardware) if x == hardware]
                 for i, position in enumerate(occurences):
-                    names_of_hardware[position] = hardware + str(i + 1)
+                    self.__names_of_hardware[position] = hardware + str(i + 1)
 
-        names_of_states = [[[name.lower().replace(' ', '_') for name in switch]
-                            for switch in hardware]
-                           for hardware in self.names_of_states]
+        self.__names_of_states = [[[name.lower().replace(' ', '_') for name in switch]
+                                   for switch in hardware]
+                                  for hardware in self.names_of_states]
         flat_states = list()
-        names_of_switches = [[name.lower().replace(' ', '_') for name in hardware]
-                             for hardware in self.names_of_switches]
+        self.__names_of_switches = [[name.lower().replace(' ', '_') for name in hardware]
+                                    for hardware in self.names_of_switches]
         flat_switches = list()
-        for hw_index, hardware in enumerate(names_of_switches):
+        for hw_index, hardware in enumerate(self.__names_of_switches):
             for sw_index, switch in enumerate(hardware):
                 if hardware.count(switch) > 1:
                     self.log.warning(f'Switch name "{switch}" not unambiguous '
-                                     f'for hardware "{names_of_hardware[hw_index]}", adding numbers to the switch.')
+                                     f'for hardware "{self.__names_of_hardware[hw_index]}", '
+                                     f'adding numbers to the switch.')
                     occurences = [i for i, x in enumerate(hardware) if x == switch]
                     for i, position in enumerate(occurences):
                         hardware[position] = switch + str(i + 1)
 
-                if names_of_states[hw_index][sw_index][0] == names_of_states[hw_index][sw_index][1]:
-                    self.log.warning(f'State name "{names_of_states[hw_index][sw_index][0]}" '
-                                     f'of switch "{names_of_switches[hw_index][sw_index]}" '
-                                     f'in "{names_of_hardware[hw_index]}" is not unambiguous '
+                if self.__names_of_states[hw_index][sw_index][0] == self.__names_of_states[hw_index][sw_index][1]:
+                    self.log.warning(f'State name "{self.__names_of_states[hw_index][sw_index][0]}" '
+                                     f'of switch "{self.__names_of_switches[hw_index][sw_index]}" '
+                                     f'in "{self.__names_of_hardware[hw_index]}" is not unambiguous '
                                      f'using "down" and "up" instead.')
-                    names_of_states[hw_index][sw_index][0] = 'down'
-                    names_of_states[hw_index][sw_index][1] = 'up'
+                    self.__names_of_states[hw_index][sw_index][0] = 'down'
+                    self.__names_of_states[hw_index][sw_index][1] = 'up'
 
                 flat_switches.extend(
-                    [names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][0],
-                     names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][1]])
-                flat_states.extend([names_of_states[hw_index][sw_index][0], names_of_states[hw_index][sw_index][1]])
+                    [self.__names_of_switches[hw_index][sw_index] + '.' + self.__names_of_states[hw_index][sw_index][0],
+                     self.__names_of_switches[hw_index][sw_index] + '.' + self.__names_of_states[hw_index][sw_index][
+                         1]])
+                flat_states.extend(
+                    [self.__names_of_states[hw_index][sw_index][0], self.__names_of_states[hw_index][sw_index][1]])
 
-        for hw_index, hardware in enumerate(names_of_switches):
+        for hw_index, hardware in enumerate(self.__names_of_switches):
             for sw_index, switch in enumerate(hardware):
-                if flat_states.count(names_of_states[hw_index][sw_index][0]) == 1:
-                    self._magic_commands[names_of_states[hw_index][sw_index][0]] = [hw_index, sw_index, False]
-                if flat_states.count(names_of_states[hw_index][sw_index][1]) == 1:
-                    self._magic_commands[names_of_states[hw_index][sw_index][1]] = [hw_index, sw_index, True]
+                if flat_states.count(self.__names_of_states[hw_index][sw_index][0]) == 1:
+                    self._magic_commands[self.__names_of_states[hw_index][sw_index][0]] = [hw_index, sw_index, False]
+                if flat_states.count(self.__names_of_states[hw_index][sw_index][1]) == 1:
+                    self._magic_commands[self.__names_of_states[hw_index][sw_index][1]] = [hw_index, sw_index, True]
 
-                down = names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][0]
+                down = self.__names_of_switches[hw_index][sw_index] + '.' \
+                       + self.__names_of_states[hw_index][sw_index][0]
                 if flat_switches.count(down) == 1:
                     self._magic_commands[down] = [hw_index, sw_index, False]
-                up = names_of_switches[hw_index][sw_index] + '.' + names_of_states[hw_index][sw_index][1]
+                up = self.__names_of_switches[hw_index][sw_index] + '.' + self.__names_of_states[hw_index][sw_index][1]
                 if flat_switches.count(up) == 1:
                     self._magic_commands[up] = [hw_index, sw_index, True]
 
-                self._magic_commands[names_of_hardware[hw_index] + '.'
-                                     + names_of_switches[hw_index][sw_index] + '.'
-                                     + names_of_states[hw_index][sw_index][0]] = [hw_index, sw_index, False]
+                self._magic_commands[self.__names_of_hardware[hw_index] + '.'
+                                     + self.__names_of_switches[hw_index][sw_index] + '.'
+                                     + self.__names_of_states[hw_index][sw_index][0]] = [hw_index, sw_index, False]
 
-                self._magic_commands[names_of_hardware[hw_index] + '.'
-                                     + names_of_switches[hw_index][sw_index] + '.'
-                                     + names_of_states[hw_index][sw_index][1]] = [hw_index, sw_index, True]
+                self._magic_commands[self.__names_of_hardware[hw_index] + '.'
+                                     + self.__names_of_switches[hw_index][sw_index] + '.'
+                                     + self.__names_of_states[hw_index][sw_index][1]] = [hw_index, sw_index, True]
 
         self.log.info(f'The following switch magic commands are available: {list(self._magic_commands)}')
 

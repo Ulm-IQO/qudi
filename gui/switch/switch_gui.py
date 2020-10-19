@@ -152,10 +152,10 @@ class SwitchGui(GUIBase):
         button_group = QtWidgets.QButtonGroup()
         names = self.switchlogic().names_of_states[hardware_index][switch_index]
 
-        on_button = QtWidgets.QRadioButton(names[0])
+        on_button = QtWidgets.QRadioButton(names[1])
         on_button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
 
-        off_button = QtWidgets.QRadioButton(names[1])
+        off_button = QtWidgets.QRadioButton(names[0])
         off_button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
 
         button_group.addButton(on_button)
