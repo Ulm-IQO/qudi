@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains unit tests for all qudi fit routines for Gaussian peak/dip models.
+This file contains unit tests for all qudi fit routines for exponential decay models.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,15 +23,19 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import unittest
 import numpy as np
 
-from qudi.core.fitting import Gaussian
+from qudi.core.fitting import ExponentialDecay, StretchedExponentialDecay
 
 
-class TestGaussianMethods(unittest.TestCase):
+class TestExpDecayMethods(unittest.TestCase):
     _fit_param_tolerance = 0.05  # 5% tolerance for each fit parameter
 
     @staticmethod
-    def gaussian(x, offset, amplitude, center, sigma):
-        return offset + amplitude * np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
+    def stretched_exp_decay(x, offset, amplitude, decay, stretch):
+        return offset + amplitude * np.exp(-(x / decay) ** stretch)
+
+    @staticmethod
+    def exp_decay(x, offset, amplitude, decay):
+        return offset + amplitude * np.exp(-x/decay)
 
     def setUp(self):
         self.offset = (np.random.rand() - 0.5) * 2e6
@@ -40,21 +44,19 @@ class TestGaussianMethods(unittest.TestCase):
         left = (np.random.rand() - 0.5) * 2e9
         points = np.random.randint(10, 1001)
         self.x_values = np.linspace(left, left + window, points)
-        min_sigma = 1.5 * (self.x_values[1] - self.x_values[0])
-        self.sigma = min_sigma + np.random.rand() * ((window / 2) - min_sigma)
-        self.center = left + np.random.rand() * window
+        min_decay = 1.5 * (self.x_values[1] - self.x_values[0])
+        self.decay = min_decay + np.random.rand() * ((window / 2) - min_decay)
+        self.stretch = 0.1 + np.random.rand() * 3.9
         self.noise_amp = max(self.amplitude / 10, np.random.rand() * (2 * self.amplitude))
 
     def test_gaussian(self):
-        # Test for gaussian peak
-        y_values = self.gaussian(self.x_values,
-                                 self.offset,
-                                 self.amplitude,
-                                 self.center,
-                                 self.sigma)
-        y_values += (np.random.rand(len(y_values)) - 0.5) * self.noise_amp
-
-        fit_model = Gaussian()
+        # Test for lorentzian peak
+        y_values = self.lorentzian(self.x_values,
+                                   self.offset,
+                                   self.amplitude,
+                                   self.center,
+                                   self.sigma)
+        fit_model = Lorentzian()
         fit_result = fit_model.fit(data=y_values,
                                    x=self.x_values,
                                    **fit_model.guess(y_values, self.x_values))
@@ -66,20 +68,18 @@ class TestGaussianMethods(unittest.TestCase):
         for name, fit_param in fit_result.best_values.items():
             diff = abs(fit_param - params_ideal[name])
             tolerance = abs(params_ideal[name] * self._fit_param_tolerance)
-            msg = 'Gaussian peak fit parameter "{0}" not within {1:.2%} tolerance'.format(
+            msg = 'Lorentzian peak fit parameter "{0}" not within {1:.2%} tolerance'.format(
                 name, self._fit_param_tolerance
             )
             self.assertLessEqual(diff, tolerance, msg)
 
-        # Test for gaussian dip
-        y_values = self.gaussian(self.x_values,
-                                 self.offset,
-                                 -self.amplitude,
-                                 self.center,
-                                 self.sigma)
-        y_values += (np.random.rand(len(y_values)) - 0.5) * self.noise_amp
-
-        fit_model = Gaussian()
+        # Test for lorentzian dip
+        y_values = self.lorentzian(self.x_values,
+                                   self.offset,
+                                   -self.amplitude,
+                                   self.center,
+                                   self.sigma)
+        fit_model = Lorentzian()
         fit_result = fit_model.fit(data=y_values,
                                    x=self.x_values,
                                    **fit_model.guess(y_values, self.x_values))
@@ -88,7 +88,7 @@ class TestGaussianMethods(unittest.TestCase):
         for name, fit_param in fit_result.best_values.items():
             diff = abs(fit_param - params_ideal[name])
             tolerance = abs(params_ideal[name] * self._fit_param_tolerance)
-            msg = 'Gaussian dip fit parameter "{0}" not within {1:.2%} tolerance'.format(
+            msg = 'Lorentzian dip fit parameter "{0}" not within {1:.2%} tolerance'.format(
                 name, self._fit_param_tolerance
             )
             self.assertLessEqual(diff, tolerance, msg)
