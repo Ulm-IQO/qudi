@@ -30,29 +30,7 @@ from lmfit.models import LinearModel
 # except ImportError:
 #     _qudi_installed = False
 
-__all__ = ('LinearModel', 'ExponentialDecay', 'StretchedExponentialDecay', 'Gaussian', 'Lorentzian')
-
-
-class ExponentialDecay(lmfit.Model):
-    """
-    """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('amplitude', value=0., min=0., max=np.inf)
-        self.set_param_hint('decay', value=1., min=0., max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset, amplitude, decay):
-        return offset + amplitude * np.exp(-x/decay)
-
-    def guess(self, data, x):
-        offset = data[-1]
-        amplitude = data[0] - offset
-        decay = (data[1] - data[0]) / (x[-1] - x[0]) / (data[-1] - data[0])
-        estimate = self.make_params(offset=offset, amplitude=amplitude, decay=decay)
-        estimate['decay'].set(min=abs(x[1]-x[0]))
-        return estimate
+__all__ = ('LinearModel', 'StretchedExponentialDecay', 'Gaussian', 'Lorentzian')
 
 
 class StretchedExponentialDecay(lmfit.Model):
