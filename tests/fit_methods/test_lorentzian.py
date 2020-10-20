@@ -44,16 +44,16 @@ class TestLorentzianMethods(unittest.TestCase):
         min_sigma = 1.5 * (self.x_values[1] - self.x_values[0])
         self.sigma = min_sigma + np.random.rand() * ((window / 2) - min_sigma)
         self.center = left + np.random.rand() * window
-        self.noise_amp = max(self.amplitude / 10, np.random.rand() * (2 * self.amplitude))
+        self.noise_amp = max(self.amplitude / 10, np.random.rand() * self.amplitude)
+        self.noise = (np.random.rand(points) - 0.5) * self.noise_amp
 
     def test_gaussian(self):
         # Test for lorentzian peak
-        y_values = self.lorentzian(self.x_values,
-                                   self.offset,
-                                   self.amplitude,
-                                   self.center,
-                                   self.sigma)
-        y_values += (np.random.rand(len(y_values)) - 0.5) * self.noise_amp
+        y_values = self.noise + self.lorentzian(self.x_values,
+                                                self.offset,
+                                                self.amplitude,
+                                                self.center,
+                                                self.sigma)
 
         fit_model = Lorentzian()
         fit_result = fit_model.fit(data=y_values,
@@ -73,12 +73,11 @@ class TestLorentzianMethods(unittest.TestCase):
             self.assertLessEqual(diff, tolerance, msg)
 
         # Test for lorentzian dip
-        y_values = self.lorentzian(self.x_values,
-                                   self.offset,
-                                   -self.amplitude,
-                                   self.center,
-                                   self.sigma)
-        y_values += (np.random.rand(len(y_values)) - 0.5) * self.noise_amp
+        y_values = self.noise + self.lorentzian(self.x_values,
+                                                self.offset,
+                                                -self.amplitude,
+                                                self.center,
+                                                self.sigma)
 
         fit_model = Lorentzian()
         fit_result = fit_model.fit(data=y_values,

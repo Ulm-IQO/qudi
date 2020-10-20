@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import unittest
 import numpy as np
 
-from qudi.core.fitting import ExponentialDecay, StretchedExponentialDecay
+from qudi.core.fitting import StretchedExponentialDecay
 
 
 class TestExpDecayMethods(unittest.TestCase):
@@ -32,10 +32,6 @@ class TestExpDecayMethods(unittest.TestCase):
     @staticmethod
     def stretched_exp_decay(x, offset, amplitude, decay, stretch):
         return offset + amplitude * np.exp(-(x / decay) ** stretch)
-
-    @staticmethod
-    def exp_decay(x, offset, amplitude, decay):
-        return offset + amplitude * np.exp(-x/decay)
 
     def setUp(self):
         self.offset = (np.random.rand() - 0.5) * 2e6
@@ -47,48 +43,54 @@ class TestExpDecayMethods(unittest.TestCase):
         min_decay = 1.5 * (self.x_values[1] - self.x_values[0])
         self.decay = min_decay + np.random.rand() * ((window / 2) - min_decay)
         self.stretch = 0.1 + np.random.rand() * 3.9
-        self.noise_amp = max(self.amplitude / 10, np.random.rand() * (2 * self.amplitude))
+        self.noise_amp = max(self.amplitude / 10, np.random.rand() * self.amplitude)
+        self.noise = (np.random.rand(points) - 0.5) * self.noise_amp
 
-    def test_gaussian(self):
-        # Test for lorentzian peak
-        y_values = self.lorentzian(self.x_values,
-                                   self.offset,
-                                   self.amplitude,
-                                   self.center,
-                                   self.sigma)
-        fit_model = Lorentzian()
+    def test_exp_decay(self):
+        # Test for exponential decay (stretch == 1)
+        y_values = self.noise + self.stretched_exp_decay(self.x_values,
+                                                         self.offset,
+                                                         self.amplitude,
+                                                         self.decay,
+                                                         1)
+
+        fit_model = StretchedExponentialDecay()
+        guess = fit_model.guess(y_values, self.x_values)
+        guess['stretch'].set(vary=False, value=1)
+        fit_result = fit_model.fit(data=y_values, x=self.x_values, **guess)
+
+        params_ideal = {'offset': self.offset,
+                        'amplitude': self.amplitude,
+                        'decay': self.decay}
+        for name, ideal_val in params_ideal.items():
+            diff = abs(fit_result.best_values[name] - ideal_val)
+            tolerance = abs(ideal_val * self._fit_param_tolerance)
+            msg = 'Exp. decay fit parameter "{0}" not within {1:.2%} tolerance'.format(
+                name, self._fit_param_tolerance
+            )
+            self.assertLessEqual(diff, tolerance, msg)
+
+    def test_stretched_exp_decay(self):
+        # Test for stretched exponential decay
+        y_values = self.noise + self.stretched_exp_decay(self.x_values,
+                                                         self.offset,
+                                                         self.amplitude,
+                                                         self.decay,
+                                                         self.stretch)
+
+        fit_model = StretchedExponentialDecay()
         fit_result = fit_model.fit(data=y_values,
                                    x=self.x_values,
                                    **fit_model.guess(y_values, self.x_values))
 
         params_ideal = {'offset': self.offset,
                         'amplitude': self.amplitude,
-                        'center': self.center,
-                        'sigma': self.sigma}
-        for name, fit_param in fit_result.best_values.items():
-            diff = abs(fit_param - params_ideal[name])
-            tolerance = abs(params_ideal[name] * self._fit_param_tolerance)
-            msg = 'Lorentzian peak fit parameter "{0}" not within {1:.2%} tolerance'.format(
-                name, self._fit_param_tolerance
-            )
-            self.assertLessEqual(diff, tolerance, msg)
-
-        # Test for lorentzian dip
-        y_values = self.lorentzian(self.x_values,
-                                   self.offset,
-                                   -self.amplitude,
-                                   self.center,
-                                   self.sigma)
-        fit_model = Lorentzian()
-        fit_result = fit_model.fit(data=y_values,
-                                   x=self.x_values,
-                                   **fit_model.guess(y_values, self.x_values))
-
-        params_ideal['amplitude'] = -self.amplitude
-        for name, fit_param in fit_result.best_values.items():
-            diff = abs(fit_param - params_ideal[name])
-            tolerance = abs(params_ideal[name] * self._fit_param_tolerance)
-            msg = 'Lorentzian dip fit parameter "{0}" not within {1:.2%} tolerance'.format(
+                        'decay': self.decay,
+                        'stretch': self.stretch}
+        for name, ideal_val in params_ideal.items():
+            diff = abs(fit_result.best_values[name] - ideal_val)
+            tolerance = abs(ideal_val * self._fit_param_tolerance)
+            msg = 'Stretched exp. decay fit parameter "{0}" not within {1:.2%} tolerance'.format(
                 name, self._fit_param_tolerance
             )
             self.assertLessEqual(diff, tolerance, msg)
