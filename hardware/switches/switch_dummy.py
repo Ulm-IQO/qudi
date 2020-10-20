@@ -73,7 +73,7 @@ class SwitchDummy(Base, SwitchInterface):
         if self._reset_states:
             self.states = False
 
-        if self._states is None or len(self.states) != self.number_of_switches:
+        if self._states is None or len(self._states) != self.number_of_switches:
             self.states = [False] * self.number_of_switches
 
     def on_deactivate(self):

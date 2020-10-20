@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Control for a Thorlabs OWS12 MEMS Fiber-Optic Switch through the serial interface.
+
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -16,15 +18,18 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-# TODO: convert interface
 
 import visa
+import time
 from core.module import Base
 from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
+from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
+import numpy as np
 
 
-class Main(Base, SwitchInterface):
+class HBridge(Base, SwitchInterface):
     """ This class is implements communication with Thorlabs OSW12(22) fibered switch
 
     Example config for copy-paste:
@@ -32,6 +37,9 @@ class Main(Base, SwitchInterface):
     fibered_switch:
         module.Class: 'switches.osw12.Main'
         interface: 'ASRL1::INSTR'
+        names_of_states: ['Off', 'On']
+        names_of_switches: ['Detection']
+        name: 'MEMS Fibre Switch'
 
     Description of the hardware provided by Thorlabs:
         Thorlabs offers a line of bidirectional fiber optic switch kits that include a MEMS optical switch with an
@@ -41,86 +49,106 @@ class Main(Base, SwitchInterface):
         These bidirectional switches have low insertion loss and excellent repeatability.
     """
 
-    interface = ConfigOption('interface', 'ASRL1::INSTR', missing='error')
+    _names_of_states = ConfigOption(name='names_of_states', default=['Down', 'Up'], missing='nothing')
+    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
+    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
+    _switch_time = ConfigOption(name='switch_time', default=1e-3, missing='nothing')
 
-    _rm = None
-    _inst = None
+    _states = StatusVar(name='states', default=None)
+
+    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lock = Mutex()
+        self._resource_manager = None
+        self._instrument = None
 
     def on_activate(self):
-        """ Module activation method """
-        self._rm = visa.ResourceManager()
-        try:
-            self._inst = self._rm.open_resource(self.interface, baud_rate=115200, write_termination='\n',
-                                                read_termination='\r\n')
-        except visa.VisaIOError:
-            self.log.error('Could not connect to OSW device')
+        """ Prepare module, connect to hardware.
+        """
+        self._resource_manager = visa.ResourceManager()
+        self._instrument = self._resource_manager.open_resource(
+            self.serial_interface,
+            baud_rate=115200,
+            write_termination='\n',
+            read_termination='\r\n',
+            timeout=10,
+            send_end=True
+        )
+
+        if self._hardware_name is None:
+            self._hardware_name = 'MEMS Fiber-Optic Switch'
+
+        if np.shape(self._names_of_states) == (2,):
+            self._names_of_states = [list(self._names_of_states)] * self.number_of_switches
+        elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
+            self._names_of_states = list(self._names_of_states)
+        else:
+            self.log.error(f'names_of_states must either be a list of two names for the states [low, high] '
+                           f'which are applied to all switched or it must be a list '
+                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
+
+        if np.shape(self._names_of_switches) == (self.number_of_switches,):
+            self._names_of_switches = list(self._names_of_switches)
+        else:
+            self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
+
+        # initialize channels to saved status if requested
+        if self._reset_states:
+            self.states = False
+
+        if self._states is None or len(self._states) != self.number_of_switches:
+            self.states = [False] * self.number_of_switches
+        else:
+            self.states = self._states
 
     def on_deactivate(self):
-        """ Disconnect from hardware on deactivation. """
-        self._inst.close()
-        self._rm.close()
-
-    def getNumberOfSwitches(self):
-        """ Gives the number of switches connected to this hardware.
-
-          @return int: number of swiches on this hardware
+        """ Disconnect from hardware on deactivation.
         """
+        self._instrument.close()
+        self._resource_manager.close()
+
+    @property
+    def name(self):
+        return self._hardware_name
+
+    @property
+    def states(self):
+        return [self.get_state()]
+
+    @states.setter
+    def states(self, value):
+        if np.isscalar(value):
+            self.set_state(index_of_switch=None, state=value)
+        else:
+            self.set_state(index_of_switch=None, state=value[0])
+
+    @property
+    def names_of_states(self):
+        return self._names_of_states.copy()
+
+    @property
+    def names_of_switches(self):
+        return self._names_of_switches.copy()
+
+    @property
+    def number_of_switches(self):
         return 1
 
-    def getSwitchState(self, switchNumber=0):
-        """ Get the state of the switch.
+    def get_state(self, index_of_switch=None):
+        with self.lock:
+            state = self._instrument.query('S?\n').strip()
+            if state == '1':
+                self._states[0] = True
+            elif state == '2':
+                self._states[0] = False
+            else:
+                self.log.error(f'Hardware returned {state} as switch state.')
+            return self._states[0]
 
-          @param int switchNumber: index of switch
-
-          @return bool: True if 1, False if 2
-        """
-        state = self._inst.query('S?\n')
-        if state == '1':
-            return True
-        elif state == '2':
-            return False
-        else:
-            self.log.error('Hardware returned {} as switch state.'.format(state))
-
-    def getCalibration(self, switchNumber, state):
-        """ Get calibration parameter for switch.
-
-        Function not used by this module
-        """
-        return 0
-
-    def setCalibration(self, switchNumber, state, value):
-        """ Set calibration parameter for switch.
-
-        Function not used by this module
-        """
-        return True
-
-    def switchOn(self, switchNumber):
-        """ Set the state to on (channel 1)
-
-          @param int switchNumber: number of switch to be switched
-
-          @return bool: True if succeeds, False otherwise
-        """
-        self._inst.write('S 1')
-        return True
-
-    def switchOff(self, switchNumber):
-        """ Set the state to off (channel 2)
-
-          @param int switchNumber: number of switch to be switched
-
-          @return bool: True if suceeds, False otherwise
-        """
-        self._inst.write('S 2')
-        return True
-
-    def getSwitchTime(self, switchNumber):
-        """ Give switching time for switch.
-
-          @param int switchNumber: number of switch
-
-          @return float: time needed for switch state change
-        """
-        return 1e-3  # max. 1 ms; typ. 0.5 ms
+    def set_state(self, index_of_switch=None, state=False):
+        with self.lock:
+            self._inst.write('S {0:d}'.format(1 if state else 2))
+        return self.get_state(index_of_switch)
