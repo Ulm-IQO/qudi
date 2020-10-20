@@ -119,7 +119,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         if self._reset_states:
             self.states = False
 
-        if self.states is None or len(self.states) != self.number_of_switches:
+        if self._states is None or len(self._states) != self.number_of_switches:
             self.states = [False] * self.number_of_switches
         else:
             self.states = self._states
