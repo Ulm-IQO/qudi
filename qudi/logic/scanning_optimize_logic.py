@@ -274,8 +274,10 @@ class ScanningOptimizeLogic(LogicBase):
                     x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
                     y = np.linspace(*scan_data.scan_range[1], scan_data.scan_resolution[1])
                     xy = np.meshgrid(x, y, indexing='ij')
-                    opt_pos = self._get_pos_from_2d_gauss_fit(xy,
-                                                              scan_data.data[self._data_channel])
+                    opt_pos = self._get_pos_from_2d_gauss_fit(
+                        xy,
+                        scan_data.data[self._data_channel].ravel()
+                    )
                 opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
                 self._scan_logic().set_scanner_target_position(opt_pos_dict, id(self))
 
