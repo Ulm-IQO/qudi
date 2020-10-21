@@ -84,16 +84,26 @@ class SwitchLogic(GenericLogic):
 
     @states.setter
     def states(self, value):
-        print('still to be done')
-        return
-        if np.isscalar(value) or np.shape(value) == (self.number_of_hardware,):
-            state = self._get_state_value(value)
-            if state is not None:
-                self.switch().states = state
-                self.sig_switch_updated.emit(self.states)
+        if np.isscalar(value):
+            if isinstance(value, str):
+                if all(x == self.__names_of_states[0] for x in self.__names_of_states):
+                    state = self._get_state_value(value, switch_index=0)
+                    if state is not None:
+                        self.switch().states = state
+                else:
+                    self.log.error(f'The state names of the switches are not the same, '
+                                   f'so the value of the switch state "{value}" cannot be determined.')
+            else:
+                self.switch().states = value
+        elif np.shape(value) == (self.number_of_switches,):
+            for switch_index in range(self.number_of_switches):
+                value[switch_index] = self._get_state_value(value[switch_index], switch_index)
+            if None not in value:
+                self.switch().states = value
         else:
-            self.log.error(f'The length of the first dimension of the states was {len(value)} '
-                           f'but needs to be {self.number_of_hardware}.')
+            self.log.error(f'The shape of the states was {np.shape(value)} '
+                           f'but needs to be ({self.number_of_switches}, ).')
+        self.sig_switch_updated.emit(self.states)
 
     def _get_switch_index(self, switch_index):
         if isinstance(switch_index, (int, float)):
@@ -114,11 +124,11 @@ class SwitchLogic(GenericLogic):
 
         state = state.lower().replace(' ', '_')
         if 0 <= switch_index < self.number_of_switches:
-            if state in self.__names_of_states:
-                return bool(self.__names_of_states.index(state))
+            if state in self.__names_of_states[switch_index]:
+                return bool(self.__names_of_states[switch_index].index(state))
             else:
                 self.log.error(f'state name "{state}" not found for switch "{switch_index}", '
-                               f'options are "{self.number_of_switches[switch_index]}".')
+                               f'options are "{self.__names_of_states[switch_index]}".')
                 return None
         else:
             self.log.error(f'The switch_index was {switch_index} '
