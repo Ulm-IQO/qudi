@@ -359,15 +359,21 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                     continue
                 if positions[i][0] > self._current_scan_ranges[0][1] + include_dist:
                     continue
-                if positions[i][1] < self._current_position['y'] - include_dist:
-                    continue
-                if positions[i][1] > self._current_position['y'] + include_dist:
-                    continue
-                gauss = self.__gaussian_2d(xy_grid,
-                                           amp=amplitudes[i],
-                                           pos=positions[i],
-                                           sigma=sigmas[i],
-                                           theta=thetas[i])
+                if len(self._current_scan_axes) == 1:
+                    if positions[i][1] < self._current_position['y'] - include_dist:
+                        continue
+                    if positions[i][1] > self._current_position['y'] + include_dist:
+                        continue
+                else:
+                    if positions[i][1] < self._current_scan_ranges[1][0] - include_dist:
+                        continue
+                    if positions[i][1] > self._current_scan_ranges[1][1] + include_dist:
+                        continue
+                gauss = self._gaussian_2d(xy_grid,
+                                          amp=amplitudes[i],
+                                          pos=positions[i],
+                                          sigma=sigmas[i],
+                                          theta=thetas[i])
                 if len(self._current_scan_axes) == 1:
                     self._scan_image += gauss[:, 0]
                 else:
@@ -463,12 +469,14 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             return self._scan_data
 
     @staticmethod
-    def __gaussian_2d(xy, amp, pos, sigma, theta=0, offset=0):
+    def _gaussian_2d(xy, amp, pos, sigma, theta=0, offset=0):
         x, y = xy
         sigx, sigy = sigma
         x0, y0 = pos
         a = np.cos(-theta) ** 2 / (2 * sigx ** 2) + np.sin(-theta) ** 2 / (2 * sigy ** 2)
         b = np.sin(2 * -theta) / (4 * sigy ** 2) - np.sin(2 * -theta) / (4 * sigx ** 2)
         c = np.sin(-theta) ** 2 / (2 * sigx ** 2) + np.cos(-theta) ** 2 / (2 * sigy ** 2)
+        x_prime = x - x0
+        y_prime = y - y0
         return offset + amp * np.exp(
-            -(a * (x - x0) ** 2 + 2 * b * (x - x0) * (y - y0) + c * (y - y0) ** 2))
+            -(a * x_prime ** 2 + 2 * b * x_prime * y_prime + c * y_prime ** 2))
