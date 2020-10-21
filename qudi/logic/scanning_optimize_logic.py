@@ -29,6 +29,7 @@ from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+from qudi.core.fit_models.gaussian import Gaussian2D, Gaussian
 from qudi.core import qudi_slot
 
 from qudi.interface.scanning_probe_interface import ScanData
@@ -264,6 +265,19 @@ class ScanningOptimizeLogic(LogicBase):
                 return
 
             # ToDo: Perform fit on last scan data and move scanner target position
+            if not is_running:
+                scan_data = self._curr_scan_data[axes]
+                if scan_data.scan_dimension == 1:
+                    x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
+                    opt_pos = self._get_pos_from_1d_gauss_fit(x, scan_data.data[self._data_channel])
+                else:
+                    x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
+                    y = np.linspace(*scan_data.scan_range[1], scan_data.scan_resolution[1])
+                    xy = np.meshgrid(x, y, indexing='ij')
+                    opt_pos = self._get_pos_from_2d_gauss_fit(xy,
+                                                              scan_data.data[self._data_channel])
+                opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
+                self._scan_logic().set_scanner_target_position(opt_pos_dict, id(self))
 
             self._sequence_index += 1
 
@@ -292,3 +306,28 @@ class ScanningOptimizeLogic(LogicBase):
             seq_index = min(self._sequence_index, len(self._scan_sequence) - 1)
             return self._scan_logic().toggle_scan(False, self._scan_sequence[seq_index])
 
+    def _get_pos_from_2d_gauss_fit(self, xy, data):
+        model = Gaussian2D()
+        try:
+            fit_result = model.fit(data, xy=xy, **model.guess(data, xy))
+        except:
+            self._stop_requested = True
+            x_min, x_max = xy[0].min(), xy[0].max()
+            y_min, y_max = xy[1].min(), xy[1].max()
+            x_middle = (x_max - x_min) / 2 + x_min
+            y_middle = (y_max - y_min) / 2 + y_min
+            self.log.exception('2D Gaussian fit unsuccessful. Aborting optimization sequence.')
+            return x_middle, y_middle
+        return fit_result.best_values['center_x'], fit_result.best_values['center_y']
+
+    def _get_pos_from_1d_gauss_fit(self, x, data):
+        model = Gaussian()
+        try:
+            fit_result = model.fit(data, x=x, **model.guess(data, x))
+        except:
+            self._stop_requested = True
+            x_min, x_max = x.min(), x.max()
+            middle = (x_max - x_min) / 2 + x_min
+            self.log.exception('1D Gaussian fit unsuccessful. Aborting optimization sequence.')
+            return middle
+        return (fit_result.best_values['center'],)
