@@ -109,10 +109,18 @@ class FlipMirror(Base, SwitchInterface):
 
     @property
     def name(self):
+        """
+        Name can either be defined as ConfigOption (name) or it defaults to "Flipmirror Switch".
+            @return str: The name of the hardware
+        """
         return self._hardware_name
 
     @property
     def states(self):
+        """
+        The states of the system as a list of boolean values.
+            @return list(bool): All the current states of the switches in a list
+        """
         with self.lock:
             pos = self._instrument.ask('GP1')
             if pos == 'H1':
@@ -125,30 +133,70 @@ class FlipMirror(Base, SwitchInterface):
 
     @states.setter
     def states(self, value):
+        """
+        The states of the system can be set in two ways:
+        Either as a single boolean value to define all the states to be the same
+        or as a list of boolean values to define the state of each switch individually.
+        After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
+        The wait time can be set by the ConfigOption (switch_time).
+        This functions just calls the function self.set_state.
+            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @return: None
+        """
         if np.isscalar(value):
-            self.set_state(index_of_switch=None, state=value)
+            self.set_state(state=value)
         else:
             if len(value) != self.number_of_switches:
                 self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
             else:
-                self.set_state(index_of_switch=None, state=value[0])
+                self.set_state(state=value[0])
 
     @property
     def names_of_states(self):
+        """
+        Names of the states as a list of lists. The first list contains the names for each of the switches
+        and each of switches has two elements representing the names in the state order [False, True].
+        The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
+            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
+        """
         return self._names_of_states.copy()
 
     @property
     def names_of_switches(self):
+        """
+        Names of the switches as a list of length number_of_switches.
+        These can either be set as ConfigOption (names_of_switches) or default to a simple range starting at 1.
+            @return list(str): names of the switches
+        """
         return self._names_of_switches.copy()
 
     @property
     def number_of_switches(self):
+        """
+        Number of switches provided by this hardware. Constant 1 for this hardware.
+            @return int: number of switches
+        """
         return 1
 
     def get_state(self, index_of_switch=None):
+        """
+        Returns the state of a specific switch which was specified by its switch index.
+        As there is only 1 switch, the index_of_switch is ignored.
+        This functions just calls the property self.states.
+            @param int index_of_switch: index of the switch is ignored
+            @return bool: boolean value of this specific switch
+        """
         return self.states[0]
 
     def set_state(self, index_of_switch=None, state=False):
+        """
+        Sets the state of a specific switch which was specified by its switch index.
+        After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
+        The wait time can be set by the ConfigOption (switch_time).
+            @param int index_of_switch: index of the switch is ignored
+            @param bool state: boolean state of the switch to be set
+            @return int: state of the switch actually set
+        """
         with self.lock:
             answer = self._instrument.ask('SV1' if state else 'SH1')
             if answer != 'OK1':
@@ -160,13 +208,13 @@ class FlipMirror(Base, SwitchInterface):
             return self.get_state()
 
     def get_calibration(self, state):
-        """ Get calibration parameter for switch.
-          @param bool state: for which to get calibration parameter
-          @return int: calibration parameter for switch and state.
-
+        """
+        Get calibration parameter for switch. NOT part of the SwitchInterface!
         In this case, the calibration parameter is a integer number that says where the
         horizontal and vertical position of the flip mirror is in the 16 bit PWM range of the motor driver.
         The number is returned as a string, not as an int, and needs to be converted.
+            @param bool state: for which to get calibration parameter
+            @return int: calibration parameter for switch and state.
         """
         with self.lock:
             if state:
@@ -176,11 +224,11 @@ class FlipMirror(Base, SwitchInterface):
             return int(answer.split('=')[1])
 
     def set_calibration(self, state, value):
-        """ Set calibration parameter for switch.
-
-          @param bool state: for which to get calibration parameter
-          @param int value: calibration parameter to be set.
-          @return bool: True if success, False on error
+        """
+        Set calibration parameter for switch. NOT part of the SwitchInterface!
+            @param bool state: for which to get calibration parameter
+            @param int value: calibration parameter to be set.
+            @return bool: True if success, False on error
         """
         with self.lock:
             answer = self._instrument.ask('SHT1 {0}'.format(int(value)))
