@@ -35,6 +35,7 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
     switch1 = Connector(interface='SwitchInterface')
     switch2 = Connector(interface='SwitchInterface')
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    _extend_hardware_name = ConfigOption(name='extend_hardware_name', default=False, missing='nothing')
 
     def on_activate(self):
         if self._hardware_name is None:
@@ -73,7 +74,11 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
 
     @property
     def names_of_switches(self):
-        return list(self.switch1().names_of_switches) + list(self.switch2().names_of_switches)
+        if self._extend_hardware_name:
+            return [self.switch1().name + '.' + switch for switch in self.switch1().names_of_switches] \
+                   + [self.switch2().name + '.' + switch for switch in self.switch2().names_of_switches]
+        else:
+            return list(self.switch1().names_of_switches) + list(self.switch2().names_of_switches)
 
     def get_state(self, number_of_switch):
         if number_of_switch < self.switch1().number_of_switches:
