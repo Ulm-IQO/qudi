@@ -279,7 +279,7 @@ class ScanningOptimizeLogic(LogicBase):
                         scan_data.data[self._data_channel].ravel()
                     )
                 opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
-                self._scan_logic().set_scanner_target_position(opt_pos_dict, id(self))
+                self._scan_logic().set_scanner_target_position(opt_pos_dict)
 
             self._sequence_index += 1
 
