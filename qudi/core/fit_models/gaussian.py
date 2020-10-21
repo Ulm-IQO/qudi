@@ -91,8 +91,8 @@ class Gaussian2D(lmfit.Model):
 
         offset = (data[:, 0].mean() + data[:, -1].mean() + data[0, :].mean() + data[-1, :].mean())/4
         amplitude = np.max(data) - offset
-        center_x = xy[0][np.argmax(data)]
-        center_y = xy[1][np.argmax(data)]
+        center_x = x_range / 2 + xy[0].min()
+        center_y = y_range / 2 + xy[1].min()
         sigma_x = x_range / 10
         sigma_y = y_range / 10
         theta = 0
