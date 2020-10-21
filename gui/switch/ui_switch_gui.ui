@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>466</width>
-    <height>600</height>
+    <width>105</width>
+    <height>73</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,21 +16,10 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QScrollArea" name="scroll_area">
-      <property name="widgetResizable">
-       <bool>true</bool>
+     <widget class="QGroupBox" name="switch_groupBox">
+      <property name="title">
+       <string>GroupBox</string>
       </property>
-      <widget class="QWidget" name="scroll_area_widget">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>446</width>
-         <height>555</height>
-        </rect>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout"/>
-      </widget>
      </widget>
     </item>
    </layout>
@@ -40,7 +29,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>466</width>
+     <width>105</width>
      <height>25</height>
     </rect>
    </property>
@@ -49,6 +38,7 @@
      <string>Menu</string>
     </property>
     <addaction name="actionClose"/>
+    <addaction name="action_show_radio_buttons"/>
    </widget>
    <addaction name="menuMenu"/>
   </widget>
@@ -59,6 +49,14 @@
    </property>
    <property name="text">
     <string>Close</string>
+   </property>
+  </action>
+  <action name="action_show_radio_buttons">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show &amp;Radio Buttons</string>
    </property>
   </action>
  </widget>
