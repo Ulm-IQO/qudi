@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import unittest
 import numpy as np
 
-from qudi.core.fitting import StretchedExponentialDecay
+from qudi.core.fit_models.exp_decay import StretchedExponentialDecay
 
 
 class TestExpDecayMethods(unittest.TestCase):

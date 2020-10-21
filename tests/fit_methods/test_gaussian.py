@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import unittest
 import numpy as np
 
-from qudi.core.fitting import Gaussian
+from qudi.core.fit_models.gaussian import Gaussian
 
 
 class TestGaussianMethods(unittest.TestCase):

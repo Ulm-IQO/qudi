@@ -22,9 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import unittest
 import numpy as np
-import matplotlib.pyplot as plt
 
-from qudi.core.fitting import Lorentzian
+from qudi.core.fit_models.lorentzian import Lorentzian
 
 
 class TestLorentzianMethods(unittest.TestCase):

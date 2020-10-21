@@ -182,6 +182,7 @@ setup(name='qudi',
                 'qudi.core.jupyterkernel',
                 'qudi.core.jupyterkernel.mpl',
                 'qudi.core.util',
+                'qudi.core.fit_models',
                 'qudi.tools',
                 'qudi.tools.config_editor'
                 ],
