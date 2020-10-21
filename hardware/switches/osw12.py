@@ -92,6 +92,8 @@ class HBridge(Base, SwitchInterface):
 
         if np.shape(self._names_of_switches) == (self.number_of_switches,):
             self._names_of_switches = list(self._names_of_switches)
+        elif isinstance(self._names_of_switches, str):
+            self._names_of_switches = [self._names_of_switches]
         else:
             self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
 
