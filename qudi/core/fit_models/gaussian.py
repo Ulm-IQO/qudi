@@ -89,7 +89,7 @@ class Gaussian2D(lmfit.Model):
         x_range = xy[0].max() - xy[0].min()
         y_range = xy[1].max() - xy[1].min()
 
-        offset = (data[:, 0].mean() + data[:, -1].mean() + data[0, :].mean() + data[-1, :].mean())/4
+        offset = np.median(data)
         amplitude = np.max(data) - offset
         center_x = x_range / 2 + xy[0].min()
         center_y = y_range / 2 + xy[1].min()
