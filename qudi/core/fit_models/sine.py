@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains data fitting routines based on the lmfit package for Qudi.
+This file contains models of Sine fitting routines for qudi based on the lmfit package.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,107 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import lmfit
 import numpy as np
-from scipy.ndimage import filters
-from lmfit.models import LinearModel
-# try:
-#     from qudi.core.application import Qudi
-#     _qudi_installed = True
-# except ImportError:
-#     _qudi_installed = False
 
-__all__ = ('LinearModel', 'StretchedExponentialDecay', 'Gaussian', 'Lorentzian')
-
-
-class StretchedExponentialDecay(lmfit.Model):
-    """
-    """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('amplitude', value=1., min=0., max=np.inf)
-        self.set_param_hint('decay', value=1., min=0., max=np.inf)
-        self.set_param_hint('stretch', value=1., min=0., max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset, amplitude, decay, stretch):
-        return offset + amplitude * np.exp(-(x / decay) ** stretch)
-
-    def guess(self, data, x):
-        # ToDo: Better estimator actually suited for a STRETCHED exponential
-        offset = data[-1]
-        amplitude = data[0] - offset
-        decay = (data[1] - data[0]) / (x[-1] - x[0]) / (data[-1] - data[0])
-        stretch = 2
-        estimate = self.make_params(offset=offset,
-                                    amplitude=amplitude,
-                                    decay=decay,
-                                    stretch=stretch)
-        estimate['decay'].set(min=abs(x[1]-x[0]))
-        return estimate
-
-
-class Gaussian(lmfit.Model):
-    """
-    """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('amplitude', value=0., min=0., max=np.inf)
-        self.set_param_hint('center', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('sigma', value=0., min=0., max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset, amplitude, center, sigma):
-        return offset + amplitude * np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
-
-    def guess(self, data, x):
-        x_range = abs(x[-1] - x[0])
-
-        offset = np.median(data)
-        amplitude = np.max(data) - np.min(data)
-        center = x[np.argmax(data)]
-        sigma = x_range / 10
-        estimate = self.make_params(offset=offset,
-                                    amplitude=amplitude,
-                                    center=center,
-                                    sigma=sigma)
-        estimate['offset'].set(min=np.min(data) - amplitude / 2, max=np.max(data) + amplitude / 2)
-        estimate['amplitude'].set(min=0, max=amplitude * 1.5)
-        estimate['center'].set(min=np.min(x) - x_range / 2, max=np.max(x) + x_range / 2)
-        estimate['sigma'].set(min=0, max=x_range)
-        return estimate
-
-
-class Lorentzian(lmfit.Model):
-    """
-    """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('amplitude', value=0., min=0., max=np.inf)
-        self.set_param_hint('center', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('sigma', value=0., min=0., max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset, amplitude, center, sigma):
-        return offset + amplitude * sigma ** 2 / ((x - center) ** 2 + sigma ** 2)
-
-    def guess(self, data, x):
-        x_range = abs(x[-1] - x[0])
-
-        offset = np.median(data)
-        amplitude = np.max(data) - np.min(data)
-        center = x[np.argmax(data)]
-        sigma = x_range / 10
-        estimate = self.make_params(offset=offset,
-                                    amplitude=amplitude,
-                                    center=center,
-                                    sigma=sigma)
-        estimate['offset'].set(min=np.min(data) - amplitude / 2, max=np.max(data) + amplitude / 2)
-        estimate['amplitude'].set(min=0, max=amplitude * 1.5)
-        estimate['center'].set(min=np.min(x) - x_range / 2, max=np.max(x) + x_range / 2)
-        estimate['sigma'].set(min=0, max=x_range)
-        return estimate
+__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'ExponentialDecayDoubleSine',
+           'DoubleExponentialDecayDoubleSine')
 
 
 class Sine(lmfit.Model):
