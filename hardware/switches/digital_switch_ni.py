@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Control the output of a CW laser through the NI card.
+Control external hardware by the output of the digital channels of a NI card.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,7 +32,8 @@ from core.statusvariable import StatusVar
 
 
 class DigitalSwitchNI(Base, SwitchInterface):
-    """ This class enables to control a switch via the NI card
+    """ This class enables to control a switch via the NI card.
+    Control external hardware by the output of the digital channels of a NI card.
 
     Example config for copy-paste:
 
@@ -41,7 +42,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
         channel: '/Dev1/port0/line30:31'
         switch_time: 0.1
         reset_states: False
-        names_of_states: ['High', 'Low']
+        names_of_states: ['Low', 'High']
         names_of_switches: ['One', 'Two']
 
     """
@@ -56,15 +57,10 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     _states = StatusVar(name='states', default=None)
 
-    def __init__(self, config, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ Create the digital switch output control module
-
-          @param object manager: reference to module manager
-          @param str name: unique module name
-          @param dict config; configuration parameters in a dict
-          @param dict kwargs: additional parameters in a dict
         """
-        super().__init__(config=config, **kwargs)
+        super().__init__(*args, **kwargs)
         self.lock = Mutex()
 
         self._number_of_channels = 0
@@ -72,6 +68,9 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     def on_activate(self):
         """ Prepare module, connect to hardware.
+        The number of switches is automatically determined from the ConfigOption channel:
+            /Dev1/port0/line31 lead to 1 switch
+            /Dev1/port0/line29:31 leads to 3 switches
         """
 
         self._hardware_name = 'NICard' + self._channel.replace('/', ' ') \
@@ -124,14 +123,31 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     @property
     def name(self):
+        """
+        Name can either be defined as ConfigOption (name) or it defaults to "NICard" plus the channel name.
+            @return str: The name of the hardware
+        """
         return self._hardware_name
 
     @property
     def states(self):
+        """
+        The states of the system as a list of boolean values.
+            @return list(bool): All the current states of the switches in a list
+        """
         return self._states.copy()
 
     @states.setter
     def states(self, value):
+        """
+        The states of the system can be set in two ways:
+        Either as a single boolean value to define all the states to be the same
+        or as a list of boolean values to define the state of each switch individually.
+        After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
+        The wait time can be set by the ConfigOption (switch_time).
+            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @return: None
+        """
         if np.isscalar(value):
             self._states = [bool(value)] * self.number_of_switches
         else:
@@ -152,23 +168,53 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     @property
     def names_of_states(self):
+        """
+        Names of the states as a list of lists. The first list contains the names for each of the switches
+        and each of switches has two elements representing the names in the state order [False, True].
+        The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
+            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
+        """
         return self._names_of_states.copy()
 
     @property
     def names_of_switches(self):
+        """
+        Names of the switches as a list of length number_of_switches.
+        These can either be set as ConfigOption (names_of_switches) or default to a simple range starting at 1.
+            @return list(str): names of the switches
+        """
         return self._names_of_switches.copy()
 
     @property
     def number_of_switches(self):
+        """
+        Number of switches provided by this hardware.
+        This is automatically determined form the used channels defined by the ConfigOption channel:
+            /Dev1/port0/line31 lead to 1 switch
+            /Dev1/port0/line29:31 leads to 3 switches
+            @return int: number of switches
+        """
         return int(self._number_of_channels)
 
     def get_state(self, index_of_switch):
+        """
+        Returns the state of a specific switch which was specified by its switch index.
+            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
+            @return bool: boolean value of this specific switch
+        """
         if 0 <= index_of_switch < self.number_of_switches:
             return self._states[int(index_of_switch)]
         self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
         return False
 
     def set_state(self, index_of_switch=None, state=False):
+        """
+        Sets the state of a specific switch which was specified by its switch index.
+            @param (int/list(int)) index_of_switch: index of the switch in the range from 0 to number_of_switches -1
+                                                    or a list of indices in that range
+            @param bool state: boolean state of the switch to be set
+            @return int: state of the switch actually set
+        """
         if index_of_switch is None:
             index_of_switch = list(range(self._number_of_channels))
         elif isinstance(index_of_switch, int):
