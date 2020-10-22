@@ -77,22 +77,3 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
             @return int: number of switches
         """
         pass
-
-    @abstract_interface_method
-    def get_state(self, index_of_switch):
-        """
-        Returns the state of a specific switch which was specified by its switch index.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
-            @return bool: boolean value of this specific switch
-        """
-        pass
-
-    @abstract_interface_method
-    def set_state(self, index_of_switch, state):
-        """
-        Sets the state of a specific switch which was specified by its switch index.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
-            @param bool state: boolean state of the switch to be set
-            @return int: state of the switch actually set
-        """
-        pass
