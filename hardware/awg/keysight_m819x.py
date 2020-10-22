@@ -51,6 +51,8 @@ class AWGM819X(Base, PulserInterface):
     _sample_rate_div = ConfigOption(name='sample_rate_div', default=1, missing='warn')
     _dac_amp_mode = None
     _wave_mem_mode = None
+    _wave_file_extension = '.bin'
+    _wave_transfer_datatype = 'h'
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -1148,7 +1150,7 @@ class AWGM819X(Base, PulserInterface):
 
     def _wavename_2_fname(self, wave_name):
         # all names lowercase to avoid trouble
-        return str(wave_name + self.wave_file_extension).lower()
+        return str(wave_name + self._wave_file_extension).lower()
 
     def _fname_2_wavename(self, fname, incl_ch_postfix=True):
         # works for file name with (8190a) and without (8195a) _ch? postfix
@@ -1465,7 +1467,7 @@ class AWGM819X(Base, PulserInterface):
         for name in waveform_name:
             for waveform in avail_waveforms:
                 name_ch = self._name_with_ch(name, '?')
-                if fnmatch(waveform.lower(), name_ch + "{}".format(self.wave_file_extension)):
+                if fnmatch(waveform.lower(), name_ch + "{}".format(self._wave_file_extension)):
                     # delete case insensitive
                     self.write(':MMEM:DEL "{0}"'.format(waveform))
                     deleted_waveforms.append(waveform)
@@ -1492,7 +1494,7 @@ class AWGM819X(Base, PulserInterface):
         for name in sequence_name:
             for sequence in avail_sequences:
                 name_ch = self._name_with_ch(name, '?')
-                if fnmatch(sequence, name_ch + '{}'.format(self.wave_file_extension)):
+                if fnmatch(sequence, name_ch + '{}'.format(self._wave_file_extension)):
                     deleted_sequences.append(sequence)
 
         # todo: get_sequence_names return no extension
@@ -1581,7 +1583,7 @@ class AWGM819X(Base, PulserInterface):
                     @return int: error code (0:OK, -1:error)
         """
         self.awg.timeout = None
-        bytes_written, enum_status_code = self.awg.write_binary_values(command, datatype=self.wave_transfer_datatype, is_big_endian=False,
+        bytes_written, enum_status_code = self.awg.write_binary_values(command, datatype=self._wave_transfer_datatype, is_big_endian=False,
                                                                        values=values)
         self.awg.timeout = self._awg_timeout * 1000
         return int(enum_status_code)
@@ -1668,7 +1670,7 @@ class AWGM819X(Base, PulserInterface):
 
     def query_bin(self, question):
 
-        return self.awg.query_binary_values(question, datatype=self.wave_transfer_datatype, is_big_endian=False)
+        return self.awg.query_binary_values(question, datatype=self._wave_transfer_datatype, is_big_endian=False)
 
     def _is_awg_running(self):
         """
@@ -1981,28 +1983,25 @@ class AWGM819X(Base, PulserInterface):
         return int(ch_num)
 
 class AWGM8195A(AWGM819X):
-    """ A hardware module for the Keysight M8190A series for generating
+    """ A hardware module for the Keysight M8195A series for generating
           waveforms and sequences thereof.
 
       Example config for copy-paste:
 
           myawg:
-              module.Class: 'awg.keysight_M819X.AWGM8195A'
+              module.Class: 'awg.keysight_M819x.AWGM8195A'
               awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
               awg_timeout: 20
               pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
               assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
       """
 
-    _modclass = 'awgm8195a'
-    _modtype = 'hardware'
 
     awg_mode_cfg = ConfigOption(name='awg_mode', default='MARK', missing='warn')
-    sample_rate_div = ConfigOption(name='sample_rate_div', default=4, missing='warn')  # todo: _sample_rate_div also in base
 
     _wave_mem_mode = 'awg_segments'
-    wave_file_extension = '.bin8'
-    wave_transfer_datatype = 'b'
+    _wave_file_extension = '.bin8'
+    _wave_transfer_datatype = 'b'
 
     _dac_resolution = 8  # fixed 8 bit
     # physical output channel mapping
@@ -2203,7 +2202,7 @@ class AWGM8195A(AWGM819X):
             self.log.error("Setting awg mode failed, is still: {}".format(self.awg_mode))
 
     def _set_sample_rate_div(self):
-        self.write(':INST:MEM:EXT:RDIV DIV{0}'.format(self.sample_rate_div))  # TODO dependent on DACMode
+        self.write(':INST:MEM:EXT:RDIV DIV{0}'.format(self._sample_rate_div))  # TODO dependent on DACMode
 
     def _write_output_on(self):
         self.write_all_ch("OUTP{} ON")
@@ -2373,20 +2372,17 @@ class AWGM8190A(AWGM819X):
     Example config for copy-paste:
 
         myawg:
-            module.Class: 'awg.keysight_M819X.AWGM8190A'
+            module.Class: 'awg.keysight_M819x.AWGM8190A'
             awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
             awg_timeout: 20
             pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
             assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
     """
 
-    _modclass = 'awgm8190a'
-    _modtype = 'hardware'
-
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
     _wave_mem_mode = 'pc_hdd'  # 'awg_segments'
-    wave_file_extension = '.bin'
-    wave_transfer_datatype = 'h'
+    _wave_file_extension = '.bin'
+    _wave_transfer_datatype = 'h'
 
     _dac_resolution = ConfigOption(name='dac_resolution_bits', default='14',
                                    missing='warn')  # 8190 supports 12 (speed) or 14 (precision)
