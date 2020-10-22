@@ -58,29 +58,31 @@ class SwitchDummy(Base, SwitchInterface):
         if self._hardware_name is None:
             self._hardware_name = self._name
 
-        if np.shape(self._names_of_states) == (2,):
-            self._names_of_states = [list(self._names_of_states)] * self.number_of_switches
-        elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
-            self._names_of_states = list(self._names_of_states)
-        else:
-            self.log.error(f'names_of_states must either be a list of two names for the states [low, high] '
-                           f'which are applied to all switched or it must be a list '
-                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
-
-        if np.shape(self._names_of_switches) == (self.number_of_switches,):
-            self._names_of_switches = list(self._names_of_switches)
+        if np.ndim(self._names_of_switches) == 1 and len(self._names_of_switches) == self.number_of_switches:
+            self._names_of_switches = [str(name).lower().replace(' ', '_') for name in self._names_of_switches]
         elif self.number_of_switches == 1 and isinstance(self._names_of_switches, str):
-            self._names_of_switches = [self._names_of_switches]
+            self._names_of_switches = [str(self._names_of_switches).lower().replace(' ', '_')]
         else:
             self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
 
-        # initialize channels to saved status if requested
-        if self._reset_states:
-            self.states = False
+        if np.ndim(self._names_of_states) == 1 and np.ndim(self._names_of_states[0]) == 0:
+            self._names_of_states = {self._names_of_switches[index]:
+                                         [str(name).lower().replace(' ', '_') for name in self._names_of_states]
+                                     for index in range(self.number_of_switches)}
+        elif np.ndim(self._names_of_states) == 1 \
+                and np.ndim(self._names_of_states[0]) == 1 \
+                and len(self._names_of_states) == self.number_of_switches:
+            self._names_of_states = {self._names_of_switches[index]:
+                                         [str(name).lower().replace(' ', '_') for name in self._names_of_states[index]]
+                                     for index in range(self.number_of_switches)}
+        else:
+            self.log.error(f'names_of_states must either be a list of two or more names for the states '
+                           f'which are applied to all switched or it must be a list '
+                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
 
-        # handle incorrectly or not initialized StatusVar
-        if self._states is None or len(self._states) != self.number_of_switches:
-            self.states = [False] * self.number_of_switches
+        # initialize channels to saved status if requested
+        if self._reset_states or not isinstance(self._states, dict) or len(self._states) != self.number_of_switches:
+            self._states = {name: (0, self._names_of_states[name][0]) for name in self._names_of_switches}
 
     def on_deactivate(self):
         """
@@ -113,13 +115,56 @@ class SwitchDummy(Base, SwitchInterface):
             @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
-        if np.isscalar(value):
-            self._states = [bool(value)] * self.number_of_switches
+        if isinstance(value, dict):
+            for switch, state in value.items():
+                switch = switch.lower().replace(' ', '_')
+                if switch not in self._names_of_switches:
+                    self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
+                    continue
+
+                states = self.names_of_states[switch]
+                if isinstance(state, str):
+                    state = state.lower().replace(' ', '_')
+                    if state not in states:
+                        self.log.error(f'"{state}" is not among the possible states: {states}')
+                        continue
+                    self._states[switch] = (states.index(state), state)
+                else:
+                    if int(state) >= len(states):
+                        self.log.error(f'state index "{int(state)}" is out of range [0, {len(states) - 1}] ')
+                        continue
+                    self._states[switch] = (int(state), states[int(state)])
+        elif np.ndim(value) == 0:
+            for name, states in self.names_of_states.items():
+                if isinstance(value, str):
+                    state = value.lower().replace(' ', '_')
+                    if state not in states:
+                        self.log.error(f'"{state}" is not among the possible states: {states}')
+                        continue
+                    self._states[name] = (states.index(state), state)
+                else:
+                    if int(value) >= len(states):
+                        self.log.error(f'state index "{int(value)}" is out of range [0, {len(states) - 1}] ')
+                        continue
+                    self._states[name] = (int(value), states[int(value)])
         else:
             if len(value) != self.number_of_switches:
                 self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
             else:
-                self._states = [bool(state) for state in value]
+                for index, switch in enumerate(value):
+                    name = self._names_of_switches[index]
+                    states = list(self.names_of_states.values())[index]
+                    if isinstance(switch, str):
+                        state = switch.lower().replace(' ', '_')
+                        if state not in states:
+                            self.log.error(f'"{state}" is not among the possible states: {states}')
+                            continue
+                        self._states[name] = (states.index(state), state)
+                    else:
+                        if int(switch) >= len(states):
+                            self.log.error(f'state index "{int(switch)}" is out of range [0, {len(states) - 1}] ')
+                            continue
+                        self._states[name] = (int(switch), states[int(switch)])
 
     @property
     def names_of_states(self):
@@ -132,15 +177,6 @@ class SwitchDummy(Base, SwitchInterface):
         return self._names_of_states.copy()
 
     @property
-    def names_of_switches(self):
-        """
-        Names of the switches as a list of length number_of_switches.
-        These can either be set as ConfigOption (names_of_switches) or default to a simple range starting at 1.
-            @return list(str): names of the switches
-        """
-        return self._names_of_switches.copy()
-
-    @property
     def number_of_switches(self):
         """
         Number of switches provided by this hardware. Can be set by ConfigOption (number_of_switches) or defaults to 1.
@@ -148,27 +184,41 @@ class SwitchDummy(Base, SwitchInterface):
         """
         return int(self._number_of_switches)
 
-    def get_state(self, index_of_switch):
+    def get_state(self, switch):
         """
         Returns the state of a specific switch which was specified by its switch index.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
+            @param int switch: index of the switch in the range from 0 to number_of_switches -1
             @return bool: boolean value of this specific switch
         """
-        if 0 <= index_of_switch < self.number_of_switches:
-            return self._states[int(index_of_switch)]
-        self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
-        return False
+        if isinstance(switch, str):
+            switch = switch.lower().replace(' ', '_')
+            if switch not in self._names_of_switches:
+                self.log.error(f'Attempted to set a switch of name "{switch}" but it does not exist.')
+            else:
+                return self._states[switch]
+        elif 0 <= switch < self.number_of_switches:
+            return self._states[self._names_of_switches[int(switch)]]
+        else:
+            self.log.error(f'switch was {switch} but must be smaller than {self.number_of_switches} '
+                           f'or a name of a switch.')
+            return False
 
-    def set_state(self, index_of_switch, state):
+    def set_state(self, switch, state):
         """
         Sets the state of a specific switch which was specified by its switch index.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
+            @param int switch: index of the switch in the range from 0 to number_of_switches -1
             @param bool state: boolean state of the switch to be set
             @return int: state of the switch actually set
         """
-        if 0 <= index_of_switch < self.number_of_switches:
-            self._states[int(index_of_switch)] = bool(state)
-            return self._states[int(index_of_switch)]
-
-        self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
-        return -1
+        if isinstance(switch, str):
+            switch = switch.lower().replace(' ', '_')
+            if switch not in self._names_of_switches:
+                self.log.error(f'Attempted to set a switch of name "{switch}" but it does not exist.')
+            else:
+                self.states = {switch: state}
+        elif 0 <= switch < self.number_of_switches:
+            self.states = {self._names_of_switches[int(switch)]: state}
+        else:
+            self.log.error(f'switch was {switch} but must be smaller than {self.number_of_switches} '
+                           f'or a name of a switch.')
+        return self.get_state(switch)
