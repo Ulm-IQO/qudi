@@ -39,8 +39,6 @@ on an interpolated function
 * Made ODMR logic an optional dependency in SpectrumLogic
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
-* Added a joystick interface, logic and hardware module for xinput api
-* Added a joystick to confocal logic module, and minimal joystick to optimizer and to poi manager
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
 * Introduced support of interface sensitive overloading of interface methods. This resolves 
 namespace conflicts within a hardware module inheriting multiple interfaces. See 
