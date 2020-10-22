@@ -24,7 +24,8 @@ import numpy as np
 import time
 from qtpy import QtCore
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 from interface.slow_counter_interface import SlowCounterInterface
@@ -100,8 +101,6 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         mode: 0 # 0: histogram mode, 2: T2 mode, 3: T3 mode
         
     """
-    _modclass = 'PicoHarp300'
-    _modtype = 'hardware'
 
     _deviceID = ConfigOption('deviceID', 0, missing='warn') # a device index from 0 to 7.
     _mode = ConfigOption('mode', 0, missing='warn')

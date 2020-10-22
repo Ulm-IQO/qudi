@@ -23,7 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import serial
 from collections import OrderedDict
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.motor_interface import MotorInterface
 
 
@@ -45,8 +46,6 @@ class MotorNewportConexAGP(Base, MotorInterface):
         axis_label: 'phi'
 
     """
-    _modclass = 'MotorRotation'
-    _modtype = 'hardware'
 
     _com_port = ConfigOption('com_port', missing='error')
     _controller_address = ConfigOption('controller_address', 1, missing='warn')

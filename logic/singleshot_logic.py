@@ -27,7 +27,7 @@ import pylab as pb
 import time
 
 from collections import OrderedDict
-from core.module import Connector
+from core.connector import Connector
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
@@ -38,9 +38,6 @@ class SingleShotLogic(GenericLogic):
         into trace form processable by the trace_analysis_logic.
     """
 
-    _modclass = 'SingleShotLogic'
-    _modtype = 'logic'
-
     # declare connectors
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')
@@ -49,7 +46,7 @@ class SingleShotLogic(GenericLogic):
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
     traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
     pulsegenerator = Connector(interface='PulserInterface')
-    scannerlogic = Connector(interface='ScannerLogic')
+    scannerlogic = Connector(interface='ConfocalLogic')
     optimizerlogic = Connector(interface='OptimizerLogic')
     pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
     odmrlogic = Connector(interface='ODMRLogic')

@@ -27,7 +27,8 @@ import os
 
 import PyDAQmx as daq
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface
 from collections import OrderedDict
 
@@ -43,9 +44,6 @@ class NationalInstrumentsPulser(Base, PulserInterface):
         #pulsed_file_dir: 'C:\\Software\\qudi_pulsed_files' # optional, path
 
     """
-
-    _modtype = 'PulserInterface'
-    _modclass = 'hardware'
 
     device = ConfigOption('device', default='Dev0', missing='warn')
 
