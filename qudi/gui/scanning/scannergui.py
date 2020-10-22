@@ -164,8 +164,12 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self.fit_plot_item = pg.PlotDataItem(x=np.arange(10),
                                              y=np.zeros(10),
                                              pen=pg.mkPen(palette.c2))
+        self.plot_item_vline = pg.InfiniteLine(pos=4.5,
+                                               movable=False,
+                                               pen={'color': '#00ff00', 'width': 2})
         self.plot_widget.addItem(self.plot_item)
         self.plot_widget.addItem(self.fit_plot_item)
+        self.plot_widget.addItem(self.plot_item_vline)
         self.scan_widget.addItem(self.image_item)
 
         self.setWidget(widget)
@@ -347,6 +351,9 @@ class ScannerGui(GuiBase):
         self._optimize_logic().sigOptimizeScanDataChanged.connect(
             self.optimize_data_updated, QtCore.Qt.QueuedConnection
         )
+        self._optimize_logic().sigOptimalPositionChanged.connect(
+            self.optimize_position_updated, QtCore.Qt.QueuedConnection
+        )
 
         # FIXME: Dirty workaround for strange pyqtgraph autoscale behaviour
         for dockwidget in self.scan_2d_dockwidgets.values():
@@ -383,6 +390,7 @@ class ScannerGui(GuiBase):
         self._scanning_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
         self._scanning_logic().sigScanStateChanged.disconnect(self.scan_state_updated)
         self._optimize_logic().sigOptimizeScanDataChanged.disconnect(self.optimize_data_updated)
+        self._optimize_logic().sigOptimalPositionChanged.disconnect(self.optimize_position_updated)
         self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
         self._data_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
 
@@ -1056,6 +1064,10 @@ class ScannerGui(GuiBase):
                 if len(seq_step) == 1:
                     axis = seq_step[0]
                     channel = optim_settings['data_channel']
+                    min_pos = curr_pos[axis] - optim_settings['scan_range'][axis] / 2
+                    x_axis = np.linspace(min_pos,
+                                         min_pos + optim_settings['scan_range'][axis],
+                                         optim_settings['scan_resolution'][axis])
                     self.optimizer_dockwidget.plot_widget.setLabel(
                         'bottom', axis, units=axes_constr[axis].unit
                     )
@@ -1065,9 +1077,9 @@ class ScannerGui(GuiBase):
                     self.optimizer_dockwidget.plot_widget.removeItem(
                         self.optimizer_dockwidget.fit_plot_item
                     )
-                    self.optimizer_dockwidget.plot_item.setData(
-                        np.zeros(optim_settings['scan_resolution'][axis])
-                    )
+                    self.optimizer_dockwidget.plot_item_vline.setValue(curr_pos[axis])
+                    self.optimizer_dockwidget.plot_item.setData(x=x_axis,
+                                                                y=np.zeros(len(x_axis)))
                 elif len(seq_step) == 2:
                     x_axis, y_axis = seq_step
                     x_extent = optim_settings['scan_range'][x_axis] / 2
@@ -1117,8 +1129,27 @@ class ScannerGui(GuiBase):
             self.optimizer_dockwidget.scan_widget.autoRange()
         elif scan_data.scan_dimension == 1:
             x_data = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])[~nan_mask]
+            self.optimizer_dockwidget.fit_plot_item.setData(x_data, np.zeros(len(x_data)))
             self.optimizer_dockwidget.plot_item.setData(x_data, data[~nan_mask])
         return
+
+    @QtCore.Slot(dict, object)
+    def optimize_position_updated(self, pos_dict, fit_data=None):
+        if len(pos_dict) == 2:
+            self.optimizer_dockwidget.scan_widget.crosshairs[0].set_position(
+                tuple(pos_dict.values())
+            )
+        else:
+            self.optimizer_dockwidget.plot_item_vline.setValue(tuple(pos_dict.values())[0])
+
+        if fit_data is not None:
+            if fit_data.ndim == 1:
+                self.optimizer_dockwidget.fit_plot_item.setData(
+                    x=self.optimizer_dockwidget.fit_plot_item.xData,
+                    y=fit_data
+                )
+                self.optimizer_dockwidget.plot_widget.addItem(self.optimizer_dockwidget.fit_plot_item)
+
 
     @QtCore.Slot(bool)
     def toggle_optimize(self, enabled):
