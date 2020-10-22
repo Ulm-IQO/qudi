@@ -49,6 +49,7 @@ class SwitchGui(GUIBase):
     # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
 
+    # ConfigOption to either use check boxes or radio buttons, default is check baxes
     _radio_buttons = ConfigOption(name='radio_buttons', default=False, missing='nothing')
 
     def __init__(self, *args, **kwargs):
@@ -59,7 +60,8 @@ class SwitchGui(GUIBase):
         self._lowlight_format = 'QRadioButton {color: red; font-weight: normal;}'
 
     def on_activate(self):
-        """Create all UI objects and show the window.
+        """
+        Create all UI objects and show the window.
         """
         self.restoreWindowPos(self._mw)
         self._populate_switches()
@@ -70,7 +72,8 @@ class SwitchGui(GUIBase):
         self._mw.action_show_radio_buttons.toggled.connect(self._show_radio_buttons_changed, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
-        """ Hide window and stop ipython console.
+        """
+        Hide window empty the GUI and disconnect signals
         """
         self.switchlogic().sig_switch_updated.disconnect(self._switch_updated)
         self._mw.action_show_radio_buttons.toggled.disconnect(self._show_radio_buttons_changed)
@@ -81,13 +84,21 @@ class SwitchGui(GUIBase):
         self._mw.close()
 
     def show(self):
-        """Make sure that the window is visible and at the top.
+        """
+        Make sure that the window is visible and at the top.
         """
         self._mw.show()
 
     def _populate_switches(self):
+        """
+        Dynamically build the gui.
+        By default check boxes are used, but by setting the ConfigOption radio_buttons=True
+        #coloured radio buttons can be used.
+        The latter is useful when working with laser protection goggles in the lab.
+            @return: None
+        """
         # For each switch that the logic has, add a widget to the GUI to show its state
-        self._mw.switch_groupBox.setTitle(self.switchlogic().name_of_hardware)
+        self._mw.switch_groupBox.setTitle(self.switchlogic().name)
         self._mw.switch_groupBox.setAlignment(QtCore.Qt.AlignLeft)
         self._mw.switch_groupBox.setFlat(False)
         vertical_layout = QtWidgets.QVBoxLayout(self._mw.switch_groupBox)
@@ -104,6 +115,11 @@ class SwitchGui(GUIBase):
         self._switch_updated(self.switchlogic().states)
 
     def _add_radio_widget(self, switch_index):
+        """
+        Helper function to create a widget with radio buttons per switch.
+            @param int switch_index: the index (in switchlogic) of the switch to be displayed
+            @return QWidget: widget containing the radio buttons and the label
+        """
         button_group = QtWidgets.QButtonGroup()
 
         on_button = QtWidgets.QRadioButton(self.switchlogic().names_of_states[int(switch_index)][1])
@@ -137,6 +153,11 @@ class SwitchGui(GUIBase):
         return widget
 
     def _add_check_widget(self, switch_index):
+        """
+        Helper function to create a widget with check button and label per switch.
+            @param int switch_index: the index (in switchlogic) of the switch to be displayed
+            @return QWidget: widget containing the check button and the label
+        """
         button = QtWidgets.QCheckBox()
         button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
         button.setMinimumWidth(100)
@@ -159,6 +180,10 @@ class SwitchGui(GUIBase):
         return widget
 
     def _depopulate_switches(self):
+        """
+        Delete all the buttons from the group box and remove the layout.
+            @return: None
+        """
         for sw_index, widgets in enumerate(self._widgets):
             widgets['on_button'].disconnect()
         self._widgets = list()
@@ -170,12 +195,27 @@ class SwitchGui(GUIBase):
             sip.delete(vertical_layout)
 
     def _show_radio_buttons_changed(self, state):
+        """
+        Helper function that gets connected to the signal that the display type radio buttons changed.
+        Depopulates the GUI and rebuilds it afterwards.
+            @param bool state: are radio buttons to be used in the GUI
+            @return: None
+        """
+        self.switchlogic().blockSignals(True)
         self._depopulate_switches()
         self._radio_buttons = bool(state)
         self._populate_switches()
+        self.switchlogic().blockSignals(False)
 
     def _button_toggled(self, switch_index, state):
-        self.switchlogic().set_state(switch_index, state)
+        """
+        Helper function that is connected to the GUI interaction.
+        A GUI change is transmitted to the logic and the visual indicators are changed.
+            @param int switch_index: switch index of the GUI element that was changed
+            @param bool state: new state of the switch
+            @return: None
+        """
+        self.switchlogic().set_state(index_of_switch=switch_index, state=state)
         if self._radio_buttons:
             self._widgets[switch_index]['on_button'].setStyleSheet(
                 self._lowlight_format if state else self._highlight_format)
@@ -187,6 +227,11 @@ class SwitchGui(GUIBase):
             self._widgets[switch_index]['on_button'].setText(label)
 
     def _switch_updated(self, states):
+        """
+        Helper function that is connected to the signal coming from the switchlogic signaling a change in states.
+            @param list(bool) states: a list of boolean values containing the states of the switches
+            @return: None
+        """
         for sw_index in range(self.switchlogic().number_of_switches):
             if self._radio_buttons:
                 button = 'on_button' if states[sw_index] else 'off_button'

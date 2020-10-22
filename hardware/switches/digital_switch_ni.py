@@ -73,17 +73,17 @@ class DigitalSwitchNI(Base, SwitchInterface):
             /Dev1/port0/line29:31 leads to 3 switches
         """
 
-        self._hardware_name = 'NICard' + self._channel.replace('/', ' ') \
+        self._hardware_name = 'NICard' + str(self._channel).replace('/', ' ') \
             if self._hardware_name is None else self._hardware_name
 
         if not self._channel.__contains__(':'):
             self._number_of_channels = 1
             self._channels.append(self._channel)
         else:
-            int_parts = re.split('\D', self._channel)
+            int_parts = re.split(r'\D', str(self._channel))
             start_number = int(int_parts[-2])
             stop_number = int(int_parts[-1])
-            front_part = self._channel.split(int_parts[-2])[0]
+            front_part = str(self._channel).split(int_parts[-2])[0]
 
             self._number_of_channels = abs(start_number - stop_number) + 1
             for number in range(start_number,
@@ -145,7 +145,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
         or as a list of boolean values to define the state of each switch individually.
         After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
         The wait time can be set by the ConfigOption (switch_time).
-            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
         if np.isscalar(value):

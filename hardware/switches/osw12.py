@@ -136,13 +136,13 @@ class HBridge(Base, SwitchInterface):
         Either as a single boolean value to define all the states to be the same
         or as a list of boolean values to define the state of each switch individually.
         This functions just calls the function self.set_state.
-            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
         if np.isscalar(value):
-            self.set_state(index_of_switch=None, state=value)
+            self.set_state(state=value)
         else:
-            self.set_state(index_of_switch=None, state=value[0])
+            self.set_state(state=value[0])
 
     @property
     def names_of_states(self):

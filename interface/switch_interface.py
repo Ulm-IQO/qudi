@@ -54,7 +54,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         The states of the system can be set in two ways:
         Either as a single boolean value to define all the states to be the same
         or as a list of boolean values to define the state of each switch individually.
-            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
         pass
@@ -71,15 +71,6 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
 
     @property
     @abstract_interface_method
-    def number_of_switches(self):
-        """
-        Number of switches provided by this hardware.
-            @return int: number of switches
-        """
-        pass
-
-    @property
-    @abstract_interface_method
     def names_of_switches(self):
         """
         Names of the switches as a list of length number_of_switches.
@@ -87,8 +78,17 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
     @abstract_interface_method
-    def get_state(self, number_of_switch):
+    def number_of_switches(self):
+        """
+        Number of switches provided by this hardware.
+            @return int: number of switches
+        """
+        pass
+
+    @abstract_interface_method
+    def get_state(self, index_of_switch):
         """
         Returns the state of a specific switch which was specified by its switch index.
             @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
@@ -97,7 +97,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_state(self, number_of_switch, state):
+    def set_state(self, index_of_switch, state):
         """
         Sets the state of a specific switch which was specified by its switch index.
             @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1

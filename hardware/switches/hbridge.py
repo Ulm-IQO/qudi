@@ -131,7 +131,7 @@ class HBridge(Base, SwitchInterface):
         or as a list of boolean values to define the state of each switch individually.
         After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
         The wait time can be set by the ConfigOption (switch_time).
-            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
         if np.isscalar(value):
