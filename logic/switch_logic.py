@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
+from core.configoption import ConfigOption
 from qtpy import QtCore
 import numpy as np
 from interface.switch_interface import SwitchInterface
@@ -36,12 +37,21 @@ class SwitchLogic(GenericLogic, SwitchInterface):
     # connector for one switch, if multiple switches are needed use the SwitchCombinerInterfuse
     switch = Connector(interface='SwitchInterface')
 
+    _watchdog_timing = ConfigOption(name='watchdog_timing', default=1.0, missing='nothing')
+
     sig_switch_updated = QtCore.Signal(list)
+    _sig_start_watchdog = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._old_states = list()
 
     def on_activate(self):
         """ Prepare logic module for work.
         """
         self._ensure_unambiguous_names()
+        self._sig_start_watchdog.connect(self._watchdog, QtCore.Qt.QueuedConnection)
+        self._sig_start_watchdog.emit()
 
     def _ensure_unambiguous_names(self):
         """
@@ -71,7 +81,14 @@ class SwitchLogic(GenericLogic, SwitchInterface):
     def on_deactivate(self):
         """ Deactivate module.
         """
-        pass
+        self._sig_start_watchdog.disconnect(self._watchdog)
+
+    def _watchdog(self):
+        temp_states = self.states
+        if self._old_states != temp_states:
+            self._old_states = temp_states
+            self.sig_switch_updated.emit(self._old_states)
+        QtCore.QTimer.singleShot(int(self._watchdog_timing * 1e3), self._watchdog)
 
     @property
     def name(self):
