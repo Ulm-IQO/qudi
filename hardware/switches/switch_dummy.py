@@ -59,21 +59,21 @@ class SwitchDummy(Base, SwitchInterface):
             self._hardware_name = self._name
 
         if np.ndim(self._names_of_switches) == 1 and len(self._names_of_switches) == self.number_of_switches:
-            self._names_of_switches = [str(name).lower().replace(' ', '_') for name in self._names_of_switches]
+            self._names_of_switches = [str(name) for name in self._names_of_switches]
         elif self.number_of_switches == 1 and isinstance(self._names_of_switches, str):
-            self._names_of_switches = [str(self._names_of_switches).lower().replace(' ', '_')]
+            self._names_of_switches = [str(self._names_of_switches)]
         else:
             self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
 
         if np.ndim(self._names_of_states) == 1 and np.ndim(self._names_of_states[0]) == 0:
             self._names_of_states = {self._names_of_switches[index]:
-                                         [str(name).lower().replace(' ', '_') for name in self._names_of_states]
+                                         [str(name) for name in self._names_of_states]
                                      for index in range(self.number_of_switches)}
         elif np.ndim(self._names_of_states) == 1 \
                 and np.ndim(self._names_of_states[0]) == 1 \
                 and len(self._names_of_states) == self.number_of_switches:
             self._names_of_states = {self._names_of_switches[index]:
-                                         [str(name).lower().replace(' ', '_') for name in self._names_of_states[index]]
+                                         [str(name) for name in self._names_of_states[index]]
                                      for index in range(self.number_of_switches)}
         else:
             self.log.error(f'names_of_states must either be a list of two or more names for the states '
@@ -117,14 +117,12 @@ class SwitchDummy(Base, SwitchInterface):
         """
         if isinstance(value, dict):
             for switch, state in value.items():
-                switch = switch.lower().replace(' ', '_')
                 if switch not in self._names_of_switches:
                     self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
                     continue
 
                 states = self.names_of_states[switch]
                 if isinstance(state, str):
-                    state = state.lower().replace(' ', '_')
                     if state not in states:
                         self.log.error(f'"{state}" is not among the possible states: {states}')
                         continue
