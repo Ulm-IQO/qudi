@@ -4,6 +4,8 @@
 
 Changes/New features:
 
+* Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
+in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
@@ -79,7 +81,12 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
 * Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
 * Fixed bug affecting interface overloading of Qudi modules
+* Added ScienDSpinbox and ScienSpinbox compatibility to mapper
 * Added missing metadata in saved raw data file of PulsedMeasurement module
+* Update hardware module controlling the cryocon temperature regulator
+* Added a hardware file to interface Thorlabs filter wheels via scripts
+* Bug fixes to core: made error messages sticky, respecting dependencies when restarting.
+* Added a config option to regulate pid logic timestep length
 *
 
 
