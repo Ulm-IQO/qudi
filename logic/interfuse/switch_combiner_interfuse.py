@@ -92,7 +92,14 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
         and each of switches has two elements representing the names in the state order [False, True].
             @return list(list(str)): 2 dimensional list of names in the state order [False, True]
         """
-        return list(self.switch1().names_of_states) + list(self.switch2().names_of_states)
+        if self._extend_hardware_name:
+            new_dict = {self.switch1().name + '.' + switch: states
+                        for switch, states in self.switch1().names_of_states.items() }
+            for switch, states in self.switch2().names_of_states.items():
+                new_dict[self.switch2().name + '.' + switch] = states
+        else:
+            new_dict = self.switch1().names_of_states + self.switch2().names_of_states
+        return new_dict
 
     @property
     def number_of_switches(self):
@@ -115,26 +122,3 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
                    + [self.switch2().name + '.' + switch for switch in self.switch2().names_of_switches]
         else:
             return list(self.switch1().names_of_switches) + list(self.switch2().names_of_switches)
-
-    def get_state(self, index_of_switch):
-        """
-        Returns the state of a specific switch which was specified by its switch index.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
-            @return bool: boolean value of this specific switch
-        """
-        if index_of_switch < self.switch1().number_of_switches:
-            return self.switch1().get_state(index_of_switch)
-        else:
-            return self.switch2().get_state(index_of_switch - self.switch1().number_of_switches)
-
-    def set_state(self, index_of_switch, state):
-        """
-        Sets the state of a specific switch which was specified by its switch index.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
-            @param bool state: boolean state of the switch to be set
-            @return int: state of the switch actually set
-        """
-        if index_of_switch < self.switch1().number_of_switches:
-            return self.switch1().set_state(index_of_switch, state)
-        else:
-            return self.switch2().set_state(index_of_switch - self.switch1().number_of_switches, state)
