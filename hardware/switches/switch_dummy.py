@@ -33,7 +33,6 @@ class SwitchDummy(Base, SwitchInterface):
 
     switch_dummy:
         module.Class: 'switches.switch_dummy.SwitchDummy'
-        number_of_switches: 3
         names_of_states: ['down', 'up']
         names_of_switches: ['one', 'two', 'tree']
         name: 'First'
@@ -41,10 +40,10 @@ class SwitchDummy(Base, SwitchInterface):
 
     # ConfigOptions
     _number_of_switches = ConfigOption(name='number_of_switches', default=1, missing='nothing')
+    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
     _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
-    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-    _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
+    _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
@@ -58,30 +57,35 @@ class SwitchDummy(Base, SwitchInterface):
         if self._hardware_name is None:
             self._hardware_name = self._name
 
-        if np.ndim(self._names_of_switches) == 1 and len(self._names_of_switches) == self.number_of_switches:
-            self._names_of_switches = [str(name) for name in self._names_of_switches]
-        elif self.number_of_switches == 1 and isinstance(self._names_of_switches, str):
+        if isinstance(self._names_of_switches, str):
             self._names_of_switches = [str(self._names_of_switches)]
         else:
-            self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
+            try:
+                self._names_of_switches = [str(name) for name in self._names_of_switches]
+            except TypeError:
+                self._names_of_switches = [str(index + 1) for index in range(self._number_of_switches)]
 
-        if np.ndim(self._names_of_states) == 1 and np.ndim(self._names_of_states[0]) == 0:
-            self._names_of_states = {self._names_of_switches[index]:
-                                         [str(name) for name in self._names_of_states]
-                                     for index in range(self.number_of_switches)}
-        elif np.ndim(self._names_of_states) == 1 \
-                and np.ndim(self._names_of_states[0]) == 1 \
-                and len(self._names_of_states) == self.number_of_switches:
-            self._names_of_states = {self._names_of_switches[index]:
-                                         [str(name) for name in self._names_of_states[index]]
-                                     for index in range(self.number_of_switches)}
-        else:
-            self.log.error(f'names_of_states must either be a list of two or more names for the states '
-                           f'which are applied to all switched or it must be a list '
-                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
+        try:
+            if len(self._names_of_states) == len(self._names_of_switches) \
+                    and len(self._names_of_states[0]) > 1 \
+                    and not isinstance(self._names_of_states[0], str):
+                self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
+                                         for index, switch in enumerate(self._names_of_switches)}
+            else:
+                raise TypeError
+        except TypeError:
+            if not isinstance(self._names_of_states, str) and len(self._names_of_states) > 1:
+                self._names_of_states = {switch: [str(name) for name in self._names_of_states]
+                                         for index, switch in enumerate(self._names_of_switches)}
+            else:
+                self.log.error(f'names_of_states must either be a list of two or more names for the states '
+                               f'which are applied to all switched or it must be a list '
+                               f'of length {len(self._names_of_switches)} with elements of the aforementioned shape.')
 
         # initialize channels to saved status if requested
-        if self._reset_states or not isinstance(self._states, dict) or len(self._states) != self.number_of_switches:
+        if not self._remember_states \
+                or not isinstance(self._states, dict) \
+                or len(self._states) != self.number_of_switches:
             self._states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
 
     def on_deactivate(self):
@@ -147,4 +151,4 @@ class SwitchDummy(Base, SwitchInterface):
         Number of switches provided by this hardware. Can be set by ConfigOption (number_of_switches) or defaults to 1.
             @return int: number of switches
         """
-        return int(self._number_of_switches)
+        return len(self._names_of_switches)
