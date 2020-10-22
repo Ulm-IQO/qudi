@@ -54,7 +54,7 @@ class ScanningOptimizeLogic(LogicBase):
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
 
     # signals
-    sigOptimalPositionChanged = QtCore.Signal(dict)
+    sigOptimalPositionChanged = QtCore.Signal(dict, object)
     sigOptimizeStateChanged = QtCore.Signal(bool)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
     sigOptimizeScanDataChanged = QtCore.Signal(object)
@@ -68,7 +68,7 @@ class ScanningOptimizeLogic(LogicBase):
 
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
-        self._curr_scan_data = dict()
+        self._curr_scan_data = None
         self._stop_requested = True
         return
 
@@ -241,7 +241,7 @@ class ScanningOptimizeLogic(LogicBase):
                 self._data_logic().toggle_ignore_new_data(False)
                 self._scan_logic().set_scan_settings(self._stashed_scan_settings)
                 self._stashed_scan_settings = dict()
-                self._curr_scan_data = dict()
+                self._curr_scan_data = None
                 self.module_state.unlock()
                 self.sigOptimizeStateChanged.emit(False)
             return
@@ -253,7 +253,7 @@ class ScanningOptimizeLogic(LogicBase):
             if self.module_state() == 'idle':
                 return
 
-            self._curr_scan_data[data.scan_axes] = data
+            self._curr_scan_data = data
             self.sigOptimizeScanDataChanged.emit(data)
             return
 
@@ -265,21 +265,31 @@ class ScanningOptimizeLogic(LogicBase):
                 return
 
             # ToDo: Perform fit on last scan data and move scanner target position
-            if not is_running:
-                scan_data = self._curr_scan_data[axes]
-                if scan_data.scan_dimension == 1:
-                    x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
-                    opt_pos = self._get_pos_from_1d_gauss_fit(x, scan_data.data[self._data_channel])
+            if not is_running and self._curr_scan_data is not None:
+                if axes != self._curr_scan_data.scan_axes:
+                    self.log.error('Current ScanData axes do not match finished scan axes.')
                 else:
-                    x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
-                    y = np.linspace(*scan_data.scan_range[1], scan_data.scan_resolution[1])
-                    xy = np.meshgrid(x, y, indexing='ij')
-                    opt_pos = self._get_pos_from_2d_gauss_fit(
-                        xy,
-                        scan_data.data[self._data_channel].ravel()
+                    scan_data = self._curr_scan_data
+                    if scan_data.scan_dimension == 1:
+                        x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
+                        opt_pos, fit_data = self._get_pos_from_1d_gauss_fit(
+                            x,
+                            scan_data.data[self._data_channel]
+                        )
+                    else:
+                        x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
+                        y = np.linspace(*scan_data.scan_range[1], scan_data.scan_resolution[1])
+                        xy = np.meshgrid(x, y, indexing='ij')
+                        opt_pos, fit_data = self._get_pos_from_2d_gauss_fit(
+                            xy,
+                            scan_data.data[self._data_channel].ravel()
+                        )
+                    opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
+                    new_pos = self._scan_logic().set_scanner_target_position(opt_pos_dict)
+                    self.sigOptimalPositionChanged.emit(
+                        {ax: pos for ax, pos in new_pos.items() if ax in opt_pos_dict},
+                        fit_data
                     )
-                opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
-                self._scan_logic().set_scanner_target_position(opt_pos_dict)
 
             self._sequence_index += 1
 
@@ -289,7 +299,7 @@ class ScanningOptimizeLogic(LogicBase):
                 self._data_logic().toggle_ignore_new_data(False)
                 self._scan_logic().set_scan_settings(self._stashed_scan_settings)
                 self._stashed_scan_settings = dict()
-                self._curr_scan_data = dict()
+                self._curr_scan_data = None
                 self.module_state.unlock()
                 self.sigOptimizeStateChanged.emit(False)
             else:
@@ -319,8 +329,9 @@ class ScanningOptimizeLogic(LogicBase):
             x_middle = (x_max - x_min) / 2 + x_min
             y_middle = (y_max - y_min) / 2 + y_min
             self.log.exception('2D Gaussian fit unsuccessful. Aborting optimization sequence.')
-            return x_middle, y_middle
-        return fit_result.best_values['center_x'], fit_result.best_values['center_y']
+            return (x_middle, y_middle), None
+        return (fit_result.best_values['center_x'],
+                fit_result.best_values['center_y']), fit_result.best_fit.reshape(xy[0].shape)
 
     def _get_pos_from_1d_gauss_fit(self, x, data):
         model = Gaussian()
@@ -331,5 +342,5 @@ class ScanningOptimizeLogic(LogicBase):
             x_min, x_max = x.min(), x.max()
             middle = (x_max - x_min) / 2 + x_min
             self.log.exception('1D Gaussian fit unsuccessful. Aborting optimization sequence.')
-            return middle
-        return (fit_result.best_values['center'],)
+            return middle, None
+        return (fit_result.best_values['center'],), fit_result.best_fit
