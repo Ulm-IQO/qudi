@@ -29,7 +29,7 @@ from interface.switch_interface import SwitchInterface
 import numpy as np
 
 
-class HBridge(Base, SwitchInterface):
+class OSW12(Base, SwitchInterface):
     """ This class is implements communication with Thorlabs OSW12(22) fibered switch.
 
     Description of the hardware provided by Thorlabs:
@@ -42,7 +42,7 @@ class HBridge(Base, SwitchInterface):
     Example config for copy-paste:
 
     fibered_switch:
-        module.Class: 'switches.osw12.Main'
+        module.Class: 'switches.osw12.OSW12'
         interface: 'ASRL1::INSTR'
         names_of_states: ['Off', 'On']
         names_of_switches: ['Detection']
@@ -52,10 +52,7 @@ class HBridge(Base, SwitchInterface):
     _names_of_states = ConfigOption(name='names_of_states', default=['Down', 'Up'], missing='nothing')
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
-    _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
     _switch_time = ConfigOption(name='switch_time', default=1e-3, missing='nothing')
-
-    _states = StatusVar(name='states', default=None)
 
     serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
 
@@ -96,15 +93,6 @@ class HBridge(Base, SwitchInterface):
             self._names_of_switches = [self._names_of_switches]
         else:
             self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
-
-        # initialize channels to saved status if requested
-        if self._reset_states:
-            self.states = False
-
-        if self._states is None or len(self._states) != self.number_of_switches:
-            self.states = [False] * self.number_of_switches
-        else:
-            self.states = self._states
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -171,22 +159,25 @@ class HBridge(Base, SwitchInterface):
         """
         return 1
 
-    def get_state(self, index_of_switch=None):
+    def get_state(self, index_of_switch=None, attempt=0):
         """
         Returns the state of a specific switch which was specified by its switch index.
         As there is only 1 switch, the index_of_switch is ignored.
             @param int index_of_switch: index of the switch is ignored
             @return bool: boolean value of this specific switch
         """
-        with self.lock:
-            state = self._instrument.query('S?\n').strip()
-            if state == '1':
-                self._states[0] = True
-            elif state == '2':
-                self._states[0] = False
+        try:
+            with self.lock:
+                response = self._instrument.query('S?').strip()
+            if response not in ['1', '2']:
+                self.log.error('Hardware returned {} as switch state.'.format(response))
+            state = response == '1'
+        except visa.VisaIOError:
+            if attempt >= 3:
+                self.log.error('Hardware did not respond after 3 attempts. Visa error')
             else:
-                self.log.error(f'Hardware returned {state} as switch state.')
-            return self._states[0]
+                state = self.get_state(attempt=attempt+1)
+        return state
 
     def set_state(self, index_of_switch=None, state=False):
         """
@@ -198,5 +189,6 @@ class HBridge(Base, SwitchInterface):
             @return int: state of the switch actually set
         """
         with self.lock:
-            self._inst.write('S {0:d}'.format(1 if state else 2))
-        return self.get_state(index_of_switch)
+            self._instrument.write('S {0:d}'.format(1 if state else 2))
+            time.sleep(0.1)
+        _ = self.get_state()  # For some reason first returned value is not updated yet, let's clear it.
