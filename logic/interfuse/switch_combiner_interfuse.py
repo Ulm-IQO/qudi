@@ -72,7 +72,7 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
         The states of the system can be set in two ways:
         Either as a single boolean value to define all the states to be the same
         or as a list of boolean values to define the state of each switch individually.
-            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
         if np.isscalar(value):

@@ -140,7 +140,7 @@ class FlipMirror(Base, SwitchInterface):
         After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
         The wait time can be set by the ConfigOption (switch_time).
         This functions just calls the function self.set_state.
-            @param (bool/list(bool)) value: switch state to be set as single boolean or list of booleans
+            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
             @return: None
         """
         if np.isscalar(value):
