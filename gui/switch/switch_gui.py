@@ -168,7 +168,7 @@ class SwitchGui(GUIBase):
         """
         if not is_set:
             return
-        self.switchlogic().set_state(switch=switch, state=state)
+        self.switchlogic().states = {switch: state}
 
     def _switch_updated(self, states):
         """
@@ -176,9 +176,9 @@ class SwitchGui(GUIBase):
             @param list(bool) states: a list of boolean values containing the states of the switches
             @return: None
         """
-        for switch, state_tuple in states.items():
+        for switch, state in states.items():
             for name, widget in self._widgets[switch].items():
                 widget.blockSignals(True)
-                widget.setChecked(name == state_tuple[1])
-                widget.setStyleSheet(self._lowlight_format if name == state_tuple[1] else self._highlight_format)
+                widget.setChecked(name == state)
+                widget.setStyleSheet(self._lowlight_format if name == state else self._highlight_format)
                 widget.blockSignals(False)

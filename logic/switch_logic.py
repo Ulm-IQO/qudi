@@ -110,26 +110,3 @@ class SwitchLogic(GenericLogic, SwitchInterface):
         """
         self.switch().states = value
         self.sig_switch_updated.emit(self.states)
-
-    def set_state(self, switch, state):
-        """
-        Sets the state of a specific switch which was specified by its switch index.
-        The index_of_switch can either be int or a string representing the name of the switch.
-        The values of the state can either be boolean or a string representing the name of the state.
-        Names are automatically converted to booleans by a helper function if the names of the states are unambiguous.
-            @param [int/str] switch: index of the switch in the range from 0 to number_of_switches -1
-            @param bool state: boolean state of the switch to be set
-            @return int: state of the switch actually set
-        """
-        new_state = self.switch().set_state(switch, state)
-        self.sig_switch_updated.emit(self.states)
-        return new_state
-
-    def get_state(self, switch):
-        """
-        Returns the state of a specific switch which was specified by its switch index.
-        The index_of_switch can either be int or a string representing the name of the switch.
-            @param [int/str] switch: index of the switch in the range from 0 to number_of_switches -1
-            @return bool: boolean value of this specific switch
-        """
-        return self.switch().get_state(switch)
