@@ -481,8 +481,8 @@ class AWGM819X(Base, PulserInterface):
         self.write(":STAB2:SEQ:SEL 0")
         self.write(":STAB1:DYN ON")
         self.write(":STAB2:DYN ON")
-        # todo: for merging with master other seuence trigger mode might be required
-        self.set_trigger_mode('trig')  # for external dynamic control, different for other usecase
+        # todo: for merging with master other sequence trigger mode might be required
+        #self.set_trigger_mode('trig')  # for external dynamic control, different for other usecase
 
         return 0
 
