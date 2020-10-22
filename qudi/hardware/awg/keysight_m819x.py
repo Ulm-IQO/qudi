@@ -12,12 +12,36 @@ Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
+f
 You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+
+How to use:
+
+copy the follwing part into your config:
+
+awg:
+        module.Class: 'awg.keysight_M8195A.AWGM8195A'
+        awg_visa_address: 'visa address'  # your visa address
+        awg_mode: 'MARK' # The AWG mode which you want to use (Implemented & Tested: MARK & FOUR)
+        sample_rate_div: 1 # your sample rate
+
+
+Please refrain from including special characters in the name of a waveform, since the AWG
+will cut off the name after the special character and the 'invoke' settings  button won't
+work anymore.
+
+To address a specific segment of the AWG, use the following syntax: X,Y. X resembles the segment
+and Y is your waveform name, e.g. 1,Rabi. If no segment is specified, segment 1 is chosen as default value.
+
+Note that only one waveform can be loaded into a specific segment.
+If you want to load several waveforms into the AWGs memory (e.g. if you want to use the sequence mode),
+please load each waveform into a different segment.
+
+
 """
 
 
@@ -25,6 +49,7 @@ import visa
 import os
 import time
 import numpy as np
+import scipy.interpolate
 from fnmatch import fnmatch
 from collections import OrderedDict
 
@@ -34,32 +59,18 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class AWGM8195A(Base, PulserInterface):
-    """ A hardware module for the Keysight M8195A series for generating
-        waveforms and sequences thereof.
-
-    Example config for copy-paste:
-
-        myawg:
-            module.Class: 'awg.keysight_M8195A.AWGM8195A'
-            awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
-            awg_timeout: 20
-            pulsed_file_dir: 'C:\\Software\\pulsed_files'
-            awg_mode: 'MARK'
-            sample_rate_div: 1
-
-    """
 
     _modclass = 'awgm8195a'
     _modtype = 'hardware'
 
     # config options
-    _visa_address = ConfigOption(name='awg_visa_address', default='TCPIP0::localhost::hislip0::INSTR', missing='warn')
-    _awg_timeout = ConfigOption(name='awg_timeout', default=20, missing='warn')
-    _pulsed_file_dir = ConfigOption(name='pulsed_file_dir', missing='warn')
-    _awg_mode = ConfigOption(name='awg_mode', default='MARK', missing='warn')
+    visa_address = ConfigOption(name='awg_visa_address', default='TCPIP0::localhost::hislip0::INSTR', missing='warn')
+    awg_timeout = ConfigOption(name='awg_timeout', default=20, missing='warn')
+    awg_mode = ConfigOption(name='awg_mode', default='MARK', missing='warn')
     _sample_rate_div = ConfigOption(name='sample_rate_div', default=1, missing='warn')
-    # debug = []
 
+    # sequence names (fake parameter to satisfy qudi since the Keysight M8195A is not able to name sequences)
+    sequence_names = list()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -71,35 +82,22 @@ class AWGM8195A(Base, PulserInterface):
 
         self._sequence_mode = False
         self.current_loaded_asset = ''
-        self.active_channel = dict()
 
     def on_activate(self):
         """Initialisation performed during activation of the module.
         """
-
-        use_default_dir = True
         self._rm = visa.ResourceManager()
-
-        if not self._pulsed_file_dir:
-            homedir = self.get_home_dir()
-            self._pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('Either no config parameter "pulsed_file_dir" was '
-                             'specified in the config for AWGM8195A class as '
-                             'directory for the pulsed files or the directory '
-                             'does not exist.\nThe default home directory\n'
-                             '{0}\nfor pulsed files will be taken instead.'
-                             ''.format(self._pulsed_file_dir))
 
         # connect to awg using PyVISA
         try:
-            self.awg = self._rm.open_resource(self._visa_address)
+            self.awg = self._rm.open_resource(self.visa_address)
             # set timeout by default to 30 sec
-            self.awg.timeout = self._awg_timeout * 1000
+            self.awg.timeout = self.awg_timeout * 1000
         except:
             self.awg = None
             self.log.error('VISA address "{0}" not found by the pyVISA resource manager.\nCheck '
                            'the connection by using for example "Keysight Connection Expert".'
-                           ''.format(self._visa_address))
+                           ''.format(self.visa_address))
             return
 
         if self.awg is not None:
@@ -114,7 +112,8 @@ class AWGM8195A(Base, PulserInterface):
                           'successfully.'.format(self._MODEL, self._BRAND,
                                                  self._SERIALNUMBER,
                                                  self._FIRMWARE_VERSION))
-            self._sequence_mode  = 'SEQ' in self.query('*OPT?').split(',')
+            self._sequence_mode = 'SEQ' in self.query('*OPT?').split(',')
+
         self._init_device()
 
     def on_deactivate(self):
@@ -134,31 +133,46 @@ class AWGM8195A(Base, PulserInterface):
         """
 
         self.reset()
-        self.write(':OUTP:ROSC:SOUR SCLK1') #Chose source for reference clock
-        self.write(':OUTP:ROSC:SCD 200') # Set clock divier to 200, so that the ref clock has 10 MHz
         # Sec. 6.21.2 in manual:
         # To prepare your module for arbitrary waveform generation follow these
         # steps:
         # Set Instrument Mode (number of channels), Memory Sample Rate Divider,
         # and memory usage of the channels (Internal/Extended):
-        self.write(':INSTrument:DACMode {0}'.format(self._awg_mode))
+        self.write(':INSTrument:DACMode {0}'.format(self.awg_mode))
         # set the sample rate divider:
         self.write(':INST:MEM:EXT:RDIV DIV{0}'.format(self._sample_rate_div))
         self.write(':FUNC:MODE ARB')             # Set mode to arbitrary
         self.write(':TRAC1:MMOD EXT')            # select extended Memory Mode
+        self.write(':TRAC2:MMOD EXT')
+        self.write(':TRAC3:MMOD EXT')
+        self.write(':TRAC4:MMOD EXT')
 
-        # Set the directory:
-        self.write(':MMEM:CDIR "{0}"'.format(self._pulsed_file_dir))
+        constr = self.get_constraints()
 
         self.sample_rate = self.get_sample_rate()
+        self.set_sample_rate(constr.sample_rate.default)
 
-        # ampl = {'a_ch1': 1.0, 'a_ch2': 1.0, 'a_ch3': 1.0, 'a_ch4': 1.0}
-        ampl = {'a_ch1': 1.0}
-        d_ampl_low = {'d_ch1': 0.5, 'd_ch2': 0}
-        d_ampl_high = {'d_ch1': 1.5, 'd_ch2': 1}          #TODO catch from config/settings
+        if self.awg_mode == 'MARK':
 
-        self.amplitude_list, self.offset_list = self.set_analog_level(amplitude=ampl)
-        self.markers_low, self.markers_high = self.set_digital_level(low=d_ampl_low, high=d_ampl_high)
+            ampl = {'a_ch1': constr.a_ch_amplitude.default} # peak to peak voltage
+            d_ampl_low = {'d_ch1': constr.d_ch_low.default, 'd_ch2': constr.d_ch_low.default}
+            d_ampl_high = {'d_ch1': constr.d_ch_high.default, 'd_ch2': constr.d_ch_high.default}
+            self.markers_low, self.markers_high = self.set_digital_level(low=d_ampl_low, high=d_ampl_high)
+            self.amplitude_list, self.offset_list = self.set_analog_level(amplitude=ampl)
+
+        elif self.awg_mode == 'FOUR':
+
+            ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default,
+                    'a_ch3': constr.a_ch_amplitude.default, 'a_ch4': constr.a_ch_amplitude.default}
+
+            offs = {'a_ch1': constr.a_ch_offset.default, 'a_ch2': constr.a_ch_offset.default_marker,
+                    'a_ch3': constr.a_ch_offset.default_marker, 'a_ch4': constr.a_ch_offset.default_marker}
+
+            self.amplitude_list, self.offset_list = self.set_analog_level(amplitude=ampl, offset=offs)
+
+        else:
+            self.log.error('The chosen AWG ({0}) mode is not implemented yet!'.format(self.awg_mode))
+
         self.is_output_enabled = self._is_awg_running()
         self.use_sequencer = self.has_sequence_mode()
         self.active_channel = self.get_active_channels()
@@ -198,6 +212,7 @@ class AWGM8195A(Base, PulserInterface):
 
         # The compatible file formats are hardware specific.
         constraints.waveform_format = ['bin8']
+        constraints.dac_resolution = {'min': 8, 'max': 8, 'step': 1, 'unit': 'bit'}
 
         if self._MODEL == 'M8195A':
             constraints.sample_rate.min = 53.76e9 / self._sample_rate_div
@@ -210,19 +225,26 @@ class AWGM8195A(Base, PulserInterface):
 
         # constraints.waveform_length.min = self.__min_waveform_length
         # constraints.waveform_length.max = self.__max_waveform_length
-        constraints.waveform_length.step = 256
+
+        # manual 1.5.4: Depending on the Sample Rate Divider, the 256 sample wide output of the sequencer
+        # is divided by 1, 2 or 4.
+        constraints.waveform_length.step = 256 / self._sample_rate_div
+        constraints.waveform_length.min = 1
         constraints.waveform_length.default = 1280
 
-        # constraints.waveform_length.step = 1    # step is 256 but the import function repeats the waveform until
+        # constraints.waveform_length.step = 1    #TODO step is 256 but the import function repeats the waveform until
         #                                         # granularity is fullfilled, may lead to memory issues, set to 256 if
         #                                         # longer waveforms have to be uploaded.
         # constraints.waveform_length.default = 1 # min length is 1280 but this is also handled by the import
 
-        constraints.a_ch_amplitude.min = 0.075
-        constraints.a_ch_amplitude.max = 1.0  # corresponds to 1Vpp, 50Ohm terminated
-        constraints.a_ch_amplitude.step = 0.0002
-        constraints.a_ch_amplitude.default = 0.5
+        # analog channel
+        constraints.a_ch_amplitude.min = 0.075 #TODO Why?
+        constraints.a_ch_amplitude.max = 2
+        constraints.a_ch_amplitude.step = 0.0002 # not used anymore
+        constraints.a_ch_amplitude.default = 1
+        constraints.a_ch_amplitude.default_marker = 1
 
+        # digital channel
         constraints.d_ch_low.min = 0
         constraints.d_ch_low.max = 1
         constraints.d_ch_low.step = 0.0002
@@ -233,13 +255,19 @@ class AWGM8195A(Base, PulserInterface):
         constraints.d_ch_high.step = 0.0002
         constraints.d_ch_high.default = 1
 
+        # offset
+        constraints.a_ch_offset.max = 1
+        constraints.a_ch_offset.min = 0
+        constraints.a_ch_offset.default = 0
+        constraints.a_ch_offset.default_marker = 0.5 # default value if analog channel is used as marker
+
         # constraints.sampled_file_length.min = 256
         # constraints.sampled_file_length.max = 2_000_000_000
         # constraints.sampled_file_length.step = 256
         # constraints.sampled_file_length.default = 256
 
         constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16_000_000
+        constraints.waveform_num.max = 16000000 #TODO 16777215 or 16M - 1, not quite clear from the manual
         constraints.waveform_num.default = 1
         # The sample memory can be split into a maximum of 16 M waveform segments
 
@@ -269,18 +297,15 @@ class AWGM8195A(Base, PulserInterface):
         if self._MODEL == 'M8195A':
             awg_mode = self.query(':INST:DACM?')
             if awg_mode == 'MARK':
-                activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+                activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             elif awg_mode == 'SING':
-                activation_config['all'] = {'a_ch1'}
+                activation_config['all'] = frozenset({'a_ch1'})
             elif awg_mode == 'DUAL':
-                activation_config['all'] = {'a_ch1', 'a_ch2'}
+                activation_config['all'] = frozenset({'a_ch1', 'a_ch2'})
             elif awg_mode == 'FOUR':
-                activation_config['all'] = {'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'}
+                activation_config['all'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'})
 
         constraints.activation_config = activation_config
-
-        # FIXME: additional constraint really necessary?
-        constraints.dac_resolution = {'min': 8, 'max': 8, 'step': 1, 'unit': 'bit'}
 
         return constraints
 
@@ -323,10 +348,10 @@ class AWGM8195A(Base, PulserInterface):
 
         self.write(':ABOR')
 
-        self.write(':OUTP1 OFF')
-        self.write(':OUTP2 OFF')
-        self.write(':OUTP3 OFF')
-        self.write(':OUTP4 OFF')
+        #self.write(':OUTP1 OFF')
+        # self.write(':OUTP2 OFF')
+        #self.write(':OUTP3 OFF')
+        #self.write(':OUTP4 OFF')
 
         # wait until the AWG has actually stopped
         while self._is_awg_running():
@@ -370,14 +395,30 @@ class AWGM8195A(Base, PulserInterface):
         Please note that the channel index used here is not to be confused with the number suffix
         in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
         highly hardware specific and corresponds to a collection of digital and analog channels
-        being associated to a SINGLE wavfeorm asset.
+        being associated to a SINGLE waveform asset.
         """
+
+        self.write(':FUNC:MODE ARB')
 
         if isinstance(load_dict, list):
             new_dict = dict()
-            for waveform in load_dict:
-                channel = int(waveform[-6])
-                new_dict[channel] = waveform
+            waveform = load_dict[0]  # keysight: 1 name per segment, no individual name per channel
+
+            # check the awg mode
+            awg_mode = self.query(':INST:DACM?')
+            if awg_mode == 'MARK':
+                new_dict[1] = waveform
+            elif awg_mode == 'SING':
+                new_dict[1] = waveform
+            elif awg_mode == 'DUAL':
+                new_dict[1] = waveform
+                new_dict[4] = waveform
+            elif awg_mode == 'FOUR':
+                new_dict[1] = waveform
+                new_dict[2] = waveform
+                new_dict[3] = waveform
+                new_dict[4] = waveform
+
             load_dict = new_dict
 
         # Get all active channels
@@ -405,25 +446,12 @@ class AWGM8195A(Base, PulserInterface):
                              'Correct that!\nCommand will be ignored.')
             return self.get_loaded_assets()
 
-        self.clear_all()
-        path = self._pulsed_file_dir
-        offset = 0
-
-        for chnl_num, waveform in load_dict.items():
-            name = waveform.split('.bin8', 1)[0]
-            print('name is', name)
-            filepath = os.path.join(path, waveform)
-            print('021', self.query(':SYST:ERR?'))
-            data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
-            print('022', self.query(':SYST:ERR?'))
-            if chnl_num == 1 and (self._awg_mode == 'MARK' or self._awg_mode == 'DCM'):
-                samples = len(data)//2
-            print('samples is', samples)
-            segment_id = self.query('TRAC1:DEF:NEW? {0:d}, 5'.format(samples))
-            self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id, offset), data)
-            print('023', self.query(':SYST:ERR?'))
-            self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id, name))
-            print('024', self.query(':SYST:ERR?'))
+        name = waveform
+        if name.split(',')[0] == name:
+            segment_id = 1
+        else:
+            segment_id = np.int(name.split(',')[0])
+        self.write(':TRAC:SEL {0}'.format(segment_id))
 
         return self.get_loaded_assets()
 
@@ -446,85 +474,15 @@ class AWGM8195A(Base, PulserInterface):
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
 
+        # Check if device has sequencer option installed
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
+                           'installed.')
+            return -1
 
-        # # set the waveform directory:
-        # self.tell(':MMEM:CDIR {0}'.format(r"C:\Users\Name\Documents"))
-        #
-        # # Get the waveform directory:
-        # dir = self.ask(':MMEM:CDIR?')
-
-        path = self._pulsed_file_dir + self.sequence_dir
-
-        # Find all files associated with the specified asset name
-        file_list = self._get_filenames_on_device()
-        filename = []
-
-        self.clear_all()
-
-        # Be careful which asset_name to specify as the current_loaded_asset
-        # because a loaded sequence contains also individual waveforms, which
-        # should not be used as the current asset!!
-
-        segment = 1     # the id in the external memory
-        form = 'BIN8'   # the file format used
-        data_type = 'IONLY'
-        marker_flag = 'OFF'
-        mem_mode = 'ALEN'   # specify how the samples are allocated in memory
-
-        for file in file_list:
-
-            if file == sequence_name+'_ch1.bin8':
-                filepath = os.path.join(path, sequence_name + '_ch1.bin8')
-                self.log.info(filepath)
-                self.tell(':TRAC1:IMP {0}, "{1}", {2}, {3}, {4}, {5}'
-                          ''.format(segment,
-                                    filepath,
-                                    form,
-                                    data_type,
-                                    marker_flag,
-                                    mem_mode))
-                self.current_loaded_asset = sequence_name
-                filename.append(file)
-
-            elif file == sequence_name+'_ch2.bin8':
-                filepath = os.path.join(path, sequence_name + '_ch2.bin8')
-                self.log.info(filepath)
-                self.tell(':TRAC2:IMP {0}, "{1}", {2}, {3}, {4}, {5}'
-                          ''.format(segment,
-                                    filepath,
-                                    form,
-                                    data_type,
-                                    marker_flag,
-                                    mem_mode))
-
-                self.current_loaded_asset = sequence_name
-                filename.append(file)
-
-            elif file == sequence_name+'_ch3.bin8':
-                filepath = os.path.join(path, sequence_name + '_ch3.bin8')
-                self.log.info(filepath)
-                self.tell(':TRAC3:IMP {0}, "{1}", {2}, {3}, {4}, {5}'
-                          ''.format(segment,
-                                    filepath,
-                                    form,
-                                    data_type,
-                                    marker_flag,
-                                    mem_mode))
-                self.current_loaded_asset = sequence_name
-                filename.append(file)
-
-            elif file == sequence_name+'_ch4.bin8':
-                filepath = os.path.join(path, asset_name + '_ch4.bin8')
-                self.log.info(filepath)
-                self.tell(':TRAC4:IMP {0}, "{1}", {2}, {3}, {4}, {5}'
-                          ''.format(segment,
-                                    filepath,
-                                    form,
-                                    data_type,
-                                    marker_flag,
-                                    mem_mode))
-                self.current_loaded_asset = sequence_name
-                filename.append(file)
+        self.log.warning('The Load Sequence / Sample + Load Sequence option is not available for the Keysight '
+                         'M8195A series.\nMethod call will be ignored. \nThe Sample Sequence function will '
+                         'automatically upload the sequence to the device.')
 
         return 0
 
@@ -540,42 +498,32 @@ class AWGM8195A(Base, PulserInterface):
                              respective asset loaded into the channel,
                              string describing the asset type ('waveform' or 'sequence')
         """
-        #TODO implement properly
 
-        # Get all active channels
-        chnl_activation = self.get_active_channels()
-        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
-                                 chnl.startswith('a') and chnl_activation[chnl])
+        if self.query(':FUNC:MODE?') == 'STS':
+            loaded_assets = {'1': self.current_loaded_asset}
+            current_type = 'sequence'
+        elif self.query(':FUNC:MODE?') == 'ARB':
+            # Get all active channels
+            chnl_activation = self.get_active_channels()
+            channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
+                                     chnl.startswith('a') and chnl_activation[chnl])
+            # Get assets per channel
+            loaded_assets = dict()
+            current_type = None
+            for chnl_num in channel_numbers:
+                # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will
+                # look like '"waveformname"\n' and for a sequence '"sequencename,1"\n'
+                # (where the number is the current track)
 
-        # Get assets per channel
-        loaded_assets = dict()
-        current_type = None
-        for chnl_num in channel_numbers:
-            # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will
-            # look like '"waveformname"\n' and for a sequence '"sequencename,1"\n'
-            # (where the number is the current track)
-            print('001', self.query(':SYST:ERR?'))
-            if not self.query(':TRAC:CAT?') == '0,0':
-                print('002', self.query(':SYST:ERR?'))
-                asset_name = self.query(':TRAC:NAME? 1')
-                print('003', self.query(':SYST:ERR?'))
-            # # Figure out if a sequence or just a waveform is loaded by splitting after the comma
-            # splitted = asset_name.rsplit(',', 1)
-            # # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
-            # asset_name = splitted[0]
-            # if len(splitted) > 1:
-            #     if current_type is not None and current_type != 'sequence':
-            #         self.log.error('Unable to determine loaded assets.')
-            #         return dict(), ''
-            #     current_type = 'sequence'
-            #     asset_name += '_' + splitted[1]
-            # else:
-            #     if current_type is not None and current_type != 'waveform':
-            #         self.log.error('Unable to determine loaded assets.')
-            #         return dict(), ''
-            #     current_type = 'waveform'
-                current_type = 'waveform'
-                loaded_assets[chnl_num] = asset_name
+                if not self.query(':TRAC:CAT?') == '0,0':
+                    asset_name = self.query(':TRAC:NAME? {0}'.format(self.query(':TRAC:SEL?')))
+
+                    current_type = 'waveform'
+                    loaded_assets[chnl_num] = asset_name
+        else:
+            loaded_assets = ''
+            current_type = ''
+            self.log.warning('Scenario mode is not implemented in QuDi!')
 
         return loaded_assets, current_type
 
@@ -631,8 +579,8 @@ class AWGM8195A(Base, PulserInterface):
         Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
-        sample_rate_GHz = (sample_rate * self._sample_rate_div) / 1e9
-        self.write(':FREQ:RAST {0:.4G}GHz\n'.format(sample_rate_GHz))
+        sample_rate_ghz = (sample_rate * self._sample_rate_div) / 1e9
+        self.write(':FREQ:RAST {0:.4G}GHz\n'.format(sample_rate_ghz))
         while int(self.query('*OPC?')) != 1:
             time.sleep(0.25)
         time.sleep(0.2)
@@ -682,8 +630,8 @@ class AWGM8195A(Base, PulserInterface):
 
         # get voltage offsets
         if offset is None:
-            for ch_num, chnl in enumerate(chnl_list):
-                off[chnl] = 0.0
+            for ch_num, chnl in enumerate(chnl_list, 1):
+                off[chnl] = float(self.query(':VOLT{0:d}:OFFS?'.format(ch_num)))
         else:
             for chnl in offset:
                 if chnl in chnl_list:
@@ -692,6 +640,7 @@ class AWGM8195A(Base, PulserInterface):
                 else:
                     self.log.warning('Get analog offset from M8195A channel "{0}" failed. '
                                      'Channel non-existent.'.format(chnl))
+
         return amp, off
 
     def set_analog_level(self, amplitude=None, offset=None):
@@ -895,7 +844,7 @@ class AWGM8195A(Base, PulserInterface):
         return self.get_digital_level()
 
 
-    def get_active_channels(self, ch=None, set_ac=False):
+    def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
         @param list ch: optional, if specific analog or digital channels are needed to be asked
@@ -911,18 +860,6 @@ class AWGM8195A(Base, PulserInterface):
 
         If no parameter (or None) is passed to this method all channel states will be returned.
         """
-        # analog_channels = self._get_all_analog_channels()
-        #
-        # active_ch = dict()
-        # for ch_num, a_ch in enumerate(analog_channels, 1):
-        #     # check what analog channels are active
-        #     active_ch[a_ch] = bool(int(self.query(':OUTP{0}?'.format(ch_num))))
-        #
-        # # return either all channel information or just the one asked for.
-        # if ch is not None:
-        #     chnl_to_delete = [chnl for chnl in active_ch if chnl not in ch]
-        #     for chnl in chnl_to_delete:
-        #         del active_ch[chnl]
 
         if ch is None:
             ch = []
@@ -949,6 +886,8 @@ class AWGM8195A(Base, PulserInterface):
                 active_ch['a_ch3'] = bool(int(self.query(':OUTP3?')))
                 active_ch['a_ch4'] = bool(int(self.query(':OUTP4?')))
 
+
+
         else:
 
             for channel in ch:
@@ -961,14 +900,6 @@ class AWGM8195A(Base, PulserInterface):
                                      'activated! Command ignored.'
                                      ''.format(channel))
                     active_ch[channel] = False
-
-        if set_ac:
-            self.active_channel = active_ch
-        else:
-            if self.active_channel == dict():
-                self.active_channel = active_ch
-            else:
-                active_ch = self.active_channel
 
         return active_ch
 
@@ -1044,8 +975,32 @@ class AWGM8195A(Base, PulserInterface):
             else:
                 self.write('OUTP{0:d} OFF'.format(dch_num))
 
-        return self.get_active_channels(set_ac=True)
+        return self.get_active_channels()
 
+
+    def float_to_sample(self, val):
+        """
+        :param val: np.array(dtype=float64) of sampled values from sequencegenerator.sample_pulse_block_ensemble().
+                    normed (-1...1) where 1 encodes the full Vpp as set in 'PulsedGui/Pulsegenerator Settings'.
+                    If MW ampl in 'PulsedGui/Predefined methods' < as full Vpp, amplitude reduction will be
+                    performed digitally (reducing the effective digital resolution in bits).
+        :return:    np.array(dtype=int16)
+        """
+        bitsize = int(2**8)
+        min_intval = -bitsize/2
+        max_intval = bitsize/2 - 1
+
+        max_u_samples = 1 # data should be normalized in (-1..1)
+
+        if max(abs(val)) > 1:
+            self.log.warning("Samples from sequencegenerator out of range. Normalizing to -1..1. Please change the "
+                             "maximum peak to peak Voltage in the Pulse Generator Settings if you want to use a higher "
+                             "power.")
+
+            biggest_val = max([abs(np.min(val)), np.max(val)])
+            max_u_samples = biggest_val
+        mapper = scipy.interpolate.interp1d([-max_u_samples,max_u_samples],[min_intval, max_intval])
+        return mapper(val).astype('int8')
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
@@ -1074,15 +1029,18 @@ class AWGM8195A(Base, PulserInterface):
         @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
+        self.write(":FUNC:MODE ARB")
 
         waveforms = list()
+        self.get_analog_level()
+        constr = self.get_constraints()
 
         # Sanity checks
         if len(analog_samples) == 0:
             self.log.error('No analog samples passed to write_waveform method in M8195A.')
             return -1, waveforms
 
-        min_samples = 1280
+        min_samples = constr.waveform_length.default #TODO Not sure if this is really the case
         if total_number_of_samples < min_samples:
             self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
                            'smaller than the allowed minimum waveform length ({1:d}).'
@@ -1102,95 +1060,148 @@ class AWGM8195A(Base, PulserInterface):
                                      set(analog_samples.keys()).union(set(digital_samples.keys()))))
             return -1, waveforms
 
-        #TODO Atm this solution is for 1 analog channel with 2 marker
+        # check if the AWG is in Marker
+        if self.query(':INST:DACM?') == 'MARK':
+            marker = True
+        else:
+            marker = False
 
-        marker = True #TODO should be set in conf...
+        # determine the segment
+        if name.split(',')[0] == name:
+            segment_id = 1
+        else:
+            segment_id = np.int(name.split(',')[0])
 
+        # check if the segment is already existing
+        loaded_segments = self.query(':TRAC:CAT?')
+        if str(segment_id) in loaded_segments.split(',')[::2]:
+            # clear the segment
+            self.write(':TRAC:DEL {0}'.format(segment_id))
+
+        # define the size of a waveform segment, marker samples do not count. If the channel is sourced from
+        # Extended Memory, the same segment is defined on all other channels sourced from Extended Memory.
+        self.write(':TRAC{0}:DEF {1}, {2}, {3}'.format(int(1), segment_id, len(analog_samples[active_analog[0]]), 0))
+
+        # name the segment
+        self.write(':TRAC:NAME {0}, "{1}"'.format(segment_id, name))
+
+        # go through the different channels and load the corresponding samples
         for channel_index, channel_number in enumerate(active_analog):
 
             self.log.info('Max ampl, ch={0}: {1}'.format(channel_number, analog_samples[channel_number].max()))
 
+            # calculate the corresponding samples from the pulser output (voltage values normalized to the maximum peak
+            # to peak voltage)
+            a_samples = self.float_to_sample(analog_samples[channel_number])
 
-            a_samples = (((analog_samples[channel_number] + 1)/ 2 * 255) - 128).astype('int8') #TODO check if real values are ok (e.g. if 0 = 0)
-            # a_samples = (analog_samples[channel_number]*127).astype('int8')
+            # marker mode
             if marker and channel_number == 'a_ch1':
+
+                # Marker 1 in digital bit 0, Marker 2 in digital bit 1
                 d_samples = digital_samples['d_ch1'].astype('int8')+2*digital_samples['d_ch2'].astype('int8')
-                interleaved_samples = np.zeros(2*a_samples.size, dtype=np.int8)
+
+                # the analog and digital samples are stored in the following format: a1, d1, a2, d2, a3, d3, ...
+                interleaved_samples = np.zeros(2 * a_samples.size, dtype=np.int8)
                 interleaved_samples[::2] = a_samples
                 interleaved_samples[1::2] = d_samples
-                # filename = name + '_ch' + str(channel_index + 1) + '_' + str(len(interleaved_samples)//2) + '.bin8'
+
+            # other modes
             else:
                 interleaved_samples = a_samples
-                # filename = name + '_ch' + str(channel_index + 1) + '_' + str(len(interleaved_samples)) + '.bin8'
-            filename = name + '_ch' + str(channel_index + 1) + '.bin8'
-            waveforms.append(filename)
 
-            print('009', self.query(':SYST:ERR?'))
-            if name in self.query('MMEM:CAT?'):
-                print('011', self.query(':SYST:ERR?'))
-                self.write(':MMEM:DEL "{0}"'.format(filename))
-                print('007', self.query(':SYST:ERR?'))
-            print('010', self.query(':SYST:ERR?'))
-            self.write_bin(':MMEM:DATA "{0}", '.format(filename), interleaved_samples)
-            print('008', self.query(':SYST:ERR?'))
+            # upload the samples to the channel
+            self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(int(channel_index+1), segment_id, 0), interleaved_samples)
+
+            # save the waveforms name
+            waveforms.append(name)
 
         return total_number_of_samples, waveforms
 
 
-    def write_sequence(self, name, sequence_parameters):
+    def write_sequence(self, name, sequence_parameters_list):
         """
         Write a new sequence on the device memory.
 
-        @param str name: the name of the waveform to be created/append to
-        @param dict sequence_parameters: dictionary containing the parameters for a sequence
+        @param name: str, the name of the waveform to be created/append to
+        @param sequence_parameters_list: list, contains the parameters for each sequence step and
+                                                the according waveform names.
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
-
         # Check if device has sequencer option installed
         if not self.has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
                            'installed.')
             return -1
 
-        # Check if all waveforms are present on device memory
-        avail_waveforms = set(self.get_waveform_names())
-        for waveform_tuple, param_dict in sequence_parameters:
-            if not avail_waveforms.issuperset(waveform_tuple):
-                self.log.error('Failed to create sequence "{0}" due to waveforms "{1}" not '
-                               'present in device memory.'.format(name, waveform_tuple))
-                return -1
+        self.sequence_names = [name]
 
-        active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
-        num_tracks = len(active_analog)
-        num_steps = len(sequence_parameters)
+        #active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        #num_tracks = len(active_analog)
+        num_steps = len(sequence_parameters_list)
 
+        self.write(':FUNC:MODE STS')  # activate the sequence mode
+        self.write(':STAB:RES')  # Reset all sequence table entries to default values
 
+        # Fill in sequence information
+        for step, (wfm_tuple, seq_step) in enumerate(sequence_parameters_list, 1):
+            index = step-1
+            if self.awg_mode == 'MARK':
+                control = 2 ** 24  # set marker
+            elif self.awg_mode == 'FOUR':
+                control = 0
+            else:
+                self.log.error("The AWG mode '{0}' is not implemented yet!".format(self.awg_mode))
+                return
 
+            if index == 0:
+                control += 2 ** 28  # set start sequence
+            if index+1 == num_steps:
+                control += 2 ** 30  # set end sequence
 
+            seq_loop_count = 1
+            seg_loop_count = seq_step.repetitions + 1  # if repetitions = 0 then do it once
+            seg_start_offset = 0
+            seg_end_offset = 0xFFFFFFFF
+            segment_id = np.int(wfm_tuple[0].split(',')[0])
 
+            self.write(':STAB:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
+                       .format(index,
+                               control,
+                               seq_loop_count,
+                               seg_loop_count,
+                               segment_id,
+                               seg_start_offset,
+                               seg_end_offset))
 
-
-
-        pass
-
+        # Wait for everything to complete
+        while int(self.query('*OPC?')) != 1:
+            time.sleep(0.25)
+        self.current_loaded_asset = self.sequence_names[-1]
+        return num_steps
 
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
+
         waveform_list = list()
 
-        # get only the files from the dir and skip possible directories
-        log = os.listdir(self._pulsed_file_dir)
-        file_list = list()
+        # returns the defined segments and their sample lengths
+        awg_string = self.query(':TRAC:CAT?')
+        if awg_string != '0,0':
 
-        for line in log:
-            file_list.append(line)
-        for filename in file_list:
-            if filename.endswith(('.wfm', '.wfmx', '.mat', '.bin8')):
-                waveform_list.append(filename)
+            awg_list = awg_string.split(",")
+
+            for kk in range(int(len(awg_list)/2)):
+
+                waveform_list.append(self.query(':TRAC:NAME? {0}'.format(int(awg_list[2*kk]))))
+
+        else:
+
+            self.log.info('No waveform defined!')
+
         return waveform_list
 
 
@@ -1199,22 +1210,16 @@ class AWGM8195A(Base, PulserInterface):
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
-        sequence_list = list()
 
+        # Check if device has sequencer option installed
         if not self.has_sequence_mode():
-            return sequence_list
+            self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
+                           'installed.')
+            return -1
 
-        # get only the files from the dir and skip possible directories
-        log = os.listdir(self._pulsed_file_dir)
-        file_list = list()
+        self.log.info('Not possible to name a sequence or save more than one sequence with a Keysight M8195A!')
 
-        for line in log:
-            file_list.append(line)
-        for filename in file_list:
-            if filename.endswith(('.seq', '.seqx')):
-                if filename not in sequence_list:
-                    sequence_list.append(filename)
-        return sequence_list
+        return self.sequence_names
 
 
     def delete_waveform(self, waveform_name):
@@ -1225,21 +1230,24 @@ class AWGM8195A(Base, PulserInterface):
 
         @return list: a list of deleted waveform names.
         """
-        if isinstance(waveform_name, str):
-            waveform_name = [waveform_name]
 
-        avail_waveforms = self.get_waveform_names()
+        # determine the segment
+        if waveform_name.split(',')[0] == waveform_name:
+            segment_id = 1
+        else:
+            segment_id = np.int(waveform_name.split(',')[0])
+
+        # delete the corresponding segment
+        self.write(':TRAC:DEL {0}'.format(segment_id))
+
+        # save the deleted sequences name
         deleted_waveforms = list()
-
-        for name in waveform_name:
-            for waveform in avail_waveforms:
-                if fnmatch(waveform, name+'_ch?.bin8'): #TODO delete the files
-                    deleted_waveforms.append(waveform)
-
+        deleted_waveforms.append(waveform_name)
 
         # clear the AWG if the deleted asset is the currently loaded asset
         if self.current_loaded_asset == waveform_name:
             self.clear_all()
+
         return deleted_waveforms
 
 
@@ -1251,17 +1259,19 @@ class AWGM8195A(Base, PulserInterface):
 
         @return list: a list of deleted sequence names.
         """
-        if isinstance(sequence_name, str):
-            sequence_name = [sequence_name]
+        # Check if device has sequencer option installed
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
+                           'installed.')
+            return -1
 
-        avail_sequences = self.get_sequence_names()
+        self.write(':STAB:RES')  # Reset all sequence table entries to default values
+        self.log.info('Not possible to name a sequence or save more than one sequence with a Keysight M8195A!')
+
         deleted_sequences = list()
+        deleted_sequences.append(sequence_name)
 
-        for sequence in sequence_name:
-            for sequence in avail_sequences:
-                if fnmatch(sequence, name+'_ch?.bin8'):
-                    deleted_sequences.append(sequence)
-
+        self.sequence_names.remove(sequence_name)
 
         # clear the AWG if the deleted asset is the currently loaded asset
         if self.current_loaded_asset == sequence_name:
@@ -1338,7 +1348,7 @@ class AWGM8195A(Base, PulserInterface):
         self.awg.timeout = None
         bytes_written, enum_status_code = self.awg.write_binary_values(command, datatype='b', is_big_endian=False,
                                                                        values=values)
-        self.awg.timeout = self._awg_timeout * 1000
+        self.awg.timeout = self.awg_timeout * 1000
         return int(enum_status_code)
 
     def query(self, question):
@@ -1348,7 +1358,7 @@ class AWGM8195A(Base, PulserInterface):
 
         @return string: the answer of the device to the 'question' in a string
         """
-        return self.    awg.query(question).strip().strip('"')
+        return self.awg.query(question).strip().strip('"')
 
     def query_bin(self, question):
 
