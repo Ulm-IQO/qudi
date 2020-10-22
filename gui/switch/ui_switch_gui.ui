@@ -38,7 +38,6 @@
      <string>Menu</string>
     </property>
     <addaction name="actionClose"/>
-    <addaction name="action_show_radio_buttons"/>
    </widget>
    <addaction name="menuMenu"/>
   </widget>

@@ -49,13 +49,10 @@ class SwitchGui(GUIBase):
     # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
 
-    # ConfigOption to either use check boxes or radio buttons, default is check baxes
-    _radio_buttons = ConfigOption(name='radio_buttons', default=False, missing='nothing')
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mw = SwitchMainWindow()
-        self._widgets = list()
+        self._widgets = dict()
         self._highlight_format = 'QRadioButton {color: green; font-weight: bold;}'
         self._lowlight_format = 'QRadioButton {color: red; font-weight: normal;}'
 
@@ -65,18 +62,15 @@ class SwitchGui(GUIBase):
         """
         self.restoreWindowPos(self._mw)
         self._populate_switches()
-        self._mw.action_show_radio_buttons.setChecked(self._radio_buttons)
         self.show()
 
         self.switchlogic().sig_switch_updated.connect(self._switch_updated, QtCore.Qt.QueuedConnection)
-        self._mw.action_show_radio_buttons.toggled.connect(self._show_radio_buttons_changed, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
         """
         Hide window empty the GUI and disconnect signals
         """
         self.switchlogic().sig_switch_updated.disconnect(self._switch_updated)
-        self._mw.action_show_radio_buttons.toggled.disconnect(self._show_radio_buttons_changed)
 
         self._depopulate_switches()
 
@@ -102,40 +96,24 @@ class SwitchGui(GUIBase):
         self._mw.switch_groupBox.setAlignment(QtCore.Qt.AlignLeft)
         self._mw.switch_groupBox.setFlat(False)
         vertical_layout = QtWidgets.QVBoxLayout(self._mw.switch_groupBox)
-        self._widgets = list()
-        for switch_index in range(self.switchlogic().number_of_switches):
-            if self._radio_buttons:
-                vertical_layout.addWidget(self._add_radio_widget(switch_index))
-            else:
-                vertical_layout.addWidget(self._add_check_widget(switch_index))
+        self._widgets = dict()
+        for switch in self.switchlogic().names_of_states:
+            vertical_layout.addWidget(self._add_radio_widget(switch))
 
         self._mw.switch_groupBox.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
                                                QtWidgets.QSizePolicy.MinimumExpanding)
         self._mw.switch_groupBox.updateGeometry()
         self._switch_updated(self.switchlogic().states)
 
-    def _add_radio_widget(self, switch_index):
+    def _add_radio_widget(self, switch):
         """
         Helper function to create a widget with radio buttons per switch.
-            @param int switch_index: the index (in switchlogic) of the switch to be displayed
+            @param str switch: the index (in switchlogic) of the switch to be displayed
             @return QWidget: widget containing the radio buttons and the label
         """
         button_group = QtWidgets.QButtonGroup()
 
-        on_button = QtWidgets.QRadioButton(self.switchlogic().names_of_states[int(switch_index)][1])
-        on_button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-
-        off_button = QtWidgets.QRadioButton(self.switchlogic().names_of_states[int(switch_index)][0])
-        off_button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-
-        button_group.addButton(on_button)
-        button_group.addButton(off_button)
-        self._widgets.append({'on_button': on_button, 'off_button': off_button})
-
-        on_button.toggled.connect(lambda button_state, switch_origin=switch_index:
-                                  self._button_toggled(switch_origin, button_state))
-
-        label = QtWidgets.QLabel(str(self.switchlogic().names_of_switches[switch_index]) + ':')
+        label = QtWidgets.QLabel(switch + ':')
         label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
         label.setMinimumWidth(100)
 
@@ -144,39 +122,24 @@ class SwitchGui(GUIBase):
 
         layout = QtWidgets.QHBoxLayout()
         layout.addWidget(label)
-        layout.addWidget(off_button)
-        layout.addWidget(on_button)
+
+        names = self.switchlogic().names_of_states[switch]
+        self._widgets[switch] = dict()
+        for state in names:
+            button = QtWidgets.QRadioButton(state)
+            button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
+
+            button_group.addButton(button)
+            self._widgets[switch][state] = button
+
+            button.toggled.connect(lambda button_state, switch_origin=switch, state_origin=state:
+                                   self._button_toggled(switch_origin, state_origin, button_state))
+            layout.addWidget(button)
+
         layout.setAlignment(QtCore.Qt.AlignCenter)
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
-        return widget
-
-    def _add_check_widget(self, switch_index):
-        """
-        Helper function to create a widget with check button and label per switch.
-            @param int switch_index: the index (in switchlogic) of the switch to be displayed
-            @return QWidget: widget containing the check button and the label
-        """
-        button = QtWidgets.QCheckBox()
-        button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        button.setMinimumWidth(100)
-        button.toggled.connect(lambda button_state, switch_origin=switch_index:
-                               self._button_toggled(switch_origin, button_state))
-
-        label = QtWidgets.QLabel(str(self.switchlogic().names_of_switches[switch_index]) + ':')
-        label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        label.setMinimumWidth(100)
-        self._widgets.append({'on_button': button})
-
-        widget = QtWidgets.QWidget()
-        widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        layout = QtWidgets.QHBoxLayout(widget)
-        layout.addWidget(label)
-        layout.addWidget(button)
-        layout.setAlignment(QtCore.Qt.AlignCenter)
-        layout.setContentsMargins(0, 0, 0, 0)
-        widget.setLayout(layout)
         return widget
 
     def _depopulate_switches(self):
@@ -184,9 +147,10 @@ class SwitchGui(GUIBase):
         Delete all the buttons from the group box and remove the layout.
             @return: None
         """
-        for sw_index, widgets in enumerate(self._widgets):
-            widgets['on_button'].disconnect()
-        self._widgets = list()
+        for widgets in self._widgets.values():
+            for widget in widgets.values():
+                widget.disconnect()
+        self._widgets = dict()
 
         vertical_layout = self._mw.switch_groupBox.layout()
         if vertical_layout is not None:
@@ -194,37 +158,17 @@ class SwitchGui(GUIBase):
                 vertical_layout.itemAt(i).widget().setParent(None)
             sip.delete(vertical_layout)
 
-    def _show_radio_buttons_changed(self, state):
-        """
-        Helper function that gets connected to the signal that the display type radio buttons changed.
-        Depopulates the GUI and rebuilds it afterwards.
-            @param bool state: are radio buttons to be used in the GUI
-            @return: None
-        """
-        self.switchlogic().blockSignals(True)
-        self._depopulate_switches()
-        self._radio_buttons = bool(state)
-        self._populate_switches()
-        self.switchlogic().blockSignals(False)
-
-    def _button_toggled(self, switch_index, state):
+    def _button_toggled(self, switch, state, is_set):
         """
         Helper function that is connected to the GUI interaction.
         A GUI change is transmitted to the logic and the visual indicators are changed.
-            @param int switch_index: switch index of the GUI element that was changed
+            @param int switch: switch index of the GUI element that was changed
             @param bool state: new state of the switch
             @return: None
         """
-        self.switchlogic().set_state(index_of_switch=switch_index, state=state)
-        if self._radio_buttons:
-            self._widgets[switch_index]['on_button'].setStyleSheet(
-                self._lowlight_format if state else self._highlight_format)
-            self._widgets[switch_index]['off_button'].setStyleSheet(
-                self._lowlight_format if not state else self._highlight_format)
-        else:
-            self._widgets[switch_index]['on_button'].setChecked(state)
-            label = self.switchlogic().names_of_states[switch_index][int(state)]
-            self._widgets[switch_index]['on_button'].setText(label)
+        if not is_set:
+            return
+        self.switchlogic().set_state(switch=switch, state=state)
 
     def _switch_updated(self, states):
         """
@@ -232,20 +176,9 @@ class SwitchGui(GUIBase):
             @param list(bool) states: a list of boolean values containing the states of the switches
             @return: None
         """
-        for sw_index in range(self.switchlogic().number_of_switches):
-            if self._radio_buttons:
-                button = 'on_button' if states[sw_index] else 'off_button'
-                self._widgets[sw_index][button].blockSignals(True)
-                self._widgets[sw_index][button].setChecked(True)
-                self._widgets[sw_index][button].blockSignals(False)
-
-                self._widgets[sw_index]['on_button'].setStyleSheet(
-                    self._lowlight_format if states[sw_index] else self._highlight_format)
-                self._widgets[sw_index]['off_button'].setStyleSheet(
-                    self._lowlight_format if not states[sw_index] else self._highlight_format)
-            else:
-                self._widgets[sw_index]['on_button'].blockSignals(True)
-                self._widgets[sw_index]['on_button'].setChecked(states[sw_index])
-                label = self.switchlogic().names_of_states[sw_index][int(states[sw_index])]
-                self._widgets[sw_index]['on_button'].setText(label)
-                self._widgets[sw_index]['on_button'].blockSignals(False)
+        for switch, state_tuple in states.items():
+            for name, widget in self._widgets[switch].items():
+                widget.blockSignals(True)
+                widget.setChecked(name == state_tuple[1])
+                widget.setStyleSheet(self._lowlight_format if name == state_tuple[1] else self._highlight_format)
+                widget.blockSignals(False)

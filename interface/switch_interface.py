@@ -71,15 +71,6 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
 
     @property
     @abstract_interface_method
-    def names_of_switches(self):
-        """
-        Names of the switches as a list of length number_of_switches.
-            @return list(str): names of the switches
-        """
-        pass
-
-    @property
-    @abstract_interface_method
     def number_of_switches(self):
         """
         Number of switches provided by this hardware.
