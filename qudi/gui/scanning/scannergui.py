@@ -220,7 +220,6 @@ class ScannerGui(GuiBase):
     _default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
 
     # status vars
-    _show_true_scanner_position = StatusVar(name='show_true_scanner_position', default=True)
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
 
@@ -285,7 +284,6 @@ class ScannerGui(GuiBase):
         # Initialize widget data
         self.update_scanner_settings()
         self.scanner_target_updated()
-        self.scanner_position_updated()
         self.scan_data_updated()
 
         # Initialize dockwidgets to default view
@@ -304,12 +302,12 @@ class ScannerGui(GuiBase):
 
         # Connect signals
         self.sigScannerTargetChanged.connect(
-            self._scanning_logic().set_scanner_target_position, QtCore.Qt.QueuedConnection
+            self._scanning_logic().set_target_position, QtCore.Qt.QueuedConnection
         )
         self.sigScanSettingsChanged.connect(
             self._scanning_logic().set_scan_settings, QtCore.Qt.QueuedConnection
         )
-        self.sigToggleScan.connect(self._scanning_logic().toggle_scan, QtCore.Qt.QueuedConnection)
+        self.sigToggleScan.connect(self._data_logic().toggle_scan, QtCore.Qt.QueuedConnection)
         self.sigToggleOptimize.connect(
             self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
         )
@@ -327,32 +325,23 @@ class ScannerGui(GuiBase):
             self._data_logic().history_previous, QtCore.Qt.QueuedConnection
         )
 
-        self._scanning_logic().sigScannerPositionChanged.connect(
-            self.scanner_position_updated, QtCore.Qt.QueuedConnection
-        )
         self._scanning_logic().sigScannerTargetChanged.connect(
             self.scanner_target_updated, QtCore.Qt.QueuedConnection
         )
         self._scanning_logic().sigScanSettingsChanged.connect(
             self.update_scanner_settings, QtCore.Qt.QueuedConnection
         )
-        self._scanning_logic().sigScanDataChanged.connect(
-            self.scan_data_updated, QtCore.Qt.QueuedConnection
-        )
         self._scanning_logic().sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._data_logic().sigScanDataChanged.connect(
+        self._data_logic().sigHistoryScanDataRestored.connect(
             self.scan_data_updated, QtCore.Qt.QueuedConnection
         )
         self._optimize_logic().sigOptimizeStateChanged.connect(
             self.optimize_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._optimize_logic().sigOptimizeScanDataChanged.connect(
-            self.optimize_data_updated, QtCore.Qt.QueuedConnection
-        )
-        self._optimize_logic().sigOptimalPositionChanged.connect(
-            self.optimize_position_updated, QtCore.Qt.QueuedConnection
+        self._optimize_logic().sigOptimizeStepComplete.connect(
+            self.optimization_step_updated, QtCore.Qt.QueuedConnection
         )
 
         # FIXME: Dirty workaround for strange pyqtgraph autoscale behaviour
@@ -384,15 +373,12 @@ class ScannerGui(GuiBase):
         self._mw.action_history_back.triggered.disconnect()
         self._mw.action_utility_full_range.triggered.disconnect()
         self._mw.action_utility_zoom.toggled.disconnect()
-        self._scanning_logic().sigScannerPositionChanged.disconnect(self.scanner_position_updated)
         self._scanning_logic().sigScannerTargetChanged.disconnect(self.scanner_target_updated)
         self._scanning_logic().sigScanSettingsChanged.disconnect(self.update_scanner_settings)
-        self._scanning_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
         self._scanning_logic().sigScanStateChanged.disconnect(self.scan_state_updated)
-        self._optimize_logic().sigOptimizeScanDataChanged.disconnect(self.optimize_data_updated)
-        self._optimize_logic().sigOptimalPositionChanged.disconnect(self.optimize_position_updated)
+        self._optimize_logic().sigOptimizeStepComplete.disconnect(self.optimization_step_updated)
         self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
-        self._data_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
+        self._data_logic().sigHistoryScanDataRestored.disconnect(self.scan_data_updated)
 
         for scan in tuple(self.scan_1d_dockwidgets):
             self._remove_scan_dockwidget(scan)
@@ -833,8 +819,8 @@ class ScannerGui(GuiBase):
             self.scan_2d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
             dockwidget.scan_widget.add_crosshair(movable=True, min_size_factor=0.02)
-            dockwidget.scan_widget.add_crosshair(movable=False,
-                                                 pen={'color': '#00ffff', 'width': 1})
+            # dockwidget.scan_widget.add_crosshair(movable=False,
+            #                                      pen={'color': '#00ffff', 'width': 1})
             dockwidget.scan_widget.bring_crosshair_on_top(0)
             dockwidget.scan_widget.crosshairs[0].set_allowed_range(
                 (axes_constr[axes[0]].value_range, axes_constr[axes[1]].value_range)
@@ -843,8 +829,6 @@ class ScannerGui(GuiBase):
                 (optimizer_settings['scan_range'][axes[0]],
                  optimizer_settings['scan_range'][axes[1]])
             )
-            if not self.show_true_scanner_position:
-                dockwidget.scan_widget.hide_crosshair(1)
             dockwidget.scan_widget.toggle_zoom_by_selection(True)
             dockwidget.scan_widget.crosshairs[0].sigDraggedPosChanged.connect(
                 self.__get_crosshair_update_func(axes, dockwidget.scan_widget.crosshairs[0])
@@ -861,14 +845,6 @@ class ScannerGui(GuiBase):
             dockwidget.scan_widget.set_image_extent((x_constr.value_range, y_constr.value_range))
         return
 
-    @property
-    def show_true_scanner_position(self):
-        return self._show_true_scanner_position
-
-    @show_true_scanner_position.setter
-    def show_true_scanner_position(self, show):
-        self.toggle_true_scanner_position_display(show)
-
     @QtCore.Slot(bool)
     def toggle_cursor_zoom(self, enable):
         if self._mw.action_utility_zoom.isChecked() != enable:
@@ -878,20 +854,6 @@ class ScannerGui(GuiBase):
 
         for dockwidget in self.scan_2d_dockwidgets.values():
             dockwidget.scan_widget.toggle_selection(enable)
-        return
-
-    @QtCore.Slot(bool)
-    def toggle_true_scanner_position_display(self, show):
-        show = bool(show)
-        if show == self._show_true_scanner_position:
-            return
-        self._show_true_scanner_position = show
-        if self._show_true_scanner_position:
-            for dockwidget in self.scan_2d_dockwidgets.values():
-                dockwidget.scan_widget.show_crosshair(1)
-        else:
-            for dockwidget in self.scan_2d_dockwidgets.values():
-                dockwidget.scan_widget.hide_crosshair(1)
         return
 
     @QtCore.Slot()
@@ -949,28 +911,6 @@ class ScannerGui(GuiBase):
         @param dict target_pos:
         """
         self.sigScannerTargetChanged.emit(target_pos, id(self))
-
-    @QtCore.Slot(dict)
-    @QtCore.Slot(dict, object)
-    def scanner_position_updated(self, pos_dict=None, caller_id=None):
-        """
-        Updates the scanner position and set widgets accordingly.
-
-        @param dict pos_dict: The scanner position dict to update each axis position.
-                              If None (default) read the scanner position from logic and update.
-        @param int caller_id: The qudi module object id responsible for triggering this update
-        """
-        # If this update has been issued by this module, do not update display.
-        # This has already been done before notifying the logic.
-        # Also ignore this call if the real momentary scanner position should not be shown
-        if caller_id == id(self) or not self._show_true_scanner_position:
-            return
-
-        if not isinstance(pos_dict, dict):
-            pos_dict = self._scanning_logic().scanner_position
-
-        self._update_position_display(pos_dict)
-        return
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
@@ -1036,26 +976,24 @@ class ScannerGui(GuiBase):
                 'left', channel, units=scan_data.channel_units[channel])
         return
 
-    @QtCore.Slot(bool, tuple)
-    def scan_state_updated(self, is_running, scan_axes):
+    @QtCore.Slot(bool, tuple, object)
+    def scan_state_updated(self, is_running, scan_axes, data):
         self._toggle_enable_scan_actions_buttons(not is_running)
-        if self._optimize_logic().module_state() == 'idle':
-            dockwidget = self.scan_2d_dockwidgets.get(scan_axes, None)
-            if dockwidget is not None:
-                dockwidget.toggle_scan_button.setChecked(is_running)
-                dockwidget.toggle_scan_button.setEnabled(True)
-        else:
-            self._mw.action_optimize_position.setEnabled(True)
+        dockwidget = self.scan_2d_dockwidgets.get(scan_axes, None)
+        if dockwidget is not None:
+            dockwidget.toggle_scan_button.setChecked(is_running)
+            dockwidget.toggle_scan_button.setEnabled(True)
+            if data is not None:
+                self.scan_data_updated(data)
         return
 
     @QtCore.Slot(bool)
     def optimize_state_updated(self, is_running):
+        self._toggle_enable_scan_actions_buttons(not is_running)
         self._mw.action_optimize_position.setChecked(is_running)
+        self._mw.action_optimize_position.setEnabled(True)
         if is_running:
-            try:
-                self._scanning_logic().sigScanDataChanged.disconnect(self.scan_data_updated)
-            except RuntimeError:
-                pass
+            self._scanning_logic().sigScanStateChanged.disconnect(self.scan_state_updated)
             curr_pos = self._scanning_logic().scanner_target
             axes_constr = self._scanning_logic().scanner_axes
             channel_constr = self._scanning_logic().scanner_channels
@@ -1101,13 +1039,12 @@ class ScannerGui(GuiBase):
                         ((-x_extent, x_extent), (-y_extent, y_extent))
                     )
         else:
-            self._scanning_logic().sigScanDataChanged.connect(
-                self.scan_data_updated, QtCore.Qt.QueuedConnection
+            self._scanning_logic().sigScanStateChanged.connect(
+                self.scan_state_updated, QtCore.Qt.QueuedConnection
             )
         return
 
-    @QtCore.Slot(object)
-    def optimize_data_updated(self, scan_data=None):
+    def _optimize_data_updated(self, scan_data):
         """
         @param dict scan_data:
         """
@@ -1133,14 +1070,17 @@ class ScannerGui(GuiBase):
             self.optimizer_dockwidget.plot_item.setData(x_data, data[~nan_mask])
         return
 
-    @QtCore.Slot(dict, object)
-    def optimize_position_updated(self, pos_dict, fit_data=None):
+    @QtCore.Slot(dict, object, object)
+    def optimization_step_updated(self, pos_dict, fit_data=None, scan_data=None):
         if len(pos_dict) == 2:
             self.optimizer_dockwidget.scan_widget.crosshairs[0].set_position(
                 tuple(pos_dict.values())
             )
         else:
             self.optimizer_dockwidget.plot_item_vline.setValue(tuple(pos_dict.values())[0])
+
+        if scan_data is not None:
+            self._optimize_data_updated(scan_data)
 
         if fit_data is not None:
             if fit_data.ndim == 1:
@@ -1150,30 +1090,12 @@ class ScannerGui(GuiBase):
                 )
                 self.optimizer_dockwidget.plot_widget.addItem(self.optimizer_dockwidget.fit_plot_item)
 
-
     @QtCore.Slot(bool)
     def toggle_optimize(self, enabled):
         """
         """
         self._toggle_enable_scan_actions_buttons(not enabled)
         self.sigToggleOptimize.emit(enabled)
-
-    def _update_position_display(self, pos_dict):
-        """
-
-        @param dict pos_dict:
-        """
-        for axis, pos in pos_dict.items():
-            for axes, dockwidget in self.scan_2d_dockwidgets.items():
-                crosshair = dockwidget.scan_widget.crosshairs[1]
-                ax1, ax2 = axes
-                if ax1 == axis:
-                    crosshair_pos = (pos, crosshair.position[1])
-                    crosshair.set_position(crosshair_pos)
-                elif ax2 == axis:
-                    crosshair_pos = (crosshair.position[0], pos)
-                    crosshair.set_position(crosshair_pos)
-        return
 
     def _update_target_display(self, pos_dict, exclude_widget=None):
         """

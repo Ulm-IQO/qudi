@@ -191,7 +191,6 @@ class ScanData:
         self._timestamp = None
         self._data = None
         self._position_data = None
-        self._is_finished = False
         # TODO: Automatic interpolation onto rectangular grid needs to be implemented
         return
 
@@ -203,7 +202,6 @@ class ScanData:
                             scan_frequency=self._scan_frequency,
                             position_feedback_axes=self._position_feedback_axes)
         new_inst._timestamp = self._timestamp
-        new_inst._is_finished = self._is_finished
         if self._data is not None:
             new_inst._data = self._data.copy()
         if self._position_data is not None:
@@ -217,9 +215,8 @@ class ScanData:
         if not isinstance(other, ScanData):
             raise NotImplemented
 
-        attrs = ('_is_finished', '_timestamp', '_scan_frequency', '_scan_axes', '_scan_range',
-                 '_scan_resolution', '_channels', '_position_feedback_axes', '_data',
-                 '_position_data', '_timestamp')
+        attrs = ('_timestamp', '_scan_frequency', '_scan_axes', '_scan_range', '_scan_resolution',
+                 '_channels', '_position_feedback_axes', '_data', '_position_data', '_timestamp')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
@@ -266,10 +263,6 @@ class ScanData:
         return bool(self._position_feedback_axes)
 
     @property
-    def is_finished(self):
-        return self._is_finished
-
-    @property
     def scan_dimension(self):
         return len(self._scan_axes)
 
@@ -293,11 +286,7 @@ class ScanData:
         self._data = {
             ch.name: np.full(self._scan_resolution, np.nan, dtype=ch.dtype) for ch in self._channels
         }
-        self._is_finished = False
         return
-
-    def finish_scan(self):
-        self._is_finished = True
 
     def copy(self):
         new_inst = ScanData(channels=self._channels,
@@ -307,7 +296,6 @@ class ScanData:
                             scan_frequency=self._scan_frequency,
                             position_feedback_axes=self._position_feedback_axes)
         new_inst._timestamp = self._timestamp
-        new_inst._is_finished = self._is_finished
         if self._data is not None:
             new_inst._data = {ch: arr.copy() for ch, arr in self._data.items()}
         if self._position_data is not None:
@@ -326,8 +314,7 @@ class ScanData:
             'timestamp': None if self._timestamp is None else self._timestamp.timestamp(),
             'data': None if self._data is None else {ch: d.copy() for ch, d in self._data.items()},
             'position_data': None if self._position_data is None else {ax: d.copy() for ax, d in
-                                                                       self._position_data.items()},
-            'is_finished': self._is_finished
+                                                                       self._position_data.items()}
         }
         return dict_repr
 
@@ -349,7 +336,6 @@ class ScanData:
                        position_feedback_axes=position_feedback_axes)
         new_inst._data = dict_repr['data']
         new_inst._position_data = dict_repr['position_data']
-        new_inst._is_finished = dict_repr['is_finished']
         if dict_repr['timestamp'] is not None:
             new_inst._timestamp = datetime.datetime.fromtimestamp(dict_repr['timestamp'])
         return new_inst

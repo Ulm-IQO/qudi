@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from PySide2 import QtCore
 
 from qudi.core.module import LogicBase
-from qudi.core.util.mutex import Mutex
+from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
@@ -45,27 +45,19 @@ class ScanningProbeLogic(LogicBase):
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
 
-    # config options
-    _max_scan_update_interval = ConfigOption(name='max_scan_update_interval', default=5)
-    _min_scan_update_interval = ConfigOption(name='min_scan_update_interval', default=0.25)
-    _position_update_interval = ConfigOption(name='position_update_interval', default=1)
-
     # signals
-    sigScanStateChanged = QtCore.Signal(bool, tuple)
-    sigScannerPositionChanged = QtCore.Signal(dict, object)
+    sigScanStateChanged = QtCore.Signal(bool, tuple, object)
     sigScannerTargetChanged = QtCore.Signal(dict, object)
     sigScanSettingsChanged = QtCore.Signal(dict)
-    sigScanDataChanged = QtCore.Signal(object)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self._thread_lock = Mutex()
+        self._thread_lock = RecursiveMutex()
 
         # others
-        self.__timer = None
-        self.__current_scan_data = None
-        self.__scan_update_interval = 0
+        self.__scan_poll_timer = None
+        self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
         return
 
@@ -83,22 +75,19 @@ class ScanningProbeLogic(LogicBase):
         if not isinstance(self._scan_frequency, dict):
             self._scan_frequency = {ax.name: ax.max_frequency for ax in constr.axes.values()}
 
-        self.__current_scan_data = None
-        self.__scan_update_interval = 0
+        self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
 
-        self.__timer = QtCore.QTimer()
-        self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
-        self.__timer.setSingleShot(True)
-        self.__timer.timeout.connect(self._update_scanner_position_loop, QtCore.Qt.QueuedConnection)
-        self.__timer.start()
+        self.__scan_poll_timer = QtCore.QTimer()
+        self.__scan_poll_timer.setSingleShot(True)
+        self.__scan_poll_timer.timeout.connect(self.__scan_poll_loop, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
         """ Reverse steps of activation
         """
-        self.__timer.stop()
-        self.__timer.timeout.disconnect()
+        self.__scan_poll_timer.stop()
+        self.__scan_poll_timer.timeout.disconnect()
         if self.module_state() != 'idle':
             self._scanner().stop_scan()
         return
@@ -106,9 +95,7 @@ class ScanningProbeLogic(LogicBase):
     @property
     def scan_data(self):
         with self._thread_lock:
-            if self.module_state() != 'idle':
-                return self._scanner().get_scan_data()
-            return self.__current_scan_data
+            return self._scanner().get_scan_data()
 
     @property
     def scanner_position(self):
@@ -156,12 +143,13 @@ class ScanningProbeLogic(LogicBase):
 
     @qudi_slot(dict)
     def set_scan_settings(self, settings):
-        if 'range' in settings:
-            self.set_scan_range(settings['range'])
-        if 'resolution' in settings:
-            self.set_scan_resolution(settings['resolution'])
-        if 'frequency' in settings:
-            self.set_scan_frequency(settings['frequency'])
+        with self._thread_lock:
+            if 'range' in settings:
+                self.set_scan_range(settings['range'])
+            if 'resolution' in settings:
+                self.set_scan_resolution(settings['resolution'])
+            if 'frequency' in settings:
+                self.set_scan_frequency(settings['frequency'])
 
     @qudi_slot(dict)
     def set_scan_range(self, ranges):
@@ -235,7 +223,7 @@ class ScanningProbeLogic(LogicBase):
 
     @qudi_slot(dict)
     @qudi_slot(dict, object)
-    def set_scanner_target_position(self, pos_dict, caller_id=None):
+    def set_target_position(self, pos_dict, caller_id=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to change scanner target position while a scan is running.')
@@ -255,123 +243,111 @@ class ScanningProbeLogic(LogicBase):
                 new_pos[ax] = ax_constr[ax].clip_value(pos)
                 if pos != new_pos[ax]:
                     self.log.warning('Scanner position target value out of bounds for axis "{0}". '
-                                     'Clipping value to {1:.3e.'.format(ax, new_pos[ax]))
+                                     'Clipping value to {1:.3e}.'.format(ax, new_pos[ax]))
 
             new_pos = self._scanner().move_absolute(new_pos)
             self.sigScannerTargetChanged.emit(new_pos, id(self) if caller_id is None else caller_id)
             return new_pos
 
-    @qudi_slot()
-    def _update_scanner_position_loop(self):
-        with self._thread_lock:
-            if self.module_state() == 'idle':
-                self.sigScannerPositionChanged.emit(self._scanner().get_position(), id(self))
-                self._start_timer()
-
-    @qudi_slot()
-    def update_scanner_position(self):
-        with self._thread_lock:
-            if self.module_state() == 'idle':
-                self.sigScannerPositionChanged.emit(self._scanner().get_position(), id(self))
-
-    @qudi_slot(bool)
     @qudi_slot(bool, tuple)
-    def toggle_scan(self, start, scan_axes=None):
-        scan_axes = tuple(scan_axes)
+    def toggle_scan(self, start, scan_axes):
         with self._thread_lock:
             # ToDo: Check if the right scan is running/stopped (scan axes)
-            if start and self.module_state() != 'idle':
-                self.sigScanStateChanged.emit(True, scan_axes)
-                return 0
-            elif not start and self.module_state() == 'idle':
-                self.sigScanStateChanged.emit(False, scan_axes)
-                return 0
-
             if start:
-                self.module_state.lock()
+                return self.start_scan(scan_axes)
+            return self.stop_scan()
 
-                settings = {'axes': tuple(scan_axes),
-                            'range': tuple(self._scan_ranges[ax] for ax in scan_axes),
-                            'resolution': tuple(self._scan_resolution[ax] for ax in scan_axes),
-                            'frequency': self._scan_frequency[scan_axes[0]]}
-                fail, new_settings = self._scanner().configure_scan(settings)
-                if fail:
-                    self.module_state.unlock()
-                    self.sigScanStateChanged.emit(False, scan_axes)
-                    return -1
+    @qudi_slot(tuple)
+    def start_scan(self, scan_axes):
+        scan_axes = tuple(scan_axes)
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                data = self.scan_data
+                self.sigScanStateChanged.emit(True, scan_axes, data)
+                return 0
 
-                for ax_index, ax in enumerate(scan_axes):
-                    # Update scan ranges if needed
-                    new = tuple(new_settings['range'][ax_index])
-                    if self._scan_ranges[ax] != new:
-                        self._scan_ranges[ax] = new
-                        self.sigScanSettingsChanged.emit({'range': {ax: self._scan_ranges[ax]}})
+            self.module_state.lock()
 
-                    # Update scan resolution if needed
-                    new = int(new_settings['resolution'][ax_index])
-                    if self._scan_resolution[ax] != new:
-                        self._scan_resolution[ax] = new
-                        self.sigScanSettingsChanged.emit(
-                            {'resolution': {ax: self._scan_resolution[ax]}}
-                        )
+            settings = {'axes': scan_axes,
+                        'range': tuple(self._scan_ranges[ax] for ax in scan_axes),
+                        'resolution': tuple(self._scan_resolution[ax] for ax in scan_axes),
+                        'frequency': self._scan_frequency[scan_axes[0]]}
+            fail, new_settings = self._scanner().configure_scan(settings)
+            if fail:
+                self.module_state.unlock()
+                self.sigScanStateChanged.emit(False, scan_axes, None)
+                return -1
 
-                # Update scan frequency if needed
-                new = float(new_settings['frequency'])
-                if self._scan_frequency[scan_axes[0]] != new:
-                    self._scan_frequency[scan_axes[0]] = new
-                    self.sigScanSettingsChanged.emit({'frequency': {scan_axes[0]: new}})
+            for ax_index, ax in enumerate(scan_axes):
+                # Update scan ranges if needed
+                new = tuple(new_settings['range'][ax_index])
+                if self._scan_ranges[ax] != new:
+                    self._scan_ranges[ax] = new
+                    self.sigScanSettingsChanged.emit({'range': {ax: self._scan_ranges[ax]}})
 
-                line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
-                line_time = line_points / self._scan_frequency[scan_axes[0]]
-                self.__scan_update_interval = max(self._min_scan_update_interval,
-                                                  min(self._max_scan_update_interval, line_time))
+                # Update scan resolution if needed
+                new = int(new_settings['resolution'][ax_index])
+                if self._scan_resolution[ax] != new:
+                    self._scan_resolution[ax] = new
+                    self.sigScanSettingsChanged.emit(
+                        {'resolution': {ax: self._scan_resolution[ax]}}
+                    )
 
-                # Try to start scanner
+            # Update scan frequency if needed
+            new = float(new_settings['frequency'])
+            if self._scan_frequency[scan_axes[0]] != new:
+                self._scan_frequency[scan_axes[0]] = new
+                self.sigScanSettingsChanged.emit({'frequency': {scan_axes[0]: new}})
+
+            # Calculate poll time to check for scan completion. Use line scan time estimate.
+            line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
+            self.__scan_poll_interval = line_points / self._scan_frequency[scan_axes[0]]
+            self.__scan_poll_timer.setInterval(int(round(self.__scan_poll_interval * 1000)))
+
+            if self._scanner().module_state() == 'idle':
                 if self._scanner().start_scan() < 0:
-                    self.log.error('Unable to start scanner.')
                     self.module_state.unlock()
-                    self.sigScanStateChanged.emit(False, scan_axes)
+                    self.sigScanStateChanged.emit(False, scan_axes, None)
                     return -1
 
-                self.log.debug('Scanner successfully started')
-
-                self._stop_timer()
-                self.__timer.timeout.disconnect()
-                self.__timer.setSingleShot(True)
-                self.__timer.setInterval(int(round(self.__scan_update_interval * 1000)))
-                self.__timer.timeout.connect(self._scan_loop, QtCore.Qt.QueuedConnection)
-
-                self.sigScanStateChanged.emit(True, scan_axes)
-                self.__scan_stop_requested = False
-                self._start_timer()
-            else:
-                self.__scan_stop_requested = True
+            self.sigScanStateChanged.emit(True, scan_axes, self.scan_data)
+            self.__start_timer()
             return 0
 
     @qudi_slot()
-    def _scan_loop(self):
+    def stop_scan(self):
+        with self._thread_lock:
+            if self.module_state() == 'idle':
+                data = self.scan_data
+                self.sigScanStateChanged.emit(False, data.scan_axes, data)
+                return 0
+
+            self.__stop_timer()
+
+            if self._scanner().module_state() != 'idle':
+                err = self._scanner().stop_scan()
+                if err < 0:
+                    self.log.error('Unable to stop scan.')
+            else:
+                err = 0
+
+            data = self.scan_data
+            self.module_state.unlock()
+            self.sigScanStateChanged.emit(False, data.scan_axes, data)
+            return err
+
+    @qudi_slot()
+    def __scan_poll_loop(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 return
 
-            self.__current_scan_data = self._scanner().get_scan_data()
-            self.sigScanDataChanged.emit(self.__current_scan_data)
-            # Terminate scan if finished
-            if self.__current_scan_data.is_finished or self.__scan_stop_requested:
-                if self._scanner().stop_scan() < 0:
-                    self.log.error('Unable to stop scan.')
+            if self._scanner().module_state() == 'idle':
+                self.stop_scan()
+                return
 
-                self.__timer.timeout.disconnect()
-                self.__timer.setSingleShot(True)
-                self.__timer.setInterval(int(round(self._position_update_interval * 1000)))
-                self.__timer.timeout.connect(
-                    self._update_scanner_position_loop, QtCore.Qt.QueuedConnection
-                )
-                self.module_state.unlock()
-                self.sigScanDataChanged.emit(self.__current_scan_data)
-                self.sigScanStateChanged.emit(False, self.__current_scan_data.scan_axes)
-
-            self._start_timer()
+            # Queue next call to this slot
+            self.__scan_poll_timer.start()
             return
 
     @qudi_slot()
@@ -379,20 +355,18 @@ class ScanningProbeLogic(LogicBase):
         scan_range = {ax: axis.value_bounds for ax, axis in self.scanner_constraints.axes.items()}
         return self.set_scan_range(scan_range)
 
-    @qudi_slot()
-    def _start_timer(self):
+    def __start_timer(self):
         if self.thread() is not QtCore.QThread.currentThread():
-            QtCore.QMetaObject.invokeMethod(self.__timer,
+            QtCore.QMetaObject.invokeMethod(self.__scan_poll_timer,
                                             'start',
                                             QtCore.Qt.BlockingQueuedConnection)
         else:
-            self.__timer.start()
+            self.__scan_poll_timer.start()
 
-    @qudi_slot()
-    def _stop_timer(self):
+    def __stop_timer(self):
         if self.thread() is not QtCore.QThread.currentThread():
-            QtCore.QMetaObject.invokeMethod(self.__timer,
+            QtCore.QMetaObject.invokeMethod(self.__scan_poll_timer,
                                             'stop',
                                             QtCore.Qt.BlockingQueuedConnection)
         else:
-            self.__timer.stop()
+            self.__scan_poll_timer.stop()

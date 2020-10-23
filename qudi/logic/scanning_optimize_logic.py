@@ -42,7 +42,6 @@ class ScanningOptimizeLogic(LogicBase):
 
     # declare connectors
     _scan_logic = Connector(name='scan_logic', interface='ScanningProbeLogic')
-    _data_logic = Connector(name='data_logic', interface='ScanningDataLogic')
 
     # config options
 
@@ -54,10 +53,9 @@ class ScanningOptimizeLogic(LogicBase):
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
 
     # signals
-    sigOptimalPositionChanged = QtCore.Signal(dict, object)
+    sigOptimizeStepComplete = QtCore.Signal(dict, object, object)
     sigOptimizeStateChanged = QtCore.Signal(bool)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
-    sigOptimizeScanDataChanged = QtCore.Signal(object)
 
     _sigNextSequenceStep = QtCore.Signal()
 
@@ -68,7 +66,6 @@ class ScanningOptimizeLogic(LogicBase):
 
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
-        self._curr_scan_data = None
         self._stop_requested = True
         return
 
@@ -102,19 +99,22 @@ class ScanningOptimizeLogic(LogicBase):
         if self._data_channel is None:
             self._data_channel = tuple(channels.values())[0].name
 
+        self._stashed_scan_settings = dict()
+        self._sequence_index = 0
+        self._stop_requested = True
+
         self._sigNextSequenceStep.connect(self._next_sequence_step, QtCore.Qt.QueuedConnection)
         self._scan_logic().sigScanStateChanged.connect(
             self._scan_state_changed, QtCore.Qt.QueuedConnection
-        )
-        self._scan_logic().sigScanDataChanged.connect(
-            self._scan_data_changed, QtCore.Qt.QueuedConnection
         )
         return
 
     def on_deactivate(self):
         """ Reverse steps of activation
         """
+        self._scan_logic().sigScanStateChanged.disconnect()
         self._sigNextSequenceStep.disconnect()
+        self.stop_optimize()
         return
 
     @property
@@ -175,16 +175,15 @@ class ScanningOptimizeLogic(LogicBase):
     def toggle_optimize(self, start):
         if start:
             return self.start_optimize()
-        else:
-            return self.stop_optimize()
+        return self.stop_optimize()
 
     @qudi_slot()
     def start_optimize(self):
         with self._thread_lock:
+            print('start optimize')
             if self.module_state() != 'idle':
-                self.log.error('Unable to start optimization sequence. Optimizer still running.')
                 self.sigOptimizeStateChanged.emit(True)
-                return -1
+                return 0
 
             # ToDo: Sanity checks for settings go here
 
@@ -217,9 +216,6 @@ class ScanningOptimizeLogic(LogicBase):
                     'Some optimize scan resolutions have been changed by the scanner.')
                 self.set_optimize_settings({'scan_resolution': actual_setting})
 
-            # Ignore following scans for scan history
-            self._data_logic().toggle_ignore_new_data(True)
-
             self._sequence_index = 0
             self._stop_requested = False
             self.sigOptimizeStateChanged.emit(True)
@@ -229,7 +225,7 @@ class ScanningOptimizeLogic(LogicBase):
     @qudi_slot()
     def _next_sequence_step(self):
         with self._thread_lock:
-            print('_next_sequence_step')
+            print('next sequence step')
             if self.module_state() == 'idle':
                 return
 
@@ -237,71 +233,43 @@ class ScanningOptimizeLogic(LogicBase):
                 self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
                     self._scan_sequence[self._sequence_index])
                 )
-                self._stop_requested = True
-                self._data_logic().toggle_ignore_new_data(False)
-                self._scan_logic().set_scan_settings(self._stashed_scan_settings)
-                self._stashed_scan_settings = dict()
-                self._curr_scan_data = None
-                self.module_state.unlock()
-                self.sigOptimizeStateChanged.emit(False)
+                self.stop_optimize()
             return
 
-    @qudi_slot(object)
-    def _scan_data_changed(self, data):
+    @qudi_slot(bool, tuple, object)
+    def _scan_state_changed(self, is_running, axes, data):
         with self._thread_lock:
-            print('_scan_data_changed')
-            if self.module_state() == 'idle':
-                return
-
-            self._curr_scan_data = data
-            self.sigOptimizeScanDataChanged.emit(data)
-            return
-
-    @qudi_slot(bool, tuple)
-    def _scan_state_changed(self, is_running, axes):
-        with self._thread_lock:
-            print('_scan_state_changed')
+            print('scan state changed', is_running, axes)
             if is_running or self.module_state() == 'idle':
                 return
-
-            # ToDo: Perform fit on last scan data and move scanner target position
-            if not is_running and self._curr_scan_data is not None:
-                if axes != self._curr_scan_data.scan_axes:
-                    self.log.error('Current ScanData axes do not match finished scan axes.')
-                else:
-                    scan_data = self._curr_scan_data
-                    if scan_data.scan_dimension == 1:
-                        x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
-                        opt_pos, fit_data = self._get_pos_from_1d_gauss_fit(
-                            x,
-                            scan_data.data[self._data_channel]
-                        )
-                    else:
-                        x = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])
-                        y = np.linspace(*scan_data.scan_range[1], scan_data.scan_resolution[1])
-                        xy = np.meshgrid(x, y, indexing='ij')
-                        opt_pos, fit_data = self._get_pos_from_2d_gauss_fit(
-                            xy,
-                            scan_data.data[self._data_channel].ravel()
-                        )
-                    opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
-                    new_pos = self._scan_logic().set_scanner_target_position(opt_pos_dict)
-                    self.sigOptimalPositionChanged.emit(
-                        {ax: pos for ax, pos in new_pos.items() if ax in opt_pos_dict},
-                        fit_data
+            elif data is not None:
+                if data.scan_dimension == 1:
+                    x = np.linspace(*data.scan_range[0], data.scan_resolution[0])
+                    opt_pos, fit_data = self._get_pos_from_1d_gauss_fit(
+                        x,
+                        data.data[self._data_channel]
                     )
+                else:
+                    x = np.linspace(*data.scan_range[0], data.scan_resolution[0])
+                    y = np.linspace(*data.scan_range[1], data.scan_resolution[1])
+                    xy = np.meshgrid(x, y, indexing='ij')
+                    opt_pos, fit_data = self._get_pos_from_2d_gauss_fit(
+                        xy,
+                        data.data[self._data_channel].ravel()
+                    )
+                opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
+                new_pos = self._scan_logic().set_target_position(opt_pos_dict)
+                self.sigOptimizeStepComplete.emit(
+                    {ax: pos for ax, pos in new_pos.items() if ax in opt_pos_dict},
+                    fit_data,
+                    data
+                )
 
             self._sequence_index += 1
 
-            # Terminate optimize sequence if finished
-            if self._stop_requested or self._sequence_index >= len(self._scan_sequence):
-                self._stop_requested = True
-                self._data_logic().toggle_ignore_new_data(False)
-                self._scan_logic().set_scan_settings(self._stashed_scan_settings)
-                self._stashed_scan_settings = dict()
-                self._curr_scan_data = None
-                self.module_state.unlock()
-                self.sigOptimizeStateChanged.emit(False)
+            # Terminate optimize sequence if finished; continue with next sequence step otherwise
+            if self._sequence_index >= len(self._scan_sequence):
+                self.stop_optimize()
             else:
                 self._sigNextSequenceStep.emit()
             return
@@ -309,14 +277,20 @@ class ScanningOptimizeLogic(LogicBase):
     @qudi_slot()
     def stop_optimize(self):
         with self._thread_lock:
+            print('stop optimize')
             if self.module_state() == 'idle':
-                self.log.error('Unable to stop optimization sequence. Optimizer is not running.')
                 self.sigOptimizeStateChanged.emit(False)
-                return -1
+                return 0
 
-            self._stop_requested = True
-            seq_index = min(self._sequence_index, len(self._scan_sequence) - 1)
-            return self._scan_logic().toggle_scan(False, self._scan_sequence[seq_index])
+            if self._scan_logic().module_state() != 'idle':
+                err = self._scan_logic().stop_scan()
+            else:
+                err = 0
+            self._scan_logic().set_scan_settings(self._stashed_scan_settings)
+            self._stashed_scan_settings = dict()
+            self.module_state.unlock()
+            self.sigOptimizeStateChanged.emit(False)
+            return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
         model = Gaussian2D()
