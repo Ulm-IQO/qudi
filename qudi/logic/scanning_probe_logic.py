@@ -46,7 +46,7 @@ class ScanningProbeLogic(LogicBase):
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
 
     # signals
-    sigScanStateChanged = QtCore.Signal(bool, tuple, object)
+    sigScanStateChanged = QtCore.Signal(bool, object, object)
     sigScannerTargetChanged = QtCore.Signal(dict, object)
     sigScanSettingsChanged = QtCore.Signal(dict)
 
@@ -59,6 +59,7 @@ class ScanningProbeLogic(LogicBase):
         self.__scan_poll_timer = None
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
+        self._curr_caller_id = id(self)
         return
 
     def on_activate(self):
@@ -77,6 +78,7 @@ class ScanningProbeLogic(LogicBase):
 
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
+        self._curr_caller_id = id(self)
 
         self.__scan_poll_timer = QtCore.QTimer()
         self.__scan_poll_timer.setSingleShot(True)
@@ -250,21 +252,23 @@ class ScanningProbeLogic(LogicBase):
             return new_pos
 
     @qudi_slot(bool, tuple)
-    def toggle_scan(self, start, scan_axes):
+    @qudi_slot(bool, tuple, object)
+    def toggle_scan(self, start, scan_axes, caller_id=None):
         with self._thread_lock:
-            # ToDo: Check if the right scan is running/stopped (scan axes)
             if start:
-                return self.start_scan(scan_axes)
+                return self.start_scan(scan_axes, caller_id)
             return self.stop_scan()
 
     @qudi_slot(tuple)
-    def start_scan(self, scan_axes):
-        scan_axes = tuple(scan_axes)
+    @qudi_slot(tuple, object)
+    def start_scan(self, scan_axes, caller_id=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
-                data = self.scan_data
-                self.sigScanStateChanged.emit(True, scan_axes, data)
+                self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
                 return 0
+
+            scan_axes = tuple(scan_axes)
+            self._curr_caller_id = id(self) if caller_id is None else caller_id
 
             self.module_state.lock()
 
@@ -275,7 +279,7 @@ class ScanningProbeLogic(LogicBase):
             fail, new_settings = self._scanner().configure_scan(settings)
             if fail:
                 self.module_state.unlock()
-                self.sigScanStateChanged.emit(False, scan_axes, None)
+                self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
 
             for ax_index, ax in enumerate(scan_axes):
@@ -304,13 +308,12 @@ class ScanningProbeLogic(LogicBase):
             self.__scan_poll_interval = line_points / self._scan_frequency[scan_axes[0]]
             self.__scan_poll_timer.setInterval(int(round(self.__scan_poll_interval * 1000)))
 
-            if self._scanner().module_state() == 'idle':
-                if self._scanner().start_scan() < 0:
-                    self.module_state.unlock()
-                    self.sigScanStateChanged.emit(False, scan_axes, None)
-                    return -1
+            if self._scanner().start_scan() < 0:
+                self.module_state.unlock()
+                self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
+                return -1
 
-            self.sigScanStateChanged.emit(True, scan_axes, self.scan_data)
+            self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
             self.__start_timer()
             return 0
 
@@ -318,22 +321,15 @@ class ScanningProbeLogic(LogicBase):
     def stop_scan(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
-                data = self.scan_data
-                self.sigScanStateChanged.emit(False, data.scan_axes, data)
+                self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
                 return 0
 
             self.__stop_timer()
 
-            if self._scanner().module_state() != 'idle':
-                err = self._scanner().stop_scan()
-                if err < 0:
-                    self.log.error('Unable to stop scan.')
-            else:
-                err = 0
+            err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
 
-            data = self.scan_data
             self.module_state.unlock()
-            self.sigScanStateChanged.emit(False, data.scan_axes, data)
+            self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
             return err
 
     @qudi_slot()

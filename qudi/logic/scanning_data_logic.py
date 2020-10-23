@@ -64,23 +64,22 @@ class ScanningDataLogic(LogicBase):
 
         self._thread_lock = RecursiveMutex()
 
-        # Scan history
         self._curr_history_index = 0
         self._curr_data_per_scan = dict()
-        self._add_to_history = False
+        self._logic_id = None
         return
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._shrink_history()
-        self._add_to_history = False
         if self._scan_history:
             self._curr_data_per_scan = {sd.scan_axes: sd for sd in self._scan_history}
             self.restore_from_history(-1)
         else:
             self._curr_history_index = 0
             self._curr_data_per_scan = dict()
+        self._logic_id = id(self._scan_logic())
         self._scan_logic().sigScanStateChanged.connect(self._update_scan_state)
         return
 
@@ -153,30 +152,15 @@ class ScanningDataLogic(LogicBase):
             self.sigHistoryScanDataRestored.emit(data)
             return
 
-    @qudi_slot(bool, tuple)
-    def toggle_scan(self, start, axes):
+    @qudi_slot(bool, object, object)
+    def _update_scan_state(self, running, data, caller_id):
         with self._thread_lock:
-            if start and self.module_state() != 'idle':
-                self.log.error('Unable to start new scan. Scan data saving still in progress.')
-                return -1
-
-            err = self._scan_logic().toggle_scan(start, axes)
-            if start and err >= 0:
-                self._add_to_history = True
-            return err
-
-    @qudi_slot(bool, tuple, object)
-    def _update_scan_state(self, running, axes, data):
-        with self._thread_lock:
-            if (not self._add_to_history) or running:
-                return
-
-            self._scan_history.append(data)
-            self._shrink_history()
-            self._curr_data_per_scan[axes] = data
-            self._curr_history_index = len(self._scan_history) - 1
-            self._add_to_history = False
-            self.sigHistoryScanDataRestored.emit(data)
+            if not running and caller_id == self._logic_id:
+                self._scan_history.append(data)
+                self._shrink_history()
+                self._curr_data_per_scan[data.scan_axes] = data
+                self._curr_history_index = len(self._scan_history) - 1
+                self.sigHistoryScanDataRestored.emit(data)
 
     def _shrink_history(self):
         while len(self._scan_history) > self._max_history_length:
