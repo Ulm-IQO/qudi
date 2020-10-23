@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 from core.connector import Connector
-from core.configoption import ConfigOption
 from gui.guibase import GUIBase
 from qtpy import QtWidgets, QtCore
 from qtpy import uic
@@ -43,7 +42,7 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
 
 
 class SwitchGui(GUIBase):
-    """ A grephical interface to mofe switches by hand and change their calibration.
+    """ A graphical interface to switch a hardware by hand.
     """
 
     # declare connectors
@@ -57,8 +56,7 @@ class SwitchGui(GUIBase):
         self._lowlight_format = 'QRadioButton {color: red; font-weight: normal;}'
 
     def on_activate(self):
-        """
-        Create all UI objects and show the window.
+        """ Create all UI objects and show the window.
         """
         self.restoreWindowPos(self._mw)
         self._populate_switches()
@@ -67,8 +65,7 @@ class SwitchGui(GUIBase):
         self.switchlogic().sig_switch_updated.connect(self._switch_updated, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
-        """
-        Hide window empty the GUI and disconnect signals
+        """ Hide window empty the GUI and disconnect signals
         """
         self.switchlogic().sig_switch_updated.disconnect(self._switch_updated)
 
@@ -78,18 +75,13 @@ class SwitchGui(GUIBase):
         self._mw.close()
 
     def show(self):
-        """
-        Make sure that the window is visible and at the top.
+        """ Make sure that the window is visible and at the top.
         """
         self._mw.show()
 
     def _populate_switches(self):
-        """
-        Dynamically build the gui.
-        By default check boxes are used, but by setting the ConfigOption radio_buttons=True
-        #coloured radio buttons can be used.
-        The latter is useful when working with laser protection goggles in the lab.
-            @return: None
+        """ Dynamically build the gui.
+        @return: None
         """
         # For each switch that the logic has, add a widget to the GUI to show its state
         self._mw.switch_groupBox.setTitle(self.switchlogic().name)
@@ -106,10 +98,9 @@ class SwitchGui(GUIBase):
         self._switch_updated(self.switchlogic().states)
 
     def _add_radio_widget(self, switch):
-        """
-        Helper function to create a widget with radio buttons per switch.
-            @param str switch: the index (in switchlogic) of the switch to be displayed
-            @return QWidget: widget containing the radio buttons and the label
+        """ Helper function to create a widget with radio buttons per switch.
+        @param str switch: the switch name (in switchlogic) of the switch to be displayed
+        @return QWidget: widget containing the radio buttons and the label
         """
         button_group = QtWidgets.QButtonGroup()
 
@@ -143,9 +134,8 @@ class SwitchGui(GUIBase):
         return widget
 
     def _depopulate_switches(self):
-        """
-        Delete all the buttons from the group box and remove the layout.
-            @return: None
+        """ Delete all the buttons from the group box and remove the layout.
+        @return: None
         """
         for widgets in self._widgets.values():
             for widget in widgets.values():
@@ -159,22 +149,22 @@ class SwitchGui(GUIBase):
             sip.delete(vertical_layout)
 
     def _button_toggled(self, switch, state, is_set):
-        """
-        Helper function that is connected to the GUI interaction.
+        """ Helper function that is connected to the GUI interaction.
         A GUI change is transmitted to the logic and the visual indicators are changed.
-            @param int switch: switch index of the GUI element that was changed
-            @param bool state: new state of the switch
-            @return: None
+        @param str switch: switch name of the GUI element that was changed
+        @param str state: new state name of the switch
+        @param bool is_set: indicator if this particular state was switched to True
+        @return: None
         """
         if not is_set:
             return
         self.switchlogic().states = {switch: state}
 
     def _switch_updated(self, states):
-        """
-        Helper function that is connected to the signal coming from the switchlogic signaling a change in states.
-            @param list(bool) states: a list of boolean values containing the states of the switches
-            @return: None
+        """ Helper function to update the GUI on a change of the states in the logic.
+        This function is connected to the signal coming from the switchlogic signaling a change in states.
+        @param dict states: The state dict of the form {"switch": "state"}
+        @return: None
         """
         for switch, state in states.items():
             for name, widget in self._widgets[switch].items():

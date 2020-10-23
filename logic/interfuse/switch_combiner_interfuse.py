@@ -24,7 +24,6 @@ from core.module import Base
 from interface.switch_interface import SwitchInterface
 from core.configoption import ConfigOption
 from core.connector import Connector
-import numpy as np
 
 
 class SwitchCombinerInterfuse(Base, SwitchInterface):
@@ -32,69 +31,57 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
     This interfuse in particular combines two switches into one.
     """
 
+    # connectors for the switches to be combined
     switch1 = Connector(interface='SwitchInterface')
     switch2 = Connector(interface='SwitchInterface')
+
+    # optional name of the combined hardware
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+
+    # if extend_hardware_name is True the switch names will be extended by the hardware name
+    # of the individual switches in front.
     _extend_hardware_name = ConfigOption(name='extend_hardware_name', default=False, missing='nothing')
 
     def on_activate(self):
-        """
-        Activate the module and fill status variables.
+        """ Activate the module and fill status variables.
         """
         if self._hardware_name is None:
             self._hardware_name = self._name
 
     def on_deactivate(self):
-        """
-        Deactivate the module and clean up.
+        """ Deactivate the module and clean up.
         """
         pass
 
     @property
-    def name(self):
+    def number_of_switches(self):
+        """ Number of switches provided by this hardware.
+
+        @return int: number of switches
         """
-        Name can either be defined as ConfigOption (name) or it defaults to the name of the hardware module.
-            @return str: The name of the hardware
+        return self.switch1().number_of_switches + self.switch2().number_of_switches
+
+    @property
+    def name(self):
+        """ Name of the hardware as string.
+
+        @return str: The name of the hardware
         """
         return self._hardware_name
 
     @property
-    def states(self):
-        """
-        The states of the system as a list of boolean values.
-            @return list(bool): All the current states of the switches in a list
-        """
-        return list(self.switch1().states) + list(self.switch2().states)
-
-    @states.setter
-    def states(self, value):
-        """
-        The states of the system can be set in two ways:
-        Either as a single boolean value to define all the states to be the same
-        or as a list of boolean values to define the state of each switch individually.
-            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
-            @return: None
-        """
-        if np.isscalar(value):
-            self.switch1().states = value
-            self.switch2().states = value
-        else:
-            if len(value) != self.number_of_switches:
-                self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
-            else:
-                self.switch1().states = value[:self.switch1().number_of_switches]
-                self.switch2().states = value[self.switch1().number_of_switches:]
-
-    @property
     def names_of_states(self):
-        """
-        Names of the states as a list of lists. The first list contains the names for each of the switches
-        and each of switches has two elements representing the names in the state order [False, True].
-            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
+        """ Names of the states as a dict of lists.
+
+        The keys contain the names for each of the switches and each of switches
+        has a list of elements representing the names in the state order.
+        The switch names might be extended by the name of the hardware as a prefix if extend_hardware_name is True.
+
+        @return dict: A dict of the form {"switch": ["state1", "state2"]}
         """
         if self._extend_hardware_name:
             new_dict = {self.switch1().name + '.' + switch: states
-                        for switch, states in self.switch1().names_of_states.items() }
+                        for switch, states in self.switch1().names_of_states.items()}
             for switch, states in self.switch2().names_of_states.items():
                 new_dict[self.switch2().name + '.' + switch] = states
         else:
@@ -102,23 +89,51 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
         return new_dict
 
     @property
-    def number_of_switches(self):
-        """
-        Number of switches provided by this hardware.
-            @return int: number of switches
-        """
-        return self.switch1().number_of_switches + self.switch2().number_of_switches
+    def states(self):
+        """ The current states the hardware is in.
 
-    @property
-    def names_of_switches(self):
-        """
-        Names of the switches as a list of length number_of_switches.
-        If the ConfigOption extend_hardware_name is True, all switch names start
-        with the individual hardware name followed by a "." and then the name of the switch.
-            @return list(str): names of the switches
+        The states of the system as a dict consisting of switch names as keys and state names as values.
+        The switch names might be extended by the name of the hardware as a prefix if extend_hardware_name is True.
+
+        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
         """
         if self._extend_hardware_name:
-            return [self.switch1().name + '.' + switch for switch in self.switch1().names_of_switches] \
-                   + [self.switch2().name + '.' + switch for switch in self.switch2().names_of_switches]
+            new_dict = {self.switch1().name + '.' + switch: states
+                        for switch, states in self.switch1().states.items()}
+            for switch, states in self.switch2().states.items():
+                new_dict[self.switch2().name + '.' + switch] = states
         else:
-            return list(self.switch1().names_of_switches) + list(self.switch2().names_of_switches)
+            new_dict = self.switch1().states + self.switch2().states
+        return new_dict
+
+    @states.setter
+    def states(self, value):
+        """ The setter for the states of the hardware.
+
+        The states of the system can be set by specifying a dict that has the switch names as keys
+        and the names of the states as values.
+        The switch names might need to be extended by the name of the hardware as a prefix
+        if extend_hardware_name is True.
+
+        @param dict value: state dict of the form {"switch": "state"}
+        @return: None
+        """
+        if isinstance(value, dict):
+            states1 = dict()
+            states2 = dict()
+            for switch, state in value.items():
+                if self._extend_hardware_name:
+                    if switch.startswith(self.switch1().name):
+                        switch = switch[len(self.switch1().name) + 1:]
+                    elif switch.startswith(self.switch2().name):
+                        switch = switch[len(self.switch2().name) + 1:]
+
+                if switch in self.switch1().names_of_states:
+                    states1[switch] = state
+                else:
+                    states2[switch] = state
+            self.switch1().states = states1
+            self.switch2().states = states2
+        else:
+            self.log.error(f'attempting to set states as "{value}" while states have be a dict '
+                           f'having the switch names as keys and the state names as values.')

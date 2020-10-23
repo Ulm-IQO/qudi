@@ -23,7 +23,6 @@ from logic.generic_logic import GenericLogic
 from core.connector import Connector
 from core.configoption import ConfigOption
 from qtpy import QtCore
-import numpy as np
 from interface.switch_interface import SwitchInterface
 
 
@@ -58,55 +57,66 @@ class SwitchLogic(GenericLogic, SwitchInterface):
         self._sig_start_watchdog.disconnect(self._watchdog)
 
     def _watchdog(self):
+        """ Helper function to regularly query the states from the hardware.
+
+        This function is called by an internal signal and queries the hardware regularly to fire
+        the signal sig_switch_updated, if the hardware changed its state without notifying the logic.
+        The timing of the watchdog is set by the ConfigOption watchdog_timing in seconds.
+
+        @return: None
+        """
         if self._old_states != self.states:
             self._old_states = self.states
             self.sig_switch_updated.emit(self._old_states)
         QtCore.QTimer.singleShot(int(self._watchdog_timing * 1e3), self._watchdog)
 
     @property
-    def name(self):
+    def number_of_switches(self):
+        """ Number of switches provided by the hardware.
+
+        @return int: number of switches
         """
-        Name of the hardware module.
-            @return str: The name of the hardware
+        return self.switch().number_of_switches
+
+    @property
+    def name(self):
+        """ Name of the hardware as string.
+
+        @return str: The name of the hardware
         """
         return self.switch().name
 
     @property
     def names_of_states(self):
-        """
-        Names of the states as a list of lists. The first list contains the names for each of the switches
-        and each of switches has two elements representing the names in the state order [False, True].
-            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
+        """ Names of the states as a dict of lists.
+
+        The keys contain the names for each of the switches and each of switches
+        has a list of elements representing the names in the state order.
+
+        @return dict: A dict of the form {"switch": ["state1", "state2"]}
         """
         return self.switch().names_of_states
 
     @property
-    def number_of_switches(self):
-        """
-        Number of switches provided by this hardware.
-            @return int: number of switches
-        """
-        return self.switch().number_of_switches
-
-    @property
     def states(self):
-        """
-        The states of the system as a list of boolean values.
-            @return list(bool): All the current states of the switches in a list
+        """ The current states the hardware is in.
+
+        The states of the system as a dict consisting of switch names as keys and state names as values.
+
+        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
         """
         return self.switch().states
 
     @states.setter
     def states(self, value):
-        """
-        The states of the system can be set in two ways:
-        Either as a single value to define all the states to be the same
-        or as a list of values to define the state of each switch individually.
-        The values of the state can either be boolean or a string representing the name of the state.
-        Names are automatically converted to booleans by a helper function if the names of the states are unambiguous.
-            @param [bool/list(bool)/str/list(str)] value: switch state to be set as single value or list of values,
-                the values can either be boolean or a strign representing the name of the boolean state
-            @return: None
+        """ The setter for the states of the hardware.
+
+        The states of the system can be set by specifying a dict that has the switch names as keys
+        and the names of the states as values.
+        The signal sig_switch_updated is fired upon change of the states.
+
+        @param dict value: state dict of the form {"switch": "state"}
+        @return: None
         """
         self.switch().states = value
         self.sig_switch_updated.emit(self.states)
