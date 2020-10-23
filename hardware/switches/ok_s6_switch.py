@@ -29,7 +29,6 @@ from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
-import numpy as np
 
 
 class HardwareSwitchFpga(Base, SwitchInterface):
@@ -53,16 +52,31 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     """
 
     # config options
+
+    # serial number of the FPGA
     _serial = ConfigOption('fpga_serial', missing='error')
-    # possible type options: XEM6310_LX150, XEM6310_LX45
+
+    # Type of the FGPA, possible type options: XEM6310_LX150, XEM6310_LX45
     _fpga_type = ConfigOption('fpga_type', default='XEM6310_LX45', missing='warn')
+
+    # specify the path to the bitfile, if it is not in qudi_main_dir/thirdparty/qo_fpga
     _path_to_bitfile = ConfigOption('path_to_bitfile', default=None, missing='nothing')
 
-    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
-    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    # names_of_switches defines what switches there are, it should be a list of strings
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-    _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
 
+    # names_of_states defines states for each switch, it can define any number of states greater one per switch.
+    # A 2D list of lists defined specific states for each switch
+    # and a simple 1D list defines the same states for each of the switches.
+    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
+
+    # optional name of the hardware
+    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+
+    # if remember_states is True the last state will be restored at reloading of the module
+    _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+
+    # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
 
     def __init__(self, *args, **kwargs):
@@ -70,7 +84,6 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
         self._fpga = None
         self._lock = Mutex()
-        self._switch_status = dict()
         self._connected = False
 
     def on_activate(self):
@@ -81,11 +94,6 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         # accessed with python 3.4. You have to ensure to use the python 3.4
         # version to be able to run the Frontpanel wrapper:
         self._fpga = ok.FrontPanel()
-
-        # TTL output status of the 8 channels
-        self._switch_status = {chnl: False for chnl in range(8)}
-
-        self._connected = False
 
         # Sanity check for fpga_type ConfigOption
         self._fpga_type = self._fpga_type.upper()
@@ -101,42 +109,50 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         if self._hardware_name is None:
             self._hardware_name = 'Opalkelly FPGA Switch'
 
-        if np.shape(self._names_of_states) == (2,):
-            self._names_of_states = [list(self._names_of_states)] * self.number_of_switches
-        elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
-            self._names_of_states = list(self._names_of_states)
-        else:
-            self.log.error(f'names_of_states must either be a list of two names for the states [low, high] '
-                           f'which are applied to all switched or it must be a list '
-                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
-
-        if np.shape(self._names_of_switches) == (self.number_of_switches,):
-            self._names_of_switches = list(self._names_of_switches)
-        else:
+        try:
+            if len(self._names_of_switches) == self.number_of_switches and not isinstance(self._names_of_switches, str):
+                self._names_of_switches = list(self._names_of_switches)
+            else:
+                raise TypeError
+        except TypeError:
             self._names_of_switches = ['B14', 'B16', 'B12', 'C7', 'D15', 'D10', 'D9', 'D11']
 
-        # initialize channels to saved status if requested
-        if self._reset_states:
-            self.states = False
+        try:
+            if len(self._names_of_states) == len(self._names_of_switches) \
+                    and len(self._names_of_states[0]) > 1 \
+                    and not isinstance(self._names_of_states[0], str):
+                self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
+                                         for index, switch in enumerate(self._names_of_switches)}
+            else:
+                raise TypeError
+        except TypeError:
+            if not isinstance(self._names_of_states, str) and len(self._names_of_states) > 1:
+                self._names_of_states = {switch: [str(name) for name in self._names_of_states]
+                                         for index, switch in enumerate(self._names_of_switches)}
+            else:
+                self.log.error(f'names_of_states must either be a list of two or more names for the states '
+                               f'which are applied to all switched or it must be a list '
+                               f'of length {len(self._names_of_switches)} with elements of the aforementioned shape.')
 
-        if self._states is None or len(self._states) != self.number_of_switches:
-            self.states = [False] * self.number_of_switches
+        # reset states if requested, otherwise use the saved states
+        if not self._remember_states \
+                or not isinstance(self._states, dict) \
+                or len(self._states) != self.number_of_switches:
+            self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
         else:
             self.states = self._states
-        return
 
     def on_deactivate(self):
         """ Deactivate the FPGA.
         """
-        if self._connected and self._reset_states:
+        if self._connected and not self._remember_states:
             self.states = False
         del self._fpga
         self._connected = False
         return
 
     def _connect(self):
-        """
-        Connect host PC to FPGA module with the specified serial number.
+        """ Connect host PC to FPGA module with the specified serial number.
         The serial number is defined by the mandatory ConfigOption fpga_serial.
         """
         # check if a FPGA is connected to this host PC. That method is used to
@@ -174,87 +190,9 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         return 0
 
     @property
-    def name(self):
-        """
-        Name can either be defined as ConfigOption (name) or it defaults to "Opalkelly FPGA Switch".
-            @return str: The name of the hardware
-        """
-        return self._hardware_name
-
-    @property
-    def states(self):
-        """
-        The states of the system as a list of boolean values.
-            @return list(bool): All the current states of the switches in a list
-        """
-        with self._lock:
-            self._fpga.UpdateWireOuts()
-            new_state = int(self._fpga.GetWireOutValue(0x20))
-            for chnl in range(self.number_of_switches):
-                if new_state & (2 ** chnl) != 0:
-                    self._states[chnl] = True
-                else:
-                    self._states[chnl] = False
-            return self._states.copy()
-
-    @states.setter
-    def states(self, value):
-        """
-        The states of the system can be set in two ways:
-        Either as a single boolean value to define all the states to be the same
-        or as a list of boolean values to define the state of each switch individually.
-            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
-            @return: None
-        """
-        if np.isscalar(value):
-            self._states = [bool(value)] * self.number_of_switches
-        else:
-            if len(value) != self.number_of_switches:
-                self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
-                return
-            else:
-                self._states = [bool(state) for state in value]
-
-        with self._lock:
-            # encode channel states
-            chnl_state = 0
-            for chnl in range(self.number_of_switches):
-                if self._states[chnl]:
-                    chnl_state += int(2 ** chnl)
-
-            old_states = self._states.copy()
-            # apply changes in hardware
-            self._fpga.SetWireInValue(0x00, chnl_state)
-            self._fpga.UpdateWireIns()
-
-        # check if the state was actually set
-        if old_states != self.states:
-            self.log.error('Setting of channel states in hardware failed.')
-
-    @property
-    def names_of_states(self):
-        """
-        Names of the states as a list of lists. The first list contains the names for each of the switches
-        and each of switches has two elements representing the names in the state order [False, True].
-        The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
-            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
-        """
-        return self._names_of_states.copy()
-
-    @property
-    def names_of_switches(self):
-        """
-        Names of the switches as a list of length number_of_switches.
-        These can either be set as ConfigOption (names_of_switches) or default to a simple range starting at 1.
-            @return list(str): names of the switches
-        """
-        return self._names_of_switches.copy()
-
-    @property
     def number_of_switches(self):
-        """
-        Number of switches provided by this hardware.
-        There are 8 TTL channels on the OK FPGA.
+        """ Number of switches provided by this hardware is 8
+
         Chan   PIN
         ----------
         Ch1    B14
@@ -266,35 +204,91 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         Ch7    D9
         Ch8    D11
 
-            @return int: number of switches
+        @return int: number of switches
         """
         return 8
 
-    def get_state(self, index_of_switch):
-        """
-        Returns the state of a specific switch which was specified by its switch index.
-        This functions just calls the property self.states.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
-            @return bool: boolean value of this specific switch
-        """
-        if 0 <= index_of_switch < self.number_of_switches:
-            return self._states[int(index_of_switch)]
-        self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
-        return False
+    @property
+    def name(self):
+        """ Name of the hardware as string.
 
-    def set_state(self, index_of_switch, state):
-        """
-        Sets the state of a specific switch which was specified by its switch index.
-        This functions just calls the setter self.states.
-            @param int index_of_switch: index of the switch in the range from 0 to number_of_switches -1
-            @param bool state: boolean state of the switch to be set
-            @return int: state of the switch actually set
-        """
-        if 0 <= index_of_switch < self.number_of_switches:
-            new_states = self.states
-            new_states[int(index_of_switch)] = bool(state)
-            self.states = new_states
-            return self.get_state(index_of_switch)
+        The name can either be defined as ConfigOption (name) or it defaults to the name of the hardware module.
 
-        self.log.error(f'index_of_switch was {index_of_switch} but must be smaller than {self.number_of_switches}.')
-        return -1
+        @return str: The name of the hardware
+        """
+        return self._hardware_name
+
+    @property
+    def names_of_states(self):
+        """ Names of the states as a dict of lists.
+
+        The keys contain the names for each of the switches and each of switches
+        has a list of elements representing the names in the state order.
+        The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
+
+        @return dict: A dict of the form {"switch": ["state1", "state2"]}
+        """
+        return self._names_of_states.copy()
+
+    @property
+    def states(self):
+        """ The current states the hardware is in.
+
+        The states of the system as a dict consisting of switch names as keys and state names as values.
+
+        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
+        """
+        self._states = dict()
+        with self._lock:
+            self._fpga.UpdateWireOuts()
+            new_state = int(self._fpga.GetWireOutValue(0x20))
+            for channel_index in range(self.number_of_switches):
+                switch = self._names_of_switches[channel_index]
+                if new_state & (2 ** channel_index) != 0:
+                    self._states[switch] = self._names_of_states[switch][1]
+                else:
+                    self._states[switch] = self._names_of_states[switch][0]
+            return self._states.copy()
+
+    @states.setter
+    def states(self, value):
+        """ The setter for the states of the hardware.
+
+        The states of the system can be set by specifying a dict that has the switch names as keys
+        and the names of the states as values.
+
+        @param dict value: state dict of the form {"switch": "state"}
+        @return: None
+        """
+        if isinstance(value, dict):
+            for switch, state in value.items():
+                if switch not in self._names_of_switches:
+                    self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
+                    continue
+
+                states = self.names_of_states[switch]
+                if isinstance(state, str):
+                    if state not in states:
+                        self.log.error(f'"{state}" is not among the possible states: {states}')
+                        continue
+                    self._states[switch] = state
+        else:
+            self.log.error(f'attempting to set states as "{value}" while states have be a dict '
+                           f'having the switch names as keys and the state names as values.')
+
+        with self._lock:
+            # encode channel states
+            channel_state = 0
+            for channel_index in range(self.number_of_switches):
+                switch = self._names_of_switches[channel_index]
+                if self._states[switch] == self._names_of_states[switch][1]:
+                    channel_state += int(2 ** channel_index)
+
+            old_states = self._states.copy()
+            # apply changes in hardware
+            self._fpga.SetWireInValue(0x00, channel_state)
+            self._fpga.UpdateWireIns()
+
+        # check if the state was actually set
+        if old_states != self.states:
+            self.log.error('Setting of channel states in hardware failed.')

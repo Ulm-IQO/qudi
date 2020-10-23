@@ -25,55 +25,60 @@ from core.meta import InterfaceMetaclass
 class SwitchInterface(metaclass=InterfaceMetaclass):
     """ Methods to control slow (mechanical) switching devices.
 
-    This interface uses pythonic properties and setters as well as get_ and set_ methods to access the switch states.
+    This interface pythonic properties and setters to access the switch states.
     Both need to be implemented but can rely on each other.
     """
 
     @property
     @abstract_interface_method
-    def name(self):
-        """
-        Name of the hardware module.
-            @return str: The name of the hardware
+    def number_of_switches(self):
+        """ Number of switches provided by the hardware.
+
+        @return int: number of switches
         """
         pass
 
     @property
     @abstract_interface_method
-    def states(self):
-        """
-        The states of the system as a list of boolean values.
-            @return list(bool): All the current states of the switches in a list
-        """
-        pass
+    def name(self):
+        """ Name of the hardware as string.
 
-    @states.setter
-    @abstract_interface_method
-    def states(self, value):
-        """
-        The states of the system can be set in two ways:
-        Either as a single boolean value to define all the states to be the same
-        or as a list of boolean values to define the state of each switch individually.
-            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
-            @return: None
+        @return str: The name of the hardware
         """
         pass
 
     @property
     @abstract_interface_method
     def names_of_states(self):
-        """
-        Names of the states as a list of lists. The first list contains the names for each of the switches
-        and each of switches has two elements representing the names in the state order [False, True].
-            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
+        """ Names of the states as a dict of lists.
+
+        The keys contain the names for each of the switches and each of switches
+        has a list of elements representing the names in the state order.
+
+        @return dict: A dict of the form {"switch": ["state1", "state2"]}
         """
         pass
 
     @property
     @abstract_interface_method
-    def number_of_switches(self):
+    def states(self):
+        """ The current states the hardware is in.
+
+        The states of the system as a dict consisting of switch names as keys and state names as values.
+
+        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
         """
-        Number of switches provided by this hardware.
-            @return int: number of switches
+        pass
+
+    @states.setter
+    @abstract_interface_method
+    def states(self, value):
+        """ The setter for the states of the hardware.
+
+        The states of the system can be set by specifying a dict that has the switch names as keys
+        and the names of the states as values.
+
+        @param dict value: state dict of the form {"switch": "state"}
+        @return: None
         """
         pass
