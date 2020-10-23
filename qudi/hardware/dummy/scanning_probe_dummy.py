@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 import numpy as np
-
+from PySide2 import QtCore
+from fysom import FysomError
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.mutex import RecursiveMutex
@@ -55,7 +56,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             y: 10e-9
             z: 50e-9
     """
-    # _threaded = True
+    _threaded = True
 
     # config options
     _position_ranges = ConfigOption(name='position_ranges', missing='error')
@@ -78,7 +79,6 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         self._current_scan_resolution = tuple()
         self._current_position = dict()
         self._scan_image = None
-        self._scan_running = False
         self._scan_data = None
 
         # Randomized spot positions
@@ -90,6 +90,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
 
         self.__scan_start = 0
         self.__last_line = -1
+        self.__update_timer = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -102,7 +103,6 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         self._current_position = {ax: min(rng) + (max(rng) - min(rng)) / 2 for ax, rng in
                                   self._position_ranges.items()}
         self._scan_image = np.zeros(self._current_scan_resolution)
-        self._scan_running = False
         self._scan_data = None
 
         # Create fixed maps of spots for each scan axes configuration
@@ -126,6 +126,11 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
                                             backscan_configurable=False,
                                             has_position_feedback=False,
                                             square_px_only=False)
+        self.__scan_start = 0
+        self.__last_line = -1
+        self.__update_timer = QtCore.QTimer()
+        self.__update_timer.setSingleShot(True)
+        self.__update_timer.timeout.connect(self.get_scan_data, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -135,6 +140,11 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         # free memory
         self._spots = dict()
         self._scan_image = None
+        try:
+            self.__update_timer.stop()
+        except:
+            pass
+        self.__update_timer.timeout.disconnect()
 
     @property
     def scan_settings(self):
@@ -181,6 +191,8 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return int: error code (0:OK, -1:error)
         """
         with self._thread_lock:
+            if self.module_state() == 'locked':
+                self.module_state.unlock()
             self.log.debug('Scanning probe dummy has been reset.')
             return 0
 
@@ -202,7 +214,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         with self._thread_lock:
             self.log.debug('Scanning probe dummy "configure_scan" called.')
             # Sanity checking
-            if self._scan_running:
+            if self.module_state() != 'idle':
                 self.log.error('Unable to configure scan parameters while scan is running. '
                                'Stop scanning and try again.')
                 return True, self.scan_settings
@@ -257,7 +269,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         """
         with self._thread_lock:
             self.log.debug('Scanning probe dummy "move_absolute" called.')
-            if self._scan_running:
+            if self.module_state() != 'idle':
                 self.log.error('Scanning in progress. Unable to move to position.')
             elif not set(position).issubset(self._position_ranges):
                 self.log.error('Invalid axes encountered in position dict. Valid axes are: {0}'
@@ -283,7 +295,7 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         """
         with self._thread_lock:
             self.log.debug('Scanning probe dummy "move_relative" called.')
-            if self._scan_running:
+            if self.module_state() != 'idle':
                 self.log.error('Scanning in progress. Unable to move relative.')
             elif not set(distance).issubset(self._position_ranges):
                 self.log.error('Invalid axes encountered in distance dict. Valid axes are: {0}'
@@ -326,9 +338,10 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         """
         with self._thread_lock:
             self.log.debug('Scanning probe dummy "start_scan" called.')
-            if self._scan_running:
+            if self.module_state() != 'idle':
                 self.log.error('Can not start scan. Scan already in progress.')
                 return -1
+            self.module_state.lock()
             if len(self._current_scan_axes) == 1:
                 for axes, d in self._spots.items():
                     if axes[0] == self._current_scan_axes[0]:
@@ -394,6 +407,9 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
             self._scan_data.new_scan()
             self.__scan_start = time.time()
             self.__last_line = -1
+            line_time = self._current_scan_resolution[0] / self._current_scan_frequency
+            self.__update_timer.setInterval(int(round(line_time * 1000)))
+            self.__start_timer()
             return 0
 
     def stop_scan(self):
@@ -403,17 +419,18 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         """
         with self._thread_lock:
             self.log.debug('Scanning probe dummy "stop_scan" called.')
-            if self._scan_running:
-                self._scan_running = False
-                self._scan_data = None
+            if self.module_state() == 'locked':
                 self._scan_image = None
+                self.module_state.unlock()
             return 0
 
     def emergency_stop(self):
         """
         """
-        self._scan_running = False
-        self._scan_data = None
+        try:
+            self.module_state.unlock()
+        except FysomError:
+            pass
         self._scan_image = None
         self.log.warning('Scanner has been emergency stopped.')
         return 0
@@ -423,50 +440,69 @@ class ScanningProbeDummy(Base, ScanningProbeInterface):
         @return ScanData: ScanData instance used in the scan
         """
         with self._thread_lock:
-            self.log.debug('Scanning probe dummy "get_scan_data" called.')
+            if self.thread() is not QtCore.QThread.currentThread():
+                self.log.debug('Scanning probe dummy "get_scan_data" called.')
             if self._scan_data is None:
+                print('nope, no scan data in hardware')
                 return None
-            if self._scan_data.is_finished:
-                return self._scan_data
-            elapsed = time.time() - self.__scan_start
-            line_time = self._current_scan_resolution[0] / self._current_scan_frequency
 
-            if self._scan_data.scan_dimension == 2:
-                acquired_lines = min(int(np.floor(elapsed / line_time)),
-                                     self._current_scan_resolution[1])
-                if acquired_lines > 0:
-                    if self.__last_line < acquired_lines - 1:
+            if self.module_state() != 'idle':
+                elapsed = time.time() - self.__scan_start
+                line_time = self._current_scan_resolution[0] / self._current_scan_frequency
+
+                if self._scan_data.scan_dimension == 2:
+                    acquired_lines = min(int(np.floor(elapsed / line_time)),
+                                         self._current_scan_resolution[1])
+                    if acquired_lines > 0:
+                        if self.__last_line < acquired_lines - 1:
+                            if self.__last_line < 0:
+                                self.__last_line = 0
+
+                            for ch in self._constraints.channels:
+                                tmp = self._scan_image[:, self.__last_line:acquired_lines]
+                                self._scan_data.data[ch][:, self.__last_line:acquired_lines] = tmp
+
+                            self.__last_line = acquired_lines - 1
+                        if acquired_lines >= self._current_scan_resolution[1]:
+                            self.module_state.unlock()
+                        elif self.thread() is QtCore.QThread.currentThread():
+                            self.__start_timer()
+                else:
+                    acquired_lines = min(int(np.floor(elapsed / line_time)),
+                                         self._current_scan_resolution[0])
+                    if acquired_lines > 0:
                         if self.__last_line < 0:
                             self.__last_line = 0
+                        if self.__last_line < acquired_lines - 1:
+                            if self.__last_line < 0:
+                                self.__last_line = 0
 
-                        for ch in self._constraints.channels:
-                            tmp = self._scan_image[:, self.__last_line:acquired_lines]
-                            self._scan_data.data[ch][:, self.__last_line:acquired_lines] = tmp
+                            for ch in self._constraints.channels:
+                                tmp = self._scan_image[self.__last_line:acquired_lines]
+                                self._scan_data.data[ch][self.__last_line:acquired_lines] = tmp
 
-                        self.__last_line = acquired_lines - 1
-                    if acquired_lines >= self._current_scan_resolution[1]:
-                        self._scan_data.finish_scan()
-            else:
-                acquired_lines = min(int(np.floor(elapsed / line_time)),
-                                     self._current_scan_resolution[0])
-                if acquired_lines > 0:
-                    if self.__last_line < 0:
-                        self.__last_line = 0
-                    if self.__last_line < acquired_lines - 1:
-                        if self.__last_line < 0:
-                            self.__last_line = 0
-                        for ch in self._constraints.channels:
-                            tmp = self._scan_image[self.__last_line:acquired_lines]
-                            self._scan_data.data[ch][self.__last_line:acquired_lines] = tmp
-                        # self._scan_data.add_line_data(
-                        #     {ch: self._scan_image[self.__last_line:acquired_lines] for ch in
-                        #      self._constraints.channels},
-                        #     self.__last_line
-                        # )
-                        self.__last_line = acquired_lines - 1
-                    if acquired_lines >= self._current_scan_resolution[0]:
-                        self._scan_data.finish_scan()
+                            self.__last_line = acquired_lines - 1
+                        if acquired_lines >= self._current_scan_resolution[0]:
+                            self.module_state.unlock()
+                        elif self.thread() is QtCore.QThread.currentThread():
+                            self.__start_timer()
             return self._scan_data
+
+    def __start_timer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            QtCore.QMetaObject.invokeMethod(self.__update_timer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            self.__update_timer.start()
+
+    def __stop_timer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            QtCore.QMetaObject.invokeMethod(self.__update_timer,
+                                            'stop',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            self.__update_timer.stop()
 
     @staticmethod
     def _gaussian_2d(xy, amp, pos, sigma, theta=0, offset=0):

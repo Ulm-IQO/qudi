@@ -56,8 +56,8 @@ class ScanningDataLogic(LogicBase):
     _scan_history = StatusVar(name='scan_history', default=list())
 
     # signals
-    sigScanDataChanged = QtCore.Signal(object)
-    sigSaveDataState = QtCore.Signal(bool)
+    sigHistoryScanDataRestored = QtCore.Signal(object)
+    sigSaveStateChanged = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -66,37 +66,29 @@ class ScanningDataLogic(LogicBase):
 
         # Scan history
         self._curr_history_index = 0
-        self._latest_data_update_per_scan = dict()
-        self._ignore_new_data = False
-        self._scan_in_progress = False
-        self._curr_scan_data = None
+        self._curr_data_per_scan = dict()
+        self._add_to_history = False
         return
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._shrink_history()
-        self._ignore_new_data = False
-        self._curr_scan_data = None
+        self._add_to_history = False
         if self._scan_history:
-            self._latest_data_update_per_scan = {sd.scan_axes: sd for sd in self._scan_history}
+            self._curr_data_per_scan = {sd.scan_axes: sd for sd in self._scan_history}
             self.restore_from_history(-1)
         else:
             self._curr_history_index = 0
-            self._latest_data_update_per_scan = dict()
-        self._scan_in_progress = self._scan_logic().module_state() != 'idle'
-        self._scan_logic().sigScanDataChanged.connect(self.process_new_scan_data)
-        self._scan_logic().sigScanStateChanged.connect(self.update_scan_state)
+            self._curr_data_per_scan = dict()
+        self._scan_logic().sigScanStateChanged.connect(self._update_scan_state)
         return
 
     def on_deactivate(self):
         """ Reverse steps of activation
         """
-        self._scan_logic().sigScanStateChanged.disconnect(self.update_scan_state)
-        self._scan_logic().sigScanDataChanged.disconnect(self.process_new_scan_data)
-        self._curr_scan_data = None
-        self._curr_history_index = 0
-        self._latest_data_update_per_scan = dict()
+        self._scan_logic().sigScanStateChanged.disconnect(self._update_scan_state)
+        self._curr_data_per_scan = dict()
         return
 
     @_scan_history.representer
@@ -109,11 +101,11 @@ class ScanningDataLogic(LogicBase):
 
     def get_current_scan_data(self, scan_axes):
         with self._thread_lock:
-            return self._latest_data_update_per_scan.get(scan_axes, None)
+            return self._curr_data_per_scan.get(scan_axes, None)
 
     def get_all_current_scan_data(self):
         with self._thread_lock:
-            return self._latest_data_update_per_scan.copy()
+            return self._curr_data_per_scan.copy()
 
     @qudi_slot()
     def history_previous(self):
@@ -140,6 +132,9 @@ class ScanningDataLogic(LogicBase):
                 self.log.error('Scan is running. Unable to restore history state.')
                 return
 
+            if index < 0:
+                index = max(0, len(self._scan_history) + index)
+
             try:
                 data = self._scan_history[index]
             except IndexError:
@@ -153,40 +148,35 @@ class ScanningDataLogic(LogicBase):
             }
             self._scan_logic().set_scan_settings(settings)
 
-            self._curr_history_index = max(0,
-                                           index if index >= 0 else len(self._scan_history) + index)
-            self._latest_data_update_per_scan[data.scan_axes] = data
-            self.sigScanDataChanged.emit(data)
+            self._curr_history_index = index
+            self._curr_data_per_scan[data.scan_axes] = data
+            self.sigHistoryScanDataRestored.emit(data)
             return
 
-    @qudi_slot(bool)
-    def toggle_ignore_new_data(self, ignore):
-        with self._thread_lock:
-            self._ignore_new_data = bool(ignore)
-
     @qudi_slot(bool, tuple)
-    def update_scan_state(self, running, axes=None):
+    def toggle_scan(self, start, axes):
         with self._thread_lock:
-            if self._ignore_new_data:
-                self._curr_scan_data = None
-                self._scan_in_progress = False
+            if start and self.module_state() != 'idle':
+                self.log.error('Unable to start new scan. Scan data saving still in progress.')
+                return -1
+
+            err = self._scan_logic().toggle_scan(start, axes)
+            if start and err >= 0:
+                self._add_to_history = True
+            return err
+
+    @qudi_slot(bool, tuple, object)
+    def _update_scan_state(self, running, axes, data):
+        with self._thread_lock:
+            if (not self._add_to_history) or running:
                 return
 
-            if self._scan_in_progress and not running and axes == self._curr_scan_data.scan_axes:
-                self._scan_history.append(self._curr_scan_data)
-                self._curr_scan_data = None
-                self._shrink_history()
-                self._latest_data_update_per_scan[axes] = self._scan_history[-1]
-                self.sigScanDataChanged.emit(self._scan_history[-1])
-            self._scan_in_progress = bool(running)
-
-    @qudi_slot(object)
-    def process_new_scan_data(self, data):
-        with self._thread_lock:
-            if self._ignore_new_data or not self._scan_in_progress:
-                self._curr_scan_data = None
-                return
-            self._curr_scan_data = data
+            self._scan_history.append(data)
+            self._shrink_history()
+            self._curr_data_per_scan[axes] = data
+            self._curr_history_index = len(self._scan_history) - 1
+            self._add_to_history = False
+            self.sigHistoryScanDataRestored.emit(data)
 
     def _shrink_history(self):
         while len(self._scan_history) > self._max_history_length:
@@ -199,14 +189,14 @@ class ScanningDataLogic(LogicBase):
                 self.log.error('Unable to save 1D scan. Saving still in progress...')
                 return
 
-            scan_data = self._latest_data_update_per_scan.get(axis, None)
+            scan_data = self._curr_data_per_scan.get(axis, None)
             if scan_data is None:
                 self.log.error(
                     'Unable to save 1D scan. No data available for {0} axis.'.format(axis)
                 )
                 return
 
-            self.sigSaveDataState.emit(True)
+            self.sigSaveStateChanged.emit(True)
             self.module_state.lock()
             try:
                 ds = TextDataStorage(column_headers=None,
@@ -249,7 +239,7 @@ class ScanningDataLogic(LogicBase):
                     ds.save_thumbnail(mpl_figure=figure, timestamp=timestamp, nametag=nametag)
             finally:
                 self.module_state.unlock()
-                self.sigSaveDataState.emit(False)
+                self.sigSaveStateChanged.emit(False)
             return
 
     def draw_1d_scan_figure(self, scan_data, channel):
@@ -308,14 +298,14 @@ class ScanningDataLogic(LogicBase):
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
                 return
 
-            scan_data = self._latest_data_update_per_scan.get(axes, None)
+            scan_data = self._curr_data_per_scan.get(axes, None)
             if scan_data is None:
                 self.log.error(
                     'Unable to save 2D scan. No data available for {0} axes.'.format(axes)
                 )
                 return
 
-            self.sigSaveDataState.emit(True)
+            self.sigSaveStateChanged.emit(True)
             self.module_state.lock()
             try:
                 ds = TextDataStorage(column_headers='Image (columns is X, rows is Y)',
@@ -354,7 +344,7 @@ class ScanningDataLogic(LogicBase):
                 self.log.debug('Scan image saved.')
             finally:
                 self.module_state.unlock()
-                self.sigSaveDataState.emit(False)
+                self.sigSaveStateChanged.emit(False)
             return
 
     def draw_2d_scan_figure(self, scan_data, channel, cbar_range=None):
