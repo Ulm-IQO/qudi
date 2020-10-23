@@ -53,8 +53,7 @@ class ScanningOptimizeLogic(LogicBase):
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
 
     # signals
-    sigOptimizeStepComplete = QtCore.Signal(dict, object, object)
-    sigOptimizeStateChanged = QtCore.Signal(bool)
+    sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
 
     _sigNextSequenceStep = QtCore.Signal()
@@ -66,7 +65,7 @@ class ScanningOptimizeLogic(LogicBase):
 
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
-        self._stop_requested = True
+        self._optimal_position = dict()
         return
 
     def on_activate(self):
@@ -101,7 +100,7 @@ class ScanningOptimizeLogic(LogicBase):
 
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
-        self._stop_requested = True
+        self._optimal_position = dict()
 
         self._sigNextSequenceStep.connect(self._next_sequence_step, QtCore.Qt.QueuedConnection)
         self._scan_logic().sigScanStateChanged.connect(
@@ -145,6 +144,10 @@ class ScanningOptimizeLogic(LogicBase):
                 'scan_resolution': self.scan_resolution,
                 'scan_sequence': self.scan_sequence}
 
+    @property
+    def optimal_position(self):
+        return self._optimal_position.copy()
+
     @qudi_slot(dict)
     def set_optimize_settings(self, settings):
         """
@@ -182,7 +185,7 @@ class ScanningOptimizeLogic(LogicBase):
         with self._thread_lock:
             print('start optimize')
             if self.module_state() != 'idle':
-                self.sigOptimizeStateChanged.emit(True)
+                self.sigOptimizeStateChanged.emit(True, self.optimal_position, None)
                 return 0
 
             # ToDo: Sanity checks for settings go here
@@ -217,8 +220,8 @@ class ScanningOptimizeLogic(LogicBase):
                 self.set_optimize_settings({'scan_resolution': actual_setting})
 
             self._sequence_index = 0
-            self._stop_requested = False
-            self.sigOptimizeStateChanged.emit(True)
+            self._optimal_position = dict()
+            self.sigOptimizeStateChanged.emit(True, self.optimal_position, None)
             self._sigNextSequenceStep.emit()
             return 0
 
@@ -229,18 +232,17 @@ class ScanningOptimizeLogic(LogicBase):
             if self.module_state() == 'idle':
                 return
 
-            if self._scan_logic().toggle_scan(True, self._scan_sequence[self._sequence_index]) < 0:
+            if self._scan_logic().toggle_scan(True, self._scan_sequence[self._sequence_index], id(self)) < 0:
                 self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
                     self._scan_sequence[self._sequence_index])
                 )
                 self.stop_optimize()
             return
 
-    @qudi_slot(bool, tuple, object)
-    def _scan_state_changed(self, is_running, axes, data):
+    @qudi_slot(bool, object, object)
+    def _scan_state_changed(self, is_running, data, caller_id):
         with self._thread_lock:
-            print('scan state changed', is_running, axes)
-            if is_running or self.module_state() == 'idle':
+            if is_running or self.module_state() == 'idle' or caller_id != id(self):
                 return
             elif data is not None:
                 if data.scan_dimension == 1:
@@ -257,13 +259,18 @@ class ScanningOptimizeLogic(LogicBase):
                         xy,
                         data.data[self._data_channel].ravel()
                     )
-                opt_pos_dict = {ax: opt_pos[ii] for ii, ax in enumerate(axes)}
-                new_pos = self._scan_logic().set_target_position(opt_pos_dict)
-                self.sigOptimizeStepComplete.emit(
-                    {ax: pos for ax, pos in new_pos.items() if ax in opt_pos_dict},
-                    fit_data,
-                    data
-                )
+                position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
+                if fit_data is not None:
+                    new_pos = self._scan_logic().set_target_position(position_update)
+                    for ax in tuple(position_update):
+                        position_update[ax] = new_pos[ax]
+                self._optimal_position.update(position_update)
+                self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
+
+                # Abort optimize if fit failed
+                if fit_data is None:
+                    self.stop_optimize()
+                    return
 
             self._sequence_index += 1
 
@@ -279,7 +286,7 @@ class ScanningOptimizeLogic(LogicBase):
         with self._thread_lock:
             print('stop optimize')
             if self.module_state() == 'idle':
-                self.sigOptimizeStateChanged.emit(False)
+                self.sigOptimizeStateChanged.emit(False, dict(), None)
                 return 0
 
             if self._scan_logic().module_state() != 'idle':
@@ -289,7 +296,7 @@ class ScanningOptimizeLogic(LogicBase):
             self._scan_logic().set_scan_settings(self._stashed_scan_settings)
             self._stashed_scan_settings = dict()
             self.module_state.unlock()
-            self.sigOptimizeStateChanged.emit(False)
+            self.sigOptimizeStateChanged.emit(False, dict(), None)
             return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
@@ -297,7 +304,6 @@ class ScanningOptimizeLogic(LogicBase):
         try:
             fit_result = model.fit(data, xy=xy, **model.guess(data, xy))
         except:
-            self._stop_requested = True
             x_min, x_max = xy[0].min(), xy[0].max()
             y_min, y_max = xy[1].min(), xy[1].max()
             x_middle = (x_max - x_min) / 2 + x_min
@@ -312,7 +318,6 @@ class ScanningOptimizeLogic(LogicBase):
         try:
             fit_result = model.fit(data, x=x, **model.guess(data, x))
         except:
-            self._stop_requested = True
             x_min, x_max = x.min(), x.max()
             middle = (x_max - x_min) / 2 + x_min
             self.log.exception('1D Gaussian fit unsuccessful. Aborting optimization sequence.')
