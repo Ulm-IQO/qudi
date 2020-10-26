@@ -60,6 +60,8 @@ class OSW12(Base, SwitchInterface):
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
 
+    # name of the serial interface were the hardware is connected.
+    # E.g. use the Keysight IO connections expert to find the device.
     serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
 
     def __init__(self, *args, **kwargs):
@@ -192,6 +194,7 @@ class OSW12(Base, SwitchInterface):
         else:
             self.log.error(f'attempting to set states as "{value}" while states have be a dict '
                            f'having the switch names as keys and the state names as values.')
+            return
 
         if direction:
             self.log.error('No state to set.')
