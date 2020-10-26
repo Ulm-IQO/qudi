@@ -44,14 +44,28 @@ class FlipMirror(Base, SwitchInterface):
 
     """
 
-    _names_of_states = ConfigOption(name='names_of_states', default=['Down', 'Up'], missing='nothing')
+    # names_of_switches defines what switches there are, it should be a list of strings
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
-    _reset_states = ConfigOption(name='reset_states', default=False, missing='nothing')
-    _switch_time = ConfigOption(name='switch_time', default=2.0, missing='warn')
 
+    # names_of_states defines states for each switch, it can define any number of states greater one per switch.
+    # A 2D list of lists defined specific states for each switch
+    # and a simple 1D list defines the same states for each of the switches.
+    _names_of_states = ConfigOption(name='names_of_states', default=['Down', 'Up'], missing='nothing')
+
+    # optional name of the hardware
+    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+
+    # if remember_states is True the last state will be restored at reloading of the module
+    _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+
+    # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
 
+    # switch_time to wait after setting the states for the solenoids to react
+    _switch_time = ConfigOption(name='switch_time', default=2.0, missing='nothing')
+
+    # name of the serial interface were the hardware is connected.
+    # E.g. use the Keysight IO connections expert to find the device.
     serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
 
     def __init__(self, *args, **kwargs):
@@ -76,30 +90,36 @@ class FlipMirror(Base, SwitchInterface):
         if self._hardware_name is None:
             self._hardware_name = 'Flipmirror Switch'
 
-        if np.shape(self._names_of_states) == (2,):
-            self._names_of_states = [list(self._names_of_states)] * self.number_of_switches
-        elif np.shape(self._names_of_states) == (self.number_of_switches, 2):
-            self._names_of_states = list(self._names_of_states)
+        if isinstance(self._names_of_switches, str):
+            self._names_of_switches = [str(self._names_of_switches)]
         else:
-            self.log.error(f'names_of_states must either be a list of two names for the states [low, high] '
-                           f'which are applied to all switched or it must be a list '
-                           f'of length {self._number_of_switches} with elements of the aforementioned shape.')
+            try:
+                self._names_of_switches = [str(self._names_of_switches[0])]
+            except TypeError:
+                self._names_of_switches = ['1']
 
-        if np.shape(self._names_of_switches) == (self.number_of_switches,):
-            self._names_of_switches = list(self._names_of_switches)
-        elif isinstance(self._names_of_switches, str):
-            self._names_of_switches = [self._names_of_switches]
-        else:
-            self._names_of_switches = [str(index + 1) for index in range(self.number_of_switches)]
+        try:
+            if len(self._names_of_states) == len(self._names_of_switches) \
+                    and len(self._names_of_states[0]) > 1 \
+                    and not isinstance(self._names_of_states[0], str):
+                self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
+                                         for index, switch in enumerate(self._names_of_switches)}
+            else:
+                raise TypeError
+        except TypeError:
+            if not isinstance(self._names_of_states, str) and len(self._names_of_states) > 1:
+                self._names_of_states = {switch: [str(name) for name in self._names_of_states]
+                                         for index, switch in enumerate(self._names_of_switches)}
+            else:
+                self.log.error(f'names_of_states must either be a list of two or more names for the states '
+                               f'which are applied to all switched or it must be a list '
+                               f'of length {len(self._names_of_switches)} with elements of the aforementioned shape.')
 
-        # initialize channels to saved status if requested
-        if self._reset_states:
-            self.states = False
-
-        if self._states is None or len(self._states) != self.number_of_switches:
-            self.states = [False] * self.number_of_switches
-        else:
-            self.states = self._states
+        # reset states if requested, otherwise use the saved states
+        if not self._remember_states \
+                or not isinstance(self._states, dict) \
+                or len(self._states) != self.number_of_switches:
+            self._states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -108,113 +128,95 @@ class FlipMirror(Base, SwitchInterface):
         self._resource_manager.close()
 
     @property
-    def name(self):
+    def number_of_switches(self):
+        """ The number of switches provided by this hardware is 1.
+
+        @return int: number of switches
         """
-        Name can either be defined as ConfigOption (name) or it defaults to "Flipmirror Switch".
-            @return str: The name of the hardware
+        return 1
+
+    @property
+    def name(self):
+        """ Name of the hardware as string.
+
+        The name can either be defined as ConfigOption (name) or it defaults to the name of the hardware module.
+
+        @return str: The name of the hardware
         """
         return self._hardware_name
 
     @property
-    def states(self):
-        """
-        The states of the system as a list of boolean values.
-            @return list(bool): All the current states of the switches in a list
-        """
-        with self.lock:
-            pos = self._instrument.ask('GP1')
-            if pos == 'H1':
-                return [False]
-            elif pos == 'V1':
-                return [True]
-            else:
-                self.log.error(f'Read error on flipmirror state: "{pos}".')
-                return [False]
-
-    @states.setter
-    def states(self, value):
-        """
-        The states of the system can be set in two ways:
-        Either as a single boolean value to define all the states to be the same
-        or as a list of boolean values to define the state of each switch individually.
-        After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
-        The wait time can be set by the ConfigOption (switch_time).
-        This functions just calls the function self.set_state.
-            @param [bool/list(bool)] value: switch state to be set as single boolean or list of booleans
-            @return: None
-        """
-        if np.isscalar(value):
-            self.set_state(state=value)
-        else:
-            if len(value) != self.number_of_switches:
-                self.log.error(f'The states either have to be a scalar or a list af length {self.number_of_switches}')
-            else:
-                self.set_state(state=value[0])
-
-    @property
     def names_of_states(self):
-        """
-        Names of the states as a list of lists. The first list contains the names for each of the switches
-        and each of switches has two elements representing the names in the state order [False, True].
+        """ Names of the states as a dict of lists.
+
+        The keys contain the names for each of the switches and each of switches
+        has a list of elements representing the names in the state order.
         The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
-            @return list(list(str)): 2 dimensional list of names in the state order [False, True]
+
+        @return dict: A dict of the form {"switch": ["state1", "state2"]}
         """
         return self._names_of_states.copy()
 
     @property
-    def names_of_switches(self):
-        """
-        Names of the switches as a list of length number_of_switches.
-        These can either be set as ConfigOption (names_of_switches) or default to a simple range starting at 1.
-            @return list(str): names of the switches
-        """
-        return self._names_of_switches.copy()
+    def states(self):
+        """ The current states the hardware is in.
 
-    @property
-    def number_of_switches(self):
-        """
-        Number of switches provided by this hardware. Constant 1 for this hardware.
-            @return int: number of switches
-        """
-        return 1
+        The states of the system as a dict consisting of switch names as keys and state names as values.
 
-    def get_state(self, index_of_switch=None):
-        """
-        Returns the state of a specific switch which was specified by its switch index.
-        As there is only 1 switch, the index_of_switch is ignored.
-        This functions just calls the property self.states.
-            @param int index_of_switch: index of the switch is ignored
-            @return bool: boolean value of this specific switch
-        """
-        return self.states[0]
-
-    def set_state(self, index_of_switch=None, state=False):
-        """
-        Sets the state of a specific switch which was specified by its switch index.
-        After setting the output of the switches, a certain wait time is applied to wait for the hardware to react.
-        The wait time can be set by the ConfigOption (switch_time).
-            @param int index_of_switch: index of the switch is ignored
-            @param bool state: boolean state of the switch to be set
-            @return int: state of the switch actually set
+        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
         """
         with self.lock:
+            response = self._instrument.ask('GP1').strip()
+            if response not in ['H1', 'V1']:
+                self.log.error('Hardware returned {} as switch state.'.format(response))
+            return {name: self._names_of_states[name][int(response == 'V1')] for name in self._names_of_switches}
+
+    @states.setter
+    def states(self, value):
+        """ The setter for the states of the hardware.
+
+        The states of the system can be set by specifying a dict that has the switch names as keys
+        and the names of the states as values.
+
+        @param dict value: state dict of the form {"switch": "state"}
+        @return: None
+        """
+        if isinstance(value, dict):
+            for switch, state in value.items():
+                if switch not in self._names_of_switches:
+                    self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
+                    continue
+
+                states = self.names_of_states[switch]
+                if isinstance(state, str):
+                    if state not in states:
+                        self.log.error(f'"{state}" is not among the possible states: {states}')
+                        continue
+                    self._states[switch] = state
+        else:
+            self.log.error(f'attempting to set states as "{value}" while states have be a dict '
+                           f'having the switch names as keys and the state names as values.')
+            return
+
+        with self.lock:
+            switch = self._names_of_switches[0]
+            state = self.names_of_states[self._names_of_switches[0]].index(self._states[switch])
             answer = self._instrument.ask('SV1' if state else 'SH1')
             if answer != 'OK1':
                 self.log.error(f'Error in setting state. Answer was: {answer}')
-                return self.get_state()
+                return
 
             time.sleep(self._switch_time)
-            self.log.info('{0}: {1}'.format(self.name, self.names_of_states[int(bool(state))]))
-            return self.get_state()
+            self.log.debug('{0}-{1}: {2}'.format(self.name, switch, self._states[switch]))
 
     def get_calibration(self, state):
-        """
-        Get calibration parameter for switch. NOT part of the SwitchInterface!
+        """ Get calibration parameter for switch.
+        NOT part of the SwitchInterface!
         In this case, the calibration parameter is a integer number that says where the
         horizontal and vertical position of the flip mirror is in the 16 bit PWM range of the motor driver.
         The number is returned as a string, not as an int, and needs to be converted.
-            @param bool state: for which to get calibration parameter
-            @return int: calibration parameter for switch and state.
+        @param bool state: for which to get calibration parameter
+        @return int: calibration parameter for switch and state.
         """
         with self.lock:
             if state:
@@ -224,13 +226,13 @@ class FlipMirror(Base, SwitchInterface):
             return int(answer.split('=')[1])
 
     def set_calibration(self, state, value):
-        """
-        Set calibration parameter for switch. NOT part of the SwitchInterface!
-            @param bool state: for which to get calibration parameter
-            @param int value: calibration parameter to be set.
-            @return bool: True if success, False on error
+        """ Set calibration parameter for switch.
+        NOT part of the SwitchInterface!
+        @param bool state: for which to get calibration parameter
+        @param int value: calibration parameter to be set.
+        @return bool: True if success, False on error
         """
         with self.lock:
-            answer = self._instrument.ask('SHT1 {0}'.format(int(value)))
+            answer = self._instrument.ask('S{0}T1 {1}'.format('V' if state else 'H', int(value)))
             if answer != 'OK1':
                 return False

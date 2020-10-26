@@ -191,7 +191,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
     @property
     def number_of_switches(self):
-        """ Number of switches provided by this hardware is 8
+        """ Number of switches provided by this hardware is 8.
 
         Chan   PIN
         ----------
