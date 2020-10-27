@@ -744,6 +744,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.full_image_back = np.zeros(
                     (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
             for i in range(self._steps_scan_first_line):
+                if np.mean(self.image_raw[:, i, 0]) == 0:
+                    self.log.debug(self.image_raw[:, i, 0])
+                    self.log.debug(self.image_raw[:, i, 1])
                 for j in range(self._step_counter):
                     self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
                                                                                 self.image_raw[j, i, 0])
@@ -2110,14 +2113,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 image_raw_back[:, :, 3] = self._ai_counter_voltages_back
 
         self.image_raw = image_raw
-        self.full_image = image_raw
+        self.full_image = image_raw.copy()
         # for smoothed position feedback image
-        self.full_image_smoothed = image_raw
+        self.full_image_smoothed = image_raw.copy()
 
         if not self._fast_scan:
             self.image_raw_back = image_raw_back
-            self.full_image_back = image_raw_back
-            self.full_image_back_smoothed = image_raw_back
+            self.full_image_back = image_raw_back.copy()
+            self.full_image_back_smoothed = image_raw_back.copy()
 
     def _initialize_data_arrays_stepper(self):
         """
