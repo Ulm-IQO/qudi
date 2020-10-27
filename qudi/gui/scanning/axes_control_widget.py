@@ -80,6 +80,7 @@ class AxesControlWidget(QtWidgets.QWidget):
             res_spinbox = QtWidgets.QSpinBox()
             res_spinbox.setObjectName('{0}_resolution_spinBox'.format(ax_name))
             res_spinbox.setRange(axis.min_resolution, min(2 ** 31 - 1, axis.max_resolution))
+            res_spinbox.setValue(axis.min_resolution)
             res_spinbox.setSuffix(' px')
             res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             res_spinbox.setMinimumSize(50, 0)
