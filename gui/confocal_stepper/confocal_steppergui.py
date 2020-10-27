@@ -1178,7 +1178,9 @@ class ConfocalStepperGui(GUIBase):
 
         # Now update image with new color scale, and update colorbar
         self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
+        self.step_image_2.setImage(image=step_image_data_2, levels=(cb_range_2[0], cb_range_2[1]))
         cb_range, cb_range_2 = self.get_cb_range()
+        self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
         self.step_image_2.setImage(image=step_image_data_2, levels=(cb_range_2[0], cb_range_2[1]))
         self.refresh_colorbar()
 
@@ -1194,6 +1196,7 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic._fast_scan = fast_scan
         if fast_scan:
             self.update_count_direction(0)
+            self.update_count_direction_2(0)
         self._mw.count_direction_ComboBox.setDisabled(fast_scan)
         self._mw.count_direction_ComboBox_2.setDisabled(fast_scan)
 
@@ -1232,39 +1235,10 @@ class ConfocalStepperGui(GUIBase):
         new_axes = self._mw.step_direction_comboBox.currentData()
         if direction:
             new_axes = self._inverted_axes[new_axes]
-
-    def update_from_piezo_slider_z(self, sliderValue):
-        """The user moved the z piezo slider, adjust the other GUI elements.
-
-        @params int sliderValue: slider piezo position, a quantized whole number
-        """
-        z_pos = self._scanning_logic.z_range[0] + sliderValue * self.slider_res
-        self.update_input_z_piezo(z_pos)
-        self._scanning_logic.set_position('zslider', z=z_pos)
-
-    def update_piezo_slider_x(self, x_pos):
-        """ Update the x piezo slider when a change happens.
-
-        @param float x_pos: x position in m
-        """
-        self._mw.x_piezo_SliderWidget.setValue(
-            (x_pos - self._scanning_logic.x_range[0]) / self.slider_res)
-
-    def update_piezo_slider_y(self, y_pos):
-        """ Update the y piezo slider when a change happens.
-
-        @param float y_pos: y position in m
-        """
-        self._mw.y_piezo_SliderWidget.setValue(
-            (y_pos - self._scanning_logic.y_range[0]) / self.slider_res)
-
-    def update_piezo_slider_z(self, z_pos):
-        """ Update the z piezo slider when a change happens.
-
-        @param float z_pos: z position in m
-        """
-        self._mw.z_piezo_SliderWidget.setValue(
-            (z_pos - self._scanning_logic.z_range[0]) / self.slider_res)
+        self._stepper_logic._inverted_scan = direction
+        self._stepper_logic.set_scan_axes(new_axes)
+        self._mw.scan_frequency_3D_lcdNumber.display(
+            self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     def change_x_steps_range(self):
         """ Update the x steps range in the logic according to the GUI.
