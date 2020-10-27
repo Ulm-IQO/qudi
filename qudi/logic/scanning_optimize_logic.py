@@ -185,7 +185,7 @@ class ScanningOptimizeLogic(LogicBase):
         with self._thread_lock:
             print('start optimize')
             if self.module_state() != 'idle':
-                self.sigOptimizeStateChanged.emit(True, self.optimal_position, None)
+                self.sigOptimizeStateChanged.emit(True, dict(), None)
                 return 0
 
             # ToDo: Sanity checks for settings go here
