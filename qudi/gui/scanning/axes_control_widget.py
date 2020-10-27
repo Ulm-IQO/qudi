@@ -36,7 +36,7 @@ class AxesControlWidget(QtWidgets.QWidget):
     sigTargetChanged = QtCore.Signal(str, float)
     sigSliderMoved = QtCore.Signal(str, float)
 
-    def __init__(self, *args, scan_axes, **kwargs):
+    def __init__(self, *args, scanner_axes, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.axes_widgets = dict()
@@ -53,7 +53,7 @@ class AxesControlWidget(QtWidgets.QWidget):
         vline = QtWidgets.QFrame()
         vline.setFrameShape(QtWidgets.QFrame.VLine)
         vline.setFrameShadow(QtWidgets.QFrame.Sunken)
-        layout.addWidget(vline, 0, 2, len(scan_axes) + 1, 1)
+        layout.addWidget(vline, 0, 2, len(scanner_axes) + 1, 1)
 
         label = QtWidgets.QLabel('Scan Range')
         label.setFont(font)
@@ -63,14 +63,14 @@ class AxesControlWidget(QtWidgets.QWidget):
         vline = QtWidgets.QFrame()
         vline.setFrameShape(QtWidgets.QFrame.VLine)
         vline.setFrameShadow(QtWidgets.QFrame.Sunken)
-        layout.addWidget(vline, 0, 5, len(scan_axes) + 1, 1)
+        layout.addWidget(vline, 0, 5, len(scanner_axes) + 1, 1)
 
         label = QtWidgets.QLabel('Current Target')
         label.setFont(font)
         label.setAlignment(QtCore.Qt.AlignCenter)
         layout.addWidget(label, 0, 7)
 
-        for index, axis in enumerate(scan_axes, 1):
+        for index, axis in enumerate(scanner_axes, 1):
             ax_name = axis.name
             label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name.title()))
             label.setObjectName('{0}_axis_label'.format(ax_name))
@@ -255,6 +255,12 @@ class AxesControlWidget(QtWidgets.QWidget):
             spinbox.blockSignals(True)
             spinbox.setValue(value)
             spinbox.blockSignals(False)
+
+    def set_assumed_unit_prefix(self, prefix):
+        for widgets in self.axes_widgets.values():
+            widgets['pos_spinbox'].assumed_unit_prefix = prefix
+            widgets['min_spinbox'].assumed_unit_prefix = prefix
+            widgets['max_spinbox'].assumed_unit_prefix = prefix
 
     def __get_axis_resolution_callback(self, axis, spinbox):
         def callback():

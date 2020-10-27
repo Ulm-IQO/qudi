@@ -37,6 +37,8 @@ from qudi.core.gui.qtwidgets.slider import DoubleSlider
 from qudi.core.module import GuiBase
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 
+from .axes_control_widget import AxesControlWidget
+
 
 class ConfocalMainWindow(QtWidgets.QMainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
@@ -61,22 +63,14 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
 
 
 class ScannerControlDockWidget(QtWidgets.QDockWidget):
-    """ Create the scanner control dockwidget based on the corresponding *.ui file.
+    """ Create the scanner control QDockWidget based on the corresponding QWidget subclass
     """
 
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_scanner_control_widget.ui')
-
+    def __init__(self, scanner_axes):
         super().__init__('Scanner Control')
         self.setObjectName('scanner_control_dockWidget')
-
-        # Load UI file
-        widget = QtWidgets.QWidget()
-        uic.loadUi(ui_file, widget)
+        widget = AxesControlWidget(scanner_axes=scanner_axes)
         widget.setObjectName('scanner_control_widget')
-
         self.setWidget(widget)
         return
 
@@ -274,9 +268,6 @@ class ScannerGui(GuiBase):
         self._init_optimizer_settings()
         self._init_scanner_settings()
 
-        # Configure widgets according to available scan axes and apply scanner constraints
-        self._generate_axes_control_widgets()
-
         # Automatically generate scanning widgets for desired scans
         scans = list()
         axes = tuple(self._scanning_logic().scanner_axes)
@@ -388,7 +379,6 @@ class ScannerGui(GuiBase):
             self._remove_scan_dockwidget(scan)
         for scan in tuple(self.scan_2d_dockwidgets):
             self._remove_scan_dockwidget(scan)
-        self._clear_axes_control_widgets()
         self._clear_optimizer_axes_widgets()
         return
 
@@ -454,7 +444,13 @@ class ScannerGui(GuiBase):
         self._mw.action_view_optimizer.triggered[bool].connect(
             self.optimizer_dockwidget.setVisible)
 
-        self.scanner_control_dockwidget = ScannerControlDockWidget()
+        self.scanner_control_dockwidget = ScannerControlDockWidget(
+            tuple(self._scanning_logic().scanner_axes.values())
+        )
+        if self._default_position_unit_prefix is not None:
+            self.scanner_control_dockwidget.widget().set_assumed_unit_prefix(
+                self._default_position_unit_prefix
+            )
         self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
         self.scanner_control_dockwidget.visibilityChanged.connect(
             self._mw.action_view_scanner_control.setChecked)
@@ -464,131 +460,6 @@ class ScannerGui(GuiBase):
         self._mw.util_toolBar.visibilityChanged.connect(
             self._mw.action_view_toolbar.setChecked)
         self._mw.action_view_toolbar.triggered[bool].connect(self._mw.util_toolBar.setVisible)
-
-    def _generate_axes_control_widgets(self):
-        font = QtGui.QFont()
-        font.setBold(True)
-        layout = self.scanner_control_dockwidget.widget().layout()
-        self.axes_control_widgets = dict()
-        for index, (ax_name, axis) in enumerate(self._scanning_logic().scanner_axes.items(), 1):
-            label = QtWidgets.QLabel('{0}-Axis:'.format(ax_name.title()))
-            label.setObjectName('{0}_axis_label'.format(ax_name))
-            label.setFont(font)
-            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-
-            res_spinbox = QtWidgets.QSpinBox()
-            res_spinbox.setObjectName('{0}_resolution_spinBox'.format(ax_name))
-            res_spinbox.setRange(axis.min_resolution, min(2 ** 31 - 1, axis.max_resolution))
-            res_spinbox.setSuffix('px')
-            res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-            res_spinbox.setMinimumSize(50, 0)
-            res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                      QtWidgets.QSizePolicy.Preferred)
-
-            min_spinbox = ScienDSpinBox()
-            if self._default_position_unit_prefix is not None:
-                min_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
-            min_spinbox.setObjectName('{0}_min_range_scienDSpinBox'.format(ax_name))
-            min_spinbox.setRange(*axis.value_range)
-            min_spinbox.setSuffix(axis.unit)
-            min_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-            min_spinbox.setMinimumSize(75, 0)
-            min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                      QtWidgets.QSizePolicy.Preferred)
-
-            max_spinbox = ScienDSpinBox()
-            if self._default_position_unit_prefix is not None:
-                max_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
-            max_spinbox.setObjectName('{0}_max_range_scienDSpinBox'.format(ax_name))
-            max_spinbox.setRange(*axis.value_range)
-            max_spinbox.setSuffix(axis.unit)
-            max_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-            max_spinbox.setMinimumSize(75, 0)
-            max_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                      QtWidgets.QSizePolicy.Preferred)
-
-            slider = DoubleSlider(QtCore.Qt.Horizontal)
-            slider.setObjectName('{0}_position_doubleSlider'.format(ax_name))
-            slider.setRange(*axis.value_range)
-            if axis.min_step > 0:
-                slider.set_granularity(round((axis.max_value - axis.min_value) / axis.min_step) + 1)
-            else:
-                slider.set_granularity(2**16-1)
-            slider.setMinimumSize(150, 0)
-            slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-
-            pos_spinbox = ScienDSpinBox()
-            if self._default_position_unit_prefix is not None:
-                pos_spinbox.assumed_unit_prefix = self._default_position_unit_prefix
-            pos_spinbox.setObjectName('{0}_position_scienDSpinBox'.format(ax_name))
-            pos_spinbox.setRange(*axis.value_range)
-            pos_spinbox.setSuffix(axis.unit)
-            pos_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-            pos_spinbox.setMinimumSize(75, 0)
-            pos_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                      QtWidgets.QSizePolicy.Preferred)
-
-            # Add to layout
-            layout.addWidget(label, index, 0)
-            layout.addWidget(res_spinbox, index, 1)
-            layout.addWidget(min_spinbox, index, 3)
-            layout.addWidget(max_spinbox, index, 4)
-            layout.addWidget(slider, index, 6)
-            layout.addWidget(pos_spinbox, index, 7)
-
-            # Connect signals
-            min_spinbox.editingFinished.connect(self.__get_axis_scan_range_update_func(ax_name))
-            max_spinbox.editingFinished.connect(self.__get_axis_scan_range_update_func(ax_name))
-            res_spinbox.editingFinished.connect(self.__get_axis_scan_res_update_func(ax_name))
-            slider.doubleSliderMoved.connect(self.__get_slider_update_func(ax_name, slider))
-            pos_spinbox.editingFinished.connect(
-                self.__get_target_spinbox_update_func(ax_name, pos_spinbox)
-            )
-
-            # Remember widgets references for later access
-            self.axes_control_widgets[ax_name] = dict()
-            self.axes_control_widgets[ax_name]['label'] = label
-            self.axes_control_widgets[ax_name]['res_spinbox'] = res_spinbox
-            self.axes_control_widgets[ax_name]['min_spinbox'] = min_spinbox
-            self.axes_control_widgets[ax_name]['max_spinbox'] = max_spinbox
-            self.axes_control_widgets[ax_name]['slider'] = slider
-            self.axes_control_widgets[ax_name]['pos_spinbox'] = pos_spinbox
-
-        layout.addWidget(self.scanner_control_dockwidget.widget().line, 0, 2, -1, 1)
-        layout.addWidget(self.scanner_control_dockwidget.widget().line_2, 0, 5, -1, 1)
-        layout.setColumnStretch(5, 1)
-        self.scanner_control_dockwidget.widget().setMaximumHeight(
-            self.scanner_control_dockwidget.widget().sizeHint().height())
-        return
-
-    def _clear_axes_control_widgets(self):
-        layout = self.scanner_control_dockwidget.widget().layout()
-        for axis in tuple(self.axes_control_widgets):
-            # Disconnect signals
-            self.axes_control_widgets[axis]['min_spinbox'].editingFinished.disconnect()
-            self.axes_control_widgets[axis]['max_spinbox'].editingFinished.disconnect()
-            self.axes_control_widgets[axis]['res_spinbox'].editingFinished.disconnect()
-            self.axes_control_widgets[axis]['slider'].valueChanged.disconnect()
-            self.axes_control_widgets[axis]['pos_spinbox'].editingFinished.disconnect()
-
-            # Remove from layout
-            layout.removeWidget(self.axes_control_widgets[axis]['label'])
-            layout.removeWidget(self.axes_control_widgets[axis]['min_spinbox'])
-            layout.removeWidget(self.axes_control_widgets[axis]['max_spinbox'])
-            layout.removeWidget(self.axes_control_widgets[axis]['res_spinbox'])
-            layout.removeWidget(self.axes_control_widgets[axis]['slider'])
-            layout.removeWidget(self.axes_control_widgets[axis]['pos_spinbox'])
-
-            # Mark widgets for deletion in Qt framework
-            self.axes_control_widgets[axis]['label'].deleteLater()
-            self.axes_control_widgets[axis]['min_spinbox'].deleteLater()
-            self.axes_control_widgets[axis]['max_spinbox'].deleteLater()
-            self.axes_control_widgets[axis]['res_spinbox'].deleteLater()
-            self.axes_control_widgets[axis]['slider'].deleteLater()
-            self.axes_control_widgets[axis]['pos_spinbox'].deleteLater()
-
-        self.axes_control_widgets = dict()
-        return
 
     def _generate_optimizer_axes_widgets(self):
         layout = self._osd.scan_ranges_gridLayout
@@ -883,21 +754,9 @@ class ScannerGui(GuiBase):
         # ToDo: Handle all remaining settings
 
         if 'resolution' in settings:
-            for axis, resolution in settings['resolution'].items():
-                res_spinbox = self.axes_control_widgets[axis]['res_spinbox']
-                res_spinbox.blockSignals(True)
-                res_spinbox.setValue(resolution)
-                res_spinbox.blockSignals(False)
+            self.scanner_control_dockwidget.widget().set_resolution(settings['resolution'])
         if 'range' in settings:
-            for axis, axis_range in settings['range'].items():
-                min_spinbox = self.axes_control_widgets[axis]['min_spinbox']
-                max_spinbox = self.axes_control_widgets[axis]['max_spinbox']
-                min_spinbox.blockSignals(True)
-                max_spinbox.blockSignals(True)
-                min_spinbox.setValue(axis_range[0])
-                max_spinbox.setValue(axis_range[1])
-                min_spinbox.blockSignals(False)
-                max_spinbox.blockSignals(False)
+            self.scanner_control_dockwidget.widget().set_range(settings['range'])
         if 'frequency' in settings:
             for axis, frequency in settings['frequency'].items():
                 self.scanner_settings_axes_widgets[axis]['forward_spinbox'].setValue(frequency)
@@ -1070,17 +929,8 @@ class ScannerGui(GuiBase):
         @param dict pos_dict:
         @param object exclude_widget:
         """
+        self.scanner_control_dockwidget.widget().set_target(pos_dict)
         for axis, pos in pos_dict.items():
-            spinbox = self.axes_control_widgets[axis]['pos_spinbox']
-            if exclude_widget is not spinbox:
-                spinbox.blockSignals(True)
-                spinbox.setValue(pos)
-                spinbox.blockSignals(False)
-            slider = self.axes_control_widgets[axis]['slider']
-            if exclude_widget is not slider:
-                slider.blockSignals(True)
-                slider.setValue(pos)
-                slider.blockSignals(False)
             for axes, dockwidget in self.scan_2d_dockwidgets.items():
                 crosshair = dockwidget.scan_widget.crosshairs[0]
                 if crosshair is exclude_widget:
@@ -1144,20 +994,6 @@ class ScannerGui(GuiBase):
             dockwidget.toggle_scan_button.setEnabled(enable)
         for axes, dockwidget in self.scan_1d_dockwidgets.items():
             dockwidget.toggle_scan_button.setEnabled(enable)
-
-    def __get_slider_update_func(self, ax, slider):
-        def update_func(x):
-            pos_dict = {ax: x}
-            self._update_target_display(pos_dict, exclude_widget=slider)
-            self.set_scanner_target_position(pos_dict)
-        return update_func
-
-    def __get_target_spinbox_update_func(self, ax, spinbox):
-        def update_func():
-            pos_dict = {ax: spinbox.value()}
-            self._update_target_display(pos_dict, exclude_widget=spinbox)
-            self.set_scanner_target_position(pos_dict)
-        return update_func
 
     def __get_crosshair_update_func(self, ax, crosshair):
         def update_func(x, y):
