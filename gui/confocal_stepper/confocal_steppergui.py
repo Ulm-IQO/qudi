@@ -1017,20 +1017,27 @@ class ConfocalStepperGui(GUIBase):
 
     def load_data(self):
         """Method for when the File -> Load Data action is clicked"""
-        fname = QtWidgets.QFileDialog.getOpenFileName(self, 'Open data folder', QtWidgets.QFileDialog.ShowDirsOnly)
+        self.log.info("data loaded")
+        dialog = QtWidgets.QFileDialog(self._mw)
+        dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        dialog.setViewMode(QtWidgets.QFileDialog.Detail)
+        dialog.setDirectory(self._stepper_logic.filepath)
+        if dialog.exec_():
+            fname = dialog.selectedFiles()[0]
         self.log.info("the directory chosen is: %s", fname)
-        dir_paths = fname.split("\\")
+        dir_paths = fname.split("/")
+        self.log.info(dir_paths)
         if dir_paths[-2] == "ConfocalStepper_3D":
-            data_type = "3D"
+           data_type = "3D"
         elif dir_paths[-2] == "ConfocalStepper_finesse":
-            data_type = "Finesse"
+           data_type = "Finesse"
         elif dir_paths[-2] == "ConfocalStepper":
-            data_type = "2D"
+           data_type = "2D"
         else:
-            self.log.warning("The chosen dir path '%s' does not contain usable data", fname)
-            return -1
+           self.log.warning("The chosen dir path '%s' does not contain usable data", fname)
+           return -1
 
-        self._stepper_logic.signal_load_data(fname, data_type)
+        self._stepper_logic.signal_load_data.emit(fname+"/raw", data_type)
 
     def menu_settings(self):
         """ This method opens the settings menu. """

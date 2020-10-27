@@ -125,6 +125,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     sigImageInitialized = QtCore.Signal()
     sig_save_to_npz = QtCore.Signal()
     signal_history_event = QtCore.Signal()
+    signal_load_data = QtCore.Signal(str, str)
 
     # Todo: For steppers with hardware real-time info like res readout of attocubes clock synchronisation and readout needs to be written
     # Therefore a new interface (ConfocalReadInterface or similar.) needs to be made
@@ -476,6 +477,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.finesse_scan_freq = 1.0
         self._finesse_measurement = False
 
+        self.generate_file_path()
         # Step values definitions
 
         # Sets connections between signals and functions
@@ -489,6 +491,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_step_lines_finesse_next.connect(self._step_line_finesse, QtCore.Qt.QueuedConnection)
         self.signal_compare_measured_positions_stepper.connect(self._compare_measured_positions_stepper,
                                                                QtCore.Qt.QueuedConnection)
+        self.signal_load_data.connect(self.load_data, QtCore.Qt.DirectConnection)
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -3061,7 +3064,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # self.log.warning("There was no data that could by this program in the corresponding folder (%)", filepath)
             return -1
         self.filepath = filepath  # so that the data can not be resaved on a different false folder by accident
-
         empty_keys = []
         for key, element in data_dic.items():
             if not element:
@@ -3076,24 +3078,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             catch_error = self._load_2D_data(data_dic, dat_shape)
 
         if catch_error == 0:
-            # set correct scan axes
-            info_path = "\\".join(filepath.split("\\")[:-1])
-            data_info_file = None
-            for element in os.listdir(info_path):
-                if fnmatch.fnmatch(element, "*_parameters.dat"):
-                    data_info_file = element
-                    break
-            if data_info_file is not None:
-                with open(info_path + "\\" + data_info_file) as file:
-                    data_infos = file.readlines()
-
-                for element in data_infos:
-                    if fnmatch.fnmatch(element, "#First Axis:*"):
-                        self._first_scan_axis = element.split(" ")[-1][0]
-                    if fnmatch.fnmatch(element, "#Second Axis:*"):
-                        self._second_scan_axis = element.split(" ")[-1][0]
-            else:
-                self.log.warning("the data info file is missing, therefore the axis can not be set correctly!")
+            catch_error = self._get_loaded_file_info(filepath)
 
         if catch_error == -1:
             self._fast_scan, self.map_scan_position, self._ai_scanner, self._steps_scan_first_line, \
@@ -3112,6 +3097,40 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.smooth_out_position_data()
         self.signal_image_updated.emit()
 
+        return 0
+
+    def _get_loaded_file_info(self, filepath):
+        """ Gets the parameters of the info file from the filepath of the raw data. If no info file exists it generates
+        a warning
+
+        @param str filepath:
+        @return int: error code (0:OK, -1:error)
+        """
+        # set correct scan axes
+        info_path = "\\".join(filepath.split("\\")[:-1])
+        if info_path == "":
+            info_path = "\\".join(filepath.split("/")[:-1])
+        if info_path == "":
+            self.log.error(
+                "The given kind of file path is not possible to split up by the normal way. Stopping loading process")
+            return -1
+        data_info_file = None
+        for element in os.listdir(info_path):
+            if fnmatch.fnmatch(element, "*_parameters.dat"):
+                data_info_file = element
+                break
+
+        if data_info_file is not None:
+            with open(info_path + "\\" + data_info_file) as file:
+                data_infos = file.readlines()
+
+            for element in data_infos:
+                if fnmatch.fnmatch(element, "#First Axis:*"):
+                    self._first_scan_axis = element.split(" ")[-1][0]
+                if fnmatch.fnmatch(element, "#Second Axis:*"):
+                    self._second_scan_axis = element.split(" ")[-1][0]
+        else:
+            self.log.warning("the data info file is missing, therefore the axis can not be set correctly!")
         return 0
 
     def _find_data_files_in_folder(self, data_files, addition_3D=""):
