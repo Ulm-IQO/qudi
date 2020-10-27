@@ -248,6 +248,8 @@ class ScanningProbeLogic(LogicBase):
                                      'Clipping value to {1:.3e}.'.format(ax, new_pos[ax]))
 
             new_pos = self._scanner().move_absolute(new_pos)
+            if any(pos != new_pos[ax] for ax, pos in pos_dict.items()):
+                caller_id = None
             self.sigScannerTargetChanged.emit(new_pos, id(self) if caller_id is None else caller_id)
             return new_pos
 
