@@ -281,6 +281,8 @@ class ScannerGui(GuiBase):
         scans = list()
         axes = tuple(self._scanning_logic().scanner_axes)
         for i, first_ax in enumerate(axes, 1):
+            # if not scans:
+            #     scans.append((first_ax,))
             for second_ax in axes[i:]:
                 scans.append((first_ax, second_ax))
         for scan in scans:
@@ -802,12 +804,8 @@ class ScannerGui(GuiBase):
             # Set axis labels and initial data
             dockwidget.plot_widget.setLabel('bottom', axes[0], units=axes_constr[axes[0]].unit)
             dockwidget.plot_widget.setLabel('left', 'scan data', units='arb.u.')
-            this_constr = axes_constr[axes[0]]
-            x_data = np.linspace(this_constr.min_value,
-                                 this_constr.min_value,
-                                 max(2, this_constr.min_resolution))
-            dockwidget.plot_item.setData(x_data, np.full(x_data.size, this_constr.min_value))
             dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
+            dockwidget.plot_widget.setXRange(*axes_constr[axes[0]].value_range)
         else:
             if axes in self.scan_2d_dockwidgets:
                 self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
@@ -839,12 +837,10 @@ class ScannerGui(GuiBase):
             dockwidget.scan_widget.sigMouseAreaSelected.connect(
                 self.__get_range_from_selection_func(axes)
             )
-            # Set initial scan image
-            x_constr, y_constr = axes_constr[axes[0]], axes_constr[axes[1]]
-            dockwidget.scan_widget.set_image(
-                np.zeros((x_constr.min_resolution, y_constr.min_resolution))
-            )
-            dockwidget.scan_widget.set_image_extent((x_constr.value_range, y_constr.value_range))
+            # dockwidget.scan_widget.set_image_extent(
+            #     (axes_constr[axes[0]].value_range, axes_constr[axes[1]].value_range),
+            #     adjust_for_px_size=False
+            # )
         return
 
     @QtCore.Slot(bool)
