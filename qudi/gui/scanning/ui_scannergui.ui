@@ -43,9 +43,9 @@
     <addaction name="separator"/>
     <addaction name="action_close_window"/>
    </widget>
-   <widget class="QMenu" name="menu_Options">
+   <widget class="QMenu" name="menu_Settings">
     <property name="title">
-     <string>Option&amp;s</string>
+     <string>Settings</string>
     </property>
     <addaction name="action_scanner_settings"/>
     <addaction name="action_optimizer_settings"/>
@@ -66,7 +66,7 @@
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
-   <addaction name="menu_Options"/>
+   <addaction name="menu_Settings"/>
   </widget>
   <widget class="QToolBar" name="util_toolBar">
    <property name="windowTitle">
