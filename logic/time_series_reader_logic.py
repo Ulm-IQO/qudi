@@ -451,7 +451,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             self._streamer.configure(sample_rate=data_rate * self.oversampling_factor,
                                      streaming_mode=StreamingMode.CONTINUOUS,
                                      active_channels=active_ch,
-                                     buffer_size=None,
+                                     buffer_size=10000000,
                                      use_circular_buffer=True)
 
             # update actually set values
@@ -552,8 +552,9 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.sigStatusChanged.emit(False, False)
                     return
 
-                samples_to_read = max(self._streamer.available_samples,
-                                      self._samples_per_frame * self._oversampling_factor)
+                samples_to_read = max(
+                    (self._streamer.available_samples // self._oversampling_factor) * self._oversampling_factor,
+                    self._samples_per_frame * self._oversampling_factor)
                 if samples_to_read < 1:
                     self._sigNextDataFrame.emit()
                     return
@@ -598,7 +599,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         # Append data to save if necessary
         if self._data_recording_active:
-            self._recorded_data.append(data)
+            self._recorded_data.append(data.copy())
 
         data = data[:, -self._trace_data.shape[1]:]
         new_samples = data.shape[1]
@@ -680,7 +681,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             return np.empty(0), dict()
 
         saving_stop_time = self._record_start_time + dt.timedelta(
-            seconds=data_arr.shape[1] * self.data_rate)
+            seconds=data_arr.shape[1] / self.data_rate)
 
         # write the parameters:
         parameters = dict()

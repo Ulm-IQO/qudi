@@ -26,6 +26,8 @@ from core.meta import InterfaceMetaclass
 
 class DataLoggerInterface(metaclass=InterfaceMetaclass):
     """
+
+    TODO: This interface has no documentation nor dummy module or logic :'(
     """
 
     @abstract_interface_method

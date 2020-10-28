@@ -25,6 +25,7 @@ import pyqtgraph as pg
 
 from core.connector import Connector
 from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from qtpy import QtCore
@@ -67,7 +68,7 @@ class TimeSeriesGui(GUIBase):
     Example config for copy-paste:
 
     time_series_gui:
-        module.Class: 'time_series_gui.TimeSeriesGui'
+        module.Class: 'time_series.time_series_gui.TimeSeriesGui'
         use_antialias: True  # optional, set to False if you encounter performance issues
         connect:
             _time_series_logic_con: <TimeSeriesReaderLogic_name>
@@ -78,6 +79,9 @@ class TimeSeriesGui(GUIBase):
 
     # declare ConfigOptions
     _use_antialias = ConfigOption('use_antialias', default=True)
+
+    # declare StatusVars
+    _current_value_channel = StatusVar(name='current_value_channel', default=None)
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -129,7 +133,6 @@ class TimeSeriesGui(GUIBase):
         # Configure PlotWidget
         self._pw = self._mw.data_trace_PlotWidget
         self._pw.setLabel('bottom', 'Time', units='s')
-        self._pw.disableAutoRange()
         self._pw.setMouseEnabled(x=False, y=False)
         self._pw.setMouseTracking(False)
         self._pw.setMenuEnabled(False)
@@ -140,7 +143,6 @@ class TimeSeriesGui(GUIBase):
         self._pw.scene().addItem(self._vb)
         self._pw.getAxis('right').linkToView(self._vb)
         self._vb.setXLink(self._pw)
-        self._vb.disableAutoRange()
         self._vb.setMouseEnabled(x=False, y=False)
         self._vb.setMenuEnabled(False)
         # Sync resize events
@@ -382,16 +384,22 @@ class TimeSeriesGui(GUIBase):
         av_channels = tuple(ch for ch, w in self._csd_widgets.items() if
                             w['checkbox2'].isChecked() and ch in channels)
         # Update combobox
-        old_value = self._mw.curr_value_comboBox.currentText()
+        self._mw.curr_value_comboBox.blockSignals(True)
         self._mw.curr_value_comboBox.clear()
         self._mw.curr_value_comboBox.addItem('None')
         self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in av_channels])
         self._mw.curr_value_comboBox.addItems(channels)
-        index = self._mw.curr_value_comboBox.findText(old_value)
-        if index < 0:
+        if self._current_value_channel is None:
             self._mw.curr_value_comboBox.setCurrentIndex(0)
         else:
-            self._mw.curr_value_comboBox.setCurrentIndex(index)
+            index = self._mw.curr_value_comboBox.findText(self._current_value_channel)
+            if index < 0:
+                self._mw.curr_value_comboBox.setCurrentIndex(0)
+                self._current_value_channel = None
+            else:
+                self._mw.curr_value_comboBox.setCurrentIndex(index)
+        self._mw.curr_value_comboBox.blockSignals(False)
+        self.current_value_channel_changed()
 
         # Update plot widget axes
         ch_list = self._time_series_logic.active_channels
@@ -432,7 +440,7 @@ class TimeSeriesGui(GUIBase):
         """
         """
         curr_channels = self._time_series_logic.active_channel_names
-        curr_av_channels = self._time_series_logic.averaged_channels
+        curr_av_channels = self._time_series_logic.averaged_channel_names
         for chnl, widgets in self._csd_widgets.items():
             widgets['checkbox1'].setChecked(chnl in curr_channels)
             widgets['checkbox2'].setChecked(chnl in curr_av_channels)
@@ -457,9 +465,6 @@ class TimeSeriesGui(GUIBase):
         if smooth_data is not None:
             for channel, y_arr in smooth_data.items():
                 self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
-
-        # self._vb.autoRange()
-        self._pw.autoRange()
 
         curr_value_channel = self._mw.curr_value_comboBox.currentText()
         if curr_value_channel != 'None':
@@ -577,7 +582,8 @@ class TimeSeriesGui(GUIBase):
         """
         """
         val = self._mw.curr_value_comboBox.currentText()
-        self._mw.curr_value_Label.setVisible(val != 'None')
+        self._current_value_channel = None if val == 'None' else val
+        self._mw.curr_value_Label.setVisible(self._current_value_channel is not None)
 
     @QtCore.Slot()
     def restore_default_view(self):
@@ -633,7 +639,6 @@ class TimeSeriesGui(GUIBase):
                 w['checkbox1'].setChecked(enabled)
         if 'averaged_channels' in settings_dict:
             val = settings_dict['averaged_channels']
-            print('averaged_channels in GUI:', val)
             for chnl, w in self._csd_widgets.items():
                 enabled = chnl in val
                 w['checkbox2'].setChecked(enabled)
