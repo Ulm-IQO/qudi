@@ -1,0 +1,6 @@
+Binning         : 0
+Offset          : 0
+AcquisitionTime : 1000
+SyncDivider     : 1
+SyncEdgeTrg     : -50
+InputEdgeTrg    : -50
