@@ -91,8 +91,10 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         super(OptimizerSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
+
 class SaveDialog(QtWidgets.QDialog):
     """ Dialog to provide feedback and block GUI while saving """
+
     def __init__(self, parent, title="Please wait", text="Saving..."):
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -106,6 +108,7 @@ class SaveDialog(QtWidgets.QDialog):
         self.hbox.addWidget(self.text)
         self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
         self.setLayout(self.hbox)
+
 
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
@@ -127,8 +130,10 @@ class ConfocalGui(GUIBase):
 
     # status var
     adjust_cursor_roi = StatusVar(default=True)
-    slider_small_step = StatusVar(default=10e-9)    # initial value in meter
-    slider_big_step = StatusVar(default=100e-9)     # initial value in meter
+    slider_small_step = StatusVar(default=10e-9)  # initial value in meter
+    slider_big_step = StatusVar(default=100e-9)  # initial value in meter
+    _x_programmable = StatusVar(default='340e-6')
+    _y_programmable = StatusVar(default='340e-6')
 
     # signals
     sigStartOptimizer = QtCore.Signal(list, str)
@@ -150,7 +155,7 @@ class ConfocalGui(GUIBase):
 
         self._hardware_state = True
 
-        self.initMainUI()      # initialize the main GUI
+        self.initMainUI()  # initialize the main GUI
         self.initSettingsUI()  # initialize the settings GUI
         self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
 
@@ -215,10 +220,11 @@ class ConfocalGui(GUIBase):
         self.xy_refocus_image = ScanImageItem(
             image=self._optimizer_logic.xy_refocus_image[:, :, 4 + self.opt_channel],
             axisOrder='row-major')
-        self.xy_refocus_image.set_image_extent(((self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                                                 self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
-                                                (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
-                                                 self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size)))
+        self.xy_refocus_image.set_image_extent(
+            ((self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+              self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
+             (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+              self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size)))
 
         self.depth_refocus_image = pg.PlotDataItem(
             x=self._optimizer_logic._zimage_Z_values,
@@ -251,7 +257,7 @@ class ConfocalGui(GUIBase):
         # Add crosshair to the xy refocus scan
         self._mw.xy_refocus_ViewWidget_2.toggle_crosshair(True, movable=False)
         self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic._initial_pos_x,
-                                                        self._optimizer_logic._initial_pos_y))
+                                                            self._optimizer_logic._initial_pos_y))
 
         # Set the state button as ready button as default setting.
         self._mw.action_stop_scanning.setEnabled(False)
@@ -372,6 +378,10 @@ class ConfocalGui(GUIBase):
 
         # Update the inputed/displayed numbers if the cursor has left the field:
         self._mw.set_confocal_to_center_Button.clicked.connect(self.set_confocal_crosshair_to_center)
+        self._mw.set_confocal_to_programmable.clicked.connect(self.set_confocal_crosshair_to_programmable)
+        self._mw.set_new_location.clicked.connect(self.set_new_location_programmable)
+        self._mw.set_confocal_to_programmable.setText(
+            "{:3.1f}:{:3.1f}".format(float(self._x_programmable) * 1e6, float(self._y_programmable) * 1e6))
         self._mw.x_current_InputWidget.editingFinished.connect(self.update_from_input_x)
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_from_input_y)
         self._mw.z_current_InputWidget.editingFinished.connect(self.update_from_input_z)
@@ -400,27 +410,27 @@ class ConfocalGui(GUIBase):
             self._mw.action_scan_xy_start.triggered,
             delay=0.1,
             slot=self.xy_scan_clicked
-            )
-        self._scan_xy_resume_proxy =  pg.SignalProxy(
+        )
+        self._scan_xy_resume_proxy = pg.SignalProxy(
             self._mw.action_scan_xy_resume.triggered,
             delay=0.1,
             slot=self.continue_xy_scan_clicked
-            )
+        )
         self._scan_depth_start_proxy = pg.SignalProxy(
             self._mw.action_scan_depth_start.triggered,
             delay=0.1,
             slot=self.depth_scan_clicked
-            )
+        )
         self._scan_depth_resume_proxy = pg.SignalProxy(
             self._mw.action_scan_depth_resume.triggered,
             delay=0.1,
             slot=self.continue_depth_scan_clicked
-            )
+        )
         self._optimize_position_proxy = pg.SignalProxy(
             self._mw.action_optimize_position.triggered,
             delay=0.1,
             slot=self.refocus_clicked
-            )
+        )
 
         # history actions
         self._mw.actionForward.triggered.connect(self._scanning_logic.history_forward)
@@ -666,7 +676,7 @@ class ConfocalGui(GUIBase):
         """
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
-        position = self._scanning_logic.get_position()   # in meters
+        position = self._scanning_logic.get_position()  # in meters
         x_pos = position[0]
         y_pos = position[1]
         z_pos = position[2]
@@ -810,7 +820,7 @@ class ConfocalGui(GUIBase):
         # Enable the scan buttons
         self._mw.action_scan_xy_start.setEnabled(True)
         self._mw.action_scan_depth_start.setEnabled(True)
-#        self._mw.actionRotated_depth_scan.setEnabled(True)
+        #        self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
 
@@ -929,7 +939,7 @@ class ConfocalGui(GUIBase):
 
         self._optimizer_logic.optimization_sequence = str(
             self._osd.optimization_sequence_lineEdit.text()
-            ).upper().replace(" ", "").split(',')
+        ).upper().replace(" ", "").split(',')
         self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.paramUseSettings
@@ -1001,6 +1011,20 @@ class ConfocalGui(GUIBase):
         self._mw.x_current_InputWidget.editingFinished.emit()
         self._mw.y_current_InputWidget.editingFinished.emit()
 
+    def set_confocal_crosshair_to_programmable(self):
+        self._mw.x_current_InputWidget.setValue(self._x_programmable)
+        self._mw.y_current_InputWidget.setValue(self._y_programmable)
+        self._mw.x_current_InputWidget.editingFinished.emit()
+        self._mw.y_current_InputWidget.editingFinished.emit()
+
+    def set_new_location_programmable(self):
+        position = self._scanning_logic.get_position()
+        x_pos = position[0]
+        y_pos = position[1]
+        self._x_programmable = x_pos
+        self._y_programmable = y_pos
+        self._mw.set_confocal_to_programmable.setText(
+            "{:3.1f}:{:3.1f}".format(float(self._x_programmable) * 1e6, float(self._y_programmable) * 1e6))
 
     def update_crosshair_position_from_logic(self, tag):
         """ Update the GUI position of the crosshair from the logic.
@@ -1240,7 +1264,7 @@ class ConfocalGui(GUIBase):
         x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
         self.update_roi_xy(h=x_pos)
         # if self._scanning_logic.depth_img_is_xz:
-            # self.update_roi_depth(h=x_pos)
+        # self.update_roi_depth(h=x_pos)
         self.update_input_x(x_pos)
         self._scanning_logic.set_position('xslider', x=x_pos)
         self._optimizer_logic.set_position('xslider', x=x_pos)
@@ -1793,7 +1817,7 @@ class ConfocalGui(GUIBase):
 
         for i in range(2):
             self.xy_image.getViewBox().setRange(xRange=(xMin, xMax), yRange=(yMin, yMax),
-                update=True)
+                                                update=True)
 
     def activate_zoom_double_click(self):
         """ Enable zoom tool when double clicking image """

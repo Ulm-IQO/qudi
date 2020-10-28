@@ -80,8 +80,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             self.inst = self.rm.open_resource(
                 interface,
                 baud_rate=rate,
-                write_termination='\r\n',
-                read_termination='\r\n',
+                write_termination='\r',
+                read_termination='\r',
                 send_end=True)
             # give laser 2 seconds maximum to reply
             self.inst.timeout = 2000

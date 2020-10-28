@@ -1269,7 +1269,7 @@ class ConfocalLogic(GenericLogic):
             self.signal_tilt_correction_update.emit()
             self.signal_tilt_correction_active.emit(self._scanning_device.tiltcorrection)
             # self._change_position('history') # TODO: This is commented out to not change Crosshair pos in History
-            self.signal_change_position.emit('history')
+            # self.signal_change_position.emit('history')
             self.signal_history_event.emit()
 
     def history_back(self):
@@ -1282,6 +1282,6 @@ class ConfocalLogic(GenericLogic):
             self.signal_depth_image_updated.emit()
             self.signal_tilt_correction_update.emit()
             self.signal_tilt_correction_active.emit(self._scanning_device.tiltcorrection)
-            self._change_position('history')
-            self.signal_change_position.emit('history')
+            # self._change_position('history') # TODO: This is commented out to not change Crosshair pos in History
+            # self.signal_change_position.emit('history')
             self.signal_history_event.emit()

@@ -157,6 +157,8 @@ class ConfocalGui(GUIBase):
 
         self._save_dialog = SaveDialog(self._mw)
 
+        self._mw.zAxisLabel.setText('Bias EOM :')
+
     def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
 

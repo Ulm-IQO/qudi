@@ -236,7 +236,7 @@ class BasicPulseExtractor(PulseExtractorBase):
         falling_ind.sort()
 
         # find the maximum laser length to use as size for the laser array
-        laser_length = np.max(falling_ind - rising_ind)
+        laser_length = abs(np.max(falling_ind - rising_ind))
 
         # initialize the empty output array
         laser_arr = np.zeros((number_of_lasers, laser_length), dtype='int64')
