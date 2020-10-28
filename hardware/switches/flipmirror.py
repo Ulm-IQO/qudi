@@ -26,7 +26,6 @@ from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
-import numpy as np
 
 
 class FlipMirror(Base, SwitchInterface):
@@ -98,22 +97,15 @@ class FlipMirror(Base, SwitchInterface):
             except TypeError:
                 self._names_of_switches = ['1']
 
-        try:
-            if len(self._names_of_states) == len(self._names_of_switches) \
-                    and len(self._names_of_states[0]) > 1 \
-                    and not isinstance(self._names_of_states[0], str):
-                self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
-                                         for index, switch in enumerate(self._names_of_switches)}
-            else:
-                raise TypeError
-        except TypeError:
-            if not isinstance(self._names_of_states, str) and len(self._names_of_states) > 1:
-                self._names_of_states = {switch: [str(name) for name in self._names_of_states]
-                                         for index, switch in enumerate(self._names_of_switches)}
-            else:
-                self.log.error(f'names_of_states must either be a list of two or more names for the states '
-                               f'which are applied to all switched or it must be a list '
-                               f'of length {len(self._names_of_switches)} with elements of the aforementioned shape.')
+        if isinstance(self._names_of_states, (list, tuple)) \
+                and len(self._names_of_states) == len(self._names_of_switches) \
+                and isinstance(self._names_of_states[0], (list, tuple)) \
+                and len(self._names_of_states[0]) > 1:
+            self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
+                                     for index, switch in enumerate(self._names_of_switches)}
+        else:
+            self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
+                           f'with the elements being a list of two or more names for the states.')
 
         # reset states if requested, otherwise use the saved states
         if not self._remember_states \
