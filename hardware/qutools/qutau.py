@@ -13,18 +13,18 @@ from interface.simple_data_interface import SimpleDataInterface
 
 from core.module import Base
 from interface.fast_counter_interface import FastCounterInterface
-from interface.slow_counter_interface import SlowCounterInterface, SlowCounterConstraints, CountingMode
+# from interface.slow_counter_interface import SlowCounterInterface, SlowCounterConstraints, CountingMode
 
 
 # from core.interface import interface_method
 
 
-class Qutau(Base, FastCounterInterface, SlowCounterInterface):
+class Qutau(Base, FastCounterInterface):
     """
-    This is just a dummy hardware class to be used with SimpleDataReaderLogic.
-    This is a dummy config file:
+    This is a hardware file to be used with qutau from qutools.
+    This is a dummy config file for qutau:
         fastcounter_qutau:
-            module.Class: 'qutau.qutau.Qutau'
+            module.Class: 'qutools.qutau.Qutau'
             deviceID: -1
             activeChannels: [1, 2]
             count_channel: 0
@@ -38,6 +38,7 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
     Count channel 0 means channel 1 and trigger channel 1 means channel 2 and so on...
     Load the Qutau library file tdcbase.dll. Can be found on the server or in the directory of the qutau software
     in programs files folder and should be placed in <Windows>/System32/
+    Or simply install the software gui from qutau.
     """
     _deviceId = ConfigOption('deviceID', 0, missing='warn')
     _activeChannels = ConfigOption('activeChannels', 0, missing='warn')
@@ -112,9 +113,9 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
         for channel in channels:
             bitnumber += 2 ** (channel - 1)
 
-        error = self._dll.TDC_enableChannels(bitnumber)
-        if error is not 0:
-            print('Error in TDC_enableChannels' + self.err_dict[error])
+        ans = self._dll.TDC_enableChannels(bitnumber)
+        if ans is not 0:
+            print('Error in TDC_enableChannels' + self.err_dict[ans])
 
     def setCoincidenceWindow(self, coincWin=None):
         """Set Coincidence Window.
@@ -240,11 +241,8 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
     def getCoincCounters(self):
         data = np.zeros(int(19), dtype=np.int32)
         update = ctypes.c_int32()
-        a = time.time()
         ans = self._dll.TDC_getCoincCounters(data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
                                              ctypes.byref(update))
-        b = time.time()
-        print(b - a)
         if update.value == 1:
             return np.array(data)
         else:
@@ -521,8 +519,8 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
 
         If the hardware does not support these features, the values should be None
         """
-        data, count, tooSmall, tooLarge, starts, stops, expTime = self.getHistogram(self._count_channel,
-                                                                                    self._trigger_channel, 0)
+        data, count, tooSmall, tooLarge, starts, stops, expTime = self.getHistogram(self._trigger_channel,
+                                                                                    self._count_channel, 0)
         self.counts_bin_array = data
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}
@@ -544,90 +542,90 @@ class Qutau(Base, FastCounterInterface, SlowCounterInterface):
     #
     #     return constraints
 
-    def set_up_clock(self, clock_frequency=None, clock_channel=None):
-        """ Configures the hardware clock of the NiDAQ card to give the timing.
+    # def set_up_clock(self, clock_frequency=None, clock_channel=None):
+    #     """ Configures the hardware clock of the NiDAQ card to give the timing.
+    #
+    #     @param float clock_frequency: if defined, this sets the frequency of the clock
+    #     @param string clock_channel: if defined, this is the physical channel of the clock
+    #     @return int: error code (0:OK, -1:error)
+    #     """
+    #     self._clock_frequency = clock_frequency
+    #     self._exp_time = int(1 / clock_frequency * 1000)  # calculate the inverse clock_frequency in ms
+    #     self.setExposureTime(self._exp_time)
+    #
+    #     return 0
 
-        @param float clock_frequency: if defined, this sets the frequency of the clock
-        @param string clock_channel: if defined, this is the physical channel of the clock
-        @return int: error code (0:OK, -1:error)
-        """
-        self._clock_frequency = clock_frequency
-        self._exp_time = int(1 / clock_frequency * 1000)  # calculate the inverse clock_frequency in ms
-        self.setExposureTime(self._exp_time)
+    # def set_up_counter(self,
+    #                    counter_channels=None,
+    #                    sources=None,
+    #                    clock_channel=None,
+    #                    counter_buffer=None):
+    #     """ Configures the actual counter with a given clock.
+    #
+    #     @param list(str) counter_channels: optional, physical channel of the counter
+    #     @param list(str) sources: optional, physical channel where the photons
+    #                                photons are to count from
+    #     @param str clock_channel: optional, specifies the clock channel for the
+    #                               counter
+    #     @param int counter_buffer: optional, a buffer of specified integer
+    #                                length, where in each bin the count numbers
+    #                                are saved.
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #
+    #     There need to be exactly the same number sof sources and counter channels and
+    #     they need to be given in the same order.
+    #     All counter channels share the same clock.
+    #     """
+    #     if counter_channels is None:
+    #         counter_channels = self._counter_channels
+    #     else:
+    #         self._counter_channels = counter_channels
+    #     self.setChannels(counter_channels)
+    #
+    #     channels = self.get_counter_channels()
+    #
+    #     return 0
 
-        return 0
+    # def get_counter(self, samples=None):
+    #     """ Returns the current counts per second of the counter.
+    #
+    #     @param int samples: if defined, number of samples to read in one go
+    #
+    #     @return numpy.array((n, uint32)): the photon counts per second for n channels
+    #     """
+    #     data = self.getCoincCounters()
+    #     counter_data = np.array([[data[0]]]) / self._exp_time * 1000
+    #
+    #     return counter_data
 
-    def set_up_counter(self,
-                       counter_channels=None,
-                       sources=None,
-                       clock_channel=None,
-                       counter_buffer=None):
-        """ Configures the actual counter with a given clock.
+    # def get_counter_channels(self):
+    #     """ Returns the list of counter channel names.
+    #
+    #     @return list(str): channel names
+    #
+    #     Most methods calling this might just care about the number of channels, though.
+    #     """
+    #
+    #     channel_array = []
+    #     _, channels, _, _ = self.getDeviceParams()
+    #     channels_string = '{0:b}'.format(channels)
+    #     for ii, channel in enumerate(channels_string):
+    #         if int(channel):
+    #             channel_array.append(ii)
+    #
+    #     return channel_array
 
-        @param list(str) counter_channels: optional, physical channel of the counter
-        @param list(str) sources: optional, physical channel where the photons
-                                   photons are to count from
-        @param str clock_channel: optional, specifies the clock channel for the
-                                  counter
-        @param int counter_buffer: optional, a buffer of specified integer
-                                   length, where in each bin the count numbers
-                                   are saved.
-
-        @return int: error code (0:OK, -1:error)
-
-        There need to be exactly the same number sof sources and counter channels and
-        they need to be given in the same order.
-        All counter channels share the same clock.
-        """
-        if counter_channels is None:
-            counter_channels = self._counter_channels
-        else:
-            self._counter_channels = counter_channels
-        self.setChannels(counter_channels)
-
-        channels = self.get_counter_channels()
-
-        return 0
-
-    def get_counter(self, samples=None):
-        """ Returns the current counts per second of the counter.
-
-        @param int samples: if defined, number of samples to read in one go
-
-        @return numpy.array((n, uint32)): the photon counts per second for n channels
-        """
-        data = self.getCoincCounters()
-        counter_data = np.array([[data[0]]]) / self._exp_time * 1000
-
-        return counter_data
-
-    def get_counter_channels(self):
-        """ Returns the list of counter channel names.
-
-        @return list(str): channel names
-
-        Most methods calling this might just care about the number of channels, though.
-        """
-
-        channel_array = []
-        _, channels, _, _ = self.getDeviceParams()
-        channels_string = '{0:b}'.format(channels)
-        for ii, channel in enumerate(channels_string):
-            if int(channel):
-                channel_array.append(ii)
-
-        return channel_array
-
-    def close_counter(self):
-        """ Closes the counter and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
-
-    def close_clock(self):
-        """ Closes the clock and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
+    # def close_counter(self):
+    #     """ Closes the counter and cleans up afterwards.
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #     """
+    #     return 0
+    #
+    # def close_clock(self):
+    #     """ Closes the clock and cleans up afterwards.
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #     """
+    #     return 0
