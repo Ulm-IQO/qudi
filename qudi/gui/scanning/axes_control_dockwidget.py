@@ -24,7 +24,20 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
 
-__all__ = ('AxesControlWidget',)
+__all__ = ('AxesControlDockWidget', 'AxesControlWidget')
+
+
+class AxesControlDockWidget(QtWidgets.QDockWidget):
+    """ Scanner control QDockWidget based on the corresponding QWidget subclass
+    """
+
+    def __init__(self, scanner_axes):
+        super().__init__('Axes Control')
+        self.setObjectName('axes_control_dockWidget')
+        widget = AxesControlWidget(scanner_axes=scanner_axes)
+        widget.setObjectName('axes_control_widget')
+        self.setWidget(widget)
+        return
 
 
 class AxesControlWidget(QtWidgets.QWidget):
