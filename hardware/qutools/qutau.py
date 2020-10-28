@@ -224,8 +224,6 @@ class Qutau(Base, FastCounterInterface):
         ans = self._dll.TDC_getLastTimestamps(reset, timestamps.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)),
                                               channels.ctypes.data_as(ctypes.POINTER(ctypes.c_int8)),
                                               ctypes.byref(valid))
-
-        print("Writing", time.time() - curr_t)
         if ans != 0:  # "never fails"
             print("Error in TDC_getLastTimestamps: " + self.err_dict[ans])
 
