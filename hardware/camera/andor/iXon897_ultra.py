@@ -155,7 +155,7 @@ class IxonUltra(Base, CameraInterface):
         # self.set_exposure(self._exposure)
         # self.set_setpoint_temperature(self._temperature)
         self.dll = cdll.LoadLibrary(self._dll_location)
-        self.dll.Initialize()
+        self.dll.initialize()
         nx_px, ny_px = c_int(), c_int()
         self._get_detector(nx_px, ny_px)
         self._width, self._height = nx_px.value, ny_px.value
