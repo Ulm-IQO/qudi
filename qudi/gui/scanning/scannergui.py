@@ -38,6 +38,7 @@ from qudi.core.gui.colordefs import QudiPalettePale as palette
 from .axes_control_dockwidget import AxesControlDockWidget
 from .optimizer_setting_dialog import OptimizerSettingDialog
 from .scan_settings_dialog import ScannerSettingDialog
+from .scan_dockwidget import Scan2DDockWidget
 
 
 class ConfocalMainWindow(QtWidgets.QMainWindow):
@@ -59,26 +60,6 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
             event.accept()
         else:
             super().mouseDoubleClickEvent(event)
-        return
-
-
-class Scan2dDockWidget(QtWidgets.QDockWidget):
-    """ Create the 2D scan dockwidget
-    """
-
-    def __init__(self, axes, channel_units):
-        dock_title = '{0}-{1} Scan'.format(axes[0].name.title(), axes[1].name.title())
-        super().__init__(dock_title)
-        self.setObjectName('{0}_{1}_scan_dockWidget'.format(axes[0].name, axes[1].name))
-
-        self.scan_widget = ScanWidget()
-        self.toggle_scan_button = self.scan_widget.toggle_scan_button
-        self.channel_combobox = self.scan_widget.channel_selection_combobox
-        self.scan_widget.set_axis_label('bottom', label=axes[0].name.title(), unit=axes[0].unit)
-        self.scan_widget.set_axis_label('left', label=axes[1].name.title(), unit=axes[1].unit)
-        self.scan_widget.set_data_channels(channel_units)
-
-        self.setWidget(self.scan_widget)
         return
 
 
@@ -212,6 +193,7 @@ class ScannerGui(GuiBase):
         the event argument from fysom to the methods.
         """
         self._optimizer_id = id(self._optimize_logic())
+        print('object name:', self._optimize_logic().objectName())
 
         self.scan_2d_dockwidgets = dict()
         self.scan_1d_dockwidgets = dict()
@@ -481,7 +463,7 @@ class ScannerGui(GuiBase):
             del self.scan_1d_dockwidgets[axes]
         elif axes in self.scan_2d_dockwidgets:
             self._mw.removeDockWidget(self.scan_2d_dockwidgets[axes])
-            self.scan_2d_dockwidgets[axes].toggle_scan_button.clicked.disconnect()
+            self.scan_2d_dockwidgets[axes].sigScanToggled.disconnect()
             self.scan_2d_dockwidgets[axes].scan_widget.crosshairs[
                 0].sigDraggedPosChanged.disconnect()
             self.scan_2d_dockwidgets[axes].scan_widget.sigMouseAreaSelected.disconnect()
@@ -491,8 +473,8 @@ class ScannerGui(GuiBase):
         return
 
     def _add_scan_dockwidget(self, axes):
-        constraints = self._scanning_logic().scanner_constraints
-        axes_constr = constraints.axes
+        axes_constr = self._scanning_logic().scanner_axes
+        channel_constr = self._scanning_logic().scanner_channels
         optimizer_settings = self._optimize_logic().optimize_settings
         axes = tuple(axes)
         if len(axes) == 1:
@@ -514,36 +496,15 @@ class ScannerGui(GuiBase):
                 self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
                                'already created. Remove old widget first.'.format(axes))
                 return
-            dockwidget = Scan2dDockWidget(
-                (axes_constr[axes[0]], axes_constr[axes[1]]),
-                {name: ch.unit for name, ch in constraints.channels.items()}
-            )
+            dockwidget = Scan2DDockWidget(scan_axes=(axes_constr[axes[0]], axes_constr[axes[1]]),
+                                          channels=tuple(channel_constr.values()))
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
             self.scan_2d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-            dockwidget.scan_widget.add_crosshair(movable=True, min_size_factor=0.02)
-            # dockwidget.scan_widget.add_crosshair(movable=False,
-            #                                      pen={'color': '#00ffff', 'width': 1})
-            dockwidget.scan_widget.bring_crosshair_on_top(0)
-            dockwidget.scan_widget.crosshairs[0].set_allowed_range(
-                (axes_constr[axes[0]].value_range, axes_constr[axes[1]].value_range)
-            )
-            dockwidget.scan_widget.crosshairs[0].set_size(
-                (optimizer_settings['scan_range'][axes[0]],
-                 optimizer_settings['scan_range'][axes[1]])
-            )
-            dockwidget.scan_widget.toggle_zoom_by_selection(True)
-            dockwidget.scan_widget.crosshairs[0].sigDraggedPosChanged.connect(
-                self.__get_crosshair_update_func(axes, dockwidget.scan_widget.crosshairs[0])
-            )
-            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
-            dockwidget.scan_widget.sigMouseAreaSelected.connect(
-                self.__get_range_from_selection_func(axes)
-            )
-            # dockwidget.scan_widget.set_image_extent(
-            #     (axes_constr[axes[0]].value_range, axes_constr[axes[1]].value_range),
-            #     adjust_for_px_size=False
-            # )
+
+            dockwidget.sigPositionDragged.connect(self.__get_crosshair_update_func(axes))
+            dockwidget.sigScanToggled.connect(self.__get_toggle_scan_func(axes))
+            dockwidget.sigMouseAreaSelected.connect(self.__get_range_from_selection_func(axes))
         return
 
     @QtCore.Slot(bool)
@@ -623,32 +584,36 @@ class ScannerGui(GuiBase):
         if not isinstance(pos_dict, dict):
             pos_dict = self._scanning_logic().scanner_target
 
-        self._update_target_display(pos_dict)
+        self._update_scan_crosshairs(pos_dict)
+        self.scanner_control_dockwidget.widget().set_target(pos_dict)
         return
 
     @QtCore.Slot(bool, object, object)
     def scan_state_updated(self, is_running, scan_data=None, caller_id=None):
-        self._toggle_enable_scan_actions_buttons(not is_running)
+        scan_axes = scan_data.scan_axes if scan_data is not None else None
+        self._toggle_enable_scan_buttons(not is_running, exclude_scan=scan_axes)
+        self._toggle_enable_actions(not is_running)
         if scan_data is not None:
             if caller_id == self._optimizer_id:
                 # ToDo:
                 print('Update scan state for optimize run...')
             else:
+                print('scan state updated:', caller_id, self._optimizer_id)
                 if scan_data.scan_dimension == 2:
-                    dockwidget = self.scan_2d_dockwidgets.get(scan_data.scan_axes, None)
+                    dockwidget = self.scan_2d_dockwidgets.get(scan_axes, None)
                 else:
-                    dockwidget = self.scan_1d_dockwidgets.get(scan_data.scan_axes, None)
+                    dockwidget = self.scan_1d_dockwidgets.get(scan_axes, None)
                 if dockwidget is not None:
-                    dockwidget.toggle_scan_button.setChecked(is_running)
-                    dockwidget.toggle_scan_button.setEnabled(True)
+                    dockwidget.toggle_scan(is_running)
                     self._update_scan_data(scan_data)
         return
 
     @QtCore.Slot(bool, dict, object)
     def optimize_state_updated(self, is_running, optimal_position=None, fit_data=None):
-        self._toggle_enable_scan_actions_buttons(not is_running)
+        self._toggle_enable_scan_buttons(not is_running)
+        self._toggle_enable_actions(not is_running,
+                                    exclude_action=self._mw.action_optimize_position)
         self._mw.action_optimize_position.setChecked(is_running)
-        self._mw.action_optimize_position.setEnabled(True)
         # Update optimal position crosshair
         if isinstance(optimal_position, dict):
             if len(optimal_position) == 2:
@@ -691,29 +656,19 @@ class ScannerGui(GuiBase):
     def toggle_optimize(self, enabled):
         """
         """
-        self._toggle_enable_scan_actions_buttons(not enabled)
+        self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
+        self._toggle_enable_scan_buttons(not enabled)
         self.sigToggleOptimize.emit(enabled)
 
-    def _update_target_display(self, pos_dict, exclude_widget=None):
+    def _update_scan_crosshairs(self, pos_dict, exclude_scan=None):
         """
-
-        @param dict pos_dict:
-        @param object exclude_widget:
         """
-        self.scanner_control_dockwidget.widget().set_target(pos_dict)
-        for axis, pos in pos_dict.items():
-            for axes, dockwidget in self.scan_2d_dockwidgets.items():
-                crosshair = dockwidget.scan_widget.crosshairs[0]
-                if crosshair is exclude_widget:
-                    continue
-                ax1, ax2 = axes
-                if ax1 == axis:
-                    crosshair_pos = (pos, crosshair.position[1])
-                    crosshair.set_position(crosshair_pos)
-                elif ax2 == axis:
-                    crosshair_pos = (crosshair.position[0], pos)
-                    crosshair.set_position(crosshair_pos)
-        return
+        for scan_axes, dockwidget in self.scan_2d_dockwidgets.items():
+            if exclude_scan == scan_axes or not any(ax in pos_dict for ax in scan_axes):
+                continue
+            old_x, old_y = dockwidget.crosshair.position
+            new_pos = (pos_dict.get(scan_axes[0], old_x), pos_dict.get(scan_axes[1], old_y))
+            dockwidget.crosshair.set_position(new_pos)
 
     def _update_scan_data(self, scan_data):
         """
@@ -727,7 +682,7 @@ class ScannerGui(GuiBase):
             if dockwidget is None:
                 self.log.error('No 2D scan dockwidget found for scan axes {0}'.format(axes))
                 return
-            dockwidget.scan_widget.set_image(data)
+            dockwidget.set_scan_data(data)
             if data is not None:
                 dockwidget.scan_widget.set_image_extent(extent)
             dockwidget.scan_widget.autoRange()
@@ -755,36 +710,49 @@ class ScannerGui(GuiBase):
             dockwidget.plot_widget.setLabel('left', channel, units=scan_data.channel_units[channel])
         return
 
-    def _toggle_enable_scan_actions_buttons(self, enable):
-        self._mw.action_utility_zoom.setEnabled(enable)
-        self._mw.action_utility_full_range.setEnabled(enable)
-        self._mw.action_history_back.setEnabled(enable)
-        self._mw.action_history_forward.setEnabled(enable)
-        self._mw.action_optimize_position.setEnabled(enable)
+    def _toggle_enable_scan_buttons(self, enable, exclude_scan=None):
         for axes, dockwidget in self.scan_2d_dockwidgets.items():
-            dockwidget.toggle_scan_button.setEnabled(enable)
+            if exclude_scan == axes:
+                continue
+            dockwidget.toggle_enabled(enable)
         for axes, dockwidget in self.scan_1d_dockwidgets.items():
-            dockwidget.toggle_scan_button.setEnabled(enable)
+            if exclude_scan == axes:
+                continue
+            dockwidget.toggle_enabled(enable)
 
-    def __get_crosshair_update_func(self, ax, crosshair):
+    def _toggle_enable_actions(self, enable, exclude_action=None):
+        if exclude_action is not self._mw.action_utility_zoom:
+            self._mw.action_utility_zoom.setEnabled(enable)
+        if exclude_action is not self._mw.action_utility_full_range:
+            self._mw.action_utility_full_range.setEnabled(enable)
+        if exclude_action is not self._mw.action_history_back:
+            self._mw.action_history_back.setEnabled(enable)
+        if exclude_action is not self._mw.action_history_forward:
+            self._mw.action_history_forward.setEnabled(enable)
+        if exclude_action is not self._mw.action_optimize_position:
+            self._mw.action_optimize_position.setEnabled(enable)
+
+    def __get_crosshair_update_func(self, axes):
         def update_func(x, y):
-            pos_dict = {ax[0]: x, ax[1]: y}
-            self._update_target_display(pos_dict, exclude_widget=crosshair)
+            pos_dict = {axes[0]: x, axes[1]: y}
+            self._update_scan_crosshairs(pos_dict, exclude_scan=axes)
+            # self.scanner_control_dockwidget.widget().set_target(pos_dict)
             self.set_scanner_target_position(pos_dict)
         return update_func
 
-    def __get_toggle_scan_func(self, ax):
+    def __get_toggle_scan_func(self, axes):
         def toggle_func(enabled):
-            self._toggle_enable_scan_actions_buttons(not enabled)
-            self.sigToggleScan.emit(enabled, ax, id(self))
+            self._toggle_enable_scan_buttons(not enabled, exclude_scan=axes)
+            self._toggle_enable_actions(not enabled)
+            self.sigToggleScan.emit(enabled, axes, id(self))
         return toggle_func
 
-    def __get_range_from_selection_func(self, ax):
+    def __get_range_from_selection_func(self, axes):
         def set_range_func(x_range, y_range):
             x_min, x_max = min(x_range), max(x_range)
             y_min, y_max = min(y_range), max(y_range)
             self.sigScanSettingsChanged.emit(
-                {'range': {ax[0]: (x_min, x_max), ax[1]: (y_min, y_max)}}
+                {'range': {axes[0]: (x_min, x_max), axes[1]: (y_min, y_max)}}
             )
             self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
