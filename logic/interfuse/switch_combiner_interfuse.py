@@ -85,7 +85,7 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
             for switch, states in self.switch2().names_of_states.items():
                 new_dict[self.switch2().name + '.' + switch] = states
         else:
-            new_dict = self.switch1().names_of_states + self.switch2().names_of_states
+            new_dict = {**self.switch1().names_of_states, **self.switch2().names_of_states}
         return new_dict
 
     @property
@@ -103,7 +103,7 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
             for switch, states in self.switch2().states.items():
                 new_dict[self.switch2().name + '.' + switch] = states
         else:
-            new_dict = self.switch1().states + self.switch2().states
+            new_dict = {**self.switch1().states, **self.switch2().states}
         return new_dict
 
     @states.setter
@@ -123,15 +123,21 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
             states2 = dict()
             for switch, state in value.items():
                 if self._extend_hardware_name:
-                    if switch.startswith(self.switch1().name):
+                    if switch.startswith(self.switch1().name + '.'):
                         switch = switch[len(self.switch1().name) + 1:]
-                    elif switch.startswith(self.switch2().name):
-                        switch = switch[len(self.switch2().name) + 1:]
+                        if switch in self.switch1().names_of_states:
+                            states1[switch] = state
 
-                if switch in self.switch1().names_of_states:
-                    states1[switch] = state
+                    elif switch.startswith(self.switch2().name + '.'):
+                        switch = switch[len(self.switch2().name) + 1:]
+                        if switch in self.switch2().names_of_states:
+                            states2[switch] = state
+
                 else:
-                    states2[switch] = state
+                    if switch in self.switch1().names_of_states:
+                        states1[switch] = state
+                    else:
+                        states2[switch] = state
             self.switch1().states = states1
             self.switch2().states = states2
         else:
