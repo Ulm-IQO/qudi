@@ -26,7 +26,6 @@ from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
-import numpy as np
 
 
 class HBridge(Base, SwitchInterface):
@@ -57,7 +56,7 @@ class HBridge(Base, SwitchInterface):
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
 
     # if remember_states is True the last state will be restored at reloading of the module
-    _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+    _remember_states = ConfigOption(name='remember_states', default=False, missing='nothing')
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
