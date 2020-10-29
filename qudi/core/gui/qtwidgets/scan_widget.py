@@ -34,39 +34,27 @@ __all__ = ('ScanImageItem', 'ScanPlotWidget', 'ScanViewBox', 'ScanWidget')
 
 
 class ScanImageItem(ImageItem):
-    """
-    Extension of pg.ImageItem to display scanning microscopy images.
+    """ Extension of pg.ImageItem to display scanning microscopy images.
+
     Adds the signal sigMouseClicked to tap into mouse click events and receive the real world data
     coordinate of the click.
-    Adds blink correction functionality capable of filtering out single pixel wide artifacts along
-    a single image dimension. This is done by applying a non-linear 1D min-max-filter along a
-    single image dimension.
+    Adds functionality to automatically calculate colorscale from configurable data percentile.
     """
-    sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)
+    sigMouseClicked = QtCore.Signal(object, tuple)
 
     def __init__(self, *args, **kwargs):
-        self._use_blink_correction = False
-        self._blink_correction_axis = 0
-        self.orig_image = None
         self._percentiles = None
         super().__init__(*args, **kwargs)
-        # Change default colorscale
+        # Change default color scale
         self.setLookupTable(ColorScaleInferno().lut)
         return
-
-    @property
-    def use_blink_correction(self):
-        return self._use_blink_correction
-
-    @property
-    def blink_correction_axis(self):
-        return self._blink_correction_axis
 
     @property
     def percentiles(self):
         return self._percentiles
 
-    def set_percentiles(self, percentiles):
+    @percentiles.setter
+    def percentiles(self, percentiles):
         if percentiles is None:
             self._percentiles = None
             return
@@ -88,76 +76,45 @@ class ScanImageItem(ImageItem):
             raise TypeError('Image extent must be iterable of length 2.')
         if len(extent[0]) != 2 or len(extent[1]) != 2:
             raise TypeError('Image extent for each axis must be iterable of length 2.')
-        x_min, x_max = min(extent[0]), max(extent[0])
-        y_min, y_max = min(extent[1]), max(extent[1])
-        if adjust_for_px_size:
-            if self.image is not None and self.image.shape[0] > 1 and self.image.shape[1] > 1:
-                half_px_x = (x_max - x_min) / (2 * (self.image.shape[0] - 1))
-                half_px_y = (y_max - y_min) / (2 * (self.image.shape[1] - 1))
-                x_min -= half_px_x
-                x_max += half_px_x
-                y_min -= half_px_y
-                y_max += half_px_y
-        self.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
-        return
 
-    def toggle_blink_correction(self, activate, axis=0):
-        """
-        De-/Activates the blink correction filter.
-        Can filter out single pixel wide artifacts along a single image dimension.
-
-        @param bool activate: activate (True) or deactivate (False) the filter
-        @param int axis: Array dimension to apply the filter on (0 or 1)
-        """
-        activate = bool(activate)
-        axis = int(axis)
-        if not (0 <= axis < 2):
-            raise IndexError('axis index must be 0 or 1.')
-        if self._use_blink_correction != activate:
-            self._blink_correction_axis = axis
-            self._use_blink_correction = activate
-            if activate:
-                self.setImage(self.image, autoLevels=False)
-            else:
-                self.setImage(self.orig_image, autoLevels=False)
-        elif axis != self._blink_correction_axis:
-            self._blink_correction_axis = axis
-            if self._use_blink_correction:
-                self.setImage(self.orig_image, autoLevels=False)
+        if self.image is not None:
+            x_min, x_max = min(extent[0]), max(extent[0])
+            y_min, y_max = min(extent[1]), max(extent[1])
+            if adjust_for_px_size:
+                if self.image.shape[0] > 1 and self.image.shape[1] > 1:
+                    half_px_x = (x_max - x_min) / (2 * (self.image.shape[0] - 1))
+                    half_px_y = (y_max - y_min) / (2 * (self.image.shape[1] - 1))
+                    x_min -= half_px_x
+                    x_max += half_px_x
+                    y_min -= half_px_y
+                    y_max += half_px_y
+            self.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
         return
 
     def setImage(self, image=None, **kwargs):
         """
         pg.ImageItem method override to apply optional filter when setting image data.
         """
-        if image is None:
-            return super().setImage(image=image, **kwargs)
+        if image is not None:
+            masked_image = np.ma.masked_invalid(image).compressed()
+            if masked_image.size < 1:
+                image = None
 
-        if self._use_blink_correction:
-            self.orig_image = image.copy()
-            filt_image = scan_blink_correction(image=image, axis=self._blink_correction_axis)
-            if self._percentiles is not None:
-                masked_image = np.ma.masked_invalid(filt_image).compressed()
-                if masked_image.size > 0:
-                    min_value = np.percentile(masked_image, self._percentiles[0])
-                    max_value = np.percentile(masked_image, self._percentiles[1])
-                    kwargs['levels'] = (min_value, max_value)
-            super().setImage(image=filt_image, **kwargs)
-        else:
-            self.orig_image = None
-            if self._percentiles is not None:
-                masked_image = np.ma.masked_invalid(image).compressed()
-                if masked_image.size > 0:
-                    min_value = np.percentile(masked_image, self._percentiles[0])
-                    max_value = np.percentile(masked_image, self._percentiles[1])
-                    kwargs['levels'] = (min_value, max_value)
-            super().setImage(image=image, **kwargs)
+        if image is None:
+            self.clear()
+            return
+
+        if self._percentiles is not None:
+            min_value = np.percentile(masked_image, self._percentiles[0])
+            max_value = np.percentile(masked_image, self._percentiles[1])
+            kwargs['levels'] = (min_value, max_value)
+        super().setImage(image=image, **kwargs)
         return
 
     def mouseClickEvent(self, ev):
         if not ev.double():
             pos = self.getViewBox().mapSceneToView(ev.scenePos())
-            self.sigMouseClicked.emit(ev.button(), pos)
+            self.sigMouseClicked.emit(ev.button(), (pos.x(), pos.y()))
         return super().mouseClickEvent(ev)
 
 
@@ -167,7 +124,7 @@ class ScanPlotWidget(PlotWidget):
     Supported features:
      - draggable/static crosshair with optional range and size constraints.
      - zoom feature by rubberband selection
-     - rubberband area selection
+     - signalling for rubberband area selection
 
     This class depends on the ScanViewBox class defined further below.
     This class can be promoted in the Qt designer.
@@ -220,7 +177,7 @@ class ScanPlotWidget(PlotWidget):
         # Create new ScanCrosshair instance and add to crosshairs list
         self.crosshairs.append(ScanCrosshair(self.getViewBox(), *args, **kwargs))
         # Add crosshair to ViewBox
-        self.crosshairs[-1].add_to_view()
+        self.show_crosshair(-1)
         return
 
     def remove_crosshair(self, index=-1):
@@ -234,14 +191,12 @@ class ScanPlotWidget(PlotWidget):
         crosshair.deleteLater()
         return
 
-    def hide_crosshair(self, index):
-        crosshair = self.crosshairs[index]
-        crosshair.remove_from_view()
+    def hide_crosshair(self, index=-1):
+        self.crosshairs[index].remove_from_view()
         return
 
-    def show_crosshair(self, index):
-        crosshair = self.crosshairs[index]
-        crosshair.add_to_view()
+    def show_crosshair(self, index=-1):
+        self.crosshairs[index].add_to_view()
         return
 
     def bring_crosshair_on_top(self, index):
@@ -343,10 +298,10 @@ class ScanCrosshair(QtCore.QObject):
     _default_pen = {'color': '#00ff00', 'width': 1}
     _default_hover_pen = {'color': '#ffff00', 'width': 1}
 
-    sigPosChanged = QtCore.Signal(float, float)
-    sigDraggedPosChanged = QtCore.Signal(float, float)
+    sigPositionChanged = QtCore.Signal(float, float)
+    sigPositionDragged = QtCore.Signal(float, float)
     sigDragStarted = QtCore.Signal()
-    sigDragStopped = QtCore.Signal()
+    sigDragFinished = QtCore.Signal(float, float)
 
     def __init__(self, viewbox, position=None, size=None, min_size_factor=None, allowed_range=None,
                  movable=None, pen=None, hover_pen=None):
@@ -393,7 +348,7 @@ class ScanCrosshair(QtCore.QObject):
         self.hline.sigPositionChangeFinished.connect(self._finish_drag)
         self.crosshair.sigRegionChanged.connect(self._update_pos_from_roi)
         self.crosshair.sigRegionChangeFinished.connect(self._finish_drag)
-        self.sigDraggedPosChanged.connect(self.sigPosChanged)
+        self.sigPositionDragged.connect(self.sigPositionChanged)
 
     @property
     def movable(self):
@@ -433,7 +388,7 @@ class ScanCrosshair(QtCore.QObject):
         self.crosshair.blockSignals(True)
         self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
         self.crosshair.blockSignals(False)
-        self.sigDraggedPosChanged.emit(*pos)
+        self.sigPositionDragged.emit(*pos)
         return
 
     def _update_pos_from_roi(self, obj=None):
@@ -450,13 +405,13 @@ class ScanCrosshair(QtCore.QObject):
             self.sigDragStarted.emit()
         self.vline.setPos(pos[0])
         self.hline.setPos(pos[1])
-        self.sigDraggedPosChanged.emit(*pos)
+        self.sigPositionDragged.emit(*pos)
         return
 
     def _finish_drag(self):
         if self.__is_dragged:
             self.__is_dragged = False
-            self.sigDragStopped.emit()
+            self.sigDragFinished.emit(*self.position)
         return
 
     def _constraint_size(self):
@@ -530,7 +485,7 @@ class ScanCrosshair(QtCore.QObject):
         self.crosshair.blockSignals(False)
         self.vline.blockSignals(False)
         self.hline.blockSignals(False)
-        self.sigPosChanged.emit(*pos)
+        self.sigPositionChanged.emit(*pos)
         return
 
     def set_size(self, size, set_as_default=True):
@@ -646,54 +601,51 @@ class ScanWidget(QtWidgets.QWidget):
     Supported features:
      - draggable/static crosshair with optional range and size constraints.
      - zoom feature by rubberband selection
-     - rubberband area selection
+     - signalling for rubberband area selection
 
     This class depends on the ScanViewBox class defined further below.
     This class can be promoted in the Qt designer.
     """
-    # sigMouseAreaSelected = QtCore.Signal(tuple, tuple)  # x-range, y-range
-    # sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)  # mouse click event obj, coordinate
+    sigScanToggled = QtCore.Signal(bool)
 
-    # wrapped attribute names from ScanPlotWidget object.
-    # Adjust this set if ScanPlotWidget class changes.
-    __plot_widget_wrapped = {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
-                             'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair',
-                             'hide_crosshair', 'show_crosshair', 'bring_crosshair_on_top',
-                             'crosshairs', 'sigMouseAreaSelected', 'autoRange'}
-    __image_item_wrapped = {'set_image_extent', 'use_blink_correction', 'blink_correction_axis',
-                            'sigMouseClicked'}
+    # Wrapped attribute names from ScanPlotWidget and ScanImageItem objects.
+    # Adjust these sets if ScanPlotWidget or ScanImageItem class changes.
+    __plot_widget_wrapped = frozenset(
+        {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
+         'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair', 'hide_crosshair',
+         'show_crosshair', 'bring_crosshair_on_top', 'crosshairs', 'sigMouseAreaSelected',
+         'autoRange'}
+    )
+    __image_item_wrapped = frozenset({'set_image_extent', 'sigMouseClicked'})
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, channel_units, scan_icon=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self._channel_units = channel_units.copy()
+        self._image_data = dict()  # in case of multichannel data, save a reference here
+
         layout = QtWidgets.QGridLayout()
         layout.setColumnStretch(1, 2)
         self.setLayout(layout)
 
-        self.toggle_scan_button = QtWidgets.QPushButton('Toggle Scan')
-        self.toggle_scan_button.setMinimumWidth(self.toggle_scan_button.sizeHint().width())
-        self.toggle_scan_button.setCheckable(True)
-        self.toggle_scan_button.setFocusPolicy(QtCore.Qt.FocusPolicy.TabFocus)
-        # Try to load default icons
-        try:
-            icon_path = os.path.join(get_artwork_dir(), 'icons', 'qudiTheme', '22x22')
-            start_icon_path = os.path.join(icon_path, 'scan-xy-start.png')
-            stop_icon_path = os.path.join(icon_path, 'stop-scan.png')
-            icon = QtGui.QIcon(start_icon_path)
-            icon.addPixmap(QtGui.QPixmap(stop_icon_path),
-                           mode=QtGui.QIcon.Normal,
-                           state=QtGui.QIcon.On)
-            self.toggle_scan_button.setIcon(icon)
-            self.toggle_scan_button.setIconSize(QtCore.QSize(22, 22))
-            self.toggle_scan_button.setText('Scan')
-        except:
-            pass
-        layout.addWidget(self.toggle_scan_button, 0, 0)
+        self._toggle_scan_button = QtWidgets.QPushButton('Toggle Scan')
+        self._toggle_scan_button.setCheckable(True)
+        self._toggle_scan_button.setFocusPolicy(QtCore.Qt.FocusPolicy.TabFocus)
+        if scan_icon is not None:
+            self._toggle_scan_button.setIcon(scan_icon)
+            # self._toggle_scan_button.setIconSize(QtCore.QSize(22, 22))
+            # self._toggle_scan_button.setText('Scan')
+        self._toggle_scan_button.setMinimumWidth(self._toggle_scan_button.sizeHint().width())
+        layout.addWidget(self._toggle_scan_button, 0, 0)
 
-        self.channel_selection_combobox = QtWidgets.QComboBox()
-        self.channel_selection_combobox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                                      QtWidgets.QSizePolicy.Preferred)
-        layout.addWidget(self.channel_selection_combobox, 0, 1)
-        self.channel_selection_combobox.setVisible(False)
+        self._channel_selection_combobox = QtWidgets.QComboBox()
+        self._channel_selection_combobox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                       QtWidgets.QSizePolicy.Preferred)
+        self._channel_selection_combobox.addItems(tuple(channel_units))
+        layout.addWidget(self._channel_selection_combobox, 0, 1)
+        # Hide channel selection if only a single channel is given
+        if len(channel_units) < 2:
+            self._channel_selection_combobox.setVisible(False)
 
         self._plot_widget = ScanPlotWidget()
         self._image_item = ScanImageItem()
@@ -710,17 +662,15 @@ class ScanWidget(QtWidgets.QWidget):
         layout.addWidget(self._colorbar_widget, 1, 2)
 
         if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            self._image_item.set_percentiles(self._colorbar_widget.percentiles)
+            self._image_item.percentiles = self._colorbar_widget.percentiles
         else:
-            self._image_item.set_percentiles(None)
-
-        self._channel_units = dict()
-        self._image_data = dict()  # in case of multichannel data, save a reference here
+            self._image_item.percentiles = None
 
         self._colorbar_widget.sigModeChanged.connect(self.__colorbar_mode_changed)
         self._colorbar_widget.sigLimitsChanged.connect(self.__colorbar_limits_changed)
         self._colorbar_widget.sigPercentilesChanged.connect(self.__colorbar_percentiles_changed)
-        self.channel_selection_combobox.currentIndexChanged.connect(self.__channel_changed)
+        self._channel_selection_combobox.currentIndexChanged.connect(self.__channel_changed)
+        self._toggle_scan_button.clicked[bool].connect(self.sigScanToggled)
 
     def __getattr__(self, name):
         if name in self.__plot_widget_wrapped:
@@ -729,68 +679,67 @@ class ScanWidget(QtWidgets.QWidget):
             return getattr(self._image_item, name)
         raise AttributeError('No attribute "{0}" found in ScanWidget object.'.format(name))
 
-    def toggle_blink_correction(self, activate, axis=0):
-        if self._image_item.blink_correction_axis == axis and self._image_item.use_blink_correction == activate:
-            return
-        self._image_item.toggle_blink_correction(activate=activate, axis=axis)
-        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            levels = self._image_item.levels
-            if levels is not None and len(levels) == 2:
-                self._colorbar_widget.set_limits(*levels)
-
-    def set_data_channels(self, name_to_unit_map):
-        if name_to_unit_map is None:
+    def set_data_channels(self, channel_units):
+        if channel_units is None:
             self._channel_units = dict()
-            self.channel_selection_combobox.setVisible(False)
-            self.channel_selection_combobox.blockSignals(True)
-            self.channel_selection_combobox.clear()
-            self.channel_selection_combobox.setVisible(False)
-            self.channel_selection_combobox.blockSignals(False)
+            self._channel_selection_combobox.setVisible(False)
+            self._channel_selection_combobox.blockSignals(True)
+            self._channel_selection_combobox.clear()
+            self._channel_selection_combobox.setVisible(False)
+            self._channel_selection_combobox.blockSignals(False)
             self._image_item.setImage(image=None, autoLevels=False)
             self._image_data = dict()
-        elif isinstance(name_to_unit_map, dict) and len(name_to_unit_map) > 0:
-            self._channel_units = name_to_unit_map.copy()
-            self.channel_selection_combobox.blockSignals(True)
-            self.channel_selection_combobox.clear()
-            self.channel_selection_combobox.addItems(tuple(self._channel_units))
-            self.channel_selection_combobox.setCurrentIndex(0)
-            self.channel_selection_combobox.blockSignals(False)
-            self.channel_selection_combobox.setVisible(True)
-            channel = self.channel_selection_combobox.currentText()
-            self.set_data_label(channel, unit=self._channel_units[channel])
-            self._image_item.setImage(image=None, autoLevels=False)
-            self._image_data = dict()
+        elif isinstance(channel_units, dict) and len(channel_units) > 0:
+            self._channel_units = channel_units.copy()
+            old_channel = self._channel_selection_combobox.currentText()
+            self._channel_selection_combobox.blockSignals(True)
+            self._channel_selection_combobox.clear()
+            self._channel_selection_combobox.addItems(tuple(self._channel_units))
+            if old_channel in channel_units:
+                self._channel_selection_combobox.setCurrentText(old_channel)
+            else:
+                self._channel_selection_combobox.setCurrentIndex(0)
+            self._channel_selection_combobox.blockSignals(False)
+            self._channel_selection_combobox.setVisible(len(channel_units) > 1)
+
+            if old_channel not in channel_units:
+                channel = self._channel_selection_combobox.currentText()
+                self.set_data_label(channel, unit=self._channel_units[channel])
+                self._image_item.setImage(image=None, autoLevels=False)
+                self._image_data = dict()
         else:
             raise ValueError('name_to_unit_map must be non-empty dict or None')
         return
 
-    def set_image(self, image):
+    def set_scan_data(self, data):
         """
 
         """
-        if image is None:
+        if data is None:
             self._image_item.setImage(image=None, autoLevels=False)
             self._image_data = dict()
             return
 
-        if isinstance(image, dict):
-            self._image_data = image.copy()
-            channel = self.channel_selection_combobox.currentText()
+        if isinstance(data, dict):
+            self._image_data = data.copy()
+            channel = self._channel_selection_combobox.currentText()
             if channel not in self._image_data:
                 self._image_item.setImage(image=None, autoLevels=False)
                 return
-            img = self._image_data[channel]
+            image = self._image_data[channel]
         else:
-            img = image
+            raise TypeError(
+                'Scan data must be dict with keys as channel names and values as 2D numpy arrays'
+            )
 
         # Set image with proper colorbar limits
         if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            self._image_item.setImage(image=img, autoLevels=False)
+            self._image_item.setImage(image=image, autoLevels=False)
             levels = self._image_item.levels
             if levels is not None:
                 self._colorbar_widget.set_limits(*levels)
         else:
-            self._image_item.setImage(image=img,
+            self._image_item.setImage(image=image,
                                       autoLevels=False,
                                       levels=self._colorbar_widget.limits)
         return
@@ -801,6 +750,16 @@ class ScanWidget(QtWidgets.QWidget):
     def set_data_label(self, label, unit=None):
         return self._colorbar_widget.set_label(label, unit)
 
+    @QtCore.Slot(bool)
+    def toggle_scan(self, enable):
+        if enable != self._toggle_scan_button.isChecked():
+            self._toggle_scan_button.setChecked(enable)
+
+    @QtCore.Slot(bool)
+    def toggle_enabled(self, enable):
+        if enable != self._toggle_scan_button.isEnabled():
+            self._toggle_scan_button.setEnabled(enable)
+
     @QtCore.Slot(object)
     def __colorbar_mode_changed(self, mode):
         if mode is ColorBarMode.PERCENTILE:
@@ -810,19 +769,19 @@ class ScanWidget(QtWidgets.QWidget):
 
     @QtCore.Slot(tuple)
     def __colorbar_limits_changed(self, limits):
-        self._image_item.set_percentiles(None)
+        self._image_item.percentiles = None
         self._image_item.setLevels(limits)
 
     @QtCore.Slot(tuple)
     def __colorbar_percentiles_changed(self, percentiles):
-        self._image_item.set_percentiles(percentiles)
+        self._image_item.percentiles = percentiles
         levels = self._image_item.levels
         if levels is not None:
             self._colorbar_widget.set_limits(*levels)
 
     @QtCore.Slot()
     def __channel_changed(self):
-        channel = self.channel_selection_combobox.currentText()
+        channel = self._channel_selection_combobox.currentText()
         channel_unit = self._channel_units.get(channel, '')
         self.set_data_label(channel, unit=channel_unit)
         image = self._image_data.get(channel, None)

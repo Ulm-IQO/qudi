@@ -45,6 +45,9 @@ class ScanningProbeLogic(LogicBase):
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
 
+    # config options
+    _min_poll_interval = ConfigOption(name='min_poll_interval', default=0.5)
+
     # signals
     sigScanStateChanged = QtCore.Signal(bool, object, object)
     sigScannerTargetChanged = QtCore.Signal(dict, object)
@@ -307,7 +310,8 @@ class ScanningProbeLogic(LogicBase):
 
             # Calculate poll time to check for scan completion. Use line scan time estimate.
             line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
-            self.__scan_poll_interval = line_points / self._scan_frequency[scan_axes[0]]
+            self.__scan_poll_interval = max(self._min_poll_interval,
+                                            line_points / self._scan_frequency[scan_axes[0]])
             self.__scan_poll_timer.setInterval(int(round(self.__scan_poll_interval * 1000)))
 
             if self._scanner().start_scan() < 0:
