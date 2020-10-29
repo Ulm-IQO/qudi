@@ -55,7 +55,7 @@ class FlipMirror(Base, SwitchInterface):
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
 
     # if remember_states is True the last state will be restored at reloading of the module
-    _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+    _remember_states = ConfigOption(name='remember_states', default=False, missing='nothing')
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
