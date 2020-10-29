@@ -32,14 +32,14 @@ from ftplib import FTP
 from lxml import etree as ET
 
 from core.module import Base
-from core.module import ConfigOption
+from core.configoption import ConfigOption
 from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
 from interface.pulser_interface import PulserInterface, PulserConstraints
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits, MicrowaveMode, TriggerEdge
+from interface.microwave_interface import MicrowaveLimits, MicrowaveMode, TriggerEdge
 
 
-class AWG70K(Base, PulserInterface, MicrowaveInterface):
+class AWG70K(Base, PulserInterface):
     """ A hardware module for the Tektronix AWG70000 series for generating
         waveforms and sequences thereof.
 
