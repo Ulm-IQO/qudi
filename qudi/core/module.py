@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import logging
 import copy
+from uuid import uuid4
 from fysom import Fysom  # provides a finite state machine
 
 from PySide2 import QtCore
@@ -72,8 +73,7 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
 
         # Initialise state machine:
         super().__init__(parent=parent, cfg=fsm_cfg, **kwargs)
-        # QtCore.QObject.__init__(self, parent)
-        # Fysom.__init__(self, cfg=fsm_cfg, **kwargs)
+        self.__uuid = uuid4()
 
     def __call__(self):
         """
@@ -115,6 +115,10 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
         @param object e: Fysom event object passed through all state transition callbacks
         """
         self.sigStateChanged.emit(e)
+
+    @property
+    def uuid(self):
+        return self.__uuid
 
     @QtCore.Slot()
     def activate(self):
