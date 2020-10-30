@@ -79,7 +79,7 @@ class ScanningDataLogic(LogicBase):
         else:
             self._curr_history_index = 0
             self._curr_data_per_scan = dict()
-        self._logic_id = id(self._scan_logic())
+        self._logic_id = self._scan_logic().module_state.uuid
         self._scan_logic().sigScanStateChanged.connect(self._update_scan_state)
         return
 
@@ -155,7 +155,7 @@ class ScanningDataLogic(LogicBase):
     @qudi_slot(bool, object, object)
     def _update_scan_state(self, running, data, caller_id):
         with self._thread_lock:
-            if not running and caller_id == self._logic_id:
+            if not running and caller_id is self._logic_id:
                 self._scan_history.append(data)
                 self._shrink_history()
                 self._curr_data_per_scan[data.scan_axes] = data

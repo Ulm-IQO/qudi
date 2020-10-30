@@ -192,7 +192,7 @@ class ScannerGui(GuiBase):
         This method executes the all the inits for the differnt GUIs and passes
         the event argument from fysom to the methods.
         """
-        self._optimizer_id = id(self._optimize_logic())
+        self._optimizer_id = self._optimize_logic().module_state.uuid
         print('object name:', self._optimize_logic().objectName())
 
         self.scan_2d_dockwidgets = dict()
@@ -564,7 +564,7 @@ class ScannerGui(GuiBase):
 
         @param dict target_pos:
         """
-        self.sigScannerTargetChanged.emit(target_pos, id(self))
+        self.sigScannerTargetChanged.emit(target_pos, self.module_state.uuid)
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
@@ -578,7 +578,7 @@ class ScannerGui(GuiBase):
         """
         # If this update has been issued by this module, do not update display.
         # This has already been done before notifying the logic.
-        if caller_id == id(self):
+        if caller_id is self.module_state.uuid:
             return
 
         if not isinstance(pos_dict, dict):
@@ -594,7 +594,7 @@ class ScannerGui(GuiBase):
         self._toggle_enable_scan_buttons(not is_running, exclude_scan=scan_axes)
         self._toggle_enable_actions(not is_running)
         if scan_data is not None:
-            if caller_id == self._optimizer_id:
+            if caller_id is self._optimizer_id:
                 # ToDo:
                 print('Update scan state for optimize run...')
             else:
@@ -744,7 +744,7 @@ class ScannerGui(GuiBase):
         def toggle_func(enabled):
             self._toggle_enable_scan_buttons(not enabled, exclude_scan=axes)
             self._toggle_enable_actions(not enabled)
-            self.sigToggleScan.emit(enabled, axes, id(self))
+            self.sigToggleScan.emit(enabled, axes, self.module_state.uuid)
         return toggle_func
 
     def __get_range_from_selection_func(self, axes):
