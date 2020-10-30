@@ -272,7 +272,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_sequences = list()
 
         # get tau array for measurement ticks
-        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        real_start_tau = max(0, tau_start - self.rabi_period / 4)
+        tau_array = real_start_tau + np.arange(num_of_points) * tau_step
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -431,6 +432,10 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_sequences = list()
 
         # get tau array for measurement ticks
+        real_start_tau = max(0, tau_start - self.rabi_period * 3 / 8)
+        # in case the longer 3 pi / 2 pulse is used as final pulse
+        real_start_taua = max(0, tau_start - self.rabi_period / 4 - self.rabi_period * 3 / 8)
+
         tau_array = tau_start + np.arange(num_of_points) * tau_step
 
         # create the elements
@@ -462,23 +467,27 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
 
+        tau_element0 = self._get_idle_element(length=real_start_tau, increment=tau_step)
+        tau_element1 = self._get_idle_element(length=real_start_taua, increment=tau_step)
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
         hahn_block.append(pihalf_element)
-        hahn_block.append(tau_element)
+        hahn_block.append(tau_element0)
         hahn_block.append(pi_element)
-        hahn_block.append(tau_element)
+        hahn_block.append(tau_element0)
         hahn_block.append(pihalf_element)
         hahn_block.append(laser_element)
         hahn_block.append(delay_element)
         hahn_block.append(waiting_element)
         if alternating:
             hahn_block.append(pihalf_element)
-            hahn_block.append(tau_element)
+            hahn_block.append(tau_element0)
             hahn_block.append(pi_element)
-            hahn_block.append(tau_element)
+            if self.microwave_channel.startswith('a'):
+                hahn_block.append(tau_element0)
+            else:
+                hahn_block.append(tau_element1)
             hahn_block.append(pi3half_element)
             hahn_block.append(laser_element)
             hahn_block.append(delay_element)
@@ -515,6 +524,11 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
+
+        # adjust for finite pulse length
+        tau_adjust0 = self.rabi_period * 3 / 8
+        # in case the longer 3 pi / 2 pulse is used as final pulse
+        tau_adjust1 = self.rabi_period / 4 + self.rabi_period * 3 / 8
 
         # get tau array for measurement ticks
         if tau_start == 0.0:
@@ -556,20 +570,24 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
         for tau in tau_array:
-            tau_element = self._get_idle_element(length=tau, increment=0.0)
+            tau_element0 = self._get_idle_element(length=max(0, tau - tau_adjust0, increment=0.0))
             hahn_block.append(pihalf_element)
-            hahn_block.append(tau_element)
+            hahn_block.append(tau_element0)
             hahn_block.append(pi_element)
-            hahn_block.append(tau_element)
+            hahn_block.append(tau_element0)
             hahn_block.append(pihalf_element)
             hahn_block.append(laser_element)
             hahn_block.append(delay_element)
             hahn_block.append(waiting_element)
             if alternating:
+                tau_element1 = self._get_idle_element(length=max(0, tau - tau_adjust1, increment=0.0))
                 hahn_block.append(pihalf_element)
-                hahn_block.append(tau_element)
+                hahn_block.append(tau_element0)
                 hahn_block.append(pi_element)
-                hahn_block.append(tau_element)
+                if self.microwave_channel.startswith('a'):
+                    hahn_block.append(tau_element0)
+                else:
+                    hahn_block.append(tau_element1)
                 hahn_block.append(pi3half_element)
                 hahn_block.append(laser_element)
                 hahn_block.append(delay_element)
@@ -973,6 +991,9 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         # calculate "real" start length of tau due to finite pi-pulse length
         real_start_tau = max(0, tau_start - self.rabi_period / 2)
+        # To account for finite pi-pulse and pi / 2 pulse length. One needs to substract
+        # 1 / 2 of the pi / 2 and 1 / 2 of the pi duration. Which is 3/8 of the rabi period.
+        real_start_tauh = max(0, tau_start / 2 - self.rabi_period * 3 / 8)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1006,7 +1027,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                            amp=self.microwave_amplitude,
                                            freq=self.microwave_frequency,
                                            phase=90)
-        tauhalf_element = self._get_idle_element(length=real_start_tau / 2, increment=tau_step / 2)
+        tauhalf_element = self._get_idle_element(length=real_start_tauh, increment=tau_step / 2)
         tau_element = self._get_idle_element(length=real_start_tau, increment=tau_step)
 
         # Create block and append to created_blocks list
@@ -1101,6 +1122,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         tau_array = 1 / (2 * freq_array)
         # calculate "real" tau array (finite pi-pulse length)
         real_tau_array = tau_array - self.rabi_period / 2
+        real_tauh_array = tau_array  / 2 - self.rabi_period * 3 / 8
         np.clip(real_tau_array, 0, None, real_tau_array)
         # Convert back to frequency in order to account for clipped values
         freq_array = 1 / (2 * (real_tau_array + self.rabi_period / 2))
@@ -1140,8 +1162,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         xy8_block = PulseBlock(name=name)
-        for ii, tau in enumerate(real_tau_array):
-            tauhalf_element = self._get_idle_element(length=tau / 2, increment=0)
+        for ii, (tau, tauh) in enumerate(zip(real_tau_array, real_tauh_array)):
+            tauhalf_element = self._get_idle_element(length=tauh, increment=0)
             tau_element = self._get_idle_element(length=tau, increment=0)
             xy8_block.append(pihalf_element)
             xy8_block.append(tauhalf_element)
