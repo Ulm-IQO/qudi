@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.module import Base
 from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 import numpy as np
 import time
 
@@ -34,8 +35,9 @@ class DummyTrigger(Base, TriggerInterface):
     # names_of_triggers defined as list of strings
     _names_of_triggers = ConfigOption(name='names_of_triggers', default=['one', 'two'], missing='nothing')
 
+    # StatusVariables
     # trigger_length in seconds
-    _trigger_length = ConfigOption(name='trigger_length', default=0.5, missing='nothing')
+    _trigger_length = StatusVar(name='trigger_length', default=0.5)
 
     def on_activate(self):
         """ Activate the module and fill status variables.

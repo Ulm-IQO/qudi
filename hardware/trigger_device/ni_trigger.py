@@ -41,8 +41,15 @@ class NITriggers(Base, TriggerInterface):
         trigger_channel: 'Dev1/port0/line9:8'
 
     """
+
+    # ConfigOptions
+    # trigger channels of the NI Card to be used for triggering. This can either be a single channel or multiple lines.
     _trigger_channel = ConfigOption(name='trigger_channel', default='Dev1/PFI15', missing='warn')
-    _names_of_triggers = ConfigOption(name='names_of_triggers', default=None, missing='nothing')
+
+    # names_of_triggers defined as list of strings
+    _names_of_triggers = ConfigOption(name='names_of_triggers', default=['one', 'two'], missing='nothing')
+
+    # names_of_triggers defined as list of strings
     _trigger_length = StatusVar(name='trigger_length', default=1)
 
     def __init__(self, *args, **kwargs):
