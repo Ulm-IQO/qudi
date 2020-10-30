@@ -20,7 +20,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 from PySide2 import QtCore, QtWidgets
 import numpy as np
 
-__all__ = ['DoubleSlider']
+__all__ = ('DoubleSlider',)
 
 
 class DoubleSlider(QtWidgets.QSlider):
