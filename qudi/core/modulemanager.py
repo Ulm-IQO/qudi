@@ -260,6 +260,8 @@ class ManagedModule(QtCore.QObject):
 
     _lock = RecursiveMutex()  # Single mutex shared across all ManagedModule instances
 
+    __state_poll_interval = 1  # Max interval in seconds to poll module_state of remote modules
+
     def __init__(self, qudi_main_ref, name, base, configuration):
         if not isinstance(qudi_main_ref, weakref.ref):
             raise TypeError('qudi_main_ref must be weakref to qudi main instance.')
@@ -311,6 +313,9 @@ class ManagedModule(QtCore.QObject):
 
         self._required_modules = set()
         self._dependent_modules = set()
+
+        self.__poll_timer = None
+        self.__last_state = None
         return
 
     def __call__(self):
@@ -525,17 +530,39 @@ class ManagedModule(QtCore.QObject):
                         thread_manager.join_thread(thread_name)
                 else:
                     self._instance.module_state.activate()
-                # FIXME: This return to main loop caused non-main-thread module activation to fail.
-                # QtCore.QCoreApplication.instance().processEvents()
                 if not self.is_active:
                     return False
             except:
                 logger.exception('Massive error during activation of module "{0}.{1}"'
                                  ''.format(self._base, self._name))
                 return False
-            self.sigStateChanged.emit(self._base, self._name, self.state)
+            self.__last_state = self.state
+            self.sigStateChanged.emit(self._base, self._name, self.__last_state)
             self.sigAppDataChanged.emit(self._base, self._name, self.has_app_data)
+            if self.is_remote:
+                self.__poll_timer = QtCore.QTimer(self)
+                self.__poll_timer.setInterval(int(round(self.__state_poll_interval * 1000)))
+                self.__poll_timer.setSingleShot(True)
+                self.__poll_timer.timeout.connect(self._poll_module_state)
+                self.__poll_timer.start()
+            else:
+                self._instance.module_state.sigStateChanged.connect(self._state_change_callback)
             return True
+
+    @QtCore.Slot()
+    def _poll_module_state(self):
+        with self._lock:
+            state = self.state
+            if state != self.__last_state:
+                self.__last_state = state
+                self.sigStateChanged.emit(self._base, self._name, state)
+            if self.__poll_timer is not None:
+                self.__poll_timer.start()
+
+    @QtCore.Slot()
+    @QtCore.Slot(object)
+    def _state_change_callback(self, event=None):
+        self.sigStateChanged.emit(self._base, self._name, self.state)
 
     @QtCore.Slot()
     def deactivate(self):
@@ -561,6 +588,14 @@ class ManagedModule(QtCore.QObject):
                 if module.is_active:
                     success = success and module.deactivate()
 
+            # Disable state updated
+            if self.__poll_timer is not None:
+                self.__poll_timer.stop()
+                self.__poll_timer.timeout.disconnect()
+                self.__poll_timer = None
+            else:
+                self._instance.module_state.sigStateChanged.disconnect(self._state_change_callback)
+
             # Actual deactivation of this module
             try:
                 if self._instance.is_module_threaded:
@@ -585,7 +620,8 @@ class ManagedModule(QtCore.QObject):
                                  ''.format(self._base, self._name))
                 success = False
             success = success and self._disconnect()
-            self.sigStateChanged.emit(self._base, self._name, self.state)
+            self.__last_state = self.state
+            self.sigStateChanged.emit(self._base, self._name, self.__last_state)
             self.sigAppDataChanged.emit(self._base, self._name, self.has_app_data)
             return success
 
