@@ -27,7 +27,7 @@ from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
 from .colorbar import ColorBarWidget, ColorBarMode
 from ..colordefs import ColorScaleInferno
 
-__all__ = ('ScanImageItem', 'Scan2DPlotWidget', 'Scan2DViewBox', 'Scan2DWidget')
+__all__ = ('ScanImageItem', 'ScanPlotWidget', 'ScanViewBox', 'ScanWidget')
 
 
 class ScanImageItem(ImageItem):
@@ -88,7 +88,7 @@ class ScanImageItem(ImageItem):
             self.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
         return
 
-    def set_image(self, image=None, **kwargs):
+    def setImage(self, image=None, **kwargs):
         """
         pg.ImageItem method override to apply optional filter when setting image data.
         """
@@ -105,7 +105,7 @@ class ScanImageItem(ImageItem):
             min_value = np.percentile(masked_image, self._percentiles[0])
             max_value = np.percentile(masked_image, self._percentiles[1])
             kwargs['levels'] = (min_value, max_value)
-        self.setImage(image=image, **kwargs)
+        super().setImage(image=image, **kwargs)
         return
 
     def mouseClickEvent(self, ev):
@@ -115,7 +115,7 @@ class ScanImageItem(ImageItem):
         return super().mouseClickEvent(ev)
 
 
-class Scan2DPlotWidget(PlotWidget):
+class ScanPlotWidget(PlotWidget):
     """
     Extend the PlotWidget Class with more functionality used for qudi scan images.
     Supported features:
@@ -123,13 +123,13 @@ class Scan2DPlotWidget(PlotWidget):
      - zoom feature by rubberband selection
      - signalling for rubberband area selection
 
-    This class depends on the Scan2DViewBox class defined further below.
+    This class depends on the ScanViewBox class defined further below.
     This class can be promoted in the Qt designer.
     """
     sigMouseAreaSelected = QtCore.Signal(tuple, tuple)  # mapped mouse rubberband selection (x, y)
 
     def __init__(self, *args, **kwargs):
-        kwargs['viewBox'] = Scan2DViewBox()  # Use custom pg.ViewBox subclass
+        kwargs['viewBox'] = ScanViewBox()  # Use custom pg.ViewBox subclass
         super().__init__(*args, **kwargs)
         self.getViewBox().sigMouseAreaSelected.connect(self.__translate_selection_rect)
         self.crosshairs = list()
@@ -166,13 +166,13 @@ class Scan2DPlotWidget(PlotWidget):
 
     def add_crosshair(self, *args, **kwargs):
         """
-        Add a crosshair to this Scan2DPlotWidget.
+        Add a crosshair to this ScanPlotWidget.
         You can pass all optional parameters you can pass to ScanCrosshair.__init__
         The stacking of crosshairs will be in order of insertion (last added crosshair is on top).
         Keep stacking in mind when you want to have a draggable crosshair.
         """
         # Create new ScanCrosshair instance and add to crosshairs list
-        self.crosshairs.append(ScanCrosshair(self, *args, **kwargs))
+        self.crosshairs.append(ScanCrosshair(self.getViewBox(), *args, **kwargs))
         # Add crosshair to ViewBox
         self.show_crosshair(-1)
         return
@@ -180,7 +180,7 @@ class Scan2DPlotWidget(PlotWidget):
     def remove_crosshair(self, index=-1):
         """
         Remove the crosshair at position <index> or the last one added (default) from this
-        Scan2DPlotWidget.
+        ScanPlotWidget.
         """
         crosshair = self.crosshairs.pop(index)
         # Remove crosshair from ViewBox
@@ -216,9 +216,9 @@ class Scan2DPlotWidget(PlotWidget):
         self.sigMouseAreaSelected.emit(x_limits, y_limits)
 
 
-class Scan2DViewBox(ViewBox):
+class ScanViewBox(ViewBox):
     """
-    Extension for pg.ViewBox to be used with Scan2DPlotWidget.
+    Extension for pg.ViewBox to be used with ScanPlotWidget.
 
     Implements optional rectangular rubber band area selection and optional corresponding zooming.
     """
@@ -269,8 +269,8 @@ class Scan2DViewBox(ViewBox):
                 rect = QtCore.QRectF(start, stop)
                 if self.zoom_by_selection:
                     # AutoRange needs to be disabled by hand because of a pyqtgraph bug.
-                    # if self.autoRangeEnabled():
-                    #     self.disableAutoRange()
+                    if self.autoRangeEnabled():
+                        self.disableAutoRange()
                     self.setRange(rect=rect, padding=0)
                 self.sigMouseAreaSelected.emit(rect)
             return
@@ -281,7 +281,7 @@ class Scan2DViewBox(ViewBox):
 class ScanCrosshair(QtCore.QObject):
     """
     Represents a crosshair (two perpendicular infinite lines and optionally a rectangle around the
-    intersection) to be used in Scan2DPlotWidget.
+    intersection) to be used in ScanPlotWidget.
 
     @param QPointF|float[2] position:
     @param QSizeF|float[2] size:
@@ -300,9 +300,10 @@ class ScanCrosshair(QtCore.QObject):
     sigDragStarted = QtCore.Signal()
     sigDragFinished = QtCore.Signal(float, float)
 
-    def __init__(self, parent, position=None, size=None, min_size_factor=None, allowed_range=None,
+    def __init__(self, viewbox, position=None, size=None, min_size_factor=None, allowed_range=None,
                  movable=None, pen=None, hover_pen=None):
-        super().__init__(parent=parent)
+        super().__init__()
+        self._viewbox = viewbox
         self._min_size_factor = 0.02
         self._size = (0, 0)
         self._allowed_range = None
@@ -322,7 +323,22 @@ class ScanCrosshair(QtCore.QObject):
                                   pen=self._default_pen,
                                   hoverPen=self._default_hover_pen)
 
-        self.parent().sigRangeChanged.connect(self._constraint_size)
+        if pen is not None:
+            self.set_pen(pen)
+        if hover_pen is not None:
+            self.set_hover_pen(hover_pen)
+        if position is not None:
+            self.set_position(position)
+        if size is not None:
+            self.set_size(size)
+        if min_size_factor is not None:
+            self.set_min_size_factor(min_size_factor)
+        if allowed_range is not None:
+            self.set_allowed_range(allowed_range)
+        if movable is not None:
+            self.set_movable(movable)
+
+        self._viewbox.sigRangeChanged.connect(self._constraint_size)
         self.vline.sigDragged.connect(self._update_pos_from_line)
         self.vline.sigPositionChangeFinished.connect(self._finish_drag)
         self.hline.sigDragged.connect(self._update_pos_from_line)
@@ -331,28 +347,15 @@ class ScanCrosshair(QtCore.QObject):
         self.crosshair.sigRegionChangeFinished.connect(self._finish_drag)
         self.sigPositionDragged.connect(self.sigPositionChanged)
 
-        if pen is not None:
-            self.set_pen(pen)
-        if hover_pen is not None:
-            self.set_hover_pen(hover_pen)
-        if min_size_factor is not None:
-            self.set_min_size_factor(min_size_factor)
-        if allowed_range is not None:
-            self.set_allowed_range(allowed_range)
-        if size is not None:
-            self.set_size(size)
-        if position is not None:
-            self.set_position(position)
-        if movable is not None:
-            self.set_movable(movable)
-
     @property
     def movable(self):
         return bool(self.crosshair.translatable)
 
     @property
     def position(self):
-        return self.vline.pos()[0], self.hline.pos()[1]
+        pos = self.vline.pos()
+        pos[1] = self.hline.pos()[1]
+        return tuple(pos)
 
     @property
     def size(self):
@@ -373,16 +376,16 @@ class ScanCrosshair(QtCore.QObject):
         Called each time the position of the InfiniteLines has been changed by a user drag.
         Causes the crosshair rectangle to follow the lines.
         """
-        x = self.vline.pos()[0]
-        y = self.hline.pos()[1]
+        pos = self.vline.pos()
+        pos[1] = self.hline.pos()[1]
         size = self.crosshair.size()
         if not self.__is_dragged:
             self.__is_dragged = True
             self.sigDragStarted.emit()
         self.crosshair.blockSignals(True)
-        self.crosshair.setPos((x - size[0] / 2, y - size[1] / 2))
+        self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
         self.crosshair.blockSignals(False)
-        self.sigPositionDragged.emit(x, y)
+        self.sigPositionDragged.emit(*pos)
         return
 
     def _update_pos_from_roi(self, obj=None):
@@ -392,14 +395,14 @@ class ScanCrosshair(QtCore.QObject):
         """
         pos = self.crosshair.pos()
         size = self.crosshair.size()
-        x = pos[0] + size[0] / 2
-        y = pos[1] + size[1] / 2
+        pos[0] += size[0] / 2
+        pos[1] += size[1] / 2
         if not self.__is_dragged:
             self.__is_dragged = True
             self.sigDragStarted.emit()
-        self.vline.setPos(x)
-        self.hline.setPos(y)
-        self.sigPositionDragged.emit(x, y)
+        self.vline.setPos(pos[0])
+        self.hline.setPos(pos[1])
+        self.sigPositionDragged.emit(*pos)
         return
 
     def _finish_drag(self):
@@ -425,29 +428,27 @@ class ScanCrosshair(QtCore.QObject):
             size = (size.width(), size.height())
 
         min_size = min(size)
-        if min_size > 0:
-            vb_size = self.parent().viewRect()
-            min_vb_size = min(abs(vb_size.width()), abs(vb_size.height()))
-            min_vb_size *= self._min_size_factor
+        if min_size == 0:
+            return size
+        vb_size = self._viewbox.viewRect().size()
+        short_index = int(vb_size.width() > vb_size.height())
+        min_vb_size = vb_size.width() if short_index == 0 else vb_size.height()
+        min_vb_size *= self._min_size_factor
 
-            if min_size < min_vb_size:
-                scale_factor = min_vb_size / min_size
-                size = (size[0] * scale_factor, size[1] * scale_factor)
+        if min_size < min_vb_size:
+            scale_factor = min_vb_size / min_size
+            size = (size[0] * scale_factor, size[1] * scale_factor)
         return size
 
     def add_to_view(self):
-        view = self.parent()
-        if self.vline not in view.items():
-            view.addItem(self.vline)
-            view.addItem(self.hline)
-            view.addItem(self.crosshair)
+        self._viewbox.addItem(self.vline)
+        self._viewbox.addItem(self.hline)
+        self._viewbox.addItem(self.crosshair)
 
     def remove_from_view(self):
-        view = self.parent()
-        if self.vline in view.items():
-            view.removeItem(self.vline)
-            view.removeItem(self.hline)
-            view.removeItem(self.crosshair)
+        self._viewbox.removeItem(self.vline)
+        self._viewbox.removeItem(self.hline)
+        self._viewbox.removeItem(self.crosshair)
 
     def set_movable(self, movable):
         """
@@ -475,7 +476,7 @@ class ScanCrosshair(QtCore.QObject):
         self.crosshair.blockSignals(True)
         self.vline.blockSignals(True)
         self.hline.blockSignals(True)
-        self.crosshair.setPos(pos[0] - size[0] / 2, y=pos[1] - size[1] / 2)
+        self.crosshair.setPos(pos[0] - size[0] / 2, pos[1] - size[1] / 2)
         self.vline.setPos(pos[0])
         self.hline.setPos(pos[1])
         self.crosshair.blockSignals(False)
@@ -591,7 +592,7 @@ class ScanCrosshair(QtCore.QObject):
         return
 
 
-class Scan2DWidget(QtWidgets.QWidget):
+class ScanWidget(QtWidgets.QWidget):
     """
     Extend the PlotWidget Class with more functionality used for qudi scan images.
     Supported features:
@@ -599,13 +600,13 @@ class Scan2DWidget(QtWidgets.QWidget):
      - zoom feature by rubberband selection
      - signalling for rubberband area selection
 
-    This class depends on the Scan2DViewBox class defined further below.
+    This class depends on the ScanViewBox class defined further below.
     This class can be promoted in the Qt designer.
     """
     sigScanToggled = QtCore.Signal(bool)
 
-    # Wrapped attribute names from Scan2DPlotWidget and ScanImageItem objects.
-    # Adjust these sets if Scan2DPlotWidget or ScanImageItem class changes.
+    # Wrapped attribute names from ScanPlotWidget and ScanImageItem objects.
+    # Adjust these sets if ScanPlotWidget or ScanImageItem class changes.
     __plot_widget_wrapped = frozenset(
         {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
          'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair', 'hide_crosshair',
@@ -643,7 +644,7 @@ class Scan2DWidget(QtWidgets.QWidget):
         if len(channel_units) < 2:
             self._channel_selection_combobox.setVisible(False)
 
-        self._plot_widget = Scan2DPlotWidget()
+        self._plot_widget = ScanPlotWidget()
         self._image_item = ScanImageItem()
         self._plot_widget.addItem(self._image_item)
         self._plot_widget.setMinimumWidth(100)
@@ -673,7 +674,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             return getattr(self._plot_widget, name)
         elif name in self.__image_item_wrapped:
             return getattr(self._image_item, name)
-        raise AttributeError('No attribute "{0}" found in Scan2DWidget object.'.format(name))
+        raise AttributeError('No attribute "{0}" found in ScanWidget object.'.format(name))
 
     def set_data_channels(self, channel_units):
         if channel_units is None:
@@ -683,7 +684,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             self._channel_selection_combobox.clear()
             self._channel_selection_combobox.setVisible(False)
             self._channel_selection_combobox.blockSignals(False)
-            self._image_item.set_image(image=None, autoLevels=False)
+            self._image_item.setImage(image=None, autoLevels=False)
             self._image_data = dict()
         elif isinstance(channel_units, dict) and len(channel_units) > 0:
             self._channel_units = channel_units.copy()
@@ -701,7 +702,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             if old_channel not in channel_units:
                 channel = self._channel_selection_combobox.currentText()
                 self.set_data_label(channel, unit=self._channel_units[channel])
-                self._image_item.set_image(image=None, autoLevels=False)
+                self._image_item.setImage(image=None, autoLevels=False)
                 self._image_data = dict()
         else:
             raise ValueError('name_to_unit_map must be non-empty dict or None')
@@ -712,7 +713,7 @@ class Scan2DWidget(QtWidgets.QWidget):
 
         """
         if data is None:
-            self._image_item.set_image(image=None, autoLevels=False)
+            self._image_item.setImage(image=None, autoLevels=False)
             self._image_data = dict()
             return
 
@@ -720,7 +721,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             self._image_data = data.copy()
             channel = self._channel_selection_combobox.currentText()
             if channel not in self._image_data:
-                self._image_item.set_image(image=None, autoLevels=False)
+                self._image_item.setImage(image=None, autoLevels=False)
                 return
             image = self._image_data[channel]
         else:
@@ -730,12 +731,12 @@ class Scan2DWidget(QtWidgets.QWidget):
 
         # Set image with proper colorbar limits
         if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            self._image_item.set_image(image=image, autoLevels=False)
+            self._image_item.setImage(image=image, autoLevels=False)
             levels = self._image_item.levels
             if levels is not None:
                 self._colorbar_widget.set_limits(*levels)
         else:
-            self._image_item.set_image(image=image,
+            self._image_item.setImage(image=image,
                                       autoLevels=False,
                                       levels=self._colorbar_widget.limits)
         return
@@ -783,115 +784,12 @@ class Scan2DWidget(QtWidgets.QWidget):
         image = self._image_data.get(channel, None)
         if image is not None:
             if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-                self._image_item.set_image(image=image, autoLevels=False)
+                self._image_item.setImage(image=image, autoLevels=False)
                 levels = self._image_item.levels
                 if levels is not None:
                     self._colorbar_widget.set_limits(*levels)
             else:
-                self._image_item.set_image(image=image,
+                self._image_item.setImage(image=image,
                                           autoLevels=False,
                                           levels=self._colorbar_widget.limits)
         return
-
-
-class ImageWidget(QtWidgets.QWidget):
-    """
-    Extend the PlotWidget Class with more functionality used for qudi scan images.
-    Supported features:
-     - draggable/static crosshair with optional range and size constraints.
-     - zoom feature by rubberband selection
-     - signalling for rubberband area selection
-
-    This class depends on the Scan2DViewBox class defined further below.
-    This class can be promoted in the Qt designer.
-    """
-    # Wrapped attribute names from Scan2DPlotWidget and ScanImageItem objects.
-    # Adjust these sets if Scan2DPlotWidget or ScanImageItem class changes.
-    __plot_widget_wrapped = frozenset(
-        {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
-         'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair', 'hide_crosshair',
-         'show_crosshair', 'bring_crosshair_on_top', 'crosshairs', 'sigMouseAreaSelected',
-         'autoRange'}
-    )
-    __image_item_wrapped = frozenset({'set_image_extent', 'sigMouseClicked'})
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        layout = QtWidgets.QGridLayout()
-        layout.setColumnStretch(0, 1)
-        self.setLayout(layout)
-
-        self._plot_widget = Scan2DPlotWidget()
-        self._image_item = ScanImageItem()
-        self._plot_widget.addItem(self._image_item)
-        self._plot_widget.setMinimumWidth(100)
-        self._plot_widget.setMinimumHeight(100)
-        self._plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                        QtWidgets.QSizePolicy.Expanding)
-        self._plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self._plot_widget.setAspectLocked(lock=True, ratio=1.0)
-        layout.addWidget(self._plot_widget, 0, 0)
-
-        self._colorbar_widget = ColorBarWidget()
-        layout.addWidget(self._colorbar_widget, 0, 1)
-        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            self._image_item.percentiles = self._colorbar_widget.percentiles
-        else:
-            self._image_item.percentiles = None
-
-        self._colorbar_widget.sigModeChanged.connect(self.__colorbar_mode_changed)
-        self._colorbar_widget.sigLimitsChanged.connect(self.__colorbar_limits_changed)
-        self._colorbar_widget.sigPercentilesChanged.connect(self.__colorbar_percentiles_changed)
-
-    def __getattr__(self, name):
-        if name in self.__plot_widget_wrapped:
-            return getattr(self._plot_widget, name)
-        elif name in self.__image_item_wrapped:
-            return getattr(self._image_item, name)
-        raise AttributeError('No attribute "{0}" found in ImageWidget object.'.format(name))
-
-    def set_image(self, image):
-        """
-
-        """
-        if image is None:
-            self._image_item.set_image(image=None, autoLevels=False)
-            return
-
-        # Set image with proper colorbar limits
-        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            self._image_item.set_image(image=image, autoLevels=False)
-            levels = self._image_item.levels
-            if levels is not None:
-                self._colorbar_widget.set_limits(*levels)
-        else:
-            self._image_item.set_image(image=image,
-                                       autoLevels=False,
-                                       levels=self._colorbar_widget.limits)
-        return
-
-    def set_axis_label(self, axis, label=None, unit=None):
-        return self._plot_widget.setLabel(axis, text=label, units=unit)
-
-    def set_data_label(self, label, unit=None):
-        return self._colorbar_widget.set_label(label, unit)
-
-    @QtCore.Slot(object)
-    def __colorbar_mode_changed(self, mode):
-        if mode is ColorBarMode.PERCENTILE:
-            self.__colorbar_percentiles_changed(self._colorbar_widget.percentiles)
-        else:
-            self.__colorbar_limits_changed(self._colorbar_widget.limits)
-
-    @QtCore.Slot(tuple)
-    def __colorbar_limits_changed(self, limits):
-        self._image_item.percentiles = None
-        self._image_item.setLevels(limits)
-
-    @QtCore.Slot(tuple)
-    def __colorbar_percentiles_changed(self, percentiles):
-        self._image_item.percentiles = percentiles
-        levels = self._image_item.levels
-        if levels is not None:
-            self._colorbar_widget.set_limits(*levels)
