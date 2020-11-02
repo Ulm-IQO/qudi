@@ -19,7 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 import numpy as np
 import os
 import pyqtgraph as pg
@@ -39,6 +38,7 @@ from qtpy import uic
 class ODMRMainWindow(QtWidgets.QMainWindow):
     """ The main window for the ODMR measurement GUI.
     """
+
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -53,6 +53,7 @@ class ODMRMainWindow(QtWidgets.QMainWindow):
 class ODMRSettingDialog(QtWidgets.QDialog):
     """ The settings dialog for ODMR measurements.
     """
+
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -158,10 +159,10 @@ class ODMRGui(GUIBase):
             axisOrder='row-major')
         self.odmr_matrix_image.setRect(QtCore.QRectF(
                 self._odmr_logic.mw_start,
-                0,
+            0,
                 self._odmr_logic.mw_stop - self._odmr_logic.mw_start,
-                self._odmr_logic.number_of_lines
-            ))
+            self._odmr_logic.number_of_lines
+        ))
 
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.odmr_plot_x,
                                           self._odmr_logic.odmr_plot_y[self.display_channel],
@@ -519,7 +520,7 @@ class ODMRGui(GUIBase):
                 0,
                 np.abs(float(odmr_data_x[-1] - odmr_data_x[0])),
                 odmr_matrix.shape[0])
-            )
+        )
         self.odmr_matrix_image.setImage(
             image=odmr_matrix[:, self.display_channel],
             axisOrder='row-major',

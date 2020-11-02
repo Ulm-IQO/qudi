@@ -982,6 +982,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         return not value == value
 
+    # Property added as a temporary fix so that Qudi mapper works with this Class.
+    # When moving to PySide2, it won't be necessary any longer
+    value_float = QtCore.Property(float, fget=value, fset=setValue, notify=valueChanged)
+
 
 class ScienSpinBox(QtWidgets.QAbstractSpinBox):
     """
@@ -1490,3 +1494,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         else:
             selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
+
+    # Property added as a temporary fix so that Qudi mapper works with this Class.
+    # When moving to PySide2, it won't be necessary any longer
+    value_int = QtCore.Property(float, fget=value, fset=setValue, notify=valueChanged)
