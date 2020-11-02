@@ -207,14 +207,6 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_odmr_plots(self):
         """ Initializing the ODMR plots (line and matrix). """
-<<<<<<< HEAD
-        self.odmr_plot_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step,dtype=float)
-        self.odmr_plot_y = np.zeros([len(self.get_odmr_channels()), self.odmr_plot_x.size],dtype=float)
-        self.odmr_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step,dtype=float)
-        self.odmr_fit_y = np.zeros(self.odmr_fit_x.size,dtype=float)
-        self.odmr_plot_xy = np.zeros(
-            [self.number_of_lines, len(self.get_odmr_channels()), self.odmr_plot_x.size],dtype=float)
-=======
 
         final_freq_list = []
         self.frequency_lists = []
@@ -240,7 +232,6 @@ class ODMRLogic(GenericLogic):
 
         self.odmr_fit_y = np.zeros(self.odmr_fit_x.size)
 
->>>>>>> 3a3d6b86813ef3b0303db3b4dc30dfc0d1e69bdd
         self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
         current_fit = self.fc.current_fit
         self.sigOdmrFitUpdated.emit(self.odmr_fit_x, self.odmr_fit_y, {}, current_fit)
@@ -440,18 +431,6 @@ class ODMRLogic(GenericLogic):
         self.mw_stops = []
 
         if self.module_state() != 'locked':
-<<<<<<< HEAD
-            if isinstance(start, (int, float)):
-                self.mw_start = float(limits.frequency_in_range(start))
-            if isinstance(stop, (int, float)) and isinstance(step, (int, float)):
-                if stop <= start:
-                    stop = start + step
-                self.mw_stop = float(limits.frequency_in_range(stop))
-                if self.mw_scanmode == MicrowaveMode.LIST:
-                    self.mw_step = float(limits.list_step_in_range(step))
-                elif self.mw_scanmode == MicrowaveMode.SWEEP:
-                    self.mw_step = float(limits.sweep_step_in_range(step))
-=======
             for start, step, stop in zip(starts, steps, stops):
                 if isinstance(start, (int, float)):
                     self.mw_starts.append(limits.frequency_in_range(start))
@@ -467,7 +446,6 @@ class ODMRLogic(GenericLogic):
                         else:
                             self.log.error("Sweep mode will only work with one frequency range.")
 
->>>>>>> 3a3d6b86813ef3b0303db3b4dc30dfc0d1e69bdd
             if isinstance(power, (int, float)):
                 self.sweep_mw_power = limits.power_in_range(power)
         else:
@@ -514,34 +492,6 @@ class ODMRLogic(GenericLogic):
         param_dict = {}
         self.final_freq_list = []
         if self.mw_scanmode == MicrowaveMode.LIST:
-<<<<<<< HEAD
-            if np.abs(float(self.mw_stop) - float(self.mw_start))/ float(self.mw_step) >= limits.list_maxentries:
-                self.log.warning('Number of frequency steps too large for microwave device. '
-                                 'Lowering resolution to fit the maximum length.')
-                self.mw_step = np.abs(float(self.mw_stop) - float(self.mw_start)) / (limits.list_maxentries - 1)
-                self.sigParameterUpdated.emit({'mw_step': self.mw_step})
-
-            # adjust the end frequency in order to have an integer multiple of step size
-            # The master module (i.e. GUI) will be notified about the changed end frequency
-            num_steps = int(np.rint((float(self.mw_stop) - float(self.mw_start))/ float(self.mw_step)))
-            end_freq = float(self.mw_start + num_steps * self.mw_step)
-            freq_list = np.linspace(float(self.mw_start), float(end_freq), num_steps + 1)
-            freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(freq_list,
-                                                                            self.sweep_mw_power)
-            self.mw_start = freq_list[0]
-            self.mw_stop = freq_list[-1]
-            self.mw_step = float(self.mw_stop - self.mw_start) / (len(freq_list) - 1)
-
-            param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
-                          'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
-
-        elif self.mw_scanmode == MicrowaveMode.SWEEP:
-            if np.abs(float((self.mw_stop - self.mw_start))) / float(self.mw_step) >= limits.sweep_maxentries:
-                self.log.warning('Number of frequency steps too large for microwave device. '
-                                 'Lowering resolution to fit the maximum length.')
-                self.mw_step = np.abs(float((self.mw_stop - self.mw_start))) / (limits.list_maxentries - 1)
-                self.sigParameterUpdated.emit({'mw_step': self.mw_step})
-=======
             final_freq_list = []
             used_starts = []
             used_steps = []
@@ -574,7 +524,6 @@ class ODMRLogic(GenericLogic):
             self.mw_steps = used_steps
             param_dict = {'mw_starts': used_starts, 'mw_stops': used_stops,
                           'mw_steps': used_steps, 'sweep_mw_power': self.sweep_mw_power}
->>>>>>> 3a3d6b86813ef3b0303db3b4dc30dfc0d1e69bdd
 
             self.sigParameterUpdated.emit(param_dict)
 
@@ -1090,7 +1039,7 @@ class ODMRLogic(GenericLogic):
             ax_mean.plot(fit_freq_vals, fit_count_vals, marker='None')
 
         ax_mean.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
-        ax_mean.set_xlim(float(np.min(freq_data)), float(np.max(freq_data)))
+        ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
 
         matrixplot = ax_matrix.imshow(
             matrix_data,
@@ -1098,19 +1047,11 @@ class ODMRLogic(GenericLogic):
             origin='lower',
             vmin=cbar_range[0],
             vmax=cbar_range[1],
-<<<<<<< HEAD
-            extent=[float(np.min(freq_data)),
-                float(np.max(freq_data)),
-                0,
-                self.number_of_lines
-                ],
-=======
             extent=[np.min(freq_data),
                     np.max(freq_data),
                     0,
                     self.number_of_lines
                     ],
->>>>>>> 3a3d6b86813ef3b0303db3b4dc30dfc0d1e69bdd
             aspect='auto',
             interpolation='nearest')
 
