@@ -517,7 +517,7 @@ class ODMRGui(GUIBase):
             QtCore.QRectF(
                 odmr_data_x[0],
                 0,
-                np.abs(odmr_data_x[-1] - odmr_data_x[0]),
+                np.abs(float(odmr_data_x[-1] - odmr_data_x[0])),
                 odmr_matrix.shape[0])
             )
         self.odmr_matrix_image.setImage(

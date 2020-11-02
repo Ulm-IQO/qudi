@@ -418,8 +418,8 @@ class FitContainer(QtCore.QObject):
         self.clear_result()
 
         fit_x = np.linspace(
-            start=x_data[0],
-            stop=x_data[-1],
+            start=float(x_data[0]),
+            stop=float(x_data[-1]),
             num=int(len(x_data) * self.fit_granularity_fact))
 
         # set the keyword arguments, which will be passed to the fit.
