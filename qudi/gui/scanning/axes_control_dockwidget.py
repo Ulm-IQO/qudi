@@ -30,6 +30,11 @@ __all__ = ('AxesControlDockWidget', 'AxesControlWidget')
 class AxesControlDockWidget(QtWidgets.QDockWidget):
     """ Scanner control QDockWidget based on the corresponding QWidget subclass
     """
+    __wrapped_attributes = frozenset({'sigResolutionChanged', 'sigRangeChanged',
+                                      'sigTargetChanged', 'sigSliderMoved', 'axes', 'resolution',
+                                      'range', 'target', 'get_resolution', 'set_resolution',
+                                      'get_range', 'set_range', 'get_target', 'set_target',
+                                      'set_assumed_unit_prefix'})
 
     def __init__(self, scanner_axes):
         super().__init__('Axes Control')
@@ -38,6 +43,11 @@ class AxesControlDockWidget(QtWidgets.QDockWidget):
         widget.setObjectName('axes_control_widget')
         self.setWidget(widget)
         return
+
+    def __getattr__(self, item):
+        if item in self.__wrapped_attributes:
+            return getattr(self.widget(), item)
+        raise AttributeError('AxesControlDockWidget has not attribute "{0}"'.format(item))
 
 
 class AxesControlWidget(QtWidgets.QWidget):
