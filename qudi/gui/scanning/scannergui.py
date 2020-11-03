@@ -31,7 +31,7 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
-from qudi.core.gui.qtwidgets.scan_widget import ScanImageItem, ScanWidget
+from qudi.core.gui.qtwidgets.scan_2d_widget import ScanImageItem, Scan2DWidget
 from qudi.core.module import GuiBase
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 
@@ -39,6 +39,7 @@ from .axes_control_dockwidget import AxesControlDockWidget
 from .optimizer_setting_dialog import OptimizerSettingDialog
 from .scan_settings_dialog import ScannerSettingDialog
 from .scan_dockwidget import Scan2DDockWidget
+from .optimizer_dockwidget import OptimizerDockWidget
 
 
 class ConfocalMainWindow(QtWidgets.QMainWindow):
@@ -90,53 +91,6 @@ class Scan1dDockWidget(QtWidgets.QDockWidget):
         self.plot_widget.addItem(self.plot_item)
 
         self.setWidget(widget)
-        return
-
-
-class OptimizerDockWidget(QtWidgets.QDockWidget):
-    """ Create the optimizer dockwidget based on the corresponding *.ui file.
-    """
-
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_optimizer_widget.ui')
-
-        super().__init__('Optimizer')
-        self.setObjectName('optimizer_dockWidget')
-
-        # Load UI file
-        widget = QtWidgets.QWidget()
-        uic.loadUi(ui_file, widget)
-        widget.setObjectName('optimizer_widget')
-
-        self.plot_widget = widget.optimizer_1d_plotWidget
-        self.scan_widget = widget.optimizer_2d_scanPlotWidget
-        self.axes_label = widget.optimizer_axes_label
-        self.position_label = widget.optimizer_position_label
-        self.image_item = ScanImageItem(image=np.zeros((2, 2)))
-        self.plot_item = pg.PlotDataItem(x=np.arange(10),
-                                         y=np.zeros(10),
-                                         pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                         symbol='o',
-                                         symbolPen=palette.c1,
-                                         symbolBrush=palette.c1,
-                                         symbolSize=7)
-        self.fit_plot_item = pg.PlotDataItem(x=np.arange(10),
-                                             y=np.zeros(10),
-                                             pen=pg.mkPen(palette.c2))
-        self.plot_item_vline = pg.InfiniteLine(pos=4.5,
-                                               movable=False,
-                                               pen={'color': '#00ff00', 'width': 2})
-        self.plot_widget.addItem(self.plot_item)
-        self.plot_widget.addItem(self.fit_plot_item)
-        self.plot_widget.addItem(self.plot_item_vline)
-        self.scan_widget.addItem(self.image_item)
-
-        self.setWidget(widget)
-        self.plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.scan_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.position_label.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         return
 
 
@@ -365,9 +319,6 @@ class ScannerGui(GuiBase):
     def _init_static_dockwidgets(self):
         self.optimizer_dockwidget = OptimizerDockWidget()
         self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
-        self.optimizer_dockwidget.scan_widget.add_crosshair(movable=False,
-                                                            pen={'color': '#00ff00', 'width': 2})
-        self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
         self.optimizer_dockwidget.visibilityChanged.connect(
             self._mw.action_view_optimizer.setChecked)
         self._mw.action_view_optimizer.triggered[bool].connect(
@@ -595,8 +546,19 @@ class ScannerGui(GuiBase):
         self._toggle_enable_actions(not is_running)
         if scan_data is not None:
             if caller_id is self._optimizer_id:
-                # ToDo:
-                print('Update scan state for optimize run...')
+                if scan_data.scan_dimension == 2:
+                    x_ax, y_ax = scan_data.scan_axes
+                    channel = self._osd.settings['data_channel']
+                    self.optimizer_dockwidget.set_image(image=scan_data.data[channel],
+                                                        extent=scan_data.scan_range)
+                    self.optimizer_dockwidget.set_image_label(axis='bottom',
+                                                              text=x_ax,
+                                                              units=scan_data.axes_units[x_ax])
+                    self.optimizer_dockwidget.set_image_label(axis='left',
+                                                              text=y_ax,
+                                                              units=scan_data.axes_units[y_ax])
+                elif scan_data.scan_dimension == 1:
+                    print('IMPLEMENT 1D SCAN DATA UPDATE FOR OPTIMIZER')
             else:
                 print('scan state updated:', caller_id, self._optimizer_id)
                 if scan_data.scan_dimension == 2:
@@ -614,42 +576,15 @@ class ScannerGui(GuiBase):
         self._toggle_enable_actions(not is_running,
                                     exclude_action=self._mw.action_optimize_position)
         self._mw.action_optimize_position.setChecked(is_running)
-        # Update optimal position crosshair
+        # Update optimal position crosshair and marker
         if isinstance(optimal_position, dict):
             if len(optimal_position) == 2:
-                self.optimizer_dockwidget.scan_widget.crosshairs[0].set_position(
-                    tuple(optimal_position.values())
-                )
+                self.optimizer_dockwidget.set_2d_position(tuple(optimal_position.values()))
             elif len(optimal_position) == 1:
-                self.optimizer_dockwidget.plot_item_vline.setValue(
-                    next(iter(optimal_position.values()))
-                )
-        return
-
-    def _optimize_data_updated(self, scan_data):
-        """
-        @param dict scan_data:
-        """
-        if scan_data is None:
-            return
-        if not isinstance(scan_data, ScanData):
-            self.log.error('Parameter "scan_data" must be ScanData instance. '
-                           'Unable to display optimizer scan data.')
-
-        data = scan_data.data[self._optimize_logic().data_channel]
-        nan_mask = np.isnan(data)
-        if nan_mask.all():
-            return
-
-        if scan_data.scan_dimension == 2:
-            self.optimizer_dockwidget.image_item.setImage(data)
-            if scan_data.data is not None:
-                self.optimizer_dockwidget.image_item.set_image_extent(scan_data.scan_range)
-            self.optimizer_dockwidget.scan_widget.autoRange()
-        elif scan_data.scan_dimension == 1:
-            x_data = np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0])[~nan_mask]
-            self.optimizer_dockwidget.fit_plot_item.setData(x_data, np.zeros(len(x_data)))
-            self.optimizer_dockwidget.plot_item.setData(x_data, data[~nan_mask])
+                self.optimizer_dockwidget.set_1d_position(next(iter(optimal_position.values())))
+        if fit_data is not None:
+            if fit_data.ndim == 1:
+                self.optimizer_dockwidget.set_fit_data(y=fit_data)
         return
 
     @QtCore.Slot(bool)
@@ -779,22 +714,28 @@ class ScannerGui(GuiBase):
             for seq_step in settings['scan_sequence']:
                 if len(seq_step) == 1:
                     axis = seq_step[0]
-                    self.optimizer_dockwidget.plot_widget.setLabel('bottom',
-                                                                   axis,
-                                                                   units=axes_constr[axis].unit)
-                    self.optimizer_dockwidget.plot_item.setData(np.zeros(10))
+                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                                                             text=axis,
+                                                             units=axes_constr[axis].unit)
+                    self.optimizer_dockwidget.set_plot_data()
+                    self.optimizer_dockwidget.set_fit_data()
                 elif len(seq_step) == 2:
                     x_axis, y_axis = seq_step
-                    self.optimizer_dockwidget.scan_widget.setLabel('bottom',
-                                                                   x_axis,
-                                                                   units=axes_constr[x_axis].unit)
-                    self.optimizer_dockwidget.scan_widget.setLabel('left',
-                                                                   y_axis,
-                                                                   units=axes_constr[y_axis].unit)
-                    self.optimizer_dockwidget.image_item.setImage(np.zeros((2, 2)))
-                    self.optimizer_dockwidget.image_item.set_image_extent(
-                        ((-0.5, 0.5), (-0.5, 0.5))
-                    )
+                    self.optimizer_dockwidget.set_image_label(axis='bottom',
+                                                              text=x_axis,
+                                                              units=axes_constr[x_axis].unit)
+                    self.optimizer_dockwidget.set_image_label(axis='left',
+                                                              text=y_axis,
+                                                              units=axes_constr[y_axis].unit)
+                    self.optimizer_dockwidget.set_image(None, extent=((-0.5, 0.5), (-0.5, 0.5)))
+
+        # Adjust 1D plot y-axis label
+        if 'data_channel' in settings:
+            channel_constr = self._scanning_logic().scanner_channels
+            channel = settings['data_channel']
+            self.optimizer_dockwidget.set_plot_label(axis='left',
+                                                     text=channel,
+                                                     units=channel_constr[channel].unit)
 
         # Adjust crosshair size according to optimizer range
         if 'scan_range' in settings:
