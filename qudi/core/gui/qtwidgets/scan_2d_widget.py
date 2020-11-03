@@ -88,7 +88,7 @@ class ScanImageItem(ImageItem):
             self.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
         return
 
-    def setImage(self, image=None, **kwargs):
+    def set_image(self, image=None, **kwargs):
         """
         pg.ImageItem method override to apply optional filter when setting image data.
         """
@@ -105,7 +105,7 @@ class ScanImageItem(ImageItem):
             min_value = np.percentile(masked_image, self._percentiles[0])
             max_value = np.percentile(masked_image, self._percentiles[1])
             kwargs['levels'] = (min_value, max_value)
-        super().setImage(image=image, **kwargs)
+        self.setImage(image=image, **kwargs)
         return
 
     def mouseClickEvent(self, ev):
@@ -684,7 +684,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             self._channel_selection_combobox.clear()
             self._channel_selection_combobox.setVisible(False)
             self._channel_selection_combobox.blockSignals(False)
-            self._image_item.setImage(image=None, autoLevels=False)
+            self._image_item.set_image(image=None, autoLevels=False)
             self._image_data = dict()
         elif isinstance(channel_units, dict) and len(channel_units) > 0:
             self._channel_units = channel_units.copy()
@@ -702,7 +702,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             if old_channel not in channel_units:
                 channel = self._channel_selection_combobox.currentText()
                 self.set_data_label(channel, unit=self._channel_units[channel])
-                self._image_item.setImage(image=None, autoLevels=False)
+                self._image_item.set_image(image=None, autoLevels=False)
                 self._image_data = dict()
         else:
             raise ValueError('name_to_unit_map must be non-empty dict or None')
@@ -713,7 +713,7 @@ class Scan2DWidget(QtWidgets.QWidget):
 
         """
         if data is None:
-            self._image_item.setImage(image=None, autoLevels=False)
+            self._image_item.set_image(image=None, autoLevels=False)
             self._image_data = dict()
             return
 
@@ -721,7 +721,7 @@ class Scan2DWidget(QtWidgets.QWidget):
             self._image_data = data.copy()
             channel = self._channel_selection_combobox.currentText()
             if channel not in self._image_data:
-                self._image_item.setImage(image=None, autoLevels=False)
+                self._image_item.set_image(image=None, autoLevels=False)
                 return
             image = self._image_data[channel]
         else:
@@ -731,12 +731,12 @@ class Scan2DWidget(QtWidgets.QWidget):
 
         # Set image with proper colorbar limits
         if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-            self._image_item.setImage(image=image, autoLevels=False)
+            self._image_item.set_image(image=image, autoLevels=False)
             levels = self._image_item.levels
             if levels is not None:
                 self._colorbar_widget.set_limits(*levels)
         else:
-            self._image_item.setImage(image=image,
+            self._image_item.set_image(image=image,
                                       autoLevels=False,
                                       levels=self._colorbar_widget.limits)
         return
@@ -784,12 +784,12 @@ class Scan2DWidget(QtWidgets.QWidget):
         image = self._image_data.get(channel, None)
         if image is not None:
             if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
-                self._image_item.setImage(image=image, autoLevels=False)
+                self._image_item.set_image(image=image, autoLevels=False)
                 levels = self._image_item.levels
                 if levels is not None:
                     self._colorbar_widget.set_limits(*levels)
             else:
-                self._image_item.setImage(image=image,
+                self._image_item.set_image(image=image,
                                           autoLevels=False,
                                           levels=self._colorbar_widget.limits)
         return
