@@ -92,10 +92,9 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self.marker.set_position(pos)
 
     def set_image(self, image, extent=None):
-        self.image_item.setImage(image=image)
+        self.image_item.set_image(image=image)
         if extent is not None:
             self.image_item.set_image_extent(extent)
-        self.plot2d_widget.autoRange()
 
     def set_plot_data(self, x=None, y=None):
         if x is None and y is None:

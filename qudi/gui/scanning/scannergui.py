@@ -546,9 +546,9 @@ class ScannerGui(GuiBase):
         self._toggle_enable_actions(not is_running)
         if scan_data is not None:
             if caller_id is self._optimizer_id:
+                channel = self._osd.settings['data_channel']
                 if scan_data.scan_dimension == 2:
                     x_ax, y_ax = scan_data.scan_axes
-                    channel = self._osd.settings['data_channel']
                     self.optimizer_dockwidget.set_image(image=scan_data.data[channel],
                                                         extent=scan_data.scan_range)
                     self.optimizer_dockwidget.set_image_label(axis='bottom',
@@ -558,7 +558,17 @@ class ScannerGui(GuiBase):
                                                               text=y_ax,
                                                               units=scan_data.axes_units[y_ax])
                 elif scan_data.scan_dimension == 1:
-                    print('IMPLEMENT 1D SCAN DATA UPDATE FOR OPTIMIZER')
+                    x_ax = scan_data.scan_axes[0]
+                    self.optimizer_dockwidget.set_plot_data(
+                        x=np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0]),
+                        y=scan_data.data[channel]
+                    )
+                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                                                             text=x_ax,
+                                                             units=scan_data.axes_units[x_ax])
+                    self.optimizer_dockwidget.set_plot_label(axis='left',
+                                                             text=channel,
+                                                             units=scan_data.channel_units[channel])
             else:
                 print('scan state updated:', caller_id, self._optimizer_id)
                 if scan_data.scan_dimension == 2:
