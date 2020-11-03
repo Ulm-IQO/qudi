@@ -328,7 +328,7 @@ class ScannerGui(GuiBase):
             tuple(self._scanning_logic().scanner_axes.values())
         )
         if self._default_position_unit_prefix is not None:
-            self.scanner_control_dockwidget.widget().set_assumed_unit_prefix(
+            self.scanner_control_dockwidget.set_assumed_unit_prefix(
                 self._default_position_unit_prefix
             )
         self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
@@ -336,6 +336,18 @@ class ScannerGui(GuiBase):
             self._mw.action_view_scanner_control.setChecked)
         self._mw.action_view_scanner_control.triggered[bool].connect(
             self.scanner_control_dockwidget.setVisible)
+        self.scanner_control_dockwidget.sigResolutionChanged.connect(
+            lambda ax, res: self.sigScanSettingsChanged.emit({'resolution': {ax: res}})
+        )
+        self.scanner_control_dockwidget.sigRangeChanged.connect(
+            lambda ax, ranges: self.sigScanSettingsChanged.emit({'range': {ax: ranges}})
+        )
+        self.scanner_control_dockwidget.sigTargetChanged.connect(
+            lambda ax, pos: self.sigScannerTargetChanged.emit({ax: pos}, self.module_state.uuid)
+        )
+        # ToDo: Implement a way to avoid too fast position update from slider movement.
+        #  Currently the scanner target position is only updated upon slider release.
+        # self.scanner_control_dockwidget.sigSliderMoved.connect()
 
         self._mw.util_toolBar.visibilityChanged.connect(
             self._mw.action_view_toolbar.setChecked)
