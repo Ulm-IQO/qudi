@@ -27,7 +27,7 @@ from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
 from .colorbar import ColorBarWidget, ColorBarMode
 from ..colordefs import ColorScaleInferno
 
-__all__ = ('ScanImageItem', 'ScanPlotWidget', 'ScanViewBox', 'ScanWidget')
+__all__ = ('ScanImageItem', 'Scan2DPlotWidget', 'Scan2DViewBox', 'Scan2DWidget')
 
 
 class ScanImageItem(ImageItem):
@@ -115,7 +115,7 @@ class ScanImageItem(ImageItem):
         return super().mouseClickEvent(ev)
 
 
-class ScanPlotWidget(PlotWidget):
+class Scan2DPlotWidget(PlotWidget):
     """
     Extend the PlotWidget Class with more functionality used for qudi scan images.
     Supported features:
@@ -123,13 +123,13 @@ class ScanPlotWidget(PlotWidget):
      - zoom feature by rubberband selection
      - signalling for rubberband area selection
 
-    This class depends on the ScanViewBox class defined further below.
+    This class depends on the Scan2DViewBox class defined further below.
     This class can be promoted in the Qt designer.
     """
     sigMouseAreaSelected = QtCore.Signal(tuple, tuple)  # mapped mouse rubberband selection (x, y)
 
     def __init__(self, *args, **kwargs):
-        kwargs['viewBox'] = ScanViewBox()  # Use custom pg.ViewBox subclass
+        kwargs['viewBox'] = Scan2DViewBox()  # Use custom pg.ViewBox subclass
         super().__init__(*args, **kwargs)
         self.getViewBox().sigMouseAreaSelected.connect(self.__translate_selection_rect)
         self.crosshairs = list()
@@ -166,7 +166,7 @@ class ScanPlotWidget(PlotWidget):
 
     def add_crosshair(self, *args, **kwargs):
         """
-        Add a crosshair to this ScanPlotWidget.
+        Add a crosshair to this Scan2DPlotWidget.
         You can pass all optional parameters you can pass to ScanCrosshair.__init__
         The stacking of crosshairs will be in order of insertion (last added crosshair is on top).
         Keep stacking in mind when you want to have a draggable crosshair.
@@ -180,7 +180,7 @@ class ScanPlotWidget(PlotWidget):
     def remove_crosshair(self, index=-1):
         """
         Remove the crosshair at position <index> or the last one added (default) from this
-        ScanPlotWidget.
+        Scan2DPlotWidget.
         """
         crosshair = self.crosshairs.pop(index)
         # Remove crosshair from ViewBox
@@ -216,9 +216,9 @@ class ScanPlotWidget(PlotWidget):
         self.sigMouseAreaSelected.emit(x_limits, y_limits)
 
 
-class ScanViewBox(ViewBox):
+class Scan2DViewBox(ViewBox):
     """
-    Extension for pg.ViewBox to be used with ScanPlotWidget.
+    Extension for pg.ViewBox to be used with Scan2DPlotWidget.
 
     Implements optional rectangular rubber band area selection and optional corresponding zooming.
     """
@@ -281,7 +281,7 @@ class ScanViewBox(ViewBox):
 class ScanCrosshair(QtCore.QObject):
     """
     Represents a crosshair (two perpendicular infinite lines and optionally a rectangle around the
-    intersection) to be used in ScanPlotWidget.
+    intersection) to be used in Scan2DPlotWidget.
 
     @param QPointF|float[2] position:
     @param QSizeF|float[2] size:
@@ -592,7 +592,7 @@ class ScanCrosshair(QtCore.QObject):
         return
 
 
-class ScanWidget(QtWidgets.QWidget):
+class Scan2DWidget(QtWidgets.QWidget):
     """
     Extend the PlotWidget Class with more functionality used for qudi scan images.
     Supported features:
@@ -600,13 +600,13 @@ class ScanWidget(QtWidgets.QWidget):
      - zoom feature by rubberband selection
      - signalling for rubberband area selection
 
-    This class depends on the ScanViewBox class defined further below.
+    This class depends on the Scan2DViewBox class defined further below.
     This class can be promoted in the Qt designer.
     """
     sigScanToggled = QtCore.Signal(bool)
 
-    # Wrapped attribute names from ScanPlotWidget and ScanImageItem objects.
-    # Adjust these sets if ScanPlotWidget or ScanImageItem class changes.
+    # Wrapped attribute names from Scan2DPlotWidget and ScanImageItem objects.
+    # Adjust these sets if Scan2DPlotWidget or ScanImageItem class changes.
     __plot_widget_wrapped = frozenset(
         {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
          'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair', 'hide_crosshair',
@@ -644,7 +644,7 @@ class ScanWidget(QtWidgets.QWidget):
         if len(channel_units) < 2:
             self._channel_selection_combobox.setVisible(False)
 
-        self._plot_widget = ScanPlotWidget()
+        self._plot_widget = Scan2DPlotWidget()
         self._image_item = ScanImageItem()
         self._plot_widget.addItem(self._image_item)
         self._plot_widget.setMinimumWidth(100)
@@ -674,7 +674,7 @@ class ScanWidget(QtWidgets.QWidget):
             return getattr(self._plot_widget, name)
         elif name in self.__image_item_wrapped:
             return getattr(self._image_item, name)
-        raise AttributeError('No attribute "{0}" found in ScanWidget object.'.format(name))
+        raise AttributeError('No attribute "{0}" found in Scan2DWidget object.'.format(name))
 
     def set_data_channels(self, channel_units):
         if channel_units is None:

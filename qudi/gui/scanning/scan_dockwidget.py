@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.gui.qtwidgets.scan_widget import ScanWidget
+from qudi.core.gui.qtwidgets.scan_2d_widget import Scan2DWidget
 from qudi.core.util.paths import get_artwork_dir
 
 __all__ = ('Scan2DDockWidget',)
@@ -57,8 +57,8 @@ class Scan2DDockWidget(QtWidgets.QDockWidget):
         stop_icon_path = os.path.join(icon_path, 'stop-scan.png')
         icon = QtGui.QIcon(start_icon_path)
         icon.addPixmap(QtGui.QPixmap(stop_icon_path), mode=QtGui.QIcon.Normal, state=QtGui.QIcon.On)
-        self.scan_widget = ScanWidget(channel_units={ch.name: ch.unit for ch in channels},
-                                      scan_icon=icon)
+        self.scan_widget = Scan2DWidget(channel_units={ch.name: ch.unit for ch in channels},
+                                        scan_icon=icon)
         self.scan_widget.set_axis_label('bottom', label=x_axis.name.title(), unit=x_axis.unit)
         self.scan_widget.set_axis_label('left', label=y_axis.name.title(), unit=y_axis.unit)
         self.scan_widget.set_data_channels({ch.name: ch.unit for ch in channels})
