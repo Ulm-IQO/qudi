@@ -178,8 +178,6 @@ class ScannerGui(GuiBase):
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic().module_state() != 'idle')
 
-        # Initialize dockwidgets to default view
-        self.restore_default_view()
         # Try to restore window state and geometry
         if self._window_geometry is not None:
             if not self._mw.restoreGeometry(bytearray.fromhex(self._window_geometry)):
@@ -233,11 +231,8 @@ class ScannerGui(GuiBase):
             self.optimize_state_updated, QtCore.Qt.QueuedConnection
         )
 
-        # FIXME: Dirty workaround for strange pyqtgraph autoscale behaviour
-        for dockwidget in self.scan_2d_dockwidgets.values():
-            dockwidget.scan_widget.autoRange()
-            dockwidget.scan_widget.autoRange()
-
+        # Initialize dockwidgets to default view
+        self.restore_default_view()
         self.show()
         return
 
@@ -358,57 +353,7 @@ class ScannerGui(GuiBase):
         """ Restore the arrangement of DockWidgets to default """
         self._mw.setDockNestingEnabled(True)
 
-        # Handle dynamically created dock widgets
-        for i, dockwidget in enumerate(self.scan_2d_dockwidgets.values()):
-            dockwidget.show()
-            dockwidget.setFloating(False)
-            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-            if i > 1:
-                first_dockwidget = self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[0]]
-                self._mw.tabifyDockWidget(first_dockwidget, dockwidget)
-                if i >= len(self.scan_2d_dockwidgets) - 1:
-                    first_dockwidget.raise_()
-        for i, dockwidget in enumerate(self.scan_1d_dockwidgets.values()):
-            dockwidget.show()
-            dockwidget.setFloating(False)
-            self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-            if i > 0:
-                first_dockwidget = self.scan_1d_dockwidgets[list(self.scan_1d_dockwidgets)[0]]
-                self._mw.tabifyDockWidget(first_dockwidget, dockwidget)
-                if i >= len(self.scan_1d_dockwidgets) - 1:
-                    first_dockwidget.raise_()
-
-        # Handle static dock widgets
-        self.optimizer_dockwidget.setFloating(False)
-        self.optimizer_dockwidget.show()
-        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
-        if self.scan_1d_dockwidgets:
-            dockwidget = self.scan_1d_dockwidgets[list(self.scan_1d_dockwidgets)[0]]
-            if self.scan_2d_dockwidgets:
-                self._mw.splitDockWidget(dockwidget, self.optimizer_dockwidget, QtCore.Qt.Vertical)
-            if len(self.scan_2d_dockwidgets) > 1:
-                dock_list = [self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[0]],
-                             self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[1]],
-                             dockwidget]
-                self._mw.resizeDocks(dock_list, [1, 1, 1], QtCore.Qt.Horizontal)
-            elif self.scan_2d_dockwidgets:
-                dock_list = [self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[0]],
-                             dockwidget]
-                self._mw.resizeDocks(dock_list, [1, 1], QtCore.Qt.Horizontal)
-            else:
-                dock_list = [dockwidget, self.optimizer_dockwidget]
-                self._mw.resizeDocks(dock_list, [1, 1], QtCore.Qt.Horizontal)
-        elif len(self.scan_2d_dockwidgets) > 1:
-            dockwidget = self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[1]]
-            self._mw.splitDockWidget(dockwidget, self.optimizer_dockwidget, QtCore.Qt.Vertical)
-            dock_list = [self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[0]],
-                         dockwidget]
-            self._mw.resizeDocks(dock_list, [1, 1], QtCore.Qt.Horizontal)
-        else:
-            dock_list = [self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[0]],
-                         self.optimizer_dockwidget]
-            self._mw.resizeDocks(dock_list, [1, 1], QtCore.Qt.Horizontal)
-
+        # Handle axes control dockwidget
         self.scanner_control_dockwidget.setFloating(False)
         self.scanner_control_dockwidget.show()
         self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.scanner_control_dockwidget)
@@ -416,6 +361,69 @@ class ScannerGui(GuiBase):
         # Return toolbar to default position
         self._mw.util_toolBar.show()
         self._mw.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self._mw.util_toolBar)
+
+        # Handle dynamically created dock widgets
+        multiple_1d_scans = len(self.scan_1d_dockwidgets) > 1
+        multiple_2d_scans = len(self.scan_2d_dockwidgets) > 1
+        has_1d_scans = bool(self.scan_1d_dockwidgets)
+        has_2d_scans = bool(self.scan_1d_dockwidgets)
+        if has_2d_scans:
+            first_2d_dockwidget = next(iter(self.scan_2d_dockwidgets.values()))
+            for i, dockwidget in enumerate(self.scan_2d_dockwidgets.values()):
+                dockwidget.show()
+                dockwidget.setFloating(False)
+                self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
+                if multiple_2d_scans and (has_1d_scans or i > 1):
+                    self._mw.tabifyDockWidget(first_2d_dockwidget, dockwidget)
+                    if i == len(self.scan_2d_dockwidgets) - 1:
+                        first_2d_dockwidget.raise_()
+        if has_1d_scans:
+            first_1d_dockwidget = next(iter(self.scan_1d_dockwidgets.values()))
+            for i, dockwidget in enumerate(self.scan_1d_dockwidgets.values()):
+                dockwidget.show()
+                dockwidget.setFloating(False)
+                self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
+                if i > 1:
+                    self._mw.tabifyDockWidget(first_1d_dockwidget, dockwidget)
+                    if i == len(self.scan_2d_dockwidgets) - 1:
+                        first_1d_dockwidget.raise_()
+        # Adjust size ratio between dockwidgets
+        if has_1d_scans and has_2d_scans:
+            self._mw.resizeDocks((first_2d_dockwidget, first_1d_dockwidget),
+                                 (1, 1),
+                                 QtCore.Qt.Horizontal)
+        elif multiple_2d_scans:
+            iterator = iter(self.scan_2d_dockwidgets.values())
+            first = next(iterator)
+            second = next(iterator)
+            self._mw.resizeDocks((first, second), (1, 1), QtCore.Qt.Horizontal)
+
+        # Handle static dock widgets
+        self.optimizer_dockwidget.setFloating(False)
+        self.optimizer_dockwidget.show()
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
+        if has_1d_scans and has_2d_scans:
+            dockwidget = next(iter(self.scan_1d_dockwidgets.values()))
+        elif multiple_2d_scans:
+            iterator = iter(self.scan_2d_dockwidgets.values())
+            next(iterator)
+            dockwidget = next(iterator)
+        else:
+            dockwidget = None
+
+        if dockwidget is not None:
+            self._mw.splitDockWidget(dockwidget, self.optimizer_dockwidget, QtCore.Qt.Vertical)
+            self._mw.resizeDocks((dockwidget, self.optimizer_dockwidget),
+                                 (3, 2),
+                                 QtCore.Qt.Vertical)
+        elif has_1d_scans:
+            self._mw.resizeDocks((first_1d_dockwidget, self.optimizer_dockwidget),
+                                 (1, 1),
+                                 QtCore.Qt.Horizontal)
+        elif has_2d_scans:
+            self._mw.resizeDocks((first_2d_dockwidget, self.optimizer_dockwidget),
+                                 (1, 1),
+                                 QtCore.Qt.Horizontal)
         return
 
     def _remove_scan_dockwidget(self, axes):
