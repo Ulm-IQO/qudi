@@ -107,7 +107,7 @@ class Scan1DPlotWidget(PlotWidget):
         Keep stacking in mind when you want to have a draggable marker.
         """
         # Create new ScanMarker instance and add to markers list
-        self.markers.append(ScanMarker(self.getViewBox(), *args, **kwargs))
+        self.markers.append(ScanMarker(self, *args, **kwargs))
         # Add marker to ViewBox
         self.show_marker(-1)
         return
@@ -233,10 +233,9 @@ class ScanMarker(QtCore.QObject):
     sigDragStarted = QtCore.Signal()
     sigDragFinished = QtCore.Signal(float)
 
-    def __init__(self, viewbox, position=None, allowed_range=None, movable=None, pen=None,
+    def __init__(self, parent, position=None, allowed_range=None, movable=None, pen=None,
                  hover_pen=None):
-        super().__init__()
-        self._viewbox = viewbox
+        super().__init__(parent=parent)
         self._allowed_range = None
         self.__is_dragged = False
         self.vline = InfiniteLine(pos=0,
@@ -291,10 +290,14 @@ class ScanMarker(QtCore.QObject):
         return
 
     def add_to_view(self):
-        self._viewbox.addItem(self.vline)
+        view = self.parent()
+        if self.vline not in view.items():
+            view.addItem(self.vline)
 
     def remove_from_view(self):
-        self._viewbox.removeItem(self.vline)
+        view = self.parent()
+        if self.vline in view.items():
+            view.removeItem(self.vline)
 
     def set_movable(self, movable):
         """
@@ -365,8 +368,8 @@ class Scan1DWidget(QtWidgets.QWidget):
     """
     sigScanToggled = QtCore.Signal(bool)
 
-    # Wrapped attribute names from ScanPlotWidget and ScanImageItem objects.
-    # Adjust these sets if ScanPlotWidget or ScanImageItem class changes.
+    # Wrapped attribute names from ScanPlotWidget and ScanPlotDataItem objects.
+    # Adjust these sets if ScanPlotWidget or ScanPlotDataItem class changes.
     __plot_widget_wrapped = frozenset(
         {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
          'toggle_zoom_by_selection', 'add_marker', 'remove_marker', 'hide_marker',
@@ -418,6 +421,8 @@ class Scan1DWidget(QtWidgets.QWidget):
         self._channel_selection_combobox.currentIndexChanged.connect(self.__channel_changed)
         self._toggle_scan_button.clicked[bool].connect(self.sigScanToggled)
 
+        self.__channel_changed()
+
     def __getattr__(self, name):
         if name in self.__plot_widget_wrapped:
             return getattr(self._plot_widget, name)
@@ -435,6 +440,7 @@ class Scan1DWidget(QtWidgets.QWidget):
             self._channel_selection_combobox.blockSignals(False)
             self._plot_item.clear()
             self._scan_data = dict()
+            self.set_data_label('', '')
         elif isinstance(channel_units, dict) and len(channel_units) > 0:
             self._channel_units = channel_units.copy()
             old_channel = self._channel_selection_combobox.currentText()
@@ -449,10 +455,7 @@ class Scan1DWidget(QtWidgets.QWidget):
             self._channel_selection_combobox.setVisible(len(channel_units) > 1)
 
             if old_channel not in channel_units:
-                channel = self._channel_selection_combobox.currentText()
-                self.set_data_label(channel, unit=self._channel_units[channel])
-                self._plot_item.clear()
-                self._scan_data = dict()
+                self.__channel_changed()
         else:
             raise ValueError('name_to_unit_map must be non-empty dict or None')
         return
@@ -482,7 +485,7 @@ class Scan1DWidget(QtWidgets.QWidget):
         self._plot_item.setData(x=self._plot_item.xData if x is None else x, y=scan)
         return
 
-    def set_axis_label(self, label=None, unit=None):
+    def set_axis_label(self, label, unit=None):
         return self._plot_widget.setLabel('bottom', text=label, units=unit)
 
     def set_data_label(self, label, unit=None):
