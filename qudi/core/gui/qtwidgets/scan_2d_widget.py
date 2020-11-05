@@ -172,7 +172,7 @@ class Scan2DPlotWidget(PlotWidget):
         Keep stacking in mind when you want to have a draggable crosshair.
         """
         # Create new ScanCrosshair instance and add to crosshairs list
-        self.crosshairs.append(ScanCrosshair(self.getViewBox(), *args, **kwargs))
+        self.crosshairs.append(ScanCrosshair(self, *args, **kwargs))
         # Add crosshair to ViewBox
         self.show_crosshair(-1)
         return
@@ -300,10 +300,9 @@ class ScanCrosshair(QtCore.QObject):
     sigDragStarted = QtCore.Signal()
     sigDragFinished = QtCore.Signal(float, float)
 
-    def __init__(self, viewbox, position=None, size=None, min_size_factor=None, allowed_range=None,
+    def __init__(self, parent, position=None, size=None, min_size_factor=None, allowed_range=None,
                  movable=None, pen=None, hover_pen=None):
-        super().__init__()
-        self._viewbox = viewbox
+        super().__init__(parent=parent)
         self._min_size_factor = 0.02
         self._size = (0, 0)
         self._allowed_range = None
@@ -323,7 +322,7 @@ class ScanCrosshair(QtCore.QObject):
                                   pen=self._default_pen,
                                   hoverPen=self._default_hover_pen)
 
-        self._viewbox.sigRangeChanged.connect(self._constraint_size)
+        self.parent().sigRangeChanged.connect(self._constraint_size)
         self.vline.sigDragged.connect(self._update_pos_from_line)
         self.vline.sigPositionChangeFinished.connect(self._finish_drag)
         self.hline.sigDragged.connect(self._update_pos_from_line)
@@ -427,7 +426,8 @@ class ScanCrosshair(QtCore.QObject):
 
         min_size = min(size)
         if min_size > 0:
-            vb_size = self._viewbox.viewRect().size()
+            vb_size = self.parent().viewRect()
+            print(vb_size)
             min_vb_size = min(abs(vb_size.width()), abs(vb_size.height()))
             min_vb_size *= self._min_size_factor
 
@@ -437,14 +437,16 @@ class ScanCrosshair(QtCore.QObject):
         return size
 
     def add_to_view(self):
-        self._viewbox.addItem(self.vline)
-        self._viewbox.addItem(self.hline)
-        self._viewbox.addItem(self.crosshair)
+        view = self.parent()
+        view.addItem(self.vline)
+        view.addItem(self.hline)
+        view.addItem(self.crosshair)
 
     def remove_from_view(self):
-        self._viewbox.removeItem(self.vline)
-        self._viewbox.removeItem(self.hline)
-        self._viewbox.removeItem(self.crosshair)
+        view = self.parent()
+        view.removeItem(self.vline)
+        view.removeItem(self.hline)
+        view.removeItem(self.crosshair)
 
     def set_movable(self, movable):
         """
