@@ -323,21 +323,6 @@ class ScanCrosshair(QtCore.QObject):
                                   pen=self._default_pen,
                                   hoverPen=self._default_hover_pen)
 
-        if pen is not None:
-            self.set_pen(pen)
-        if hover_pen is not None:
-            self.set_hover_pen(hover_pen)
-        if position is not None:
-            self.set_position(position)
-        if size is not None:
-            self.set_size(size)
-        if min_size_factor is not None:
-            self.set_min_size_factor(min_size_factor)
-        if allowed_range is not None:
-            self.set_allowed_range(allowed_range)
-        if movable is not None:
-            self.set_movable(movable)
-
         self._viewbox.sigRangeChanged.connect(self._constraint_size)
         self.vline.sigDragged.connect(self._update_pos_from_line)
         self.vline.sigPositionChangeFinished.connect(self._finish_drag)
@@ -347,15 +332,28 @@ class ScanCrosshair(QtCore.QObject):
         self.crosshair.sigRegionChangeFinished.connect(self._finish_drag)
         self.sigPositionDragged.connect(self.sigPositionChanged)
 
+        if pen is not None:
+            self.set_pen(pen)
+        if hover_pen is not None:
+            self.set_hover_pen(hover_pen)
+        if min_size_factor is not None:
+            self.set_min_size_factor(min_size_factor)
+        if allowed_range is not None:
+            self.set_allowed_range(allowed_range)
+        if size is not None:
+            self.set_size(size)
+        if position is not None:
+            self.set_position(position)
+        if movable is not None:
+            self.set_movable(movable)
+
     @property
     def movable(self):
         return bool(self.crosshair.translatable)
 
     @property
     def position(self):
-        pos = self.vline.pos()
-        pos[1] = self.hline.pos()[1]
-        return tuple(pos)
+        return self.vline.pos()[0], self.hline.pos()[1]
 
     @property
     def size(self):
@@ -376,16 +374,16 @@ class ScanCrosshair(QtCore.QObject):
         Called each time the position of the InfiniteLines has been changed by a user drag.
         Causes the crosshair rectangle to follow the lines.
         """
-        pos = self.vline.pos()
-        pos[1] = self.hline.pos()[1]
+        x = self.vline.pos()[0]
+        y = self.hline.pos()[1]
         size = self.crosshair.size()
         if not self.__is_dragged:
             self.__is_dragged = True
             self.sigDragStarted.emit()
         self.crosshair.blockSignals(True)
-        self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
+        self.crosshair.setPos((x - size[0] / 2, y - size[1] / 2))
         self.crosshair.blockSignals(False)
-        self.sigPositionDragged.emit(*pos)
+        self.sigPositionDragged.emit(x, y)
         return
 
     def _update_pos_from_roi(self, obj=None):
@@ -395,14 +393,14 @@ class ScanCrosshair(QtCore.QObject):
         """
         pos = self.crosshair.pos()
         size = self.crosshair.size()
-        pos[0] += size[0] / 2
-        pos[1] += size[1] / 2
+        x = pos[0] + size[0] / 2
+        y = pos[1] + size[1] / 2
         if not self.__is_dragged:
             self.__is_dragged = True
             self.sigDragStarted.emit()
-        self.vline.setPos(pos[0])
-        self.hline.setPos(pos[1])
-        self.sigPositionDragged.emit(*pos)
+        self.vline.setPos(x)
+        self.hline.setPos(y)
+        self.sigPositionDragged.emit(x, y)
         return
 
     def _finish_drag(self):
@@ -428,16 +426,14 @@ class ScanCrosshair(QtCore.QObject):
             size = (size.width(), size.height())
 
         min_size = min(size)
-        if min_size == 0:
-            return size
-        vb_size = self._viewbox.viewRect().size()
-        short_index = int(vb_size.width() > vb_size.height())
-        min_vb_size = vb_size.width() if short_index == 0 else vb_size.height()
-        min_vb_size *= self._min_size_factor
+        if min_size > 0:
+            vb_size = self._viewbox.viewRect().size()
+            min_vb_size = min(abs(vb_size.width()), abs(vb_size.height()))
+            min_vb_size *= self._min_size_factor
 
-        if min_size < min_vb_size:
-            scale_factor = min_vb_size / min_size
-            size = (size[0] * scale_factor, size[1] * scale_factor)
+            if min_size < min_vb_size:
+                scale_factor = min_vb_size / min_size
+                size = (size[0] * scale_factor, size[1] * scale_factor)
         return size
 
     def add_to_view(self):
@@ -476,7 +472,7 @@ class ScanCrosshair(QtCore.QObject):
         self.crosshair.blockSignals(True)
         self.vline.blockSignals(True)
         self.hline.blockSignals(True)
-        self.crosshair.setPos(pos[0] - size[0] / 2, pos[1] - size[1] / 2)
+        self.crosshair.setPos(pos[0] - size[0] / 2, y=pos[1] - size[1] / 2)
         self.vline.setPos(pos[0])
         self.hline.setPos(pos[1])
         self.crosshair.blockSignals(False)

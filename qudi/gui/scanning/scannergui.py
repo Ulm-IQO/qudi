@@ -363,7 +363,6 @@ class ScannerGui(GuiBase):
         self._mw.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self._mw.util_toolBar)
 
         # Handle dynamically created dock widgets
-        multiple_1d_scans = len(self.scan_1d_dockwidgets) > 1
         multiple_2d_scans = len(self.scan_2d_dockwidgets) > 1
         has_1d_scans = bool(self.scan_1d_dockwidgets)
         has_2d_scans = bool(self.scan_1d_dockwidgets)
@@ -446,7 +445,7 @@ class ScannerGui(GuiBase):
     def _add_scan_dockwidget(self, axes):
         axes_constr = self._scanning_logic().scanner_axes
         channel_constr = self._scanning_logic().scanner_channels
-        optimizer_settings = self._optimize_logic().optimize_settings
+        optimizer_range = self._optimize_logic().scan_range
         axes = tuple(axes)
         if len(axes) == 1:
             if axes in self.scan_1d_dockwidgets:
@@ -470,6 +469,8 @@ class ScannerGui(GuiBase):
             dockwidget = Scan2DDockWidget(scan_axes=(axes_constr[axes[0]], axes_constr[axes[1]]),
                                           channels=tuple(channel_constr.values()))
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
+            dockwidget.crosshair.set_size(tuple(optimizer_range[ax] for ax in axes))
+            dockwidget.crosshair.set_position((0, 0))
             self.scan_2d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
 
@@ -519,9 +520,9 @@ class ScannerGui(GuiBase):
         # ToDo: Implement backwards scanning functionality
 
         if 'resolution' in settings:
-            self.scanner_control_dockwidget.widget().set_resolution(settings['resolution'])
+            self.scanner_control_dockwidget.set_resolution(settings['resolution'])
         if 'range' in settings:
-            self.scanner_control_dockwidget.widget().set_range(settings['range'])
+            self.scanner_control_dockwidget.set_range(settings['range'])
         if 'frequency' in settings:
             old_freq = self._ssd.settings_widget.frequency
             new_freq = {
@@ -556,7 +557,7 @@ class ScannerGui(GuiBase):
             pos_dict = self._scanning_logic().scanner_target
 
         self._update_scan_crosshairs(pos_dict)
-        self.scanner_control_dockwidget.widget().set_target(pos_dict)
+        self.scanner_control_dockwidget.set_target(pos_dict)
         return
 
     @QtCore.Slot(bool, object, object)
@@ -628,6 +629,7 @@ class ScannerGui(GuiBase):
     def _update_scan_crosshairs(self, pos_dict, exclude_scan=None):
         """
         """
+        print('update crosshairs:', pos_dict)
         for scan_axes, dockwidget in self.scan_2d_dockwidgets.items():
             if exclude_scan == scan_axes or not any(ax in pos_dict for ax in scan_axes):
                 continue
