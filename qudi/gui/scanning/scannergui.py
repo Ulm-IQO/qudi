@@ -470,7 +470,9 @@ class ScannerGui(GuiBase):
             self._mw.action_utility_zoom.blockSignals(False)
 
         for dockwidget in self.scan_2d_dockwidgets.values():
-            dockwidget.scan_widget.toggle_selection(enable)
+            dockwidget.toggle_selection(enable)
+        for dockwidget in self.scan_1d_dockwidgets.values():
+            dockwidget.toggle_selection(enable)
         return
 
     @QtCore.Slot()
@@ -620,6 +622,11 @@ class ScannerGui(GuiBase):
             old_x, old_y = dockwidget.crosshair.position
             new_pos = (pos_dict.get(scan_axes[0], old_x), pos_dict.get(scan_axes[1], old_y))
             dockwidget.crosshair.set_position(new_pos)
+        for scan_axes, dockwidget in self.scan_1d_dockwidgets.items():
+            if exclude_scan == scan_axes or not any(ax in pos_dict for ax in scan_axes):
+                continue
+            new_pos = pos_dict.get(scan_axes[0], dockwidget.marker.position)
+            dockwidget.marker.set_position(new_pos)
 
     def _update_scan_data(self, scan_data):
         """
@@ -635,30 +642,14 @@ class ScannerGui(GuiBase):
                 return
             dockwidget.set_scan_data(data)
             if data is not None:
-                dockwidget.scan_widget.set_image_extent(extent)
+                dockwidget.set_image_extent(extent)
             dockwidget.scan_widget.autoRange()
         else:
             dockwidget = self.scan_1d_dockwidgets.get(axes, None)
-            if set(scan_data.channel_names) != dockwidget.channel_set:
-                old_channel = dockwidget.channel_combobox.currentText()
-                dockwidget.channel_combobox.blockSignals(True)
-                dockwidget.channel_combobox.clear()
-                dockwidget.channel_combobox.addItems(scan_data.channel_names)
-                dockwidget.channel_set = set(scan_data.channel_names)
-                if old_channel in dockwidget.channel_set:
-                    dockwidget.channel_combobox.setCurrentText(old_channel)
-                else:
-                    dockwidget.channel_combobox.setCurrentIndex(0)
-                dockwidget.channel_combobox.blockSignals(False)
-            channel = dockwidget.channel_combobox.currentText()
-            if data is None:
-                dockwidget.plot_item.setData(np.zeros(1), np.zeros(1))
-            else:
-                dockwidget.plot_item.setData(
-                    np.linspace(*(extent[0]), scan_data.scan_resolution[0]),
-                    data[channel]
-                )
-            dockwidget.plot_widget.setLabel('left', channel, units=scan_data.channel_units[channel])
+            if dockwidget is None:
+                self.log.error('No 1D scan dockwidget found for scan axes {0}'.format(axes))
+                return
+            dockwidget.set_scan_data(data, x=np.linspace(*extent[0], scan_data.scan_resolution[0]))
         return
 
     def _toggle_enable_scan_crosshairs(self, enable):
@@ -714,13 +705,19 @@ class ScannerGui(GuiBase):
         return toggle_func
 
     def __get_range_from_selection_func(self, axes):
-        def set_range_func(x_range, y_range):
-            x_min, x_max = min(x_range), max(x_range)
-            y_min, y_max = min(y_range), max(y_range)
-            self.sigScanSettingsChanged.emit(
-                {'range': {axes[0]: (x_min, x_max), axes[1]: (y_min, y_max)}}
-            )
-            self._mw.action_utility_zoom.setChecked(False)
+        if len(axes) == 2:
+            def set_range_func(x_range, y_range):
+                x_min, x_max = min(x_range), max(x_range)
+                y_min, y_max = min(y_range), max(y_range)
+                self.sigScanSettingsChanged.emit(
+                    {'range': {axes[0]: (x_min, x_max), axes[1]: (y_min, y_max)}}
+                )
+                self._mw.action_utility_zoom.setChecked(False)
+        else:
+            def set_range_func(start, stop):
+                extent = (stop, start) if start > stop else (start, stop)
+                self.sigScanSettingsChanged.emit({'range': {axes[0]: extent}})
+                self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
 
     @qudi_slot()
