@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import numpy as np
-import pyqtgraph as pg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 import qudi.core.gui.uic as uic
@@ -31,14 +30,12 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
-from qudi.core.gui.qtwidgets.scan_2d_widget import ScanImageItem, Scan2DWidget
 from qudi.core.module import GuiBase
-from qudi.core.gui.colordefs import QudiPalettePale as palette
 
 from .axes_control_dockwidget import AxesControlDockWidget
 from .optimizer_setting_dialog import OptimizerSettingDialog
 from .scan_settings_dialog import ScannerSettingDialog
-from .scan_dockwidget import Scan2DDockWidget
+from .scan_dockwidget import Scan2DDockWidget, Scan1DDockWidget
 from .optimizer_dockwidget import OptimizerDockWidget
 
 
@@ -61,36 +58,6 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
             event.accept()
         else:
             super().mouseDoubleClickEvent(event)
-        return
-
-
-class Scan1dDockWidget(QtWidgets.QDockWidget):
-    """ Create the 1D scan dockwidget based on the corresponding *.ui file.
-    """
-
-    def __init__(self, axis_name):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_1d_scan_widget.ui')
-
-        dock_title = '{0} Scan'.format(axis_name)
-
-        super().__init__(dock_title)
-        self.setObjectName('{0}_scan_dockWidget'.format(axis_name))
-
-        # Load UI file
-        widget = QtWidgets.QWidget()
-        uic.loadUi(ui_file, widget)
-        widget.setObjectName('{0}_scan_widget'.format(axis_name))
-
-        self.toggle_scan_button = widget.toggle_scan_pushButton
-        self.channel_combobox = widget.channel_comboBox
-        self.channel_set = set()
-        self.plot_widget = widget.scan_plotWidget
-        self.plot_item = pg.PlotDataItem(x=np.arange(2), y=np.zeros(2), pen=pg.mkPen(palette.c1))
-        self.plot_widget.addItem(self.plot_item)
-
-        self.setWidget(widget)
         return
 
 
@@ -153,6 +120,7 @@ class ScannerGui(GuiBase):
 
         # Initialize main window
         self._mw = ConfocalMainWindow()
+        self._mw.setDockNestingEnabled(True)
 
         # Initialize fixed dockwidgets
         self._init_static_dockwidgets()
@@ -165,8 +133,8 @@ class ScannerGui(GuiBase):
         scans = list()
         axes = tuple(self._scanning_logic().scanner_axes)
         for i, first_ax in enumerate(axes, 1):
-            # if not scans:
-            #     scans.append((first_ax,))
+            if not scans:
+                scans.append((first_ax,))
             for second_ax in axes[i:]:
                 scans.append((first_ax, second_ax))
         for scan in scans:
@@ -311,13 +279,6 @@ class ScannerGui(GuiBase):
         )
 
     def _init_static_dockwidgets(self):
-        self.optimizer_dockwidget = OptimizerDockWidget()
-        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
-        self.optimizer_dockwidget.visibilityChanged.connect(
-            self._mw.action_view_optimizer.setChecked)
-        self._mw.action_view_optimizer.triggered[bool].connect(
-            self.optimizer_dockwidget.setVisible)
-
         self.scanner_control_dockwidget = AxesControlDockWidget(
             tuple(self._scanning_logic().scanner_axes.values())
         )
@@ -326,6 +287,7 @@ class ScannerGui(GuiBase):
                 self._default_position_unit_prefix
             )
         self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.scanner_control_dockwidget)
         self.scanner_control_dockwidget.visibilityChanged.connect(
             self._mw.action_view_scanner_control.setChecked)
         self._mw.action_view_scanner_control.triggered[bool].connect(
@@ -343,6 +305,14 @@ class ScannerGui(GuiBase):
         #  Currently the scanner target position is only updated upon slider release.
         # self.scanner_control_dockwidget.sigSliderMoved.connect()
 
+        self.optimizer_dockwidget = OptimizerDockWidget()
+        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.optimizer_dockwidget)
+        self.optimizer_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_optimizer.setChecked)
+        self._mw.action_view_optimizer.triggered[bool].connect(
+            self.optimizer_dockwidget.setVisible)
+
         self._mw.util_toolBar.visibilityChanged.connect(
             self._mw.action_view_toolbar.setChecked)
         self._mw.action_view_toolbar.triggered[bool].connect(self._mw.util_toolBar.setVisible)
@@ -350,93 +320,116 @@ class ScannerGui(GuiBase):
     @qudi_slot()
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to default """
+        for ii in range(100):
+            item = self._mw.layout().itemAt(ii)
+            if item is None:
+                print('---------')
+                print('No more items than {0:d}'.format(ii))
+                break
+            print(item.widget().objectName())
+
         self._mw.setDockNestingEnabled(True)
 
-        # Handle axes control dockwidget
-        self.scanner_control_dockwidget.setFloating(False)
-        self.scanner_control_dockwidget.show()
-        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.scanner_control_dockwidget)
+        # Remove all dockwidgets from main window layout
+        self._mw.removeDockWidget(self.optimizer_dockwidget)
+        self._mw.removeDockWidget(self.scanner_control_dockwidget)
+        for dockwidget in self.scan_2d_dockwidgets.values():
+            self._mw.removeDockWidget(dockwidget)
+        for dockwidget in self.scan_1d_dockwidgets.values():
+            self._mw.removeDockWidget(dockwidget)
 
         # Return toolbar to default position
         self._mw.util_toolBar.show()
         self._mw.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self._mw.util_toolBar)
 
-        # Handle dynamically created dock widgets
-        multiple_2d_scans = len(self.scan_2d_dockwidgets) > 1
-        has_1d_scans = bool(self.scan_1d_dockwidgets)
-        has_2d_scans = bool(self.scan_1d_dockwidgets)
+        # Add axes control dock widget to layout
+        self.scanner_control_dockwidget.setFloating(False)
+        self.scanner_control_dockwidget.show()
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.scanner_control_dockwidget)
+        # Add dynamically created dock widgets to layout
+        dockwidgets_2d = tuple(self.scan_2d_dockwidgets.values())
+        dockwidgets_1d = tuple(self.scan_1d_dockwidgets.values())
+        multiple_2d_scans = len(dockwidgets_2d) > 1
+        multiple_1d_scans = len(dockwidgets_1d) > 1
+        has_1d_scans = bool(dockwidgets_1d)
+        has_2d_scans = bool(dockwidgets_2d)
         if has_2d_scans:
-            first_2d_dockwidget = next(iter(self.scan_2d_dockwidgets.values()))
-            for i, dockwidget in enumerate(self.scan_2d_dockwidgets.values()):
+            for i, dockwidget in enumerate(dockwidgets_2d):
                 dockwidget.show()
-                dockwidget.setFloating(False)
                 self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-                if multiple_2d_scans and (has_1d_scans or i > 1):
-                    self._mw.tabifyDockWidget(first_2d_dockwidget, dockwidget)
-                    if i == len(self.scan_2d_dockwidgets) - 1:
-                        first_2d_dockwidget.raise_()
+                dockwidget.setFloating(False)
         if has_1d_scans:
-            first_1d_dockwidget = next(iter(self.scan_1d_dockwidgets.values()))
-            for i, dockwidget in enumerate(self.scan_1d_dockwidgets.values()):
+            for i, dockwidget in enumerate(dockwidgets_1d):
                 dockwidget.show()
-                dockwidget.setFloating(False)
                 self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-                if i > 1:
-                    self._mw.tabifyDockWidget(first_1d_dockwidget, dockwidget)
-                    if i == len(self.scan_2d_dockwidgets) - 1:
-                        first_1d_dockwidget.raise_()
-        # Adjust size ratio between dockwidgets
+                dockwidget.setFloating(False)
+        # Add optimizer dock widget to layout
+        self.optimizer_dockwidget.show()
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
+        self.optimizer_dockwidget.setFloating(False)
+
+        # tabify dockwidgets if needed
+        if multiple_2d_scans:
+            if has_1d_scans:
+                for ii, dockwidget in enumerate(dockwidgets_2d[1:]):
+                    self._mw.tabifyDockWidget(dockwidgets_2d[ii], dockwidget)
+                dockwidgets_2d[0].raise_()
+            else:
+                for ii, dockwidget in enumerate(dockwidgets_2d[2:]):
+                    if ii == 0:
+                        self._mw.tabifyDockWidget(dockwidgets_2d[ii], dockwidget)
+                    else:
+                        self._mw.tabifyDockWidget(dockwidgets_2d[ii+1], dockwidget)
+                dockwidgets_2d[0].raise_()
+        if multiple_1d_scans:
+            for ii, dockwidget in enumerate(dockwidgets_1d[1:]):
+                self._mw.tabifyDockWidget(dockwidgets_1d[ii], dockwidget)
+            dockwidgets_1d[0].raise_()
+
+        # split scan dock widget with optimizer dock widget if needed. Resize all groups.
         if has_1d_scans and has_2d_scans:
-            self._mw.resizeDocks((first_2d_dockwidget, first_1d_dockwidget),
+            self._mw.splitDockWidget(dockwidgets_1d[0],
+                                     self.optimizer_dockwidget,
+                                     QtCore.Qt.Vertical)
+            self._mw.resizeDocks((dockwidgets_1d[0], self.optimizer_dockwidget),
+                                 (3, 2),
+                                 QtCore.Qt.Vertical)
+            self._mw.resizeDocks((dockwidgets_2d[0], dockwidgets_1d[0]),
                                  (1, 1),
                                  QtCore.Qt.Horizontal)
         elif multiple_2d_scans:
-            iterator = iter(self.scan_2d_dockwidgets.values())
-            first = next(iterator)
-            second = next(iterator)
-            self._mw.resizeDocks((first, second), (1, 1), QtCore.Qt.Horizontal)
-
-        # Handle static dock widgets
-        self.optimizer_dockwidget.setFloating(False)
-        self.optimizer_dockwidget.show()
-        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
-        if has_1d_scans and has_2d_scans:
-            dockwidget = next(iter(self.scan_1d_dockwidgets.values()))
-        elif multiple_2d_scans:
-            iterator = iter(self.scan_2d_dockwidgets.values())
-            next(iterator)
-            dockwidget = next(iterator)
-        else:
-            dockwidget = None
-
-        if dockwidget is not None:
-            self._mw.splitDockWidget(dockwidget, self.optimizer_dockwidget, QtCore.Qt.Vertical)
-            self._mw.resizeDocks((dockwidget, self.optimizer_dockwidget),
+            self._mw.splitDockWidget(dockwidgets_2d[1],
+                                     self.optimizer_dockwidget,
+                                     QtCore.Qt.Vertical)
+            self._mw.resizeDocks((dockwidgets_2d[1], self.optimizer_dockwidget),
                                  (3, 2),
                                  QtCore.Qt.Vertical)
+            self._mw.resizeDocks((dockwidgets_2d[0], dockwidgets_2d[1]),
+                                 (1, 1),
+                                 QtCore.Qt.Horizontal)
         elif has_1d_scans:
-            self._mw.resizeDocks((first_1d_dockwidget, self.optimizer_dockwidget),
+            self._mw.resizeDocks((dockwidgets_1d[0], self.optimizer_dockwidget),
                                  (1, 1),
                                  QtCore.Qt.Horizontal)
         elif has_2d_scans:
-            self._mw.resizeDocks((first_2d_dockwidget, self.optimizer_dockwidget),
+            self._mw.resizeDocks((dockwidgets_2d[0], self.optimizer_dockwidget),
                                  (1, 1),
                                  QtCore.Qt.Horizontal)
         return
 
     def _remove_scan_dockwidget(self, axes):
-        if axes in self.scan_1d_dockwidgets:
+        if axes in tuple(self.scan_1d_dockwidgets):
             self._mw.removeDockWidget(self.scan_1d_dockwidgets[axes])
-            self.scan_1d_dockwidgets[axes].toggle_scan_button.clicked.disconnect()
+            self.scan_1d_dockwidgets[axes].sigPositionDragged.disconnect()
+            self.scan_1d_dockwidgets[axes].sigScanToggled.disconnect()
+            self.scan_1d_dockwidgets[axes].sigMouseAreaSelected.disconnect()
             self.scan_1d_dockwidgets[axes].deleteLater()
             del self.scan_1d_dockwidgets[axes]
-        elif axes in self.scan_2d_dockwidgets:
+        elif axes in tuple(self.scan_2d_dockwidgets):
             self._mw.removeDockWidget(self.scan_2d_dockwidgets[axes])
+            self.scan_2d_dockwidgets[axes].sigPositionDragged.disconnect()
             self.scan_2d_dockwidgets[axes].sigScanToggled.disconnect()
-            self.scan_2d_dockwidgets[axes].scan_widget.crosshairs[
-                0].sigDraggedPosChanged.disconnect()
-            self.scan_2d_dockwidgets[axes].scan_widget.sigMouseAreaSelected.disconnect()
-            self.scan_2d_dockwidgets[axes].channel_combobox.currentIndexChanged.disconnect()
+            self.scan_2d_dockwidgets[axes].sigMouseAreaSelected.disconnect()
             self.scan_2d_dockwidgets[axes].deleteLater()
             del self.scan_2d_dockwidgets[axes]
         return
@@ -451,15 +444,15 @@ class ScannerGui(GuiBase):
                 self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
                                'already created. Remove old widget first.'.format(axes))
                 return
-            dockwidget = Scan1dDockWidget(axes[0])
+            dockwidget = Scan1DDockWidget(scan_axis=axes_constr[axes[0]],
+                                          channels=tuple(channel_constr.values()))
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
             self.scan_1d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
-            # Set axis labels and initial data
-            dockwidget.plot_widget.setLabel('bottom', axes[0], units=axes_constr[axes[0]].unit)
-            dockwidget.plot_widget.setLabel('left', 'scan data', units='arb.u.')
-            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
-            dockwidget.plot_widget.setXRange(*axes_constr[axes[0]].value_range)
+
+            dockwidget.sigPositionDragged.connect(self.__get_marker_update_func(axes))
+            dockwidget.sigScanToggled.connect(self.__get_toggle_scan_func(axes))
+            dockwidget.sigMouseAreaSelected.connect(self.__get_range_from_selection_func(axes))
         else:
             if axes in self.scan_2d_dockwidgets:
                 self.log.error('Unable to add scanning widget for axes {0}. Widget for this scan '
@@ -707,6 +700,14 @@ class ScannerGui(GuiBase):
     def __get_crosshair_update_func(self, axes):
         def update_func(x, y):
             pos_dict = {axes[0]: x, axes[1]: y}
+            self._update_scan_crosshairs(pos_dict, exclude_scan=axes)
+            # self.scanner_control_dockwidget.widget().set_target(pos_dict)
+            self.set_scanner_target_position(pos_dict)
+        return update_func
+
+    def __get_marker_update_func(self, axes):
+        def update_func(pos):
+            pos_dict = {axes[0]: pos}
             self._update_scan_crosshairs(pos_dict, exclude_scan=axes)
             # self.scanner_control_dockwidget.widget().set_target(pos_dict)
             self.set_scanner_target_position(pos_dict)

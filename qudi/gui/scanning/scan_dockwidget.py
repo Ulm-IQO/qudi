@@ -23,9 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.qtwidgets.scan_2d_widget import Scan2DWidget
+from qudi.core.gui.qtwidgets.scan_1d_widget import Scan1DWidget
 from qudi.core.util.paths import get_artwork_dir
 
-__all__ = ('Scan2DDockWidget',)
+__all__ = ('Scan1DDockWidget', 'Scan2DDockWidget')
 
 
 class Scan2DDockWidget(QtWidgets.QDockWidget):
@@ -36,10 +37,9 @@ class Scan2DDockWidget(QtWidgets.QDockWidget):
         {'sigPositionChanged', 'sigPositionDragged', 'sigDragStarted', 'sigDragFinished'}
     )
     __transparent_widget_attrs = frozenset(
-        {'sigMouseClicked', 'sigMouseAreaSelected', 'sigScanToggled', 'use_blink_correction',
-         'toggle_blink_correction', 'selection_enabled', 'zoom_by_selection_enabled',
-         'toggle_selection', 'toggle_zoom_by_selection', 'set_image_extent', 'toggle_scan',
-         'toggle_enabled', 'set_scan_data'}
+        {'sigMouseClicked', 'sigMouseAreaSelected', 'sigScanToggled', 'selection_enabled',
+         'zoom_by_selection_enabled', 'toggle_selection', 'toggle_zoom_by_selection',
+         'set_image_extent', 'toggle_scan', 'toggle_enabled', 'set_scan_data'}
     )
 
     def __init__(self, *args, scan_axes, channels, **kwargs):
@@ -88,3 +88,60 @@ class Scan2DDockWidget(QtWidgets.QDockWidget):
         if enabled:
             return self.scan_widget.show_crosshair(-1)
         return self.scan_widget.hide_crosshair(-1)
+
+
+class Scan1DDockWidget(QtWidgets.QDockWidget):
+    """
+    """
+
+    __transparent_marker_attrs = frozenset(
+        {'sigPositionChanged', 'sigPositionDragged', 'sigDragStarted', 'sigDragFinished'}
+    )
+    __transparent_widget_attrs = frozenset(
+        {'sigMouseClicked', 'sigMouseAreaSelected', 'sigScanToggled', 'selection_enabled',
+         'zoom_by_selection_enabled', 'toggle_selection', 'toggle_zoom_by_selection', 'toggle_scan',
+         'toggle_enabled', 'set_scan_data'}
+    )
+
+    def __init__(self, *args, scan_axis, channels, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._axis = scan_axis.name
+
+        self.setWindowTitle('{0} Scan'.format(scan_axis.name.title()))
+        self.setObjectName('{0}_scan_dockWidget'.format(scan_axis.name))
+
+        icon_path = os.path.join(get_artwork_dir(), 'icons', 'qudiTheme', '22x22')
+        start_icon_path = os.path.join(icon_path, 'scan-xy-start.png')
+        stop_icon_path = os.path.join(icon_path, 'stop-scan.png')
+        icon = QtGui.QIcon(start_icon_path)
+        icon.addPixmap(QtGui.QPixmap(stop_icon_path), mode=QtGui.QIcon.Normal, state=QtGui.QIcon.On)
+        self.scan_widget = Scan1DWidget(channel_units={ch.name: ch.unit for ch in channels},
+                                        scan_icon=icon)
+        self.scan_widget.set_axis_label(scan_axis.name.title(), scan_axis.unit)
+        self.scan_widget.set_data_channels({ch.name: ch.unit for ch in channels})
+        self.scan_widget.add_marker(movable=True)
+        self.scan_widget.markers[-1].set_allowed_range(scan_axis.value_range)
+        self.scan_widget.toggle_zoom_by_selection(True)
+
+        self.setWidget(self.scan_widget)
+
+    def __getattr__(self, item):
+        if item in self.__transparent_marker_attrs:
+            return getattr(self.scan_widget.markers[-1], item)
+        if item in self.__transparent_widget_attrs:
+            return getattr(self.scan_widget, item)
+        raise AttributeError('Scan1DDockWidget has no attribute "{0}"'.format(item))
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def marker(self):
+        return self.scan_widget.markers[-1]
+
+    def toggle_marker(self, enabled):
+        if enabled:
+            return self.scan_widget.show_marker(-1)
+        return self.scan_widget.hide_marker(-1)
