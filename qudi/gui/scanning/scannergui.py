@@ -470,7 +470,6 @@ class ScannerGui(GuiBase):
                                           channels=tuple(channel_constr.values()))
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
             dockwidget.crosshair.set_size(tuple(optimizer_range[ax] for ax in axes))
-            dockwidget.crosshair.set_position((0, 0))
             self.scan_2d_dockwidgets[axes] = dockwidget
             self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
 
