@@ -427,7 +427,6 @@ class ScanCrosshair(QtCore.QObject):
         min_size = min(size)
         if min_size > 0:
             vb_size = self.parent().viewRect()
-            print(vb_size)
             min_vb_size = min(abs(vb_size.width()), abs(vb_size.height()))
             min_vb_size *= self._min_size_factor
 

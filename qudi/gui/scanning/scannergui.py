@@ -147,7 +147,6 @@ class ScannerGui(GuiBase):
         the event argument from fysom to the methods.
         """
         self._optimizer_id = self._optimize_logic().module_state.uuid
-        print('object name:', self._optimize_logic().objectName())
 
         self.scan_2d_dockwidgets = dict()
         self.scan_1d_dockwidgets = dict()
@@ -591,7 +590,6 @@ class ScannerGui(GuiBase):
                                                              text=channel,
                                                              units=scan_data.channel_units[channel])
             else:
-                print('scan state updated:', caller_id, self._optimizer_id)
                 if scan_data.scan_dimension == 2:
                     dockwidget = self.scan_2d_dockwidgets.get(scan_axes, None)
                 else:
@@ -631,7 +629,6 @@ class ScannerGui(GuiBase):
     def _update_scan_crosshairs(self, pos_dict, exclude_scan=None):
         """
         """
-        print('update crosshairs:', pos_dict)
         for scan_axes, dockwidget in self.scan_2d_dockwidgets.items():
             if exclude_scan == scan_axes or not any(ax in pos_dict for ax in scan_axes):
                 continue
