@@ -64,6 +64,7 @@ class Scan2DDockWidget(QtWidgets.QDockWidget):
         self.scan_widget.set_data_channels({ch.name: ch.unit for ch in channels})
         self.scan_widget.add_crosshair(movable=True, min_size_factor=0.02)
         self.scan_widget.crosshairs[-1].set_allowed_range((x_axis.value_range, y_axis.value_range))
+        self.scan_widget.crosshairs[-1].set_size((0.1, 0.1))
         self.scan_widget.toggle_zoom_by_selection(True)
 
         self.setWidget(self.scan_widget)
