@@ -269,8 +269,8 @@ class Scan2DViewBox(ViewBox):
                 rect = QtCore.QRectF(start, stop)
                 if self.zoom_by_selection:
                     # AutoRange needs to be disabled by hand because of a pyqtgraph bug.
-                    if self.autoRangeEnabled():
-                        self.disableAutoRange()
+                    # if self.autoRangeEnabled():
+                    #     self.disableAutoRange()
                     self.setRange(rect=rect, padding=0)
                 self.sigMouseAreaSelected.emit(rect)
             return

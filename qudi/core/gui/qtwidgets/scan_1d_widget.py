@@ -38,15 +38,11 @@ class ScanPlotDataItem(PlotDataItem):
     """
     sigMouseClicked = QtCore.Signal(object, float)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        return
-
     def mouseClickEvent(self, ev):
         if not ev.double():
             pos = self.getViewBox().mapSceneToView(ev.scenePos())
             print(pos)
-            self.sigMouseClicked.emit(ev.button(), (pos.x(), pos.y()))
+            self.sigMouseClicked.emit(ev.button(), pos.x())
         return super().mouseClickEvent(ev)
 
 
@@ -66,7 +62,7 @@ class Scan1DPlotWidget(PlotWidget):
     def __init__(self, *args, **kwargs):
         kwargs['viewBox'] = Scan1DViewBox()  # Use custom pg.ViewBox subclass
         super().__init__(*args, **kwargs)
-        self.getViewBox().sigMouseAreaSelected.connect(self.__translate_selection_range)
+        self.getViewBox().sigMouseAreaSelected.connect(self.sigMouseAreaSelected)
         self.markers = list()
 
     @property
@@ -139,14 +135,6 @@ class Scan1DPlotWidget(PlotWidget):
         self.markers[index].setZValue(11)
         return
 
-    @QtCore.Slot(QtCore.QRectF)
-    def __translate_selection_range(self, rect):
-        tmp_x = (rect.left(), rect.right())
-        tmp_y = (rect.top(), rect.bottom())
-        x_limits = min(tmp_x), max(tmp_x)
-        y_limits = min(tmp_y), max(tmp_y)
-        self.sigMouseAreaSelected.emit(x_limits, y_limits)
-
 
 class Scan1DViewBox(ViewBox):
     """
@@ -161,7 +149,7 @@ class Scan1DViewBox(ViewBox):
         super().__init__(*args, **kwargs)
         self.zoom_by_selection = False
         self.linear_selection = False
-        self.linear_region = LinearRegionItem(orientation='horizontal', movable=False)
+        self.linear_region = LinearRegionItem(orientation='vertical', movable=False)
         return
 
     def toggle_selection(self, enable):
@@ -193,19 +181,19 @@ class Scan1DViewBox(ViewBox):
         Additional mouse drag event handling to implement linear selection and zooming.
         """
         if self.linear_selection and ev.button() == QtCore.Qt.LeftButton:
-            self.linear_region.setRegion((ev.buttonDownPos().x(), ev.pos().x()))
+            start = self.mapToView(ev.buttonDownPos()).x()
+            current = self.mapToView(ev.pos()).x()
+            self.linear_region.setRegion((start, current))
             if ev.isStart():
                 self.addItem(self.linear_region)
             elif ev.isFinish():
-                start = self.mapToView(ev.buttonDownPos()).x()
-                stop = self.mapToView(ev.pos()).x()
                 self.removeItem(self.linear_region)
                 if self.zoom_by_selection:
                     # AutoRange needs to be disabled by hand because of a pyqtgraph bug.
-                    if self.autoRangeEnabled():
-                        self.disableAutoRange()
-                    self.setRange(xRange=(start, stop), padding=0)
-                self.sigMouseAreaSelected.emit(start, stop)
+                    # if self.autoRangeEnabled():
+                    #     self.disableAutoRange()
+                    self.setRange(xRange=(start, current), padding=0)
+                self.sigMouseAreaSelected.emit(start, current)
             ev.accept()
             return
         else:
@@ -482,7 +470,11 @@ class Scan1DWidget(QtWidgets.QWidget):
             )
 
         # Set plot data
-        self._plot_item.setData(x=self._plot_item.xData if x is None else x, y=scan)
+        masked_data = np.ma.masked_invalid(scan).compressed()
+        if masked_data.size > 0:
+            self._plot_item.setData(x=self._plot_item.xData if x is None else x, y=scan)
+        else:
+            self._plot_item.clear()
         return
 
     def set_axis_label(self, label, unit=None):
