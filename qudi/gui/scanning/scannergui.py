@@ -320,14 +320,6 @@ class ScannerGui(GuiBase):
     @qudi_slot()
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to default """
-        for ii in range(100):
-            item = self._mw.layout().itemAt(ii)
-            if item is None:
-                print('---------')
-                print('No more items than {0:d}'.format(ii))
-                break
-            print(item.widget().objectName())
-
         self._mw.setDockNestingEnabled(True)
 
         # Remove all dockwidgets from main window layout
