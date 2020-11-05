@@ -564,6 +564,7 @@ class ScannerGui(GuiBase):
         scan_axes = scan_data.scan_axes if scan_data is not None else None
         self._toggle_enable_scan_buttons(not is_running, exclude_scan=scan_axes)
         self._toggle_enable_actions(not is_running)
+        self._toggle_enable_scan_crosshairs(not is_running)
         if scan_data is not None:
             if caller_id is self._optimizer_id:
                 channel = self._osd.settings['data_channel']
@@ -605,6 +606,7 @@ class ScannerGui(GuiBase):
         self._toggle_enable_scan_buttons(not is_running)
         self._toggle_enable_actions(not is_running,
                                     exclude_action=self._mw.action_optimize_position)
+        self._toggle_enable_scan_crosshairs(not is_running)
         self._mw.action_optimize_position.setChecked(is_running)
         # Update optimal position crosshair and marker
         if isinstance(optimal_position, dict):
@@ -623,6 +625,7 @@ class ScannerGui(GuiBase):
         """
         self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
         self._toggle_enable_scan_buttons(not enabled)
+        self._toggle_enable_scan_crosshairs(not enabled)
         self.sigToggleOptimize.emit(enabled)
 
     def _update_scan_crosshairs(self, pos_dict, exclude_scan=None):
@@ -676,6 +679,12 @@ class ScannerGui(GuiBase):
             dockwidget.plot_widget.setLabel('left', channel, units=scan_data.channel_units[channel])
         return
 
+    def _toggle_enable_scan_crosshairs(self, enable):
+        for dockwidget in self.scan_2d_dockwidgets.values():
+            dockwidget.toggle_crosshair(enable)
+        for axes, dockwidget in self.scan_1d_dockwidgets.items():
+            dockwidget.toggle_marker(enable)
+
     def _toggle_enable_scan_buttons(self, enable, exclude_scan=None):
         for axes, dockwidget in self.scan_2d_dockwidgets.items():
             if exclude_scan == axes:
@@ -710,6 +719,7 @@ class ScannerGui(GuiBase):
         def toggle_func(enabled):
             self._toggle_enable_scan_buttons(not enabled, exclude_scan=axes)
             self._toggle_enable_actions(not enabled)
+            self._toggle_enable_scan_crosshairs(not enabled)
             self.sigToggleScan.emit(enabled, axes, self.module_state.uuid)
         return toggle_func
 
