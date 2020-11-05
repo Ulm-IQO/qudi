@@ -438,15 +438,17 @@ class ScanCrosshair(QtCore.QObject):
 
     def add_to_view(self):
         view = self.parent()
-        view.addItem(self.vline)
-        view.addItem(self.hline)
-        view.addItem(self.crosshair)
+        if self.vline not in view.items():
+            view.addItem(self.vline)
+            view.addItem(self.hline)
+            view.addItem(self.crosshair)
 
     def remove_from_view(self):
         view = self.parent()
-        view.removeItem(self.vline)
-        view.removeItem(self.hline)
-        view.removeItem(self.crosshair)
+        if self.vline in view.items():
+            view.removeItem(self.vline)
+            view.removeItem(self.hline)
+            view.removeItem(self.crosshair)
 
     def set_movable(self, movable):
         """
