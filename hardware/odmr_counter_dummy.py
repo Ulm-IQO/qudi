@@ -22,7 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import time
 
-from core.module import Base, Connector, ConfigOption
+from core.module import Base
+from core.connector import Connector
+from core.configoption import ConfigOption
 from interface.odmr_counter_interface import ODMRCounterInterface
 
 
@@ -38,9 +40,6 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         fitlogic: 'fitlogic' # name of the fitlogic module, see default config
 
     """
-
-    _modclass = 'ODMRCounterDummy'
-    _modtype = 'hardware'
 
     # connectors
     fitlogic = Connector(interface='FitLogic')

@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 from qtpy.QtCore import QCoreApplication
-from qtpy.QtCore import QObject
 from qtpy.QtCore import QThread
 from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import QAbstractButton
@@ -31,6 +30,8 @@ from qtpy.QtWidgets import QDoubleSpinBox
 from qtpy.QtWidgets import QLineEdit
 from qtpy.QtWidgets import QPlainTextEdit
 from qtpy.QtWidgets import QSpinBox
+
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 import functools
 
@@ -128,10 +129,12 @@ class Mapper:
             return 'currentIndex'
         elif isinstance(widget, QLineEdit):
             return 'text'
-        elif (isinstance(widget, (QSpinBox,
-                                  QDoubleSpinBox,
-                                  QAbstractSlider))):
+        elif isinstance(widget, (QSpinBox, QDoubleSpinBox, QAbstractSlider)):
             return 'value'
+        elif isinstance(widget, ScienDSpinBox):
+            return 'value_float'
+        elif isinstance(widget, ScienSpinBox):
+            return 'value_int'
         elif isinstance(widget, QPlainTextEdit):
             return 'plainText'
         else:
@@ -293,6 +296,7 @@ class Mapper:
             'model_property_notifier_slot': model_property_notifier_slot,
             'model_property_notifications_disabled': False,
             'converter': converter}
+        self._on_model_notification(key)  # update widget right away
 
     def _on_widget_property_notification(self, key, *args):
         """

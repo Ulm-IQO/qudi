@@ -23,9 +23,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 from collections import OrderedDict
 
-from core.module import Base, StatusVar, ConfigOption
+from core.module import Base
+from core.statusvariable import StatusVar
+from core.configoption import ConfigOption
 from core.util.helpers import natural_sort
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class PulserDummy(Base, PulserInterface):
@@ -41,10 +43,9 @@ class PulserDummy(Base, PulserInterface):
         module.Class: 'pulser_dummy.PulserDummy'
 
     """
-    _modclass = 'PulserDummy'
-    _modtype = 'hardware'
 
     activation_config = StatusVar(default=None)
+    force_sequence_option = ConfigOption('force_sequence_option', default=False)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -221,6 +222,8 @@ class PulserDummy(Base, PulserInterface):
         activation_config['config9'] = frozenset({'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
 
+        constraints.sequence_option = SequenceOption.FORCED if self.force_sequence_option else SequenceOption.OPTIONAL
+
         return constraints
 
     def pulser_on(self):
@@ -335,12 +338,6 @@ class PulserDummy(Base, PulserInterface):
 
         if name in self.sequence_dict:
             del self.sequence_dict[name]
-
-
-        # Fill in sequence information
-        for step, (wfm_tuple, seq_step) in enumerate(sequence_parameter_list, 1):
-            self.log.debug('flag_trigger: {}'.format(seq_step.flag_trigger))
-            self.log.debug('flag_high: {}'.format(seq_step.flag_high))
 
         self.sequence_dict[name] = len(sequence_parameter_list[0][0])
         time.sleep(1)
@@ -917,10 +914,3 @@ class PulserDummy(Base, PulserInterface):
         self.connected = True
         self.log.info('Dummy reset!')
         return 0
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return True

@@ -108,6 +108,7 @@ dependencies:
   - lmfit==0.9.10
   - mkl-fft==1.0.0
   - mkl-random==1.0.1
+  - nidaqmx==0.5.7
   - plumbum==1.6.6
   - prompt-toolkit==1.0.15
   - pydaqmx==1.4.1
