@@ -27,15 +27,15 @@ from core.module import Base
 from core.configoption import ConfigOption
 from interface.ni_pwm_interface import NIPWMInterface
 class NIXDiPWM(Base,NIPWMInterface):
-    """ A simple hardware module to control one or multiple digital output channel of a nicard as triggers.
+    """ A simple hardware module to control one digital output channel of a nicard as
+        PWM signal source.
         Example config for copy - paste:
         NIXDiPWM:
         module.Class: 'ni_x_PWM.NIXDiPWM'
-        trigger_output_channel:
-            -'/Dev1/Port0/Line7'
+        PWM_output_channel: '/Dev1/Port0/Line7'
         default_clock_frequency: 10000
         """
-    _channel_list = ConfigOption('trigger_output_channel', list(), missing='warn')
+    _channel_list = ConfigOption('PMW_output_channel', list(), missing='warn')
     freq = ConfigOption('default_clock_frequency', 10000)
     v=0
     active_channel=-1

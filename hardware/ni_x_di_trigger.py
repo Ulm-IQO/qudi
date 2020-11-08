@@ -92,7 +92,7 @@ class NIXDiTrigger(Base,TriggerInterface):
         if len(v)==1 and type(self.line)==str:
             pass
         if self.DOtaskHandel==False:
-            self.DOtaskHandel = daq.TaskHandle()  # adding a block of digital output for AOM to repump
+            self.DOtaskHandel = daq.TaskHandle()
         else:
             pass
         if self.holding == 1:
@@ -155,7 +155,6 @@ class NIXDiTrigger(Base,TriggerInterface):
         except:
             daq.DAQmxClearTask(self.DOtaskHandel)
             self.log.exception('cannot stop, maybe never started?')
-            return False
         return True
 
     def get_channel_list(self):
