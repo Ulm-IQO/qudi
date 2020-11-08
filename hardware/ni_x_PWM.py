@@ -59,7 +59,11 @@ class NIXDiPWM(Base,NIPWMInterface):
         except:
             pass
 
-    def output(self,value=0,channel=-1,frequency=10000):
+    def output(self,value=0,channel=-1,frequency=-1):
+        if frequency ==-1:
+            frequency = self.freq
+        else:
+            self.freq= frequency
         self.value=value
         if value<0 or value>1:
             self.log.exception('please input a value that is in [0,1]')
@@ -69,6 +73,11 @@ class NIXDiPWM(Base,NIPWMInterface):
             length=20*10**-3*frequency
             unit=1/frequency
             data=np.concatenate([(np.zeros(int(PW/unit))+1),np.zeros(int(length)-int(PW/unit))])
+        if np.float16(value%(unit*10**3))!=0:
+            self.log.warn('current frequency not high enough for given resolution, '
+                          'current resolution: '+str(unit*10**3*90)+'degree.')
+        digits=int(str(unit/10**5).split('e-')[1])-5
+        pos_eff=round(int(value/(unit*10**3))*unit*10**3*90,digits)
         self.data_array=data
         self.active_channel=channel
         if channel==-1:
@@ -107,23 +116,24 @@ class NIXDiPWM(Base,NIPWMInterface):
 
         self.holding=1
         self.log.info('holding')
+        self.log.info('holding at position ' + str(pos_eff) + 'degree')
         return True
 
-    def simple_0(self,channel=-1):
+    def simple_0(self,channel=-1,freq=-1):
 
-        self.output(0,channel, 10000)
-
-        return True
-
-    def simple_45(self,channel=-1):
-
-        self.output(0.5,channel, 10000)
+        self.output(0,channel, freq)
 
         return True
 
-    def simple_90(self,channel=-1):
+    def simple_45(self,channel=-1,freq=-1):
 
-        self.output(1, channel, 10000)
+        self.output(0.5,channel, freq)
+
+        return True
+
+    def simple_90(self,channel=-1,freq=-1):
+
+        self.output(1, channel, freq)
 
         return True
 

@@ -60,7 +60,7 @@ class NIDigitalPWMLogic(GenericLogic):
 
 
     def on_deactivate(self):
-        self.stop()
+        #self.stop()
         """ Deinitialisation performed during deactivation of the module.
         """
 
@@ -72,26 +72,25 @@ class NIDigitalPWMLogic(GenericLogic):
     def set_value(self,value):
         self.value=value
 
-    def pwm_output(self,value=0,channel=-1,frequency=10000):
+    def pwm_output(self,value=0,channel=-1,frequency=-1):
         self.device.output(value,channel,frequency)
-        self.log.info('holding at position '+str(value*90)+'degree')
+
 
 
     def simple_0(self, channel=-1):
         self.device.simple_0(channel=channel)
-        self.log.info('holding at position 0 degree')
         return True
 
 
     def simple_45(self, channel=-1):
         self.device.simple_45(channel=channel)
-        self.log.info('holding at position 45 degree')
+        #self.log.info('holding at position 45 degree')
         return True
 
 
     def simple_90(self, channel=-1):
         self.device.simple_90(channel=channel)
-        self.log.info('holding at position 90 degree')
+        #self.log.info('holding at position 90 degree')
         return True
 
 
