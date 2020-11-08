@@ -35,14 +35,14 @@ class NIXDiPWM(Base,NIPWMInterface):
         PWM_output_channel: '/Dev1/Port0/Line7'
         default_clock_frequency: 10000
         """
-    _channel_list = ConfigOption('PMW_output_channel', list(), missing='warn')
+    _channel_list = ConfigOption('PWM_output_channel', list(), missing='warn')
     freq = ConfigOption('default_clock_frequency', 10000)
     v=0
     active_channel=-1
     line=[]
     data_array=[]
     value=0
-
+    
     def on_activate(self):
         """ Activate module.
         """
@@ -64,6 +64,9 @@ class NIXDiPWM(Base,NIPWMInterface):
             frequency = self.freq
         else:
             self.freq= frequency
+        if frequency > 10**6:
+            self.log.warn('exceeding maximum sampling frequency, using maximum frequency instead: 10e6')
+            self.freq=frequency=10**6
         self.value=value
         if value<0 or value>1:
             self.log.exception('please input a value that is in [0,1]')
@@ -73,7 +76,8 @@ class NIXDiPWM(Base,NIPWMInterface):
             length=20*10**-3*frequency
             unit=1/frequency
             data=np.concatenate([(np.zeros(int(PW/unit))+1),np.zeros(int(length)-int(PW/unit))])
-        if np.float16(value%(unit*10**3))!=0:
+        if value-int(value/(unit*10**3))*unit*10**3!=0:
+            self.v=value-int(value/(unit*10**3))*10**3
             self.log.warn('current frequency not high enough for given resolution, '
                           'current resolution: '+str(unit*10**3*90)+'degree.')
         digits=int(str(unit/10**5).split('e-')[1])-5
