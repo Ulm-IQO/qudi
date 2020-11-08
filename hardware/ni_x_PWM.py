@@ -47,7 +47,7 @@ class NIXDiPWM(Base,NIPWMInterface):
         """ Activate module.
         """
         self.holding = 0
-        self.taskHandel = False
+        self.PWMtaskHandel = False
         self._channel_list=self._channel_list
         self.active_channel=self.active_channel
         self.data_array=np.zeros(int(20*10**-3*self.freq))
@@ -90,16 +90,16 @@ class NIXDiPWM(Base,NIPWMInterface):
         else:
             self.log.exception('invalid channel value, channel can be a name list or -1')
             return False
-        if self.taskHandel==False:
-            self.taskHandel = daq.TaskHandle()  # adding a block of digital output for AOM to repump
+        if self.PWMtaskHandel==False:
+            self.PWMtaskHandel = daq.TaskHandle()  # adding a block of digital output for AOM to repump
         else:
             pass
         if self.holding == 1:
-            daq.DAQmxStopTask(self.taskHandel)
-            daq.DAQmxClearTask(self.taskHandel)
+            daq.DAQmxStopTask(self.PWMtaskHandel)
+            daq.DAQmxClearTask(self.PWMtaskHandel)
         else:
             pass
-        daq.DAQmxCreateTask('testPWM', daq.byref(self.taskHandel))
+        daq.DAQmxCreateTask('testPWM', daq.byref(self.PWMtaskHandel))
         if type(self.line) == list:
             linelist=''
             for l in self.line:
@@ -107,11 +107,11 @@ class NIXDiPWM(Base,NIPWMInterface):
                 linelist+=','
         else:
             linelist=self.line
-        daq.DAQmxCreateDOChan(self.taskHandel, linelist, "",
+        daq.DAQmxCreateDOChan(self.PWMtaskHandel, linelist, "",
                               daq.DAQmx_Val_ChanForAllLines)
-        daq.DAQmxCfgSampClkTiming(self.taskHandel, " ", frequency, daq.DAQmx_Val_Rising,
+        daq.DAQmxCfgSampClkTiming(self.PWMtaskHandel, " ", frequency, daq.DAQmx_Val_Rising,
                                   daq.DAQmx_Val_ContSamps, int(length))
-        daq.DAQmxWriteDigitalLines(self.taskHandel, int(length), 1, 10.0, daq.DAQmx_Val_GroupByChannel,
+        daq.DAQmxWriteDigitalLines(self.PWMtaskHandel, int(length), 1, 10.0, daq.DAQmx_Val_GroupByChannel,
                                    np.uint8(data), None, None)
 
         self.holding=1
@@ -139,11 +139,11 @@ class NIXDiPWM(Base,NIPWMInterface):
 
     def stop(self):
         try:
-            daq.DAQmxStopTask(self.taskHandel)
-            daq.DAQmxClearTask(self.taskHandel)
+            daq.DAQmxStopTask(self.PWMtaskHandel)
+            daq.DAQmxClearTask(self.PWMtaskHandel)
             self.holding=0
             self.log.info('full stop')
-            self.taskHandel=False
+            self.PWMtaskHandel=False
         except:
             self.log.exception('cannot stop, maybe never started?')
             return False

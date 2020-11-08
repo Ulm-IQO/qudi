@@ -46,7 +46,7 @@ class NIXDiTrigger(Base,TriggerInterface):
         """ Activate module.
         """
         self.holding = 0
-        self.taskHandel = False
+        self.DOtaskHandel = False
         self._channel_list=self._channel_list
         self.active_channel=self.active_channel
     def on_deactivate(self):
@@ -91,16 +91,16 @@ class NIXDiTrigger(Base,TriggerInterface):
             return False
         if len(v)==1 and type(self.line)==str:
             pass
-        if self.taskHandel==False:
-            self.taskHandel = daq.TaskHandle()  # adding a block of digital output for AOM to repump
+        if self.DOtaskHandel==False:
+            self.DOtaskHandel = daq.TaskHandle()  # adding a block of digital output for AOM to repump
         else:
             pass
         if self.holding == 1:
-            daq.DAQmxStopTask(self.taskHandel)
-            daq.DAQmxClearTask(self.taskHandel)
+            daq.DAQmxStopTask(self.DOtaskHandel)
+            daq.DAQmxClearTask(self.DOtaskHandel)
         else:
             pass
-        daq.DAQmxCreateTask('testDO', daq.byref(self.taskHandel))
+        daq.DAQmxCreateTask('testDO', daq.byref(self.DOtaskHandel))
         if type(self.line) == list:
             linelist=''
             for l in self.line:
@@ -108,9 +108,9 @@ class NIXDiTrigger(Base,TriggerInterface):
                 linelist+=','
         else:
             linelist=self.line
-        daq.DAQmxCreateDOChan(self.taskHandel, linelist, "",
+        daq.DAQmxCreateDOChan(self.DOtaskHandel, linelist, "",
                               daq.DAQmx_Val_ChanForAllLines)
-        daq.DAQmxWriteDigitalLines(self.taskHandel, 1, 1, 10.0, daq.DAQmx_Val_GroupByChannel,
+        daq.DAQmxWriteDigitalLines(self.DOtaskHandel, 1, 1, 10.0, daq.DAQmx_Val_GroupByChannel,
                                    np.array(v, dtype=np.uint8), None, None)
 
         if hold == 'True':
@@ -120,10 +120,10 @@ class NIXDiTrigger(Base,TriggerInterface):
             self.holding=0
             self.log.info('di output on: '+ self.line + ' duration: '+ str(duration)+'s')
             time.sleep(duration)
-            daq.DAQmxWriteDigitalLines(self.taskHandel, 1, 1, 10.0, daq.DAQmx_Val_GroupByChannel,
+            daq.DAQmxWriteDigitalLines(self.DOtaskHandel, 1, 1, 10.0, daq.DAQmx_Val_GroupByChannel,
                                    np.array(0, dtype=np.uint8), None, None)
-            daq.DAQmxStopTask(self.taskHandel)
-            daq.DAQmxClearTask(self.taskHandel)
+            daq.DAQmxStopTask(self.DOtaskHandel)
+            daq.DAQmxClearTask(self.DOtaskHandel)
         return True
 
     def simple_on(self,channel=-1):
@@ -147,13 +147,13 @@ class NIXDiTrigger(Base,TriggerInterface):
 
     def stop(self):
         try:
-            daq.DAQmxStopTask(self.taskHandel)
-            daq.DAQmxClearTask(self.taskHandel)
+            daq.DAQmxStopTask(self.DOtaskHandel)
+            daq.DAQmxClearTask(self.DOtaskHandel)
             self.holding=0
             self.log.info('full stop')
-            self.taskHandel=False
+            self.DOtaskHandel=False
         except:
-            daq.DAQmxClearTask(self.taskHandel)
+            daq.DAQmxClearTask(self.DOtaskHandel)
             self.log.exception('cannot stop, maybe never started?')
             return False
         return True
