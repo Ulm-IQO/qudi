@@ -133,6 +133,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         if not self._remember_states \
                 or not isinstance(self._states, dict) \
                 or len(self._states) != self.number_of_switches:
+            self._states = dict()
             self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
         else:
             self.states = self._states
