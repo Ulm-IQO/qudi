@@ -125,6 +125,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
         # catch and adjust empty _states or _states not matching to the number of channels
         if self._states is None or len(self._states) != self._number_of_channels:
+            self._states = dict()
             self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
 
         # initialize channels to saved _states if requested otherwise initialize to 0
