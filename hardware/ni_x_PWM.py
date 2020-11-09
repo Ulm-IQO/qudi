@@ -42,7 +42,7 @@ class NIXDiPWM(Base,NIPWMInterface):
     line=[]
     data_array=[]
     value=0
-    
+
     def on_activate(self):
         """ Activate module.
         """
