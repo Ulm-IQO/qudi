@@ -27,7 +27,6 @@ import numpy as np
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.connector import Connector
-from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from scipy.constants import physical_constants
 
@@ -41,9 +40,8 @@ class NVCalculatorLogic(GenericLogic):
     # declare connectors
     odmr = Connector(interface='ODMRLogic', optional=True)
     pulsed = Connector(interface='PulsedMeasurementLogic', optional=True)
-    # config option, choose the data and fitting source, either from cw-odmr, or pulsedmeasurement
-    data_source = ConfigOption('data_source', 0, missing='warn') # 0: "CW_ODMR", 1: "pulsed"
 
+    data_source = 0  # choose the data and fitting source, either from cw-odmr, or pulsedmeasurement 0: "no data_source", 1: "CW_ODMR", 2: "pulsed"
     zero_field_D = StatusVar('ZFS', 2870e6)
     diamond_strain = StatusVar('strain', 0)
     freq1 = StatusVar('freq1', 2800e6)
@@ -67,16 +65,8 @@ class NVCalculatorLogic(GenericLogic):
         self.threadlock = Mutex()
 
     def on_activate(self):
-        """
-        Initialisation performed during activation of the module.
-        """
         # Get connectors
-        if self.data_source == 0:
-            self.fit = self.odmr()
-        elif self.data_source == 1:
-            self.fit = self.pulsed()
-        else:
-            self.log.info('No data source selected. Calculator now runs only with user input.')
+        self.set_data_source(self.data_source)
         return
 
     def on_deactivate(self):
@@ -86,11 +76,13 @@ class NVCalculatorLogic(GenericLogic):
     def set_data_source(self, data_source):
         self.data_source = data_source
         if data_source == 0:
-            self.fit = self.odmr()
             self.sigDataSourceUpdated.emit(0)
         elif data_source == 1:
-            self.fit = self.pulsed()
+            self.fit = self.odmr()
             self.sigDataSourceUpdated.emit(1)
+        elif data_source == 2:
+            self.fit = self.pulsed()
+            self.sigDataSourceUpdated.emit(2)
         return
 
     def set_field_params(self, zfs, e, lac):
@@ -144,12 +136,22 @@ class NVCalculatorLogic(GenericLogic):
         return
 
     def auto_dips(self):
+        if self.data_source == 0:
+            self.log.warn("You have not select data source. Select a data source, or try manual Freqs.")
+            return
+        try:
+            if 'g0_center' in self.fit.fc.current_fit_param:
+                freq1 = self.fit.fc.current_fit_param['g0_center'].value / 1e6
+                freq2 = self.fit.fc.current_fit_param['g1_center'].value / 1e6
+            else:
+                freq1 = self.fit.fc.current_fit_param['l0_center'].value/1e6
+                freq2 = self.fit.fc.current_fit_param['l1_center'].value/1e6
+            b_field, angle = self.cal_alignment(freq1, freq2)
+            self.sigFieldaCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)
+            self.auto_field = b_field
+        except:
+            self.log.warn("The NV calculator seems unable to get ODMR dips. Please inspect your fitting method.")
 
-        freq1 = self.fit.fc.current_fit_param['l0_center'].value/1e6
-        freq2 = self.fit.fc.current_fit_param['l1_center'].value/1e6
-        b_field, angle = self.cal_alignment(freq1, freq2)
-        self.sigFieldaCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)
-        self.auto_field = b_field
         return
 
     def set_m_f(self):
