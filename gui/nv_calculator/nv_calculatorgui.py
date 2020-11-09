@@ -54,6 +54,7 @@ class NVCalculatorGui(GUIBase):
         self._mw.freq2_DoubleSpinBox.setValue(self.calculator.freq2)
         self._mw.lac_CheckBox.setChecked(self.calculator.lac)
         # fit source setting
+        self._mw.fit_source_comboBox.addItem('no source')
         self._mw.fit_source_comboBox.addItem('CW_ODMR')
         self._mw.fit_source_comboBox.addItem('pulsed')
         self._mw.fit_source_comboBox.activated.connect(self.update_source)
