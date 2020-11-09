@@ -1087,7 +1087,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_KDD4_tau(self, name='KDD4_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                         KDD4_order=4, alternating=True):
+                         KDD4_order=1, alternating=True, DD_type='XY'):
         """
 
         """
@@ -1109,7 +1109,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
-        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
@@ -1158,24 +1158,43 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         KDD4_block.append(tauhalf_element)
         for n in range(KDD4_order):
             KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_120_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_180_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_120_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_120_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_180_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
             KDD4_block.append(pi_phase_120_element)
             if n != KDD4_order - 1:
                 KDD4_block.append(tau_element)
@@ -1189,24 +1208,43 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             KDD4_block.append(tauhalf_element)
             for n in range(KDD4_order):
                 KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_120_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_180_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_120_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_120_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_180_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
                 KDD4_block.append(pi_phase_120_element)
                 if n != KDD4_order - 1:
                     KDD4_block.append(tau_element)
@@ -1238,7 +1276,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-
     def generate_xy8_freq(self, name='xy8_freq', freq_start=0.1e6, freq_step=0.01e6,
                           num_of_points=50, xy8_order=4, alternating=True):
         """
