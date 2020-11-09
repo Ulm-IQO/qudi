@@ -32,7 +32,7 @@ class SwitchDummy(Base, SwitchInterface):
 
     switch_dummy:
         module.Class: 'switches.switch_dummy.SwitchDummy'
-        names_of_states: ['down', 'up']
+        names_of_states: [['down', 'up'], ['down', 'up'], ['low', 'middle', 'high']]
         names_of_switches: ['one', 'two', 'tree']
         name: 'First'
     """
@@ -84,6 +84,8 @@ class SwitchDummy(Base, SwitchInterface):
         else:
             self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
                            f'with the elements being a list of two or more names for the states.')
+            self._names_of_states = dict()
+            return
 
         # reset states if requested, otherwise use the saved states
         if not self._remember_states \

@@ -41,7 +41,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
         channel: '/Dev1/port0/line30:31'
         switch_time: 0.1
         reset_states: False
-        names_of_states: ['Low', 'High']
+        names_of_states: [['Low', 'High'], ['Low', 'High']]
         names_of_switches: ['One', 'Two']
 
     """
@@ -120,6 +120,8 @@ class DigitalSwitchNI(Base, SwitchInterface):
         else:
             self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
                            f'with the elements being a list of two or more names for the states.')
+            self._names_of_states = dict()
+            return
 
         # catch and adjust empty _states or _states not matching to the number of channels
         if self._states is None or len(self._states) != self._number_of_channels:
