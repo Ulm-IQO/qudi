@@ -1086,6 +1086,196 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_KDD4_tau(self, name='KDD4_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                         KDD4_order=1, alternating=True, DD_type='XY'):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        # calculate "real" start length of tau due to finite pi-pulse length
+        real_start_tau = max(0, tau_start - self.rabi_period / 2)
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+        pi_phase_0_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=0)
+        pi_phase_30_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=30)
+        pi_phase_90_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=90)
+        pi_phase_120_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=120)
+        pi_phase_180_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=180)
+        tauhalf_element = self._get_idle_element(length=real_start_tau / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=real_start_tau, increment=tau_step)
+
+        # Create block and append to created_blocks list
+        # Phases of KDD4 =
+        # [30., 0., 90., 0., 30., 120., 90., 180., 90., 120., 30., 0., 90., 0., 30., 120., 90., 180., 90., 120.]
+        KDD4_block = PulseBlock(name=name)
+        KDD4_block.append(pihalf_element)
+        KDD4_block.append(tauhalf_element)
+        for n in range(KDD4_order):
+            KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_120_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_180_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_120_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_0_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_30_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_120_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_180_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_90_element)
+            KDD4_block.append(tau_element)
+            KDD4_block.append(pi_phase_120_element)
+            if n != KDD4_order - 1:
+                KDD4_block.append(tau_element)
+        KDD4_block.append(tauhalf_element)
+        KDD4_block.append(pihalf_element)
+        KDD4_block.append(laser_element)
+        KDD4_block.append(delay_element)
+        KDD4_block.append(waiting_element)
+        if alternating:
+            KDD4_block.append(pihalf_element)
+            KDD4_block.append(tauhalf_element)
+            for n in range(KDD4_order):
+                KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_120_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_180_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_120_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_0_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_30_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_120_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_180_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_90_element)
+                KDD4_block.append(tau_element)
+                KDD4_block.append(pi_phase_120_element)
+                if n != KDD4_order - 1:
+                    KDD4_block.append(tau_element)
+            KDD4_block.append(tauhalf_element)
+            KDD4_block.append(pi3half_element)
+            KDD4_block.append(laser_element)
+            KDD4_block.append(delay_element)
+            KDD4_block.append(waiting_element)
+        created_blocks.append(KDD4_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((KDD4_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
     def generate_xy8_freq(self, name='xy8_freq', freq_start=0.1e6, freq_step=0.01e6,
                           num_of_points=50, xy8_order=4, alternating=True):
         """
