@@ -210,7 +210,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
                            f'having the switch names as keys and the state names as values.')
 
         with self.lock:
-            with nidaqmx.Task('NISwitchTask' + self.name) as switch_task:
+            with nidaqmx.Task('NISwitchTask' + self.name.replace(':', ' ')) as switch_task:
                 binary = 0
                 for channel_index in range(self.number_of_switches):
                     switch_task.do_channels.add_do_chan(self._channels[channel_index])
