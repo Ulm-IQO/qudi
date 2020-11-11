@@ -24,6 +24,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from lmfit.models import Model
 from scipy.ndimage import filters
+from collections import OrderedDict
+
 
 ############################################################################
 #                                                                          #
@@ -120,14 +122,7 @@ def make_decayexponential_model(self, prefix=None):
 
     bare_exp_model, params = self.make_bareexponentialdecay_model(prefix=prefix)
 
-
-
-
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
-
-
-
-
 
     constant_model, params = self.make_constant_model(prefix=prefix)
 
@@ -160,6 +155,36 @@ def make_decayexponentialstretched_model(self, prefix=None):
     params = stre_exp_decay_offset.make_params()
 
     return stre_exp_decay_offset, params
+
+
+#################################
+#      Biexponential decay      #
+#################################
+
+def make_biexponential_model(self, prefix=None):
+    """ Create a exponential model with an amplitude and offset.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponential_model.
+    """
+
+    exp0_model, params = self.make_bareexponentialdecay_model(prefix='e0_')
+    amp0_model, params = self.make_amplitude_model(prefix='e0_')
+
+    exp1_model, params = self.make_bareexponentialdecay_model(prefix='e1_')
+    amp1_model, params = self.make_amplitude_model(prefix='e1_')
+
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    exponential_model = amp0_model * exp0_model + amp1_model * exp1_model + constant_model
+    params = exponential_model.make_params()
+
+    return exponential_model, params
 
 ############################################################################
 #                                                                          #
@@ -407,5 +432,150 @@ def estimate_decayexponentialstretched(self, x_axis, data, params):
 
     # as an arbitrary starting point:
     params['beta'].set(value=2, min=0)
+
+    return error, params
+
+#############################################
+#  biexponential function with offset       #
+#############################################
+
+
+def make_biexponential_fit(self, x_axis, data, estimator,
+                            units=None,
+                            add_params=None, **kwargs):
+    """ Perform a biexponential fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    model, params = self.make_biexponential_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+    except:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+        self.log.warning('The double gaussian dip fit did not work: {0}'.format(
+            result.message))
+
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    result_str_dict['1st amplitude'] = {'value': result.params['e0_amplitude'].value,
+                                    'error': result.params['e0_amplitude'].stderr,
+                                    'unit': units[1]}                               #amplitude
+
+    result_str_dict['1st lifetime'] = {'value': result.params['e0_lifetime'].value,
+                                    'error': result.params['e0_lifetime'].stderr,
+                                    'unit': units[0]}                               #lifetime
+
+    result_str_dict['1st beta'] = {'value': result.params['e0_beta'].value,
+                                    'error': result.params['e0_beta'].stderr,
+                                    'unit': ''}                               #Beta (exponent of exponential exponent)
+
+    result_str_dict['2nd amplitude'] = {'value': result.params['e1_amplitude'].value,
+                                    'error': result.params['e1_amplitude'].stderr,
+                                    'unit': units[1]}                               #amplitude
+
+    result_str_dict['2nd lifetime'] = {'value': result.params['e1_lifetime'].value,
+                                    'error': result.params['e1_lifetime'].stderr,
+                                    'unit': units[0]}                               #lifetime
+
+    result_str_dict['2nd beta'] = {'value': result.params['e1_beta'].value,
+                                    'error': result.params['e1_beta'].stderr,
+                                    'unit': ''}                               #Beta (exponent of exponential exponent)
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                    'error': result.params['offset'].stderr,
+                                    'unit': units[1]}                               #offset
+
+    result.result_str_dict = result_str_dict
+    return result
+
+
+def estimate_biexponential(self, x_axis, data, params):
+    """ Estimation of the initial values for an biexponential function.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # calculation of offset, take the last 10% from the end of the data
+    # and perform the mean from those.
+    offset = data[-max(1, int(len(x_axis)/10)):].mean()
+
+    # substraction of offset, check whether
+    if data[0] < data[-1]:
+        data_level = offset - data
+    else:
+        data_level = data - offset
+
+    # check if the data level contain still negative values and correct
+    # the data level therefore. Otherwise problems in the logarithm appear.
+    if data_level.min() <= 0:
+        data_level = data_level - data_level.min()
+
+
+    # remove all the data that can be smaller than or equals to std.
+    # when the data is smaller than std, it is beyond resolution
+    # which is not helpful to our fitting.
+    for i in range(0, len(x_axis)):
+        if data_level[i] <= data_level.std():
+            break
+
+    # values and bound of parameter.
+    ampl = data[-max(1, int(len(x_axis) / 10)):].std()
+    min_lifetime = 1e-16
+
+    try:
+        data_level_log = np.log(data_level[0:i])
+
+        # linear fit, see linearmethods.py
+        linear_result = self.make_linear_fit(x_axis=x_axis[0:i], data=data_level_log, estimator=self.estimate_linear)
+        params['e0_lifetime'].set(value=-1/linear_result.params['slope'].value, min=min_lifetime)
+        params['e1_lifetime'].set(value=-1/linear_result.params['slope'].value, min=min_lifetime)
+
+        # amplitude can be positive of negative
+        if data[0] < data[-1]:
+            params['e0_amplitude'].set(value=-np.exp(linear_result.params['offset'].value), max=-ampl)
+            params['e1_amplitude'].set(value=-np.exp(linear_result.params['offset'].value), max=-ampl)
+        else:
+            params['e0_amplitude'].set(value=np.exp(linear_result.params['offset'].value), min=ampl)
+            params['e1_amplitude'].set(value=np.exp(linear_result.params['offset'].value), min=ampl)
+    except:
+        self.log.warning('Lifetime too small in estimate_exponential, beyond resolution!')
+
+        params['e0_lifetime'].set(value=x_axis[i]-x_axis[0], min=min_lifetime)
+        params['e1_lifetime'].set(value=x_axis[i]-x_axis[0], min=min_lifetime)
+        params['e0_amplitude'].set(value=data_level[0])
+        params['e1_amplitude'].set(value=data_level[0])
+
+    params['offset'].set(value=offset)
 
     return error, params
