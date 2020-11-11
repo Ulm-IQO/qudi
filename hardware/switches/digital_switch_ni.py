@@ -215,6 +215,6 @@ class DigitalSwitchNI(Base, SwitchInterface):
                 for channel_index in range(self.number_of_switches):
                     switch = list(self.names_of_states)[channel_index]
                     switch_task.do_channels.add_do_chan(self._channels[channel_index])
-                    binary.append(self.names_of_states[switch].index(self._states[switch]))
+                    binary.append(bool(self.names_of_states[switch].index(self._states[switch])))
                 switch_task.write(binary, auto_start=True)
                 time.sleep(self._switch_time)
