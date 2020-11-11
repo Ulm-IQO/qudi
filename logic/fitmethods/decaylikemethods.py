@@ -501,7 +501,7 @@ def make_biexponential_fit(self, x_axis, data, estimator,
                                     'error': result.params['e1_beta'].stderr,
                                     'unit': ''}                               #Beta (exponent of exponential exponent)
 
-    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+    result_str_dict['offset'] = {'value': result.params['offset'].value,
                                     'error': result.params['offset'].stderr,
                                     'unit': units[1]}                               #offset
 
