@@ -99,6 +99,9 @@ or a list of strings for multiple paths.
 * There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`
 * The connectors and file names of the GUI and logic modules of the QDPlotter have been changed.
 * QDPlotter now needs a new connection to the fit logic. 
+* The tool chain for the switch logic has changed. 
+To combine multiple switches one needs to now you the `switch_combiner_interface` 
+instead of multiple connectors in the logic.
 
 ## Release 0.10
 Released on 14 Mar 2019
