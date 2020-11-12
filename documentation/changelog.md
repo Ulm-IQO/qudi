@@ -87,6 +87,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added a hardware file to interface Thorlabs filter wheels via scripts
 * Bug fixes to core: made error messages sticky, respecting dependencies when restarting.
 * Added a config option to regulate pid logic timestep length
+* Added a new trigger interface and a logic and GUI as demonstration
 *
 
 
