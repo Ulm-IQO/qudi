@@ -51,7 +51,7 @@ class TriggerGui(GUIBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mw = TriggerMainWindow()
-        self._widgets = dict()
+        self._widgets = list()
 
     def on_activate(self):
         """ Create all UI objects and show the window.
@@ -83,7 +83,7 @@ class TriggerGui(GUIBase):
         self._mw.trigger_groupBox.setAlignment(QtCore.Qt.AlignLeft)
         self._mw.trigger_groupBox.setFlat(False)
         vertical_layout = QtWidgets.QVBoxLayout(self._mw.trigger_groupBox)
-        self._widgets = dict()
+        self._widgets = list()
         for trigger in self.trigger_logic().names_of_triggers:
             widget = QtWidgets.QPushButton(trigger)
             widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -94,7 +94,7 @@ class TriggerGui(GUIBase):
             widget.clicked.connect(lambda button_state, trigger_origin=trigger:
                                    self._button_toggled(trigger_origin, button_state))
 
-            self._widgets[trigger] = widget
+            self._widgets.append([trigger, widget])
             vertical_layout.addWidget(widget)
 
         self._mw.trigger_groupBox.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
@@ -105,9 +105,9 @@ class TriggerGui(GUIBase):
         """ Delete all the buttons from the group box and remove the layout.
         @return: None
         """
-        for widgets in self._widgets.values():
-            widgets.clicked.disconnect()
-        self._widgets = dict()
+        for widgets in self._widgets:
+            widgets[1].clicked.disconnect()
+        self._widgets = list()
 
         vertical_layout = self._mw.trigger_groupBox.layout()
         if vertical_layout is not None:
@@ -123,4 +123,6 @@ class TriggerGui(GUIBase):
         @return: None
         """
         self.trigger_logic().trigger(trigger)
-        self._widgets[trigger].setChecked(False)
+        for widget in self._widgets:
+            if trigger == widget[0]:
+                widget[1].setChecked(False)
