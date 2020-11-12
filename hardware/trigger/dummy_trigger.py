@@ -83,8 +83,8 @@ class DummyTrigger(Base, TriggerInterface):
         elif isinstance(trigger, (list, tuple, np.ndarray, set)):
             for index, item in enumerate(trigger):
                 if item not in self.names_of_triggers:
-                    self.log.error(f'trigger name "{trigger}" was requested, '
-                                   f'but the options are: {self.names_of_triggers}')
+                    self.log.warning(f'trigger name "{item}" was requested, '
+                                     f'but the options are: {self.names_of_triggers}')
                     del trigger[index]
         else:
             self.log.error(f'The trigger name was {trigger} but either has to be one of {self.names_of_triggers} '

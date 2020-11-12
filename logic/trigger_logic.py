@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
 from interface.trigger_interface import TriggerInterface
+from qtpy import QtCore
 
 
 class TriggerLogic(GenericLogic, TriggerInterface):
@@ -28,6 +29,8 @@ class TriggerLogic(GenericLogic, TriggerInterface):
         - switches can either be manipulated by index or by their names
         - signals are generated on state changes
     """
+
+    sig_trigger_done = QtCore.Signal(int, object)
 
     # connector for one trigger, if multiple switches are needed use the TriggerCombinerInterfuse.
     trigger_hardware = Connector(interface='TriggerInterface')
@@ -63,7 +66,9 @@ class TriggerLogic(GenericLogic, TriggerInterface):
         @param [None/str/list(str)] trigger: trigger name to be triggered
         @return int: negative error code or 0 at success
         """
-        return self.trigger_hardware().trigger(trigger)
+        results = self.trigger_hardware().trigger(trigger)
+        self.sig_trigger_done.emit(results, trigger)
+        return results
 
     @property
     def trigger_length(self):
