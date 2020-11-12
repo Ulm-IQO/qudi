@@ -39,6 +39,8 @@ class NITriggers(Base, TriggerInterface):
     ni_trigger:
         module.Class: 'trigger_device.ni_trigger.NITriggers'
         trigger_channel: 'Dev1/port0/line9:8'
+        names_of_triggers: ['one', 'two']
+        trigger_length: 0.5
 
     """
 

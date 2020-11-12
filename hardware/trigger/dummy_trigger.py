@@ -29,6 +29,13 @@ from interface.trigger_interface import TriggerInterface
 
 class DummyTrigger(Base, TriggerInterface):
     """ This is a dummy to simulate a simple trigger.
+
+    Example config for copy-paste:
+
+    dummy_trigger:
+        module.Class: 'trigger.dummy_trigger.DummyTrigger'
+        names_of_triggers: ['bang', 'one']
+        trigger_length: 0
     """
 
     # ConfigOptions
