@@ -26,6 +26,7 @@ import sys
 import inspect
 import importlib
 import numpy as np
+from collections import OrderedDict
 
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
 from qudi.util.paths import get_main_dir
@@ -737,7 +738,7 @@ class PulseSequence(object):
         self.is_finite = True
         self.refresh_parameters()
 
-        # self.sampled_ensembles = dict()
+        # self.sampled_ensembles = OrderedDict()
         # Dictionary container to store information related to the actually sampled
         # Waveforms like pulser settings used during sampling (sample_rate, activation_config etc.)
         # and additional information about the discretization of the waveform (timebin positions of
