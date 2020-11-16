@@ -26,10 +26,12 @@ import sys
 import inspect
 import importlib
 import numpy as np
+from collections import OrderedDict
 
-from qudi.logic.pulsed.sampling_functions import SamplingFunctions
-from qudi.core.paths import get_main_dir
-from qudi.util.helpers import natural_sort
+from logic.pulsed.sampling_functions import SamplingFunctions
+from core.util.modules import get_main_dir
+from core.util.helpers import natural_sort
+from enum import Enum
 
 
 class PulseBlockElement(object):
@@ -67,11 +69,11 @@ class PulseBlockElement(object):
         self.increment_s = increment_s
         self.laser_on = laser_on
         if pulse_function is None:
-            self.pulse_function = dict()
+            self.pulse_function = OrderedDict()
         else:
             self.pulse_function = pulse_function
         if digital_high is None:
-            self.digital_high = dict()
+            self.digital_high = OrderedDict()
         else:
             self.digital_high = digital_high
 
@@ -737,7 +739,7 @@ class PulseSequence(object):
         self.is_finite = True
         self.refresh_parameters()
 
-        # self.sampled_ensembles = dict()
+        # self.sampled_ensembles = OrderedDict()
         # Dictionary container to store information related to the actually sampled
         # Waveforms like pulser settings used during sampling (sample_rate, activation_config etc.)
         # and additional information about the discretization of the waveform (timebin positions of
@@ -1567,3 +1569,4 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         if inspect.isclass(obj):
             return PredefinedGeneratorBase in obj.__bases__ and len(obj.__bases__) == 1
         return False
+
