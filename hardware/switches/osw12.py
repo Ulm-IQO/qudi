@@ -45,7 +45,7 @@ class OSW12(Base, SwitchInterface):
         module.Class: 'switches.osw12.OSW12'
         interface: 'ASRL1::INSTR'
         names_of_states: ['Off', 'On']
-        names_of_switches: ['Detection']
+        names_of_switches: 'Detection'
         name: 'MEMS Fibre Switch'
     """
 
@@ -100,6 +100,9 @@ class OSW12(Base, SwitchInterface):
                 and len(self._names_of_states[0]) > 1:
             self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
                                      for index, switch in enumerate(self._names_of_switches)}
+        elif isinstance(self._names_of_states, (list, tuple)) \
+                and isinstance(self._names_of_states[0], str):
+            self._names_of_states = {self._names_of_switches[0]: list(self._names_of_states)}
         else:
             self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
                            f'with the elements being a list of two or more names for the states.')
