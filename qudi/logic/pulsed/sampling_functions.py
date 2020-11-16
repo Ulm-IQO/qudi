@@ -50,22 +50,6 @@ class DDMethods(Enum):
              210., 180., 270., 180., 210., 300., 270., 360., 270., 300., 210., 180., 270., 180.,
              210., 300., 270., 360., 270., 300., 300., 270., 360., 270., 300., 210., 180., 270.,
              180., 210., 300., 270., 360., 270., 300., 210., 180., 270., 180., 210.]
-    PPol_up = [90., 0., 90., 0.]
-    PPol_down = [360., 450., 360., 450.]
-    UR4 =  [0., np.pi, np.pi, 0.]
-    UR6 =  [0., 2. * np.pi / 3., 0.,
-            0., 2. * np.pi / 3., 0.]
-    UR8 =  [0., np.pi / 2., 3. * np.pi / 2., 2. * np.pi / 2.,
-            2. * np.pi / 2., 3. * np.pi / 2., np.pi / 2., 0.]
-    UR10 = [0., 4. * np.pi / 5., 2. * np.pi / 5., 4. * np.pi / 5., 0.,
-            0., 4. * np.pi / 5., 2. * np.pi / 5., 4. * np.pi / 5., 0.]
-    UR12 = [0., np.pi / 3., 3. * np.pi / 3., 0. * np.pi / 3., 4. * np.pi / 3., 3. * np.pi / 3.,
-            3. * np.pi / 3., 4. * np.pi / 3., 0. * np.pi / 3., 3. * np.pi / 3., np.pi / 3., 0.]
-    UR14 = [0., 6. * np.pi / 7., 4. * np.pi / 7., 8. * np.pi / 7., 4. * np.pi / 7., 6. * np.pi / 7., 0.,
-            0., 6. * np.pi / 7., 4. * np.pi / 7., 8. * np.pi / 7., 4. * np.pi / 7., 6. * np.pi / 7., 0.]
-    UR16 = [0., np.pi / 4., 3. * np.pi / 4., 6. * np.pi / 4., 2. * np.pi / 4., 7. * np.pi / 4.,
-            5. * np.pi / 4., 4. * np.pi / 4., 4. * np.pi / 4., 5. * np.pi / 4.,
-            7. * np.pi / 4., 2. * np.pi / 4., 6. * np.pi / 4., 3. * np.pi / 4., np.pi / 4., 0.]
 
     def __init__(self, phases):
         self._phases = phases
@@ -77,8 +61,6 @@ class DDMethods(Enum):
     @property
     def phases(self):
         return np.array(self._phases)
-
-
 
 class SamplingBase:
     """
