@@ -31,6 +31,7 @@ from collections import OrderedDict
 from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.modules import get_main_dir
 from core.util.helpers import natural_sort
+from enum import Enum
 
 
 class PulseBlockElement(object):
@@ -1568,3 +1569,4 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         if inspect.isclass(obj):
             return PredefinedGeneratorBase in obj.__bases__ and len(obj.__bases__) == 1
         return False
+

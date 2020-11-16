@@ -81,7 +81,7 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
     def _build_event(self, event):
         """
         Overrides fysom _build_event to wrap on_activate and on_deactivate to
-        catch and log exceptios.
+        catch and log exceptions.
         """
         base_event = super()._build_event(event)
         if event in ['activate', 'deactivate']:
