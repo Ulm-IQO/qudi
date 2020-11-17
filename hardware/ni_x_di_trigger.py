@@ -71,19 +71,21 @@ class NIXDiTrigger(Base,TriggerInterface):
             return False
         if channel==-1:
             self.line=self._channel_list
-        if type(channel)== list:
-            for c in channel:
-                if c not in self._channel_list:
-                    self.log.exception('invalid channel name, please refer to channel_list')
-                    return False
-        if type(channel)== str:
-            if channel not in self._channel_list:
-                self.log.exception('invalid channel name, please refer to channel_list')
-            else:
-                self.line=channel
         else:
-            self.log.exception('invalid channel value, channel can be a name list or -1')
-            return False
+            if type(channel)== list:
+                for c in channel:
+                    if c not in self._channel_list:
+                        self.log.exception('invalid channel name, please refer to channel_list')
+                        return False
+            else:
+                if type(channel)== str:
+                    if channel not in self._channel_list:
+                        self.log.exception('invalid channel name, please refer to channel_list')
+                    else:
+                        self.line=channel
+                else:
+                    self.log.exception('invalid channel value, channel can be a name list or -1')
+                    return False
         if len(v)==1 and len(self.line)>1:
             v=np.zeros(len(self.line))+v
         if len(v)>1 and type(self.line)== list and len(v)!=len(self.line):
