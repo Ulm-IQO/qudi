@@ -194,7 +194,7 @@ class OSW12(Base, SwitchInterface):
                            f'having the switch names as keys and the state names as values.')
             return
 
-        if direction:
+        if direction is None:
             self.log.error('No state to set.')
             return
 
