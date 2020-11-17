@@ -167,3 +167,6 @@ class SamplingFunctions:
         if inspect.isclass(obj):
             return SamplingBase in inspect.getmro(obj) and object not in obj.__bases__
         return False
+
+
+
