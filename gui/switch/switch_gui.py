@@ -38,7 +38,6 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
         # Load it
         super().__init__(**kwargs)
         uic.loadUi(ui_file, self)
-        self.show()
 
 
 class SwitchGui(GUIBase):
@@ -47,6 +46,9 @@ class SwitchGui(GUIBase):
 
     # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
+
+    # declare signals
+    sigSwitchChanged = QtCore.Signal(str, str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,14 +62,19 @@ class SwitchGui(GUIBase):
         """
         self.restoreWindowPos(self._mw)
         self._populate_switches()
-        self.show()
 
-        self.switchlogic().sig_switch_updated.connect(self._switch_updated, QtCore.Qt.QueuedConnection)
+        self.sigSwitchChanged.connect(self.switchlogic().set_state, QtCore.Qt.QueuedConnection)
+        self.switchlogic().sigSwitchesChanged.connect(
+            self._switches_updated, QtCore.Qt.QueuedConnection
+        )
+
+        self.show()
 
     def on_deactivate(self):
         """ Hide window empty the GUI and disconnect signals
         """
-        self.switchlogic().sig_switch_updated.disconnect(self._switch_updated)
+        self.switchlogic().sigSwitchesChanged.disconnect(self._switches_updated)
+        self.sigSwitchChanged.disconnect()
 
         self._depopulate_switches()
 
@@ -84,18 +91,18 @@ class SwitchGui(GUIBase):
         @return: None
         """
         # For each switch that the logic has, add a widget to the GUI to show its state
-        self._mw.switch_groupBox.setTitle(self.switchlogic().name)
+        self._mw.switch_groupBox.setTitle(self.switchlogic().device_name)
         self._mw.switch_groupBox.setAlignment(QtCore.Qt.AlignLeft)
         self._mw.switch_groupBox.setFlat(False)
         vertical_layout = QtWidgets.QVBoxLayout(self._mw.switch_groupBox)
         self._widgets = dict()
-        for switch in self.switchlogic().names_of_states:
+        for switch in self.switchlogic().available_states:
             vertical_layout.addWidget(self._add_radio_widget(switch))
 
         self._mw.switch_groupBox.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
                                                QtWidgets.QSizePolicy.MinimumExpanding)
         self._mw.switch_groupBox.updateGeometry()
-        self._switch_updated(self.switchlogic().states)
+        self._switches_updated(self.switchlogic().states)
 
     def _add_radio_widget(self, switch):
         """ Helper function to create a widget with radio buttons per switch.
@@ -114,7 +121,7 @@ class SwitchGui(GUIBase):
         layout = QtWidgets.QHBoxLayout()
         layout.addWidget(label)
 
-        names = self.switchlogic().names_of_states[switch]
+        names = self.switchlogic().available_states[switch]
         self._widgets[switch] = dict()
         for state in names:
             button = QtWidgets.QRadioButton(state)
@@ -158,9 +165,9 @@ class SwitchGui(GUIBase):
         """
         if not is_set:
             return
-        self.switchlogic().states = {switch: state}
+        self.sigSwitchChanged.emit(switch, state)
 
-    def _switch_updated(self, states):
+    def _switches_updated(self, states):
         """ Helper function to update the GUI on a change of the states in the logic.
         This function is connected to the signal coming from the switchlogic signaling a change in states.
         @param dict states: The state dict of the form {"switch": "state"}

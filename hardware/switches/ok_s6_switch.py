@@ -27,7 +27,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
-from core.util.mutex import Mutex
+from core.util.mutex import RecursiveMutex
 from interface.switch_interface import SwitchInterface
 
 
@@ -65,13 +65,13 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     # names_of_switches defines what switches there are, it should be a list of strings
     _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
 
-    # names_of_states defines states for each switch, it can define any number of states greater one per switch.
+    # names_of_states defines states for each switch. Can define any number of states >1 per switch.
     # A 2D list of lists defined specific states for each switch
     # and a simple 1D list defines the same states for each of the switches.
     _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
 
     # optional name of the hardware
-    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    _hardware_name = ConfigOption(name='name', default='OpalKelly FPGA Switch', missing='nothing')
 
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=False, missing='nothing')
@@ -83,7 +83,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         super().__init__(*args, **kwargs)
 
         self._fpga = None
-        self._lock = Mutex()
+        self._lock = RecursiveMutex()
         self._connected = False
 
     def on_activate(self):
@@ -98,19 +98,15 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         # Sanity check for fpga_type ConfigOption
         self._fpga_type = self._fpga_type.upper()
         if self._fpga_type not in ('XEM6310_LX45', 'XEM6310_LX150'):
-            self.log.error('Unsupported FPGA type "{0}" specified in config. Valid options are '
-                           '"XEM6310_LX45" and "XEM6310_LX150".\nAborting module activation.'
-                           ''.format(self._fpga_type))
-            return
+            raise NameError('Unsupported FPGA type "{0}" specified in config. Valid options are '
+                            '"XEM6310_LX45" and "XEM6310_LX150".\nAborting module activation.'
+                            ''.format(self._fpga_type))
 
         # connect to the FPGA module
         self._connect()
 
-        if self._hardware_name is None:
-            self._hardware_name = 'Opalkelly FPGA Switch'
-
         try:
-            if len(self._names_of_switches) == self.number_of_switches and not isinstance(self._names_of_switches, str):
+            if len(self._names_of_switches) == 8 and not isinstance(self._names_of_switches, str):
                 self._names_of_switches = list(self._names_of_switches)
             else:
                 raise TypeError
@@ -130,9 +126,8 @@ class HardwareSwitchFpga(Base, SwitchInterface):
             return
 
         # reset states if requested, otherwise use the saved states
-        if not self._remember_states \
-                or not isinstance(self._states, dict) \
-                or len(self._states) != self.number_of_switches:
+        if not self._remember_states or not isinstance(self._states, dict) or len(
+                self._states) != 8:
             self._states = dict()
             self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
         else:
@@ -186,105 +181,87 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         return 0
 
     @property
-    def number_of_switches(self):
-        """ Number of switches provided by this hardware is 8.
-
-        Chan   PIN
-        ----------
-        Ch1    B14
-        Ch2    B16
-        Ch3    B12
-        Ch4    C7
-        Ch5    D15
-        Ch6    D10
-        Ch7    D9
-        Ch8    D11
-
-        @return int: number of switches
-        """
-        return 8
-
-    @property
     def name(self):
         """ Name of the hardware as string.
-
-        The name can either be defined as ConfigOption (name) or it defaults to the name of the hardware module.
 
         @return str: The name of the hardware
         """
         return self._hardware_name
 
     @property
-    def names_of_states(self):
-        """ Names of the states as a dict of lists.
+    def available_states(self):
+        """ Names of the states as a dict of tuples.
 
-        The keys contain the names for each of the switches and each of switches
-        has a list of elements representing the names in the state order.
-        The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
+        The keys contain the names for each of the switches. The values are tuples of strings
+        representing the ordered names of available states for each switch.
 
-        @return dict: A dict of the form {"switch": ["state1", "state2"]}
+        @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
         return self._names_of_states.copy()
 
     @property
     def states(self):
-        """ The current states the hardware is in.
+        """ The current states the hardware is in as state dictionary with switch names as keys and
+        state names as values.
 
-        The states of the system as a dict consisting of switch names as keys and state names as values.
-
-        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
+        @return dict: All the current states of the switches in the form {"switch": "state"}
         """
-        self._states = dict()
         with self._lock:
             self._fpga.UpdateWireOuts()
             new_state = int(self._fpga.GetWireOutValue(0x20))
-            for channel_index in range(self.number_of_switches):
-                switch = self._names_of_switches[channel_index]
-                if new_state & (2 ** channel_index) != 0:
-                    self._states[switch] = self._names_of_states[switch][1]
+            self._states = dict()
+            for channel_index, (switch, valid_states) in enumerate(self.available_states):
+                if new_state & (1 << channel_index):
+                    self._states[switch] = valid_states[1]
                 else:
-                    self._states[switch] = self._names_of_states[switch][0]
+                    self._states[switch] = valid_states[0]
             return self._states.copy()
 
     @states.setter
-    def states(self, value):
+    def states(self, state_dict):
         """ The setter for the states of the hardware.
 
         The states of the system can be set by specifying a dict that has the switch names as keys
         and the names of the states as values.
 
-        @param dict value: state dict of the form {"switch": "state"}
-        @return: None
+        @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        if isinstance(value, dict):
-            for switch, state in value.items():
-                if switch not in self._names_of_switches:
-                    self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
-                    continue
-
-                states = self.names_of_states[switch]
-                if isinstance(state, str):
-                    if state not in states:
-                        self.log.error(f'"{state}" is not among the possible states: {states}')
-                        continue
-                    self._states[switch] = state
-        else:
-            self.log.error(f'attempting to set states as "{value}" while states have be a dict '
-                           f'having the switch names as keys and the state names as values.')
+        assert isinstance(state_dict,
+                          dict), f'Property "state" must be dict type. Received: {type(state_dict)}'
+        assert all(switch in self.available_states for switch in
+                   state_dict), f'Invalid switch name(s) encountered: {tuple(state_dict)}'
+        assert all(isinstance(state, str) for state in
+                   state_dict.values()), f'Invalid switch state(s) encountered: {tuple(state_dict.values())}'
 
         with self._lock:
-            # encode channel states
-            channel_state = 0
-            for channel_index in range(self.number_of_switches):
-                switch = self._names_of_switches[channel_index]
-                if self._states[switch] == self._names_of_states[switch][1]:
-                    channel_state += int(2 ** channel_index)
+            # determine desired state of ALL switches
+            new_states = self._states.copy()
+            new_states.update(state_dict)
+            # encode states into a single int
+            new_channel_state = 0
+            for channel_index, (switch, state) in enumerate(new_states.items()):
+                if state == self.available_states[switch][1]:
+                    new_channel_state |= 1 << channel_index
 
-            old_states = self._states.copy()
             # apply changes in hardware
-            self._fpga.SetWireInValue(0x00, channel_state)
+            self._fpga.SetWireInValue(0x00, new_channel_state)
             self._fpga.UpdateWireIns()
+            # Check for success
+            assert self.states == new_states, 'Setting of channel states failed'
 
-        # check if the state was actually set
-        if old_states != self.states:
-            self.log.error('Setting of channel states in hardware failed.')
+    def get_state(self, switch):
+        """ Query state of single switch by name
+
+        @param str switch: name of the switch to query the state for
+        @return str: The current switch state
+        """
+        assert switch in self.available_states, 'Invalid switch name "{0}"'.format(switch)
+        return self.states[switch]
+
+    def set_state(self, switch, state):
+        """ Query state of single switch by name
+
+        @param str switch: name of the switch to change
+        @param str state: name of the state to set
+        """
+        self.states = {switch: state}
