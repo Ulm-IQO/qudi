@@ -24,7 +24,7 @@ import time
 from core.module import Base
 from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
-from core.util.mutex import Mutex
+from core.util.mutex import RecursiveMutex
 from interface.switch_interface import SwitchInterface
 
 
@@ -53,7 +53,7 @@ class HBridge(Base, SwitchInterface):
     _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
 
     # optional name of the hardware
-    _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
+    _hardware_name = ConfigOption(name='name', default='HBridge Switch', missing='nothing')
 
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=False, missing='nothing')
@@ -70,7 +70,7 @@ class HBridge(Base, SwitchInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.lock = Mutex()
+        self.lock = RecursiveMutex()
         self._resource_manager = None
         self._instrument = None
 
@@ -86,9 +86,6 @@ class HBridge(Base, SwitchInterface):
             timeout=10,
             send_end=True
         )
-
-        if self._hardware_name is None:
-            self._hardware_name = 'HBridge Switch'
 
         if isinstance(self._names_of_switches, str):
             self._names_of_switches = [str(self._names_of_switches)]
@@ -123,86 +120,78 @@ class HBridge(Base, SwitchInterface):
         self._resource_manager.close()
 
     @property
-    def number_of_switches(self):
-        """ The number of switches provided by this hardware is 4.
-
-        @return int: number of switches
-        """
-        return 4
-
-    @property
     def name(self):
         """ Name of the hardware as string.
-
-        The name can either be defined as ConfigOption (name) or it defaults to the name of the hardware module.
 
         @return str: The name of the hardware
         """
         return self._hardware_name
 
     @property
-    def names_of_states(self):
-        """ Names of the states as a dict of lists.
+    def available_states(self):
+        """ Names of the states as a dict of tuples.
 
-        The keys contain the names for each of the switches and each of switches
-        has a list of elements representing the names in the state order.
-        The names can be defined by a ConfigOption (names_of_states) or they default to ['Off', 'On'].
+        The keys contain the names for each of the switches. The values are tuples of strings
+        representing the ordered names of available states for each switch.
 
-        @return dict: A dict of the form {"switch": ["state1", "state2"]}
+        @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
         return self._names_of_states.copy()
 
     @property
     def states(self):
-        """ The current states the hardware is in.
+        """ The current states the hardware is in as state dictionary with switch names as keys and
+        state names as values.
 
-        The states of the system as a dict consisting of switch names as keys and state names as values.
-
-        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
+        @return dict: All the current states of the switches in the form {"switch": "state"}
         """
         with self.lock:
-            pos = self.inst.ask('STATUS').strip()
-        self._states = {
-            self._names_of_switches[index]: self._names_of_states[self._names_of_switches[index]][int(value == '1')]
-            for index, value in enumerate(pos.split())}
-        return self._states
+            binary = tuple(int(pos == '1') for pos in self.inst.ask('STATUS').strip().split())
+            avail_states = self.available_states
+            self._states = {switch: states[binary[index]] for index, (switch, states) in
+                            enumerate(avail_states.items())}
+        return self._states.copy()
 
     @states.setter
-    def states(self, value):
+    def states(self, state_dict):
         """ The setter for the states of the hardware.
 
         The states of the system can be set by specifying a dict that has the switch names as keys
         and the names of the states as values.
 
-        @param dict value: state dict of the form {"switch": "state"}
-        @return: None
+        @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        if isinstance(value, dict):
-            for switch, state in value.items():
-                if switch not in self._names_of_switches:
-                    self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
-                    continue
+        assert isinstance(state_dict,
+                          dict), f'Property "state" must be dict type. Received: {type(state_dict)}'
 
-                states = self.names_of_states[switch]
-                if isinstance(state, str):
-                    if state not in states:
-                        self.log.error(f'"{state}" is not among the possible states: {states}')
-                        continue
-                    self._states[switch] = state
-        else:
-            self.log.error(f'attempting to set states as "{value}" while states have be a dict '
-                           f'having the switch names as keys and the state names as values.')
-            return
+        if state_dict:
+            with self.lock:
+                for switch, state in state_dict.items():
+                    self.set_state(switch, state)
+
+    def get_state(self, switch):
+        """ Query state of single switch by name
+
+        @param str switch: name of the switch to query the state for
+        @return str: The current switch state
+        """
+        assert switch in self.available_states, 'Invalid switch name "{0}"'.format(switch)
+        return self.states[switch]
+
+    def set_state(self, switch, state):
+        """ Query state of single switch by name
+
+        @param str switch: name of the switch to change
+        @param str state: name of the state to set
+        """
+        avail_states = self.available_states
+        assert switch in avail_states, f'Invalid switch name: "{switch}"'
+        assert state in avail_states[switch], f'Invalid state name "{state}" for switch "{switch}"'
 
         with self.lock:
-            for index in range(self.number_of_switches):
-                switch = self._names_of_switches[index]
-                answer = self._instrument.ask('P{0:d}={1:d}'.format(
-                    int(index) + 1,
-                    self._names_of_states[switch].index(self._states[switch]) + 1))
-                if answer != 'P{0:d}={1:d}'.format(int(index) + 1,
-                                                   self._names_of_states[switch].index(self._states[switch]) + 1):
-                    self.log.error(f'Error in setting state. Answer was: {answer}')
-                    return
-
+            switch_index = self.switch_names.index(switch) + 1
+            state_index = avail_states[switch].index(state) + 1
+            cmd = 'P{0:d}={1:d}'.format(switch_index, state_index)
+            answer = self._instrument.ask(cmd)
+            assert answer == cmd, f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
             time.sleep(self._switch_time)

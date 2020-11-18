@@ -22,11 +22,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
 from core.configoption import ConfigOption
+from core.util.mutex import RecursiveMutex
 from qtpy import QtCore
-from interface.switch_interface import SwitchInterface
 
 
-class SwitchLogic(GenericLogic, SwitchInterface):
+class SwitchLogic(GenericLogic):
     """ Logic module for interacting with the hardware switches.
     This logic has the same structure as the SwitchInterface but supplies additional functionality:
         - switches can either be manipulated by index or by their names
@@ -36,87 +36,158 @@ class SwitchLogic(GenericLogic, SwitchInterface):
     # connector for one switch, if multiple switches are needed use the SwitchCombinerInterfuse
     switch = Connector(interface='SwitchInterface')
 
-    _watchdog_timing = ConfigOption(name='watchdog_timing', default=1.0, missing='nothing')
+    _watchdog_interval = ConfigOption(name='watchdog_interval', default=1.0, missing='nothing')
+    _autostart_watchdog = ConfigOption(name='autostart_watchdog', default=False, missing='nothing')
 
-    sig_switch_updated = QtCore.Signal(dict)
-    _sig_start_watchdog = QtCore.Signal()
+    sigSwitchesChanged = QtCore.Signal(dict)
+    sigWatchdogToggled = QtCore.Signal(bool)
+
+    # directly wrapped attributes from hardware module
+    __wrapped_hw_attributes = frozenset({'switch_names', 'number_of_switches', 'available_states'})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self._thread_lock = RecursiveMutex()
+
+        self._watchdog_active = False
+        self._watchdog_interval_ms = 0
         self._old_states = dict()
 
     def on_activate(self):
-        """ Prepare logic module for work.
+        """ Activate module
         """
-        self._sig_start_watchdog.connect(self._watchdog, QtCore.Qt.QueuedConnection)
-        self._sig_start_watchdog.emit()
+        self._old_states = self.states
+        self._watchdog_interval_ms = int(round(self._watchdog_interval * 1000))
+
+        if self._autostart_watchdog:
+            self._watchdog_active = True
+            QtCore.QMetaObject.invokeMethod(self,
+                                            '_watchdog_body',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            self._watchdog_active = False
 
     def on_deactivate(self):
-        """ Deactivate module.
+        """ Deactivate module
         """
-        self._sig_start_watchdog.disconnect(self._watchdog)
+        self._watchdog_active = False
 
-    def _watchdog(self):
-        """ Helper function to regularly query the states from the hardware.
-
-        This function is called by an internal signal and queries the hardware regularly to fire
-        the signal sig_switch_updated, if the hardware changed its state without notifying the logic.
-        The timing of the watchdog is set by the ConfigOption watchdog_timing in seconds.
-
-        @return: None
-        """
-        if self._old_states != self.states:
-            self._old_states = self.states
-            self.sig_switch_updated.emit(self._old_states)
-        QtCore.QTimer.singleShot(int(self._watchdog_timing * 1e3), self._watchdog)
+    def __getattr__(self, item):
+        if item in self.__wrapped_hw_attributes:
+            return getattr(self.switch(), item)
+        raise AttributeError(f'SwitchLogic has not attribute with name "{item}"')
 
     @property
-    def number_of_switches(self):
-        """ Number of switches provided by the hardware.
+    def device_name(self):
+        """ Name of the connected hardware switch as string.
 
-        @return int: number of switches
-        """
-        return self.switch().number_of_switches
-
-    @property
-    def name(self):
-        """ Name of the hardware as string.
-
-        @return str: The name of the hardware
+        @return str: The name of the connected hardware switch
         """
         return self.switch().name
 
     @property
-    def names_of_states(self):
-        """ Names of the states as a dict of lists.
-
-        The keys contain the names for each of the switches and each of switches
-        has a list of elements representing the names in the state order.
-
-        @return dict: A dict of the form {"switch": ["state1", "state2"]}
-        """
-        return self.switch().names_of_states
+    def watchdog_active(self):
+        return self._watchdog_active
 
     @property
     def states(self):
-        """ The current states the hardware is in.
+        """ The current states the hardware is in as state dictionary with switch names as keys and
+        state names as values.
 
-        The states of the system as a dict consisting of switch names as keys and state names as values.
-
-        @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
+        @return dict: All the current states of the switches in the form {"switch": "state"}
         """
-        return self.switch().states
+        with self._thread_lock:
+            try:
+                states = self.switch().states
+                self._old_states = states
+            except:
+                self.log.exception(f'Error during query of all switch states.')
+                states = dict()
+            return states
 
     @states.setter
-    def states(self, value):
+    def states(self, state_dict):
         """ The setter for the states of the hardware.
 
         The states of the system can be set by specifying a dict that has the switch names as keys
         and the names of the states as values.
-        The signal sig_switch_updated is fired upon change of the states.
 
-        @param dict value: state dict of the form {"switch": "state"}
-        @return: None
+        @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        self.switch().states = value
-        self.sig_switch_updated.emit(self.states)
+        with self._thread_lock:
+            try:
+                self.switch().states = state_dict
+            except:
+                self.log.exception('Error while trying to set switch states.')
+
+            states = self.states
+            if states:
+                self.sigSwitchesChanged.emit({switch: states[switch] for switch in state_dict})
+
+    def get_state(self, switch):
+        """ Query state of single switch by name
+
+        @param str switch: name of the switch to query the state for
+        @return str: The current switch state
+        """
+        with self._thread_lock:
+            try:
+                state = self.switch().get_state(switch)
+                self._old_states[switch] = state
+            except:
+                self.log.exception(f'Error while trying to query state of switch "{switch}".')
+                state = None
+            return state
+
+    @QtCore.Slot(str, str)
+    def set_state(self, switch, state):
+        """ Query state of single switch by name
+
+        @param str switch: name of the switch to change
+        @param str state: name of the state to set
+        """
+        with self._thread_lock:
+            try:
+                self.switch().set_state(switch, state)
+            except:
+                self.log.exception(
+                    f'Error while trying to set switch "{switch}" to state "{state}".'
+                )
+            curr_state = self.get_state(switch)
+            if curr_state is not None:
+                self.sigSwitchesChanged.emit({switch: curr_state})
+
+    @QtCore.Slot(bool)
+    def toggle_watchdog(self, enable):
+        """
+
+        @param bool enable:
+        """
+        enable = bool(enable)
+        with self._thread_lock:
+            if enable != self._watchdog_active:
+                self._watchdog_active = enable
+                self.sigWatchdogToggled.emit(enable)
+                if enable:
+                    QtCore.QMetaObject.invokeMethod(self,
+                                                    '_watchdog_body',
+                                                    QtCore.Qt.QueuedConnection)
+
+    @QtCore.Slot()
+    def _watchdog_body(self):
+        """ Helper function to regularly query the states from the hardware.
+
+        This function is called by an internal signal and queries the hardware regularly to fire
+        the signal sig_switch_updated, if the hardware changed its state without notifying the logic.
+        The timing of the watchdog is set by the ConfigOption watchdog_interval in seconds.
+        """
+        with self._thread_lock:
+            if self._watchdog_active:
+                curr_states = self.states
+                diff_state = {switch: state for switch, state in curr_states.items() if
+                              state != self._old_states[switch]}
+                self._old_states = curr_states
+                if diff_state:
+                    self.sigSwitchesChanged.emit(diff_state)
+                QtCore.QTimer.singleShot(self._watchdog_interval_ms, self._watchdog_body)
