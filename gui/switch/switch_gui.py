@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi console GUI module.
+This file contains the qudi switch GUI module.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
