@@ -31,6 +31,13 @@ class SwitchLogic(GenericLogic):
     This logic has the same structure as the SwitchInterface but supplies additional functionality:
         - switches can either be manipulated by index or by their names
         - signals are generated on state changes
+
+    switchlogic:
+        module.Class: 'switch_logic.SwitchLogic'
+        watchdog_interval: 1  # optional
+        autostart_watchdog: True  # optional
+        connect:
+            switch: <switch name>
     """
 
     # connector for one switch, if multiple switches are needed use the SwitchCombinerInterfuse

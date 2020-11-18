@@ -47,37 +47,39 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     fpga_switch:
         module.Class: 'switches.ok_fpga.ok_s6_switch.HardwareSwitchFpga'
         fpga_serial: '143400058N'
-        fpga_type: 'XEM6310_LX45'
-
+        fpga_type: 'XEM6310_LX45'  # optional
+        path_to_bitfile: <file path>  # optional
+        name: 'OpalKelly FPGA Switch'  # optional
+        remember_states: True  # optional
+        switches:               # optional
+            B14: ['Off', 'On']
+            B16: ['Off', 'On']
+            B12: ['Off', 'On']
+             C7: ['Off', 'On']
+            D15: ['Off', 'On']
+            D10: ['Off', 'On']
+             D9: ['Off', 'On']
+            D11: ['Off', 'On']
     """
 
     # config options
-
     # serial number of the FPGA
     _serial = ConfigOption('fpga_serial', missing='error')
-
     # Type of the FGPA, possible type options: XEM6310_LX150, XEM6310_LX45
     _fpga_type = ConfigOption('fpga_type', default='XEM6310_LX45', missing='warn')
-
     # specify the path to the bitfile, if it is not in qudi_main_dir/thirdparty/qo_fpga
     _path_to_bitfile = ConfigOption('path_to_bitfile', default=None, missing='nothing')
-
-    # names_of_switches defines what switches there are, it should be a list of strings
-    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-
-    # names_of_states defines states for each switch. Can define any number of states >1 per switch.
-    # A 2D list of lists defined specific states for each switch
-    # and a simple 1D list defines the same states for each of the switches.
-    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
-
+    # customize available switches in config. Each switch needs a tuple of 2 state names.
+    _switches = ConfigOption(name='switches', default=None, missing='nothing')
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default='OpalKelly FPGA Switch', missing='nothing')
-
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=False, missing='nothing')
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
+
+    __default_switches = ('B14', 'B16', 'B12', 'C7', 'D15', 'D10', 'D9', 'D11')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -89,58 +91,33 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
-        # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
-        # c dll which was wrapped with SWIG for Windows type systems to be
-        # accessed with python 3.4. You have to ensure to use the python 3.4
-        # version to be able to run the Frontpanel wrapper:
-        self._fpga = ok.FrontPanel()
+        if self._switches is None:
+            self._switches = {sw: ('Off', 'On') for sw in self.__default_switches}
+        self._switches = self._chk_refine_available_switches(self._switches)
 
+        # Create an instance of the Opal Kelly FrontPanel
+        self._fpga = ok.FrontPanel()
         # Sanity check for fpga_type ConfigOption
         self._fpga_type = self._fpga_type.upper()
         if self._fpga_type not in ('XEM6310_LX45', 'XEM6310_LX150'):
             raise NameError('Unsupported FPGA type "{0}" specified in config. Valid options are '
                             '"XEM6310_LX45" and "XEM6310_LX150".\nAborting module activation.'
                             ''.format(self._fpga_type))
-
         # connect to the FPGA module
         self._connect()
 
-        try:
-            if len(self._names_of_switches) == 8 and not isinstance(self._names_of_switches, str):
-                self._names_of_switches = list(self._names_of_switches)
-            else:
-                raise TypeError
-        except TypeError:
-            self._names_of_switches = ['B14', 'B16', 'B12', 'C7', 'D15', 'D10', 'D9', 'D11']
-
-        if isinstance(self._names_of_states, (list, tuple)) \
-                and len(self._names_of_states) == len(self._names_of_switches) \
-                and isinstance(self._names_of_states[0], (list, tuple)) \
-                and len(self._names_of_states[0]) > 1:
-            self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
-                                     for index, switch in enumerate(self._names_of_switches)}
-        else:
-            self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
-                           f'with the elements being a list of two or more names for the states.')
-            self._names_of_states = dict()
-            return
-
         # reset states if requested, otherwise use the saved states
-        if not self._remember_states or not isinstance(self._states, dict) or len(
-                self._states) != 8:
-            self._states = dict()
-            self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
-        else:
+        if self._remember_states and isinstance(self._states, dict) and len(self._states) == 8:
             self.states = self._states
+        else:
+            self._states = dict()
+            self.states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
         """ Deactivate the FPGA.
         """
-        if self._connected and not self._remember_states:
-            self.states = False
         del self._fpga
         self._connected = False
-        return
 
     def _connect(self):
         """ Connect host PC to FPGA module with the specified serial number.
@@ -197,7 +174,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
         @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
-        return self._names_of_states.copy()
+        return self._switches.copy()
 
     @property
     def states(self):
@@ -265,3 +242,15 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         @param str state: name of the state to set
         """
         self.states = {switch: state}
+
+    @staticmethod
+    def _chk_refine_available_switches(switch_dict):
+        """ See SwitchInterface class for details
+
+        @param dict switch_dict:
+        @return dict:
+        """
+        refined = super()._chk_refine_available_switches(switch_dict)
+        assert len(refined) == 8, 'Exactly 8 switches or None must be specified in config'
+        assert all(len(s) == 2 for s in refined.values()), 'Switches can only take exactly 2 states'
+        return refined

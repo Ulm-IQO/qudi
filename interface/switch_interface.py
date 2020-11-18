@@ -113,3 +113,22 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         assert isinstance(state_dict), 'Parameter "state_dict" must be dict type'
         for switch, state in state_dict.items():
             self.set_state(switch, state)
+
+    @staticmethod
+    def _chk_refine_available_switches(switch_dict):
+        """ Perform some general checking of the configured available switches and their possible
+        states. When implementing a hardware module, you can overwrite this method to include
+        custom checks, but make sure to call this implementation first via super().
+
+        @param dict switch_dict: available switches in a dict like {"switch1": ["state1", "state2"]}
+        @return dict: The refined switch dict to replace the dict passed as argument
+        """
+        assert isinstance(switch_dict, dict), 'switch_dict must be a dict of tuples'
+        assert all((isinstance(sw, str) and sw) for sw in
+                   switch_dict), 'Switch name must be non-empty string'
+        assert all(len(states) > 1 for states in
+                   switch_dict.values()), 'State tuple must contain at least 2 states'
+        assert all(all((s and isinstance(s, str)) for s in states) for states in
+                   switch_dict.values()), 'Switch states must be non-empty strings'
+        # Convert state lists to tuples in order to restrict mutation
+        return {switch: tuple(states) for switch, states in switch_dict.items()}

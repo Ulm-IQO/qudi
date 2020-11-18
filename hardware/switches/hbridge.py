@@ -36,37 +36,34 @@ class HBridge(Base, SwitchInterface):
     h_bridge_switch:
         module.Class: 'switches.hbridge.HBridge'
         interface: 'ASRL1::INSTR'
-        names_of_states: ['Spectrometer', 'APD']
-        names_of_switches: ['Detection']
-        name: 'HBridge'
-
+        name: 'HBridge Switch'  # optional
+        switch_time: 0.5  # optional
+        remember_states: False  # optional
+        switches:               # optional
+            One: ['Spectrometer', 'APD']
+            Two: ['Spectrometer', 'APD']
+            Three: ['Spectrometer', 'APD']
+            Four: ['Spectrometer', 'APD']
     """
 
     # ConfigOptions
 
-    # names_of_switches defines what switches there are, it should be a list of strings
-    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-
-    # names_of_states defines states for each switch, it can define any number of states greater one per switch.
-    # A 2D list of lists defined specific states for each switch
-    # and a simple 1D list defines the same states for each of the switches.
-    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
-
+    # customize all 4 available switches in config. Each switch needs a tuple of 2 state names.
+    _switches = ConfigOption(name='switches',
+                             default={str(ii): ('Off', 'On') for ii in range(1, 5)},
+                             missing='nothing')
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default='HBridge Switch', missing='nothing')
-
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=False, missing='nothing')
+    # switch_time to wait after setting the states for the solenoids to react
+    _switch_time = ConfigOption(name='switch_time', default=0.5, missing='nothing')
+    # name of the serial interface where the hardware is connected.
+    # Use e.g. the Keysight IO connections expert to find the device.
+    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='error')
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
-
-    # switch_time to wait after setting the states for the solenoids to react
-    _switch_time = ConfigOption(name='switch_time', default=0.5, missing='nothing')
-
-    # name of the serial interface were the hardware is connected.
-    # E.g. use the Keysight IO connections expert to find the device.
-    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -77,6 +74,8 @@ class HBridge(Base, SwitchInterface):
     def on_activate(self):
         """ Prepare module, connect to hardware.
         """
+        self._switches = self._chk_refine_available_switches(self._switches)
+
         self._resource_manager = visa.ResourceManager()
         self._instrument = self._resource_manager.open_resource(
             self.serial_interface,
@@ -87,31 +86,12 @@ class HBridge(Base, SwitchInterface):
             send_end=True
         )
 
-        if isinstance(self._names_of_switches, str):
-            self._names_of_switches = [str(self._names_of_switches)]
-        else:
-            try:
-                self._names_of_switches = [str(name) for name in self._names_of_switches]
-            except TypeError:
-                self._names_of_switches = [str(index + 1) for index in range(self._number_of_switches)]
-
-        if isinstance(self._names_of_states, (list, tuple)) \
-                and len(self._names_of_states) == len(self._names_of_switches) \
-                and isinstance(self._names_of_states[0], (list, tuple)) \
-                and len(self._names_of_states[0]) > 1:
-            self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
-                                     for index, switch in enumerate(self._names_of_switches)}
-        else:
-            self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
-                           f'with the elements being a list of two or more names for the states.')
-            self._names_of_states = dict()
-            return
-
         # reset states if requested, otherwise use the saved states
-        if not self._remember_states \
-                or not isinstance(self._states, dict) \
-                or len(self._states) != self.number_of_switches:
-            self._states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
+        if self._remember_states and isinstance(self._states, dict) and len(self._states) == 4:
+            self.states = self._states
+        else:
+            self._states = dict()
+            self.states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -136,7 +116,7 @@ class HBridge(Base, SwitchInterface):
 
         @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
-        return self._names_of_states.copy()
+        return self._switches.copy()
 
     @property
     def states(self):
@@ -195,3 +175,15 @@ class HBridge(Base, SwitchInterface):
             answer = self._instrument.ask(cmd)
             assert answer == cmd, f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
             time.sleep(self._switch_time)
+
+    @staticmethod
+    def _chk_refine_available_switches(switch_dict):
+        """ See SwitchInterface class for details
+
+        @param dict switch_dict:
+        @return dict:
+        """
+        refined = super()._chk_refine_available_switches(switch_dict)
+        assert len(refined) == 4, 'Exactly 4 switches or None must be specified in config'
+        assert all(len(s) == 2 for s in refined.values()), 'Switches can only take exactly 2 states'
+        return refined

@@ -44,35 +44,36 @@ class OSW12(Base, SwitchInterface):
     fibered_switch:
         module.Class: 'switches.osw12.OSW12'
         interface: 'ASRL1::INSTR'
-        names_of_states: ['Off', 'On']
-        names_of_switches: 'Detection'
-        name: 'MEMS Fibre Switch'
+        name: 'MEMS Fiber-Optic Switch'  # optional
+        switch_name: 'Detection'  # optional
+        switch_states: ['Off', 'On']  # optional
     """
 
-    # names_of_switches defines what switches there are, it should be a list of strings
-    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-
-    # names_of_states defines states for each switch, it can define any number of states greater one per switch.
-    # A 2D list of lists defined specific states for each switch
-    # and a simple 1D list defines the same states for each of the switches.
-    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
-
+    # ConfigOptions to give the single switch and its states custom names
+    _switch_name = ConfigOption(name='switch_name', default='1', missing='nothing')
+    _switch_states = ConfigOption(name='switch_states', default=['Off', 'On'], missing='nothing')
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default='MEMS Fiber-Optic Switch', missing='nothing')
-
-    # name of the serial interface were the hardware is connected.
-    # E.g. use the Keysight IO connections expert to find the device.
-    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
+    # name of the serial interface where the hardware is connected.
+    # Use e.g. the Keysight IO connections expert to find the device.
+    serial_interface = ConfigOption('interface', 'ASRL1::INSTR')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lock = Mutex()
         self._resource_manager = None
         self._instrument = None
+        self._switches = dict()
 
     def on_activate(self):
         """ Prepare module, connect to hardware.
         """
+        assert isinstance(self._switch_name, str), 'ConfigOption "switch_name" must be str type'
+        assert len(self._switch_states) == 2, 'ConfigOption "switch_states" must be len 2 iterable'
+        self._switches = self._chk_refine_available_switches(
+            {self._switch_name: self._switch_states}
+        )
+
         self._resource_manager = visa.ResourceManager()
         self._instrument = self._resource_manager.open_resource(
             self.serial_interface,
@@ -82,29 +83,6 @@ class OSW12(Base, SwitchInterface):
             timeout=10,
             send_end=True
         )
-
-        if isinstance(self._names_of_switches, str):
-            self._names_of_switches = [str(self._names_of_switches)]
-        else:
-            try:
-                self._names_of_switches = [str(self._names_of_switches[0])]
-            except TypeError:
-                self._names_of_switches = ['1']
-
-        if isinstance(self._names_of_states, (list, tuple)) \
-                and len(self._names_of_states) == len(self._names_of_switches) \
-                and isinstance(self._names_of_states[0], (list, tuple)) \
-                and len(self._names_of_states[0]) > 1:
-            self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
-                                     for index, switch in enumerate(self._names_of_switches)}
-        elif isinstance(self._names_of_states, (list, tuple)) \
-                and isinstance(self._names_of_states[0], str):
-            self._names_of_states = {self._names_of_switches[0]: list(self._names_of_states)}
-        else:
-            self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
-                           f'with the elements being a list of two or more names for the states.')
-            self._names_of_states = dict()
-            return
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -129,7 +107,7 @@ class OSW12(Base, SwitchInterface):
 
         @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
-        return self._names_of_states.copy()
+        return self._switches.copy()
 
     @property
     def states(self):
@@ -138,7 +116,8 @@ class OSW12(Base, SwitchInterface):
 
         @return dict: All the current states of the switches in the form {"switch": "state"}
         """
-
+        with self.lock:
+            return {switch: self.get_state(switch) for switch in self.available_states}
 
     @states.setter
     def states(self, state_dict):
@@ -149,34 +128,10 @@ class OSW12(Base, SwitchInterface):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        direction = None
-        if isinstance(value, dict):
-            for switch, state in value.items():
-                if switch not in self._names_of_switches:
-                    self.log.warning(f'Attempted to set a switch of name "{switch}" but it does not exist.')
-                    continue
-
-                states = self.names_of_states[switch]
-                if isinstance(state, str):
-                    if state not in states:
-                        self.log.error(f'"{state}" is not among the possible states: {states}')
-                        continue
-                    direction = self.names_of_states[switch].index(state)
-        else:
-            self.log.error(f'attempting to set states as "{value}" while states have be a dict '
-                           f'having the switch names as keys and the state names as values.')
-            return
-
-        if direction is None:
-            self.log.error('No state to set.')
-            return
-
+        assert isinstance(state_dict), 'Parameter "state_dict" must be dict type'
         with self.lock:
-            self._instrument.write('S {0:d}'.format(1 if direction else 2))
-            time.sleep(0.1)
-
-        # For some reason first returned value is not updated yet, let's clear it.
-        _ = self.states
+            for switch, state in state_dict.items():
+                self.set_state(switch, state)
 
     def get_state(self, switch):
         """ Query state of single switch by name
@@ -195,7 +150,7 @@ class OSW12(Base, SwitchInterface):
                     self.log.debug('Hardware query raised VisaIOError, trying again...')
                 else:
                     assert response in {'1', '2'}, f'Unexpected return value "{response}"'
-                    return {switch: avail_states[switch][int(response == '1')]}
+                    return avail_states[switch][int(response == '1')]
             raise Exception('Hardware did not respond after 3 attempts. Visa error')
 
     def set_state(self, switch, state):
@@ -209,9 +164,9 @@ class OSW12(Base, SwitchInterface):
         assert state in avail_states[switch], f'Invalid state name "{state}" for switch "{switch}"'
 
         with self.lock:
-            switch_index = self.switch_names.index(switch) + 1
-            state_index = avail_states[switch].index(state) + 1
-            cmd = 'P{0:d}={1:d}'.format(switch_index, state_index)
-            answer = self._instrument.ask(cmd)
-            assert answer == cmd, f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
-            time.sleep(self._switch_time)
+            direction = avail_states[switch].index(state)
+            self._instrument.write('S {0:d}'.format(1 if direction else 2))
+            time.sleep(0.1)
+
+            # FIXME: For some reason first returned value is not updated yet, let's clear it.
+            _ = self.states

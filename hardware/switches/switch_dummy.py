@@ -32,27 +32,19 @@ class SwitchDummy(Base, SwitchInterface):
 
     switch_dummy:
         module.Class: 'switches.switch_dummy.SwitchDummy'
-        names_of_states: [['down', 'up'], ['down', 'up'], ['low', 'middle', 'high']]
-        names_of_switches: ['one', 'two', 'tree']
-        name: 'First'
+        name: 'First'  # optional
+        remember_states: True  # optional
+        switches:
+            one: ['down', 'up']
+            two: ['down', 'up']
+            three: ['low', 'middle', 'high']
     """
 
     # ConfigOptions
-
-    # number of switches is only needed if no names of switches are given
-    _number_of_switches = ConfigOption(name='number_of_switches', default=1, missing='nothing')
-
-    # names_of_switches defines what switches there are, it should be a list of strings
-    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-
-    # names_of_states defines states for each switch, it can define any number of states greater one per switch.
-    # A 2D list of lists defined specific states for each switch
-    # and a simple 1D list defines the same states for each of the switches.
-    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
-
+    # customize available switches in config. Each switch needs a tuple of at least 2 state names.
+    _switches = ConfigOption(name='switches', missing='error')
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
-
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
 
@@ -62,36 +54,16 @@ class SwitchDummy(Base, SwitchInterface):
     def on_activate(self):
         """ Activate the module and fill status variables.
         """
+        self._switches = self._chk_refine_available_switches(self._switches)
 
-        # Fill internal variables depending on ConfigOptions
+        # Choose config name for this module if no name is given in ConfigOptions
         if self._hardware_name is None:
             self._hardware_name = self._name
 
-        if isinstance(self._names_of_switches, str):
-            self._names_of_switches = [str(self._names_of_switches)]
-        else:
-            try:
-                self._names_of_switches = [str(name) for name in self._names_of_switches]
-            except TypeError:
-                self._names_of_switches = [str(index + 1) for index in range(self._number_of_switches)]
-
-        if isinstance(self._names_of_states, (list, tuple)) \
-                and len(self._names_of_states) == len(self._names_of_switches) \
-                and isinstance(self._names_of_states[0], (list, tuple)) \
-                and len(self._names_of_states[0]) > 1:
-            self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
-                                     for index, switch in enumerate(self._names_of_switches)}
-        else:
-            self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
-                           f'with the elements being a list of two or more names for the states.')
-            self._names_of_states = dict()
-            return
-
         # reset states if requested, otherwise use the saved states
-        if not self._remember_states \
-                or not isinstance(self._states, dict) \
-                or len(self._states) != self.number_of_switches:
-            self._states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
+        if not self._remember_states or not isinstance(self._states, dict) or \
+                len(self._states) != len(self._switches):
+            self._states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
         """ Deactivate the module and clean up.
@@ -115,7 +87,7 @@ class SwitchDummy(Base, SwitchInterface):
 
         @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
-        return self._names_of_states.copy()
+        return self._switches.copy()
 
     @property
     def states(self):
