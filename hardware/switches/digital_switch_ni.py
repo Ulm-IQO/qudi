@@ -36,34 +36,28 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
     Example config for copy-paste:
 
-    cw_laser_switch:
+    digital_switch_ni:
         module.Class: 'switches.digital_switch_ni.DigitalSwitchNI'
-        channel: '/Dev1/port0/line30:31'
+        channel: '/Dev1/port0/line30:31'  # optional
+        name: 'My Switch Hardware Name'  # optional
         switch_time: 0.1
-        reset_states: False
-        names_of_states: [['Low', 'High'], ['Low', 'High']]
-        names_of_switches: ['One', 'Two']
-
+        remember_states: True
+        switches:                       # optional
+            One: ['Low', 'High']
+            Two: ['Off', 'On']
     """
-
-    # channels of the NI Card to be used for switching. This can either be a single channel or multiple lines.
+    # ToDo: Implement this switch module for PFI channels. These do not clash with other tasks
+    #  contrary to a digital out port.
+    # Channels of the NI Card to be used for switching.
+    # Can either be a single channel or multiple lines.
     _channel = ConfigOption(name='channel', default='/Dev1/port0/line31', missing='warn')
-
     # switch_time to wait after setting the states for the connected hardware to react
     _switch_time = ConfigOption(name='switch_time', default=0.1, missing='nothing')
-
-    # names_of_switches defines the switch names.
-    # This has to be a list of names in the length of the number_of_switches.
-    _names_of_switches = ConfigOption(name='names_of_switches', default=None, missing='nothing')
-
-    # names_of_states defines states for each switch, it can define any number of two states per switch.
-    # A 2D list of lists defined specific states for each switch
-    # and a simple 1D list defines the same states for each of the switches.
-    _names_of_states = ConfigOption(name='names_of_states', default=['Off', 'On'], missing='nothing')
-
+    # optionally customize all switches in config. Each switch needs a tuple of 2 state names.
+    # If used, you must specify as many switches as you have specified channels
+    _switches = ConfigOption(name='switches', default=None, missing='nothing')
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
-
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
 
@@ -75,8 +69,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
         super().__init__(*args, **kwargs)
         self.lock = RecursiveMutex()
 
-        self._number_of_channels = 0
-        self._channels = list()
+        self._channels = tuple()
 
     def on_activate(self):
         """ Prepare module, connect to hardware.
@@ -84,55 +77,32 @@ class DigitalSwitchNI(Base, SwitchInterface):
             /Dev1/port0/line31 lead to 1 switch
             /Dev1/port0/line29:31 leads to 3 switches
         """
-
-        if not self._channel.__contains__(':'):
-            self._number_of_channels = 1
-            self._channels.append(self._channel)
+        # Determine DO lines to use. This defines the number of switches for this module.
+        assert isinstance(self._channel, str), 'ConfigOption "channel" must be str type'
+        match = re.match(r'(.*?dev\d/port\d/line)(\d+)(?::(\d+))?', self._channel, re.IGNORECASE)
+        assert match is not None, 'channel string invalid. Valid example: "/Dev1/port0/line29:31"'
+        if match.groups()[2] is None:
+            self._channels = (match.group(),)
         else:
-            int_parts = re.split(r'\D', str(self._channel))
-            start_number = int(int_parts[-2])
-            stop_number = int(int_parts[-1])
-            front_part = str(self._channel).split(int_parts[-2])[0]
+            first, last = sorted(int(ch) for ch in match.groups()[1:])
+            prefix = match.groups()[0]
+            self._channels = tuple('{0}{1:d}'.format(prefix, ii) for ii in range(first, last + 1))
 
-            self._number_of_channels = abs(start_number - stop_number) + 1
-            for number in range(start_number,
-                                stop_number + 1 if start_number < stop_number else stop_number - 1,
-                                1 if start_number < stop_number else -1):
-                self._channels.append(front_part + str(number))
+        # Determine available switches and states
+        if self._switches is None:
+            self._switches = {str(ii): ('Off', 'On') for ii in range(1, len(self._channels) + 1)}
+        self._switches = self._chk_refine_available_switches(self._switches)
 
         if self._hardware_name is None:
             self._hardware_name = 'NICard' + str(self._channel).replace('/', ' ')
 
-        if isinstance(self._names_of_switches, str) and self.number_of_switches == 1:
-            self._names_of_switches = [str(self._names_of_switches)]
-        else:
-            try:
-                self._names_of_switches = [str(name) for name in self._names_of_switches]
-            except TypeError:
-                self._names_of_switches = [str(index + 1) for index in range(self._number_of_switches)]
-
-        if isinstance(self._names_of_states, (list, tuple)) \
-                and len(self._names_of_states) == len(self._names_of_switches) \
-                and isinstance(self._names_of_states[0], (list, tuple)) \
-                and len(self._names_of_states[0]) > 1:
-            self._names_of_states = {switch: [str(name) for name in self._names_of_states[index]]
-                                     for index, switch in enumerate(self._names_of_switches)}
-        else:
-            self.log.error(f'names_of_states must be a list of length {len(self._names_of_switches)}, '
-                           f'with the elements being a list of two or more names for the states.')
-            self._names_of_states = dict()
-            return
-
-        # catch and adjust empty _states or _states not matching to the number of channels
-        if self._states is None or len(self._states) != self._number_of_channels:
-            self._states = dict()
-            self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
-
-        # initialize channels to saved _states if requested otherwise initialize to 0
-        if self._remember_states:
+        # reset states if requested, otherwise use the saved states
+        if self._remember_states and isinstance(self._states, dict) and len(
+                self._states) == len(self._channels):
             self.states = self._states
         else:
-            self.states = {name: self._names_of_states[name][0] for name in self._names_of_switches}
+            self._states = dict()
+            self.states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -158,7 +128,7 @@ class DigitalSwitchNI(Base, SwitchInterface):
 
         @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
         """
-        return self._names_of_states.copy()
+        return self._switches.copy()
 
     @property
     def states(self):
@@ -215,3 +185,15 @@ class DigitalSwitchNI(Base, SwitchInterface):
         @param str state: name of the state to set
         """
         self.states = {switch: state}
+
+    def _chk_refine_available_switches(self, switch_dict):
+        """ See SwitchInterface class for details
+
+        @param dict switch_dict:
+        @return dict:
+        """
+        refined = super()._chk_refine_available_switches(switch_dict)
+        num = len(self._channels)
+        assert len(refined) == num, f'Exactly {num} switches or None must be specified in config'
+        assert all(len(s) == 2 for s in refined.values()), 'Switches can only take exactly 2 states'
+        return refined
