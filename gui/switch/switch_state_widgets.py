@@ -29,7 +29,7 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
     sigStateChanged = QtCore.Signal(str)
 
     _highlight_style = 'QRadioButton {color: green; font-weight: bold;}'
-    _lowlight_style = 'QRadioButton {color: red; font-weight: normal;}'
+    _lowlight_style = 'QRadioButton {color: red; font-weight: bold;}'
 
     def __init__(self, *args, switch_name, switch_states, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,9 +43,7 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
         for ii, button in enumerate(self.radio_buttons.values()):
             layout.addWidget(button)
             button_group.addButton(button, ii)
-        # self.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
-        #                      QtWidgets.QSizePolicy.MinimumExpanding)
-        # self.setMinimumWidth(self.sizeHint().width())
+        layout.setStretch(ii, 1)
         button_group.buttonToggled.connect(self.__button_toggled_cb)
 
     def __button_toggled_cb(self, button, checked):
