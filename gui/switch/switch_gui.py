@@ -52,7 +52,7 @@ class SwitchGui(GUIBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._mw = SwitchMainWindow()
+        self._mw = None
         self._widgets = dict()
         self._highlight_format = 'QRadioButton {color: green; font-weight: bold;}'
         self._lowlight_format = 'QRadioButton {color: red; font-weight: normal;}'
@@ -60,20 +60,32 @@ class SwitchGui(GUIBase):
     def on_activate(self):
         """ Create all UI objects and show the window.
         """
+        self._mw = SwitchMainWindow()
         self.restoreWindowPos(self._mw)
+
+        self._widgets = dict()
         self._populate_switches()
 
         self.sigSwitchChanged.connect(self.switchlogic().set_state, QtCore.Qt.QueuedConnection)
+        self._mw.action_periodic_state_check.toggled.connect(
+            self.switchlogic().toggle_watchdog, QtCore.Qt.QueuedConnection
+        )
+        self.switchlogic().sigWatchdogToggled.connect(
+            self._watchdog_updated, QtCore.Qt.QueuedConnection
+        )
         self.switchlogic().sigSwitchesChanged.connect(
             self._switches_updated, QtCore.Qt.QueuedConnection
         )
 
+        self._watchdog_updated(self.switchlogic().watchdog_active)
         self.show()
 
     def on_deactivate(self):
         """ Hide window empty the GUI and disconnect signals
         """
         self.switchlogic().sigSwitchesChanged.disconnect(self._switches_updated)
+        self.switchlogic().sigWatchdogToggled.disconnect(self._watchdog_updated)
+        self._mw.action_periodic_state_check.toggled.disconnect()
         self.sigSwitchChanged.disconnect()
 
         self._depopulate_switches()
@@ -114,6 +126,7 @@ class SwitchGui(GUIBase):
         label = QtWidgets.QLabel(switch + ':')
         label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
         label.setMinimumWidth(100)
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         widget = QtWidgets.QWidget()
         widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -137,7 +150,6 @@ class SwitchGui(GUIBase):
         layout.setAlignment(QtCore.Qt.AlignCenter)
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
-
         return widget
 
     def _depopulate_switches(self):
@@ -167,6 +179,7 @@ class SwitchGui(GUIBase):
             return
         self.sigSwitchChanged.emit(switch, state)
 
+    @QtCore.Slot(dict)
     def _switches_updated(self, states):
         """ Helper function to update the GUI on a change of the states in the logic.
         This function is connected to the signal coming from the switchlogic signaling a change in states.
@@ -179,3 +192,14 @@ class SwitchGui(GUIBase):
                 widget.setChecked(name == state)
                 widget.setStyleSheet(self._lowlight_format if name == state else self._highlight_format)
                 widget.blockSignals(False)
+
+    @QtCore.Slot(bool)
+    def _watchdog_updated(self, enabled):
+        """ Update the menu action accordingly if the watchdog has been (de-)activated.
+
+        @param bool enabled: Watchdog active (True) or inactive (False)
+        """
+        if enabled != self._mw.action_periodic_state_check.isChecked():
+            self._mw.action_periodic_state_check.blockSignals(True)
+            self._mw.action_periodic_state_check.setChecked(enabled)
+            self._mw.action_periodic_state_check.blockSignals(False)

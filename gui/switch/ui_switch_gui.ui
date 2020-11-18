@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>105</width>
-    <height>73</height>
+    <width>94</width>
+    <height>88</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,14 +29,16 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>105</width>
-     <height>25</height>
+     <width>94</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
     <property name="title">
      <string>Menu</string>
     </property>
+    <addaction name="action_periodic_state_check"/>
+    <addaction name="separator"/>
     <addaction name="actionClose"/>
    </widget>
    <addaction name="menuMenu"/>
@@ -56,6 +58,17 @@
    </property>
    <property name="text">
     <string>Show &amp;Radio Buttons</string>
+   </property>
+  </action>
+  <action name="action_periodic_state_check">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Periodic State Checking</string>
+   </property>
+   <property name="toolTip">
+    <string>If enabled the state of all switches will be periodically read from the hardware in order to reflect changes if they are introduced from outside qudi (e.g. front panel buttons)</string>
    </property>
   </action>
  </widget>

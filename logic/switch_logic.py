@@ -62,9 +62,7 @@ class SwitchLogic(GenericLogic):
 
         if self._autostart_watchdog:
             self._watchdog_active = True
-            QtCore.QMetaObject.invokeMethod(self,
-                                            '_watchdog_body',
-                                            QtCore.Qt.BlockingQueuedConnection)
+            QtCore.QMetaObject.invokeMethod(self, '_watchdog_body', QtCore.Qt.QueuedConnection)
         else:
             self._watchdog_active = False
 
