@@ -19,25 +19,44 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
 from core.connector import Connector
 from gui.guibase import GUIBase
-from qtpy import QtWidgets, QtCore
-from qtpy import uic
-import sip
+from qtpy import QtWidgets, QtCore, QtGui
+from .switch_state_widgets import SwitchRadioButtonWidget
 
 
 class SwitchMainWindow(QtWidgets.QMainWindow):
-    """ Create the Main Window based on the *.ui file. """
+    """ Main Window for the SwitchGui module """
 
-    def __init__(self, **kwargs):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_switch_gui.ui')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Create main layout within group box as central widget
+        layout = QtWidgets.QGridLayout()
+        layout.setColumnStretch(1, 1)
+        self.group_box = QtWidgets.QGroupBox('Name of Switch Hardware')
+        self.group_box.setAlignment(QtCore.Qt.AlignLeft)
+        self.group_box.setLayout(layout)
+        self.setCentralWidget(self.group_box)
+        self.setWindowTitle('qudi: Switches')
 
-        # Load it
-        super().__init__(**kwargs)
-        uic.loadUi(ui_file, self)
+        # Create QActions and menu bar
+        self.action_periodic_state_check = QtWidgets.QAction('Periodic State Checking')
+        self.action_periodic_state_check.setCheckable(True)
+        self.action_close = QtWidgets.QAction('Close Window')
+        self.action_close.setCheckable(False)
+        self.action_close.setIcon(QtGui.QIcon('artwork/icons/oxygen/22x22/application-exit.png'))
+        self.addAction(self.action_periodic_state_check)
+        self.addAction(self.action_close)
+        menu_bar = QtWidgets.QMenuBar()
+        menu = menu_bar.addMenu('Menu')
+        menu.addAction(self.action_periodic_state_check)
+        menu.addSeparator()
+        menu.addAction(self.action_close)
+        self.setMenuBar(menu_bar)
+
+        # close window upon triggering close action
+        self.action_close.triggered.connect(self.close)
+        return
 
 
 class SwitchGui(GUIBase):
@@ -54,8 +73,6 @@ class SwitchGui(GUIBase):
         super().__init__(*args, **kwargs)
         self._mw = None
         self._widgets = dict()
-        self._highlight_format = 'QRadioButton {color: green; font-weight: bold;}'
-        self._lowlight_format = 'QRadioButton {color: red; font-weight: normal;}'
 
     def on_activate(self):
         """ Create all UI objects and show the window.
@@ -63,7 +80,6 @@ class SwitchGui(GUIBase):
         self._mw = SwitchMainWindow()
         self.restoreWindowPos(self._mw)
 
-        self._widgets = dict()
         self._populate_switches()
 
         self.sigSwitchChanged.connect(self.switchlogic().set_state, QtCore.Qt.QueuedConnection)
@@ -78,6 +94,8 @@ class SwitchGui(GUIBase):
         )
 
         self._watchdog_updated(self.switchlogic().watchdog_active)
+        self._switches_updated(self.switchlogic().states)
+        self._mw.setFixedSize(self._mw.sizeHint())
         self.show()
 
     def on_deactivate(self):
@@ -99,85 +117,53 @@ class SwitchGui(GUIBase):
         self._mw.show()
 
     def _populate_switches(self):
-        """ Dynamically build the gui.
-        @return: None
+        """ Dynamically build the gui
         """
         # For each switch that the logic has, add a widget to the GUI to show its state
-        self._mw.switch_groupBox.setTitle(self.switchlogic().device_name)
-        self._mw.switch_groupBox.setAlignment(QtCore.Qt.AlignLeft)
-        self._mw.switch_groupBox.setFlat(False)
-        vertical_layout = QtWidgets.QVBoxLayout(self._mw.switch_groupBox)
+        self._mw.group_box.setTitle(self.switchlogic().device_name)
+        layout = self._mw.group_box.layout()
         self._widgets = dict()
-        for switch in self.switchlogic().available_states:
-            vertical_layout.addWidget(self._add_radio_widget(switch))
+        for ii, (switch, states) in enumerate(self.switchlogic().available_states.items()):
+            self._widgets[switch] = (
+                self._get_switch_label(switch),
+                SwitchRadioButtonWidget(switch_name=switch, switch_states=states)
+            )
+            layout.addWidget(self._widgets[switch][0], ii, 0)
+            layout.addWidget(self._widgets[switch][1], ii, 1)
+            self._widgets[switch][1].sigStateChanged.connect(self.__get_state_update_func(switch))
 
-        self._mw.switch_groupBox.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
-                                               QtWidgets.QSizePolicy.MinimumExpanding)
-        self._mw.switch_groupBox.updateGeometry()
-        self._switches_updated(self.switchlogic().states)
+    @staticmethod
+    def _get_switch_label(switch):
+        """ Helper function to create a QLabel for a single switch.
 
-    def _add_radio_widget(self, switch):
-        """ Helper function to create a widget with radio buttons per switch.
-        @param str switch: the switch name (in switchlogic) of the switch to be displayed
-        @return QWidget: widget containing the radio buttons and the label
+        @param str switch: The name of the switch to create the label for
+        @return QWidget: QLabel with switch name
         """
-        button_group = QtWidgets.QButtonGroup()
-
-        label = QtWidgets.QLabel(switch + ':')
-        label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        label.setMinimumWidth(100)
+        label = QtWidgets.QLabel(f'{switch}:')
+        font = QtGui.QFont()
+        font.setBold(True)
+        label.setFont(font)
+        # label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+        #                     QtWidgets.QSizePolicy.MinimumExpanding)
+        label.setMinimumWidth(label.sizeHint().width())
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-
-        widget = QtWidgets.QWidget()
-        widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-
-        layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(label)
-
-        names = self.switchlogic().available_states[switch]
-        self._widgets[switch] = dict()
-        for state in names:
-            button = QtWidgets.QRadioButton(state)
-            button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-
-            button_group.addButton(button)
-            self._widgets[switch][state] = button
-
-            button.toggled.connect(lambda button_state, switch_origin=switch, state_origin=state:
-                                   self._button_toggled(switch_origin, state_origin, button_state))
-            layout.addWidget(button)
-
-        layout.setAlignment(QtCore.Qt.AlignCenter)
-        layout.setContentsMargins(0, 0, 0, 0)
-        widget.setLayout(layout)
-        return widget
+        return label
 
     def _depopulate_switches(self):
         """ Delete all the buttons from the group box and remove the layout.
         @return: None
         """
-        for widgets in self._widgets.values():
-            for widget in widgets.values():
-                widget.disconnect()
-        self._widgets = dict()
-
-        vertical_layout = self._mw.switch_groupBox.layout()
-        if vertical_layout is not None:
-            for i in reversed(range(vertical_layout.count())):
-                vertical_layout.itemAt(i).widget().setParent(None)
-            sip.delete(vertical_layout)
-
-    def _button_toggled(self, switch, state, is_set):
-        """ Helper function that is connected to the GUI interaction.
-        A GUI change is transmitted to the logic and the visual indicators are changed.
-        @param str switch: switch name of the GUI element that was changed
-        @param str state: new state name of the switch
-        @param bool is_set: indicator if this particular state was switched to True
-        @return: None
-        """
-        if not is_set:
-            return
-        self.sigSwitchChanged.emit(switch, state)
+        layout = self._mw.group_box.layout()
+        for switch in reversed(self._widgets):
+            label, widget = self._widgets[switch]
+            widget.sigStateChanged.disconnect()
+            layout.removeWidget(label)
+            layout.removeWidget(widget)
+            label.setParent(None)
+            widget.setParent(None)
+            del self._widgets[switch]
+            label.deleteLater()
+            widget.deleteLater()
 
     @QtCore.Slot(dict)
     def _switches_updated(self, states):
@@ -187,11 +173,7 @@ class SwitchGui(GUIBase):
         @return: None
         """
         for switch, state in states.items():
-            for name, widget in self._widgets[switch].items():
-                widget.blockSignals(True)
-                widget.setChecked(name == state)
-                widget.setStyleSheet(self._lowlight_format if name == state else self._highlight_format)
-                widget.blockSignals(False)
+            self._widgets[switch][1].set_state(state)
 
     @QtCore.Slot(bool)
     def _watchdog_updated(self, enabled):
@@ -203,3 +185,8 @@ class SwitchGui(GUIBase):
             self._mw.action_periodic_state_check.blockSignals(True)
             self._mw.action_periodic_state_check.setChecked(enabled)
             self._mw.action_periodic_state_check.blockSignals(False)
+
+    def __get_state_update_func(self, switch):
+        def update_func(state):
+            self.sigSwitchChanged.emit(switch, state)
+        return update_func
