@@ -53,12 +53,13 @@ class LaserScannerLogic(GenericLogic):
     scan_range = StatusVar('scan_range', [-3, 3])
     number_of_repeats = StatusVar(default=100)
     resolution = StatusVar('resolution', 500)
-    _scan_speed = StatusVar('scan_speed', 0.01)
+    _scan_speed = StatusVar('scan_speed', 0.5)
     _static_v = StatusVar('goto_voltage', 0)
+    _clock_frequency=StatusVar('clock_frequency', 50)
 
     # parameters for pid loop to hold frequency
-    pid_kp = StatusVar(default=-50)
-    pid_ki = StatusVar(default=0.000138)
+    pid_kp = StatusVar(default=-10)
+    pid_ki = StatusVar(default=-0.00116)
     pid_setpoint = StatusVar(default=0)
     pid_timestep = StatusVar(default=300)
     frequency_history_length = 300
@@ -115,6 +116,7 @@ class LaserScannerLogic(GenericLogic):
 
         # Keep track of the current static voltage even while a scan may cause the real-time
         # voltage to change.
+
         self.goto_voltage(self._static_v)
 
         # setup timer for pid refresh
@@ -149,11 +151,11 @@ class LaserScannerLogic(GenericLogic):
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
         self.set_resolution(self.resolution)
-        self._goto_speed = 0.1  # 0.01  # volt / second
+        self._goto_speed = 0.5  # 0.01  # volt / second
         self.set_scan_speed(self._scan_speed)
-        self._smoothing_steps = 5  # steps to accelerate between 0 and scan_speed
+        self._smoothing_steps = 3  # steps to accelerate between 0 and scan_speed
         self._max_step = 0.01  # volt
-        #self._clock_frequency = self._scan_speed/50
+        self._clock_frequency = max(50,int(self._scan_speed*50))
         ##############################
 
         # Initialie data matrix
@@ -217,16 +219,19 @@ class LaserScannerLogic(GenericLogic):
 
         if pid_update_time is not None:
             self.pid_timestep = pid_update_time
-
         if frequency is None:
             self.pid_setpoint = self._wavemeter_device.get_current_frequency()
         else:
             self.pid_setpoint = frequency
 
         # do coarse approach to frequency if it is to far away
-        if abs(frequency-self._wavemeter_device.get_current_frequency())*10e3 > 10:
-            self.goto_frequency(frequency, 0.05, 10)
-
+        self.goto_voltage(0.5)
+        #self.log.info('delta:'+str(self.pid_setpoint)+'-'+str(self._wavemeter_device.get_current_frequency()))
+        if abs(self.pid_setpoint-self._wavemeter_device.get_current_frequency())*1000 > 10:
+            #self.log.info('goto_freq first')
+            self.set_scan_speed(0.5)
+            self.goto_frequency(self.pid_setpoint, 0.05, 10)
+        self.set_scan_speed(0.1)
         # start PID loop
         # reset integral counter of pid loop
         self.pid_integrated = 0
@@ -262,15 +267,19 @@ class LaserScannerLogic(GenericLogic):
             self.pid_P = self.pid_kp * delta
             self.pid_I = self.pid_ki * self.pid_timestep * self.pid_integrated
 
-            voltage_change = self.pid_P + self.pid_I
-            self.log.info('voltage_change='+str(voltage_change)+'V')
-            voltage = self.get_current_voltage() + voltage_change
-            self.log.debug('voltage to apply to scanner:'+str(voltage)+'V')
-            if voltage <2.9 and voltage >-2.9:
-                self.goto_voltage(voltage)
-                time.sleep(5)
+            voltage_change = (self.pid_P + self.pid_I)/5.8
+            #self.log.info('voltage_change='+str(voltage_change)+'V')
+            if abs(voltage_change)> 4*10**-7:
+                voltage = self.get_current_voltage() + voltage_change
+
+                self.set_scan_speed(max(voltage_change,0.01))
+                #self.log.debug('voltage to apply to scanner:'+str(voltage)+'V')
+                if voltage <1 and voltage >0:
+                    self.goto_voltage(voltage)
+                else:
+                    self.log.info('out of range')
             else:
-                self.log.info('out of range')
+                pass
 
             # directly change voltage on NIDAQ card, as voltage steps of pid should be small
             #if self.a_range[0] <= voltage <= self.a_range[1]:
@@ -296,98 +305,101 @@ class LaserScannerLogic(GenericLogic):
         # full frequency range of piezo
         range_a = self.a_range[1]-self.a_range[0]
 
-
+        general_timer=time.time()
         wavelength = round(2.997965*10**8/(frequency*10**3*1.00029), 2)
-        steps = 0
-        print('centering piezo')
+        self.log.info('centering piezo')
         self._laser_device.set_piezo_percentage(50)
         self.goto_voltage(0)
         self._laser_device.set_wavelength(wavelength)
-        print('coarse approaching')
+        self.log.info('coarse approaching')
         t = abs(wavelength-self._laser_device.get_wavelength())/0.1+2
         time.sleep(t*2)
         timer = 0
         while abs(self._laser_device.get_wavelength()-wavelength)>0.1:
             time.sleep(0.5)
             timer+=1
-            if timer >=200:
-                print('time out while coarse approaching' )
+            if timer >=100:
+                self.log.info('time out while coarse approaching' )
                 timer = 1000
                 break
         if timer >= 800:
             return False
 
-        self._laser_device.Query('SOUR:WAVE:SLEW:FORW 0.1')
-        self._laser_device.Query('SOUR:WAVE:SLEW:RET 0.1')
+        self._laser_device.Query('SOUR:WAVE:SLEW:FORW 0.05')
+        self._laser_device.Query('SOUR:WAVE:SLEW:RET 0.05')
 
         timer = 0
         while self._wavemeter_device.get_current_frequency() < 0:
             time.sleep(0.1)
         current_wavelength = round(2.997965*10**8/(self._wavemeter_device.get_current_frequency()*10**3*1.00029),3)
-        print(wavelength,current_wavelength)
-        print('difference: ' + str(wavelength - current_wavelength))
+        self.log.info(str(wavelength) + ', ' + str(current_wavelength))
+        self.log.info('difference: ' + str(wavelength - current_wavelength))
         while abs(wavelength-current_wavelength)>0.05:
             self._laser_device.set_wavelength(wavelength+(wavelength-current_wavelength))
-            time.sleep(10)
+            time.sleep(5)
+            while self._wavemeter_device.get_current_frequency() < 0:
+                time.sleep(0.1)
             if self._wavemeter_device.get_current_frequency() > 0:
                 current_wavelength = 2.997965*10**8/(self._wavemeter_device.get_current_frequency()*10**3*1.00029)
-                print('wavelenth1: '+ str(current_wavelength))
-            else:
-                while self._wavemeter_device.get_current_frequency() < 0:
-                    time.sleep(0.1)
-                current_wavelength = 2.997965 * 10 ** 8 / (self._wavemeter_device.get_current_frequency() * 10 ** 3*1.00029)
-                print('wavelenth2: '+ str(current_wavelength))
+                self.log.info('wavelenth1: '+ str(current_wavelength))
             timer+=1
-            if timer >= 60:
-                print('time out while coarse approaching')
-                timer = 1000
-                break
-
-        if timer>=800:
-            return False
-
-        else:
-            pass
+            if timer >= 10:
+                self.log.info('time out while coarse aligning with wavemeter')
+                timer += 1000
+                return False
+        self.log.info(str(wavelength)+', '+str(current_wavelength))
+        self.log.info('difference: ' + str(wavelength - current_wavelength))
 
         while self._wavemeter_device.get_current_frequency() < 0:
             time.sleep(0.1)
         current_freq = self._wavemeter_device.get_current_frequency()
-        print('piezo approaching')
+        self.log.info('piezo approaching')
         steps = 0
-        while (abs(current_freq-frequency) > freq_accuracy/1000) and steps < max_steps:
+        while abs(current_freq-frequency) > freq_accuracy/1000 and steps < max_steps and (time.time()-general_timer)<=100:
             #calculate change in piezo voltage to get to desired frequency
             #change frequency diff to GHz. Scanning range of piezo equals 115GHz from -2.9V to 2.9V
-            delta_volt = (current_freq-frequency)*1000/(116/2) * self.a_range[1]
+            delta_volt = (current_freq-frequency)*1000/116 * self.a_range[1]
+            self.log.info('delta_freq:'+str(current_freq-frequency))
+            self.log.info('delta_volt:'+str(delta_volt))
             new_set_volt = self.get_current_voltage() + delta_volt
              #check that calculated voltage is within Piezo voltage range
             if new_set_volt > (self.a_range[0]) and new_set_volt < (self.a_range[1]):
                 #print('passed_new_voltage: '+str(new_set_volt))
-                self.set_scan_speed(delta_volt/10)
-                #self.set_resolution(int(5.8*3/self._scan_speed))
+                self.set_scan_speed(min(0.1,abs(delta_volt)))
+                self.set_clock_frequency(20)
                 #print('new_scan_speed:'+str(self._scan_speed))
-                time.sleep(0.3)
                 self.goto_voltage(new_set_volt)
                 # wait until scanning finished, there should a better way to do it!
-                time.sleep(10)
                 #self.log.info(str(max(abs(delta_volt)/self._scan_speed*2,7)))
-                while(self.module_state() == 'locked'):
-                    #a=5
+                timer_module=0
+                while self._scanning_device.module_state() == 'locked' and timer_module<=100:
+                    timer_module+=1
                     time.sleep(0.1)
                     # wait until scanning stopped
+                if timer_module > 100:
+                    self.log.exception('module timeout')
+                    self.set_scan_speed(0.1)
+                    return False
                 while self._wavemeter_device.get_current_frequency() < 0:
                     time.sleep(0.1)
                 current_freq = self._wavemeter_device.get_current_frequency()
             else:
                 self.log.error('Cannot reach desired frequency as piezo voltage is out of range!')
-                return -1
-            steps+=1
-        if steps == max_steps and (abs(current_freq-frequency) > freq_accuracy):
+                self.log.info(str(new_set_volt))
+                self.set_scan_speed(0.1)
+                return False
+        if (time.time()-general_timer)>100:
+            self.log.exception('general timeout')
+            self.set_scan_speed(0.1)
+            return False
+        if steps == max_steps and (abs(current_freq-frequency) > freq_accuracy/1000):
             self.log.error('Could not reach desired frequency within max number of steps!')
             self.set_scan_speed(0.1)
-            return -1
-        else:
+            return False
+        if steps <= max_steps and (abs(current_freq-frequency) < freq_accuracy/1000):
+            self.log.info('desired frequency reached')
             self.set_scan_speed(0.1)
-            return 0
+            return True
 #
     @QtCore.Slot(float)
     def goto_voltage(self, volts=None):
@@ -403,13 +415,17 @@ class LaserScannerLogic(GenericLogic):
             self._static_v = volts
 
         # Checks if the scanner is still running
-        if (self.module_state() == 'locked'
-                or self._scanning_device.module_state() == 'locked'):
-            self.log.error('Cannot goto, because scanner is locked!')
-            return -1
-        else:
-            self.sigChangeVoltage.emit(volts)
-            return 0
+        t=0
+        while (self.module_state() == 'locked'
+                or self._scanning_device.module_state() == 'locked') and t<300:
+            time.sleep(0.1)
+            t+1
+            #self.log.info('Cannot goto, because scanner is locked!')
+        if t >= 300:
+            self.log.exception('scanner timeout')
+            return False
+        self.sigChangeVoltage.emit(volts)
+        return 0
 
     def _change_voltage(self, new_voltage):
         """ Threaded method to change the hardware voltage for a goto.
@@ -655,15 +671,22 @@ class LaserScannerLogic(GenericLogic):
             # Obtain voltage bounds for the linear part of the ramp
             v_min_linear = v_min + v_range_of_accel
             v_max_linear = v_max - v_range_of_accel
-
+            #self.log.info('voltage_bounds:'+str(v_min_linear)+','+str(v_max_linear))
             #self.log.info(str(v_min_linear)+str(v_max_linear))
             if v_min_linear > v_max_linear:
                 self.log.warning(
                     'Voltage ramp too short to apply the '
                     'configured smoothing_steps. A simple linear ramp '
                     'was created instead.')
+                #self.log.info('voltage_bounds:' + str(v_min) + ',' + str(v_max))
                 num_of_linear_steps = np.rint((v_max - v_min) / linear_v_step)
+                while num_of_linear_steps <=4:
+                    self.set_clock_frequency(2*self._clock_frequency)
+                    linear_v_step = speed / self._clock_frequency
+                    num_of_linear_steps = np.rint((v_max - v_min) / linear_v_step)
+                    self.log.warning('increasing clock frequency to enable ramp')
                 ramp = np.linspace(v_min, v_max, num_of_linear_steps)
+
 
 
             else:
