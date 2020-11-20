@@ -155,6 +155,9 @@ class SwitchGui(GuiBase):
         self._update_state_colorscheme()
         self.show()
 
+        # FIXME: Implement CheckBoxes and delete the line below
+        self._mw.switch_view_actions[SwitchStyle.CHECKBOX].setEnabled(False)
+
     def on_deactivate(self):
         """ Hide window empty the GUI and disconnect signals
         """
