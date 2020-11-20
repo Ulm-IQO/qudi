@@ -19,7 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
+from qtwidgets.toggle_switch import ToggleSwitch
 
 
 class SwitchRadioButtonWidget(QtWidgets.QWidget):
@@ -28,16 +29,17 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
 
     sigStateChanged = QtCore.Signal(str)
 
-    _highlight_style = 'QRadioButton {color: green; font-weight: bold;}'
-    _lowlight_style = 'QRadioButton {color: red; font-weight: bold;}'
-
-    def __init__(self, *args, switch_name, switch_states, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent=None, switch_states=('Off', 'On')):
+        assert len(switch_states) >= 2, 'switch_states must be tuple of at least 2 strings'
+        assert all(isinstance(s, str) and s for s in switch_states), \
+            'switch state must be non-empty str'
+        super().__init__(parent=parent)
         layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(layout)
 
-        self.switch_name = switch_name
         self.switch_states = tuple(switch_states)
+        self._state_colors = None
         self.radio_buttons = {state: QtWidgets.QRadioButton(state) for state in switch_states}
         button_group = QtWidgets.QButtonGroup(self)
         for ii, button in enumerate(self.radio_buttons.values()):
@@ -54,8 +56,19 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
         """
         if checked:
             self.sigStateChanged.emit(button.text())
-            self._update_stylesheet()
+            self._update_colors()
 
+    @property
+    def switch_state(self):
+        for state, button in self.radio_buttons.items():
+            if button.isChecked():
+                return state
+
+    @switch_state.setter
+    def switch_state(self, state):
+        self.set_state(state)
+
+    @QtCore.Slot(str)
     def set_state(self, state):
         assert state in self.switch_states, f'Invalid switch state: "{state}"'
         button = self.radio_buttons[state]
@@ -63,11 +76,110 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
             button.blockSignals(True)
             button.setChecked(True)
             button.blockSignals(False)
-            self._update_stylesheet()
+            self._update_colors()
 
-    def _update_stylesheet(self):
-        for button in self.radio_buttons.values():
-            if button.isChecked():
-                button.setStyleSheet(self._lowlight_style)
-            else:
-                button.setStyleSheet(self._highlight_style)
+    def set_state_colors(self, unchecked=None, checked=None):
+        assert unchecked is None or isinstance(unchecked, QtGui.QColor), \
+            'arguments must be QColor object or None'
+        assert checked is None or isinstance(checked, QtGui.QColor), \
+            'arguments must be QColor object or None'
+        if unchecked is None and checked is None:
+            default_color = self.palette().dark().color()
+            self._state_colors = (default_color, default_color)
+            self._update_colors()
+            self._state_colors = None
+            return
+        if checked is None:
+            checked = self.palette().text().color()
+        elif unchecked is None:
+            unchecked = self.palette().text().color()
+        self._state_colors = (unchecked, checked)
+        self._update_colors()
+
+    def _update_colors(self):
+        if self._state_colors is not None:
+            for button in self.radio_buttons.values():
+                hex_color = self._state_colors[int(button.isChecked())].name()
+                button.setStyleSheet('QRadioButton {color: ' + hex_color + ';}')
+
+
+class ToggleSwitchWidget(QtWidgets.QWidget):
+    """
+    """
+
+    sigStateChanged = QtCore.Signal(str)
+
+    def __init__(self, parent=None, switch_states=('Off', 'On'), thumb_track_ratio=1):
+        super().__init__(parent=parent)
+        assert len(switch_states) == 2, 'switch_states must be tuple of exactly 2 strings'
+        assert all(isinstance(s, str) and s for s in switch_states), \
+            'switch state must be non-empty str'
+        self.switch_states = tuple(switch_states)
+        self._state_colors = None
+
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(layout)
+        self.toggle_switch = ToggleSwitch(None, *switch_states, thumb_track_ratio)
+        self.toggle_switch.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        if thumb_track_ratio > 1:
+            self.labels = (QtWidgets.QLabel(switch_states[0]), QtWidgets.QLabel(switch_states[1]))
+            self.labels[0].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            self.labels[1].setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            layout.addWidget(self.labels[0])
+            layout.addWidget(self.toggle_switch)
+            layout.addWidget(self.labels[1])
+        else:
+            self.labels = None
+            layout.addWidget(self.toggle_switch)
+        self.toggle_switch.clicked.connect(self.__button_triggered_cb)
+
+    @property
+    def switch_state(self):
+        return self.toggle_switch.current_state
+
+    @switch_state.setter
+    def switch_state(self, state):
+        self.set_state(state)
+
+    @QtCore.Slot(str)
+    def set_state(self, state):
+        assert state in self.switch_states, f'Invalid switch state: "{state}"'
+        self.toggle_switch.setChecked(bool(self.switch_states.index(state)))
+
+    def set_state_colors(self, unchecked=None, checked=None):
+        assert unchecked is None or isinstance(unchecked, QtGui.QColor), \
+            'arguments must be QColor object or None'
+        assert checked is None or isinstance(checked, QtGui.QColor), \
+            'arguments must be QColor object or None'
+        if unchecked is None and checked is None:
+            default_color = self.palette().dark().color()
+            self._state_colors = (default_color, default_color)
+            self._update_colors()
+            self._state_colors = None
+            return
+        if checked is None:
+            checked = self.palette().text().color()
+        elif unchecked is None:
+            unchecked = self.palette().text().color()
+        self._state_colors = (unchecked, checked)
+        self._update_colors()
+
+    def _update_colors(self):
+        if self._state_colors is not None and self.labels is not None:
+            checked = self.toggle_switch.isChecked()
+            hex_color = self._state_colors[int(not checked)].name()
+            self.labels[0].setStyleSheet('QLabel {color: ' + hex_color + ';}')
+            hex_color = self._state_colors[int(checked)].name()
+            self.labels[1].setStyleSheet('QLabel {color: ' + hex_color + ';}')
+
+    @QtCore.Slot()
+    @QtCore.Slot(bool)
+    def __button_triggered_cb(self, checked):
+        """
+
+        @param button:
+        @param checked:
+        """
+        self.sigStateChanged.emit(self.toggle_switch.current_state)
+        self._update_colors()
