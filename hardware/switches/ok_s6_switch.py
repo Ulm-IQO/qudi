@@ -203,12 +203,12 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict,
-                          dict), f'Property "state" must be dict type. Received: {type(state_dict)}'
-        assert all(switch in self.available_states for switch in
-                   state_dict), f'Invalid switch name(s) encountered: {tuple(state_dict)}'
-        assert all(isinstance(state, str) for state in
-                   state_dict.values()), f'Invalid switch state(s) encountered: {tuple(state_dict.values())}'
+        assert isinstance(state_dict, dict), \
+            f'Property "state" must be dict type. Received: {type(state_dict)}'
+        assert all(switch in self.available_states for switch in state_dict), \
+            f'Invalid switch name(s) encountered: {tuple(state_dict)}'
+        assert all(isinstance(state, str) for state in state_dict.values()), \
+            f'Invalid switch state(s) encountered: {tuple(state_dict.values())}'
 
         with self._lock:
             # determine desired state of ALL switches
