@@ -23,10 +23,8 @@ import visa
 import time
 from core.module import Base
 from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
-import numpy as np
 
 
 class OSW12(Base, SwitchInterface):
@@ -128,7 +126,7 @@ class OSW12(Base, SwitchInterface):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict), 'Parameter "state_dict" must be dict type'
+        assert isinstance(state_dict, dict), 'Parameter "state_dict" must be dict type'
         with self.lock:
             for switch, state in state_dict.items():
                 self.set_state(switch, state)

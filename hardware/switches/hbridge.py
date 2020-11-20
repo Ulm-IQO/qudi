@@ -89,9 +89,6 @@ class HBridge(Base, SwitchInterface):
         # reset states if requested, otherwise use the saved states
         if self._remember_states and isinstance(self._states, dict) and len(self._states) == 4:
             self.states = self._states
-        else:
-            self._states = dict()
-            self.states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -141,8 +138,8 @@ class HBridge(Base, SwitchInterface):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict,
-                          dict), f'Property "state" must be dict type. Received: {type(state_dict)}'
+        assert isinstance(state_dict, dict), \
+            f'Property "state" must be dict type. Received: {type(state_dict)}'
 
         if state_dict:
             with self.lock:
@@ -173,7 +170,8 @@ class HBridge(Base, SwitchInterface):
             state_index = avail_states[switch].index(state) + 1
             cmd = 'P{0:d}={1:d}'.format(switch_index, state_index)
             answer = self._instrument.ask(cmd)
-            assert answer == cmd, f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
+            assert answer == cmd, \
+                f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
             time.sleep(self._switch_time)
 
     @staticmethod
