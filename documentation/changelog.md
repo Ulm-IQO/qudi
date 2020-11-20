@@ -88,7 +88,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Bug fixes to core: made error messages sticky, respecting dependencies when restarting.
 * Added a config option to regulate pid logic timestep length
 * New SwitchInterface and updated logic plus GUI
-*
+* Added biexponential fit function, model and estimator
 
 
 Config changes:
@@ -100,7 +100,7 @@ or a list of strings for multiple paths.
 * The connectors and file names of the GUI and logic modules of the QDPlotter have been changed.
 * QDPlotter now needs a new connection to the fit logic. 
 * The tool chain for the switch logic has changed. 
-To combine multiple switches one needs to now you the `switch_combiner_interface` 
+To combine multiple switches one needs to use the `switch_combiner_interfuse` 
 instead of multiple connectors in the logic.
 
 ## Release 0.10
