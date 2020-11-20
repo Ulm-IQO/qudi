@@ -29,8 +29,7 @@ from .switch_state_widgets import SwitchRadioButtonWidget, ToggleSwitchWidget
 
 class SwitchStyle(IntEnum):
     TOGGLE_SWITCH = 0
-    CHECKBOX = 1
-    RADIO_BUTTON = 2
+    RADIO_BUTTON = 1
 
 
 class ColorScheme(IntEnum):
@@ -72,7 +71,6 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
         separator = menu.addSeparator()
         separator.setText('Switch Appearance')
         self.switch_view_actions = [QtWidgets.QAction('use toggle switches'),
-                                    QtWidgets.QAction('use checkboxes'),
                                     QtWidgets.QAction('use radio buttons')]
         self.switch_view_action_group = QtWidgets.QActionGroup(self)
         for action in self.switch_view_actions:
@@ -116,7 +114,11 @@ class SwitchGui(GUIBase):
         """
         self._mw = SwitchMainWindow()
         self.restoreWindowPos(self._mw)
-        self._mw.switch_view_actions[self._switch_style].setChecked(True)
+        try:
+            self._mw.switch_view_actions[self._switch_style].setChecked(True)
+        except IndexError:
+            self._mw.switch_view_actions[0].setChecked(True)
+            self._switch_style = SwitchStyle(0)
         self._mw.action_view_red_green.setChecked(self._colorscheme == ColorScheme.RED_GREEN)
         self._mw.action_view_alt_toggle_style.setChecked(self._alt_toggle_switch_style)
         self._mw.setWindowTitle(f'qudi: {self.switchlogic().device_name.title()}')
@@ -142,9 +144,6 @@ class SwitchGui(GUIBase):
         self._update_colorscheme()
         self.show()
 
-        # FIXME: Implement CheckBoxes and delete the line below
-        self._mw.switch_view_actions[SwitchStyle.CHECKBOX].setEnabled(False)
-
     def on_deactivate(self):
         """ Hide window empty the GUI and disconnect signals
         """
@@ -168,14 +167,10 @@ class SwitchGui(GUIBase):
     def _populate_switches(self):
         """ Dynamically build the gui
         """
-        # ToDo: Implement CheckBox
-        if self._switch_style == SwitchStyle.CHECKBOX:
-            self.log.error('Checkbox not implemented, yet')
-
         self._widgets = dict()
         for ii, (switch, states) in enumerate(self.switchlogic().available_states.items()):
             label = self._get_switch_label(switch)
-            if len(states) != 2 or self._switch_style == SwitchStyle.RADIO_BUTTON:
+            if len(states) > 2 or self._switch_style == SwitchStyle.RADIO_BUTTON:
                 switch_widget = SwitchRadioButtonWidget(switch_states=states)
                 self._widgets[switch] = (label, switch_widget)
                 self._mw.main_layout.addWidget(self._widgets[switch][0], ii, 0)
@@ -186,14 +181,6 @@ class SwitchGui(GUIBase):
                     switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=1.35)
                 else:
                     switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=0.9)
-                self._widgets[switch] = (label, switch_widget)
-                switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                                            QtWidgets.QSizePolicy.Fixed)
-                self._mw.main_layout.addWidget(self._widgets[switch][0], ii, 0)
-                self._mw.main_layout.addWidget(switch_widget, ii, 1)
-                switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
-            elif self._switch_style == SwitchStyle.CHECKBOX:
-                switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=1.375)
                 self._widgets[switch] = (label, switch_widget)
                 switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
                                             QtWidgets.QSizePolicy.Fixed)
