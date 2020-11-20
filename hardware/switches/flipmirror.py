@@ -88,9 +88,6 @@ class FlipMirror(Base, SwitchInterface):
         # reset states if requested, otherwise use the saved states
         if self._remember_states and isinstance(self._states, dict) and len(self._states) == 1:
             self.states = self._states
-        else:
-            self._states = dict()
-            self.states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
@@ -130,7 +127,7 @@ class FlipMirror(Base, SwitchInterface):
             assert response in {'H1', 'V1'}, f'Unexpected hardware return value: "{response}"'
             switch, avail_states = next(iter(self.available_states.items()))
             self._states = {switch: avail_states[int(response == 'V1')]}
-            return
+            return self._states.copy()
 
     @states.setter
     def states(self, state_dict):
@@ -141,19 +138,20 @@ class FlipMirror(Base, SwitchInterface):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict,
-                          dict), f'Property "state" must be dict type. Received: {type(state_dict)}'
-        assert all(switch in self.available_states for switch in
-                   state_dict), f'Invalid switch name(s) encountered: {tuple(state_dict)}'
-        assert all(isinstance(state, str) for state in
-                   state_dict.values()), f'Invalid switch state(s) encountered: {tuple(state_dict.values())}'
+        assert isinstance(state_dict, dict), \
+            f'Property "state" must be dict type. Received: {type(state_dict)}'
+        assert all(switch in self.available_states for switch in state_dict), \
+            f'Invalid switch name(s) encountered: {tuple(state_dict)}'
+        assert all(isinstance(state, str) for state in state_dict.values()), \
+            f'Invalid switch state(s) encountered: {tuple(state_dict.values())}'
 
         if state_dict:
             with self.lock:
                 switch, state = next(iter(state_dict.items()))
                 down = self.available_states[switch][0] == state
                 answer = self._instrument.ask('SH1' if down else 'SV1')
-                assert answer == 'OK1', f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
+                assert answer == 'OK1', \
+                    f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
                 self._states = {switch: state}
                 time.sleep(self._switch_time)
                 self.log.debug('{0}-{1}: {2}'.format(self.name, switch, state))
