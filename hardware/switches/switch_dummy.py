@@ -107,8 +107,8 @@ class SwitchDummy(Base, SwitchInterface):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict,
-                          dict), f'Property "state" must be dict type. Received: {type(state_dict)}'
+        assert isinstance(state_dict, dict), \
+            f'Property "state" must be dict type. Received: {type(state_dict)}'
         for switch, state in state_dict.items():
             self.set_state(switch, state)
 

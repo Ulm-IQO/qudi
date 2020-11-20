@@ -81,7 +81,7 @@ class SwitchLogic(GenericLogic):
     def __getattr__(self, item):
         if item in self.__wrapped_hw_attributes:
             return getattr(self.switch(), item)
-        raise AttributeError(f'SwitchLogic has not attribute with name "{item}"')
+        raise AttributeError(f'SwitchLogic has no attribute with name "{item}"')
 
     @property
     def device_name(self):
