@@ -792,3 +792,106 @@ class Scan2DWidget(QtWidgets.QWidget):
                                           autoLevels=False,
                                           levels=self._colorbar_widget.limits)
         return
+
+
+class ImageWidget(QtWidgets.QWidget):
+    """
+    Extend the PlotWidget Class with more functionality used for qudi scan images.
+    Supported features:
+     - draggable/static crosshair with optional range and size constraints.
+     - zoom feature by rubberband selection
+     - signalling for rubberband area selection
+
+    This class depends on the Scan2DViewBox class defined further below.
+    This class can be promoted in the Qt designer.
+    """
+    # Wrapped attribute names from Scan2DPlotWidget and ScanImageItem objects.
+    # Adjust these sets if Scan2DPlotWidget or ScanImageItem class changes.
+    __plot_widget_wrapped = frozenset(
+        {'selection_enabled', 'zoom_by_selection_enabled', 'toggle_selection',
+         'toggle_zoom_by_selection', 'add_crosshair', 'remove_crosshair', 'hide_crosshair',
+         'show_crosshair', 'bring_crosshair_on_top', 'crosshairs', 'sigMouseAreaSelected',
+         'autoRange'}
+    )
+    __image_item_wrapped = frozenset({'set_image_extent', 'sigMouseClicked'})
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        layout = QtWidgets.QGridLayout()
+        layout.setColumnStretch(0, 1)
+        self.setLayout(layout)
+
+        self._plot_widget = Scan2DPlotWidget()
+        self._image_item = ScanImageItem()
+        self._plot_widget.addItem(self._image_item)
+        self._plot_widget.setMinimumWidth(100)
+        self._plot_widget.setMinimumHeight(100)
+        self._plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                        QtWidgets.QSizePolicy.Expanding)
+        self._plot_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self._plot_widget.setAspectLocked(lock=True, ratio=1.0)
+        layout.addWidget(self._plot_widget, 0, 0)
+
+        self._colorbar_widget = ColorBarWidget()
+        layout.addWidget(self._colorbar_widget, 0, 1)
+        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
+            self._image_item.percentiles = self._colorbar_widget.percentiles
+        else:
+            self._image_item.percentiles = None
+
+        self._colorbar_widget.sigModeChanged.connect(self.__colorbar_mode_changed)
+        self._colorbar_widget.sigLimitsChanged.connect(self.__colorbar_limits_changed)
+        self._colorbar_widget.sigPercentilesChanged.connect(self.__colorbar_percentiles_changed)
+
+    def __getattr__(self, name):
+        if name in self.__plot_widget_wrapped:
+            return getattr(self._plot_widget, name)
+        elif name in self.__image_item_wrapped:
+            return getattr(self._image_item, name)
+        raise AttributeError('No attribute "{0}" found in ImageWidget object.'.format(name))
+
+    def set_image(self, image):
+        """
+
+        """
+        if image is None:
+            self._image_item.set_image(image=None, autoLevels=False)
+            return
+
+        # Set image with proper colorbar limits
+        if self._colorbar_widget.mode is ColorBarMode.PERCENTILE:
+            self._image_item.set_image(image=image, autoLevels=False)
+            levels = self._image_item.levels
+            if levels is not None:
+                self._colorbar_widget.set_limits(*levels)
+        else:
+            self._image_item.set_image(image=image,
+                                       autoLevels=False,
+                                       levels=self._colorbar_widget.limits)
+        return
+
+    def set_axis_label(self, axis, label=None, unit=None):
+        return self._plot_widget.setLabel(axis, text=label, units=unit)
+
+    def set_data_label(self, label, unit=None):
+        return self._colorbar_widget.set_label(label, unit)
+
+    @QtCore.Slot(object)
+    def __colorbar_mode_changed(self, mode):
+        if mode is ColorBarMode.PERCENTILE:
+            self.__colorbar_percentiles_changed(self._colorbar_widget.percentiles)
+        else:
+            self.__colorbar_limits_changed(self._colorbar_widget.limits)
+
+    @QtCore.Slot(tuple)
+    def __colorbar_limits_changed(self, limits):
+        self._image_item.percentiles = None
+        self._image_item.setLevels(limits)
+
+    @QtCore.Slot(tuple)
+    def __colorbar_percentiles_changed(self, percentiles):
+        self._image_item.percentiles = percentiles
+        levels = self._image_item.levels
+        if levels is not None:
+            self._colorbar_widget.set_limits(*levels)
