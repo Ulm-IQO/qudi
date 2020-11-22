@@ -20,57 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import time
-import numpy as np
-import pyqtgraph as pg
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.module import GuiBase
 from qudi.core.connector import Connector
 from qudi.core.gui.qtwidgets.scan_2d_widget import ImageWidget
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-
-
-class CameraSettingsDialog(QtWidgets.QDialog):
-    """ Create the camera settings dialog """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setWindowTitle('qudi: Camera Settings')
-
-        layout = QtWidgets.QGridLayout()
-        layout.setAlignment(QtCore.Qt.AlignCenter)
-
-        label = QtWidgets.QLabel('Exposure Time:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 0, 0)
-        self.exposure_spinbox = ScienDSpinBox()
-        self.exposure_spinbox.setSuffix('s')
-        self.exposure_spinbox.setMinimum(0)
-        self.exposure_spinbox.setDecimals(3)
-        self.exposure_spinbox.setMinimumWidth(100)
-        layout.addWidget(self.exposure_spinbox, 0, 1)
-
-        label = QtWidgets.QLabel('Gain:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 1, 0)
-        self.gain_spinbox = ScienDSpinBox()
-        # ToDo: set proper unit for gain with self.gain_spinbox.setSuffix('s')
-        self.gain_spinbox.setMinimum(0)
-        self.gain_spinbox.setDecimals(3)
-        self.gain_spinbox.setMinimumWidth(100)
-        layout.addWidget(self.gain_spinbox, 1, 1)
-
-        self.button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok |
-                                                     QtWidgets.QDialogButtonBox.Cancel |
-                                                     QtWidgets.QDialogButtonBox.Apply,
-                                                     QtCore.Qt.Horizontal,
-                                                     self)
-        self.button_box.accepted.connect(self.accept)
-        self.button_box.rejected.connect(self.reject)
-        layout.addWidget(self.button_box, 2, 0, 1, 2)
-
-        layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
-        self.setLayout(layout)
+from qudi.core.util.paths import get_artwork_dir
+from .camera_settings_dialog import CameraSettingsDialog
 
 
 class CameraMainWindow(QtWidgets.QMainWindow):
@@ -83,12 +38,18 @@ class CameraMainWindow(QtWidgets.QMainWindow):
         menu_bar = QtWidgets.QMenuBar()
         menu = menu_bar.addMenu('File')
         self.action_save_frame = QtWidgets.QAction('Save Frame')
+        path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22', 'document-save.png')
+        self.action_save_frame.setIcon(QtGui.QIcon(path))
         menu.addAction(self.action_save_frame)
         menu.addSeparator()
         self.action_show_settings = QtWidgets.QAction('Settings')
+        path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22', 'configure.png')
+        self.action_show_settings.setIcon(QtGui.QIcon(path))
         menu.addAction(self.action_show_settings)
         menu.addSeparator()
         self.action_close = QtWidgets.QAction('Close')
+        path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22', 'application-exit.png')
+        self.action_close.setIcon(QtGui.QIcon(path))
         self.action_close.triggered.connect(self.close)
         menu.addAction(self.action_close)
         self.setMenuBar(menu_bar)
