@@ -528,25 +528,29 @@ class LaserGui(GuiBase):
 
     @qudi_slot(object)
     def _control_mode_updated(self, mode):
-        self.control_dock_widget.control_power_radio_button.setEnabled(True)
-        self.control_dock_widget.control_current_radio_button.setEnabled(True)
         if mode == ControlMode.POWER:
             self.control_dock_widget.current_slider.setEnabled(False)
             self.control_dock_widget.current_setpoint_spinbox.setEnabled(False)
             self.control_dock_widget.power_slider.setEnabled(True)
             self.control_dock_widget.power_setpoint_spinbox.setEnabled(True)
             self.control_dock_widget.control_power_radio_button.setChecked(True)
+            self.control_dock_widget.control_power_radio_button.setEnabled(True)
+            self.control_dock_widget.control_current_radio_button.setEnabled(True)
         elif mode == ControlMode.CURRENT:
             self.control_dock_widget.power_slider.setEnabled(False)
             self.control_dock_widget.power_setpoint_spinbox.setEnabled(False)
             self.control_dock_widget.current_slider.setEnabled(True)
             self.control_dock_widget.current_setpoint_spinbox.setEnabled(True)
             self.control_dock_widget.control_current_radio_button.setChecked(True)
+            self.control_dock_widget.control_power_radio_button.setEnabled(True)
+            self.control_dock_widget.control_current_radio_button.setEnabled(True)
         else:
             self.control_dock_widget.current_slider.setEnabled(False)
             self.control_dock_widget.current_setpoint_spinbox.setEnabled(False)
             self.control_dock_widget.power_slider.setEnabled(False)
             self.control_dock_widget.power_setpoint_spinbox.setEnabled(False)
+            self.control_dock_widget.control_power_radio_button.setEnabled(False)
+            self.control_dock_widget.control_current_radio_button.setEnabled(False)
 
     @qudi_slot(object)
     def _laser_state_updated(self, state):
