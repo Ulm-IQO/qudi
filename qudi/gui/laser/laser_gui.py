@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import time
 import pyqtgraph as pg
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core import qudi_slot
 from qudi.core.connector import Connector
@@ -33,6 +33,7 @@ from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.interface.simple_laser_interface import ControlMode, ShutterState, LaserState
+from qudi.core.util.paths import get_artwork_dir
 
 
 class TimeAxisItem(pg.AxisItem):
@@ -59,10 +60,12 @@ class LaserControlDockWidget(AdvancedDockWidget):
         # generate main widget and layout
         main_widget = QtWidgets.QWidget()
         main_layout = QtWidgets.QGridLayout()
+        main_layout.setContentsMargins(1, 1, 1, 1)
         main_widget.setLayout(main_layout)
         self.setWidget(main_widget)
 
         # generate child widgets
+        # ToDo: Use toggle switches
         self.laser_button = QtWidgets.QPushButton('Laser')
         self.laser_button.setCheckable(True)
         main_layout.addWidget(self.laser_button, 0, 0)
@@ -94,7 +97,7 @@ class LaserControlDockWidget(AdvancedDockWidget):
         group_box.setLayout(layout)
         self.power_spinbox = ScienDSpinBox()
         self.power_spinbox.setDecimals(2)
-        self.power_spinbox.setMinimum(0)
+        self.power_spinbox.setMinimum(-1)
         self.power_spinbox.setSuffix('W')
         self.power_spinbox.setMinimumWidth(75)
         self.power_spinbox.setReadOnly(True)
@@ -123,7 +126,7 @@ class LaserControlDockWidget(AdvancedDockWidget):
         group_box.setLayout(layout)
         self.current_spinbox = ScienDSpinBox()
         self.current_spinbox.setDecimals(2)
-        self.current_spinbox.setMinimum(0)
+        self.current_spinbox.setMinimum(-1)
         self.current_spinbox.setMinimumWidth(75)
         self.current_spinbox.setReadOnly(True)
         self.current_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
@@ -145,7 +148,6 @@ class LaserControlDockWidget(AdvancedDockWidget):
         layout.addWidget(self.current_slider)
         main_layout.addWidget(group_box, 2, 1)
         main_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
-        # main_layout.setSizeConstraint(main_layout.SetFixedSize)
 
 
 class LaserOutputDockWidget(AdvancedDockWidget):
@@ -154,7 +156,6 @@ class LaserOutputDockWidget(AdvancedDockWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.plot_widget = pg.PlotWidget(axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_widget.setLabel('bottom', 'Time', units=None)
         self.plot_widget.setLabel('left', 'Power', units='W', color=palette.c1.name())
@@ -179,8 +180,8 @@ class LaserOutputDockWidget(AdvancedDockWidget):
                                                 antialias=True)
         self.current_data_item = pg.PlotCurveItem(pen=pg.mkPen(palette.c3, cosmetic=True),
                                                   antialias=True)
-
         self.setWidget(self.plot_widget)
+        self.plot_widget.getPlotItem().setContentsMargins(0, 1, 5, 2)
 
     @QtCore.Slot()
     def __update_viewbox_sync(self):
@@ -189,6 +190,24 @@ class LaserOutputDockWidget(AdvancedDockWidget):
         self.view_box2.setGeometry(self.plot_widget.plotItem.vb.sceneBoundingRect())
         self.view_box2.linkedViewChanged(self.plot_widget.plotItem.vb, self.view_box2.XAxis)
 
+    def set_power_data(self, y, x=None):
+        if y is None:
+            if self.power_data_item in self.plot_widget.items():
+                self.plot_widget.removeItem(self.power_data_item)
+        else:
+            self.power_data_item.setData(y=y, x=x)
+            if self.power_data_item not in self.plot_widget.items():
+                self.plot_widget.addItem(self.power_data_item)
+
+    def set_current_data(self, y, x=None):
+        if y is None:
+            if self.current_data_item in self.view_box2.addedItems:
+                self.view_box2.removeItem(self.current_data_item)
+        else:
+            self.current_data_item.setData(y=y, x=x)
+            if self.current_data_item not in self.view_box2.addedItems:
+                self.view_box2.addItem(self.current_data_item)
+
 
 class LaserTemperatureDockWidget(AdvancedDockWidget):
     """
@@ -196,7 +215,6 @@ class LaserTemperatureDockWidget(AdvancedDockWidget):
 
     def __init__(self, *args, curve_names, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.plot_widget = pg.PlotWidget(axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_widget.setLabel('bottom', 'Time', units=None)
         self.plot_widget.setLabel('left', 'Temperature', units='°C', color=palette.c1.name())
@@ -207,13 +225,24 @@ class LaserTemperatureDockWidget(AdvancedDockWidget):
         self.plot_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.plot_widget.setMinimumSize(200, 200)
         self.temperature_data_items = dict()
-        for name in curve_names:
-            self.temperature_data_items[name] = pg.PlotCurveItem(
-                pen=pg.mkPen(palette.c1, cosmetic=True),
-                antialias=True
-            )
+        for ii, name in enumerate(curve_names):
+            color = getattr(palette, 'c{0:d}'.format((ii % 6) + 1))
+            self.temperature_data_items[name] = pg.PlotCurveItem(pen=pg.mkPen(color, cosmetic=True),
+                                                                 antialias=True)
             self.plot_widget.addItem(self.temperature_data_items[name])
         self.setWidget(self.plot_widget)
+        self.plot_widget.getPlotItem().setContentsMargins(0, 1, 5, 2)
+
+    def set_temperature_data(self, temp_dict, x=None):
+        for name, y_data in temp_dict.items():
+            item = self.temperature_data_items[name]
+            if y_data is None:
+                if item in self.plot_widget.items():
+                    self.plot_widget.removeItem(item)
+            else:
+                item.setData(y=y_data, x=x)
+                if item not in self.plot_widget.items():
+                    self.plot_widget.addItem(item)
 
 
 class LaserMainWindow(QtWidgets.QMainWindow):
@@ -221,12 +250,30 @@ class LaserMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setWindowTitle('qudi: Laser')
+
+        # Create extra info dialog
+        self.extra_info_dialog = QtWidgets.QDialog(self, QtCore.Qt.Dialog)
+        self.extra_info_dialog.setWindowTitle('Laser Info')
+        self.extra_info_label = QtWidgets.QLabel()
+        self.extra_info_label.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        extra_info_button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
+        extra_info_button_box.setCenterButtons(True)
+        extra_info_button_box.accepted.connect(self.extra_info_dialog.accept)
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.extra_info_label)
+        layout.addWidget(extra_info_button_box)
+        self.extra_info_dialog.setLayout(layout)
+        layout.setSizeConstraint(layout.SetFixedSize)
+
         # create menu bar and actions
         menu_bar = QtWidgets.QMenuBar(self)
         self.setMenuBar(menu_bar)
 
         menu = menu_bar.addMenu('File')
         self.action_close = QtWidgets.QAction('Close')
+        path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22', 'application-exit.png')
+        self.action_close.setIcon(QtGui.QIcon(path))
         self.action_close.triggered.connect(self.close)
         menu.addAction(self.action_close)
 
@@ -251,8 +298,58 @@ class LaserMainWindow(QtWidgets.QMainWindow):
         status_bar = QtWidgets.QStatusBar(self)
         status_bar.setStyleSheet('QStatusBar::item { border: 0px}')
         self.setStatusBar(status_bar)
-        self.status_label = QtWidgets.QLabel('<laser status>')
-        status_bar.addPermanentWidget(self.status_label, 1)
+        widget = QtWidgets.QWidget()
+        layout = QtWidgets.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setColumnStretch(1, 1)
+        widget.setLayout(layout)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setPointSize(12)
+        label = QtWidgets.QLabel('Laser:')
+        label.setFont(font)
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 0, 0)
+        self.shutter_label = QtWidgets.QLabel('Shutter:')
+        self.shutter_label.setFont(font)
+        self.shutter_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(self.shutter_label, 1, 0)
+        self.laser_status_label = QtWidgets.QLabel('???')
+        self.laser_status_label.setFont(font)
+        layout.addWidget(self.laser_status_label, 0, 1)
+        self.shutter_status_label = QtWidgets.QLabel('???')
+        self.shutter_status_label.setFont(font)
+        layout.addWidget(self.shutter_status_label, 1, 1)
+        status_bar.addPermanentWidget(widget, 1)
+
+    def set_laser_state(self, state):
+        if state == LaserState.ON:
+            text = 'RUNNING'
+        elif state == LaserState.OFF:
+            text = 'OFF'
+        elif state == LaserState.LOCKED:
+            text = 'INTERLOCKED'
+        else:
+            text = '???'
+        self.laser_status_label.setText(text)
+
+    def set_shutter_state(self, state):
+        if state == ShutterState.OPEN:
+            text = 'OPEN'
+        elif state == ShutterState.CLOSED:
+            text = 'CLOSED'
+        elif state == ShutterState.NO_SHUTTER:
+            text = 'no shutter'
+        else:
+            text = '???'
+        self.shutter_status_label.setText(text)
+        if state == ShutterState.NO_SHUTTER:
+            if self.shutter_label.isVisible():
+                self.shutter_label.hide()
+                self.shutter_status_label.hide()
+        elif not self.shutter_label.isVisible():
+            self.shutter_label.show()
+            self.shutter_status_label.show()
 
 
 class LaserGui(GuiBase):
@@ -332,7 +429,7 @@ class LaserGui(GuiBase):
         self.restore_default_view()
 
         # Initialize data from logic
-        self._mw.status_label.setText(logic.extra_info)
+        self._mw.extra_info_label.setText(logic.extra_info)
         self._shutter_state_updated(logic.shutter_state)
         self._laser_state_updated(logic.laser_state)
         self._control_mode_updated(logic.control_mode)
@@ -554,52 +651,46 @@ class LaserGui(GuiBase):
 
     @qudi_slot(object)
     def _laser_state_updated(self, state):
+        self._mw.set_laser_state(state)
         if state == LaserState.ON:
-            # self.control_dock_widget.laser_button.setText('Laser: ON')
             self.control_dock_widget.laser_button.setChecked(True)
             self.control_dock_widget.laser_button.setEnabled(True)
             if not self.control_dock_widget.laser_button.isVisible():
                 self.control_dock_widget.laser_button.setVisible(True)
         elif state == LaserState.OFF:
-            # self.control_dock_widget.laser_button.setText('Laser: OFF')
             self.control_dock_widget.laser_button.setChecked(False)
             self.control_dock_widget.laser_button.setEnabled(True)
             if not self.control_dock_widget.laser_button.isVisible():
                 self.control_dock_widget.laser_button.setVisible(True)
         elif state == LaserState.LOCKED:
-            # self.control_dock_widget.laser_button.setText('INTERLOCK')
             self.control_dock_widget.laser_button.setEnabled(False)
             self.control_dock_widget.laser_button.setChecked(False)
             if self.control_dock_widget.laser_button.isVisible():
                 self.control_dock_widget.laser_button.setVisible(False)
         else:
-            # self.control_dock_widget.laser_button.setText('Laser: ?')
             self.control_dock_widget.laser_button.setEnabled(False)
             if self.control_dock_widget.laser_button.isVisible():
                 self.control_dock_widget.laser_button.setVisible(False)
 
     @qudi_slot(object)
     def _shutter_state_updated(self, state):
+        self._mw.set_shutter_state(state)
         if state == ShutterState.OPEN:
-            # self.control_dock_widget.shutter_button.setText('Shutter: OPEN')
             self.control_dock_widget.shutter_button.setChecked(True)
             self.control_dock_widget.shutter_button.setEnabled(True)
             if not self.control_dock_widget.shutter_button.isVisible():
                 self.control_dock_widget.shutter_button.setVisible(True)
         elif state == ShutterState.CLOSED:
-            # self.control_dock_widget.shutter_button.setText('Shutter: CLOSED')
             self.control_dock_widget.shutter_button.setChecked(False)
             self.control_dock_widget.shutter_button.setEnabled(True)
             if not self.control_dock_widget.shutter_button.isVisible():
                 self.control_dock_widget.shutter_button.setVisible(True)
         elif state == ShutterState.NO_SHUTTER:
-            # self.control_dock_widget.shutter_button.setText('NO SHUTTER')
             self.control_dock_widget.shutter_button.setEnabled(False)
             self.control_dock_widget.shutter_button.setChecked(False)
             if self.control_dock_widget.shutter_button.isVisible():
                 self.control_dock_widget.shutter_button.setVisible(False)
         else:
-            # self.control_dock_widget.shutter_button.setText('Shutter: ?')
             self.control_dock_widget.shutter_button.setEnabled(False)
             if self.control_dock_widget.shutter_button.isVisible():
                 self.control_dock_widget.shutter_button.setVisible(False)
@@ -609,73 +700,15 @@ class LaserGui(GuiBase):
         try:
             x = data.pop('time')
         except KeyError:
-            self.log.error('No time information given in data dict.')
+            self.log.error('No time data given in data dict.')
             return
-        for name, y in data.items():
-            if name == 'power':
-                item = self.output_graph_dock_widget.power_data_item
-                if y is None:
-                    if item in self.output_graph_dock_widget.plot_widget.items():
-                        self.output_graph_dock_widget.plot_widget.removeItem(item)
-                else:
-                    self.control_dock_widget.power_spinbox.setValue(y[-1])
-                    item.setData(y=y, x=x)
-                    if item not in self.output_graph_dock_widget.plot_widget.items():
-                        self.output_graph_dock_widget.plot_widget.addItem(item)
-            elif name == 'current':
-                item = self.output_graph_dock_widget.current_data_item
-                if y is None:
-                    if item in self.output_graph_dock_widget.view_box2.addedItems:
-                        self.output_graph_dock_widget.view_box2.removeItem(item)
-                else:
-                    self.control_dock_widget.current_spinbox.setValue(y[-1])
-                    item.setData(y=y, x=x)
-                    if item not in self.output_graph_dock_widget.view_box2.addedItems:
-                        self.output_graph_dock_widget.view_box2.addItem(item)
-            else:
-                item = self.temperature_graph_dock_widget.temperature_data_items[name]
-                item.setData(y=y, x=x)
 
-    @qudi_slot()
-    def updateButtonsEnabled(self):
-        """ Logic told us to update our button states, so set the buttons accordingly. """
-        logic = self._laser_logic()
-        self._mw.laserButton.setEnabled(logic.laser_can_turn_on)
-        if logic.laser_state == LaserState.ON:
-            self._mw.laserButton.setText('Laser: ON')
-            self._mw.laserButton.setChecked(True)
-            self._mw.laserButton.setStyleSheet('')
-        elif logic.laser_state == LaserState.OFF:
-            self._mw.laserButton.setText('Laser: OFF')
-            self._mw.laserButton.setChecked(False)
-        elif logic.laser_state == LaserState.LOCKED:
-            self._mw.laserButton.setText('INTERLOCK')
-        else:
-            self._mw.laserButton.setText('Laser: ?')
+        y = data.pop('power', None)
+        self.output_graph_dock_widget.set_power_data(y=y, x=x)
+        self.control_dock_widget.power_spinbox.setValue(-1 if y is None else y[-1])
 
-        self._mw.shutterButton.setEnabled(logic.has_shutter)
-        if logic.laser_shutter == ShutterState.OPEN:
-            self._mw.shutterButton.setText('Shutter: OPEN')
-        elif logic.laser_shutter == ShutterState.CLOSED:
-            self._mw.shutterButton.setText('Shutter: CLOSED')
-        elif logic.laser_shutter == ShutterState.NOSHUTTER:
-            self._mw.shutterButton.setText('No shutter.')
-        else:
-            self._mw.shutterButton.setText('Shutter: ?')
+        y = data.pop('current', None)
+        self.output_graph_dock_widget.set_current_data(y=y, x=x)
+        self.control_dock_widget.current_spinbox.setValue(-1 if y is None else y[-1])
 
-        self._mw.currentRadioButton.setEnabled(logic.laser_can_current)
-        self._mw.powerRadioButton.setEnabled(logic.laser_can_power)
-
-    @qudi_slot()
-    def updateGui(self):
-        """ Update labels, the plot and button states with new data. """
-        logic = self._laser_logic()
-        self._mw.currentLabel.setText(
-            '{0:6.3f} {1}'.format(
-                logic.laser_current,
-                logic.laser_current_unit))
-        self._mw.powerLabel.setText('{0:6.3f} W'.format(logic.laser_power))
-        self._mw.extraLabel.setText(logic.laser_extra)
-        self.updateButtonsEnabled()
-        for name, curve in self.curves.items():
-            curve.setData(x=logic.data['time'], y=logic.data[name])
+        self.temperature_graph_dock_widget.set_temperature_data(temp_dict=data, x=x)
