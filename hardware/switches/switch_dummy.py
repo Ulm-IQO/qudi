@@ -62,7 +62,7 @@ class SwitchDummy(Base, SwitchInterface):
 
         # reset states if requested, otherwise use the saved states
         if not self._remember_states or not isinstance(self._states, dict) or \
-                len(self._states) != len(self._switches):
+                set(self._states) != set(self._switches):
             self._states = {switch: states[0] for switch, states in self._switches.items()}
 
     def on_deactivate(self):
