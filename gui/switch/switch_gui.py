@@ -97,8 +97,14 @@ class SwitchGui(GUIBase):
     switchlogic = Connector(interface='SwitchLogic')
 
     # declare status variables
-    _switch_style = StatusVar(name='switch_style', default=SwitchStyle.TOGGLE_SWITCH)
-    _colorscheme = StatusVar(name='colorscheme', default=ColorScheme.DEFAULT)
+    _switch_style = StatusVar(name='switch_style',
+                              default=SwitchStyle.TOGGLE_SWITCH,
+                              representer=lambda _, x: int(x),
+                              constructor=lambda _, x: SwitchStyle(x))
+    _colorscheme = StatusVar(name='colorscheme',
+                             default=ColorScheme.DEFAULT,
+                             representer=lambda _, x: int(x),
+                             constructor=lambda _, x: ColorScheme(x))
     _alt_toggle_switch_style = StatusVar(name='alt_toggle_switch_style', default=False)
 
     # declare signals
