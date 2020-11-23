@@ -87,7 +87,8 @@ class HBridge(Base, SwitchInterface):
         )
 
         # reset states if requested, otherwise use the saved states
-        if self._remember_states and isinstance(self._states, dict) and len(self._states) == 4:
+        if self._remember_states and isinstance(self._states, dict) and \
+                set(self._states) == set(self._switches):
             self.states = self._states
 
     def on_deactivate(self):

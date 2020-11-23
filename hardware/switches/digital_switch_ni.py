@@ -97,8 +97,8 @@ class DigitalSwitchNI(Base, SwitchInterface):
             self._hardware_name = 'NICard' + str(self._channel).replace('/', ' ')
 
         # reset states if requested, otherwise use the saved states
-        if self._remember_states and isinstance(self._states, dict) and len(
-                self._states) == len(self._channels):
+        if self._remember_states and isinstance(self._states, dict) and \
+                set(self._states) == set(self._switches):
             self.states = self._states
         else:
             self._states = dict()

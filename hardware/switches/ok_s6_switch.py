@@ -70,7 +70,11 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     # specify the path to the bitfile, if it is not in qudi_main_dir/thirdparty/qo_fpga
     _path_to_bitfile = ConfigOption('path_to_bitfile', default=None, missing='nothing')
     # customize available switches in config. Each switch needs a tuple of 2 state names.
-    _switches = ConfigOption(name='switches', default=None, missing='nothing')
+    _switches = ConfigOption(
+        name='switches',
+        default={s: ('Off', 'On') for s in ('B14', 'B16', 'B12', 'C7', 'D15', 'D10', 'D9', 'D11')},
+        missing='nothing'
+    )
     # optional name of the hardware
     _hardware_name = ConfigOption(name='name', default='OpalKelly FPGA Switch', missing='nothing')
     # if remember_states is True the last state will be restored at reloading of the module
@@ -78,8 +82,6 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
-
-    __default_switches = ('B14', 'B16', 'B12', 'C7', 'D15', 'D10', 'D9', 'D11')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -91,8 +93,6 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
-        if self._switches is None:
-            self._switches = {sw: ('Off', 'On') for sw in self.__default_switches}
         self._switches = self._chk_refine_available_switches(self._switches)
 
         # Create an instance of the Opal Kelly FrontPanel
@@ -107,7 +107,8 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         self._connect()
 
         # reset states if requested, otherwise use the saved states
-        if self._remember_states and isinstance(self._states, dict) and len(self._states) == 8:
+        if self._remember_states and isinstance(self._states, dict) and \
+                set(self._states) == set(self._switches):
             self.states = self._states
         else:
             self._states = dict()
