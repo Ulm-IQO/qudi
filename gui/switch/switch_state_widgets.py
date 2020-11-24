@@ -120,6 +120,7 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
         self._state_colors = (None, None)
 
         layout = QtWidgets.QHBoxLayout()
+        layout.setAlignment(QtCore.Qt.AlignCenter)
         layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(layout)
         self.toggle_switch = ToggleSwitch(None, *switch_states, thumb_track_ratio)
