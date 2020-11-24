@@ -32,9 +32,9 @@ class SwitchStyle(IntEnum):
     RADIO_BUTTON = 1
 
 
-class ColorScheme(IntEnum):
+class StateColorScheme(IntEnum):
     DEFAULT = 0
-    RED_GREEN = 1
+    HIGHLIGHT = 1
 
 
 class SwitchMainWindow(QtWidgets.QMainWindow):
@@ -77,9 +77,9 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
             action.setCheckable(True)
             self.switch_view_action_group.addAction(action)
             menu.addAction(action)
-        self.action_view_red_green = QtWidgets.QAction('red/green color scheme')
-        self.action_view_red_green.setCheckable(True)
-        menu.addAction(self.action_view_red_green)
+        self.action_view_highlight_state = QtWidgets.QAction('highlight state labels')
+        self.action_view_highlight_state.setCheckable(True)
+        menu.addAction(self.action_view_highlight_state)
         self.action_view_alt_toggle_style = QtWidgets.QAction('alternative toggle switch')
         self.action_view_alt_toggle_style.setCheckable(True)
         menu.addAction(self.action_view_alt_toggle_style)
@@ -101,10 +101,10 @@ class SwitchGui(GUIBase):
                               default=SwitchStyle.TOGGLE_SWITCH,
                               representer=lambda _, x: int(x),
                               constructor=lambda _, x: SwitchStyle(x))
-    _colorscheme = StatusVar(name='colorscheme',
-                             default=ColorScheme.DEFAULT,
-                             representer=lambda _, x: int(x),
-                             constructor=lambda _, x: ColorScheme(x))
+    _state_colorscheme = StatusVar(name='state_colorscheme',
+                                   default=StateColorScheme.DEFAULT,
+                                   representer=lambda _, x: int(x),
+                                   constructor=lambda _, x: StateColorScheme(x))
     _alt_toggle_switch_style = StatusVar(name='alt_toggle_switch_style', default=False)
 
     # declare signals
@@ -125,7 +125,9 @@ class SwitchGui(GUIBase):
         except IndexError:
             self._mw.switch_view_actions[0].setChecked(True)
             self._switch_style = SwitchStyle(0)
-        self._mw.action_view_red_green.setChecked(self._colorscheme == ColorScheme.RED_GREEN)
+        self._mw.action_view_highlight_state.setChecked(
+            self._state_colorscheme == StateColorScheme.HIGHLIGHT
+        )
         self._mw.action_view_alt_toggle_style.setChecked(self._alt_toggle_switch_style)
         self._mw.setWindowTitle(f'qudi: {self.switchlogic().device_name.title()}')
 
@@ -136,7 +138,7 @@ class SwitchGui(GUIBase):
             self.switchlogic().toggle_watchdog, QtCore.Qt.QueuedConnection
         )
         self._mw.switch_view_action_group.triggered.connect(self._update_switch_appearance)
-        self._mw.action_view_red_green.triggered.connect(self._update_colorscheme)
+        self._mw.action_view_highlight_state.triggered.connect(self._update_state_colorscheme)
         self._mw.action_view_alt_toggle_style.triggered.connect(self._update_toggle_switch_style)
         self.switchlogic().sigWatchdogToggled.connect(
             self._watchdog_updated, QtCore.Qt.QueuedConnection
@@ -147,7 +149,7 @@ class SwitchGui(GUIBase):
 
         self._watchdog_updated(self.switchlogic().watchdog_active)
         self._switches_updated(self.switchlogic().states)
-        self._update_colorscheme()
+        self._update_state_colorscheme()
         self.show()
 
     def on_deactivate(self):
@@ -155,7 +157,7 @@ class SwitchGui(GUIBase):
         """
         self.switchlogic().sigSwitchesChanged.disconnect(self._switches_updated)
         self.switchlogic().sigWatchdogToggled.disconnect(self._watchdog_updated)
-        self._mw.action_view_red_green.triggered.disconnect()
+        self._mw.action_view_highlight_state.triggered.disconnect()
         self._mw.action_view_alt_toggle_style.triggered.disconnect()
         self._mw.switch_view_action_group.triggered.disconnect()
         self._mw.action_periodic_state_check.toggled.disconnect()
@@ -256,13 +258,14 @@ class SwitchGui(GUIBase):
             self._mw.centralWidget().setFixedSize(1, 1)
             self._populate_switches()
             self._switches_updated(self.switchlogic().states)
-            self._update_colorscheme()
+            self._update_state_colorscheme()
             self._mw.show()
 
-    def _update_colorscheme(self):
-        if self._mw.action_view_red_green.isChecked():
-            checked_color = QtGui.QColor(QtCore.Qt.red)
-            unchecked_color = QtGui.QColor(QtCore.Qt.green)
+    def _update_state_colorscheme(self):
+        self._state_colorscheme = StateColorScheme(self._mw.action_view_highlight_state.isChecked())
+        if self._state_colorscheme is StateColorScheme.HIGHLIGHT:
+            checked_color = self._mw.palette().highlight().color()
+            unchecked_color = None
         else:
             checked_color = None
             unchecked_color = None
@@ -280,7 +283,7 @@ class SwitchGui(GUIBase):
                 self._mw.centralWidget().setFixedSize(1, 1)
                 self._populate_switches()
                 self._switches_updated(self.switchlogic().states)
-                self._update_colorscheme()
+                self._update_state_colorscheme()
                 self._mw.show()
 
     def __get_state_update_func(self, switch):
