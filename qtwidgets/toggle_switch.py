@@ -83,7 +83,6 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
             2 * self._track_radius + 2 * self._track_margin
         )
         self.setMinimumSize(self._size_hint)
-        self.setMaximumHeight(self._size_hint.height())
 
     @property
     def current_state(self):
@@ -146,7 +145,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         p.setBrush(track_brush)
         p.setOpacity(track_opacity)
         p.drawRoundedRect(self._track_margin,
-                          self._track_margin,
+                          self.height()/2 - self._track_radius,
                           self.width() - 2 * self._track_margin,
                           2 * self._track_radius,
                           self._track_radius,
@@ -157,20 +156,18 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
             p.setPen(text_color)
             p.setOpacity(1.0)
             p.setFont(self._text_font)
-            p.drawText(
-                self._track_margin,
-                -self._track_margin,
-                self.width() - 2 * self._track_margin,
-                2 * self._track_radius,
-                QtCore.Qt.AlignCenter,
-                state_str,
-            )
+            p.drawText(self._track_margin,
+                       self.height() / 2 - self._track_radius,
+                       self.width() - 2 * self._track_margin,
+                       2 * self._track_radius,
+                       QtCore.Qt.AlignCenter,
+                       state_str)
         # draw thumb
         p.setPen(QtCore.Qt.NoPen)
         p.setBrush(thumb_brush)
         p.setOpacity(1.0)
         p.drawEllipse(self._thumb_position - self._thumb_radius,
-                      self._thumb_origin - self._thumb_radius,
+                      self.height()/2 - self._thumb_radius,
                       2 * self._thumb_radius,
                       2 * self._thumb_radius)
 
