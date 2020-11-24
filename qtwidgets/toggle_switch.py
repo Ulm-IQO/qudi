@@ -57,7 +57,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         if thumb_track_ratio > 1:
             self._track_colors = (palette.dark(), palette.highlight())
             self._thumb_colors = (palette.light(), palette.highlight())
-            self._text_colors = (palette.dark().color(), palette.highlightedText().color())
+            self._text_colors = (palette.text().color(), palette.highlightedText().color())
             self._track_opacity = 0.5
         else:
             self._track_colors = (palette.dark(), palette.highlight())
