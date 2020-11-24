@@ -19,33 +19,21 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
 import os
-import pyqtgraph as pg
+import datetime
+import numpy as np
+from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.connector import Connector
 from qudi.core.util import units
 from qudi.core.module import GuiBase
-from PySide2 import QtCore, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from functools import partial
-from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget
-from .odmr_control_dockwidget import OdmrControlDockWidget
+from qudi.core.util.paths import get_artwork_dir
+
+from .odmr_control_dockwidget import OdmrScanControlDockWidget, OdmrCwControlDockWidget
 from .odmr_fit_dockwidget import OdmrFitDockWidget
-from .odmr_plot_widget import OdmrPlotWidget
+from .odmr_main_window import OdmrMainWindow
 
-
-class OdmrMainWindow(QtWidgets.QMainWindow):
-    """ The main window for the ODMR measurement GUI.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setCentralWidget(
-            OdmrPlotWidget(data_channel_units={'APD counts': 'c/s',
-                                               'analog scanner': 'V',
-                                               'saasdggag': 'ppm'})
-        )
 #
 #
 # class ODMRSettingDialog(QtWidgets.QDialog):
@@ -68,7 +56,7 @@ class OdmrGui(GuiBase):
     """
 
     # declare connectors
-    # _odmr_logic = Connector(name='odmr_logic', interface='OdmrLogic')
+    _odmr_logic = Connector(name='odmr_logic', interface='OdmrLogic')
 
     sigStartOdmrScan = QtCore.Signal()
     sigStopOdmrScan = QtCore.Signal()
@@ -93,8 +81,10 @@ class OdmrGui(GuiBase):
         super().__init__(*args, **kwargs)
 
         self._mw = None
-        self.control_dockwidget = None
-        self.fit_dockwidget = None
+        self._plot_widget = None
+        self._scan_control_dockwidget = None
+        self._cw_control_dockwidget = None
+        self._fit_dockwidget = None
 
     def on_activate(self):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -104,11 +94,14 @@ class OdmrGui(GuiBase):
         """
         # Create main window
         self._mw = OdmrMainWindow()
-        self.control_dockwidget = OdmrControlDockWidget()
-        self.fit_dockwidget = OdmrFitDockWidget()
-        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.control_dockwidget)
-        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.fit_dockwidget)
-        self._mw.centralWidget().set_frequency_data([np.linspace(2e9, 3e9, ii) for ii in (100, 150, 200)])
+        self._plot_widget = self._mw.centralWidget()
+        self._scan_control_dockwidget = OdmrScanControlDockWidget(parent=self._mw)
+        self._cw_control_dockwidget = OdmrCwControlDockWidget(parent=self._mw)
+        self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw)
+        self.restore_default_view()
+
+        channel_units = {'APD counts': 'c/s', 'analog scanner': 'V', 'saasdggag': 'ppm'}
+        frequencies = [np.linspace(2e9, 3e9, ii) for ii in (100, 150, 200)]
         rand_data = (np.random.rand(100), np.random.rand(150), np.random.rand(200))
         data = {'APD counts'    : rand_data,
                 'analog scanner': tuple(10 * a for a in rand_data),
@@ -117,9 +110,9 @@ class OdmrGui(GuiBase):
                'analog scanner': tuple(10 * np.ones(a.shape) for a in rand_data),
                'saasdggag'     : tuple(100 * np.ones(a.shape) for a in rand_data)}
         image = {'APD counts'    : tuple(np.array((a, a)).transpose() for a in data['APD counts']),
-                'analog scanner': tuple(np.array((a, a)).transpose() for a in data['analog scanner']),
-                'saasdggag'     : tuple(np.array((a, a)).transpose() for a in data['saasdggag'])}
-        self._mw.centralWidget().set_data(image=image, signal=data, fit=fit)
+                 'analog scanner': tuple(np.array((a, a)).transpose() for a in data['analog scanner']),
+                 'saasdggag'     : tuple(np.array((a, a)).transpose() for a in data['saasdggag'])}
+        self._plot_widget.set_data(frequencies[1], image=image['APD counts'][1], signal=data['APD counts'][1], fit=fit['APD counts'][1])
         self.show()
         # self._sd = ODMRSettingDialog()
         #
@@ -355,6 +348,10 @@ class OdmrGui(GuiBase):
         # ########################################################################
         # #                       Connect signals                                #
         # ########################################################################
+        self.__connect_main_window_actions()
+        self.__connect_fit_control_signals()
+        self.__connect_cw_control_signals()
+        self.__connect_scan_control_signals()
         # # Internal user input changed signals
         # self._mw.cw_frequency_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
         #
@@ -374,7 +371,7 @@ class OdmrGui(GuiBase):
         # self._mw.action_resume_odmr.triggered.connect(self.resume_odmr)
         # self._mw.action_toggle_cw.triggered.connect(self.toggle_cw_mode)
         # self._mw.action_Save.triggered.connect(self.save_data)
-        # self._mw.action_RestoreDefault.triggered.connect(self.restore_defaultview)
+        # self._mw.action_RestoreDefault.triggered.connect(self.restore_default_view)
         # self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
         # self._mw.fit_range_SpinBox.editingFinished.connect(self.update_fit_range)
         # self._mw.odmr_control_DockWidget.matrix_range_SpinBox.editingFinished.connect(self.update_matrix_range)
@@ -490,185 +487,47 @@ class OdmrGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+    def __connect_main_window_actions(self):
+        self._mw.action_toggle_measurement.triggered.connect(self.run_stop_odmr)
+        self._mw.action_resume_measurement.triggered.connect(self.resume_odmr)
+        self._mw.action_save_measurement.triggered.connect(self.save_data)
+        self._mw.action_toggle_cw.triggered.connect(self.toggle_cw_mode)
+        self._mw.action_show_cw_controls.triggered[bool].connect(
+            self._cw_control_dockwidget.setVisible
+        )
+        self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
+
+    def __connect_cw_control_signals(self):
+        self._cw_control_dockwidget.sigCwParametersChanged.connect(
+            self._odmr_logic().set_cw_parameters
+        )
+        self._cw_control_dockwidget.sigClosed.connect(
+            lambda: self._mw.action_show_cw_controls.setChecked(False)
+        )
+
+    def __connect_fit_control_signals(self):
+        pass
+
+    def __connect_scan_control_signals(self):
+        logic = self._odmr_logic()
+        self._scan_control_dockwidget.sigRangeCountChanged.connect(self._range_count_changed)
+        self._scan_control_dockwidget.sigRangeChanged.connect(self._scan_range_changed)
+        self._scan_control_dockwidget.sigRuntimeChanged.connect(logic.set_runtime)
+        self._scan_control_dockwidget.sigAveragedLinesChanged.connect(logic.set_average_length)
+        self._scan_control_dockwidget.sigDataSelectionChanged.connect(self._data_selection_changed)
+
+    def restore_default_view(self):
+        self._cw_control_dockwidget.setFloating(False)
+        self._scan_control_dockwidget.setFloating(False)
+        self._fit_dockwidget.setFloating(False)
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._cw_control_dockwidget)
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._scan_control_dockwidget)
+        self._mw.splitDockWidget(self._cw_control_dockwidget, self._scan_control_dockwidget, QtCore.Qt.Vertical)
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
+
     def _menu_settings(self):
         """ Open the settings menu """
         self._sd.exec_()
-
-    def add_ranges_gui_elements_clicked(self):
-        """
-        When button >>add range<< is pushed add some buttons to the gui and connect accordingly to the
-        logic.
-        :return:
-        """
-        # make sure the logic keeps track
-        groupBox = self._mw.odmr_control_DockWidget.ranges_groupBox
-        gridLayout = groupBox.layout()
-        constraints = self._odmr_logic.get_hw_constraints()
-
-        insertion_row = self._odmr_logic.ranges
-        # start
-        start_label = QtWidgets.QLabel(groupBox)
-        start_label.setText('Start:')
-        setattr(self._mw.odmr_control_DockWidget, 'start_label_{}'.format(insertion_row), start_label)
-        start_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
-        start_freq_DoubleSpinBox.setSuffix('Hz')
-        start_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
-        start_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
-        start_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
-        start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_starts[0])
-        start_freq_DoubleSpinBox.setMinimumWidth(75)
-        start_freq_DoubleSpinBox.setMaximumWidth(100)
-        start_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
-        setattr(self._mw.odmr_control_DockWidget, 'start_freq_DoubleSpinBox_{}'.format(insertion_row),
-                start_freq_DoubleSpinBox)
-        gridLayout.addWidget(start_label, insertion_row, 1, 1, 1)
-        gridLayout.addWidget(start_freq_DoubleSpinBox, insertion_row, 2, 1, 1)
-
-        # step
-        step_label = QtWidgets.QLabel(groupBox)
-        step_label.setText('Step:')
-        setattr(self._mw.odmr_control_DockWidget, 'step_label_{}'.format(insertion_row), step_label)
-        step_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
-        step_freq_DoubleSpinBox.setSuffix('Hz')
-        step_freq_DoubleSpinBox.setMaximum(100e9)
-        step_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
-        step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_steps[0])
-        step_freq_DoubleSpinBox.setMinimumWidth(75)
-        step_freq_DoubleSpinBox.setMaximumWidth(100)
-        step_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
-        setattr(self._mw.odmr_control_DockWidget, 'step_freq_DoubleSpinBox_{}'.format(insertion_row),
-                step_freq_DoubleSpinBox)
-        gridLayout.addWidget(step_label, insertion_row, 3, 1, 1)
-        gridLayout.addWidget(step_freq_DoubleSpinBox, insertion_row, 4, 1, 1)
-
-        # stop
-        stop_label = QtWidgets.QLabel(groupBox)
-        stop_label.setText('Stop:')
-        setattr(self._mw.odmr_control_DockWidget, 'stop_label_{}'.format(insertion_row), stop_label)
-        stop_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
-        stop_freq_DoubleSpinBox.setSuffix('Hz')
-        stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
-        stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
-        stop_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
-        stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stops[0])
-        stop_freq_DoubleSpinBox.setMinimumWidth(75)
-        stop_freq_DoubleSpinBox.setMaximumWidth(100)
-        stop_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
-        setattr(self._mw.odmr_control_DockWidget, 'stop_freq_DoubleSpinBox_{}'.format(insertion_row),
-                stop_freq_DoubleSpinBox)
-
-        gridLayout.addWidget(stop_label, insertion_row, 5, 1, 1)
-        gridLayout.addWidget(stop_freq_DoubleSpinBox, insertion_row, 6, 1, 1)
-
-        starts = self.get_frequencies_from_spinboxes('start')
-        stops = self.get_frequencies_from_spinboxes('stop')
-        steps = self.get_frequencies_from_spinboxes('step')
-        power = self._mw.sweep_power_DoubleSpinBox.value()
-
-        self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
-        self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges)
-        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges)
-        self._odmr_logic.ranges += 1
-
-        # remove stuff that remained from the old range that might have been in place there
-        key = 'channel: {0}, range: {1}'.format(self.display_channel, self._odmr_logic.ranges - 1)
-        if key in self._odmr_logic.fits_performed:
-            self._odmr_logic.fits_performed.pop(key)
-        return
-
-    def remove_ranges_gui_elements_clicked(self):
-        if self._odmr_logic.ranges == 1:
-            return
-
-        remove_row = self._odmr_logic.ranges - 1
-
-        groupBox = self._mw.odmr_control_DockWidget.ranges_groupBox
-        gridLayout = groupBox.layout()
-
-        object_dict = self.get_objects_from_groupbox_row(remove_row)
-
-        for object_name in object_dict:
-            if 'DoubleSpinBox' in object_name:
-                object_dict[object_name].editingFinished.disconnect()
-            object_dict[object_name].hide()
-            gridLayout.removeWidget(object_dict[object_name])
-            del self._mw.odmr_control_DockWidget.__dict__[object_name]
-
-        starts = self.get_frequencies_from_spinboxes('start')
-        stops = self.get_frequencies_from_spinboxes('stop')
-        steps = self.get_frequencies_from_spinboxes('step')
-        power = self._mw.sweep_power_DoubleSpinBox.value()
-        self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
-
-        # in case the removed range is the one selected for fitting right now adjust the value
-        self._odmr_logic.ranges -= 1
-        max_val = self._odmr_logic.ranges - 1
-        self._mw.fit_range_SpinBox.setMaximum(max_val)
-        if self._odmr_logic.range_to_fit > max_val:
-            self._odmr_logic.range_to_fit = max_val
-
-        self._mw.fit_range_SpinBox.setMaximum(max_val)
-        
-        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(max_val)
-        if self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value() > max_val:
-            self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setValue(max_val)
-
-        return
-
-    def get_objects_from_groupbox_row(self, row):
-        # get elements from the row
-        # first strings
-
-        start_label_str = 'start_label_{}'.format(row)
-        step_label_str = 'step_label_{}'.format(row)
-        stop_label_str = 'stop_label_{}'.format(row)
-
-        # get widgets
-        start_freq_DoubleSpinBox_str = 'start_freq_DoubleSpinBox_{}'.format(row)
-        step_freq_DoubleSpinBox_str = 'step_freq_DoubleSpinBox_{}'.format(row)
-        stop_freq_DoubleSpinBox_str = 'stop_freq_DoubleSpinBox_{}'.format(row)
-
-        # now get the objects
-        start_label = getattr(self._mw.odmr_control_DockWidget, start_label_str)
-        step_label = getattr(self._mw.odmr_control_DockWidget, step_label_str)
-        stop_label = getattr(self._mw.odmr_control_DockWidget, stop_label_str)
-
-        start_freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, start_freq_DoubleSpinBox_str)
-        step_freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, step_freq_DoubleSpinBox_str)
-        stop_freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, stop_freq_DoubleSpinBox_str)
-
-        return_dict = {start_label_str: start_label, step_label_str: step_label,
-                       stop_label_str: stop_label,
-                       start_freq_DoubleSpinBox_str: start_freq_DoubleSpinBox,
-                       step_freq_DoubleSpinBox_str: step_freq_DoubleSpinBox,
-                       stop_freq_DoubleSpinBox_str: stop_freq_DoubleSpinBox
-                       }
-
-        return return_dict
-
-    def get_freq_dspinboxes_from_groubpox(self, identifier):
-        dspinboxes = []
-        for name in self._mw.odmr_control_DockWidget.__dict__:
-            box_name = identifier + '_freq_DoubleSpinBox'
-            if box_name in name:
-                freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, name)
-                dspinboxes.append(freq_DoubleSpinBox)
-
-        return dspinboxes
-
-    def get_all_dspinboxes_from_groupbox(self):
-        identifiers = ['start', 'step', 'stop']
-
-        all_spinboxes = {}
-        for identifier in identifiers:
-            all_spinboxes[identifier] = self.get_freq_dspinboxes_from_groubpox(identifier)
-
-        return all_spinboxes
-
-    def get_frequencies_from_spinboxes(self, identifier):
-        dspinboxes = self.get_freq_dspinboxes_from_groubpox(identifier)
-        freqs = [dspinbox.value() for dspinbox in dspinboxes]
-        return freqs
 
     def run_stop_odmr(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
@@ -823,11 +682,6 @@ class OdmrGui(GuiBase):
         self._mw.action_toggle_cw.blockSignals(False)
         return
 
-    def clear_odmr_data(self):
-        """ Clear the ODMR data. """
-        self.sigClearData.emit()
-        return
-
     def update_plots(self, odmr_data_x, odmr_data_y, odmr_matrix):
         """ Refresh the plot widgets with new data. """
         # Update mean signal plot
@@ -869,54 +723,6 @@ class OdmrGui(GuiBase):
         """
         self.sigAverageLinesChanged.emit(self._mw.average_level_SpinBox.value())
         return
-
-    def colorscale_changed(self):
-        """
-        Updates the range of the displayed colorscale in both the colorbar and the matrix plot.
-        """
-        cb_range = self.get_matrix_cb_range()
-        self.update_colorbar(cb_range)
-        matrix_image = self.odmr_matrix_image.image
-        self.odmr_matrix_image.setImage(image=matrix_image, levels=(cb_range[0], cb_range[1]))
-        return
-
-    def update_colorbar(self, cb_range):
-        """
-        Update the colorbar to a new range.
-
-        @param list cb_range: List or tuple containing the min and max values for the cb range
-        """
-        self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
-        return
-
-    def get_matrix_cb_range(self):
-        """
-        Determines the cb_min and cb_max values for the matrix plot
-        """
-        matrix_image = self.odmr_matrix_image.image
-
-        # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
-        # Otherwise, calculate cb range from percentiles.
-        if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.count_nonzero(matrix_image) < 1:
-            cb_min = self._mw.odmr_cb_min_DoubleSpinBox.value()
-            cb_max = self._mw.odmr_cb_max_DoubleSpinBox.value()
-        else:
-            # Exclude any zeros (which are typically due to unfinished scan)
-            matrix_image_nonzero = matrix_image[np.nonzero(matrix_image)]
-
-            # Read centile range
-            low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
-            high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
-
-            cb_min = np.percentile(matrix_image_nonzero, low_centile)
-            cb_max = np.percentile(matrix_image_nonzero, high_centile)
-
-        cb_range = [cb_min, cb_max]
-        return cb_range
-
-    def restore_defaultview(self):
-        self._mw.restoreGeometry(self.mwsettings.value("geometry", ""))
-        self._mw.restoreState(self.mwsettings.value("windowState", ""))
 
     def update_elapsedtime(self, elapsed_time, scanned_lines):
         """ Updates current elapsed measurement time and completed frequency sweeps """
@@ -1115,19 +921,6 @@ class OdmrGui(GuiBase):
     def change_fit_range(self):
         self._odmr_logic.fit_range = self._mw.fit_range_SpinBox.value()
         return
-
-    def get_frequencies_from_row(self, row):
-        object_dict = self.get_objects_from_groupbox_row(row)
-        for object_name in object_dict:
-            if "DoubleSpinBox" in object_name:
-                if "start" in object_name:
-                    start = object_dict[object_name].value()
-                elif "step" in object_name:
-                    step = object_dict[object_name].value()
-                elif "stop" in object_name:
-                    stop = object_dict[object_name].value()
-
-        return start, stop, step
 
     def change_runtime(self):
         """ Change time after which microwave sweep is stopped """
