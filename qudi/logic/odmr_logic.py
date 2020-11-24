@@ -22,29 +22,28 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore
 from collections import OrderedDict
-from interface.microwave_interface import MicrowaveMode
-from interface.microwave_interface import TriggerEdge
+from qudi.interface.microwave_interface import MicrowaveMode, TriggerEdge
 import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from core.connector import Connector
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
+from qudi.core.module import LogicBase
+from qudi.core.util.mutex import Mutex
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
 
 
-class ODMRLogic(GenericLogic):
+class OdmrLogic(LogicBase):
     """This is the Logic class for ODMR."""
 
     # declare connectors
-    odmrcounter = Connector(interface='ODMRCounterInterface')
-    fitlogic = Connector(interface='FitLogic')
-    microwave1 = Connector(interface='MicrowaveInterface')
-    savelogic = Connector(interface='SaveLogic')
-    taskrunner = Connector(interface='TaskRunner')
+    # odmrcounter = Connector(interface='ODMRCounterInterface')
+    # fitlogic = Connector(interface='FitLogic')
+    # microwave1 = Connector(interface='MicrowaveInterface')
+    # savelogic = Connector(interface='SaveLogic')
+    # taskrunner = Connector(interface='TaskRunner')
 
     # config option
     mw_scanmode = ConfigOption(
@@ -53,21 +52,21 @@ class ODMRLogic(GenericLogic):
         missing='warn',
         converter=lambda x: MicrowaveMode[x.upper()])
 
-    clock_frequency = StatusVar('clock_frequency', 200)
-    cw_mw_frequency = StatusVar('cw_mw_frequency', 2870e6)
-    cw_mw_power = StatusVar('cw_mw_power', -30)
-    sweep_mw_power = StatusVar('sweep_mw_power', -30)
-    fit_range = StatusVar('fit_range', 0)
-    mw_starts = StatusVar('mw_starts', [2800e6])
-    mw_stops = StatusVar('mw_stops', [2950e6])
-    mw_steps = StatusVar('mw_steps', [2e6])
-    run_time = StatusVar('run_time', 60)
-    number_of_lines = StatusVar('number_of_lines', 50)
-    ranges = StatusVar('ranges', 1)
-    fc = StatusVar('fits', None)
-    lines_to_average = StatusVar('lines_to_average', 0)
-    _oversampling = StatusVar('oversampling', default=10)
-    _lock_in_active = StatusVar('lock_in_active', default=False)
+    # clock_frequency = StatusVar('clock_frequency', 200)
+    # cw_mw_frequency = StatusVar('cw_mw_frequency', 2870e6)
+    # cw_mw_power = StatusVar('cw_mw_power', -30)
+    # sweep_mw_power = StatusVar('sweep_mw_power', -30)
+    # fit_range = StatusVar('fit_range', 0)
+    # mw_starts = StatusVar('mw_starts', [2800e6])
+    # mw_stops = StatusVar('mw_stops', [2950e6])
+    # mw_steps = StatusVar('mw_steps', [2e6])
+    # run_time = StatusVar('run_time', 60)
+    # number_of_lines = StatusVar('number_of_lines', 50)
+    # ranges = StatusVar('ranges', 1)
+    # fc = StatusVar('fits', None)
+    # lines_to_average = StatusVar('lines_to_average', 0)
+    # _oversampling = StatusVar('oversampling', default=10)
+    # _lock_in_active = StatusVar('lock_in_active', default=False)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -87,61 +86,62 @@ class ODMRLogic(GenericLogic):
         """
         Initialisation performed during activation of the module.
         """
-        # Get connectors
-        self._mw_device = self.microwave1()
-        self._fit_logic = self.fitlogic()
-        self._odmr_counter = self.odmrcounter()
-        self._save_logic = self.savelogic()
-        self._taskrunner = self.taskrunner()
-
-        # Get hardware constraints
-        limits = self.get_hw_constraints()
-
-        # Set/recall microwave source parameters
-        self.cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
-        self.cw_mw_power = limits.power_in_range(self.cw_mw_power)
-        self.sweep_mw_power = limits.power_in_range(self.sweep_mw_power)
-        self._odmr_counter.oversampling = self._oversampling
-        self._odmr_counter.lock_in_active = self._lock_in_active
-
-        # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
-        # theoretically this can be changed, but the current counting scheme will not support that
-        self.mw_trigger_pol = TriggerEdge.RISING
-        self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
-
-        # Elapsed measurement time and number of sweeps
-        self.elapsed_time = 0.0
-        self.elapsed_sweeps = 0
-
-        self.range_to_fit = 0
-        self.matrix_range = 0
-        self.fits_performed = {}
-
-        self.frequency_lists = []
-        self.final_freq_list = []
-
-        # Set flags
-        # for stopping a measurement
-        self._stopRequested = False
-        # for clearing the ODMR data during a measurement
-        self._clearOdmrData = False
-
-        # Initalize the ODMR data arrays (mean signal and sweep matrix)
-        self._initialize_odmr_plots()
-        # Raw data array
-        self.odmr_raw_data = np.zeros(
-            [self.number_of_lines,
-             len(self._odmr_counter.get_odmr_channels()),
-             self.odmr_plot_x.size]
-        )
-
-        # Switch off microwave and set CW frequency and power
-        self.mw_off()
-        self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
-
-        # Connect signals
-        self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
-        return
+        pass
+        # # Get connectors
+        # self._mw_device = self.microwave1()
+        # self._fit_logic = self.fitlogic()
+        # self._odmr_counter = self.odmrcounter()
+        # self._save_logic = self.savelogic()
+        # self._taskrunner = self.taskrunner()
+        #
+        # # Get hardware constraints
+        # limits = self.get_hw_constraints()
+        #
+        # # Set/recall microwave source parameters
+        # self.cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
+        # self.cw_mw_power = limits.power_in_range(self.cw_mw_power)
+        # self.sweep_mw_power = limits.power_in_range(self.sweep_mw_power)
+        # self._odmr_counter.oversampling = self._oversampling
+        # self._odmr_counter.lock_in_active = self._lock_in_active
+        #
+        # # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
+        # # theoretically this can be changed, but the current counting scheme will not support that
+        # self.mw_trigger_pol = TriggerEdge.RISING
+        # self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
+        #
+        # # Elapsed measurement time and number of sweeps
+        # self.elapsed_time = 0.0
+        # self.elapsed_sweeps = 0
+        #
+        # self.range_to_fit = 0
+        # self.matrix_range = 0
+        # self.fits_performed = {}
+        #
+        # self.frequency_lists = []
+        # self.final_freq_list = []
+        #
+        # # Set flags
+        # # for stopping a measurement
+        # self._stopRequested = False
+        # # for clearing the ODMR data during a measurement
+        # self._clearOdmrData = False
+        #
+        # # Initalize the ODMR data arrays (mean signal and sweep matrix)
+        # self._initialize_odmr_plots()
+        # # Raw data array
+        # self.odmr_raw_data = np.zeros(
+        #     [self.number_of_lines,
+        #      len(self._odmr_counter.get_odmr_channels()),
+        #      self.odmr_plot_x.size]
+        # )
+        #
+        # # Switch off microwave and set CW frequency and power
+        # self.mw_off()
+        # self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
+        #
+        # # Connect signals
+        # self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
+        # return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -163,47 +163,47 @@ class ODMRLogic(GenericLogic):
         # Disconnect signals
         self.sigNextLine.disconnect()
 
-    @fc.constructor
-    def sv_set_fits(self, val):
-        # Setup fit container
-        fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
-        fc.set_units(['Hz', 'c/s'])
-        if isinstance(val, dict) and len(val) > 0:
-            fc.load_from_dict(val)
-        else:
-            d1 = OrderedDict()
-            d1['Lorentzian dip'] = {
-                'fit_function': 'lorentzian',
-                'estimator': 'dip'
-            }
-            d1['Two Lorentzian dips'] = {
-                'fit_function': 'lorentziandouble',
-                'estimator': 'dip'
-            }
-            d1['N14'] = {
-                'fit_function': 'lorentziantriple',
-                'estimator': 'N14'
-            }
-            d1['N15'] = {
-                'fit_function': 'lorentziandouble',
-                'estimator': 'N15'
-            }
-            d1['Two Gaussian dips'] = {
-                'fit_function': 'gaussiandouble',
-                'estimator': 'dip'
-            }
-            default_fits = OrderedDict()
-            default_fits['1d'] = d1
-            fc.load_from_dict(default_fits)
-        return fc
-
-    @fc.representer
-    def sv_get_fits(self, val):
-        """ save configured fits """
-        if len(val.fit_list) > 0:
-            return val.save_to_dict()
-        else:
-            return None
+    # @fc.constructor
+    # def sv_set_fits(self, val):
+    #     # Setup fit container
+    #     fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
+    #     fc.set_units(['Hz', 'c/s'])
+    #     if isinstance(val, dict) and len(val) > 0:
+    #         fc.load_from_dict(val)
+    #     else:
+    #         d1 = OrderedDict()
+    #         d1['Lorentzian dip'] = {
+    #             'fit_function': 'lorentzian',
+    #             'estimator': 'dip'
+    #         }
+    #         d1['Two Lorentzian dips'] = {
+    #             'fit_function': 'lorentziandouble',
+    #             'estimator': 'dip'
+    #         }
+    #         d1['N14'] = {
+    #             'fit_function': 'lorentziantriple',
+    #             'estimator': 'N14'
+    #         }
+    #         d1['N15'] = {
+    #             'fit_function': 'lorentziandouble',
+    #             'estimator': 'N15'
+    #         }
+    #         d1['Two Gaussian dips'] = {
+    #             'fit_function': 'gaussiandouble',
+    #             'estimator': 'dip'
+    #         }
+    #         default_fits = OrderedDict()
+    #         default_fits['1d'] = d1
+    #         fc.load_from_dict(default_fits)
+    #     return fc
+    #
+    # @fc.representer
+    # def sv_get_fits(self, val):
+    #     """ save configured fits """
+    #     if len(val.fit_list) > 0:
+    #         return val.save_to_dict()
+    #     else:
+    #         return None
 
     def _initialize_odmr_plots(self):
         """ Initializing the ODMR plots (line and matrix). """

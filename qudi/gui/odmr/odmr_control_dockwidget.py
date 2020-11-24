@@ -25,106 +25,97 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 
-__all__ = ('OdmrControlDockWidget',)
+__all__ = ('OdmrCwControlDockWidget', 'OdmrScanControlDockWidget')
+
+# Determine minimal spinbox width from current default metrics
+_min_spinbox_width = QtGui.QFontMetrics(ScienDSpinBox().font()).width('   -000.000000 GHz   ')
 
 
-class OdmrControlDockWidget(AdvancedDockWidget):
+class OdmrCwControlDockWidget(AdvancedDockWidget):
+    """
+
+    """
+    sigCwParametersChanged = QtCore.Signal(float, float)
+
+    def __init__(self, *args, power_range=None, frequency_range=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle('ODMR CW Control')
+
+        # create central widget and layout
+        main_widget = QtWidgets.QWidget()
+        main_layout = QtWidgets.QHBoxLayout()
+        main_layout.setContentsMargins(1, 1, 1, 1)
+        main_layout.setStretch(1, 1)
+        main_layout.setStretch(3, 1)
+        main_widget.setLayout(main_layout)
+        main_widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.setWidget(main_widget)
+
+        # create CW parameter spinboxes
+        label = QtWidgets.QLabel('CW Power:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        main_layout.addWidget(label)
+        self.cw_power_spinbox = ScienDSpinBox()
+        self.cw_power_spinbox.setMinimumWidth(_min_spinbox_width)
+        self.cw_power_spinbox.setDecimals(6)
+        self.cw_power_spinbox.setSuffix('dBm')
+        if power_range is not None:
+            self.cw_power_spinbox.setRange(*power_range)
+        main_layout.addWidget(self.cw_power_spinbox)
+        label = QtWidgets.QLabel('CW Frequency:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        main_layout.addWidget(label)
+        self.cw_frequency_spinbox = ScienDSpinBox()
+        self.cw_frequency_spinbox.setMinimumWidth(_min_spinbox_width)
+        self.cw_frequency_spinbox.setDecimals(6)
+        self.cw_frequency_spinbox.setSuffix('Hz')
+        if frequency_range is None:
+            self.cw_frequency_spinbox.setMinimum(0)
+        else:
+            self.cw_frequency_spinbox.setRange(*frequency_range)
+        main_layout.addWidget(self.cw_frequency_spinbox)
+
+        def edited_callback():
+            self.sigCwParametersChanged.emit(*self.cw_parameters)
+        self.cw_power_spinbox.editingFinished.connect(edited_callback)
+        self.cw_frequency_spinbox.editingFinished.connect(edited_callback)
+
+    @property
+    def cw_parameters(self):
+        return self.cw_frequency_spinbox.value(), self.cw_power_spinbox.value()
+
+    def set_cw_parameters(self, frequency=None, power=None):
+        if power is not None:
+            self.cw_power_spinbox.setValue(power)
+        if frequency is not None:
+            self.cw_frequency_spinbox.setValue(frequency)
+
+
+class OdmrScanControlDockWidget(AdvancedDockWidget):
     """
     """
     sigRangeCountChanged = QtCore.Signal(int)
     sigRangeChanged = QtCore.Signal(tuple, int)
-    sigCwParametersChanged = QtCore.Signal(float, float)
     sigRuntimeChanged = QtCore.Signal(float)
     sigAveragedLinesChanged = QtCore.Signal(int)
+    sigDataSelectionChanged = QtCore.Signal(str, int)
 
-    def __init__(self, *args, scan_frequency_limits=None, **kwargs):
+    def __init__(self, *args, power_range=None, frequency_range=None, data_channels=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('ODMR Control')
+        self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
-        font_metrics = QtGui.QFontMetrics(ScienDSpinBox().font())
-        self._min_spinbox_width = font_metrics.width(f'   -000.000000 GHz   ')
-
-        if scan_frequency_limits is None:
-            self._scan_frequency_limits = None
+        if frequency_range is None:
+            self._frequency_range = None
         else:
-            self._scan_frequency_limits = tuple(scan_frequency_limits)
+            self._frequency_range = tuple(frequency_range)
 
         # create central widget and layout
         main_widget = QtWidgets.QWidget()
-        main_layout = QtWidgets.QGridLayout()
+        main_layout = QtWidgets.QVBoxLayout()
         main_layout.setContentsMargins(1, 1, 1, 1)
         main_widget.setLayout(main_layout)
         self.setWidget(main_widget)
-
-        # create CW parameter group box
-        group_box = QtWidgets.QGroupBox('CW Parameters')
-        layout = QtWidgets.QHBoxLayout()
-        group_box.setLayout(layout)
-        label = QtWidgets.QLabel('CW Frequency:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label)
-        self.cw_frequency_spinbox = ScienDSpinBox()
-        self.cw_frequency_spinbox.setMinimumWidth(self._min_spinbox_width)
-        self.cw_frequency_spinbox.setMinimum(0)
-        self.cw_frequency_spinbox.setDecimals(6)
-        self.cw_frequency_spinbox.setSuffix('Hz')
-        layout.addWidget(self.cw_frequency_spinbox)
-        label = QtWidgets.QLabel('CW Power:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label)
-        self.cw_power_spinbox = ScienDSpinBox()
-        self.cw_power_spinbox.setMinimumWidth(self._min_spinbox_width)
-        self.cw_power_spinbox.setDecimals(6)
-        self.cw_power_spinbox.setSuffix('dBm')
-        layout.addWidget(self.cw_power_spinbox)
-        layout.setStretch(1, 1)
-        layout.setStretch(3, 1)
-        group_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        main_layout.addWidget(group_box)
-
-        # create runtime parameters group box
-        group_box = QtWidgets.QGroupBox('Runtime Parameters')
-        layout = QtWidgets.QGridLayout()
-        layout.setColumnStretch(1, 1)
-        layout.setColumnStretch(3, 1)
-        group_box.setLayout(layout)
-        label = QtWidgets.QLabel('Runtime:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 0, 0)
-        self.runtime_spinbox = ScienDSpinBox()
-        self.runtime_spinbox.setMinimumWidth(self._min_spinbox_width)
-        self.runtime_spinbox.setMinimum(0)
-        self.runtime_spinbox.setDecimals(1)
-        self.runtime_spinbox.setSuffix('s')
-        layout.addWidget(self.runtime_spinbox, 0, 1)
-        label = QtWidgets.QLabel('Lines to Average:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 0, 2)
-        self.average_lines_spinbox = QtWidgets.QSpinBox()
-        self.average_lines_spinbox.setMinimumWidth(self._min_spinbox_width)
-        self.average_lines_spinbox.setMinimum(0)
-        layout.addWidget(self.average_lines_spinbox, 0, 3)
-        layout.addWidget(self.runtime_spinbox, 0, 1)
-        label = QtWidgets.QLabel('Elapsed Time:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 1, 0)
-        self.elapsed_time_lineedit = QtWidgets.QLineEdit('00:00:00')
-        self.elapsed_time_lineedit.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.elapsed_time_lineedit.setReadOnly(True)
-        layout.addWidget(self.elapsed_time_lineedit, 1, 1)
-        label = QtWidgets.QLabel('Elapsed Sweeps:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 1, 2)
-        self.elapsed_sweeps_spinbox = QtWidgets.QSpinBox()
-        self.elapsed_sweeps_spinbox.setMinimumWidth(self._min_spinbox_width)
-        self.elapsed_sweeps_spinbox.setMinimum(-1)
-        self.elapsed_sweeps_spinbox.setSpecialValueText('NaN')
-        self.elapsed_sweeps_spinbox.setValue(-1)
-        self.elapsed_sweeps_spinbox.setReadOnly(True)
-        self.elapsed_sweeps_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-        layout.addWidget(self.elapsed_sweeps_spinbox, 1, 3)
-        group_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        main_layout.addWidget(group_box)
 
         # create scan parameters group box
         group_box = QtWidgets.QGroupBox('Scan Parameters')
@@ -149,11 +140,13 @@ class OdmrControlDockWidget(AdvancedDockWidget):
         label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         h_layout.addWidget(label)
         self.scan_power_spinbox = ScienDSpinBox()
-        self.scan_power_spinbox.setMinimumWidth(self._min_spinbox_width)
+        self.scan_power_spinbox.setMinimumWidth(_min_spinbox_width)
         self.scan_power_spinbox.setDecimals(6)
         self.scan_power_spinbox.setSuffix('dBm')
         self.scan_power_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                               QtWidgets.QSizePolicy.Fixed)
+        if power_range is not None:
+            self.scan_power_spinbox.setRange(*power_range)
         h_layout.addWidget(self.scan_power_spinbox)
         layout.addLayout(h_layout)
         frame = QtWidgets.QFrame()
@@ -177,6 +170,49 @@ class OdmrControlDockWidget(AdvancedDockWidget):
         layout.addStretch(1)
         main_layout.addWidget(group_box)
 
+        # create runtime parameters group box
+        group_box = QtWidgets.QGroupBox('Runtime Parameters')
+        layout = QtWidgets.QGridLayout()
+        layout.setColumnStretch(1, 1)
+        layout.setColumnStretch(3, 1)
+        group_box.setLayout(layout)
+        label = QtWidgets.QLabel('Runtime:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 0, 0)
+        self.runtime_spinbox = ScienDSpinBox()
+        self.runtime_spinbox.setMinimumWidth(_min_spinbox_width)
+        self.runtime_spinbox.setMinimum(0)
+        self.runtime_spinbox.setDecimals(1)
+        self.runtime_spinbox.setSuffix('s')
+        layout.addWidget(self.runtime_spinbox, 0, 1)
+        label = QtWidgets.QLabel('Lines to Average:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 0, 2)
+        self.average_lines_spinbox = QtWidgets.QSpinBox()
+        self.average_lines_spinbox.setMinimumWidth(_min_spinbox_width)
+        self.average_lines_spinbox.setMinimum(0)
+        layout.addWidget(self.average_lines_spinbox, 0, 3)
+        layout.addWidget(self.runtime_spinbox, 0, 1)
+
+        label = QtWidgets.QLabel('Data Channel:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 1, 0)
+        self._data_channel_combobox = QtWidgets.QComboBox()
+        if data_channels is not None:
+            self._data_channel_combobox.addItems(data_channels)
+        self._data_channel_combobox.currentIndexChanged.connect(self._data_selection_changed_cb)
+        layout.addWidget(self._data_channel_combobox, 1, 1)
+        label = QtWidgets.QLabel('Range Index:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 1, 2)
+        self._range_index_spinbox = QtWidgets.QSpinBox()
+        self._range_index_spinbox.setRange(0, 0)
+        self._range_index_spinbox.valueChanged.connect(self._data_selection_changed_cb)
+        layout.addWidget(self._range_index_spinbox, 1, 3)
+
+        group_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        main_layout.addWidget(group_box)
+
         # Add single frequency scan
         self._range_widgets = list()
         self.add_frequency_range()
@@ -190,10 +226,6 @@ class OdmrControlDockWidget(AdvancedDockWidget):
         return self.runtime_spinbox.value()
 
     @property
-    def cw_parameters(self):
-        return self.cw_power_spinbox.value(), self.cw_frequency_spinbox.value()
-
-    @property
     def range_count(self):
         return len(self._range_widgets)
 
@@ -204,11 +236,6 @@ class OdmrControlDockWidget(AdvancedDockWidget):
     @QtCore.Slot(float)
     def set_runtime(self, value):
         self.runtime_spinbox.setValue(value)
-
-    @QtCore.Slot(float, float)
-    def set_cw_parameters(self, power, frequency):
-        self.cw_power_spinbox.setValue(power)
-        self.cw_frequency_spinbox.setValue(frequency)
 
     @QtCore.Slot(int)
     def set_range_count(self, count):
@@ -240,28 +267,29 @@ class OdmrControlDockWidget(AdvancedDockWidget):
     def add_frequency_range(self):
         row = self.range_count + 2
         start_spinbox = ScienDSpinBox()
-        start_spinbox.setMinimumWidth(self._min_spinbox_width)
+        start_spinbox.setMinimumWidth(_min_spinbox_width)
         start_spinbox.setDecimals(6)
         start_spinbox.setSuffix('Hz')
         step_spinbox = ScienDSpinBox()
-        step_spinbox.setMinimumWidth(self._min_spinbox_width)
+        step_spinbox.setMinimumWidth(_min_spinbox_width)
         step_spinbox.setDecimals(6)
         step_spinbox.setSuffix('Hz')
         stop_spinbox = ScienDSpinBox()
-        stop_spinbox.setMinimumWidth(self._min_spinbox_width)
+        stop_spinbox.setMinimumWidth(_min_spinbox_width)
         stop_spinbox.setDecimals(6)
         stop_spinbox.setSuffix('Hz')
-        if self._scan_frequency_limits is None:
+        if self._frequency_range is None:
             start_spinbox.setMinimum(0)
             step_spinbox.setMinimum(0)
             stop_spinbox.setMinimum(0)
         else:
-            start_spinbox.setRange(*self._scan_frequency_limits)
-            step_spinbox.setRange(*self._scan_frequency_limits)
-            stop_spinbox.setRange(*self._scan_frequency_limits)
+            start_spinbox.setRange(*self._frequency_range)
+            step_spinbox.setRange(*self._frequency_range)
+            stop_spinbox.setRange(*self._frequency_range)
         self._range_widgets.append((start_spinbox, step_spinbox, stop_spinbox))
         for col, widget in enumerate(self._range_widgets[-1]):
             self._ranges_layout.addWidget(widget, row, col)
+        self._range_index_spinbox.setMaximum(len(self._range_widgets) - 1)
 
     @QtCore.Slot()
     def remove_frequency_range(self):
@@ -271,3 +299,10 @@ class OdmrControlDockWidget(AdvancedDockWidget):
                 widget.setParent(None)
                 widget.deleteLater()
             del self._range_widgets[-1]
+            self._range_index_spinbox.setMaximum(len(self._range_widgets) - 1)
+
+    @QtCore.Slot()
+    def _data_selection_changed_cb(self):
+        channel = self._data_channel_combobox.currentText()
+        range_index = self._range_index_spinbox.value()
+        self.sigDataSelectionChanged.emit(channel, range_index)
