@@ -109,6 +109,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         # reset states if requested, otherwise use the saved states
         if self._remember_states and isinstance(self._states, dict) and \
                 set(self._states) == set(self._switches):
+            self._states = {switch: self._states[switch] for switch in self._switches}
             self.states = self._states
         else:
             self._states = dict()
