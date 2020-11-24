@@ -143,9 +143,9 @@ class OdmrStatusBar(QtWidgets.QStatusBar):
 
         min_widget_width = QtGui.QFontMetrics(ScienDSpinBox().font()).width(' 00:00:00 ')
 
-        self.setStyleSheet('QStatusBar::item { border: 0px}')
+        # self.setStyleSheet('QStatusBar::item { border: 0px}')
         layout = QtWidgets.QHBoxLayout()
-        # layout.setContentsMargins(1, 1, 1, 1)
+        layout.setContentsMargins(0, 0, 0, 0)
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         layout.addStretch(1)
