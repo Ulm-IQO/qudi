@@ -242,6 +242,7 @@ class AWGM819X(Base, PulserInterface):
         """
 
         self.set_seq_mode('ARB')
+        self._delete_all_sequences()  # leave sequence mode
 
         self.log.debug("Load_waveform call with dict/list {}".format(load_dict))
 
@@ -305,13 +306,6 @@ class AWGM819X(Base, PulserInterface):
         analog_channels = sorted(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
-        # Number of channels that have this sequence set
-        n_ready_ch = len(self.get_loaded_assets())
-        if n_ready_ch != len(analog_channels):
-            self.log.error('Unable to load sequence.\nNumber of tracks in sequence to load does '
-                           'not match the number of active analog channels.')
-            return self.get_loaded_assets()
-
         if not (set(self.get_loaded_assets()[0].values())).issubset(set([sequence_name])):
             self.log.error('Unable to load sequence into channels.\n'
                            'Make sure to call write_sequence() first.')
@@ -321,10 +315,8 @@ class AWGM819X(Base, PulserInterface):
         """
         select the first segment in your sequence, before any dynamic sequence selection.
         """
-        self.write(":STAB1:SEQ:SEL 0")
-        self.write(":STAB2:SEQ:SEL 0")
-        self.write(":STAB1:DYN ON")
-        self.write(":STAB2:DYN ON")
+        self.write_all_ch(":STAB{}:SEQ:SEL 0", all_by_one={'m8195a': True})
+        self.write_all_ch(":STAB{}:DYN ON", all_by_one={'m8195a': True})
 
         # todo: for merging with master other sequence trigger mode might be required
         #self.set_trigger_mode('trig')  # for external dynamic control, different for other usecase
@@ -363,7 +355,15 @@ class AWGM819X(Base, PulserInterface):
                 # arb mode with at least one waveform
 
                 type_per_ch.append('waveform')
-                seg_id_active = self.query(':TRAC{}:SEL?'.format(chnl_num))
+                seg_id_active = int(self.query(':TRAC{}:SEL?'.format(chnl_num)))
+                n_segs = int(self.get_loaded_assets_num(chnl_num, mode='segment'))
+                if seg_id_active > n_segs:
+                    self.log.error("Active segment id {} outside available sequences ({}) for unknown reason."
+                                   " Set to segment id to 1.".format(seg_id_active, n_segs))
+                    seg_id_active = 1
+                    self.write(':TRAC1:SEL 1')
+                    self.write(':TRAC2:SEL 1')
+
                 asset_name = self.get_loaded_assets_name(chnl_num, mode='segment')[int(seg_id_active)-1]
 
             elif self.get_loaded_assets_num(chnl_num, mode='segment') >= 1 \
@@ -393,7 +393,7 @@ class AWGM819X(Base, PulserInterface):
 
             loaded_assets[chnl_num] = asset_name
 
-        if not all(x == type_per_ch[0] for x in type_per_ch):
+        if not all(x == type_per_ch[0] for x in type_per_ch) or not channel_numbers:
             # make sure type is same for all channels
             is_err = True
         if is_err:
@@ -949,8 +949,10 @@ class AWGM819X(Base, PulserInterface):
                                                                                          seq_loop_count,
                                                                                          control))
 
-            segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1)
-            segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2)
+            segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1) \
+                if len(wfm_tuple) == 1 else -1
+            segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2) \
+                if len(wfm_tuple) == 2 else -1
 
             try:
                 # creates all segments as data entries
@@ -987,7 +989,7 @@ class AWGM819X(Base, PulserInterface):
         while int(self.query('*OPC?')) != 1:
             time.sleep(0.25)
 
-        return ctr_steps_written
+        return int(ctr_steps_written)
 
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device incl. file extension.
@@ -2324,6 +2326,14 @@ class AWGM8195A(AWGM819X):
 
         return val_int.astype('int8')
 
+    def _define_new_sequence(self, name, num_steps):
+        # no storage system for sequences on 8195a
+        self._sequence_names = [name]
+
+    def _delete_all_sequences(self):
+        # no storage system for sequences on 8195a
+        self._sequence_names = []
+
     def _get_loaded_seq_catalogue(self, ch_num):
 
         if not self._sequence_names:
@@ -2358,7 +2368,7 @@ class AWGM8195A(AWGM819X):
         if index + 1 == num_steps:
             control += 2 ** 30  # set end sequence
 
-        return
+        return control
 
     def _name_with_ch(self, name, ch_num):
         """
