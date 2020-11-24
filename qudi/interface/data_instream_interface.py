@@ -22,9 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from enum import Enum
-from core.interface import abstract_interface_method
-from core.meta import InterfaceMetaclass
-from core.interface import ScalarConstraint
+from qudi.core.interface import abstract_interface_method
+from qudi.core.meta import InterfaceMetaclass
+from qudi.core.interface import ScalarConstraint
 
 
 class DataInStreamInterface(metaclass=InterfaceMetaclass):
