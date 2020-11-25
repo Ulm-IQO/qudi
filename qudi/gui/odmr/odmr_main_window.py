@@ -124,7 +124,7 @@ class OdmrMainWindow(QtWidgets.QMainWindow):
         # Connect close actions
         self.action_close.triggered.connect(self.close)
 
-    def set_elapsed(self, sweeps=None, time=None):
+    def set_elapsed(self, time=None,sweeps=None):
         status_bar = self.statusBar()
         if sweeps is not None:
             status_bar.elapsed_sweeps_spinbox.setValue(sweeps)
@@ -143,7 +143,7 @@ class OdmrStatusBar(QtWidgets.QStatusBar):
 
         min_widget_width = QtGui.QFontMetrics(ScienDSpinBox().font()).width(' 00:00:00 ')
 
-        # self.setStyleSheet('QStatusBar::item { border: 0px}')
+        self.setStyleSheet('QStatusBar::item { border: 0px}')
         layout = QtWidgets.QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         widget = QtWidgets.QWidget()
@@ -159,6 +159,7 @@ class OdmrStatusBar(QtWidgets.QStatusBar):
         self.elapsed_sweeps_spinbox.setValue(-1)
         self.elapsed_sweeps_spinbox.setReadOnly(True)
         self.elapsed_sweeps_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        self.elapsed_sweeps_spinbox.setFocusPolicy(QtCore.Qt.NoFocus)
         layout.addWidget(self.elapsed_sweeps_spinbox)
         label = QtWidgets.QLabel('Elapsed Time:')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -167,5 +168,7 @@ class OdmrStatusBar(QtWidgets.QStatusBar):
         self.elapsed_time_lineedit.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.elapsed_time_lineedit.setReadOnly(True)
         self.elapsed_time_lineedit.setMinimumWidth(min_widget_width)
+        self.elapsed_time_lineedit.setFocusPolicy(QtCore.Qt.NoFocus)
         layout.addWidget(self.elapsed_time_lineedit)
         self.addPermanentWidget(widget, 1)
+

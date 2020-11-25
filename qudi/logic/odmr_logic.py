@@ -72,11 +72,13 @@ class OdmrLogic(LogicBase):
     sigNextLine = QtCore.Signal()
 
     # Update signals, e.g. for GUI module
-    sigParameterUpdated = QtCore.Signal(dict)
     sigOutputStateUpdated = QtCore.Signal(str, bool)
     sigOdmrPlotsUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray)
     sigOdmrFitUpdated = QtCore.Signal(np.ndarray, np.ndarray, dict, str)
-    sigOdmrElapsedTimeUpdated = QtCore.Signal(float, int)
+
+    sigScanParametersUpdated = QtCore.Signal(dict)
+    sigElapsedUpdated = QtCore.Signal(float, int)
+    sigScanStateUpdated = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -86,62 +88,55 @@ class OdmrLogic(LogicBase):
         """
         Initialisation performed during activation of the module.
         """
-        pass
-        # # Get connectors
-        # self._mw_device = self.microwave1()
-        # self._fit_logic = self.fitlogic()
-        # self._odmr_counter = self.odmrcounter()
-        # self._save_logic = self.savelogic()
-        # self._taskrunner = self.taskrunner()
-        #
-        # # Get hardware constraints
-        # limits = self.get_hw_constraints()
-        #
-        # # Set/recall microwave source parameters
-        # self.cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
-        # self.cw_mw_power = limits.power_in_range(self.cw_mw_power)
-        # self.sweep_mw_power = limits.power_in_range(self.sweep_mw_power)
-        # self._odmr_counter.oversampling = self._oversampling
-        # self._odmr_counter.lock_in_active = self._lock_in_active
-        #
-        # # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
-        # # theoretically this can be changed, but the current counting scheme will not support that
-        # self.mw_trigger_pol = TriggerEdge.RISING
-        # self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
-        #
-        # # Elapsed measurement time and number of sweeps
-        # self.elapsed_time = 0.0
-        # self.elapsed_sweeps = 0
-        #
-        # self.range_to_fit = 0
-        # self.matrix_range = 0
-        # self.fits_performed = {}
-        #
-        # self.frequency_lists = []
-        # self.final_freq_list = []
-        #
-        # # Set flags
-        # # for stopping a measurement
-        # self._stopRequested = False
-        # # for clearing the ODMR data during a measurement
-        # self._clearOdmrData = False
-        #
-        # # Initalize the ODMR data arrays (mean signal and sweep matrix)
-        # self._initialize_odmr_plots()
-        # # Raw data array
-        # self.odmr_raw_data = np.zeros(
-        #     [self.number_of_lines,
-        #      len(self._odmr_counter.get_odmr_channels()),
-        #      self.odmr_plot_x.size]
-        # )
-        #
-        # # Switch off microwave and set CW frequency and power
-        # self.mw_off()
-        # self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
-        #
-        # # Connect signals
-        # self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
-        # return
+
+        # Get hardware constraints
+        limits = self.get_hw_constraints()
+
+        # Set/recall microwave source parameters
+        self.cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
+        self.cw_mw_power = limits.power_in_range(self.cw_mw_power)
+        self.sweep_mw_power = limits.power_in_range(self.sweep_mw_power)
+        self._odmr_counter.oversampling = self._oversampling
+        self._odmr_counter.lock_in_active = self._lock_in_active
+
+        # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
+        # theoretically this can be changed, but the current counting scheme will not support that
+        self.mw_trigger_pol = TriggerEdge.RISING
+        self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
+
+        # Elapsed measurement time and number of sweeps
+        self.elapsed_time = 0.0
+        self.elapsed_sweeps = 0
+
+        self.range_to_fit = 0
+        self.matrix_range = 0
+        self.fits_performed = {}
+
+        self.frequency_lists = []
+        self.final_freq_list = []
+
+        # Set flags
+        # for stopping a measurement
+        self._stopRequested = False
+        # for clearing the ODMR data during a measurement
+        self._clearOdmrData = False
+
+        # Initalize the ODMR data arrays (mean signal and sweep matrix)
+        self._initialize_odmr_plots()
+        # Raw data array
+        self.odmr_raw_data = np.zeros(
+            [self.number_of_lines,
+             len(self._odmr_counter.get_odmr_channels()),
+             self.odmr_plot_x.size]
+        )
+
+        # Switch off microwave and set CW frequency and power
+        self.mw_off()
+        self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
+
+        # Connect signals
+        self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
+        return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -626,6 +621,15 @@ class OdmrLogic(LogicBase):
 
         # Check with a bitwise or:
         return ret_val1 | ret_val2
+
+    def toggle_odmr_scan(self, start):
+        """
+        """
+        # if start:
+        #     self.start_odmr_scan()
+        # else:
+        #     self.stop_odmr_scan()
+        self.sigScanStateUpdated.emit(start)
 
     def start_odmr_scan(self):
         """ Starting an ODMR scan.
