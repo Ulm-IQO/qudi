@@ -58,7 +58,7 @@ class OdmrGui(GuiBase):
     # declare connectors
     _odmr_logic = Connector(name='odmr_logic', interface='OdmrLogic')
 
-    sigStartOdmrScan = QtCore.Signal()
+    sigToggleScan = QtCore.Signal(bool, bool)
     sigStopOdmrScan = QtCore.Signal()
     sigContinueOdmrScan = QtCore.Signal()
     sigClearData = QtCore.Signal()
@@ -352,6 +352,8 @@ class OdmrGui(GuiBase):
         self.__connect_fit_control_signals()
         self.__connect_cw_control_signals()
         self.__connect_scan_control_signals()
+        self.__connect_logic_signals()
+        self.__connect_gui_signals()
         # # Internal user input changed signals
         # self._mw.cw_frequency_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
         #
@@ -488,10 +490,10 @@ class OdmrGui(GuiBase):
         self._mw.raise_()
 
     def __connect_main_window_actions(self):
-        self._mw.action_toggle_measurement.triggered.connect(self.run_stop_odmr)
+        self._mw.action_toggle_measurement.triggered[bool].connect(self.run_stop_odmr)
         self._mw.action_resume_measurement.triggered.connect(self.resume_odmr)
         self._mw.action_save_measurement.triggered.connect(self.save_data)
-        self._mw.action_toggle_cw.triggered.connect(self.toggle_cw_mode)
+        self._mw.action_toggle_cw.triggered[bool].connect(self.toggle_cw_mode)
         self._mw.action_show_cw_controls.triggered[bool].connect(
             self._cw_control_dockwidget.setVisible
         )
@@ -516,13 +518,27 @@ class OdmrGui(GuiBase):
         self._scan_control_dockwidget.sigAveragedLinesChanged.connect(logic.set_average_length)
         self._scan_control_dockwidget.sigDataSelectionChanged.connect(self._data_selection_changed)
 
+    def __connect_gui_signals(self):
+        logic = self._odmr_logic()
+        self.sigToggleScan.connect(logic.toggle_odmr_scan, QtCore.Qt.QueuedConnection)
+
+    def __connect_logic_signals(self):
+        logic = self._odmr_logic()
+        logic.sigScanStateUpdated.connect(self._update_scan_state, QtCore.Qt.QueuedConnection)
+        logic.sigElapsedUpdated.connect(self._mw.set_elapsed)
+        logic.sigScanParametersUpdated.connect(self._update_scan_parameters)
+
     def restore_default_view(self):
         self._cw_control_dockwidget.setFloating(False)
         self._scan_control_dockwidget.setFloating(False)
         self._fit_dockwidget.setFloating(False)
+        self._cw_control_dockwidget.show()
+        self._mw.action_show_cw_controls.setChecked(True)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._cw_control_dockwidget)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._scan_control_dockwidget)
-        self._mw.splitDockWidget(self._cw_control_dockwidget, self._scan_control_dockwidget, QtCore.Qt.Vertical)
+        self._mw.splitDockWidget(self._cw_control_dockwidget,
+                                 self._scan_control_dockwidget,
+                                 QtCore.Qt.Vertical)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
 
     def _menu_settings(self):
@@ -531,58 +547,26 @@ class OdmrGui(GuiBase):
 
     def run_stop_odmr(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
-        if is_checked:
-            # change the axes appearance according to input values:
-            self._mw.action_run_stop.setEnabled(False)
-            self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.action_toggle_cw.setEnabled(False)
-            self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
-            self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
-            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
-            dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
-            for identifier_name in dspinbox_dict:
-                dspinbox_type_list = dspinbox_dict[identifier_name]
-                [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
-            self._mw.odmr_control_DockWidget.add_range_button.setEnabled(False)
-            self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(False)
-            self._mw.runtime_DoubleSpinBox.setEnabled(False)
-            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-            self._sd.oversampling_SpinBox.setEnabled(False)
-            self._sd.lock_in_CheckBox.setEnabled(False)
-            self.sigStartOdmrScan.emit()
-        else:
-            self._mw.action_run_stop.setEnabled(False)
-            self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.action_toggle_cw.setEnabled(False)
-            self.sigStopOdmrScan.emit()
-        return
+        # Disable controls until logic feedback is activating them again
+        self._mw.action_toggle_measurement.setEnabled(False)
+        self._mw.action_resume_measurement.setEnabled(False)
+        self._mw.action_save_measurement.setEnabled(False)
+        self._mw.action_toggle_cw.setEnabled(False)
+        self._cw_control_dockwidget.parameters_set_enabled(False)
+        self._scan_control_dockwidget.scan_parameters_set_enabled(False)
+        # Notify logic
+        self.sigToggleScan.emit(is_checked, False)  # start measurement, resume flag
 
-    def resume_odmr(self, is_checked):
-        if is_checked:
-            self._mw.action_run_stop.setEnabled(False)
-            self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.action_toggle_cw.setEnabled(False)
-            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
-            self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
-            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
-            dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
-            for identifier_name in dspinbox_dict:
-                dspinbox_type_list = dspinbox_dict[identifier_name]
-                [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
-            self._mw.odmr_control_DockWidget.add_range_button.setEnabled(False)
-            self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(False)
-            self._mw.runtime_DoubleSpinBox.setEnabled(False)
-            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-            self._sd.oversampling_SpinBox.setEnabled(False)
-            self._sd.lock_in_CheckBox.setEnabled(False)
-            self.sigContinueOdmrScan.emit()
-        else:
-            self._mw.action_run_stop.setEnabled(False)
-            self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.action_toggle_cw.setEnabled(False)
-            self.sigStopOdmrScan.emit()
-        return
+    def resume_odmr(self):
+        # Disable controls until logic feedback is activating them again
+        self._mw.action_toggle_measurement.setEnabled(False)
+        self._mw.action_resume_measurement.setEnabled(False)
+        self._mw.action_save_measurement.setEnabled(False)
+        self._mw.action_toggle_cw.setEnabled(False)
+        self._cw_control_dockwidget.parameters_set_enabled(False)
+        self._scan_control_dockwidget.scan_parameters_set_enabled(False)
+        # Notify logic
+        self.sigToggleScan.emit(True, True)  # start measurement, resume flag
 
     def toggle_cw_mode(self, is_checked):
         """ Starts or stops CW microwave output if no measurement is running. """
@@ -598,89 +582,20 @@ class OdmrGui(GuiBase):
             self.sigMwOff.emit()
         return
 
-    def update_status(self, mw_mode, is_running):
+    def _update_scan_state(self, running):
         """
         Update the display for a change in the microwave status (mode and output).
 
-        @param str mw_mode: is the microwave output active?
-        @param bool is_running: is the microwave output active?
+        @param bool running:
         """
-        # Block signals from firing
-        self._mw.action_run_stop.blockSignals(True)
-        self._mw.action_resume_odmr.blockSignals(True)
-        self._mw.action_toggle_cw.blockSignals(True)
-
-        # Update measurement status (activate/deactivate widgets/actions)
-        if is_running:
-            self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
-            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
-            if mw_mode != 'cw':
-                self._mw.clear_odmr_PushButton.setEnabled(True)
-                self._mw.action_run_stop.setEnabled(True)
-                self._mw.action_toggle_cw.setEnabled(False)
-                dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
-                for identifier_name in dspinbox_dict:
-                    dspinbox_type_list = dspinbox_dict[identifier_name]
-                    [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
-                self._mw.odmr_control_DockWidget.add_range_button.setEnabled(False)
-                self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(False)
-                self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
-                self._mw.runtime_DoubleSpinBox.setEnabled(False)
-                self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-                self._sd.oversampling_SpinBox.setEnabled(False)
-                self._sd.lock_in_CheckBox.setEnabled(False)
-                self._mw.action_run_stop.setChecked(True)
-                self._mw.action_resume_odmr.setChecked(True)
-                self._mw.action_toggle_cw.setChecked(False)
-            else:
-                self._mw.clear_odmr_PushButton.setEnabled(False)
-                self._mw.action_run_stop.setEnabled(False)
-                self._mw.action_toggle_cw.setEnabled(True)
-                dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
-                for identifier_name in dspinbox_dict:
-                    dspinbox_type_list = dspinbox_dict[identifier_name]
-                    [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
-                self._mw.odmr_control_DockWidget.add_range_button.setEnabled(True)
-                self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(True)
-                self._mw.sweep_power_DoubleSpinBox.setEnabled(True)
-                self._mw.runtime_DoubleSpinBox.setEnabled(True)
-                self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
-                self._sd.oversampling_SpinBox.setEnabled(True)
-                self._sd.lock_in_CheckBox.setEnabled(True)
-                self._mw.action_run_stop.setChecked(False)
-                self._mw.action_resume_odmr.setChecked(False)
-                self._mw.action_toggle_cw.setChecked(True)
-        else:
-            self._mw.action_resume_odmr.setEnabled(True)
-            self._mw.cw_power_DoubleSpinBox.setEnabled(True)
-            self._mw.sweep_power_DoubleSpinBox.setEnabled(True)
-            self._mw.cw_frequency_DoubleSpinBox.setEnabled(True)
-            self._mw.clear_odmr_PushButton.setEnabled(False)
-            self._mw.action_run_stop.setEnabled(True)
-            self._mw.action_toggle_cw.setEnabled(True)
-            dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
-            for identifier_name in dspinbox_dict:
-                dspinbox_type_list = dspinbox_dict[identifier_name]
-                [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
-            if self._odmr_logic.mw_scanmode.name == 'SWEEP':
-                self._mw.odmr_control_DockWidget.add_range_button.setDisabled(True)
-            elif self._odmr_logic.mw_scanmode.name == 'LIST':
-                self._mw.odmr_control_DockWidget.add_range_button.setEnabled(True)
-            self._mw.odmr_control_DockWidget.remove_range_button.setEnabled(True)
-            self._mw.runtime_DoubleSpinBox.setEnabled(True)
-            self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
-            self._sd.oversampling_SpinBox.setEnabled(True)
-            self._sd.lock_in_CheckBox.setEnabled(True)
-            self._mw.action_run_stop.setChecked(False)
-            self._mw.action_resume_odmr.setChecked(False)
-            self._mw.action_toggle_cw.setChecked(False)
-
-        # Unblock signal firing
-        self._mw.action_run_stop.blockSignals(False)
-        self._mw.action_resume_odmr.blockSignals(False)
-        self._mw.action_toggle_cw.blockSignals(False)
-        return
+        # set controls state
+        self._mw.action_toggle_measurement.setEnabled(True)
+        self._mw.action_resume_measurement.setEnabled(not running)
+        self._mw.action_save_measurement.setEnabled(True)
+        self._mw.action_toggle_cw.setEnabled(not running)
+        self._cw_control_dockwidget.parameters_set_enabled(not running)
+        self._scan_control_dockwidget.scan_parameters_set_enabled(not running)
+        self._mw.action_toggle_measurement.setChecked(running)
 
     def update_plots(self, odmr_data_x, odmr_data_y, odmr_matrix):
         """ Refresh the plot widgets with new data. """
@@ -797,8 +712,8 @@ class OdmrGui(GuiBase):
                                                                                  self._odmr_logic.matrix_range))
         return
 
-    def update_parameter(self, param_dict):
-        """ Update the parameter display in the GUI.
+    def _update_scan_parameters(self, param_dict):
+        """ Update the scan parameetrs in the GUI
 
         @param param_dict:
         @return:
@@ -888,8 +803,18 @@ class OdmrGui(GuiBase):
         return
 
     ############################################################################
-    #                           Change Methods                                 #
+    #                        Widget callback methods (Qt slots)                #
     ############################################################################
+
+    def _range_count_changed(self, count):
+        # ToDo: Implement
+        print(f'range count changed to {count}')
+
+    def _scan_range_changed(self, params, range_index):
+        print(f'scan range with index {range_index} changed to {params}')
+
+    def _data_selection_changed(self, channel, range_index):
+        print(f'data selection changed: channel "{channel}", range index {range_index}')
 
     def change_cw_params(self):
         """ Change CW frequency and power of microwave source """
@@ -930,15 +855,15 @@ class OdmrGui(GuiBase):
 
     def save_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
-        filetag = self._mw.save_tag_LineEdit.text()
-        cb_range = self.get_matrix_cb_range()
-
-        # Percentile range is None, unless the percentile scaling is selected in GUI.
-        pcile_range = None
-        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
-            high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
-            pcile_range = [low_centile, high_centile]
-
-        self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
-        return
+        filetag = self._mw.save_nametag_lineedit.text()
+        print(f'save measurement with tag "{filetag}"')
+        # cb_range = self.get_matrix_cb_range()
+        #
+        # # Percentile range is None, unless the percentile scaling is selected in GUI.
+        # pcile_range = None
+        # if self._mw.odmr_cb_centiles_RadioButton.isChecked():
+        #     low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
+        #     high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
+        #     pcile_range = [low_centile, high_centile]
+        #
+        # self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
