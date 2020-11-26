@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
@@ -100,20 +101,20 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
     """
     """
     sigRangeCountChanged = QtCore.Signal(int)
-    sigRangeChanged = QtCore.Signal(tuple, int)
+    sigRangeChanged = QtCore.Signal(float, float, int, int)
     sigRuntimeChanged = QtCore.Signal(float)
     sigAveragedLinesChanged = QtCore.Signal(int)
     sigDataSelectionChanged = QtCore.Signal(str, int)
 
-    def __init__(self, *args, power_range=None, frequency_range=None, data_channels=None, **kwargs):
+    def __init__(self, *args, power_range=None, frequency_range=None, data_channels=None, points_range=None,  **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('ODMR Scan Control')
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
         if frequency_range is None:
-            self._frequency_range = None
-        else:
-            self._frequency_range = tuple(frequency_range)
+            self._frequency_range = (0, np.inf)
+        if points_range is None:
+            self._points_range = (2, 2 ** 31 - 1)
 
         # create central widget and layout
         main_widget = QtWidgets.QWidget()
@@ -165,10 +166,10 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         label = QtWidgets.QLabel('Start')
         label.setAlignment(QtCore.Qt.AlignCenter)
         self._ranges_layout.addWidget(label, 1, 0)
-        label = QtWidgets.QLabel('Step')
+        label = QtWidgets.QLabel('Stop')
         label.setAlignment(QtCore.Qt.AlignCenter)
         self._ranges_layout.addWidget(label, 1, 1)
-        label = QtWidgets.QLabel('Stop')
+        label = QtWidgets.QLabel('Points')
         label.setAlignment(QtCore.Qt.AlignCenter)
         self._ranges_layout.addWidget(label, 1, 2)
         layout.addLayout(self._ranges_layout)
@@ -290,36 +291,28 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
 
     @QtCore.Slot()
     def add_frequency_range(self):
-        index = self.range_count
-        row = index + 2
-        callback = self.__get_range_change_cb(index)
+        row = self.range_count + 2
         start_spinbox = ScienDSpinBox()
         start_spinbox.setMinimumWidth(_min_spinbox_width)
         start_spinbox.setDecimals(6)
         start_spinbox.setSuffix('Hz')
-        start_spinbox.valueChanged.connect(callback)
-        step_spinbox = ScienDSpinBox()
-        step_spinbox.setMinimumWidth(_min_spinbox_width)
-        step_spinbox.setDecimals(6)
-        step_spinbox.setSuffix('Hz')
-        step_spinbox.valueChanged.connect(callback)
         stop_spinbox = ScienDSpinBox()
         stop_spinbox.setMinimumWidth(_min_spinbox_width)
         stop_spinbox.setDecimals(6)
         stop_spinbox.setSuffix('Hz')
-        stop_spinbox.valueChanged.connect(callback)
-        if self._frequency_range is None:
-            start_spinbox.setMinimum(0)
-            step_spinbox.setMinimum(0)
-            stop_spinbox.setMinimum(0)
-        else:
-            start_spinbox.setRange(*self._frequency_range)
-            step_spinbox.setRange(*self._frequency_range)
-            stop_spinbox.setRange(*self._frequency_range)
-        self._range_widgets.append((start_spinbox, step_spinbox, stop_spinbox))
+        points_spinbox = QtWidgets.QSpinBox()
+        points_spinbox.setMinimumWidth(_min_spinbox_width)
+        start_spinbox.setRange(*self._frequency_range)
+        stop_spinbox.setRange(*self._frequency_range)
+        points_spinbox.setRange(*self._points_range)
+        self._range_widgets.append((start_spinbox, stop_spinbox, points_spinbox))
         for col, widget in enumerate(self._range_widgets[-1]):
             self._ranges_layout.addWidget(widget, row, col)
         self._range_index_spinbox.setMaximum(len(self._range_widgets) - 1)
+        callback = self.__get_range_change_cb(self.range_count - 1)
+        start_spinbox.valueChanged.connect(callback)
+        stop_spinbox.valueChanged.connect(callback)
+        points_spinbox.valueChanged.connect(callback)
         self.sigRangeCountChanged.emit(len(self._range_widgets))
 
     @QtCore.Slot()
@@ -345,5 +338,6 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
 
     def __get_range_change_cb(self, index):
         def range_changed_cb():
-            self.sigRangeChanged.emit(tuple(w.value() for w in self._range_widgets[index]), index)
+            w = self._range_widgets[index]
+            self.sigRangeChanged.emit(w[0].value(), w[1].value(), w[2].value(), index)
         return range_changed_cb

@@ -59,6 +59,8 @@ class OdmrGui(GuiBase):
     _odmr_logic = Connector(name='odmr_logic', interface='OdmrLogic')
 
     sigToggleScan = QtCore.Signal(bool, bool)
+    sigToggleCw = QtCore.Signal(bool)
+
     sigStopOdmrScan = QtCore.Signal()
     sigContinueOdmrScan = QtCore.Signal()
     sigClearData = QtCore.Signal()
@@ -513,20 +515,30 @@ class OdmrGui(GuiBase):
     def __connect_scan_control_signals(self):
         logic = self._odmr_logic()
         self._scan_control_dockwidget.sigRangeCountChanged.connect(self._range_count_changed)
-        self._scan_control_dockwidget.sigRangeChanged.connect(self._scan_range_changed)
-        self._scan_control_dockwidget.sigRuntimeChanged.connect(logic.set_runtime)
-        self._scan_control_dockwidget.sigAveragedLinesChanged.connect(logic.set_average_length)
+        self._scan_control_dockwidget.sigRangeChanged.connect(
+            logic.set_frequency_range, QtCore.Qt.QueuedConnection
+        )
+        self._scan_control_dockwidget.sigRuntimeChanged.connect(
+            logic.set_runtime, QtCore.Qt.QueuedConnection
+        )
+        self._scan_control_dockwidget.sigAveragedLinesChanged.connect(
+            logic.set_average_length, QtCore.Qt.QueuedConnection
+        )
         self._scan_control_dockwidget.sigDataSelectionChanged.connect(self._data_selection_changed)
 
     def __connect_gui_signals(self):
         logic = self._odmr_logic()
         self.sigToggleScan.connect(logic.toggle_odmr_scan, QtCore.Qt.QueuedConnection)
+        self.sigToggleCw.connect(logic.toggle_cw_output, QtCore.Qt.QueuedConnection)
 
     def __connect_logic_signals(self):
         logic = self._odmr_logic()
         logic.sigScanStateUpdated.connect(self._update_scan_state, QtCore.Qt.QueuedConnection)
-        logic.sigElapsedUpdated.connect(self._mw.set_elapsed)
-        logic.sigScanParametersUpdated.connect(self._update_scan_parameters)
+        logic.sigCwStateUpdated.connect(self._update_cw_state, QtCore.Qt.QueuedConnection)
+        logic.sigElapsedUpdated.connect(self._mw.set_elapsed, QtCore.Qt.QueuedConnection)
+        logic.sigScanParametersUpdated.connect(
+            self._update_scan_parameters, QtCore.Qt.QueuedConnection
+        )
 
     def restore_default_view(self):
         self._cw_control_dockwidget.setFloating(False)
@@ -540,10 +552,6 @@ class OdmrGui(GuiBase):
                                  self._scan_control_dockwidget,
                                  QtCore.Qt.Vertical)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
-
-    def _menu_settings(self):
-        """ Open the settings menu """
-        self._sd.exec_()
 
     def run_stop_odmr(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
@@ -568,20 +576,6 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleScan.emit(True, True)  # start measurement, resume flag
 
-    def toggle_cw_mode(self, is_checked):
-        """ Starts or stops CW microwave output if no measurement is running. """
-        if is_checked:
-            self._mw.action_run_stop.setEnabled(False)
-            self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.action_toggle_cw.setEnabled(False)
-            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
-            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
-            self.sigCwMwOn.emit()
-        else:
-            self._mw.action_toggle_cw.setEnabled(False)
-            self.sigMwOff.emit()
-        return
-
     def _update_scan_state(self, running):
         """
         Update the display for a change in the microwave status (mode and output).
@@ -596,6 +590,29 @@ class OdmrGui(GuiBase):
         self._cw_control_dockwidget.parameters_set_enabled(not running)
         self._scan_control_dockwidget.scan_parameters_set_enabled(not running)
         self._mw.action_toggle_measurement.setChecked(running)
+
+    def toggle_cw_mode(self, is_checked):
+        """ Starts or stops CW microwave output if no measurement is running. """
+        # Disable controls until logic feedback is activating them again
+        self._mw.action_toggle_measurement.setEnabled(False)
+        self._mw.action_resume_measurement.setEnabled(False)
+        self._mw.action_toggle_cw.setEnabled(False)
+        self._cw_control_dockwidget.parameters_set_enabled(False)
+        # Notify logic
+        self.sigToggleCw.emit(is_checked)
+
+    def _update_cw_state(self, running):
+        """
+        Update the display for a change in the microwave status (mode and output).
+
+        @param bool running:
+        """
+        # set controls state
+        self._mw.action_toggle_measurement.setEnabled(not running)
+        self._mw.action_resume_measurement.setEnabled(not running)
+        self._mw.action_toggle_cw.setEnabled(True)
+        self._mw.action_toggle_cw.setChecked(running)
+        self._cw_control_dockwidget.parameters_set_enabled(not running)
 
     def update_plots(self, odmr_data_x, odmr_data_y, odmr_matrix):
         """ Refresh the plot widgets with new data. """
@@ -809,9 +826,6 @@ class OdmrGui(GuiBase):
     def _range_count_changed(self, count):
         # ToDo: Implement
         print(f'range count changed to {count}')
-
-    def _scan_range_changed(self, params, range_index):
-        print(f'scan range with index {range_index} changed to {params}')
 
     def _data_selection_changed(self, channel, range_index):
         print(f'data selection changed: channel "{channel}", range index {range_index}')
