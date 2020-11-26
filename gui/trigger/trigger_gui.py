@@ -19,26 +19,40 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
 from core.connector import Connector
 from gui.guibase import GUIBase
-from qtpy import QtWidgets, QtCore
-from qtpy import uic
-import sip
+from qtpy import QtWidgets, QtCore, QtGui
 
 
 class TriggerMainWindow(QtWidgets.QMainWindow):
-    """ Create the Main Window based on the *.ui file. """
+    """ Main Window for the TriggerGui module """
 
-    def __init__(self, **kwargs):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_trigger_gui.ui')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle('qudi: Trigger GUI')
+        # Create main layout and central widget
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.main_layout.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        widget = QtWidgets.QWidget()
+        widget.setLayout(self.main_layout)
+        widget.setFixedSize(1, 1)
+        self.setCentralWidget(widget)
 
-        # Load it
-        super().__init__(**kwargs)
-        uic.loadUi(ui_file, self)
-        self.show()
+        # Create QActions and menu bar
+        menu_bar = QtWidgets.QMenuBar()
+        self.setMenuBar(menu_bar)
+
+        menu = menu_bar.addMenu('Menu')
+        self.action_close = QtWidgets.QAction('Close Window')
+        self.action_close.setCheckable(False)
+        self.action_close.setIcon(QtGui.QIcon('artwork/icons/oxygen/22x22/application-exit.png'))
+        self.addAction(self.action_close)
+        menu.addAction(self.action_close)
+
+        # close window upon triggering close action
+        self.action_close.triggered.connect(self.close)
+        return
 
 
 class TriggerGui(GUIBase):
@@ -64,7 +78,7 @@ class TriggerGui(GUIBase):
         """ Hide window empty the GUI and disconnect signals
         """
 
-        self._depopulate_triggers()
+        self._delete_triggers()
 
         self.saveWindowPos(self._mw)
         self._mw.close()
@@ -78,14 +92,10 @@ class TriggerGui(GUIBase):
         """ Dynamically build the gui.
         @return: None
         """
-        # For each trigger the logic has, a button needs to be shown.
-        self._mw.trigger_groupBox.setTitle('Triggers')
-        self._mw.trigger_groupBox.setAlignment(QtCore.Qt.AlignLeft)
-        self._mw.trigger_groupBox.setFlat(False)
-        vertical_layout = QtWidgets.QVBoxLayout(self._mw.trigger_groupBox)
         self._widgets = list()
         for trigger in self.trigger_logic().names_of_triggers:
             widget = QtWidgets.QPushButton(trigger)
+            widget.setMinimumWidth(100)
             widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
             widget.setCheckable(True)
             widget.setChecked(False)
@@ -95,25 +105,21 @@ class TriggerGui(GUIBase):
                                    self._button_toggled(trigger_origin, button_state))
 
             self._widgets.append([trigger, widget])
-            vertical_layout.addWidget(widget)
 
-        self._mw.trigger_groupBox.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
-                                                QtWidgets.QSizePolicy.MinimumExpanding)
-        self._mw.trigger_groupBox.updateGeometry()
+            self._mw.main_layout.addWidget(widget)
 
-    def _depopulate_triggers(self):
+    def _delete_triggers(self):
         """ Delete all the buttons from the group box and remove the layout.
         @return: None
         """
-        for widgets in self._widgets:
-            widgets[1].clicked.disconnect()
-        self._widgets = list()
 
-        vertical_layout = self._mw.trigger_groupBox.layout()
-        if vertical_layout is not None:
-            for i in reversed(range(vertical_layout.count())):
-                vertical_layout.itemAt(i).widget().setParent(None)
-            sip.delete(vertical_layout)
+        for index in reversed(range(len(self._widgets))):
+            trigger, widget = self._widgets[index]
+            widget.clicked.disconnect()
+            self._mw.main_layout.removeWidget(widget)
+            widget.setParent(None)
+            del self._widgets[index]
+            widget.deleteLater()
 
     def _button_toggled(self, trigger, is_set):
         """ Helper function that is connected to the GUI interaction.
