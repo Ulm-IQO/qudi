@@ -145,7 +145,7 @@ class AWGM819X(Base, PulserInterface):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Each scalar parameter is an ScalarConstraints object defined in core.util.interfaces.
         Essentially it contains min/max values as well as min step size, default value and unit of
         the parameter.
 
@@ -401,9 +401,6 @@ class AWGM819X(Base, PulserInterface):
         """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
         @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without storage capability
-        (PulseBlaster, FPGA).
         """
 
         self.write_all_ch(':TRAC{}:DEL:ALL', all_by_one={'m8195a': True})
@@ -415,10 +412,9 @@ class AWGM819X(Base, PulserInterface):
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return (int, dict): inter value of the current status with the
-                             corresponding dictionary containing status
-                             description for all the possible status variables
-                             of the pulse generator hardware
+        @return (int, dict): tuple with an integer value of the current status and a corresponding
+                             dictionary containing status description for all the possible status
+                             variables of the pulse generator hardware.
         """
 
         status_dic = {-1: 'Failed Request or Communication',
@@ -774,8 +770,7 @@ class AWGM819X(Base, PulserInterface):
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
         """
-        Write a new waveform or append samples to an already existing waveform.
-        Keysight AWG doesn't have own mass memory, so waveforms are sampled to local computer dir.
+        Write a new waveform or append samples to an already existing waveform on the device memory.
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
@@ -784,7 +779,7 @@ class AWGM819X(Base, PulserInterface):
         @param str name: the name of the waveform to be created/append to
         @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
                                     values are 1D numpy arrays of type float32 containing the
-                                    voltage samples.
+                                    voltage samples normalized to half Vpp (between -1 and 1).
         @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
                                      values are 1D numpy arrays of type bool containing the marker
                                      states.
@@ -838,14 +833,17 @@ class AWGM819X(Base, PulserInterface):
         return total_number_of_samples, waveforms
 
     def write_sequence(self, name, sequence_parameters):
-        # todo: update docstrings with newest interface version
         """
         Write a new sequence on the device memory.
-        If elements in the sequence are not available on the AWG yet, they will be
-        transfered from the PC.
+        In wave_mem_mode == 'pc_hdd' and if elements in the sequence are not available on the AWG yet, they will be
+        transferred from the PC.
 
         @param str name: the name of the waveform to be created/append to
-        @param dict sequence_parameters: dictionary containing the parameters for a sequence
+        @param list sequence_parameters: List containing tuples of length 2. Each tuple represents
+                                         a sequence step. The first entry of the tuple is a list of
+                                         waveform names (str); one for each channel. The second
+                                         tuple element is a SequenceStep instance containing the
+                                         sequencing parameters for this step.
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
@@ -985,8 +983,7 @@ class AWGM819X(Base, PulserInterface):
         return int(ctr_steps_written)
 
     def get_waveform_names(self):
-        """ Retrieve the names of all uploaded waveforms on the device incl. file extension.
-        Keysight doesn't have mass memory, so name of sampled waveforms on pc.
+        """ Retrieve the names of all uploaded waveforms on the device.
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
@@ -1010,8 +1007,7 @@ class AWGM819X(Base, PulserInterface):
         return names
 
     def get_sequence_names(self):
-        """ Retrieve the names (without file extension) of all uploaded sequence on the device.
-        Since Keysight has no mass storage: files on local pc.
+        """ Retrieve the names of all uploaded sequence on the device.
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
