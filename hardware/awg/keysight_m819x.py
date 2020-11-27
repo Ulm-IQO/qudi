@@ -253,18 +253,15 @@ class AWGM819X(Base, PulserInterface):
 
         load_dict = self._load_list_2_dict(load_dict)
 
-        # Get all active channels
-        chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
-            chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
+        active_analog = self._get_active_d_or_a_channels(only_analog=True)
 
         # Check if all channels to load to are active
         channels_to_set = {'a_ch{0:d}'.format(chnl_num) for chnl_num in load_dict}
-        if not channels_to_set.issubset(analog_channels):
+        if not channels_to_set.issubset(active_analog):
             self.log.error('Unable to load waveforms into channels.\n'
                            'One or more channels to set are not active.\n'
                            'channels_to_set are: ', channels_to_set, 'and\n'
-                           'analog_channels are: ', analog_channels)
+                           'analog_channels are: ', active_analog)
             return self.get_loaded_assets()
 
         # Check if all waveforms to load are present on device memory
@@ -305,12 +302,6 @@ class AWGM819X(Base, PulserInterface):
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
 
-
-        # Get all active channels
-        chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
-            chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
-
         if not (set(self.get_loaded_assets()[0].values())).issubset(set([sequence_name])):
             self.log.error('Unable to load sequence into channels.\n'
                            'Make sure to call write_sequence() first.')
@@ -342,9 +333,8 @@ class AWGM819X(Base, PulserInterface):
         """
 
         # Get all active channels
-        chnl_activation = self.get_active_channels()
-        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
-                                 chnl.startswith('a') and chnl_activation[chnl])
+        active_analog = self._get_active_d_or_a_channels(only_analog=True)
+        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in active_analog)
 
         # Get assets per channel
         loaded_assets = dict()
@@ -824,10 +814,8 @@ class AWGM819X(Base, PulserInterface):
                            ''.format(total_number_of_samples, min_samples))
             return -1, waveforms
 
-        # determine active channels
-        activation_dict = self.get_active_channels()
-        active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_analog = self._get_active_d_or_a_channels(only_analog=True)
+        active_channels = self.get_active_channels()
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -1009,10 +997,9 @@ class AWGM819X(Base, PulserInterface):
             names = self.query('MMEM:CAT?').replace('"', '').replace("'", "").split(",")[2::3]
         elif self._wave_mem_mode == 'awg_segments':
 
-            # Get all active channels
-            chnl_activation = self.get_active_channels()
-            channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
-                                     chnl.startswith('a') and chnl_activation[chnl])
+            active_analog = self._get_active_d_or_a_channels(only_analog=True)
+            channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in active_analog)
+
             for chnl_num in channel_numbers:
                 names.extend(self.get_loaded_assets_name(chnl_num, 'segment'))
             names = list(set(names)) # make unique
@@ -1254,10 +1241,9 @@ class AWGM819X(Base, PulserInterface):
             waveform = load_dict[0]  # awg8196a: 1 name per segment, no individual name per channel
             new_dict = dict()
 
-            chnl_activation = self.get_active_channels()
-            analog_channels = sorted(
-                chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
-            for a_ch in analog_channels:
+            active_analog = self._get_active_d_or_a_channels(only_analog=True)
+
+            for a_ch in active_analog:
                 ch_num = self.chstr_2_chnum(a_ch)
                 new_dict[ch_num] = waveform
 
@@ -1744,6 +1730,29 @@ class AWGM819X(Base, PulserInterface):
         @return list: Sorted list of analog channels
         """
         return [chnl for chnl in self._get_all_channels() if chnl.startswith('a')]
+
+    def _get_active_d_or_a_channels(self, only_analog=False, only_digital=False):
+        """
+        Helper method to quickly get only digital or analog active channels.
+        :return: list: Sorted list of selected a/d channels
+        """
+
+        activation_dict = self.get_active_channels()
+        active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
+
+        active_ch = sorted(chnl for chnl in active_channels)
+        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_digital = sorted(chnl for chnl in active_channels if chnl.startswith('d'))
+
+        if only_analog:
+            active_ch = active_analog
+        if only_digital:
+            active_ch = active_digital
+        if only_analog and only_digital:
+            active_ch = []
+
+        return active_ch
+
 
     def _get_all_digital_channels(self):
         """
@@ -2287,8 +2296,6 @@ class AWGM8195A(AWGM819X):
                 active_ch['a_ch2'] = bool(int(self.query(':OUTP2?')))
                 active_ch['a_ch3'] = bool(int(self.query(':OUTP3?')))
                 active_ch['a_ch4'] = bool(int(self.query(':OUTP4?')))
-
-
 
         else:
 
