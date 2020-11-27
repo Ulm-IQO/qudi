@@ -2064,9 +2064,6 @@ class AWGM8195A(AWGM819X):
         constraints.waveform_format = ['bin8']
         constraints.dac_resolution = {'min': 8, 'max': 8, 'step': 1, 'unit': 'bit'}
 
-        # The compatible file formats are hardware specific.
-        constraints.waveform_format = ['bin8']
-
         if self._MODEL == 'M8195A':
             constraints.sample_rate.min = 53.76e9 / self._sample_rate_div
             constraints.sample_rate.max = 65.0e9 / self._sample_rate_div
@@ -2094,6 +2091,7 @@ class AWGM8195A(AWGM819X):
         constraints.a_ch_amplitude.max = 2
         constraints.a_ch_amplitude.step = 0.0002 # not used anymore
         constraints.a_ch_amplitude.default = 1
+        constraints.a_ch_amplitude.default_marker = 1
 
         # digital channel
         constraints.d_ch_low.min = 0
@@ -2157,9 +2155,6 @@ class AWGM8195A(AWGM819X):
                 activation_config['all'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'})
 
         constraints.activation_config = activation_config
-
-        # FIXME: additional constraint really necessary?
-        constraints.dac_resolution = {'min': 8, 'max': 8, 'step': 1, 'unit': 'bit'}
 
         return constraints
 
