@@ -33,10 +33,10 @@ class TriggerMainWindow(QtWidgets.QMainWindow):
         # Create main layout and central widget
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-        self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         widget = QtWidgets.QWidget()
         widget.setLayout(self.main_layout)
-        widget.setFixedSize(1, 1)
+        widget.setMinimumWidth(50)
+        widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
         self.setCentralWidget(widget)
 
         # Create QActions and menu bar
@@ -95,7 +95,7 @@ class TriggerGui(GUIBase):
         self._widgets = list()
         for trigger in self.trigger_logic().names_of_triggers:
             widget = QtWidgets.QPushButton(trigger)
-            widget.setMinimumWidth(100)
+            widget.setMinimumWidth(50)
             widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
             widget.setCheckable(True)
             widget.setChecked(False)
