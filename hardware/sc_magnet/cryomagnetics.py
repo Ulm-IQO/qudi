@@ -51,6 +51,7 @@ class Cryomagnetics(Base):
         rm = visa.ResourceManager()
         try:
             self._inst = rm.open_resource(self._visa_address, timeout=self._timeout)
+            self._inst.io_protocol = constants.VI_PROT_4882_STRS
         except:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
