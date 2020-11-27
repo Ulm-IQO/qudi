@@ -38,7 +38,7 @@ from core.util.helpers import natural_sort
 
 class AWGM819X(Base, PulserInterface):
     """
-    A hardware module for AWG of the Keysight M819X series for generating
+    A hardware module for AWGs of the Keysight M819X series for generating
     waveforms and sequences thereof.
     """
 
@@ -75,6 +75,11 @@ class AWGM819X(Base, PulserInterface):
     @property
     @abstractmethod
     def marker_on(self):
+        pass
+
+    @property
+    @abstractmethod
+    def interleaved_wavefile(self):
         pass
 
     def on_activate(self):
@@ -1292,8 +1297,10 @@ class AWGM819X(Base, PulserInterface):
                 filepath = os.path.join(path, waveform)
 
                 data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
-                samples = len(data)
-                segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, samples)) \
+                n_samples = len(data)
+                if self.interleaved_wavefile:
+                    n_samples = n_samples / 2
+                segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, n_samples)) \
                              + '_ch{:d}'.format(chnl_num)
                 segment_id_per_ch = segment_id.rsplit("_ch", 1)[0]
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
@@ -1490,7 +1497,7 @@ class AWGM819X(Base, PulserInterface):
         """
         waveforms = []
 
-        for channel_index, ch_str in enumerate(active_analog):
+        for idx_ch, ch_str in enumerate(active_analog):
 
             ch_num = self.chstr_2_chnum(ch_str)
             wave_name = self._name_with_ch(name, ch_num)
@@ -1507,7 +1514,7 @@ class AWGM819X(Base, PulserInterface):
                 filename = self._wavename_2_fname(wave_name)
                 waveforms.append(filename)
 
-                if channel_index == 0:
+                if idx_ch == 0:
                     # deletes waveform, all channels
                     self.delete_waveform(self._fname_2_wavename(filename, incl_ch_postfix=False))
                 self.write_bin(':MMEM:DATA "{0}", '.format(filename), comb_samples)
@@ -1527,7 +1534,7 @@ class AWGM819X(Base, PulserInterface):
                     self.log.warning("Loading wave to specified segment via name will deprecate.")
                 if to_segment_id == -1:
                     # to next free segment
-                    segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(comb_samples)))
+                    segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(analog_samples[ch_str])))
                     # only need the next free id, definition and writing is performed below again
                     # so delete defined segment again
                     self.write("TRAC{:d}:DEL {}".format(ch_num, segment_id))
@@ -1543,7 +1550,8 @@ class AWGM819X(Base, PulserInterface):
 
                 # define the size of a waveform segment, marker samples do not count. If the channel is sourced from
                 # Extended Memory, the same segment is defined on all other channels sourced from Extended Memory.
-                self.write(':TRAC{0}:DEF {1}, {2}, {3}'.format(int(ch_num), segment_id, len(comb_samples), 0))
+                # Comb samples written, but len(comb_samples) doesn't know whether interleaved data.
+                self.write(':TRAC{0}:DEF {1}, {2}, {3}'.format(int(ch_num), segment_id, len(analog_samples[ch_str]), 0))
 
                 # name the segment
                 self.write(':TRAC{0}:NAME {1}, "{2}"'.format(int(ch_num), segment_id, wave_name))  # name the segment
@@ -2030,6 +2038,10 @@ class AWGM8195A(AWGM819X):
             return True
         return False
 
+    @property
+    def interleaved_wavefile(self):
+        return self.marker_on
+
     def get_constraints(self):
         """
         Retrieve the hardware constrains from the Pulsing device.
@@ -2208,12 +2220,12 @@ class AWGM8195A(AWGM819X):
 
     def _compile_bin_samples(self, analog_samples, digital_samples, ch_str):
 
-        marker_on = self.marker_on
-        self.log.debug("Compiling samples for {} with marker on : {}".format(ch_str, marker_on))
+        interleaved = self.interleaved_wavefile
+        self.log.debug("Compiling samples for {} with marker on : {}".format(ch_str, interleaved))
 
         a_samples = self.float_to_sample(analog_samples[ch_str])
 
-        if marker_on and ch_str == 'a_ch1':
+        if interleaved and ch_str == 'a_ch1':
             d_samples = self.bool_to_sample(digital_samples['d_ch1'], digital_samples['d_ch2'],
                                             int_type_str='int8')
             # the analog and digital samples are stored in the following format: a1, d1, a2, d2, a3, d3, ...
@@ -2406,6 +2418,10 @@ class AWGM8190A(AWGM819X):
     def marker_on(self):
         # no reason to deactivate any marker for M8190A, as active makers do not impose restrcitions
         return True
+
+    @property
+    def interleaved_wavefile(self):
+        return False
 
     def get_constraints(self):
         """
