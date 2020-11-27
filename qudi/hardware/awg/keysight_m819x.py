@@ -1992,7 +1992,8 @@ class AWGM819X(Base, PulserInterface):
 
     def chstr_2_chnum(self, chstr):
         """
-        Converts a channel name like 'a_ch1' to channel number.
+        Converts a channel name like 'a_ch1' to channel number internally used to address
+        this channel in VISA commands. Eg. 'd_ch1' -> 3 on M8195A.
         :param chstr: list of str or str
         :return: list of int or int
         """
@@ -2004,7 +2005,8 @@ class AWGM819X(Base, PulserInterface):
                 # this is M8195A specific
                 ch_num = int(chstr.rsplit('_ch', 1)[1]) + 2
                 if self._MODEL == 'M8190A':
-                    self.log.warning("Shouldn't need to convert channel string {} for 8190A".format(chstr))
+                    ch_num = None
+                    self.log.warning("Returning None from channel string {}. Belongs to analog ch for 8190A".format(chstr))
             else:
                 raise ValueError("Unknown channel string: {}".format(chstr))
             return ch_num
@@ -2012,7 +2014,7 @@ class AWGM819X(Base, PulserInterface):
         if isinstance(chstr, str):
             chstr = [chstr]
 
-        num_list = [int(single_str_2_num(s)) for s in chstr]
+        num_list = [single_str_2_num(s) for s in chstr]
 
         if len(num_list) == 1:
             return num_list[0]
