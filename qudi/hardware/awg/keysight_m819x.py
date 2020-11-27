@@ -1290,7 +1290,7 @@ class AWGM819X(Base, PulserInterface):
 
                 self._flag_segment_table_req_update = True
                 self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
-                    name, samples, chnl_num, segment_id_per_ch))
+                    name, n_samples, chnl_num, segment_id_per_ch))
         elif self._wave_mem_mode == 'awg_segments':
 
             if to_nextfree_segment:
@@ -2035,7 +2035,7 @@ class AWGM8195A(AWGM819X):
 
     awg_mode_cfg = ConfigOption(name='awg_mode', default='MARK', missing='warn')
 
-    _wave_mem_mode = 'awg_segments'
+    _wave_mem_mode = ConfigOption(name='waveform_memory_mode', default='awg_segments', missing='nothing')
     _wave_file_extension = '.bin8'
     _wave_transfer_datatype = 'b'
 
@@ -2047,6 +2047,9 @@ class AWGM8195A(AWGM819X):
         super().__init__(config=config, **kwargs)
 
         self._sequence_names = []  # awg8195a can only store a single sequence
+
+        if self._wave_mem_mode == 'pc_hdd':
+            self.log.warning("wave_mem_mode pc_hdd is experimental on m8195a")
 
     @property
     def n_ch(self):
@@ -2421,7 +2424,7 @@ class AWGM8190A(AWGM819X):
     """
 
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
-    _wave_mem_mode = 'pc_hdd'  # 'awg_segments'
+    _wave_mem_mode = ConfigOption(name='waveform_memory_mode', default='pc_hdd', missing='nothing')
     _wave_file_extension = '.bin'
     _wave_transfer_datatype = 'h'
 
