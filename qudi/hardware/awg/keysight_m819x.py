@@ -810,7 +810,7 @@ class AWGM819X(Base, PulserInterface):
             return -1, waveforms
 
         active_analog = self._get_active_d_or_a_channels(only_analog=True)
-        active_channels = self.get_active_channels()
+        active_channels = set(self.get_active_channels().keys())
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
