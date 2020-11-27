@@ -334,7 +334,7 @@ class AWGM819X(Base, PulserInterface):
 
         # Get all active channels
         active_analog = self._get_active_d_or_a_channels(only_analog=True)
-        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in active_analog)
+        channel_numbers = self.chstr_2_chnum(active_analog)
 
         # Get assets per channel
         loaded_assets = dict()
@@ -998,7 +998,7 @@ class AWGM819X(Base, PulserInterface):
         elif self._wave_mem_mode == 'awg_segments':
 
             active_analog = self._get_active_d_or_a_channels(only_analog=True)
-            channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in active_analog)
+            channel_numbers = self.chstr_2_chnum(active_analog)
 
             for chnl_num in channel_numbers:
                 names.extend(self.get_loaded_assets_name(chnl_num, 'segment'))
@@ -1991,17 +1991,34 @@ class AWGM819X(Base, PulserInterface):
         pass
 
     def chstr_2_chnum(self, chstr):
-        if 'a_ch' in chstr:
-            ch_num = int(chstr.rsplit('_ch', 1)[1])
-        elif 'd_ch' in chstr:
-            # this is M8195A specific
-            ch_num = int(chstr.rsplit('_ch', 1)[1]) + 2
-            if self._MODEL == 'M8190A':
-                self.log.warning("Shouldn't need to convert channel string {} for 8190A".format(chstr))
-        else:
-            raise ValueError("Unknown channel string: {}".format(chstr))
+        """
+        Converts a channel name like 'a_ch1' to channel number.
+        :param chstr: list of str or str
+        :return: list of int or int
+        """
 
-        return int(ch_num)
+        def single_str_2_num():
+            if 'a_ch' in chstr:
+                ch_num = int(chstr.rsplit('_ch', 1)[1])
+            elif 'd_ch' in chstr:
+                # this is M8195A specific
+                ch_num = int(chstr.rsplit('_ch', 1)[1]) + 2
+                if self._MODEL == 'M8190A':
+                    self.log.warning("Shouldn't need to convert channel string {} for 8190A".format(chstr))
+            else:
+                raise ValueError("Unknown channel string: {}".format(chstr))
+            return ch_num
+
+        if isinstance(chstr, str):
+            chstr = [chstr]
+
+        num_list = [int(single_str_2_num(s)) for s in chstr]
+
+        if len(num_list) == 1:
+            return num_list[0]
+
+        return num_list
+
 
 class AWGM8195A(AWGM819X):
     """ A hardware module for the Keysight M8195A series for generating
