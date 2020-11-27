@@ -1997,7 +1997,7 @@ class AWGM819X(Base, PulserInterface):
         :return: list of int or int
         """
 
-        def single_str_2_num():
+        def single_str_2_num(chstr):
             if 'a_ch' in chstr:
                 ch_num = int(chstr.rsplit('_ch', 1)[1])
             elif 'd_ch' in chstr:
