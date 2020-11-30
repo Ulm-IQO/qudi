@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware module for the AWG M8190A device.
+This file contains the Qudi hardware module for the Keysight M819X AWG series.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -64,8 +64,7 @@ class AWGM819X(Base, PulserInterface):
 
         self._sequence_mode = False         # set in on_activate()
         self.current_loaded_asset = ''
-        self.active_channel = dict()        # todo: save to expose public?
-        self._debug_check_all_commands = True       # for development purpose, might slow down
+        self._debug_check_all_commands = False       # # For development purpose, might slow down
 
     @property
     @abstractmethod
@@ -859,17 +858,10 @@ class AWGM819X(Base, PulserInterface):
         for waveform_tuple, param_dict in sequence_parameters:
             if not avail_waveforms.issuperset(waveform_tuple):
                 self.log.error('Failed to create sequence "{0}" due to waveforms "{1}" not '
-                               'present in pc memory.'.format(name, waveform_tuple))
+                               'present in memory. Try to load them again.'.format(name, waveform_tuple))
                 return -1
 
-        # todo: check sequence mathces num_tracks
-
         num_steps = len(sequence_parameters)
-
-        self.write_all_ch(':FUNC{}:MODE STS', all_by_one={'m8195a': True})  # activate the sequence mode
-        self.write_all_ch(':STAB{}:RES', all_by_one={'m8195a': True})       # Reset all sequence table entries to default values
-
-        self._define_new_sequence(name, num_steps)
 
         if self._wave_mem_mode == 'pc_hdd':
             # todo: will skip already loaded waveforms
@@ -914,6 +906,11 @@ class AWGM819X(Base, PulserInterface):
         and all advancement modes must be set to Auto. 
         Additionally, the trigger mode Gated is not allowed.
         """
+        self.write_all_ch(':FUNC{}:MODE STS', all_by_one={'m8195a': True})  # activate the sequence mode
+        self.write_all_ch(':STAB{}:RES', all_by_one={'m8195a': True})       # Reset all sequence table entries to default values
+
+        self._delete_all_sequences()  # leave sequence mode
+        self._define_new_sequence(name, num_steps)
 
         # write the actual sequence table
         ctr_steps_written = 0
@@ -941,7 +938,7 @@ class AWGM819X(Base, PulserInterface):
                                                                                          control))
 
             segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1) \
-                if len(wfm_tuple) == 1 else -1
+                if len(wfm_tuple) >= 1 else -1
             segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2) \
                 if len(wfm_tuple) == 2 else -1
 
@@ -967,12 +964,14 @@ class AWGM819X(Base, PulserInterface):
                                        seg_start_offset,
                                        seg_end_offset))
 
-                ctr_steps_written += 1
-
-                self.log.debug("Writing seqtable entry {}: {}".format(index, step))
+                if segment_id_ch1 + segment_id_ch2 > -1:
+                    ctr_steps_written += 1
+                    self.log.debug("Writing seqtable entry {}: {}".format(index, step))
+                else:
+                    self.log.error("Failed while writing seqtable entry {}: {}".format(index, step))
 
             except Exception as e:
-                self.log.warning("Unknown error occured while writing to seq table: {}".format(str(e)))
+                self.log.error("Unknown error occured while writing to seq table: {}".format(str(e)))
 
         if goto_in_sequence and self.get_constraints().sequence_order == "LINONLY": # SequenceOrderOption.LINONLY:
             self.log.warning("Found go_to in step of sequence {}. Not supported and ignored.".format(name))
@@ -1224,7 +1223,6 @@ class AWGM819X(Base, PulserInterface):
                                                                      high=init_levels['d_ampl_high'])
         self.is_output_enabled = self._is_awg_running()
         self.use_sequencer = self.has_sequence_mode()
-        self.active_channel = self.get_active_channels()
         self.interleave = self.get_interleave()
         self.current_loaded_asset = ''
         self.current_status = 0
@@ -2499,7 +2497,7 @@ class AWGM8190A(AWGM819X):
             constraints.sample_rate.step = 1.0e7
             constraints.sample_rate.default = 8e9 / self._sample_rate_div
         else:
-            raise ValueError("Unsupported DAX resolution: {}".format(self._dac_resolution))
+            raise ValueError("Unsupported DAC resolution: {}".format(self._dac_resolution))
 
         # manual 8.22.3 Waveform Granularity and Size
         if self._dac_resolution == 12:
@@ -2671,10 +2669,6 @@ class AWGM8190A(AWGM819X):
 
                 elif 'd_ch' in channel:
                     active_ch[channel] = active_ch[self._digital_ch_corresponding_analogue_ch(channel)]
-
-        set_ac = True
-        if set_ac:
-            self.active_channel = active_ch
 
         return active_ch
 
