@@ -47,6 +47,7 @@ class LaserScannerLogic(GenericLogic):
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    do=Connector(interface='NIDigitalTrigerLogic')
     wavemeter1 = Connector(interface='WavemeterInterface')
     savelogic = Connector(interface='SaveLogic')
     laser = Connector(interface = 'NewfocusLaserInterface')
@@ -56,6 +57,7 @@ class LaserScannerLogic(GenericLogic):
     _scan_speed = StatusVar('scan_speed', 0.5)
     _static_v = StatusVar('goto_voltage', 0)
     _clock_frequency=StatusVar('clock_frequency', 50)
+    _do_width=StatusVar('do_length', 10*10**-3)
 
     # parameters for pid loop to hold frequency
     pid_kp = StatusVar(default=-10)
@@ -99,6 +101,7 @@ class LaserScannerLogic(GenericLogic):
         self._wavemeter_device = self.wavemeter1()
         self._save_logic = self.savelogic()
         self._laser_device = self.laser()
+        self._do=self.do()
 
         # start acquisition of wavemeter so that current wavelength/frequency is always available
         # during execution of laser scanner logic
@@ -740,20 +743,10 @@ class LaserScannerLogic(GenericLogic):
             #    self.get_current_voltage()
             #)
 
-            #time.sleep(0.05)
-            #taskHandel = daq.TaskHandle() #adding a block of digital output for AOM to repump
-            #daq.DAQmxCreateTask('testDO', daq.byref(taskHandel))
-            #daq.DAQmxCreateDOChan(taskHandel, '/Dev1/Port0/Line5', "",
-    #                                  daq.DAQmx_Val_ChanForAllLines)
-            #daq.DAQmxWriteDigitalLines(taskHandel, 1, 1, 10.0, daq.DAQmx_Val_GroupByChannel,
-            #                           np.array([1], dtype=np.uint8), None, None)
-
-            #time.sleep(0.1)
-            #daq.DAQmxWriteDigitalLines(taskHandel, 1, 1, 10.0, daq.DAQmx_Val_GroupByChannel,
-            #                           np.array([0], dtype=np.uint8), None, None)
-            #time.sleep(0.05)
-            #daq.DAQmxStopTask(taskHandel)
-            #daq.DAQmxClearTask(taskHandel)
+            time.sleep(0.05)
+            self._do.simple_on()
+            time.sleep(self._do_width)
+            self._do.simple_off()
             return counts_on_scan_line.transpose()[0]
 
         except Exception as e:

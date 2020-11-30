@@ -78,13 +78,13 @@ class NIDigitalTrigerLogic(GenericLogic):
 
     def simple_on(self, channel=-1):
         self.device.output(1, channel, -1, 'True')
-        self.log.info('level high')
+        #self.log.info('level high')
         return True
 
 
     def simple_off(self, channel=-1):
         self.device.output(0, channel, -1, 'True')
-        self.log.info('level low')
+        #self.log.info('level low')
         return True
 
 
