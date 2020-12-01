@@ -63,7 +63,6 @@ class AWGM819X(Base, PulserInterface):
         self._FIRMWARE_VERSION = ''
 
         self._sequence_mode = False         # set in on_activate()
-        self.current_loaded_asset = ''
         self._debug_check_all_commands = False       # # For development purpose, might slow down
 
     @property
@@ -187,9 +186,7 @@ class AWGM819X(Base, PulserInterface):
         if self.get_trigger_mode() == "trig" and self.get_dynamic_mode():
             self.send_trigger_event()
 
-        self.current_status = 1
-        self.is_output_enabled = True
-        return self.current_status
+        return self.get_status()
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -204,9 +201,7 @@ class AWGM819X(Base, PulserInterface):
         while self._is_awg_running():
             time.sleep(0.25)
 
-        self.current_status = 0
-        self.is_output_enabled = False
-        return self.current_status
+        return self.get_status()
 
     def load_waveform(self, load_dict, to_nextfree_segment=False):
         """ Loads a waveform to the specified channel of the pulsing device.
@@ -404,7 +399,6 @@ class AWGM819X(Base, PulserInterface):
 
         self.write_all_ch(':TRAC{}:DEL:ALL', all_by_one={'m8195a': True})
         self._flag_segment_table_req_update = True
-        self.current_loaded_asset = ''
 
         return
 
@@ -433,8 +427,8 @@ class AWGM819X(Base, PulserInterface):
         Do not return a saved sample rate from an attribute, but instead retrieve the current
         sample rate directly from the device.
         """
-        self.sample_rate = float(self.query(':FREQ:RAST?')) / self._sample_rate_div
-        return self.sample_rate
+        sample_rate = float(self.query(':FREQ:RAST?')) / self._sample_rate_div
+        return sample_rate
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
@@ -1061,7 +1055,7 @@ class AWGM819X(Base, PulserInterface):
                     deleted_waveforms.append(waveform)
 
         # clear the AWG if the deleted asset is the currently loaded asset
-        if self.current_loaded_asset == waveform_name:
+        if waveform_name in self.get_loaded_assets()[0].values():
             self.clear_all()
         return deleted_waveforms
 
@@ -1088,13 +1082,13 @@ class AWGM819X(Base, PulserInterface):
         # todo: get_sequence_names return no extension
         # todo: actually delete
 
-        # clear the AWG if the deleted asset is the currently loaded asset
-        if self.current_loaded_asset == sequence_name:
+        if sequence_name in self.get_loaded_assets()[0].values():
+            # clear the AWG incl. all waveforms on awg memory and sequence table
             self.clear_all()
             self.write_all_ch(':STAB{}:RES',
                               all_by_one={'m8195a': True})  # Reset all sequence table entries to default values
         else:
-            self.log.info("Sequence {} is not active. Didn't delete.".format(sequence_name))
+            self.log.debug("Sequence {} is not active. Didn't delete anything.".format(sequence_name))
 
         return deleted_sequences
 
@@ -1211,21 +1205,14 @@ class AWGM819X(Base, PulserInterface):
         # Set the waveform directory on the local pc:
         self.write(':MMEM:CDIR "{0}"'.format(self._pulsed_file_dir))
 
-        self.sample_rate = constr.sample_rate.default
-        self.set_sample_rate(self.sample_rate)
+        self.set_sample_rate(constr.sample_rate.default)
 
         self._set_dac_amplifier_mode()
 
         init_levels = self._get_init_output_levels()
-        self.amplitude_list, self.offset_list = self.set_analog_level(amplitude=init_levels['a_ampl'],
-                                                                      offset=init_levels['a_offs'])
-        self.markers_low, self.markers_high = self.set_digital_level(low=init_levels['d_ampl_low'],
-                                                                     high=init_levels['d_ampl_high'])
-        self.is_output_enabled = self._is_awg_running()
-        self.use_sequencer = self.has_sequence_mode()
-        self.interleave = self.get_interleave()
-        self.current_loaded_asset = ''
-        self.current_status = 0
+        self.set_analog_level(amplitude=init_levels['a_ampl'], offset=init_levels['a_offs'])
+        self.set_digital_level(low=init_levels['d_ampl_low'], high=init_levels['d_ampl_high'])
+
         self._segment_table = [[], []]  # [0]: ch1, [1]: ch2. Local, read-only copy of the device segment table
         self._flag_segment_table_req_update = True  # local copy requires update
 
