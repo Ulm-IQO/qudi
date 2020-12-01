@@ -186,7 +186,7 @@ class AWGM819X(Base, PulserInterface):
         if self.get_trigger_mode() == "trig" and self.get_dynamic_mode():
             self.send_trigger_event()
 
-        return self.get_status()
+        return self.get_status()[0]
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -201,7 +201,7 @@ class AWGM819X(Base, PulserInterface):
         while self._is_awg_running():
             time.sleep(0.25)
 
-        return self.get_status()
+        return self.get_status()[0]
 
     def load_waveform(self, load_dict, to_nextfree_segment=False):
         """ Loads a waveform to the specified channel of the pulsing device.
@@ -308,9 +308,6 @@ class AWGM819X(Base, PulserInterface):
         self.write_all_ch(":STAB{}:SEQ:SEL 0", all_by_one={'m8195a': True})
         self.write_all_ch(":STAB{}:DYN ON", all_by_one={'m8195a': True})
 
-        # todo: for merging with master other sequence trigger mode might be required
-        #self.set_trigger_mode('trig')  # for external dynamic control, different for other usecase
-
         return 0
 
     def get_loaded_assets(self):
@@ -345,20 +342,21 @@ class AWGM819X(Base, PulserInterface):
 
                 type_per_ch.append('waveform')
                 seg_id_active = int(self.query(':TRAC{}:SEL?'.format(chnl_num)))
-                n_segs = int(self.get_loaded_assets_num(chnl_num, mode='segment'))
-                if seg_id_active > n_segs:
+                ids_avail = self.get_loaded_assets_id(chnl_num, mode='segment')
+                if seg_id_active not in ids_avail:
+                    seg_id_active = ids_avail[0]
                     self.log.error("Active segment id {} outside available sequences ({}) for unknown reason."
-                                   " Set to segment id to 1.".format(seg_id_active, n_segs))
-                    seg_id_active = 1
-                    self.write(':TRAC1:SEL 1')
-                    self.write(':TRAC2:SEL 1')
+                                   " Set to segment id to 1.".format(seg_id_active, ids_avail))
 
-                asset_name = self.get_loaded_assets_name(chnl_num, mode='segment')[int(seg_id_active)-1]
+                    self.write(':TRAC1:SEL {:d}'.format(seg_id_active))
+                    self.write(':TRAC2:SEL {:d}'.format(seg_id_active))
+
+                asset_name = self.get_loaded_asset_name_by_id(chnl_num, seg_id_active, mode='segment')
 
             elif self.get_loaded_assets_num(chnl_num, mode='segment') >= 1 \
                 and self.get_loaded_assets_num(chnl_num, mode='sequence') == 1:
                 # seq mode with at least one waveform
-
+                # currently only a single uploaded sequence supported
                 type_per_ch.append('sequence')
                 asset_name = self.get_loaded_assets_name(chnl_num, mode='sequence')[0]
             elif self.get_loaded_assets_num(chnl_num, mode='segment') == 0 \
@@ -470,8 +468,6 @@ class AWGM819X(Base, PulserInterface):
         to obtain the amplitude of channel 1 and 4 and the offset of all channels
             {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
         """
-
-        # todo: check whether old set_ac option in m8190a branch
 
         amp = dict()
         off = dict()
@@ -813,8 +809,7 @@ class AWGM819X(Base, PulserInterface):
                                      set(analog_samples.keys()).union(set(digital_samples.keys()))))
             return -1, waveforms
 
-        to_segment_id = 1
-        # todo: right now: hdd=1, as no effect. awg_segments: always next free
+        to_segment_id = 1  # pc_hdd mode
         if self._wave_mem_mode == 'awg_segments':
             to_segment_id = -1
 
@@ -903,7 +898,7 @@ class AWGM819X(Base, PulserInterface):
         self.write_all_ch(':FUNC{}:MODE STS', all_by_one={'m8195a': True})  # activate the sequence mode
         self.write_all_ch(':STAB{}:RES', all_by_one={'m8195a': True})       # Reset all sequence table entries to default values
 
-        self._delete_all_sequences()  # leave sequence mode
+        self._delete_all_sequences()
         self._define_new_sequence(name, num_steps)
 
         # write the actual sequence table
@@ -1047,17 +1042,31 @@ class AWGM819X(Base, PulserInterface):
         deleted_waveforms = list()
 
         for name in waveform_name:
+            name_ch = self._name_with_ch(name, '?')
             for waveform in avail_waveforms:
-                name_ch = self._name_with_ch(name, '?')
                 if fnmatch(waveform.lower(), name_ch + "{}".format(self._wave_file_extension)):
-                    # delete case insensitive
+                    # delete case insensitive from hdd
                     self.write(':MMEM:DEL "{0}"'.format(waveform))
                     deleted_waveforms.append(waveform)
 
-        # clear the AWG if the deleted asset is the currently loaded asset
-        if waveform_name in self.get_loaded_assets()[0].values():
-            self.clear_all()
-        return deleted_waveforms
+                if fnmatch(waveform, name_ch):
+                    # delete from awg memory
+                    active_analog = self._get_active_d_or_a_channels(only_analog=True)
+                    for ch_str in active_analog:
+                        ch_num = self.chstr_2_chnum(ch_str)
+                        try:
+                            id = self.asset_name_2_id(self._name_with_ch(name, ch_num), ch_num, mode='segment')
+                        except ValueError:  # got already deleted
+                            continue
+                        self.write('TRAC{}:DEL {:d}'.format(ch_num, id))
+                    deleted_waveforms.append(waveform)
+
+            for loaded_waveform in self.get_loaded_assets()[0].values():
+                # in pc_hdd mode, avail_waveforms are only on hdd, need to clear the awg mem
+                if self._wave_mem_mode == 'pc_hdd' and fnmatch(loaded_waveform, name_ch):
+                    self.clear_all()
+
+        return list(set(deleted_waveforms))
 
     def delete_sequence(self, sequence_name):
         """ Delete the sequence with name "sequence_name" from the device memory.
@@ -1073,24 +1082,26 @@ class AWGM819X(Base, PulserInterface):
         avail_sequences = self.get_sequence_names()
         deleted_sequences = list()
 
+        # deletes .sequence files from hdd
         for name in sequence_name:
             for sequence in avail_sequences:
-                name_ch = self._name_with_ch(name, '?')
-                if fnmatch(sequence, name_ch + '{}'.format(self._wave_file_extension)):
-                    deleted_sequences.append(sequence)
+                # in pc_hdd mode, no need to delete
+                # .sequence files are handled by sequence generator logic
+                if fnmatch(sequence, name):
+                    # awg_segment mode
+                    self._delete_all_sequences()  # all, as currently only support for 1 sequence
+                    deleted_sequences.append(name)
 
-        # todo: get_sequence_names return no extension
-        # todo: actually delete
+            if name in self.get_loaded_assets()[0].values():
+                # clear the AWG incl. all waveforms on awg memory and sequence table
+                # todo: delete only waveforms in sequence or think about only unloading the sequence
+                # while keeping the waveforms
+                self.clear_all()
+                self.write_all_ch(':STAB{}:RES',
+                                  all_by_one={'m8195a': True})  # Reset all sequence table entries to default values
+                deleted_sequences.append(name)
 
-        if sequence_name in self.get_loaded_assets()[0].values():
-            # clear the AWG incl. all waveforms on awg memory and sequence table
-            self.clear_all()
-            self.write_all_ch(':STAB{}:RES',
-                              all_by_one={'m8195a': True})  # Reset all sequence table entries to default values
-        else:
-            self.log.debug("Sequence {} is not active. Didn't delete anything.".format(sequence_name))
-
-        return deleted_sequences
+        return list(set(deleted_sequences))
 
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
@@ -1160,9 +1171,6 @@ class AWGM819X(Base, PulserInterface):
 
     @abstractmethod
     def _get_init_output_levels(self):
-        pass
-
-    def _get_sequences(self):
         pass
 
     @abstractmethod
@@ -1283,7 +1291,6 @@ class AWGM819X(Base, PulserInterface):
                                  "Loading only marks active, segments need to be written before.")
             # m8195a: 1 name per segment, no individual name per channel
 
-            # todo: awg8190: waveform is without channel extension!
             for chnl_num, waveform in load_dict.items():
                 waveform = load_dict[chnl_num]
                 name = waveform
@@ -1858,7 +1865,7 @@ class AWGM819X(Base, PulserInterface):
         elif mode == 'sequence':
             raw_str = self._get_loaded_seq_catalogue(ch_num)
         else:
-            self.log.warn("Unknown assets mode: {}".format(mode))
+            self.log.error("Unknown assets mode: {}".format(mode))
             return 0
 
         if raw_str.replace(" ","") == "0,0":   # awg response on 8195A without spaces
@@ -1875,7 +1882,7 @@ class AWGM819X(Base, PulserInterface):
         elif mode == 'sequence':
             raw_str = self._get_loaded_seq_catalogue(ch_num)
         else:
-            self.log.warn("Unknown assets mode: {}".format(mode))
+            self.log.error("Unknown assets mode: {}".format(mode))
             return []
         n_assets = self.get_loaded_assets_num(ch_num, mode)
 
@@ -1893,22 +1900,31 @@ class AWGM819X(Base, PulserInterface):
           This is not == "loaded_asset" which is the waveform / segment marked active.
         """
 
-        n_assets = self.get_loaded_assets_num(ch_num, mode)
+        asset_ids = self.get_loaded_assets_id(ch_num, mode)
         names = []
-        for i in range(0, n_assets):
+        for i in asset_ids:
 
             if mode == 'segment':
-                names.append(self.query(':TRAC{:d}:NAME? {:d}'.format(ch_num, i+1)))
+                names.append(self.query(':TRAC{:d}:NAME? {:d}'.format(ch_num, i)))
             elif mode == 'sequence':
                 names.append(self._get_loaded_seq_name(ch_num, i))
             else:
-                self.log.warn("Unknown assets mode: {}".format(mode))
+                self.log.error("Unknown assets mode: {}".format(mode))
                 return 0
 
-        if n_assets == 0:
-            return []
-        else:
-            return names
+        return names
+
+    def get_loaded_asset_name_by_id(self, ch_num, id, mode='segment'):
+        asset_names = self.get_loaded_assets_name(ch_num, mode)
+        asset_ids = self.get_loaded_assets_id(ch_num, mode)
+
+        try:
+            idx = asset_ids.index(id)
+        except ValueError:
+            self.log.warning("Couldn't find {} id {} in loaded assetes".format(mode, id))
+            return ""
+
+        return asset_names[idx]
 
     def asset_name_2_id(self, name, ch_num, mode='segment'):
         names = self.get_loaded_assets_name(ch_num, mode)
@@ -1976,7 +1992,7 @@ class AWGM819X(Base, PulserInterface):
 
     def sequence_set_start_segment(self, seqtable_id):
         # todo: need to implement? alernatively shuffle sequuence while generating
-        pass
+        raise NotImplementedError
 
     def chstr_2_chnum(self, chstr):
         """
