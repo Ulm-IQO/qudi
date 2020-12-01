@@ -597,7 +597,11 @@ def set_up_conventional_measurement(qm_dict):
             pulsedmasterlogic.pulsedmeasurementlogic().pulsegenerator().set_trig_polarity(qm_dict['trig_in_pol'])
         except Exception as e:
             logger.warning("Couldn't set trigger polarity {}: {}".format(qm_dict['trig_in_pol'], str(e)))
-
+    if 'trig_mode' in qm_dict:
+        try:
+            pulsedmasterlogic.pulsedmeasurementlogic().pulsegenerator().set_trigger_mode((qm_dict['trig_mode']))
+        except Exception as e:
+            logger.warning("Couldn't set trigger mode {}: {}".format(qm_dict['trig_mode'], str(e)))
 
     # configure counting
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
