@@ -1451,13 +1451,20 @@ class AWGM819X(Base, PulserInterface):
     def _name_with_ch(self, name, ch_num):
         """
         Prepares the final wavename with (M8190A) or without (M8195A) channel extension.
-        Eg. rabi -> rabi_ch1
+        Preserves capital letters.
+        Eg. Rabi -> Rabi_ch1
         """
-        return name.lower() + '_ch' + str(ch_num)
+        return name + '_ch' + str(ch_num)
 
     def _wavename_2_fname(self, wave_name):
-        # all names lowercase to avoid trouble
-        return str(wave_name + self._wave_file_extension).lower()
+        """
+        Preserves capital letters. Note that Windows FS can't keep different files with
+        equal names except for capital / non capital letters.
+        Handled by deleting case insensitive before writing in _write_to_memory().
+        :param wave_name:
+        :return:
+        """
+        return str(wave_name + self._wave_file_extension)
 
     def _fname_2_wavename(self, fname, incl_ch_postfix=True):
         # works for file name with (8190a) and without (8195a) _ch? postfix
