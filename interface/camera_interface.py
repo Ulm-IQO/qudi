@@ -46,22 +46,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def support_live_acquisition(self):
-        """ Return whether or not the camera can take care of live acquisition
-
-        @return bool: True if supported, False if not
-        """
-        pass
-
-    @abstract_interface_method
-    def start_live_acquisition(self):
-        """ Start a continuous acquisition
-
-        @return bool: Success ?
-        """
-        pass
-
-    @abstract_interface_method
     def get_ready_state(self):
         """ Is the camera ready for an acquisition ?
 
@@ -107,17 +91,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_acquired_data(self):
-        """
-        Return an array of last acquired image.
-
-        @return numpy array: image data in format [[row],[row]...]
-
-        Each pixel might be a float, integer or sub pixels
-        """
-        pass
-
-    @abstract_interface_method
     def set_exposure(self, exposure):
         """
         Set the exposure time in seconds
@@ -140,7 +113,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def set_amplifiers(self, amp_gain_dict):
         """
         Set up the chain of amplifiers with corresponding gains
-        @param dict ampg_gain_dict: Set the amplifiers to be used with corresponding gains
+        @param dict amp_gain_dict: Set the amplifiers to be used with corresponding gains
         @return int error code: (0: OK, -1: error)
         """
         pass
@@ -157,7 +130,9 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_amplifiers(self):
         """
         Get the currently used amplifiers
-        @return list: list of the currently used amplifiers
+        @return dict: dict of the currently used amplifiers,
+                      key is a string with the name of the amplifier
+                      and the value is the amplification
         """
         pass
 
@@ -308,10 +283,10 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_acquisition_mode(self, readout_mode):
+    def set_acquisition_mode(self, acquisition_mode):
         """
-        Set the readout mode of the camera ('single acquisition', 'kinetic series')
-        @param str readout_mode: readout mode to be set
+        Set the readout mode of the camera (i.e. 'single acquisition', 'kinetic series')
+        @param str acqusition_mode: readout mode to be set
         @return int error code: (0:OK, -1:error)
         """
         pass
@@ -320,7 +295,16 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_acquisition_mode(self):
         """
         Get the acquisition mode of the camera
-        @return: string acquisition mode of the camera
+        @return: dict containing if a series or single image is taken
+        and the corresponding acquisition mode in the camera
+        """
+        pass
+
+    def get_available_acquisition_modes(self):
+        """
+        Get the available acuqisitions modes of the camera
+        @return: dict containing lists.
+        The keys tell if they fall into 'Single Scan' or 'Series' category.
         """
         pass
 
@@ -345,10 +329,11 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def get_images(self, start_index, stop_index):
+    def get_images(self, run_index, start_index, stop_index):
         """
         Read the images between start_index and stop_index from the buffer.
 
+        @param int run_index: nth run of the sequence
         @param int start_index: Index of the first image
         @param int stop_index: Index of the last image
         @return: numpy nd array of dimension (stop_index - start_index + 1, px_x, px_y)

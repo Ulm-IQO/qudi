@@ -22,10 +22,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import time
+from functools import reduce
+
 from core.module import Base
 from core.configoption import ConfigOption
 from interface.camera_interface import CameraInterface
-
 
 class CameraDummy(Base, CameraInterface):
     """ Dummy hardware for camera interface
@@ -40,64 +41,68 @@ class CameraDummy(Base, CameraInterface):
         exposure: 0.1
         gain: 1.0
     """
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-    # capabilities of the camera, in actual hardware many of these attributes should
-    # be obtained by querying the camera on startup
-    _support_live = ConfigOption('support_live', True)
-    _support_binning = ConfigOption('support_binning', True)
-    _support_crop = ConfigOption('support_crop', True)
-    _camera_name = ConfigOption('camera_name', 'Dummy camera')
-    _resolution = ConfigOption('resolution', (512, 512))
-    # just for the generation of dummy data
-    _data_acquistion = ConfigOption('random_images', 'random images')
-    _available_amplifiers = ConfigOption('amplifiers', {'EM', 'preamp'})
-    _read_out_modes = ConfigOption('readout_modes', ['Image', 'Cropped', 'FVB'])
-    _acquistion_modes = ConfigOption('acquisition_mode', ['Single Scan', 'Kinetic Series'])
-    _available_read_out_speeds = ConfigOption('readout_speeds', {'horizontal': [1e6, 3e6, 9e6],
-                                                                 'vertical': [0.5e6, 1e6, 1.5e6]})
-    _available_trigger_modes = ConfigOption('available_trigger_modes', ['Internal', 'External', 'Software'])
-    _has_shutter = ConfigOption('has_shutter', True)
-    _has_temperature_control = ConfigOption('has_temperature_control', True)
-    _bit_depth = ConfigOption('bit_depth', 16)
-    _wave_length = ConfigOption('wave_length', 640e-9)
-    _num_ad_channels = ConfigOption('num_ad_channels', 3)
-    _ad_channel = ConfigOption('ad_channel', 0)
-    _count_convert_mode = ConfigOption('count_convert_mode', 'Counts')
+        # capabilities of the camera, in actual hardware many of these attributes should
+        # be obtained by querying the camera on startup
+        self._support_live = True
+        self._support_binning = True
+        self._support_crop = True
+        self._camera_name = 'Dummy camera'
+        self._sensor_area = (512, 512)
+        # just for the generation of dummy data
+        self._data_acquistion = 'random images'
+        self._available_amplifiers = {'EM', 'preamp'}
+        self._read_out_modes = ['Image', 'Cropped', 'FVB']
+        self._available_acquistion_modes = {'Single Scan': ['single_scan'],
+                                            'Series': ['kinetic_series']}
+        self._available_read_out_speeds = {'horizontal': [1e6, 3e6, 9e6], 'vertical': [0.5e6, 1e6, 1.5e6]}
+        self._available_trigger_modes = ['Internal', 'External', 'Software']
+        self._has_shutter = True
+        self._has_temperature_control = True
+        self._bit_depth = 16
+        self._wave_length = 640e-9
+        self._num_ad_channels = 3
+        self._ad_channel = 0
+        self._count_convert_mode = 'Counts'
 
-    # state of the 'Camera'
-    _live = False
-    _acquiring = False
-    _exposure = ConfigOption('exposure', .1)
-    _current_amplifiers = ConfigOption('current_amplifiers', {'preamp': 4.0})
-    _binning = ConfigOption('binning', {2, 2})
-    _crop = ConfigOption('crop', ((100, 400), (0, 280)))
-    _current_resolution = _resolution
-    _read_out_speed = ConfigOption('readout_speed', {'horizontal': 1e6,
-                                                     'vertical': 0.5e6})
-    _read_mode = ConfigOption('read_mode', 'Image')
-    _acquisition_mode = ConfigOption('acquisition_mode', 'Kinetic Series')
-    _num_sequences = ConfigOption('num_sequences', 2)
-    _num_images = ConfigOption('num_images', 5)
-    _exposures = ConfigOption('exposures', [0.1 * i + 0.01 for i in range(10)])
-    _trigger_mode = ConfigOption('trigger_mode', 'Internal')
-    _temperature = ConfigOption('temperature', -70)
-    _temperature_control = ConfigOption('temperature_control', False)
-    _ambient_temperature = ConfigOption('temperature', 20)
-    _cooling_speed = ConfigOption('cooling_speed', 0.5)
-    _time = 0.0
-    _start_time = 0.0
+        # state of the 'Camera'
+        self._live = False
+        self._acquiring = False
+        self._exposure = .1
+        self._current_amplifiers = {'preamp': 4.0}
+        self._binning = (2, 2)
+        self._crop = ((100, 400), (0, 280))
+        self._current_sensor_area = self._sensor_area
+        self._read_out_speeds = {'horizontal': 1e6, 'vertical': 0.5e6}
+        self._read_mode = 'Image'
+        self._acquisition_mode = {'Series': 'kinetic_series'}
+        self._num_sequences = 2
+        self._num_images = 5
+        self._exposures = [0.1 * i + 0.01 for i in range(10)]
+        self._trigger_mode = 'Internal'
+        self._sensor_temperature = 20
+        self._sensor_setpoint_temperature = 20
+        self._ambient_temperature = 20
+        self._temperature_control = False
+        self._cooling_speed = 0.04
+        self._thermal_contact = 0.01
+        self._time = 0.0
+        self._start_time = 0.0
+        self._internal_memory = np.zeros(self._sensor_area)
+        self._start_temperature = self._ambient_temperature
+        self._image_generation_method = 'random_images'
 
-
-    if _has_shutter:
-        _shutter = ConfigOption('shutter', True)
-    else:
-        shutter = None
-
+        if self._has_shutter:
+            self._shutter = ConfigOption('shutter', True)
+        else:
+            self._shutter = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._set_up_sensor_area({'binning': self._binning, 'crop': self._crop})
+        self.set_up_sensor_area({'binning': self._binning, 'crop': self._crop})
         return
 
     def on_deactivate(self):
@@ -117,23 +122,7 @@ class CameraDummy(Base, CameraInterface):
 
         @return tuple: Size (width, height)
         """
-        return self._resolution
-
-    def support_live_acquisition(self):
-        """ Return whether or not the camera can take care of live acquisition
-
-        @return bool: True if supported, False if not
-        """
-        return self._support_live
-
-    def start_live_acquisition(self):
-        """ Start a continuous acquisition
-
-        @return bool: Success ?
-        """
-        if self._support_live & self._acquisition_mode == 'Single Scan':
-            self._live = True
-            self._acquiring = False
+        return self._sensor_area
 
     def get_ready_state(self):
         """ Is the camera ready for an acquisition ?
@@ -144,7 +133,7 @@ class CameraDummy(Base, CameraInterface):
 
     def binning_available(self):
         """
-        Does the cammera support binning?
+        Does the camera support binning?
         @return:
         """
         return self._support_binning
@@ -156,18 +145,34 @@ class CameraDummy(Base, CameraInterface):
         """
         return self._support_crop
 
-    def start_single_acquisition(self):
-        """ Start a single acquisition
-
-        @return bool: Success ?
+    def start_acquisition(self):
         """
-        if self._live:
-            return False
+        Start an acquisition. The acquisition settings
+        will determine if you record a single image, or image sequence.
+
+        @return int error code: (0:OK, -1:error)
+        """
+        self._acquiring = True
+        qe = self.get_quantum_efficiency(self._wave_length)
+        total_gain = self._get_total_gain(self.get_amplifiers())
+        if 'Series' in self._acquisition_mode:
+            self._internal_memory = np.zeros((self._num_sequences, self._num_images,
+                                              self._current_sensor_area[0], self._current_sensor_area[1]))
+
+            for seq_run in range(self._num_sequences):
+                for image_ind in range(self._num_images):
+                    image = self._image_generation(method=self._image_generation_method)
+                    time.sleep(self._exposures[image_ind])
+                    self._internal_memory[seq_run, image_ind, :, :] = qe * total_gain * self._exposures[image_ind]\
+                                                                      * image
+
+        elif self._acquisition_mode == 'Single Scan':
+            image = self._image_generation(method=self._image_generation_method)
+            time.sleep(self._exposures[0])
+            self._internal_memory = qe * total_gain * self._exposures[0] * image
         else:
-            self._acquiring = True
-            time.sleep(float(self._exposure + 10 / 1000))
-            self._acquiring = False
-            return True
+            self.log.error('Acquisition mode does not fall into existing categories.')
+        self._acquiring = False
 
     def stop_acquisition(self):
         """ Stop/abort live or single acquisition
@@ -186,7 +191,7 @@ class CameraDummy(Base, CameraInterface):
         Each pixel might be a float, integer or sub pixels
         """
         if self._data_acquistion == 'random images':
-            data = np.random.random(self._cur_resolution) * self._exposure * self._gain
+            data = np.random.random(self._current_sensor_area) * self._exposure * self._gain
         # TODO: implement other dummy methods to get images (i.e. take real world images)
         return data.transpose()
 
@@ -234,8 +239,7 @@ class CameraDummy(Base, CameraInterface):
         Readout speeds on the device
         @return: list of available readout speeds on the device
         """
-
-        return self._read_out_speeds
+        return self._available_read_out_speeds
 
     def set_readout_speeds(self, speed_dict):
         """
@@ -243,7 +247,15 @@ class CameraDummy(Base, CameraInterface):
         @param speed_dict:
         @return int error code: (0: OK, -1: error)
         """
-        self._read_out_speed = speed_dict
+        keys_to_update = set(speed_dict.keys()).intersection(set(self._available_read_out_speeds.keys()))
+        for up_key in keys_to_update:
+            new_speed = speed_dict[up_key]
+            available_speeds = self._available_read_out_speeds[up_key]
+            num_speeds = len(self._available_read_out_speeds[up_key])
+            if np.any(np.isclose(np.repeat(new_speed, num_speeds), available_speeds)):
+                self._read_out_speeds[up_key] = new_speed
+            else:
+                self.log.error('requested speed is not supported by hardware')
         return 0
 
     def get_readout_speeds(self):
@@ -252,16 +264,16 @@ class CameraDummy(Base, CameraInterface):
         @return dict readout_speeds: Dictionary with horizontal
                                      and vertical readout speed
         """
-        return self._read_out_speed
+        return self._read_out_speeds
 
     def get_readout_time(self):
         """
         Return how long the readout of a single image will take
         @return float time: Time it takes to read out an image from the sensor
         """
-        horizontal_readout_time = self._cur_resolution[0] * self._read_out_speed['horizontal']
-        vertical_readout_time = self._cur_resolution[1] * self._read_out_speed['horizontal']
-        readout_time = horizontal_readout_time + vertical_readout_time
+        horizontal_readout_time = self._current_sensor_area[0] / self._read_out_speeds['horizontal']
+        vertical_readout_time = self._current_sensor_area[1] / self._read_out_speeds['vertical']
+        readout_time = self._current_sensor_area[1] * horizontal_readout_time + vertical_readout_time
         return readout_time
 
     def set_up_sensor_area(self, settings):
@@ -270,18 +282,21 @@ class CameraDummy(Base, CameraInterface):
         together to 1 and takes from all the pixels and area of 128 by 256
         @return int error code: (0: OK, -1: error)
         """
+        # TODO: Write this in a way that the
         if self._read_mode == 'Image':
-            self._binning = settings['binning']
-            self._crop = settings['crop']
+            if 'binning' in settings:
+                self._binning = settings['binning']
+            if 'crop' in settings:
+                self._crop = settings['crop']
             horizontal_coord, vertical_coord = self._crop[0], self._crop[1]
             horizontal = horizontal_coord[1] - horizontal_coord[0]
             vertical = vertical_coord[1] - vertical_coord[0]
             horizontal //= self._binning[0]
             vertical //= self._binning[1]
-            self._cur_resolution = (horizontal, vertical)
+            self._current_sensor_area = (horizontal, vertical)
         elif self._read_mode == 'FVB':
-            self._binning = (1, self._resolution[1])
-            self._crop = ((1, self._resolution[0]), (1, self._resolution[1]))
+            self._binning = (1, self._sensor_area[1])
+            self._crop = ((1, self._sensor_area[0]), (1, self._sensor_area[1]))
         return 0
 
     def get_sensor_area_settings(self):
@@ -332,7 +347,7 @@ class CameraDummy(Base, CameraInterface):
         @return: float quantum efficiency between 0 and 1
         """
         def lorentzian(x, amp, width, center):
-            return amp / (1 + (width / (x - center)) ** 2)
+            return amp / (1 + ((x - center) / width) ** 2)
 
         qe = lorentzian(wavelength, 1.0, 100e-9, 640e-9)
 
@@ -387,13 +402,16 @@ class CameraDummy(Base, CameraInterface):
         """
         return self._read_mode
 
-    def set_acquisition_mode(self, readout_mode):
+    def set_acquisition_mode(self, acquisition_mode):
         """
-        Set the readout mode of the camera ('single acquisition', 'kinetic series')
-        @param str readout_mode: readout mode to be set
+        Set the readout mode of the camera (i.e. 'single acquisition', 'kinetic series')
+        @param str acquisition_mode: readout mode to be set
         @return int error code: (0:OK, -1:error)
         """
-        self._read_mode = readout_mode
+        if acquisition_mode in self._available_acquistion_modes['Single Scan']:
+            self._acquisition_mode = {'Single scan': acquisition_mode}
+        elif acquisition_mode in self._available_acquistion_modes['Series']:
+            self._acquisition_mode = {'Series': acquisition_mode}
         return 0
 
     def get_acquisition_mode(self):
@@ -402,6 +420,14 @@ class CameraDummy(Base, CameraInterface):
         @return: string acquisition mode of the camera
         """
         return self._acquisition_mode
+
+    def get_available_acquisition_modes(self):
+        """
+        Get the available acuqisitions modes of the camera
+        @return: dict containing lists.
+        The keys tell if they fall into 'Single Scan' or 'Series' category.
+        """
+        return self._available_acquistion_modes
 
     def set_up_image_sequence(self, num_sequences, num_images, exposures):
         """
@@ -412,12 +438,14 @@ class CameraDummy(Base, CameraInterface):
         @param list exposures: List of length(num_images) containing the exposures to be used
         @return int error code: (0:OK, -1:error)
         """
-        if self._acquisition_mode == 'Kinetic Series':
+        if 'Series' in self._acquisition_mode:
             self._num_sequences = num_sequences
             self._num_images = num_images
             self._exposures = exposures
             return 0
         else:
+            self.log.error('In the current acquisition mode '
+                           'taking an image_sequence is not supported')
             return -1
 
     def acquire_image_sequence(self):
@@ -425,35 +453,18 @@ class CameraDummy(Base, CameraInterface):
         Reads image sequence from the camera
         @return: numpy nd array of dimension (seq_length, px_x, px_y)
         """
-        if self._acquisition_mode == 'Kinetic Series':
-            qe = self.get_quantum_efficiency(self._wave_length)
-            data = np.zeros((self._num_sequences, self._num_images,
-                            self._cur_resolution[0], self._cur_resolution[1]))
-            if self._data_acquistion == 'random images':
-                for seq_run in range(self._num_sequences):
-                    for image in range(self._num_images):
-                        data[seq_run, image, :, :] = qe * np.random.random(self._cur_resolution)\
-                                                     * self._exposure * self._gain * self._exposures[image]
-        return data
+        return self._internal_memory
 
-    def get_images(self, start_index, stop_index):
+    def get_images(self, run_index, start_index, stop_index):
         """
         Read the images between start_index and stop_index from the buffer.
 
+        @param int run_index: nth run of the sequence
         @param int start_index: Index of the first image
         @param int stop_index: Index of the last image
         @return: numpy nd array of dimension (stop_index - start_index, px_x, px_y)
         """
-        num_images = stop_index - start_index + 1
-        if self._acquisition_mode == 'Kinetic Series':
-            qe = self.get_quantum_efficiency(self._wave_length)
-            data = np.zeros((num_images,
-                            self._cur_resolution[0], self._cur_resolution[1]))
-            if self._data_acquistion == 'random images':
-                for image in range(num_images):
-                    data[image, :, :] = qe * np.random.random(self._cur_resolution)\
-                                        * self._exposure * self._gain * self._exposures[image]
-        return
+        return self._internal_memory[run_index, start_index: stop_index + 1, :, :]
 
     def get_available_trigger_modes(self):
         """
@@ -470,6 +481,13 @@ class CameraDummy(Base, CameraInterface):
         """
         self._trigger_mode = trigger_mode
         return 0
+
+    def get_trigger_mode(self):
+        """
+        Get the currently used trigger mode
+        @return: String of the set trigger mode
+        """
+        return self._trigger_mode
 
     def has_shutter(self):
         """
@@ -507,7 +525,6 @@ class CameraDummy(Base, CameraInterface):
         """
         return self._has_temperature_control
 
-
     def set_temperature(self, temperature):
         """
         Sets the temperature of the camera
@@ -515,7 +532,7 @@ class CameraDummy(Base, CameraInterface):
         @return int error code: (0:OK, -1:error)
         """
         if self._has_temperature_control:
-            self._set_temperature = temperature
+            self._sensor_setpoint_temperature = temperature
             return 0
         else:
             return -1
@@ -528,7 +545,7 @@ class CameraDummy(Base, CameraInterface):
         if self._has_temperature_control:
             self._temperature_control = True
             self._time = 0.0
-            self._start_temperature = self._temperature
+            self._start_temperature = self._sensor_temperature
             return 0
         else:
             return -1
@@ -538,9 +555,11 @@ class CameraDummy(Base, CameraInterface):
         Stop the temperature control of the camera
         @return int error code: (0:OK, -1:error)
         """
-
+        # TODO: Implement reheating to ambient temperature after stopping the cooling
         if self._has_temperature_control:
             self._temperature_control = False
+            self._time = 0.0
+            self._start_temperature = self._sensor_temperature
             return 0
         else:
             return -1
@@ -550,16 +569,31 @@ class CameraDummy(Base, CameraInterface):
         Gets the temperature of the camera
         @return int error code: (0:OK, -1:error)
         """
-        if self._temperature_control:
-            self._update_temperature()
-        return self._temperature
+        self._update_temperature()
+        return self._sensor_temperature
 
     def _update_temperature(self):
-        target_temperature = self._set_temperature
-        init_temperature
-        cooling_speed = self._cooling_speed
-        time = time.clock() + self._time
+        self._time = time.clock() + self._time
+        init_temperature = self._start_temperature
+        if self._temperature_control:
+            target_temperature = self._sensor_setpoint_temperature
+            effective_cooling = self._cooling_speed - self._thermal_contact
 
-        self._temperature = target_temperature * (1 - np.exp(-cooling_speed * time)) \
-                            + init_temperature * np.exp(-cooling_speed * time)
+            self._sensor_temperature = target_temperature * \
+                                       (1 - np.exp(-effective_cooling * self._time))\
+                                       + init_temperature * np.exp(-effective_cooling * self._time)
+        else:
+            target_temperature = self._ambient_temperature
+            self._time = time.clock() + self._time
+            self._sensor_temperature = target_temperature * \
+                                       (1 - np.exp(-self._thermal_contact * self._time)) \
+                                       + init_temperature * np.exp(-self._thermal_contact * self._time)
         return
+
+    def _image_generation(self, method='random_images'):
+        if method == 'random_images':
+            image = np.random.poisson(150e3, self._current_sensor_area)
+        return image
+
+    def _get_total_gain(self, amp_dict):
+        return reduce(lambda x, y: x * y, [amp_dict[_] for _ in amp_dict], 1)
