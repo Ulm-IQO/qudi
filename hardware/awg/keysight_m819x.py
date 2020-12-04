@@ -34,7 +34,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption#, SequenceOrderOption
 from core.util.modules import get_home_dir
-from core.util.helpers import natural_sort
+
 
 class AWGM819X(Base, PulserInterface):
     """
@@ -1168,7 +1168,7 @@ class AWGM819X(Base, PulserInterface):
         pass
 
     @abstractmethod
-    def _get_digital_ch_cmd(self):
+    def _get_digital_ch_cmd(self, d_ch_name):
         pass
 
     @abstractmethod
@@ -2056,7 +2056,7 @@ class AWGM8195A(AWGM819X):
               awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
               awg_timeout: 20
               pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
-              assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
+              assets_storage_path: 'C:/Software/saved_pulsed_assets'     # to the ones in sequencegeneratorlogic
       """
 
 
@@ -2095,9 +2095,9 @@ class AWGM8195A(AWGM819X):
     @property
     def interleaved_wavefile(self):
         """
-        Whether wavefiless need to be uploaded in a interleaved intermediate format.
+        Whether wavefroms need to be uploaded in a interleaved intermediate format.
         Not to confuse with interleave mode from get_interleave().
-        :return:
+        :return: True/False: need interleaved wavefile?
         """
         return self.marker_on
 
@@ -2280,7 +2280,7 @@ class AWGM8195A(AWGM819X):
     def _compile_bin_samples(self, analog_samples, digital_samples, ch_str):
 
         interleaved = self.interleaved_wavefile
-        self.log.debug("Compiling samples for {} with marker on : {}".format(ch_str, interleaved))
+        self.log.debug("Compiling samples for {}, interleaved: {}".format(ch_str, interleaved))
 
         a_samples = self.float_to_sample(analog_samples[ch_str])
 
@@ -2294,10 +2294,6 @@ class AWGM8195A(AWGM819X):
 
         else:
             comb_samples = a_samples
-
-        self.log.debug("Comb samples (max={} @ {}) [:100] {}".format(np.max(comb_samples),
-                                                                     np.argmax(comb_samples),
-                                                                     comb_samples[:100]))
 
         return comb_samples
 
