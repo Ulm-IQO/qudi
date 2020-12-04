@@ -274,6 +274,7 @@ class AWGM819X(Base, PulserInterface):
         self._load_wave_from_memory(load_dict, to_nextfree_segment=to_nextfree_segment)
 
         self.set_trigger_mode('cont')
+        self.check_dev_error()
 
         return self.get_loaded_assets()
 
@@ -1282,9 +1283,12 @@ class AWGM819X(Base, PulserInterface):
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
                 self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id_per_ch, name))
 
+                self._check_uploaded_wave_name(chnl_num, name, segment_id_per_ch)
+
                 self._flag_segment_table_req_update = True
                 self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
                     name, n_samples, chnl_num, segment_id_per_ch))
+
         elif self._wave_mem_mode == 'awg_segments':
 
             if to_nextfree_segment:
@@ -1468,6 +1472,17 @@ class AWGM819X(Base, PulserInterface):
         else:
             return fname.split("_ch")[0].split(".")[0]
 
+    def _check_uploaded_wave_name(self, ch_num, wave_name, segment_id):
+
+        wave_name_on_dev = self.get_loaded_asset_name_by_id(ch_num, segment_id)
+        if wave_name_on_dev != wave_name:
+            self.log.warning("Name of waveform altered during upload: {} -> {} Unsupported characters?".format(
+                wave_name, wave_name_on_dev
+            ))
+            return 1
+
+        return 0
+
     def _write_wave_to_memory(self, name, analog_samples, digital_samples, active_analog, to_segment_id=1):
         """
         :param name:
@@ -1540,6 +1555,8 @@ class AWGM819X(Base, PulserInterface):
                 # upload
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(int(ch_num), segment_id, 0), comb_samples)
 
+                self._check_uploaded_wave_name(ch_num, wave_name, segment_id)
+
                 waveforms.append(wave_name)
                 self._flag_segment_table_req_update = True
 
@@ -1547,6 +1564,7 @@ class AWGM819X(Base, PulserInterface):
                 raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
 
         return waveforms
+
 
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
@@ -1920,7 +1938,7 @@ class AWGM819X(Base, PulserInterface):
         asset_ids = self.get_loaded_assets_id(ch_num, mode)
 
         try:
-            idx = asset_ids.index(id)
+            idx = asset_ids.index(int(id))
         except ValueError:
             self.log.warning("Couldn't find {} id {} in loaded assetes".format(mode, id))
             return ""
