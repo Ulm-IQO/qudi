@@ -1586,6 +1586,7 @@ class AWGM819X(PulserInterface):
 
         return waveforms
 
+
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
