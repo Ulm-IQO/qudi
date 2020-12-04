@@ -853,7 +853,7 @@ class AWGM819X(Base, PulserInterface):
         num_steps = len(sequence_parameters)
 
         if self._wave_mem_mode == 'pc_hdd':
-            # todo: will skip already loaded waveforms
+            # todo: check whether skips on already loaded waveforms that should be updated
             # check whether this works as intended with <generate_new> mechanism
             # generate new needs to invalidate loaded assets
             loaded_segments_ch1 = self.get_loaded_assets_name(1, mode='segment')
@@ -862,7 +862,7 @@ class AWGM819X(Base, PulserInterface):
             waves_loaded_here = []
             # transfer waveforms in sequence from local pc to segments in awg mem
             for waveform_tuple, param_dict in sequence_parameters:
-                # todo: handle other than 2 channels
+                # todo: need to handle other than 2 channels?
                 waveform_list = []
                 waveform_list.append(waveform_tuple[0])
                 waveform_list.append(waveform_tuple[1])
@@ -1125,9 +1125,10 @@ class AWGM819X(Base, PulserInterface):
 
         Unused for pulse generator hardware other than an AWG.
         """
-        self.log.warning('Interleave mode not available for the AWG M8195A '
-                         'Series!\n'
-                         'Method call will be ignored.')
+        if state:
+            self.log.warning('Interleave mode not available for the AWG M819xA '
+                             'Series!\n'
+                             'Method call will be ignored.')
         return self.get_interleave()
 
     def reset(self):
@@ -2075,6 +2076,11 @@ class AWGM8195A(AWGM819X):
 
     @property
     def interleaved_wavefile(self):
+        """
+        Whether wavefiless need to be uploaded in a interleaved intermediate format.
+        Not to confuse with interleave mode from get_interleave().
+        :return:
+        """
         return self.marker_on
 
     def get_constraints(self):
