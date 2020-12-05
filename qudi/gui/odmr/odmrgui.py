@@ -114,7 +114,7 @@ class OdmrGui(GuiBase):
         image = {'APD counts'    : tuple(np.array((a, a)).transpose() for a in data['APD counts']),
                  'analog scanner': tuple(np.array((a, a)).transpose() for a in data['analog scanner']),
                  'saasdggag'     : tuple(np.array((a, a)).transpose() for a in data['saasdggag'])}
-        self._plot_widget.set_data(frequencies[1], image=image['APD counts'][1], signal=data['APD counts'][1], fit=fit['APD counts'][1])
+        self._update_scan_data()
         self.show()
         # self._sd = ODMRSettingDialog()
         #
@@ -539,6 +539,7 @@ class OdmrGui(GuiBase):
         logic.sigScanParametersUpdated.connect(
             self._update_scan_parameters, QtCore.Qt.QueuedConnection
         )
+        logic.sigScanDataUpdated.connect(self._update_scan_data, QtCore.Qt.QueuedConnection)
 
     def restore_default_view(self):
         self._cw_control_dockwidget.setFloating(False)
@@ -614,32 +615,43 @@ class OdmrGui(GuiBase):
         self._mw.action_toggle_cw.setChecked(running)
         self._cw_control_dockwidget.parameters_set_enabled(not running)
 
-    def update_plots(self, odmr_data_x, odmr_data_y, odmr_matrix):
+    def _update_scan_data(self, signal_data=None, raw_data=None, frequency_data=None):
         """ Refresh the plot widgets with new data. """
-        # Update mean signal plot
-        self.odmr_image.setData(odmr_data_x, odmr_data_y[self.display_channel])
-        # Update raw data matrix plot
-        cb_range = self.get_matrix_cb_range()
-        self.update_colorbar(cb_range)
-        matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
-        start = self._odmr_logic.mw_starts[matrix_range]
-        step = self._odmr_logic.mw_steps[matrix_range]
-        stop = self._odmr_logic.mw_stops[matrix_range]
-        selected_odmr_data_x = np.arange(start, stop, step)
-
-        self.odmr_matrix_image.setRect(
-            QtCore.QRectF(
-                selected_odmr_data_x[0],
-                0,
-                np.abs(selected_odmr_data_x[-1] - selected_odmr_data_x[0]),
-                odmr_matrix.shape[0])
+        if raw_data is None and signal_data is None:
+            logic = self._odmr_logic()
+            signal_data = logic.signal_data
+            raw_data = logic.raw_data
+        range_index = self._scan_control_dockwidget.selected_range
+        channel = self._scan_control_dockwidget.selected_channel
+        self._plot_widget.set_data(
+            None if frequency_data is None else frequencies[range_index],
+            None if raw_data is None else raw_data[channel][range_index],
+            None if signal_data is None else signal_data[channel][range_index]
         )
-
-        odmr_matrix_range = self._odmr_logic.select_odmr_matrix_data(odmr_matrix, self.display_channel, matrix_range)
-        self.odmr_matrix_image.setImage(
-            image=odmr_matrix_range,
-            axisOrder='row-major',
-            levels=(cb_range[0], cb_range[1]))
+        # # Update mean signal plot
+        # self.odmr_image.setData(odmr_data_x, odmr_data_y[self.display_channel])
+        # # Update raw data matrix plot
+        # cb_range = self.get_matrix_cb_range()
+        # self.update_colorbar(cb_range)
+        # matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
+        # start = self._odmr_logic.mw_starts[matrix_range]
+        # step = self._odmr_logic.mw_steps[matrix_range]
+        # stop = self._odmr_logic.mw_stops[matrix_range]
+        # selected_odmr_data_x = np.arange(start, stop, step)
+        #
+        # self.odmr_matrix_image.setRect(
+        #     QtCore.QRectF(
+        #         selected_odmr_data_x[0],
+        #         0,
+        #         np.abs(selected_odmr_data_x[-1] - selected_odmr_data_x[0]),
+        #         odmr_matrix.shape[0])
+        # )
+        #
+        # odmr_matrix_range = self._odmr_logic.select_odmr_matrix_data(odmr_matrix, self.display_channel, matrix_range)
+        # self.odmr_matrix_image.setImage(
+        #     image=odmr_matrix_range,
+        #     axisOrder='row-major',
+        #     levels=(cb_range[0], cb_range[1]))
 
     def update_channel(self, index):
         self.display_channel = int(
