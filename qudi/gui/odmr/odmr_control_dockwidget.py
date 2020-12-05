@@ -230,6 +230,14 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         return self.average_lines_spinbox.value()
 
     @property
+    def selected_channel(self):
+        return self._data_channel_combobox.currentText()
+
+    @property
+    def selected_range(self):
+        return self._range_index_spinbox.value()
+
+    @property
     def runtime(self):
         return self.runtime_spinbox.value()
 
@@ -328,9 +336,7 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
 
     @QtCore.Slot()
     def _data_selection_changed_cb(self):
-        channel = self._data_channel_combobox.currentText()
-        range_index = self._range_index_spinbox.value()
-        self.sigDataSelectionChanged.emit(channel, range_index)
+        self.sigDataSelectionChanged.emit(self.selected_channel, self.selected_range)
 
     @QtCore.Slot()
     def _runtime_changed_cb(self):
