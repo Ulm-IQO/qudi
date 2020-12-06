@@ -29,6 +29,7 @@ from qudi.interface.microwave_interface import MicrowaveMode, TriggerEdge
 class OdmrNicardScannerInterfuse(LogicBase):
     """ ToDo: Document
     """
+    # _threaded = False
 
     _microwave = Connector(name='microwave', interface='MicrowaveInterface')
     _nicard = Connector(name='nicard', interface='FiniteSamplingDummy')
@@ -78,6 +79,12 @@ class OdmrNicardScannerInterfuse(LogicBase):
             'step_limits'              : step_limits
         }
 
+        # Determine trigger edge
+        if mw.constraints.trigger_edge_supported(TriggerEdge.RISING):
+            self._trigger_edge = TriggerEdge.RISING
+        else:
+            self._trigger_edge = TriggerEdge.FALLING
+
         # unify shared settings upon activation
         mw_sample_rate = mw.trigger_parameters[1]
         ni_sample_rate = ni.sample_rate
@@ -89,12 +96,6 @@ class OdmrNicardScannerInterfuse(LogicBase):
             else:
                 sample_rate = sample_rate_limits[1]
             self.set_sample_rate(sample_rate)
-
-        # Determine trigger edge
-        if mw.constraints.trigger_edge_supported(TriggerEdge.RISING):
-            self._trigger_edge = TriggerEdge.RISING
-        else:
-            self._trigger_edge = TriggerEdge.FALLING
 
         # process parameters
         self._frequency_ranges = None
@@ -122,10 +123,6 @@ class OdmrNicardScannerInterfuse(LogicBase):
     @property
     def cw_parameters(self):
         return self._microwave().cw_parameters
-
-    @property
-    def channels(self):
-        return tuple(self._nicard().channel_units)
 
     @property
     def channel_units(self):

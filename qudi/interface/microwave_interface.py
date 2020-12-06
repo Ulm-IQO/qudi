@@ -328,7 +328,7 @@ class MicrowaveConstraints:
         return edge in self._supported_trigger_edges
 
     def trigger_rate_in_range(self, rate):
-        return in_range(range, *self._trigger_rate_limits)
+        return in_range(rate, *self._trigger_rate_limits)
 
     def frequency_in_range(self, frequency):
         return in_range(frequency, *self._frequency_limits)
