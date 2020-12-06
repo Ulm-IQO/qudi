@@ -20,77 +20,105 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.interface import abstract_interface_method
-from core.meta import InterfaceMetaclass
-from core.util.helpers import in_range
+from qudi.core.interface import abstract_interface_method
+from qudi.core.meta import InterfaceMetaclass
+from qudi.core.util.helpers import in_range
 from enum import Enum
 
+
 class TriggerEdge(Enum):
-    """ On which electrical signal edge does a trigger occur?
-      So edgy!
+    """ On which electrical signal edge does a trigger occur? So edgy...!
     """
-    RISING = 0
-    FALLING = 1
-    NONE = 3
-    UNKNOWN = 4
+    INVALID = -1
+    FALLING = 0
+    RISING = 1
+
 
 class MicrowaveMode(Enum):
-    """ Modes for microwave generators:
-        CW: continuous wave
-        LIST: ouptut list of arbitrary frequencies, each step triggered by electrical input
-        SWEEP: frequency sweep from f1 to f2, each step triggered by electrical input
-        ASWEEP: frequency sweep from f1 to f2, triggered only on the start of the sweep
+    """ Operating modes for microwave generators.
+    CW: continuous wave with fixed frequency
+    LIST: ouptut list of arbitrary frequencies, each step triggered by electrical trigger input
+    SWEEP: frequency sweep from f1 to f2, each step triggered by electrical trigger input
     """
+    INVALID = -1
     CW = 0
     LIST = 1
-    SWEEP = 3
-    ASWEEP = 4
+    SWEEP = 2
 
 
 class MicrowaveInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple microwave hardware.
 
-    This interface is designed to interface microwave generator where the power and frequency of the produced microwave
-    can be set. Is can be operated in CW (continuous wave) or as a sweep system synchronised with a measured device.
-
+    This interface is designed to interface microwave generator where the power and frequency of
+    the produced microwave can be set.
+    It can be operated in CW (continuous wave) or as a sweep system synchronised with a sampling
+    device.
     """
+
+    @property
+    @abstract_interface_method
+    def constraints(self):
+        """ Return the device-specific parameter constraints.
+
+        @return MicrowaveConstraints: Microwave constraints object
+        """
+        pass
+
+    @property
+    @abstract_interface_method
+    def output_state(self):
+        """ Returns the current state of the microwave output (mode and bool indicating activity).
+
+        @return (MicrowaveMode, bool): Current output MicrowaveMode and active flag (Active: True)
+        """
+        pass
+
+    @property
+    @abstract_interface_method
+    def trigger_parameters(self):
+        """ Return current external trigger setup.
+
+        @return (TriggerEdge, float): current trigger edge and estimated trigger frequency (in Hz)
+        """
+        pass
+
+    @property
+    @abstract_interface_method
+    def cw_parameters(self):
+        """ Return currently set frequency and power of CW mode.
+        Raises exception if CW mode is not supported.
+
+        @return (float, float): current frequency (in Hz) and power (in dBm) for CW mode
+        """
+        pass
+
+    @property
+    @abstract_interface_method
+    def list_parameters(self):
+        """ Return currently set frequency list and power of LIST mode.
+        Raises exception if LIST mode is not supported.
+
+        @return (float[], float): current frequency list (in Hz) and power (in dBm) for LIST mode
+        """
+        pass
+
+    @property
+    @abstract_interface_method
+    def sweep_parameters(self):
+        """ Return currently set start and stop frequency, number of frequencies and power of
+        SWEEP mode.
+        Raises exception if no SWEEP mode is supported.
+
+        @return (float, float, int, float): sweep parameters (start, stop, points, power)
+        """
+        pass
 
     @abstract_interface_method
     def off(self):
-        """ Switches off any microwave output.
+        """ Switches off any microwave output regardless of current active. Does nothing if already
+        inactive.
 
-        @return int: error code (0:OK, -1:error)
-
-        Must return AFTER the device is actually stopped.
-        """
-        pass
-
-    @abstract_interface_method
-    def get_status(self):
-        """ Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
-            the output state (stopped, running)
-
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
-        """
-        pass
-
-    @abstract_interface_method
-    def get_power(self):
-        """ Gets the microwave output power for the currently active mode.
-
-        @return float: the output power in dBm
-        """
-        pass
-
-    @abstract_interface_method
-    def get_frequency(self):
-        """ Gets the frequency of the microwave output.
-
-        @return [float, list]: frequency(s) currently set for this device in Hz
-
-        Returns single float value if the device is in cw mode.
-        Returns list like [start, stop, step] if the device is in sweep mode.
-        Returns list of frequencies if the device is in list mode.
+        Must return AFTER the device has actually stopped.
         """
         pass
 
@@ -98,161 +126,224 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     def cw_on(self):
         """ Switches on cw microwave output.
 
-        @return int: error code (0:OK, -1:error)
-
         Must return AFTER the device is actually running.
         """
         pass
 
     @abstract_interface_method
     def set_cw(self, frequency=None, power=None):
-        """ Configures the device for cw-mode and optionally sets frequency and/or power
+        """ Sets frequency and/or power for CW mode
 
-        @param (float) frequency: frequency to set in Hz
-        @param (float) power: power to set in dBm
-
-        @return tuple(float, float, str): with the relation
-            current frequency in Hz,
-            current power in dBm,
-            current mode
+        @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
         """
         pass
 
     @abstract_interface_method
     def list_on(self):
-        """  Switches on the list mode microwave output.
-
-        @return int: error code (0:OK, -1:error)
+        """ Switches on the list mode microwave output.
 
         Must return AFTER the device is actually running.
         """
         pass
 
     @abstract_interface_method
-    def set_list(self, frequency=None, power=None):
-        """ Configures the device for list-mode and optionally sets frequencies and/or power
+    def set_list(self, frequencies=None, power=None):
+        """ Sets frequency list and/or power for LIST mode
 
-        @param (list(float)) frequency: list of frequencies in Hz
-        @param (float) power: MW power of the frequency list in dBm
-
-        @return tuple(list, float, str): current frequencies in Hz, current power in dBm, current mode
+        @param float[] frequencies: list of frequencies in Hz
+        @param float power: power to set in dBm
         """
         pass
 
     @abstract_interface_method
-    def reset_listpos(self):
-        """ Reset of MW list mode position to start (first frequency step)
-
-        @return int: error code (0:OK, -1:error)
-        """
+    def reset_list(self):
+        """ Reset list mode to start (first frequency step) """
         pass
 
     @abstract_interface_method
     def sweep_on(self):
-        """ Switches on the sweep mode.
+        """ Switches on the sweep mode microwave output.
 
-        @return int: error code (0:OK, -1:error)
+        Must return AFTER the device is actually running.
         """
         pass
 
     @abstract_interface_method
-    def set_sweep(self, start=None, stop=None, step=None, power=None):
-        """  Configures the device for sweep-mode and optionally sets frequency start/stop/step and/or power
+    def set_sweep(self, start=None, stop=None, points=None, power=None):
+        """ Sets frequency start/stop/points and/or power for SWEEP mode
 
-        @return float, float, float, float, str: current start frequency in Hz,
-                                                 current stop frequency in Hz,
-                                                 current frequency step in Hz,
-                                                 current power in dBm,
-                                                 current mode
+        @param float start: start frequency to set in Hz
+        @param float stop: stop frequency to set in Hz
+        @param int points: number of frequencies to set
+        @param float power: power to set in dBm
         """
         pass
 
     @abstract_interface_method
-    def reset_sweeppos(self):
-        """ Reset of MW sweep mode position to start (start frequency)
-
-        @return int: error code (0:OK, -1:error)
-        """
+    def reset_sweep(self):
+        """ Reset sweep mode to start """
         pass
 
     @abstract_interface_method
-    def set_ext_trigger(self, pol, timing):
-        """ Set the external trigger for this device with proper polarization.
+    def set_trigger(self, edge=None, frequency=None):
+        """
+        Set the external trigger for this device with proper polarization and/or approx. frequency.
 
-        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
-        @param timing: estimated time between triggers
-
-        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
-            trigger timing as queried from device
+        @param TriggerEdge edge: Active trigger edge to listen to
+        @param float frequency: estimated trigger frequency in Hz
         """
         pass
 
     def trigger(self):
-        """ Trigger the next element in the list or sweep mode programmatically.
-
-        @return int: error code (0:OK, -1:error)
-
-        Ensure that the Frequency was set AFTER the function returns, or give
-        the function at least a save waiting time corresponding to the
-        frequency switching speed.
-        """
-        pass
-
-    @abstract_interface_method
-    def get_limits(self):
-        """ Return the device-specific limits in a nested dictionary.
-
-          @return MicrowaveLimits: Microwave limits object
-        """
+        """ Trigger the next frequency in LIST or SWEEP mode programmatically """
         pass
 
 
-class MicrowaveLimits:
+class MicrowaveConstraints:
     """ A container to hold all limits for microwave sources.
     """
-    def __init__(self):
-        """Create an instance containing all parameters with default values."""
+    def __init__(self, supported_modes, supported_trigger_edges, trigger_rate_limits,
+                 frequency_limits, power_limits,
+                 list_points_limits, list_step_limits,
+                 sweep_points_limits, sweep_step_limits):
+        assert len(frequency_limits) == 2
+        assert len(power_limits) == 2
+        assert len(list_points_limits) == 2
+        assert len(list_step_limits) == 2
+        assert len(sweep_points_limits) == 2
+        assert len(sweep_step_limits) == 2
+        assert len(trigger_rate_limits) == 2
+        assert all(isinstance(mode, MicrowaveMode) for mode in supported_modes)
+        assert all(isinstance(edge, TriggerEdge) for edge in supported_trigger_edges)
 
-        self.supported_modes = (
-            MicrowaveMode.CW,
-            MicrowaveMode.LIST,
-            MicrowaveMode.SWEEP,
-            MicrowaveMode.ASWEEP,
+        self._supported_modes = frozenset(supported_modes)
+        self._supported_trigger_edges = frozenset(supported_trigger_edges)
+        self._trigger_rate_limits = (
+            float(min(trigger_rate_limits)), float(max(trigger_rate_limits))
         )
+        self._frequency_limits = (float(min(frequency_limits)), float(max(frequency_limits)))
+        self._power_limits = (float(min(power_limits)), float(max(power_limits)))
+        self._list_points_limits = (int(min(list_points_limits)), int(max(list_points_limits)))
+        self._list_step_limits = (float(min(list_step_limits)), float(max(list_step_limits)))
+        self._sweep_points_limits = (int(min(sweep_points_limits)), int(max(sweep_points_limits)))
+        self._sweep_step_limits = (float(min(sweep_step_limits)), float(max(sweep_step_limits)))
 
-        # frequency in Hz
-        self.min_frequency = 1e6
-        self.max_frequency = 1e9
+    @property
+    def supported_modes(self):
+        return self._supported_modes
 
-        # power in dBm
-        self.min_power = -10
-        self.max_power = 0
+    @property
+    def supported_trigger_edges(self):
+        return self._supported_trigger_edges
 
-        # list limits, frequencies in Hz, entries are single steps
-        self.list_minstep = 1
-        self.list_maxstep = 1e9
-        self.list_maxentries = 1e3
+    @property
+    def trigger_rate_limits(self):
+        return self._trigger_rate_limits
 
-        # sweep limits, frequencies in Hz, entries are single steps
-        self.sweep_minstep = 1
-        self.sweep_maxstep = 1e9
-        self.sweep_maxentries = 1e3
+    @property
+    def min_trigger_rate(self):
+        return self._trigger_rate_limits[0]
 
-        # analog sweep limits, slope in Hz/s
-        self.sweep_minslope = 1
-        self.sweep_maxslope = 1e9
+    @property
+    def max_trigger_rate(self):
+        return self._trigger_rate_limits[1]
+
+    @property
+    def frequency_limits(self):
+        return self._frequency_limits
+
+    @property
+    def min_frequency(self):
+        return self._frequency_limits[0]
+
+    @property
+    def max_frequency(self):
+        return self._frequency_limits[1]
+
+    @property
+    def power_limits(self):
+        return self._power_limits
+
+    @property
+    def min_power(self):
+        return self._power_limits[0]
+
+    @property
+    def max_power(self):
+        return self._power_limits[1]
+
+    @property
+    def list_points_limits(self):
+        return self._list_points_limits
+
+    @property
+    def min_list_points(self):
+        return self._list_points_limits[0]
+
+    @property
+    def max_list_points(self):
+        return self._list_points_limits[1]
+
+    @property
+    def list_step_limits(self):
+        return self._list_step_limits
+
+    @property
+    def min_list_step(self):
+        return self._list_step_limits[0]
+
+    @property
+    def max_list_step(self):
+        return self._list_step_limits[1]
+
+    @property
+    def sweep_points_limits(self):
+        return self._sweep_points_limits
+
+    @property
+    def min_sweep_points(self):
+        return self._sweep_points_limits[0]
+
+    @property
+    def max_sweep_points(self):
+        return self._sweep_points_limits[1]
+
+    @property
+    def sweep_step_limits(self):
+        return self._sweep_step_limits
+
+    @property
+    def min_sweep_step(self):
+        return self._sweep_step_limits[0]
+
+    @property
+    def max_sweep_step(self):
+        return self._sweep_step_limits[1]
+
+    def mode_supported(self, mode):
+        return mode in self._supported_modes
+
+    def trigger_edge_supported(self, edge):
+        return edge in self._supported_trigger_edges
+
+    def trigger_rate_in_range(self, rate):
+        return in_range(range, *self._trigger_rate_limits)
 
     def frequency_in_range(self, frequency):
-        return in_range(frequency, self.min_frequency, self.max_frequency)
+        return in_range(frequency, *self._frequency_limits)
 
     def power_in_range(self, power):
-        return in_range(power, self.min_power, self.max_power)
+        return in_range(power, *self._power_limits)
 
     def list_step_in_range(self, step):
-        return in_range(step, self.list_minstep, self.list_maxstep)
+        return in_range(step, *self._list_step_limits)
+
+    def list_points_in_range(self, points):
+        return in_range(points, *self._list_points_limits)
 
     def sweep_step_in_range(self, step):
-        return in_range(step, self.sweep_minstep, self.sweep_maxstep)
+        return in_range(step, *self._sweep_step_limits)
 
-    def slope_in_range(self, slope):
-        return in_range(slope, self.sweep_minslope, self.sweep_maxslope)
+    def sweep_points_in_range(self, points):
+        return in_range(points, *self._sweep_points_limits)

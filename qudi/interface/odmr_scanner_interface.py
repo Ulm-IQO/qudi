@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi Interface file for ODMRCounter.
+This file contains the qudi interface for ODMR scanners.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,23 +19,19 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.interface import abstract_interface_method
-from core.meta import InterfaceMetaclass
+from qudi.core.interface import abstract_interface_method
+from qudi.core.meta import InterfaceMetaclass
 
 
-class ODMRCounterInterface(metaclass=InterfaceMetaclass):
-    """ This is the Interface class supplies the controls for a simple ODMR."""
+class OdmrScannerInterface(metaclass=InterfaceMetaclass):
+    """ This interface class defines the controls for a simple ODMR scanning device/interfuse."""
 
     @abstract_interface_method
     def set_up_odmr_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
-        @param float clock_frequency: if defined, this sets the frequency of the
-                                      clock
-        @param str clock_channel: if defined, this is the physical channel of
-                                  the clock
-
-        @return int: error code (0:OK, -1:error)
+        @param float clock_frequency: if defined, this sets the frequency of the clock
+        @param str clock_channel: if defined, this is the physical channel of the clock
         """
         pass
 

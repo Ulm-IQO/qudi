@@ -50,6 +50,8 @@ class FiniteSamplingDummy(Base):
         self._active_channels = frozenset()
 
         self.__start_time = 0.0
+        self.__returned_samples = 0
+        self.__simulated_samples = None
 
     def on_activate(self):
         # Check and refine ConfigOptions
@@ -74,9 +76,18 @@ class FiniteSamplingDummy(Base):
 
         # process parameters
         self.__start_time = 0.0
+        self.__returned_samples = 0
+        self.__simulated_samples = None
 
     def on_deactivate(self):
-        pass
+        self.__simulated_samples = None
+
+    @property
+    def constraints(self):
+        return {
+            'sample_rate_limits': self._sample_rate_limits,
+            'acquisition_length_limits': self._acquisition_limits,
+        }
 
     @property
     def active_channels(self):
@@ -95,9 +106,15 @@ class FiniteSamplingDummy(Base):
         return self._acquisition_length
 
     @property
-    def available_samples(self):
+    def samples_in_buffer(self):
         with self._thread_lock:
-
+            if self.module_state() == 'locked':
+                elapsed_time = time.time() - self.__start_time
+                acquired_samples = min(self._acquisition_length,
+                                       int(elapsed_time * self._sample_rate))
+                return max(0, acquired_samples - self.__returned_samples)
+            else:
+                return 0
 
     def set_sample_rate(self, rate):
         sample_rate = float(rate)
@@ -126,9 +143,86 @@ class FiniteSamplingDummy(Base):
                 'Unable to set acquisition length. Data acquisition in progress.'
             self._acquisition_length = samples
 
-    def start_acquisition(self):
+    def start_buffered_acquisition(self):
         with self._thread_lock:
             assert self.module_state() == 'idle', \
                 'Unable to start data acquisition. Data acquisition already in progress.'
             self.module_state.lock()
 
+            # ToDo: discriminate between different types of data
+            self.__simulate_odmr(self._acquisition_length)
+
+            self.__returned_samples = 0
+            self.__start_time = time.time()
+
+    def stop_buffered_acquisition(self):
+        with self._thread_lock:
+            if self.module_state() == 'locked':
+                unread_samples = self.__returned_samples < self._acquisition_length
+                if unread_samples > 0:
+                    self.log.warning(f'Buffered sample acquisition stopped before all samples have '
+                                     f'been read. {unread_samples} remaining samples will be lost.')
+                self.module_state.unlock()
+
+    def get_buffered_samples(self, number_of_samples=None):
+        with self._thread_lock:
+            available_samples = self.samples_in_buffer
+            if number_of_samples is None:
+                number_of_samples = available_samples
+            else:
+                remaining_samples = self._acquisition_length - self.__returned_samples
+                assert number_of_samples <= remaining_samples, \
+                    f'Number of samples to read ({number_of_samples}) exceeds remaining samples ' \
+                    f'in this acquisition ({remaining_samples})'
+
+            # Return early if no samples are requested
+            if number_of_samples < 1:
+                return dict()
+
+            # Wait until samples have been acquired if requesting more samples than in the buffer
+            pending_samples = number_of_samples - available_samples
+            if pending_samples > 0:
+                time.sleep(pending_samples / self._sample_rate)
+            # return data and increment sample counter
+            data = {ch: samples[self.__returned_samples:self.__returned_samples + number_of_samples]
+                    for ch, samples in self.__simulated_samples.items()}
+            self.__returned_samples += number_of_samples
+            return data
+
+    def acquire_samples(self, number_of_samples=None):
+        with self._thread_lock:
+            if number_of_samples is None:
+                buffered_acquisition_length = None
+            else:
+                buffered_acquisition_length = self._acquisition_length
+                self.set_acquisition_length(number_of_samples)
+
+            self.start_buffered_acquisition()
+            data = self.get_buffered_samples()
+            self.stop_buffered_acquisition()
+
+            if buffered_acquisition_length is not None:
+                self._acquisition_length = buffered_acquisition_length
+            return data
+
+    def __simulate_random(self, length):
+        self.__simulated_samples = {
+            ch: np.random.rand(length) for ch in self._channel_units if ch in self._active_channels
+        }
+
+    def __simulate_odmr(self, length):
+        if length < 3:
+            self.__simulate_random(length)
+            return
+        gamma = 2
+        data = dict()
+        x = np.arange(length, dtype=np.float64)
+        for ch in self._channel_units:
+            if ch in self._active_channels:
+                pos = length / 2 + (np.random.rand() - 0.5) * length / 3
+                offset = np.random.rand() * 1000
+                noise = np.sqrt(amp)
+                amp = offset / 30
+                data[ch] = amp + (np.random.rand() - 0.5) * noise + amp * gamma ** 2 / (
+                            (x - pos) ** 2 + gamma ** 2)
+        self.__simulated_samples = data
