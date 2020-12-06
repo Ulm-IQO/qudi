@@ -40,14 +40,7 @@ class OdmrLogic(LogicBase):
     """ This is the Logic class for CW ODMR measurements """
 
     # declare connectors
-    _microwave_source = Connector(name='microwave_source', interface='MicrowaveInterface')
-    _sampling_device = Connector(name='sampling_device', interface='FiniteSamplingDummy')
-
-    # config option
-    _scan_mode = ConfigOption(name='scan_mode',
-                              default='LIST',
-                              missing='warn',
-                              converter=lambda x: MicrowaveMode[x.upper()])
+    _odmr_scanner = Connector(name='odmr_scanner', interface='OdmrNicardScannerInterfuse')
 
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
     _cw_power = StatusVar(name='cw_power', default=-30)
@@ -117,8 +110,7 @@ class OdmrLogic(LogicBase):
         if self.module_state() == 'locked':
             self.stop_odmr_scan()
         # Switch off microwave source for sure (also if CW mode is active or module is still locked)
-        # ToDo: Switch off
-        # self._mw_device.off()
+        self._odmr_scanner().off()
 
     # @fc.constructor
     # def sv_set_fits(self, val):
@@ -205,16 +197,16 @@ class OdmrLogic(LogicBase):
                                                                       axis=1).compressed()
 
     @property
-    def microwave_constraints(self):
-        return self._mw_device.get_limits()
+    def constraints(self):
+        return self._odmr_scanner().constraints
 
     @property
     def channels(self):
-        return tuple(self._sampling_device().channel_units)
+        return tuple(self._odmr_scanner().channel_units)
 
     @property
     def channel_units(self):
-        return self._sampling_device().channel_units
+        return self._odmr_scanner().channel_units
 
     @property
     def signal_data(self):
