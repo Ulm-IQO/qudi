@@ -37,20 +37,17 @@ from qudi.core.statusvariable import StatusVar
 
 
 class OdmrLogic(LogicBase):
-    """This is the Logic class for ODMR."""
+    """ This is the Logic class for CW ODMR measurements """
 
     # declare connectors
-    # odmrcounter = Connector(interface='ODMRCounterInterface')
-    # fitlogic = Connector(interface='FitLogic')
-    # microwave1 = Connector(interface='MicrowaveInterface')
-    # savelogic = Connector(interface='SaveLogic')
-    # taskrunner = Connector(interface='TaskRunner')
+    _microwave_source = Connector(name='microwave_source', interface='MicrowaveInterface')
+    _sampling_device = Connector(name='sampling_device', interface='FiniteSamplingDummy')
 
     # config option
-    _mw_scan_mode = ConfigOption('scanmode',
-                                 'LIST',
-                                 missing='warn',
-                                 converter=lambda x: MicrowaveMode[x.upper()])
+    _scan_mode = ConfigOption(name='scan_mode',
+                              default='LIST',
+                              missing='warn',
+                              converter=lambda x: MicrowaveMode[x.upper()])
 
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
     _cw_power = StatusVar(name='cw_power', default=-30)
@@ -94,7 +91,7 @@ class OdmrLogic(LogicBase):
         """
         # Set/recall microwave parameters and check against constraints
         # ToDo: check all StatusVars
-        # limits = self.hardware_constraints
+        # limits = self.microwave_constraints
         # self._cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
         # self._cw_mw_power = limits.power_in_range(self.cw_mw_power)
         # self._scan_mw_power = limits.power_in_range(self.sweep_mw_power)
@@ -170,7 +167,7 @@ class OdmrLogic(LogicBase):
         self._frequency_data = [np.linspace(*r) for r in self._scan_frequency_ranges]
 
         # ToDo: Get proper channel constraints
-        # constraints = self.hardware_constraints
+        # constraints = self.microwave_constraints
         self._raw_data = dict()
         self._fit_data = dict()
         self._signal_data = dict()
@@ -208,17 +205,16 @@ class OdmrLogic(LogicBase):
                                                                       axis=1).compressed()
 
     @property
-    def hardware_constraints(self):
+    def microwave_constraints(self):
         return self._mw_device.get_limits()
 
     @property
-    def scan_mode(self):
-        return self._mw_scan_mode
+    def channels(self):
+        return tuple(self._sampling_device().channel_units)
 
     @property
-    def channels(self):
-        # ToDo: Get channels from hardware
-        return ('APD counts', 'analog scanner', 'saasdggag')
+    def channel_units(self):
+        return self._sampling_device().channel_units
 
     @property
     def signal_data(self):
@@ -344,7 +340,7 @@ class OdmrLogic(LogicBase):
         """
         with self._threadlock:
             try:
-                constraints = self.hardware_constraints
+                constraints = self.microwave_constraints
                 self._cw_frequency = constraints.frequency_in_range(frequency)
                 self._cw_power = constraints.power_in_range(power)
                 # ToDo: Hardware calls
