@@ -23,7 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import telnetlib
 import time
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.confocal_stepper_interface import ConfocalStepperInterface
 import numpy as np
 

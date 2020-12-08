@@ -28,7 +28,9 @@ import numpy as np
 import os
 import time
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.module import Connector, StatusVar
+from core.configoption import ConfigOption
+
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno

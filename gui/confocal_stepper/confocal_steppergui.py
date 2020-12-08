@@ -28,7 +28,9 @@ import numpy as np
 import os
 import time
 
-from core.module import Connector, ConfigOption
+from core.module import Connector
+from core.configoption import ConfigOption
+
 from gui.confocal_stepper.lab_book_gui import ConfocalStepperLabBookWindow
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar

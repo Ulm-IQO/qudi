@@ -26,11 +26,11 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
-from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.module import Connector, StatusVar
+from core.configoption import ConfigOption
 
 
 def round_to_2(x):

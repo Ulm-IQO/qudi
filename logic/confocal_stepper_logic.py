@@ -31,7 +31,8 @@ import matplotlib.pyplot as plt
 from scipy import ndimage  # For gaussian smoothing of data
 from scipy.stats import norm  # To fit gaussian average to data
 
-from core.module import Connector, StatusVar, ConfigOption
+from core.module import Connector, StatusVar
+from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 

@@ -26,18 +26,14 @@ import numpy as np
 import os
 import pyqtgraph as pg
 
-from core.module import Connector, ConfigOption, StatusVar
-from collections import OrderedDict
+from core.module import Connector
+from core.configoption import ConfigOption
+
 from gui.cavity_stabilisation.lab_book_gui import CavityLabBookWindow
 from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
-from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from qtpy import QtCore
-from qtpy import QtGui
-from qtpy import QtWidgets
-from qtpy import uic
 
+from qtpy import QtCore,uic, QtGui
 
 class CavityStabilisationMainWindow(QtGui.QMainWindow):
 
