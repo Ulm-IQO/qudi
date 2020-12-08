@@ -59,15 +59,15 @@ def float_rounding(rounded_number, divisor):
     return rounded_number - math.fmod(rounded_number, divisor)
 
 
-def in_range(x, min, max):
+def in_range(x, minimum=None, maximum=None):
     """Checks if given value is within a range
 
     @param float x: value to be checked
-    @param float min: lower limit
-    @param float max: upper limit
+    @param float minimum: lower limit
+    @param float maximum: upper limit
     @return bool: true if x lies within [min,max]
     """
-    return (min is None or min <= x) and (max is None or max >= x)
+    return (minimum is None or minimum <= x) and (maximum is None or maximum >= x)
 
 
 class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
@@ -78,9 +78,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     _modtype = 'logic'
 
     # declare connectors
+    savelogic = Connector(interface='SaveLogic')
+    digitalcounter = Connector(interface='FiniteCounterInterface')
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
-    savelogic = Connector(interface='SaveLogic')
 
     voltage_adjustment_steps = ConfigOption('voltage_adjustment_steps', 1, missing='warn')
     _average_number = ConfigOption('averages_over_feedback', 1, missing='warn')
@@ -102,7 +103,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     signal_scan_next_line = QtCore.Signal()
     signal_change_analogue_output_voltage = QtCore.Signal(float)
     signal_position_slider_moved = QtCore.Signal(float)
-    sigCavityScanPlotUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray)
+    sigCavityScanPlotUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     sigScanFinished = QtCore.Signal()
 
     class Axis:  # Todo this needs a better name here as it also applies for the APD and the NIDAQ output
@@ -140,6 +141,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self._feedback_device = self.analoguereader()
         self._output_device = self.analogueoutput()
         self._save_logic = self.savelogic()
+        self._finitecounter = self.digitalcounter()
 
         # Fixme: This is very specific
         # first steps to get a to a better handling of axes parameters
@@ -199,7 +201,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self._ramp_length = len(self.ramp)
         self.scan_direction = True
         self._clock_frequency = self._scan_frequency * self._ramp_length
-        self.input = 0
         self.scan_raw_data = np.zeros([self.number_of_lines, self._ramp_length])
         self.elapsed_sweeps = 0
         self.start_time = time.time()
@@ -224,7 +225,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         """
 
         if self._feedback_device.set_up_analogue_voltage_reader_clock(self.feedback_axis,
-                                                                               clock_frequency=self.max_clock_freq) < 0:
+                                                                      clock_frequency=self.max_clock_freq) < 0:
             return -1
         # read voltages from resistive read out for position feedback
         if self._feedback_device.set_up_analogue_voltage_reader_scanner(
@@ -297,7 +298,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self._feedback_device.start_analogue_voltage_reader(self.feedback_axis, True)
         voltage_result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
         if voltage_result[1] == 0:
-            #self._feedback_device.module_state.unlock()
+            # self._feedback_device.module_state.unlock()
             self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
             self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis)
             self.log.error("reading the feedback voltage failed")
@@ -462,7 +463,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         voltage_result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
         if voltage_result[1] == 0:
-            #self._feedback_device.module_state.unlock()
+            # self._feedback_device.module_state.unlock()
             self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
             self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis)
             self.log.error("reading the feedback voltage failed")
@@ -544,7 +545,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         start_voltage = self.axis_class[self.control_axis].output_voltage
         v_range = self.axis_class[self.control_axis].output_voltage_range
         num_of_linear_steps = np.rint(abs((start_voltage - end_voltage)) / self._scan_resolution)
-        if(num_of_linear_steps == 1):
+        if (num_of_linear_steps == 1):
             num_of_linear_steps = 2
         ramp = np.linspace(start_voltage, end_voltage, num_of_linear_steps)
         if not in_range(end_voltage, v_range[0], v_range[1]):
@@ -552,7 +553,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             return -1
         voltage_difference = abs(start_voltage - end_voltage)
         if voltage_difference > self._scan_resolution:
-            #_clock_frequency = self.maximum_clock_frequency
+            # _clock_frequency = self.maximum_clock_frequency
             _clock_frequency = 10 / self._scan_resolution
             if 0 > self.initialise_analogue_stabilisation():
                 self.log.error("Setting up analogue output for scanning failed.")
@@ -647,6 +648,20 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self._close_scanner()
             return -1
 
+        # todo: this is a quick fix. However it is not sensible to make it more robust as it will become
+        #  obsolete with omniscan
+        if 0 < self._finitecounter.add_clock_task_to_channel(self.control_axis, ["counter"]):
+            self.log.error("Adding up counter clock for scanning failed.")
+            self._close_scanner()
+            return -1
+        self._finitecounter._finite_clock_frequency = self._finitecounter._clock_frequency_new["counter"]
+        if 0 < self._finitecounter.set_up_finite_counter(self._ramp_length,
+                                                         clock_channel=self._finitecounter._clock_channel_new[
+                                                             "counter"]):
+            self.log.error("Setting up counter input for scanning failed.")
+            self._close_scanner()
+            return -1
+
         # initialise data recording
         self.elapsed_sweeps = 0
         self.histo_count = 0
@@ -657,16 +672,18 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         return 0
 
     def _close_scanner(self):
+        self.log.info("scanner stopped")
         try:
             retval1 = self._output_device.close_analogue_output_clock(self.control_axis)
             retval2 = self._output_device.close_analogue_output(self.control_axis)
             retval3 = self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
+            retval4 = self._finitecounter.close_finite_counter()
         except:
             self.log.warn("Closing the Scanner did not work")
         if self._use_maximal_resolution:
             self._scan_resolution = self.axis_class[self.feedback_axis].feedback_precision_volt
             self.log.info("scanner set back for maximal resolution for whole scan range")
-        return min(retval1, retval2, retval3)
+        return min(retval1, retval2, retval3, retval4)
 
     def _generate_ramp(self, start_voltage, end_voltage):
         """Generate a ramp from start_voltage to end_voltage that
@@ -684,7 +701,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # check if given voltages are allowed:
         if not in_range(start_voltage, voltage_range[0], voltage_range[1]):
             self.log.error("The given start voltage %s is not within the possible output voltages %s", start_voltage,
-                            voltage_range)
+                           voltage_range)
             return [-11]
         elif not in_range(end_voltage, voltage_range[0], voltage_range[1]):
             self.log.error("The given end voltage %s is not within the possible output voltages %s", end_voltage,
@@ -745,20 +762,40 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
     def _scan_line(self, voltages):
         try:
-            if 0 < self._feedback_device.start_analogue_voltage_reader(self.feedback_axis):
+            if self._finitecounter.start_finite_counter(start_clock=False) < 0:
+                self.log.error("Starting the counter failed")
                 return [-1]
+
+            if 0 > self._feedback_device.start_analogue_voltage_reader(self.feedback_axis, start_clock=False):
+                self.log.error("Starting the analogue input failed")
+                return [-1]
+
             self._output_device.analogue_scan_line(self.control_axis, voltages)
-            self.input = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
-            if 0 < self._feedback_device.stop_analogue_voltage_reader(self.feedback_axis):
+            # Todo: check here if correct voltages were written
+            # , voltages):
+            # self.log.error("the scanning went wrong during line scan %s", self.elapsed_sweeps)
+            # return [-1]
+
+            # get data
+            count_result = self._finitecounter.get_finite_counts()
+            analog_counts = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
+            error = self._finitecounter.stop_finite_counter()
+
+            if 0 > self._feedback_device.stop_analogue_voltage_reader(self.feedback_axis):
+                self.log.error("Stopping the analog input failed")
                 return [-1]
-            return self.input[0]
+            if 0 < error:
+                self.log.error("Stopping counting failed")
+                return [-1]
+
+            return analog_counts[0], count_result[0]
 
         except Exception as e:
-            self.log.error('The scan went wrong, killing the scanner.')
-            self.stop_scanning()
-            # if self.hold_max is True:
-            #   self.signal_scan_next_line.emit()
-            raise e
+           self.log.error('The scan went wrong, killing the scanner.')
+           self._close_scanner()
+           # if self.hold_max is True:
+           #   self.signal_scan_next_line.emit()
+           raise e
 
     def _do_next_line(self):
         """If stopRequested then finish the scan, otherwise perform next repeat of the scan line
@@ -798,14 +835,15 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             # self.scan_matrix[1] = np.add(self.scan_matrix[1], counts[::-1])
             # counts = counts[::-1]n
             self.stop_time = time.time()
-        if len(counts) != self._ramp_length:
+        if len(counts[0]) != self._ramp_length or len(counts[1]) != self._ramp_length:
             self.log.error("Something didn't work in the cavity scan. Stopping procedure")
             self.stopRequested = True
+            self.signal_scan_next_line.emit()
             return
 
         if self.elapsed_sweeps == (self.scan_raw_data.shape[0] - 1):
             expanded_array = np.zeros([self.scan_raw_data.shape[0] + self.number_of_lines,
-                                       self.scan_raw_data.shape[1]])
+                                       self.scan_raw_data.shape[1], 2])
             expanded_array[:self.elapsed_sweeps, :] = self.scan_raw_data[
                                                       :self.elapsed_sweeps, :]
             self.scan_raw_data = expanded_array
@@ -818,8 +856,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                              self.scan_raw_data.shape[1])
         self.scan_direction = not self.scan_direction
 
-
-        self.scan_raw_data[self.elapsed_sweeps, :] = counts
+        self.scan_raw_data[self.elapsed_sweeps, :, 0] = counts[0]
+        self.scan_raw_data[self.elapsed_sweeps, :, 1] = counts[1]
 
         # self.scan_matrix[0] = counts
         # self.data_to_save = True
@@ -832,21 +870,27 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.scan_ramp_data = ramp
         self.time_array = self.time_array + 1. / self._scan_frequency
 
+        new_image_data = []
         if (self.image_array_reducing_factor > 0):
-            new_image_data = np.mean(
-                self.scan_raw_data[self.elapsed_sweeps - 1].reshape(-1, self.image_array_reducing_factor), 1)
+            new_image_data.append(np.mean(
+                self.scan_raw_data[self.elapsed_sweeps - 1, :, 0].reshape(-1, self.image_array_reducing_factor), 1))
+            new_image_data.append(np.mean(
+                self.scan_raw_data[self.elapsed_sweeps - 1, :, 1].reshape(-1, self.image_array_reducing_factor), 1))
             new_ramp_data = np.mean(
                 self.scan_ramp_data.reshape(-1, self.image_array_reducing_factor), 1)
-            single_scan_length = int(self._ramp_length/self.image_array_reducing_factor)
+            single_scan_length = int(self._ramp_length / self.image_array_reducing_factor)
         else:
-            new_image_data = self.scan_raw_data[self.elapsed_sweeps - 1]
+            new_image_data.append(self.scan_raw_data[self.elapsed_sweeps - 1, :, 0])
+            new_image_data.append(self.scan_raw_data[self.elapsed_sweeps - 1, :, 1])
             new_ramp_data = self.scan_ramp_data
             single_scan_length = self._ramp_length
         self._image_data = np.array([np.append(self._image_data[0, single_scan_length:], self.time_array),
-                                     np.append(self._image_data[1, single_scan_length:], new_image_data),
-                                     np.append(self._image_data[2, single_scan_length:], new_ramp_data)])
+                                     np.append(self._image_data[1, single_scan_length:], new_image_data[0]),
+                                     np.append(self._image_data[2, single_scan_length:], new_image_data[1]),
+                                     np.append(self._image_data[3, single_scan_length:], new_ramp_data)])
 
-        self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1], self._image_data[2])
+        self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1], self._image_data[2],
+                                           self._image_data[3])
         self.signal_scan_next_line.emit()
 
     def _set_scan_resolution_maximal(self):
@@ -865,22 +909,22 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         estimated_number_of_lines = int(1.5 * self.number_of_lines)  # Safety
         self.log.debug('Estimated number of raw data lines: %s'
                        '', estimated_number_of_lines)
-        self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length])
+        self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length, 2])
         self.scan_ramp_data = np.zeros([estimated_number_of_lines, self._ramp_length])
         self.time_array = np.linspace(0, 1. / self._scan_frequency, self._ramp_length)
         self.image_array_reducing_factor = 0
 
-        if (self._ramp_length*self._shown_scan_numbers) > self._points_per_scan:
+        if (self._ramp_length * self._shown_scan_numbers) > self._points_per_scan:
             minimal_factor = np.floor((self._ramp_length * self._shown_scan_numbers) / self._points_per_scan)
             for i in range(int(minimal_factor), self._ramp_length):
                 if self._ramp_length % i == 0:
                     self.image_array_reducing_factor = i
                     break
             self._image_data = np.zeros(
-                (3, self._shown_scan_numbers * int(self._ramp_length / self.image_array_reducing_factor)))
-            self.time_array = np.mean(self.time_array.reshape(-1,self.image_array_reducing_factor),1)
+                (4, self._shown_scan_numbers * int(self._ramp_length / self.image_array_reducing_factor)))
+            self.time_array = np.mean(self.time_array.reshape(-1, self.image_array_reducing_factor), 1)
         else:
-            self._image_data = np.zeros((3, self._shown_scan_numbers * self._ramp_length))
+            self._image_data = np.zeros((4, self._shown_scan_numbers * self._ramp_length))
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
@@ -889,7 +933,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         """
         filepath = self.filepath
         filelabel = 'cavity_scan'
-        # filelabel2 = 'pi_scan_histo'
         timestamp = datetime.datetime.now()
 
         # prepare the data in a dict or in an OrderedDict:
@@ -899,10 +942,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if (self.elapsed_sweeps % 2) == 1:
             ramp_data = np.append(ramp_data, self.ramp)
 
-        scan_data = self.scan_raw_data[:self.elapsed_sweeps, :]
-        time_data = np.linspace(0, self.elapsed_sweeps* (1. / self._scan_frequency), len(ramp_data))
+        scan_data_analog = self.scan_raw_data[:self.elapsed_sweeps, :, 0]
+        time_data = np.linspace(0, self.elapsed_sweeps * (1. / self._scan_frequency), len(ramp_data))
         data['Voltage (V)'] = ramp_data.flatten()
-        data['Analogue input (Voltage/bin)'] = scan_data.flatten()
+        data['Analogue input (Voltage/bin)'] = scan_data_analog.flatten()
         data['Time (s)'] = time_data
 
         # write the parameters:
@@ -918,16 +961,50 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
 
-        fig = self.draw_figure([time_data, scan_data.flatten(), ramp_data.flatten()])
+        fig = self.draw_figure([time_data, scan_data_analog.flatten(), ramp_data.flatten()])
 
         self._save_logic.save_data(data,
                                    filepath=filepath,
                                    timestamp=timestamp,
                                    parameters=parameters,
-                                   filelabel=filelabel,
+                                   filelabel=filelabel + "_voltages",
                                    fmt='%.6e',
                                    delimiter='\t',
                                    plotfig=fig)
+
+        data = OrderedDict()
+        ramp_data = np.tile(np.append(self.ramp, self.down_ramp), int(self.elapsed_sweeps / 2))
+        # if odd # of scans one more ramp needs to be added
+        if (self.elapsed_sweeps % 2) == 1:
+            ramp_data = np.append(ramp_data, self.ramp)
+
+        scan_data_digital = self.scan_raw_data[:self.elapsed_sweeps, :, 1]
+        time_data = np.linspace(0, self.elapsed_sweeps * (1. / self._scan_frequency), len(ramp_data))
+        data['Voltage (V)'] = ramp_data.flatten()
+        data['Counts (c/s)'] = scan_data_digital.flatten()
+        data['Time (s)'] = time_data
+
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Start (V)'] = self._start_voltage
+        parameters['Stop (V)'] = self._end_voltage
+        parameters['Steps per ramp(#)'] = self._ramp_length
+        parameters['Ramps executed (#)'] = self.elapsed_sweeps
+        parameters['Clock Frequency (Hz)'] = self._clock_frequency
+        parameters['ScanSpeed (Hz)'] = self._scan_frequency
+        parameters['Volts per second (V/s)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
+        parameters["Scan Resolution (V/Step)"] = self._scan_resolution
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
+
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel + "_counts",
+                                   fmt='%.6e',
+                                   delimiter='\t')
+
         return 0
 
     def draw_figure(self, data):

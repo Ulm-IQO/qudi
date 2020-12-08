@@ -21,7 +21,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 import numpy as np
 import os
 import pyqtgraph as pg
@@ -33,7 +32,8 @@ from gui.cavity_stabilisation.lab_book_gui import CavityLabBookWindow
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 
-from qtpy import QtCore,uic, QtGui
+from qtpy import QtCore, uic, QtGui
+
 
 class CavityStabilisationMainWindow(QtGui.QMainWindow):
 
@@ -95,56 +95,59 @@ class CavityStabilisationGui(GUIBase):
         """
         self._cavity_stabilisation_logic = self.cavity_stabilisation_logic()
 
-
         # GUI element:
         self._mw = CavityStabilisationMainWindow()
         self._lab= CavityLabBookWindow(self._cavity_stabilisation_logic)
         self._mw.action_show_labbook.triggered.connect(self.show_labbook)
 
-
         # set up dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        ## giving the plots names allows us to link their axes together
-        #self._pw = self._mw.cavity_scan_PlotWidget
-        #self._plot_item = self._pw.plotItem
-
-        ## create a new ViewBox, link the right axis to its coordinate system
-        #self._right_axis = pg.ViewBox()
-        #self._plot_item.showAxis('right')
-        #self._plot_item.scene().addItem(self._right_axis)
-        #self._plot_item.getAxis('right').linkToView(self._right_axis)
-        #self._right_axis.setXLink(self._plot_item)
-
-        # handle resizing of any of the elements
-        #self._update_plot_views()
-        #self._plot_item.vb.sigResized.connect(self._update_plot_views)
-
         # Add the display item ViewWidget, which was defined in the UI file.
-        self._mw.cavity_scan_PlotWidget.setLabel(axis='left', text='Input Voltage', units='V')
+        self._mw.cavity_scan_PlotWidget.setLabel(axis='left', text='Input Voltage', units='V', color="lightblue")
+        self._mw.cavity_scan_PlotWidget.setLabel(axis='right', text='Counts', units='c/s', color="magenta")
         self._mw.cavity_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
         self._mw.cavity_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.4)
 
+        self.analog_data_PlotItem = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+            symbol='x',
+            symbolPen=palette.c1,
+            symbolBrush=palette.c1,
+            symbolSize=6)
+
+        self.digital_data_PlotItem = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c3,
+            symbolBrush=palette.c3,
+            symbolSize=5)
+        self.analog_data_plot = self._mw.cavity_scan_PlotWidget.plotItem
+        self.analog_data_plot.showAxis('left')
+        self.analog_data_plot.addItem(self.analog_data_PlotItem)
+
+        self.digital_data_plot = pg.ViewBox()
+        self.analog_data_plot.showAxis('right')
+        self.analog_data_plot.scene().addItem(self.digital_data_plot)
+        self.analog_data_plot.getAxis('right').linkToView(self.digital_data_plot)
+        self.digital_data_plot.setXLink(self.analog_data_plot)
+        self.digital_data_plot.addItem(self.digital_data_PlotItem)
+        self.digital_data_plot.setGeometry(self.analog_data_plot.vb.sceneBoundingRect())
+        self.digital_data_plot.linkedViewChanged(self.analog_data_plot.vb, self.digital_data_plot.XAxis)
+
         self._mw.ramp_scan_PlotWidget.setLabel(axis='left', text='Output Voltage', units='V')
+        self._mw.ramp_scan_PlotWidget.setLabel(axis='right', text='Output Voltage', units='V')
         self._mw.ramp_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
         self._mw.ramp_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.4)
 
-        self.cavity_scan_image = pg.PlotDataItem(
-                                          pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                          symbol='o',
-                                          symbolPen=palette.c1,
-                                          symbolBrush=palette.c1,
-                                          symbolSize=7)
-
         self.cavity_ramp_image = pg.PlotDataItem(
-                                          pen=pg.mkPen(palette.c4, style=QtCore.Qt.DotLine),
-                                          symbol='o',
-                                          symbolPen=palette.c2,
-                                          symbolBrush=palette.c2,
-                                          symbolSize=4)
+            pen=pg.mkPen(palette.c4, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c2,
+            symbolBrush=palette.c2,
+            symbolSize=4)
 
-        self._mw.cavity_scan_PlotWidget.addItem(self.cavity_scan_image)
         self._mw.ramp_scan_PlotWidget.addItem(self.cavity_ramp_image)
 
         ###############################################################################################################
@@ -164,13 +167,13 @@ class CavityStabilisationGui(GUIBase):
         num_of_points_slider = (self._cavity_stabilisation_logic.axis_class[
                                     self._cavity_stabilisation_logic.control_axis].output_voltage_range[1] -
                                 self._cavity_stabilisation_logic.axis_class[
-                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/\
+                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[0]) / \
                                self.slider_res
         # setting range for the slider
         self._mw.position_slider.setRange(0, num_of_points_slider)
-        self._mw.position_slider.setValue((self._cavity_stabilisation_logic._start_voltage-
+        self._mw.position_slider.setValue((self._cavity_stabilisation_logic._start_voltage -
                                            self._cavity_stabilisation_logic.axis_class[
-                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0]) /
                                           self.slider_res)
 
         # handle slider movement
@@ -194,7 +197,6 @@ class CavityStabilisationGui(GUIBase):
         self._mw.stop_spinBox.setValue(self._cavity_stabilisation_logic._end_voltage)
         self._mw.stop_spinBox.editingFinished.connect(self.stop_value_changed, QtCore.Qt.QueuedConnection)
 
-
         self._mw.scan_frequency_spinBox.setValue(self._cavity_stabilisation_logic._scan_frequency)
         self._mw.scan_resolution_spinBox.setValue(self._cavity_stabilisation_logic._scan_resolution)
         self._mw.max_scan_resolution_checkBox.toggled.connect(self.toggle_scan_resolution)
@@ -204,8 +206,8 @@ class CavityStabilisationGui(GUIBase):
                                                          self._cavity_stabilisation_logic._start_voltage) *
                                                   self._cavity_stabilisation_logic._scan_frequency)
         self._mw.maximal_scan_resolution_DisplayWidget.display(self._cavity_stabilisation_logic.calculate_resolution(
-                                                                   16, [self._cavity_stabilisation_logic._start_voltage,
-                                                                       self._cavity_stabilisation_logic._end_voltage]))
+            16, [self._cavity_stabilisation_logic._start_voltage,
+                 self._cavity_stabilisation_logic._end_voltage]))
         ###############################################################################################################
         #                                                Cavity Stabilisation                                         #
         ###############################################################################################################
@@ -214,7 +216,6 @@ class CavityStabilisationGui(GUIBase):
         self._mw.average_number_spinBox.setValue(self._cavity_stabilisation_logic._average_number)
         self._mw.cavity_mode_checkBox.toggled.connect(self.toggle_cavity_mode)
 
-
         # connecting user interactions
         self._mw.action_start_scanning.triggered.connect(self.start_clicked)
         self._mw.action_stop_scanning.triggered.connect(self.stop_clicked)
@@ -222,7 +223,6 @@ class CavityStabilisationGui(GUIBase):
 
         self._mw.action_stabilize_cavity.triggered.connect(self.stabilize_clicked)
         self._mw.action_stop_stabilization.triggered.connect(self.stop_stabilize_clicked)
-
 
         self._mw.scan_frequency_spinBox.valueChanged.connect(self.scan_frequency_changed)
         self._mw.scan_resolution_spinBox.valueChanged.connect(self.scan_resolution_changed)
@@ -236,10 +236,8 @@ class CavityStabilisationGui(GUIBase):
         self._cavity_stabilisation_logic.sigScanFinished.connect(self.update_gui, QtCore.Qt.QueuedConnection)
         self.sigUpdateGotoPos.connect(self.update_goto_pos, QtCore.Qt.QueuedConnection)
 
-
         # connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
-
 
         # setting GUI elements enabled
         self._mw.start_spinBox.setEnabled(True)
@@ -251,7 +249,6 @@ class CavityStabilisationGui(GUIBase):
         self._mw.threshold_spinBox.setEnabled(True)
         self._mw.voltage_adjustment_steps_spinBox.setEnabled(True)
         self._mw.average_number_spinBox.setEnabled(True)
-
 
     def show(self):
         """ Make window visible and put it above all other windows.
@@ -286,8 +283,6 @@ class CavityStabilisationGui(GUIBase):
         """
         self._cavity_stabilisation_logic.stop_cavity_stabilisation()
         self.enable_scan_actions()
-
-
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -345,8 +340,8 @@ class CavityStabilisationGui(GUIBase):
     def update_pos_slider(self, output_value):
         """ Update position_slider if other GUI elements are changed.
         """
-        self._mw.position_slider.setValue((output_value-self._cavity_stabilisation_logic.axis_class[
-            self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/self.slider_res)
+        self._mw.position_slider.setValue((output_value - self._cavity_stabilisation_logic.axis_class[
+            self._cavity_stabilisation_logic.control_axis].output_voltage_range[0]) / self.slider_res)
 
     def update_from_pos_slider(self, slider_value):
         """  If position_slider is moved, adjust GUI elements.
@@ -375,12 +370,16 @@ class CavityStabilisationGui(GUIBase):
 
     #########   Update GUI   ######
 
-    def update_plot(self, cavity_scan_data_x, cavity_scan_data_y, cavity_scan_data_y2):
+    def update_plot(self, cavity_scan_data_x, cavity_scan_data_y, cavity_scan_data_y2, cavity_ramp_data):
         """ Refresh the plot widget with new data.
         """
         # Update mean signal plot
-        self.cavity_scan_image.setData(cavity_scan_data_x, cavity_scan_data_y)
-        self.cavity_ramp_image.setData(cavity_scan_data_x, cavity_scan_data_y2)
+        self.analog_data_PlotItem.setData(cavity_scan_data_x, cavity_scan_data_y)
+        self.digital_data_PlotItem.setData(cavity_scan_data_x, cavity_scan_data_y2)
+        self.cavity_ramp_image.setData(cavity_scan_data_x, cavity_ramp_data)
+
+        self.digital_data_plot.setGeometry(self.analog_data_plot.vb.sceneBoundingRect())
+        self.digital_data_plot.linkedViewChanged(self.analog_data_plot.vb, self.digital_data_plot.XAxis)
 
     def update_gui(self):
         """ Update the gui elements after scanning.
