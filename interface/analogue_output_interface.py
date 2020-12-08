@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -33,7 +33,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
     _modtype = 'AnalogueOutputInterface'
     _modclass = 'interface'
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
@@ -43,7 +43,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def _start_analog_output(self):
         """ Starts or restarts the analog output.
 
@@ -51,7 +51,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def _stop_analog_output(self):
         """ Stops the analog output.
 
@@ -59,7 +59,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_analogue_output(self, analogue_channels=None, scanner=False):
         """ Starts or restarts the analog output.
 
@@ -73,7 +73,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_analogue_output(self):
         """Closes the analog output task.
 
@@ -81,7 +81,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def _write_scanner_ao(self, voltages, length=1, start=False):
         """Writes a set of voltages to the analog outputs.
 
@@ -95,7 +95,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def write_ao(self, analogue_channel, voltages, length=1, start=False, time_out=0):
         """Writes a set of voltages to the analog outputs.
 
@@ -115,13 +115,13 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_analogue_resolution(self):
         """"Returns the resolution of the analogue input resolution in bits
         @return int: input bit resolution """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_analogue_output_clock(self, analogue_channel, clock_frequency=None, clock_channel=None,
                                      set_up=True):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -138,15 +138,15 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def analogue_scan_line(self, analogue_channel, voltages):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def configure_analogue_timing(self, analogue_channel, length):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_analogue_output(self, analogue_channel, start_clock=False):
         """
         Starts the preconfigured analogue out task
@@ -160,7 +160,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_analogue_output(self, analogue_channel):
         """"
         Stops the analogue voltage output task
@@ -172,7 +172,7 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_analogue_output_clock(self, analogue_channel, close=True):
         """ Closes the analogue output clock and cleans up afterwards.
 

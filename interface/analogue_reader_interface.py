@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -32,7 +32,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
     _modtype = 'AnalogReaderInterface'
     _modclass = 'interface'
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_analogue_voltage_reader_clock(self, analogue_channel, clock_frequency=None, clock_channel=None,
                                              set_up=True):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -48,7 +48,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_analogue_voltage_reader(self, analogue_channel):
         """Initializes task for reading an a single analogue input voltage.
 
@@ -59,7 +59,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_analogue_voltage_reader_scanner(self, samples,
                                                analogue_channel,
                                                clock_channel=None):
@@ -78,7 +78,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)"""
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def add_analogue_reader_channel_to_measurement(self, analogue_channel_orig,
                                                    analogue_channels):
         """
@@ -95,11 +95,11 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_continuous_analog_reader(self, analogue_channel, clock_channel=None):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_analogue_voltage_reader(self, analogue_channel, start_clock=False):
         """
         Starts the preconfigured analogue input task
@@ -113,7 +113,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_analogue_voltage_reader(self, analogue_channels, read_samples=None):
         """"
         Returns the last voltages read by the analog input reader
@@ -130,7 +130,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_analogue_voltage_reader(self, analogue_channel):
         """"
         Stops the analogue voltage input reader task
@@ -142,7 +142,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_analogue_voltage_reader(self, analogue_channel):
         """"
         Closes the analogue voltage input reader and clears up afterwards
@@ -154,7 +154,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_analogue_voltage_reader_clock(self, analogue_channel):
         """ Closes the analogue voltage input reader clock and cleans up afterwards.
 
@@ -162,19 +162,19 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_analogue_resolution(self):
         """"Returns the resolution of the analogue input resolution in bits
         @return int: input bit resolution """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_maximum_clock_freq(self):
         """"Returns the maximally possible readout frequency of the analogue input device in Hz
         @return int: frequency """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def add_clock_task_to_channel(self, task_name, channels):
         """
         This function adds additional pointer to an already existing clock task.

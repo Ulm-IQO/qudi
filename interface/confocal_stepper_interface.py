@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -32,7 +32,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
     _modtype = 'ConfocalStepperInterface'
     _modclass = 'interface'
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs
             can access it.
@@ -43,7 +43,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
 
     # ============================== Stepper Commands ====================================
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def change_step_size(self, axis, stepsize, temp):
         """Changes the step size of the attocubes according to a list give in the config file
         @param str  axis: axis  for which steps size is to be changed
@@ -53,7 +53,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         @return: float, float : Actual stepsize and used temperature"""
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_step_amplitude(self, axis, voltage=None):
         """Sets the step voltage/amplitude for an axis
 
@@ -63,7 +63,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_step_amplitude(self, axis):
         """ Reads the amplitude of a step for a specific axis from the device
 
@@ -72,7 +72,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_step_freq(self, axis, freq=None):
         """Sets the step frequency for an axis
 
@@ -82,7 +82,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_step_freq(self, axis):
         """ Reads the step frequency for a specific axis from the device
 
@@ -91,7 +91,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_axis_mode(self, axis, mode):
         """Changes Attocube axis mode
 
@@ -101,7 +101,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_axis_mode(self, axis):
         """ Checks the mode for a specific axis
 
@@ -110,7 +110,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_amplitude_range_stepper(self, myrange=None):
         """ Sets the voltage range of the attocubes.
 
@@ -120,7 +120,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_stepper_axes(self):
         """ Find out how many axes the scanning device is using for confocal and their names.
 
@@ -136,7 +136,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_stepper_axes(self):
         """"
         Checks which axes of the hardware have a reaction by the hardware
@@ -147,7 +147,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_stepper_axes_use(self):
         """ Find out how the axes of the stepping device are used for confocal and their names.
 
@@ -162,7 +162,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def move_attocube(self, axis, mode=True, direction=True, steps=1):
         """Moves steppers either continuously or by a number of steps
         in one off 2 directions
@@ -175,7 +175,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_attocube_movement(self, axis):
         """Stops motion on specified axis
 
@@ -183,34 +183,34 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0: OK, -1:error)"""
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_all_attocube_motion(self):
         """Stops any motion of the steppers
         @return 0
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_amplitude_range_stepper(self):
         """Returns the current possible stepping voltage range of the stepping device for all axes
         @return list: voltage range of scanner
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_freq_range_stepper(self):
         """Returns the current possible frequency range of the stepping device for all axes
         @return List
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_position_feedback(self):
         """Checks if the hardware is a closed loop hardware with position feedback
         return bool: if True the hardware has a position feedback"""
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_position_range_stepper(self, axis_name):
         """ Returns the physical range of the stepper.
 
@@ -220,7 +220,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_position_range_stepper(self, axis, my_range=None):
         """ Sets the physical range of the stepper.
 
@@ -231,7 +231,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_DC_in(self, axis):
         """ Checks the status of the DC input for a specific axis
 
@@ -240,7 +240,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_DC_in(self, axis, on):
         """Changes stepper axis DC input status
 

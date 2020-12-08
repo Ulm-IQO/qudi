@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -31,7 +31,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
     _modtype = 'FiniteCounterInterface'
     _modclass = 'interface'
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs
             can access it.
@@ -40,7 +40,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_scanner_count_channels(self):
         """ Returns the list of channels that are recorded while scanning an image.
 
@@ -51,11 +51,11 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
         # Todo this is connected to NIDAQ not attocube and has to be checked later
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_finite_counter(self, samples,
-                             counter_channel=None,
-                             photon_source=None,
-                             clock_channel=None):
+                              counter_channel=None,
+                              photon_source=None,
+                              clock_channel=None):
         """ Initializes task for couting a certain number of samples with given
         frequency. This ensures a handwaving synch between the counter and other devices.
 
@@ -76,7 +76,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_finite_counter_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -89,7 +89,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_finite_counter(self, start_clock):
         """Start the preconfigured counter task
         @param  bool start_clock: default value false, bool that defines if clock for the task is
@@ -99,7 +99,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_finite_counter(self):
         """Stops the preconfigured counter task
 
@@ -107,7 +107,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_finite_counter(self):
         """ Clear tasks, so that counters are not in use any more.
 
@@ -115,7 +115,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_finite_counter_clock(self):
         """ Closes the finite counter clock and cleans up afterwards.
 
@@ -123,7 +123,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_finite_counts(self):
         """ Returns latest count samples acquired by finite photon counting.
 
@@ -132,7 +132,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
             return value.

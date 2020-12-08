@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class PiezoStepperInterface(metaclass=InterfaceMetaclass):
@@ -33,7 +33,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
     _modclass = 'interface'
 
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs
             can access it.
@@ -42,7 +42,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 
@@ -51,7 +51,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
@@ -62,7 +62,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_amplitude(self, amplitude=None):
         """ Sets the voltage of the steps.
 
@@ -72,7 +72,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_temperature(self, temp):
         """Changes the temperature settings of the setup to the given temperature adjusting ranges
 
@@ -81,7 +81,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def step(self, steps=None, axis=None):
         """ Steps the stepper a given number of steps
 
@@ -92,7 +92,7 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_stepper(self):
         """ Closes the stepper and cleans up afterwards.
 
