@@ -128,7 +128,7 @@ class FlipMirror(Base, SwitchInterface):
         @return dict: All the current states of the switches in a state dict of the form {"switch": "state"}
         """
         with self.lock:
-            response = self._instrument.ask('GP1').strip().upper()
+            response = self._instrument.query('GP1').strip().upper()
             assert response in {'H1', 'V1'}, f'Unexpected hardware return value: "{response}"'
             switch, avail_states = next(iter(self.available_states.items()))
             self._states = {switch: avail_states[int(response == 'V1')]}
@@ -154,11 +154,10 @@ class FlipMirror(Base, SwitchInterface):
             with self.lock:
                 switch, state = next(iter(state_dict.items()))
                 down = self.available_states[switch][0] == state
-                answer = self._instrument.ask('SH1' if down else 'SV1')
+                answer = self._instrument.query('SH1' if down else 'SV1', delay=self._switch_time)
                 assert answer == 'OK1', \
                     f'setting of state "{state}" in switch "{switch}" failed with return value "{answer}"'
                 self._states = {switch: state}
-                time.sleep(self._switch_time)
                 self.log.debug('{0}-{1}: {2}'.format(self.name, switch, state))
 
     def get_state(self, switch):
