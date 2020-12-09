@@ -80,6 +80,7 @@ class NIAnalogOutput(Base, ProcessControlInterface):
         """ Shut down the NI card.
         """
         for task in self._tasks:
+            task.write(0)
             task.close()
         self._current_state[:] = 0
 
