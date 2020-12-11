@@ -140,4 +140,14 @@ class Cryomagnetics(Base):
         for channel in self.get_channels():
             self.pause(channel)
 
+    def go_to(self, value, channel=None):
+        """ Set a field value (in Tesla) and directly go to it. """
+        if value < 0:
+            self.set_lower_limit(value, channel=channel)
+            self.sweep('DOWN', channel=channel)
+        elif value > 0:
+            self.set_upper_limit(value, channel=channel)
+            self.sweep('UP', channel=channel)
+        else:
+            self.sweep('ZERO', channel=channel)
 
