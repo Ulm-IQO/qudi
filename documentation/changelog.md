@@ -89,6 +89,8 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added a config option to regulate pid logic timestep length
 * New SwitchInterface and updated logic plus GUI
 * Added biexponential fit function, model and estimator
+* Added a hardware module to interface Minicircuit SPDT switch via SwitchInterface
+*
 
 
 Config changes:
