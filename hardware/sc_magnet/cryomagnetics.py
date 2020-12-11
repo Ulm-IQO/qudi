@@ -38,9 +38,9 @@ class Cryomagnetics(Base):
         module.Class: 'sc_magnet.cryomagnetics.Cryomagnetics'
         visa_address: 'tcpip0::192.168.0.254:4444:socket'
 
+
     """
     _visa_address = ConfigOption('visa_address', missing='error')
-    _timeout = ConfigOption('timeout', 3)
     _dual_supply = ConfigOption('dual_supply', False)
     _limits = ConfigOption('limits', missing='error')  # limits of field in Tesla. Ex: [-0.5, 0.5]
 
@@ -88,7 +88,7 @@ class Cryomagnetics(Base):
         """ Return the current magnet current in Tesla """
         response = self._query('IMAG?', channel=channel)
         if 'kG' in response:
-            value = response[:-2] * 0.1
+            value = float(response[:-2]) * 0.1
         else:
             self.log.error('Can not read {} as field. Please use Gauss and not ampere.')
             value = None
@@ -99,27 +99,27 @@ class Cryomagnetics(Base):
         if not(self._limits[0] <= value <= 0):
             return self.log.error('Value {} is not in the limit interval [{}, 0]'.format(value, self._limits[0]))
         value_in_kG = value * 10
-        self._inst.write('REMOTE;LLIM {}'.format(value_in_kG), channel=channel)
+        self._write('REMOTE;LLIM {}'.format(value_in_kG), channel=channel)
 
     def get_lower_limit(self, channel=None):
         """ Get the lower limit of the field (in Tesla) """
         response = self._query('LLIM?', channel=channel)
         if 'kG' in response:
-            value = response[:-2] * 0.1
+            value = float(response[:-2]) * 0.1
         return value
 
-    def set_higher_limit(self, value, channel=None):
-        """ Set the higher limit of the field (in Tesla) """
+    def set_upper_limit(self, value, channel=None):
+        """ Set the upper limit of the field (in Tesla) """
         if not (0 <= value <= self._limits[1]):
             return self.log.error('Value {} is not in the limit interval [0, {}]'.format(value, self._limits[1]))
         value_in_kG = value * 10
-        self._inst.write('REMOTE;ULIM {}'.format(value_in_kG), channel=channel)
+        self._write('REMOTE;ULIM {}'.format(value_in_kG), channel=channel)
 
-    def get_higher_limit(self, channel=None):
-        """ Get the higher limit of the field (in Tesla) """
+    def get_upper_limit(self, channel=None):
+        """ Get the upper limit of the field (in Tesla) """
         response = self._query('ULIM?', channel=channel)
         if 'kG' in response:
-            value = response[:-2] * 0.1
+            value = float(response[:-2]) * 0.1
         return value
 
     def get_limits(self, channel=1):
