@@ -77,16 +77,6 @@ class SpdtSwitch(Base, SwitchInterface):
             response = response.split('=')[1]
         return response
 
-    def _get_all_states(self):
-        """ Use SWPORT? command to get the state of all ports """
-        binary_state = int(self._get('SWPORT?'))
-        states = [bool(binary_state >> i & 1) for i in range(self._number_of_switch)]
-        return states
-
-    def _set_state(self, switchNumber, value):
-        """ Set the value (True/False) for a given index """
-        self._get('SET{}={}'.format(chr(65+switchNumber), int(value)))
-
     # Start of SwitchInterface
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
@@ -152,3 +142,52 @@ class SpdtSwitch(Base, SwitchInterface):
           @return float: time needed for switch state change
         """
         return 25e-3  # typ. 25 ms
+
+# ---
+    @property
+    def name(self):
+        """ Name of the hardware as string. """
+        return self._model
+
+    @property
+    def available_states(self):
+        """ Names of the states as a dict of tuples.
+
+        The keys contain the names for each of the switches. The values are tuples of strings
+        representing the ordered names of available states for each switch.
+
+        @return dict: Available states per switch in the form {"switch": ("state1", "state2")}
+        """
+        states = {}
+        for i in range(self.number_of_switches):
+            states[(chr(65+i))] = ('1', '2')
+        return states
+
+    def get_state(self, switch):
+        """ Query state of single switch by name """
+        return self.states[switch]
+
+    def set_state(self, switch, state):
+        """ Query state of single switch by name """
+        states = {'1': 0,  '2': 1}
+        self._get('SET{}={}'.format(switch, states[state]))
+
+    # Non-abstract default implementations below
+    @property
+    def number_of_switches(self):
+        """ Number of switches provided by the hardware. """
+        return int(self._number_of_switch)
+
+    @property
+    def states(self):
+        """ The current states the hardware is in as state dictionary with switch names as keys and
+        state names as values.
+
+        @return dict: All the current states of the switches in the form {"switch": "state"}
+        """
+        binary_state = int(self._get('SWPORT?'))
+        result = {}
+        conversion = ['1', '2']
+        for i in range(self.number_of_switches):
+            result[(chr(65+i))] = conversion[binary_state >> i & 1]
+        return result
