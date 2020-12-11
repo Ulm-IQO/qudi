@@ -53,11 +53,11 @@ class Cryomagnetics(Base):
         """ Connect to hardware """
 
         rm = visa.ResourceManager()
-        try:
-            self._inst = rm.open_resource('TCPIP0::192.168.1.6::4444::SOCKET', write_termination='\r\n',
-                                          read_termination='\r\n')
-        except visa.VisaIOError:
-            self.log.error('Could not connect to hardware. Please check the wires and the address.')
+        # try:
+        self._inst = rm.open_resource(str(self._visa_address), write_termination='\r\n',
+                                      read_termination='\r\n')
+        # except visa.VisaIOError:
+        #     self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
     def on_deactivate(self):
         """ Disconnect from hardware """
