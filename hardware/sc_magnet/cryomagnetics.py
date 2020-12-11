@@ -23,12 +23,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 from core.module import Base
 from core.configoption import ConfigOption
-import numpy as np
-from collections import OrderedDict
 
 
 class Cryomagnetics(Base):
-    """ Hardware module to control one or two vector magnet via the power supply
+    """ Hardware module to control one or two vector magnet via the power supply.
+
+    This hardware works by setting a lower and a higher limit. Then the sweep operation can be used to either go
+    to lower limit, zero or upper limit.
+    A security constraints can be set via panel but is independent of the limits set here.
 
     Example config for copy-paste:
 
@@ -38,7 +40,9 @@ class Cryomagnetics(Base):
 
     """
     _visa_address = ConfigOption('visa_address', missing='error')
-    _timeout = ConfigOption('timeout', 1)
+    _timeout = ConfigOption('timeout', 3)
+    _dual_supply = ConfigOption('dual_supply', False)
+    _limits = ConfigOption('limits', missing='error')  # limits of field in Tesla. Ex: [-0.5, 0.5]
 
     def __init__(self, **kwargs):
         """Here the connections to the power supplies and to the counter are established"""
@@ -50,14 +54,90 @@ class Cryomagnetics(Base):
 
         rm = visa.ResourceManager()
         try:
-            self._inst = rm.open_resource(self._visa_address, timeout=self._timeout)
-            self._inst.io_protocol = constants.VI_PROT_4882_STRS
-        except:
+            self._inst = rm.open_resource('TCPIP0::192.168.1.6::4444::SOCKET', write_termination='\r\n',
+                                          read_termination='\r\n')
+        except visa.VisaIOError:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
     def on_deactivate(self):
         """ Disconnect from hardware """
         self._inst.close()
 
-    def set_lower_limit(self, channel=1):
-        self._inst.write('LL')
+    def _query(self, command, channel=None):
+        """ Query a command to the hardware """
+        if channel in [1, 2]:
+            command = 'CHAN {};{}'.format(channel, command)
+        return self._inst.query(command)
+
+    def _write(self, command, channel=None):
+        """ Write a command to the hardware """
+        if channel in [1, 2]:
+            command = 'CHAN {};{}'.format(channel, command)
+        self._inst.write(command)
+
+    def get_channels(self):
+        """ Return a list of the channels keys """
+        return 1, 2
+
+    def set_channel(self, channel):
+        """ Set the current active channel """
+        if channel in [1, 2]:
+            self._write('CHAN {}'.format(channel))
+
+    def get_magnet_current(self, channel=None):
+        """ Return the current magnet current in Tesla """
+        response = self._query('IMAG?', channel=channel)
+        if 'kG' in response:
+            value = response[:-2] * 0.1
+        else:
+            self.log.error('Can not read {} as field. Please use Gauss and not ampere.')
+            value = None
+        return value
+
+    def set_lower_limit(self, value, channel=None):
+        """ Set the lower limit of the field (in Tesla) """
+        if not(self._limits[0] <= value <= 0):
+            return self.log.error('Value {} is not in the limit interval [{}, 0]'.format(value, self._limits[0]))
+        value_in_kG = value * 10
+        self._inst.write('REMOTE;LLIM {}'.format(value_in_kG), channel=channel)
+
+    def get_lower_limit(self, channel=None):
+        """ Get the lower limit of the field (in Tesla) """
+        response = self._query('LLIM?', channel=channel)
+        if 'kG' in response:
+            value = response[:-2] * 0.1
+        return value
+
+    def set_higher_limit(self, value, channel=None):
+        """ Set the higher limit of the field (in Tesla) """
+        if not (0 <= value <= self._limits[1]):
+            return self.log.error('Value {} is not in the limit interval [0, {}]'.format(value, self._limits[1]))
+        value_in_kG = value * 10
+        self._inst.write('REMOTE;ULIM {}'.format(value_in_kG), channel=channel)
+
+    def get_higher_limit(self, channel=None):
+        """ Get the higher limit of the field (in Tesla) """
+        response = self._query('ULIM?', channel=channel)
+        if 'kG' in response:
+            value = response[:-2] * 0.1
+        return value
+
+    def get_limits(self, channel=1):
+        """ Get the field limits as a tuple (lower_limit, higher_limit) in Tesla """
+        return tuple(self._limits)
+
+    def sweep(self, mode, channel=None):
+        """ Sweep to 'UP', 'DOWN', 'PAUSE' or 'ZERO' """
+        if mode in ['UP', 'DOWN', 'PAUSE', 'ZERO']:
+            self._write('REMOTE;SWEEP {}'.format(mode), channel=channel)
+
+    def pause(self, channel=None):
+        """ Pause the current sweep """
+        self.sweep('PAUSE', channel=channel)
+
+    def pause_all(self):
+        """ Pause all sweeps """
+        for channel in self.get_channels():
+            self.pause(channel)
+
+
