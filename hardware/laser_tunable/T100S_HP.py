@@ -55,19 +55,22 @@ class TunableLaser(Base, SimpleLaserInterface):
         self._current_setpoint = 0
         self._power_setpoint = 0
         self._enabled = False
+        self._rm = None
+        self._gpib_connection = None
+        self.model = None
 
     def on_activate(self):
         """ Activate module.
         """
-        self.rm = visa.ResourceManager()
+        self._rm = visa.ResourceManager()
 
         if self._connection_type == 'GPIB':
 
             try:
-                self._gpib_connection = self.rm.open_resource(
+                self._gpib_connection = self._rm.open_resource(
                     self._physical_interface,
                     timeout=self._timeout * 1000)
-            except:
+            except visa.VisaIOError:
                 self.log.error('Hardware connection through GPIB '
                                'address >>{}<< failed.'.format(self._physical_interface))
                 raise
@@ -85,7 +88,7 @@ class TunableLaser(Base, SimpleLaserInterface):
         """ Deactivate module.
         """
         self._gpib_connection.close()
-        self.rm.close()
+        self._rm.close()
 
     def get_power_range(self):
         """ Return optical power range
@@ -431,6 +434,3 @@ class TunableLaser(Base, SimpleLaserInterface):
             self._write('CTRLON')
         else:
             self._write('CTRLOFF')
-
-
-
