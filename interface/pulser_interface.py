@@ -28,8 +28,22 @@ from enum import Enum
 
 
 class PulserInterface(metaclass=InterfaceMetaclass):
-    """ Interface class to define the abstract controls and
-    communication with all pulsing devices.
+    """ Interface class to define the abstract controls and communication with all pulsing devices.
+
+    A pulsing device is a device that will generate outputs, generally voltages, to control an experiment in a timely
+    resolved way. This is by example useful to control a modulator device with a short risetime on a very short
+    timescale.
+
+    An example in the lab is to use a pulser to send laser pulses of a given duration separated by another precisely
+     controlled duration.
+
+    This interface is used to program or or multiple sequences or waveform in the internal memory of a pulser hardware,
+    then load one and play it.
+    - It handles digital and analog outputs of any number.
+    - It handles both -
+        Waveform, where states (outputs) and durations of a waveform is programmed and played
+        Sequence, where states (outputs) and durations and instructions are used, where one can program at the hardware
+            level jumps and loops to create complex sequence with a limited device memory.
     """
 
     @abstract_interface_method
