@@ -89,6 +89,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added a config option to regulate pid logic timestep length
 * New SwitchInterface and updated logic plus GUI
 * Added biexponential fit function, model and estimator
+* Added hardware module to interface laser T100S_HP with simple laser interface
 
 
 Config changes:
