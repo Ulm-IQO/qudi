@@ -37,7 +37,7 @@ class Cryomagnetics(Base):
     cryognatics_xy:
         module.Class: 'sc_magnet.cryomagnetics.Cryomagnetics'
         visa_address: 'tcpip0::192.168.0.254:4444:socket'
-
+        limits: [-0.5, 0.5]
 
     """
     _visa_address = ConfigOption('visa_address', missing='error')
