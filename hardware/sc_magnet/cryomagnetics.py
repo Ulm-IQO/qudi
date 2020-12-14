@@ -53,11 +53,11 @@ class Cryomagnetics(Base):
         """ Connect to hardware """
 
         rm = visa.ResourceManager()
-        # try:
-        self._inst = rm.open_resource(str(self._visa_address), write_termination='\r\n',
-                                      read_termination='\r\n')
-        # except visa.VisaIOError:
-        #     self.log.error('Could not connect to hardware. Please check the wires and the address.')
+        try:
+            self._inst = rm.open_resource(str(self._visa_address), write_termination='\r\n',
+                                          read_termination='\r\n')
+        except visa.VisaIOError:
+            self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
     def on_deactivate(self):
         """ Disconnect from hardware """
@@ -106,6 +106,8 @@ class Cryomagnetics(Base):
         response = self._query('LLIM?', channel=channel)
         if 'kG' in response:
             value = float(response[:-2]) * 0.1
+        else:
+            self.log.error('Response {} is not valid. Check unit.')
         return value
 
     def set_upper_limit(self, value, channel=None):
@@ -120,9 +122,11 @@ class Cryomagnetics(Base):
         response = self._query('ULIM?', channel=channel)
         if 'kG' in response:
             value = float(response[:-2]) * 0.1
+        else:
+            self.log.error('Response {} is not valid. Check unit.')
         return value
 
-    def get_limits(self, channel=1):
+    def get_limits(self, channel=None):
         """ Get the field limits as a tuple (lower_limit, higher_limit) in Tesla """
         return tuple(self._limits)
 
@@ -150,4 +154,3 @@ class Cryomagnetics(Base):
             self.sweep('UP', channel=channel)
         else:
             self.sweep('ZERO', channel=channel)
-
