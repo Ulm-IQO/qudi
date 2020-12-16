@@ -1527,6 +1527,7 @@ class AWGM819X(Base, PulserInterface):
 
                 segment_id = to_segment_id
                 if name.split(',')[0] != name:
+                    # todo: this breaks if there is a , in the name without number
                     segment_id = np.int(name.split(',')[0])
                     self.log.warning("Loading wave to specified segment via name will deprecate.")
                 if to_segment_id == -1:
