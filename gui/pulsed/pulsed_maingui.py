@@ -1901,7 +1901,6 @@ class PulsedMeasurementGui(GUIBase):
 
     @QtCore.Slot()
     def sampling_or_loading_busy(self):
-        self.log.debug("Deactivating stuff because sampling is busy")
         if self.pulsedmasterlogic().status_dict['sampload_busy']:
             self._mw.action_run_stop.setEnabled(False)
 
