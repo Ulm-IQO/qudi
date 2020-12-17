@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains a custom QWidget to show a
+This file contains custom QWidgets to show (animated) loading indicators.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,12 +23,25 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtWidgets, QtCore, QtGui
 
 
-class LoadingIndicator(QtWidgets.QWidget):
-    """
+class CircleLoadingIndicator(QtWidgets.QWidget):
+    """ Simple circular loading indicator.
+    You can customize cycle period, indicator arc length and width.
+    Animation will automatically start (stop) upon showing (hiding) the widget.
+    The widget can be arbitrarily resized but the actual indicator will always maintain 1:1 aspect
+    ratio and will be centered.
+    The color of the indicator is chosen to be the current palette highlight color.
+
+    Indicator length must be specified as integer value in 1/16th of a degree.
+    Indicator width ratio can be any value 0 < x <= 0.5
     """
 
     def __init__(self, *args, cycle_time=1.2, indicator_length=960, indicator_width_ratio=0.2,
                  **kwargs):
+        """
+        @param float cycle_time: The animation time in seconds for a full cycle
+        @param int indicator_length: Length of the indicator arc in 1/16th of a degree
+        @param float indicator_width_ratio: Ratio of the indicator arc width WRT widget size
+        """
         assert cycle_time > 0, 'cycle_time must be larger than 0'
         assert 0 < indicator_length < 5760, 'indicator_length must be >0 and <5760'
         assert 0 < indicator_width_ratio <= 0.5, 'indicator_width_ratio must be >0 and <=0.5'
