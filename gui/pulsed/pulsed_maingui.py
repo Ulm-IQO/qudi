@@ -32,9 +32,9 @@ from core.util.helpers import natural_sort
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
-from qtpy import QtCore, QtWidgets, uic, QtGui
+from qtpy import QtCore, QtWidgets, uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-from qtwidgets.loading_indicator import LoadingIndicator
+from qtwidgets.loading_indicator import CircleLoadingIndicator
 from enum import Enum
 
 
@@ -611,7 +611,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.current_loaded_asset_Label.setToolTip('Display the currently loaded asset.')
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
 
-        self._mw.loading_indicator = LoadingIndicator(parent=self._mw)
+        self._mw.loading_indicator = CircleLoadingIndicator(parent=self._mw)
         self._mw.control_ToolBar.addWidget(self._mw.loading_indicator)  # adding as toolbar's last item
         self._mw.loading_indicator_action = self._mw.control_ToolBar.actions()[-1]
         self._mw.loading_indicator_action.setVisible(False)
@@ -712,7 +712,7 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         # block signals
-        self._mw.action_run_stop.blockSignals(True)   # start stop mes
+        self._mw.action_run_stop.blockSignals(True)
         self._mw.action_continue_pause.blockSignals(True)
 
         # Enable/Disable widgets
