@@ -72,6 +72,7 @@ class SequenceGeneratorLogic(GenericLogic):
     _sampling_functions_import_path = ConfigOption(name='additional_sampling_functions_path',
                                                    default=None,
                                                    missing='nothing')
+    _info_on_estimated_upload_time = ConfigOption(name='info_on_estimated_upload_time', default=60, missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
@@ -96,8 +97,8 @@ class SequenceGeneratorLogic(GenericLogic):
 
     _write_speed_benchmark = StatusVar(default=OrderedDict([('speed_Sas', 0),
                                                             ('n_benchmarks', 0),
-                                                            ('pg_device_hash', 0),
-                                                            ('t_info_on', 60)]))
+                                                            ('pg_device_hash', 0)
+                                                            ]))
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -1841,10 +1842,10 @@ class SequenceGeneratorLogic(GenericLogic):
             return -1, list(), dict()
 
         t_est_upload = self.get_upload_time(ensemble_info['number_of_samples'])
-        if t_est_upload > self._write_speed_benchmark['t_info_on']:
+        if t_est_upload > self._info_on_estimated_upload_time:
             now = datetime.datetime.now()
-            self.log.info("Estimated finish of upload for long waveform: {0:%Y-%m-%d %H:%M:%S}".format(
-                (now + datetime.timedelta(0, t_est_upload))))
+            self.log.info("Estimated finish of upload for long waveform: {0:%Y-%m-%d %H:%M:%S} ({1:d} s)".format(
+                (now + datetime.timedelta(0, t_est_upload)), int(t_est_upload)))
 
         # integer to keep track of the sampls already processed
         processed_samples = 0
