@@ -26,10 +26,13 @@ import pickle
 import time
 import copy
 import traceback
+import hashlib
+import datetime
 
 from qtpy import QtCore
 from collections import OrderedDict
 from core.statusvariable import StatusVar
+from core.interface import ScalarConstraint
 from core.connector import Connector
 from core.configoption import ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
@@ -93,6 +96,11 @@ class SequenceGeneratorLogic(GenericLogic):
     # _saved_pulse_blocks = StatusVar(default=OrderedDict())
     # _saved_pulse_block_ensembles = StatusVar(default=OrderedDict())
     # _saved_pulse_sequences = StatusVar(default=OrderedDict())
+
+    _write_speed_benchmark = StatusVar(default=OrderedDict([('speed_Sas', 0),
+                                                            ('n_benchmarks', 0),
+                                                            ('pg_device_hash', 0),
+                                                            ('t_info_on', 60)]))
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -1623,6 +1631,60 @@ class SequenceGeneratorLogic(GenericLogic):
         # Return error code
         return -1 if ensembles_missing else 0
 
+    def _reset_write_benchmark(self):
+        self._write_speed_benchmark['n_benchmarks'] = 0
+        self._write_speed_benchmark['speed_Sas'] = 0
+
+    def _create_pg_device_id_hash(self):
+        """
+        Creates a unique id for the currently used pulse generator.
+        :return: pg_id
+        """
+
+        # indirect creation, as the pulser interface doesn't provide eg. the serial number or model of the device
+        # based on 1. ScalarConstraints in device constraints, 2. config options of device
+        constraint_dict = OrderedDict(
+            (key, val.__dict__) for (key, val) in self.pulsegenerator().get_constraints().__dict__.items() if
+            isinstance(val, ScalarConstraint))
+        id_dict = self.pulsegenerator()._configuration.update(constraint_dict)
+
+        return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
+
+    def _add_write_benchmark(self, time_s, samples, reset_avg=False):
+
+        dev_id_old = self._write_speed_benchmark['pg_device_hash']
+        dev_id = self._create_pg_device_id_hash()
+        if dev_id != dev_id_old or reset_avg:
+            self.log.debug("Resetting benchmark. Old->new id: {}, {}".format(dev_id_old, dev_id))
+            self._reset_write_benchmark()
+
+        n = self._write_speed_benchmark['n_benchmarks']
+        avg_old = self._write_speed_benchmark['speed_Sas']
+
+        if time_s == 0.:
+            return
+        new_datapoint = samples / time_s  # samples per second
+
+        if n < 1:
+            avg_new = new_datapoint
+            n = 0
+        else:
+            # on the fly average
+            avg_new = avg_old + (new_datapoint - avg_old)/n
+
+        self._write_speed_benchmark['n_benchmarks'] = n + 1
+        self._write_speed_benchmark['speed_Sas'] = avg_new
+        self._write_speed_benchmark['pg_device_hash'] = dev_id
+
+    def get_write_speed(self):
+        return self._write_speed_benchmark['speed_Sas']
+
+    def get_upload_time(self, n_samples):
+        speed = self.get_write_speed()
+        if speed == 0.:
+            return np.nan
+        return n_samples / speed
+
     @QtCore.Slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
@@ -1781,6 +1843,12 @@ class SequenceGeneratorLogic(GenericLogic):
             self.sigSampleEnsembleComplete.emit(None)
             return -1, list(), dict()
 
+        t_est_upload = self.get_upload_time(ensemble_info['number_of_samples'])
+        if t_est_upload > self._write_speed_benchmark['t_info_on']:
+            now = datetime.datetime.now()
+            self.log.info("Estimated finish of upload for long waveform: {0:%Y-%m-%d %H:%M:%S}".format(
+                (now + datetime.timedelta(0, t_est_upload))))
+
         # integer to keep track of the sampls already processed
         processed_samples = 0
         # Index to keep track of the samples written into the preallocated samples array
@@ -1894,6 +1962,13 @@ class SequenceGeneratorLogic(GenericLogic):
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
                       ''.format(ensemble.name, int(np.rint(time.time() - start_time))))
+        self.log.debug('Estimated {:.3f} s from current estimated write speed {:.2f} MSa/s from {} benchmarks'.format(
+            self.get_upload_time(ensemble_info['number_of_samples']),
+            self.get_write_speed() / 1e6,
+            self._write_speed_benchmark['n_benchmarks']))
+
+        self._add_write_benchmark(int(np.rint(time.time() - start_time)), ensemble_info['number_of_samples'])
+
         if ensemble_info['number_of_samples'] == 0:
             self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
                              ''.format(ensemble.name))
