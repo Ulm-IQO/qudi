@@ -20,28 +20,29 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
 import os
 import pickle
 import time
 import copy
 import traceback
-import numpy as np
 
-from PySide2 import QtCore
-from qudi.core.statusvariable import StatusVar
-from qudi.core.connector import Connector
-from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_main_dir, get_home_dir
-from qudi.util.helpers import natural_sort
-from qudi.util.network import netobtain
-from qudi.core.module import LogicBase
-from qudi.logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
-from qudi.logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
-from qudi.logic.pulsed.sampling_functions import SamplingFunctions
-from qudi.interface.pulser_interface import SequenceOption
+from qtpy import QtCore
+from collections import OrderedDict
+from core.statusvariable import StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.util.modules import get_main_dir, get_home_dir
+from core.util.helpers import natural_sort
+from core.util.network import netobtain
+from logic.generic_logic import GenericLogic
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
+from logic.pulsed.sampling_functions import SamplingFunctions
+from interface.pulser_interface import SequenceOption
 
 
-class SequenceGeneratorLogic(LogicBase):
+class SequenceGeneratorLogic(GenericLogic):
     """
     This is the Logic class for the pulse (sequence) generation.
 
@@ -75,25 +76,28 @@ class SequenceGeneratorLogic(LogicBase):
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
     # generation for predefined methods.
-    _generation_parameters = StatusVar(
-        default={'laser_channel': 'd_ch1',
-                 'sync_channel': '',
-                 'gate_channel': '',
-                 'microwave_channel': 'a_ch1',
-                 'microwave_frequency': 2.87e9,
-                 'microwave_amplitude': 0.0,
-                 'rabi_period': 100e-9,
-                 'laser_length': 3e-6,
-                 'laser_delay': 500e-9,
-                 'wait_time': 1e-6,
-                 'analog_trigger_voltage': 0.0}
-    )
+    _generation_parameters = StatusVar(default=OrderedDict([('laser_channel', 'd_ch1'),
+                                                            ('sync_channel', ''),
+                                                            ('gate_channel', ''),
+                                                            ('microwave_channel', 'a_ch1'),
+                                                            ('microwave_frequency', 2.87e9),
+                                                            ('microwave_amplitude', 0.0),
+                                                            ('rabi_period', 100e-9),
+                                                            ('laser_length', 3e-6),
+                                                            ('laser_delay', 500e-9),
+                                                            ('wait_time', 1e-6),
+                                                            ('analog_trigger_voltage', 0.0)]))
 
     # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
     # these dictionaries. The keys are the names.
-    # _saved_pulse_blocks = StatusVar(default=dict())
-    # _saved_pulse_block_ensembles = StatusVar(default=dict())
-    # _saved_pulse_sequences = StatusVar(default=dict())
+    # _saved_pulse_blocks = StatusVar(default=OrderedDict())
+    # _saved_pulse_block_ensembles = StatusVar(default=OrderedDict())
+    # _saved_pulse_sequences = StatusVar(default=OrderedDict())
+
+    _write_speed_benchmark = StatusVar(default=OrderedDict([('speed_Sas', 0),
+                                                            ('n_benchmarks', 0),
+                                                            ('pg_device_hash', 0),
+                                                            ('t_info_on', 60)]))
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -136,9 +140,9 @@ class SequenceGeneratorLogic(LogicBase):
 
         # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
         # these dictionaries. The keys are the names.
-        self._saved_pulse_blocks = dict()
-        self._saved_pulse_block_ensembles = dict()
-        self._saved_pulse_sequences = dict()
+        self._saved_pulse_blocks = OrderedDict()
+        self._saved_pulse_block_ensembles = OrderedDict()
+        self._saved_pulse_sequences = OrderedDict()
         return
 
     def on_activate(self):
@@ -189,9 +193,9 @@ class SequenceGeneratorLogic(LogicBase):
         self._read_settings_from_device()
 
         # Update saved blocks/ensembles/sequences from serialized files
-        self._saved_pulse_blocks = dict()
-        self._saved_pulse_block_ensembles = dict()
-        self._saved_pulse_sequences = dict()
+        self._saved_pulse_blocks = OrderedDict()
+        self._saved_pulse_block_ensembles = OrderedDict()
+        self._saved_pulse_sequences = OrderedDict()
         self._update_blocks_from_file()
         self._update_ensembles_from_file()
         self._update_sequences_from_file()
@@ -209,7 +213,7 @@ class SequenceGeneratorLogic(LogicBase):
 
     # @_saved_pulse_blocks.constructor
     # def _restore_saved_blocks(self, block_list):
-    #     return_block_dict = dict()
+    #     return_block_dict = OrderedDict()
     #     if block_list is not None:
     #         for block_dict in block_list:
     #             return_block_dict[block_dict['name']] = PulseBlock.block_from_dict(block_dict)
@@ -228,7 +232,7 @@ class SequenceGeneratorLogic(LogicBase):
     #
     # @_saved_pulse_block_ensembles.constructor
     # def _restore_saved_ensembles(self, ensemble_list):
-    #     return_ensemble_dict = dict()
+    #     return_ensemble_dict = OrderedDict()
     #     if ensemble_list is not None:
     #         for ensemble_dict in ensemble_list:
     #             return_ensemble_dict[ensemble_dict['name']] = PulseBlockEnsemble.ensemble_from_dict(
@@ -247,7 +251,7 @@ class SequenceGeneratorLogic(LogicBase):
     #
     # @_saved_pulse_sequences.constructor
     # def _restore_saved_sequences(self, sequence_list):
-    #     return_sequence_dict = dict()
+    #     return_sequence_dict = OrderedDict()
     #     if sequence_list is not None:
     #         for sequence_dict in sequence_list:
     #             return_sequence_dict[sequence_dict['name']] = PulseBlockEnsemble.ensemble_from_dict(
@@ -1180,6 +1184,7 @@ class SequenceGeneratorLogic(LogicBase):
             return 0.0, 0, 0
 
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+        # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
         ens_lasers = min(len(info_dict['laser_rising_bins']), len(info_dict['laser_falling_bins']))
@@ -1623,6 +1628,60 @@ class SequenceGeneratorLogic(LogicBase):
         # Return error code
         return -1 if ensembles_missing else 0
 
+    def _reset_write_benchmark(self):
+        self._write_speed_benchmark['n_benchmarks'] = 0
+        self._write_speed_benchmark['speed_Sas'] = 0
+
+    def _create_pg_device_id_hash(self):
+        """
+        Creates a unique id for the currently used pulse generator.
+        :return: pg_id
+        """
+
+        # indirect creation, as the pulser interface doesn't provide eg. the serial number or model of the device
+        # based on 1. ScalarConstraints in device constraints, 2. config options of device
+        constraint_dict = OrderedDict(
+            (key, val.__dict__) for (key, val) in self.pulsegenerator().get_constraints().__dict__.items() if
+            isinstance(val, ScalarConstraint))
+        id_dict = self.pulsegenerator()._configuration.update(constraint_dict)
+
+        return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
+
+    def _add_write_benchmark(self, time_s, samples, reset_avg=False):
+
+        dev_id_old = self._write_speed_benchmark['pg_device_hash']
+        dev_id = self._create_pg_device_id_hash()
+        if dev_id != dev_id_old or reset_avg:
+            self.log.debug("Resetting benchmark. Old->new id: {}, {}".format(dev_id_old, dev_id))
+            self._reset_write_benchmark()
+
+        n = self._write_speed_benchmark['n_benchmarks']
+        avg_old = self._write_speed_benchmark['speed_Sas']
+
+        if time_s == 0.:
+            return
+        new_datapoint = samples / time_s  # samples per second
+
+        if n < 1:
+            avg_new = new_datapoint
+            n = 0
+        else:
+            # on the fly average
+            avg_new = avg_old + (new_datapoint - avg_old)/n
+
+        self._write_speed_benchmark['n_benchmarks'] = n + 1
+        self._write_speed_benchmark['speed_Sas'] = avg_new
+        self._write_speed_benchmark['pg_device_hash'] = dev_id
+
+    def get_write_speed(self):
+        return self._write_speed_benchmark['speed_Sas']
+
+    def get_upload_time(self, n_samples):
+        speed = self.get_write_speed()
+        if speed == 0.:
+            return np.nan
+        return n_samples / speed
+
     @QtCore.Slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
@@ -1781,6 +1840,12 @@ class SequenceGeneratorLogic(LogicBase):
             self.sigSampleEnsembleComplete.emit(None)
             return -1, list(), dict()
 
+        t_est_upload = self.get_upload_time(ensemble_info['number_of_samples'])
+        if t_est_upload > self._write_speed_benchmark['t_info_on']:
+            now = datetime.datetime.now()
+            self.log.info("Estimated finish of upload for long waveform: {0:%Y-%m-%d %H:%M:%S}".format(
+                (now + datetime.timedelta(0, t_est_upload))))
+
         # integer to keep track of the sampls already processed
         processed_samples = 0
         # Index to keep track of the samples written into the preallocated samples array
@@ -1894,6 +1959,13 @@ class SequenceGeneratorLogic(LogicBase):
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
                       ''.format(ensemble.name, int(np.rint(time.time() - start_time))))
+        self.log.debug('Estimated {:.3f} s from current estimated write speed {:.2f} MSa/s from {} benchmarks'.format(
+            self.get_upload_time(ensemble_info['number_of_samples']),
+            self.get_write_speed() / 1e6,
+            self._write_speed_benchmark['n_benchmarks']))
+
+        self._add_write_benchmark(int(np.rint(time.time() - start_time)), ensemble_info['number_of_samples'])
+
         if ensemble_info['number_of_samples'] == 0:
             self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
                              ''.format(ensemble.name))
