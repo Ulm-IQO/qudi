@@ -559,7 +559,6 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigLoadBlockEnsemble.disconnect()
         self.pulsedmasterlogic().sigLoadSequence.disconnect()
         self.pulsedmasterlogic().sigSampleSequence.disconnect()
-        self.pulsedmasterlogic().sigLoadedAssetUpdated.disconnect()
 
         self.pulsedmasterlogic().sigBlockDictUpdated.disconnect()
         self.pulsedmasterlogic().sigEnsembleDictUpdated.disconnect()

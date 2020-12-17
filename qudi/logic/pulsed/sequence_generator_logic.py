@@ -1641,10 +1641,10 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # indirect creation, as the pulser interface doesn't provide eg. the serial number or model of the device
         # based on 1. ScalarConstraints in device constraints, 2. config options of device
-        constraint_dict = OrderedDict(
+        id_dict = OrderedDict(
             (key, val.__dict__) for (key, val) in self.pulsegenerator().get_constraints().__dict__.items() if
             isinstance(val, ScalarConstraint))
-        id_dict = self.pulsegenerator()._configuration.update(constraint_dict)
+        id_dict.update(self.pulsegenerator()._configuration)
 
         return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
 
