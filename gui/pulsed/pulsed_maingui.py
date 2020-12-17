@@ -390,15 +390,11 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigMeasurementSettingsUpdated.connect(self.measurement_settings_updated)
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated)
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.connect(self.extraction_settings_updated)
-
-        # todo: disconnect new signals
         self.pulsedmasterlogic().sigSampleBlockEnsemble.connect(self.sampling_or_loading_busy)
         self.pulsedmasterlogic().sigLoadBlockEnsemble.connect(self.sampling_or_loading_busy)
         self.pulsedmasterlogic().sigLoadSequence.connect(self.sampling_or_loading_busy)
         self.pulsedmasterlogic().sigSampleSequence.connect(self.sampling_or_loading_busy)
-
         self.pulsedmasterlogic().sigLoadedAssetUpdated.connect(self.sampling_or_loading_finished)
-
 
         self.pulsedmasterlogic().sigBlockDictUpdated.connect(self.update_block_dict)
         self.pulsedmasterlogic().sigEnsembleDictUpdated.connect(self.update_ensemble_dict)
@@ -559,6 +555,11 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigMeasurementSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.disconnect()
+        self.pulsedmasterlogic().sigSampleBlockEnsemble.disconnect()
+        self.pulsedmasterlogic().sigLoadBlockEnsemble.disconnect()
+        self.pulsedmasterlogic().sigLoadSequence.disconnect()
+        self.pulsedmasterlogic().sigSampleSequence.disconnect()
+        self.pulsedmasterlogic().sigLoadedAssetUpdated.disconnect()
 
         self.pulsedmasterlogic().sigBlockDictUpdated.disconnect()
         self.pulsedmasterlogic().sigEnsembleDictUpdated.disconnect()
@@ -598,28 +599,6 @@ class PulsedMeasurementGui(GUIBase):
                                                     'from all loaded files.')
         self._mw.control_ToolBar.addWidget(self._mw.clear_device_PushButton)
 
-        # load animation
-        self._mw.sampleload_idle = QtGui.QPixmap("artwork/icons/sampload_idle.gif")
-        self._sampload_movie = QtGui.QMovie("artwork/icons/sampleload_busy_2.gif")
-
-        self._mw.sampload_animation = QtWidgets.QLabel(self._mw)
-
-        self._mw.sampload_animation.setToolTip('Shows when busy with uploading or sampling.')
-        # self._mw.sampload_animation.setSizePolicy(sizepolicy)
-        # a = self._mw.analysis_ToolBar.sizeHint()
-        # a.setHeight(a.height())
-        # self._mw.sampload_animation.sizeHint =   a
-        gifHeight = int(self._mw.save_ToolBar.height() * 0.64)
-        gifSize = QtCore.QSize(gifHeight, gifHeight)
-        self._sampload_movie.setScaledSize(gifSize)
-
-        self._mw.sampload_animation.setPixmap(self._mw.sampleload_idle)
-        #self._mw.sampload_animation.setMovie(self._sampload_movie)
-        #self._sampload_movie.start()
-
-        self._mw.control_ToolBar.addWidget(self._mw.sampload_animation)
-        self._mw.sampload_animation.setLayout(QtGui.QHBoxLayout())
-
         self._mw.current_loaded_asset_Label = QtWidgets.QLabel(self._mw)
         sizepolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                            QtWidgets.QSizePolicy.Fixed)
@@ -633,7 +612,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
 
         self._mw.loading_indicator = LoadingIndicator(parent=self._mw)
-        self._mw.control_ToolBar.addWidget(self._mw.loading_indicator)
+        self._mw.control_ToolBar.addWidget(self._mw.loading_indicator)  # adding as toolbar's last item
+        self._mw.loading_indicator_action = self._mw.control_ToolBar.actions()[-1]
+        self._mw.loading_indicator_action.setVisible(False)
 
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
@@ -1926,18 +1907,13 @@ class PulsedMeasurementGui(GUIBase):
 
             label = self._mw.current_loaded_asset_Label
             label.setText('  loading...')
-
-            #self._sampload_movie = QtGui.QMovie("artwork/icons/sampload_busy_2_44.gif")
-            self._mw.sampload_animation.setMovie(self._sampload_movie)
-            self._sampload_movie.start()
+            self._mw.loading_indicator_action.setVisible(True)
 
     @QtCore.Slot()
     def sampling_or_loading_finished(self):
         if not self.pulsedmasterlogic().status_dict['sampload_busy']:
             self._mw.action_run_stop.setEnabled(True)
-
-            self._sampload_movie.stop()
-            self._mw.sampload_animation.setPixmap(self._mw.sampleload_idle)
+            self._mw.loading_indicator_action.setVisible(False)
 
 
     @QtCore.Slot(bool)
