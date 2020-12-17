@@ -34,6 +34,7 @@ from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qtwidgets.loading_indicator import LoadingIndicator
 from enum import Enum
 
 
@@ -599,6 +600,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.current_loaded_asset_Label.setText('  No Asset Loaded')
         self._mw.current_loaded_asset_Label.setToolTip('Display the currently loaded asset.')
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
+
+        self._mw.loading_indicator = LoadingIndicator(parent=self._mw)
+        self._mw.control_ToolBar.addWidget(self._mw.loading_indicator)
 
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
