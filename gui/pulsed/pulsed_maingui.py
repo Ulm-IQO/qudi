@@ -612,8 +612,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
 
         self._mw.loading_indicator = CircleLoadingIndicator(parent=self._mw)
-        self._mw.control_ToolBar.addWidget(self._mw.loading_indicator)  # adding as toolbar's last item
-        self._mw.loading_indicator_action = self._mw.control_ToolBar.actions()[-1]
+        self._mw.loading_indicator_action = self._mw.control_ToolBar.addWidget(
+            self._mw.loading_indicator
+        )  # adding as toolbar's last item
         self._mw.loading_indicator_action.setVisible(False)
 
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
