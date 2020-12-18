@@ -4,6 +4,8 @@
 
 Changes/New features:
 
+* Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
+in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
 * New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
 image
@@ -70,6 +72,8 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added config option for counter voltage range in hardware class NationalInstrumentsXSeries.
 * Saving data in confocal GUI no longer freezes other GUI modules
 * Added save_pdf and save_png config options for save_logic
+* Added a config option to fastcomtec7887 module to support 7889 model
+* Added fastcomec 7887/9 support of dma mode through config option
 * Fixed bug in spincore pulseblaster hardware that affected only old models
 * Added a netobtain in spincore pulseblaster hardware to speedup remote loading 
 * Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
@@ -77,8 +81,16 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Set proper minimum wavelength value in constraints of Tektronix AWG7k series HW module
 * Added a hardware file for fibered optical switch Thorlabs OSW12/22 via SwitchInterface
 * Fixed bug affecting interface overloading of Qudi modules
+* Added ScienDSpinbox and ScienSpinbox compatibility to mapper
+* Added missing metadata in saved raw data file of PulsedMeasurement module
+* Update hardware module controlling the cryocon temperature regulator
+* Added a hardware file to interface Thorlabs filter wheels via scripts
+* Bug fixes to core: made error messages sticky, respecting dependencies when restarting.
+* Added a config option to regulate pid logic timestep length
+* New SwitchInterface and updated logic plus GUI
+* Added biexponential fit function, model and estimator
+* Added custom circular loading indicator widget `qtwidgets.loading_indicator.CircleLoadingIndicator`
 * Added a hardware file to interface Thorlabs MFF101 flipper via SwitchInterface
-*
 
 
 Config changes:
@@ -89,6 +101,9 @@ or a list of strings for multiple paths.
 * There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`
 * The connectors and file names of the GUI and logic modules of the QDPlotter have been changed.
 * QDPlotter now needs a new connection to the fit logic. 
+* The tool chain for the switch logic has changed. 
+To combine multiple switches one needs to use the `switch_combiner_interfuse` 
+instead of multiple connectors in the logic.
 
 ## Release 0.10
 Released on 14 Mar 2019
