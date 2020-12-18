@@ -89,6 +89,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * Added a config option to regulate pid logic timestep length
 * New SwitchInterface and updated logic plus GUI
 * Added biexponential fit function, model and estimator
+* Added custom circular loading indicator widget `qtwidgets.loading_indicator.CircleLoadingIndicator`
 * Added hardware module to interface NI analog output cards via ProcessControlInterface
 
 
