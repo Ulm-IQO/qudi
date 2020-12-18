@@ -18,11 +18,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from abc import abstractmethod
-from qudi.core.module import Base
+from core.interface import abstract_interface_method, interface_method
+from core.meta import InterfaceMetaclass
 
 
-class SwitchInterface(Base):
+class SwitchInterface(metaclass=InterfaceMetaclass):
     """ Methods to control slow (mechanical) switching devices.
 
     Getter and setter functions to control single switches need to be implemented by the hardware
@@ -32,7 +32,7 @@ class SwitchInterface(Base):
     """
 
     @property
-    @abstractmethod
+    @abstract_interface_method
     def name(self):
         """ Name of the hardware as string.
 
@@ -41,7 +41,7 @@ class SwitchInterface(Base):
         pass
 
     @property
-    @abstractmethod
+    @abstract_interface_method
     def available_states(self):
         """ Names of the states as a dict of tuples.
 
@@ -52,7 +52,7 @@ class SwitchInterface(Base):
         """
         pass
 
-    @abstractmethod
+    @abstract_interface_method
     def get_state(self, switch):
         """ Query state of single switch by name
 
@@ -61,7 +61,7 @@ class SwitchInterface(Base):
         """
         pass
 
-    @abstractmethod
+    @abstract_interface_method
     def set_state(self, switch, state):
         """ Query state of single switch by name
 
@@ -73,6 +73,7 @@ class SwitchInterface(Base):
     # Non-abstract default implementations below
 
     @property
+    @interface_method
     def number_of_switches(self):
         """ Number of switches provided by the hardware.
 
@@ -81,6 +82,7 @@ class SwitchInterface(Base):
         return len(self.available_states)
 
     @property
+    @interface_method
     def switch_names(self):
         """ Names of all available switches as tuple.
 
@@ -89,6 +91,7 @@ class SwitchInterface(Base):
         return tuple(self.available_states)
 
     @property
+    @interface_method
     def states(self):
         """ The current states the hardware is in as state dictionary with switch names as keys and
         state names as values.
@@ -98,6 +101,7 @@ class SwitchInterface(Base):
         return {switch: self.get_state(switch) for switch in self.available_states}
 
     @states.setter
+    @interface_method
     def states(self, state_dict):
         """ The setter for the states of the hardware.
 
@@ -106,7 +110,7 @@ class SwitchInterface(Base):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict, dict), 'Parameter "state_dict" must be dict type'
+        assert isinstance(state_dict), 'Parameter "state_dict" must be dict type'
         for switch, state in state_dict.items():
             self.set_state(switch, state)
 
