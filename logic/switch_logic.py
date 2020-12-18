@@ -105,7 +105,6 @@ class SwitchLogic(GenericLogic):
         with self._thread_lock:
             try:
                 states = self.switch().states
-                self._old_states = states
             except:
                 self.log.exception(f'Error during query of all switch states.')
                 states = dict()
@@ -139,7 +138,6 @@ class SwitchLogic(GenericLogic):
         with self._thread_lock:
             try:
                 state = self.switch().get_state(switch)
-                self._old_states[switch] = state
             except:
                 self.log.exception(f'Error while trying to query state of switch "{switch}".')
                 state = None
@@ -194,5 +192,8 @@ class SwitchLogic(GenericLogic):
                               state != self._old_states[switch]}
                 self._old_states = curr_states
                 if diff_state:
+                    print('state_changed', diff_state)
                     self.sigSwitchesChanged.emit(diff_state)
+                else:
+                    print('Nope')
                 QtCore.QTimer.singleShot(self._watchdog_interval_ms, self._watchdog_body)
