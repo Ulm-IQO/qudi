@@ -1498,9 +1498,10 @@ class AWGM819X(Base, PulserInterface):
 
             ch_num = self.chstr_2_chnum(ch_str)
             wave_name = self._name_with_ch(name, ch_num)
-            self.log.debug('Max ampl, ch={0}: {1}'.format(ch_str, analog_samples[ch_str].max()))
 
             comb_samples = self._compile_bin_samples(analog_samples, digital_samples, ch_str)
+
+            t_start = time.time()
 
             if self._wave_mem_mode == 'pc_hdd':
                 # todo: check if working for awg8195a
@@ -1563,6 +1564,11 @@ class AWGM819X(Base, PulserInterface):
 
             else:
                 raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
+
+            transfer_speed_mbs = (comb_samples.nbytes/(1024*1024))/(time.time() - t_start)
+            self.log.debug('Written ({2:.1f} MB/s) to ch={0}: max ampl: {1}'.format(ch_str,
+                                                                                analog_samples[ch_str].max(),
+                                                                                transfer_speed_mbs))
 
         return waveforms
 
@@ -2539,6 +2545,8 @@ class AWGM8190A(AWGM819X):
             constraints.waveform_length.step = 48
             constraints.waveform_length.min = 240
             constraints.waveform_length.default = 240
+
+        constraints.waveform_length.max = 2147483648  # assumes option -02G
 
         constraints.a_ch_amplitude.min = 0.100  # Channels amplitude control single ended min
         constraints.a_ch_amplitude.max = 0.700  # Channels amplitude control single ended max
