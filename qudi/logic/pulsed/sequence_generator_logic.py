@@ -1762,7 +1762,60 @@ class SequenceGeneratorLogic(GenericLogic):
         return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
 
 
-    def sample_benchmark_chunk(self, n_samples):
+    def run_pg_benchmark(self):
+
+        def round_to_granuality(n_samples):
+            granuality = self.pulsegenerator().get_constraints().waveform_length.step
+            return np.ceil(n_samples / granuality) * granuality
+
+        self._benchmark_write.reset()
+        self._benchmark_load.reset()
+
+        t_goal = 10  # benchmark should approx run this long
+        waveform_name = 'qudi_benchmark_chunk'
+
+        # first 2 datapoints for initial guess
+        n_samples_min = self.pulsegenerator().get_constraints().waveform_length.min
+        n_samples_max = self.pulsegenerator().get_constraints().waveform_length.max
+
+        rescode, _, _, = self._sample_load_benchmark_chunk(n_samples_min, waveform_name, persistent_datapoint=True)
+
+        t_start = time.perf_counter()
+        time_fraction = 32.
+        i = 0
+        while time.perf_counter() - t_start < t_goal and rescode == 0:
+            if self.get_speed_write_load() > 0:
+                t_left = t_goal - (time.perf_counter() - t_start)
+                n_samples = self.get_speed_write_load() * t_left / time_fraction
+                n_samples = round_to_granuality(n_samples)
+            else:  # poor speed estimate so far
+                n_samples = round_to_granuality(np.random.uniform(1e2, 1e4) * n_samples_min)
+
+            if n_samples < n_samples_min:
+                # don't repeat uninformatively at same n_samples
+                n_samples = round_to_granuality(np.random.uniform(1, 10) * n_samples_min)
+            if n_samples > n_samples_max:
+                n_samples = round_to_granuality(150e3) #n_samples_max
+
+            t_est = n_samples / self.get_speed_write_load()
+            self.log.debug("Running benchmark (speed: {:.3f} MSa/s): {} samples for"
+                           " estimated {:.5f} s, {:.5f} s left".format(
+                self.get_speed_write_load()/1e6,
+                n_samples,
+                t_est,
+                t_left))
+            rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name, persistent_datapoint=True)
+
+            time_fraction = time_fraction / 2.
+            i += 1
+
+        self.log.debug("Pulse generator benchmark finished after {} chunks. Speed write/load: {:.2f} / {:.2f} MSa/s".format(
+            i,
+            self._benchmark_write.estimate_speed() / 1e6,
+            self._benchmark_load.estimate_speed() / 1e6))
+
+
+    def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk', persistent_datapoint=False):
 
         def  _get_all_channels():
             configs = self.pulsegenerator().get_constraints().activation_config
@@ -1780,13 +1833,14 @@ class SequenceGeneratorLogic(GenericLogic):
 
             return a_channels, d_channels
 
+        n_samples = int(n_samples)
         pg_chs_a, pg_chs_d = _get_all_channels()
 
         # lock module if it's not already locked (sequence sampling in progress)
         if self.module_state() == 'idle':
             self.module_state.lock()
         elif not self.__sequence_generation_in_progress:
-            self.sigSampleEnsembleComplete.emit(None)
+            self.log.error("Module is locked, can't sample benchmark chunk")
             return -1, list(), dict()
 
         analog_samples, digital_samples = {},{}
@@ -1798,20 +1852,16 @@ class SequenceGeneratorLogic(GenericLogic):
             digital_samples[chnl] = np.empty(n_samples, dtype=bool)
             digital_samples[chnl] = np.random.randint(0, 2, n_samples, bool)
 
-        start_time = time.time()
+        start_time =  time.perf_counter()
 
-        wave_name = 'qudi_benchmark_chunk'
-        self.pulsegenerator().delete_waveform(wave_name)
+        self.pulsegenerator().delete_waveform(waveform_name)
         written_samples, wfm_list = self.pulsegenerator().write_waveform(
-            name=wave_name,
+            name=waveform_name,
             analog_samples=analog_samples,
             digital_samples=digital_samples,
             is_first_chunk=True,
             is_last_chunk=True,
             total_number_of_samples=n_samples)
-
-        # todo: handle write and load
-        # todo: fit linear to load + write time, attention: not necessarily linear in time
 
         if written_samples != n_samples:
             self.log.error('Sampling of becnhmark chunk failed. '
@@ -1823,8 +1873,20 @@ class SequenceGeneratorLogic(GenericLogic):
         if not self.__sequence_generation_in_progress:
             self.module_state.unlock()
 
-        self._benchmark_write.add_benchmark(time.time() - start_time, n_samples)
-        self.pulsegenerator().delete_waveform(wave_name)
+        self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
+                                            is_persistent=persistent_datapoint)
+
+        start_time = time.perf_counter()
+        load_dict = {int((wave.split('_ch')[2]).split('.')[0]):wave for wave in wfm_list}
+        self.pulsegenerator().load_waveform(load_dict)
+        self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
+                                            is_persistent=persistent_datapoint)
+
+        self.pulsegenerator().delete_waveform(waveform_name)
+
+        self.sigSampleEnsembleComplete.emit(None)
+
+        return 0, list(), dict()
 
     def get_speed_write_load(self):
         """
