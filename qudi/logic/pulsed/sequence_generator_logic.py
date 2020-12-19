@@ -41,6 +41,112 @@ from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
 from interface.pulser_interface import SequenceOption
 
+from collections import deque, namedtuple
+import scipy
+
+Datapoint = namedtuple('Datapoint', 'time_s y')
+
+
+class BenchmarkTool(object):
+
+    def __init__(self, n_save_datapoints=100):
+        self._datapoints = deque(maxlen=n_save_datapoints)  # fifo-like
+        self._datapoints_fixed = list()
+
+    @property
+    def n_benchmarks(self):
+        return len(self._datapoints) + len(self._datapoints_fixed)
+
+    def reset(self):
+        self._datapoints_fixed = []
+        self._datapoints.clear()
+
+    def add_benchmark(self, time_s, y, is_persistent=False):
+
+        # todo: implement deque storage of data poitns
+        """"
+        dev_id_old = self._write_speed_benchmark['pg_device_hash']
+        dev_id = self._create_pg_device_id_hash()
+        if dev_id != dev_id_old:
+            self.log.debug("Resetting benchmark. Old->new id: {}, {}".format(dev_id_old, dev_id))
+            self._reset_write_benchmark()
+        """
+
+        if time_s <= 0.:
+            return
+
+        if not is_persistent:
+            self._datapoints.append(Datapoint(time_s, y))
+        else:
+            self._datapoints_fixed.append(Datapoint(time_s, y))
+
+    def estimate_time(self, y):
+
+        a, t0 = self._get_speed_fit()
+
+        return t0 + a * y
+
+    def estimate_speed(self):
+        # units: [y] per s
+        a, t0 = self._get_speed_fit()
+
+        return 1. / a
+
+    def save(self, obj=None, value=None):
+        # function paramater need to fulfill the StatusVar logic
+
+        save_dict = copy.deepcopy(self.__dict__)
+        # make deque serializable
+        save_dict['_datapoints'] = copy.deepcopy(list(self._datapoints))
+
+        # make DataPoint serializable
+        new_datapoints = [tuple(el) for el in save_dict['_datapoints']]
+        save_dict['_datapoints'] = new_datapoints
+        new_datapoints = [tuple(el) for el in save_dict['_datapoints_fixed']]
+        save_dict['_datapoints_fixed'] = new_datapoints
+
+        return save_dict
+
+    def load_from_dict(self, obj=None, saved_dict=None):
+
+        if saved_dict != None:
+            saved_dict['_datapoints'] = deque(saved_dict['_datapoints'])
+
+            # load serialized tuples to datapoints
+            new_datapoints = [Datapoint(el[0], el[1]) for el in saved_dict['_datapoints']]
+            saved_dict['_datapoints'] = new_datapoints
+            new_datapoints = [Datapoint(el[0], el[1]) for el in saved_dict['_datapoints_fixed']]
+            saved_dict['_datapoints_fixed'] = new_datapoints
+
+            self.__dict__.update(saved_dict)
+
+    def __calc_avg_on_the_fly(self):
+
+        new_datapoint = n_samples / time_s  # samples per second
+        avg_old = self._write_speed_benchmark['speed_Sas']
+        if n < 1:
+            avg_new = new_datapoint
+            n = 0
+        else:
+            # on the fly average
+            avg_new = avg_old + (new_datapoint - avg_old) / n
+
+        self._write_speed_benchmark['n_benchmarks'] = n + 1
+        self._write_speed_benchmark['speed_Sas'] = avg_new
+        self._write_speed_benchmark['pg_device_hash'] = dev_id
+
+    def _get_speed_fit(self):
+
+        # linear fit t= a*y + t0 over all data with t: time, y: benchmark quantitiy
+        all_data = np.asarray(self._datapoints_fixed + list(self._datapoints))
+        if len(all_data) < 1:
+            return np.nan, np.nan
+        if len(np.unique(all_data[:,1])) == 1:
+            # fit needs at least 2 different datapoints in y
+            return np.average(all_data[:,0])/all_data[0,1], 0
+        a, t0, _, _, _ = scipy.stats.linregress(all_data[:, 1], all_data[:, 0])
+
+        return a, t0
 
 class SequenceGeneratorLogic(GenericLogic):
     """
@@ -95,10 +201,10 @@ class SequenceGeneratorLogic(GenericLogic):
     # _saved_pulse_block_ensembles = StatusVar(default=OrderedDict())
     # _saved_pulse_sequences = StatusVar(default=OrderedDict())
 
-    _write_speed_benchmark = StatusVar(default=OrderedDict([('speed_Sas', 0),
-                                                            ('n_benchmarks', 0),
-                                                            ('pg_device_hash', 0)
-                                                            ]))
+    _benchmark_write = BenchmarkTool()
+    _benchmark_write_state = StatusVar(representer=_benchmark_write.save, constructor=_benchmark_write.load_from_dict)
+    _benchmark_load = BenchmarkTool()
+    _benchmark_load_state = StatusVar(representer=_benchmark_load.save, constructor=_benchmark_load.load_from_dict)
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -210,6 +316,7 @@ class SequenceGeneratorLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
+
         return
 
     # @_saved_pulse_blocks.constructor
@@ -500,8 +607,17 @@ class SequenceGeneratorLogic(GenericLogic):
             if self.pulsegenerator().get_status()[0] > 0:
                 self.log.error('Can´t load a waveform, because pulser running. Switch off the pulser and try again.')
                 return -1
+
+            t_est_upload = self._benchmark_write.estimate_time(ensemble.sampling_information['number_of_samples'])
+            if t_est_upload > self._info_on_estimated_upload_time:
+                now = datetime.datetime.now()
+                self.log.info("Estimated finish of loading for long waveform: {0:%Y-%m-%d %H:%M:%S} ({1:d} s)".format(
+                    (now + datetime.timedelta(0, t_est_upload)), int(t_est_upload)))
+
             # Actually load the waveforms to the generic channels
+            start_time = time.perf_counter()
             self.pulsegenerator().load_waveform(ensemble.sampling_information['waveforms'])
+            self._benchmark_load.add_benchmark(time.perf_counter() - start_time, ensemble.sampling_information['number_of_samples'])
         else:
             self.log.error('Loading of PulseBlockEnsemble "{0}" failed.\n'
                            'It has not been generated yet.'.format(ensemble.name))
@@ -1629,9 +1745,6 @@ class SequenceGeneratorLogic(GenericLogic):
         # Return error code
         return -1 if ensembles_missing else 0
 
-    def _reset_write_benchmark(self):
-        self._write_speed_benchmark['n_benchmarks'] = 0
-        self._write_speed_benchmark['speed_Sas'] = 0
 
     def _create_pg_device_id_hash(self):
         """
@@ -1648,40 +1761,78 @@ class SequenceGeneratorLogic(GenericLogic):
 
         return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
 
-    def _add_write_benchmark(self, time_s, samples, reset_avg=False):
 
-        dev_id_old = self._write_speed_benchmark['pg_device_hash']
-        dev_id = self._create_pg_device_id_hash()
-        if dev_id != dev_id_old or reset_avg:
-            self.log.debug("Resetting benchmark. Old->new id: {}, {}".format(dev_id_old, dev_id))
-            self._reset_write_benchmark()
+    def sample_benchmark_chunk(self, n_samples):
 
-        n = self._write_speed_benchmark['n_benchmarks']
-        avg_old = self._write_speed_benchmark['speed_Sas']
+        def  _get_all_channels():
+            configs = self.pulsegenerator().get_constraints().activation_config
+            if 'all' in configs:
+                largest_config = configs['all']
+            else:
+                largest_config = list(configs.values())[0]
+                for config in configs.values():
+                    if len(largest_config) < len(config):
+                        largest_config = config
+            largest_config = sorted(largest_config)
 
-        if time_s == 0.:
-            return
-        new_datapoint = samples / time_s  # samples per second
+            a_channels = [chnl for chnl in largest_config if chnl.startswith('a')]
+            d_channels = [chnl for chnl in largest_config if chnl.startswith('d')]
 
-        if n < 1:
-            avg_new = new_datapoint
-            n = 0
-        else:
-            # on the fly average
-            avg_new = avg_old + (new_datapoint - avg_old)/n
+            return a_channels, d_channels
 
-        self._write_speed_benchmark['n_benchmarks'] = n + 1
-        self._write_speed_benchmark['speed_Sas'] = avg_new
-        self._write_speed_benchmark['pg_device_hash'] = dev_id
+        pg_chs_a, pg_chs_d = _get_all_channels()
 
-    def get_write_speed(self):
-        return self._write_speed_benchmark['speed_Sas']
+        # lock module if it's not already locked (sequence sampling in progress)
+        if self.module_state() == 'idle':
+            self.module_state.lock()
+        elif not self.__sequence_generation_in_progress:
+            self.sigSampleEnsembleComplete.emit(None)
+            return -1, list(), dict()
 
-    def get_upload_time(self, n_samples):
-        speed = self.get_write_speed()
-        if speed == 0.:
-            return np.nan
-        return n_samples / speed
+        analog_samples, digital_samples = {},{}
+
+        for chnl in pg_chs_a:
+            analog_samples[chnl] = np.empty(n_samples, dtype='float32')
+            analog_samples[chnl] = np.random.random_sample(n_samples)
+        for chnl in pg_chs_d:
+            digital_samples[chnl] = np.empty(n_samples, dtype=bool)
+            digital_samples[chnl] = np.random.randint(0, 2, n_samples, bool)
+
+        start_time = time.time()
+
+        wave_name = 'qudi_benchmark_chunk'
+        self.pulsegenerator().delete_waveform(wave_name)
+        written_samples, wfm_list = self.pulsegenerator().write_waveform(
+            name=wave_name,
+            analog_samples=analog_samples,
+            digital_samples=digital_samples,
+            is_first_chunk=True,
+            is_last_chunk=True,
+            total_number_of_samples=n_samples)
+
+        # todo: handle write and load
+        # todo: fit linear to load + write time, attention: not necessarily linear in time
+
+        if written_samples != n_samples:
+            self.log.error('Sampling of becnhmark chunk failed. '
+                           'Write to device was unsuccessful.\nThe number of '
+                           'actually written samples ({:d}) does not match '
+                           'the number of samples staged to write ({:d}).'
+                           ''.format(written_samples,
+                                     n_samples))
+        if not self.__sequence_generation_in_progress:
+            self.module_state.unlock()
+
+        self._benchmark_write.add_benchmark(time.time() - start_time, n_samples)
+        self.pulsegenerator().delete_waveform(wave_name)
+
+    def get_speed_write_load(self):
+        """
+        Get the estimated speed of the pulse generator for writing and loading a waveform.
+        :return: speed (Sa/s)
+        """
+        return 1/(1/self._benchmark_write.estimate_speed() + 1/self._benchmark_load.estimate_speed())
+
 
     @QtCore.Slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
@@ -1841,10 +1992,10 @@ class SequenceGeneratorLogic(GenericLogic):
             self.sigSampleEnsembleComplete.emit(None)
             return -1, list(), dict()
 
-        t_est_upload = self.get_upload_time(ensemble_info['number_of_samples'])
+        t_est_upload = self._benchmark_write.estimate_time(ensemble_info['number_of_samples'])
         if t_est_upload > self._info_on_estimated_upload_time:
             now = datetime.datetime.now()
-            self.log.info("Estimated finish of upload for long waveform: {0:%Y-%m-%d %H:%M:%S} ({1:d} s)".format(
+            self.log.info("Estimated finish of writing for long waveform: {0:%Y-%m-%d %H:%M:%S} ({1:d} s)".format(
                 (now + datetime.timedelta(0, t_est_upload)), int(t_est_upload)))
 
         # integer to keep track of the sampls already processed
@@ -1961,11 +2112,11 @@ class SequenceGeneratorLogic(GenericLogic):
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
                       ''.format(ensemble.name, int(np.rint(time.time() - start_time))))
         self.log.debug('Estimated {:.3f} s from current estimated write speed {:.2f} MSa/s from {} benchmarks'.format(
-            self.get_upload_time(ensemble_info['number_of_samples']),
-            self.get_write_speed() / 1e6,
-            self._write_speed_benchmark['n_benchmarks']))
+            self._benchmark_write.estimate_time(ensemble_info['number_of_samples']),
+            self._benchmark_write.estimate_speed() / 1e6,
+            self._benchmark_write.n_benchmarks))
 
-        self._add_write_benchmark(int(np.rint(time.time() - start_time)), ensemble_info['number_of_samples'])
+        self._benchmark_write.add_benchmark(time.time() - start_time, ensemble_info['number_of_samples'])
 
         if ensemble_info['number_of_samples'] == 0:
             self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
