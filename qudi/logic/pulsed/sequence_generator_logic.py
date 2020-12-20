@@ -49,7 +49,7 @@ Datapoint = namedtuple('Datapoint', 'time_s y')
 
 class BenchmarkTool(object):
 
-    def __init__(self, n_save_datapoints=100):
+    def __init__(self, n_save_datapoints=20):
         self._datapoints = deque(maxlen=n_save_datapoints)  # fifo-like
         self._datapoints_fixed = list()
 
@@ -88,17 +88,23 @@ class BenchmarkTool(object):
         else:
             self._datapoints_fixed.append(Datapoint(time_s, y))
 
-    def estimate_time(self, y):
+    def estimate_time(self, y, check_sanity=True):
 
         a, t0 = self._get_speed_fit()
 
-        return t0 + a * y
+        if self.sanity or not check_sanity:
+            return t0 + a * y
 
-    def estimate_speed(self):
+        return -1
+
+    def estimate_speed(self, check_sanity=True):
         # units: [y] per s
         a, t0 = self._get_speed_fit()
 
-        return 1. / a
+        if self.sanity or not check_sanity:
+            return 1. / a
+
+        return np.nan
 
     def save(self, obj=None, value=None):
         # function paramater need to fulfill the StatusVar logic
@@ -150,12 +156,19 @@ class BenchmarkTool(object):
 
         # linear fit t= a*y + t0 over all data with t: time, y: benchmark quantitiy
         all_data = np.asarray(self._datapoints_fixed + list(self._datapoints))
+
+        if len(self._datapoints) > len(self._datapoints_fixed):
+            # ensure rolling data has max 50:50 weight
+            weighted_data = np.asarray(self._datapoints_fixed + list(self._datapoints[-len(self._datapoints_fixed):]))
+        else:
+            weighted_data = all_data
+
         if len(all_data) < 1:
             return np.nan, np.nan
         if len(np.unique(all_data[:,1])) == 1:
             # fit needs at least 2 different datapoints in y
             return np.average(all_data[:,0])/all_data[0,1], 0
-        a, t0, _, _, _ = scipy.stats.linregress(all_data[:, 1], all_data[:, 0])
+        a, t0, _, _, _ = scipy.stats.linregress(weighted_data[:, 1], weighted_data[:, 0])
 
         return a, t0
 
@@ -2409,6 +2422,9 @@ class SequenceGeneratorLogic(GenericLogic):
         Get the estimated speed of the pulse generator for writing and loading a waveform.
         :return: speed (Sa/s)
         """
-        return 1/(1/self._benchmark_write.estimate_speed() + 1/self._benchmark_load.estimate_speed())
 
+        if self._benchmark_write.sanity or self._benchmark_load.sanity:
+            return 1/(1/self._benchmark_write.estimate_speed(check_sanity=False) +
+                      1/self._benchmark_load.estimate_speed(check_sanity=False))
 
+        return np.nan
