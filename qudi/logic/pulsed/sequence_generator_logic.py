@@ -57,13 +57,21 @@ class BenchmarkTool(object):
     def n_benchmarks(self):
         return len(self._datapoints) + len(self._datapoints_fixed)
 
+    @property
+    def sanity(self):
+        a, t0 = self._get_speed_fit()
+
+        if a < 0 or t0 < 0:
+            return False
+
+        return True
+
     def reset(self):
         self._datapoints_fixed = []
         self._datapoints.clear()
 
     def add_benchmark(self, time_s, y, is_persistent=False):
 
-        # todo: implement deque storage of data poitns
         """"
         dev_id_old = self._write_speed_benchmark['pg_device_hash']
         dev_id = self._create_pg_device_id_hash()
@@ -120,6 +128,8 @@ class BenchmarkTool(object):
 
             self.__dict__.update(saved_dict)
 
+
+    """
     def __calc_avg_on_the_fly(self):
 
         new_datapoint = n_samples / time_s  # samples per second
@@ -134,6 +144,7 @@ class BenchmarkTool(object):
         self._write_speed_benchmark['n_benchmarks'] = n + 1
         self._write_speed_benchmark['speed_Sas'] = avg_new
         self._write_speed_benchmark['pg_device_hash'] = dev_id
+    """
 
     def _get_speed_fit(self):
 
@@ -217,6 +228,8 @@ class SequenceGeneratorLogic(GenericLogic):
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
     sigAvailableWaveformsUpdated = QtCore.Signal(list)
     sigAvailableSequencesUpdated = QtCore.Signal(list)
+    sigRunPgBenchmark = QtCore.Signal()
+
 
     sigPredefinedSequenceGenerated = QtCore.Signal(object, bool)
 
@@ -238,6 +251,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self.__interleave = False  # Flag to indicate use of interleave
         # Set of available flags
         self.__flags = set()
+        # upload speed from benchmark
+        self.__upload_speed = np.nan
 
         # A flag indicating if sampling of a sequence is in progress
         self.__sequence_generation_in_progress = False
@@ -311,6 +326,10 @@ class SequenceGeneratorLogic(GenericLogic):
         self._pog = PulseObjectGenerator(sequencegeneratorlogic=self)
 
         self.__sequence_generation_in_progress = False
+
+        self.sigRunPgBenchmark.connect(
+            self.run_pg_benchmark, QtCore.Qt.QueuedConnection)
+
         return
 
     def on_deactivate(self):
@@ -392,6 +411,7 @@ class SequenceGeneratorLogic(GenericLogic):
         settings_dict['digital_levels'] = tuple(self.__digital_levels)
         settings_dict['interleave'] = bool(self.__interleave)
         settings_dict['flags'] = set(self.__flags)
+        settings_dict['upload_speed'] = float(self.__upload_speed)
         return settings_dict
 
     @pulse_generator_settings.setter
@@ -535,6 +555,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.__interleave = self.pulsegenerator().set_interleave(
                     bool(settings_dict['interleave']))
 
+            self.__upload_speed = self.get_speed_write_load()
+
         elif len(kwargs) != 0 or isinstance(settings_dict, dict):
             # Only throw warning when arguments have been passed to this method
             self.log.warning('Pulse generator is not idle (status: {0:d}, "{1}").\n'
@@ -608,7 +630,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.log.error('Can´t load a waveform, because pulser running. Switch off the pulser and try again.')
                 return -1
 
-            t_est_upload = self._benchmark_write.estimate_time(ensemble.sampling_information['number_of_samples'])
+            t_est_upload = self._benchmark_load.estimate_time(ensemble.sampling_information['number_of_samples'])
             if t_est_upload > self._info_on_estimated_upload_time:
                 now = datetime.datetime.now()
                 self.log.info("Estimated finish of loading for long waveform: {0:%Y-%m-%d %H:%M:%S} ({1:d} s)".format(
@@ -1745,157 +1767,6 @@ class SequenceGeneratorLogic(GenericLogic):
         # Return error code
         return -1 if ensembles_missing else 0
 
-
-    def _create_pg_device_id_hash(self):
-        """
-        Creates a unique id for the currently used pulse generator.
-        :return: pg_id
-        """
-
-        # indirect creation, as the pulser interface doesn't provide eg. the serial number or model of the device
-        # based on 1. ScalarConstraints in device constraints, 2. config options of device
-        id_dict = OrderedDict(
-            (key, val.__dict__) for (key, val) in self.pulsegenerator().get_constraints().__dict__.items() if
-            isinstance(val, ScalarConstraint))
-        id_dict.update(self.pulsegenerator()._configuration)
-
-        return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
-
-
-    def run_pg_benchmark(self):
-
-        def round_to_granuality(n_samples):
-            granuality = self.pulsegenerator().get_constraints().waveform_length.step
-            return np.ceil(n_samples / granuality) * granuality
-
-        self._benchmark_write.reset()
-        self._benchmark_load.reset()
-
-        t_goal = 10  # benchmark should approx run this long
-        waveform_name = 'qudi_benchmark_chunk'
-
-        # first 2 datapoints for initial guess
-        n_samples_min = self.pulsegenerator().get_constraints().waveform_length.min
-        n_samples_max = self.pulsegenerator().get_constraints().waveform_length.max
-
-        rescode, _, _, = self._sample_load_benchmark_chunk(n_samples_min, waveform_name, persistent_datapoint=True)
-
-        t_start = time.perf_counter()
-        time_fraction = 32.
-        i = 0
-        while time.perf_counter() - t_start < t_goal and rescode == 0:
-            if self.get_speed_write_load() > 0:
-                t_left = t_goal - (time.perf_counter() - t_start)
-                n_samples = self.get_speed_write_load() * t_left / time_fraction
-                n_samples = round_to_granuality(n_samples)
-            else:  # poor speed estimate so far
-                n_samples = round_to_granuality(np.random.uniform(1e2, 1e4) * n_samples_min)
-
-            if n_samples < n_samples_min:
-                # don't repeat uninformatively at same n_samples
-                n_samples = round_to_granuality(np.random.uniform(1, 10) * n_samples_min)
-            if n_samples > n_samples_max:
-                n_samples = round_to_granuality(150e3) #n_samples_max
-
-            t_est = n_samples / self.get_speed_write_load()
-            self.log.debug("Running benchmark (speed: {:.3f} MSa/s): {} samples for"
-                           " estimated {:.5f} s, {:.5f} s left".format(
-                self.get_speed_write_load()/1e6,
-                n_samples,
-                t_est,
-                t_left))
-            rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name, persistent_datapoint=True)
-
-            time_fraction = time_fraction / 2.
-            i += 1
-
-        self.log.debug("Pulse generator benchmark finished after {} chunks. Speed write/load: {:.2f} / {:.2f} MSa/s".format(
-            i,
-            self._benchmark_write.estimate_speed() / 1e6,
-            self._benchmark_load.estimate_speed() / 1e6))
-
-
-    def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk', persistent_datapoint=False):
-
-        def  _get_all_channels():
-            configs = self.pulsegenerator().get_constraints().activation_config
-            if 'all' in configs:
-                largest_config = configs['all']
-            else:
-                largest_config = list(configs.values())[0]
-                for config in configs.values():
-                    if len(largest_config) < len(config):
-                        largest_config = config
-            largest_config = sorted(largest_config)
-
-            a_channels = [chnl for chnl in largest_config if chnl.startswith('a')]
-            d_channels = [chnl for chnl in largest_config if chnl.startswith('d')]
-
-            return a_channels, d_channels
-
-        n_samples = int(n_samples)
-        pg_chs_a, pg_chs_d = _get_all_channels()
-
-        # lock module if it's not already locked (sequence sampling in progress)
-        if self.module_state() == 'idle':
-            self.module_state.lock()
-        elif not self.__sequence_generation_in_progress:
-            self.log.error("Module is locked, can't sample benchmark chunk")
-            return -1, list(), dict()
-
-        analog_samples, digital_samples = {},{}
-
-        for chnl in pg_chs_a:
-            analog_samples[chnl] = np.empty(n_samples, dtype='float32')
-            analog_samples[chnl] = np.random.random_sample(n_samples)
-        for chnl in pg_chs_d:
-            digital_samples[chnl] = np.empty(n_samples, dtype=bool)
-            digital_samples[chnl] = np.random.randint(0, 2, n_samples, bool)
-
-        start_time =  time.perf_counter()
-
-        self.pulsegenerator().delete_waveform(waveform_name)
-        written_samples, wfm_list = self.pulsegenerator().write_waveform(
-            name=waveform_name,
-            analog_samples=analog_samples,
-            digital_samples=digital_samples,
-            is_first_chunk=True,
-            is_last_chunk=True,
-            total_number_of_samples=n_samples)
-
-        if written_samples != n_samples:
-            self.log.error('Sampling of becnhmark chunk failed. '
-                           'Write to device was unsuccessful.\nThe number of '
-                           'actually written samples ({:d}) does not match '
-                           'the number of samples staged to write ({:d}).'
-                           ''.format(written_samples,
-                                     n_samples))
-        if not self.__sequence_generation_in_progress:
-            self.module_state.unlock()
-
-        self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
-                                            is_persistent=persistent_datapoint)
-
-        start_time = time.perf_counter()
-        load_dict = {int((wave.split('_ch')[2]).split('.')[0]):wave for wave in wfm_list}
-        self.pulsegenerator().load_waveform(load_dict)
-        self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
-                                            is_persistent=persistent_datapoint)
-
-        self.pulsegenerator().delete_waveform(waveform_name)
-
-        self.sigSampleEnsembleComplete.emit(None)
-
-        return 0, list(), dict()
-
-    def get_speed_write_load(self):
-        """
-        Get the estimated speed of the pulse generator for writing and loading a waveform.
-        :return: speed (Sa/s)
-        """
-        return 1/(1/self._benchmark_write.estimate_speed() + 1/self._benchmark_load.estimate_speed())
-
-
     @QtCore.Slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
@@ -2367,3 +2238,172 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.pulsegenerator().delete_sequence(seq)
         self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         return
+
+    @QtCore.Slot()
+    def run_pg_benchmark(self, t_goal=10):
+
+        # todo: awg890 awg_segments mode: error when other waveforms in seg table
+
+        def round_to_granuality(n_samples):
+            granuality = self.pulsegenerator().get_constraints().waveform_length.step
+            return np.ceil(n_samples / granuality) * granuality
+
+        self._benchmark_write.reset()
+        self._benchmark_load.reset()
+
+        waveform_name = 'qudi_benchmark_chunk'
+
+        self.log.info(
+            "Pulse generator benchmark started, expect finish in {:.0f} s. Will unload current asset!".format(t_goal))
+
+        # first 2 datapoints for initial guess
+        n_samples_min = self.pulsegenerator().get_constraints().waveform_length.min
+        n_samples_max = self.pulsegenerator().get_constraints().waveform_length.max
+
+        rescode, _, _, = self._sample_load_benchmark_chunk(n_samples_min, waveform_name, persistent_datapoint=True)
+
+        t_start = time.perf_counter()
+        time_fraction = 32.
+        i = 0
+        while time.perf_counter() - t_start < t_goal and rescode == 0:
+
+            speed = self.get_speed_write_load()
+            if self._benchmark_write.sanity and self._benchmark_load.sanity:
+                t_left = t_goal - (time.perf_counter() - t_start)
+                n_samples = speed * t_left / time_fraction
+                n_samples = round_to_granuality(n_samples)
+            else:  # poor speed estimate so far
+                n_samples = round_to_granuality(np.random.uniform(1e4, 1e6))
+
+            if n_samples < n_samples_min:
+                # don't repeat uninformatively at same n_samples
+                n_samples = round_to_granuality(np.random.uniform(1, 10) * n_samples_min)
+            if n_samples > n_samples_max:
+                n_samples = round_to_granuality(150e3) #n_samples_max
+
+            t_est = n_samples / speed
+            self.log.debug(
+                "Running benchmark. Current speed (write/load/tot): {:.3f} / {:.3f} / {:.3f} MSa/s): {} samples for"
+                " estimated {:.5f} s, {:.5f} s left".format(
+                    self._benchmark_write.estimate_speed() / 1e6,
+                    self._benchmark_load.estimate_speed() / 1e6, speed / 1e6,
+                    n_samples, t_est, t_left))
+            rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name, persistent_datapoint=True)
+
+            time_fraction = time_fraction / 2.
+            i += 1
+
+        self.log.info("Pulse generator benchmark finished after {} chunks.".format(i))
+
+
+    def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk', persistent_datapoint=False):
+
+        def  _get_all_channels():
+            configs = self.pulsegenerator().get_constraints().activation_config
+            if 'all' in configs:
+                largest_config = configs['all']
+            else:
+                largest_config = list(configs.values())[0]
+                for config in configs.values():
+                    if len(largest_config) < len(config):
+                        largest_config = config
+            largest_config = sorted(largest_config)
+
+            a_channels = [chnl for chnl in largest_config if chnl.startswith('a')]
+            d_channels = [chnl for chnl in largest_config if chnl.startswith('d')]
+
+            return a_channels, d_channels
+
+        def _wavename_no_extension(wavename):
+            return ''.join(wavename.split(".")[:-1])
+
+        n_samples = int(n_samples)
+        pg_chs_a, pg_chs_d = _get_all_channels()
+
+        # lock module if it's not already locked (sequence sampling in progress)
+        if self.module_state() == 'idle':
+            self.module_state.lock()
+        elif not self.__sequence_generation_in_progress:
+            self.log.error("Module is locked, can't sample benchmark chunk")
+            return -1, list(), dict()
+
+        analog_samples, digital_samples = {},{}
+
+        for chnl in pg_chs_a:
+            analog_samples[chnl] = np.empty(n_samples, dtype='float32')
+            analog_samples[chnl] = np.random.random_sample(n_samples)
+        for chnl in pg_chs_d:
+            digital_samples[chnl] = np.empty(n_samples, dtype=bool)
+            digital_samples[chnl] = np.random.randint(0, 2, n_samples, bool)
+
+        #loaded_waves_old = {key: val for key, val in self.pulsegenerator().get_loaded_assets()[0].items() if val != ''}
+
+        start_time = time.perf_counter()
+
+        self.pulsegenerator().delete_waveform(waveform_name)
+        written_samples, wfm_list = self.pulsegenerator().write_waveform(
+            name=waveform_name,
+            analog_samples=analog_samples,
+            digital_samples=digital_samples,
+            is_first_chunk=True,
+            is_last_chunk=True,
+            total_number_of_samples=n_samples)
+
+        if written_samples != n_samples:
+            self.log.error('Sampling of benchmark chunk failed. '
+                           'Write to device was unsuccessful.\nThe number of '
+                           'actually written samples ({:d}) does not match '
+                           'the number of samples staged to write ({:d}).'
+                           ''.format(written_samples,
+                                     n_samples))
+
+
+        if not self.__sequence_generation_in_progress:
+            self.module_state.unlock()
+
+        self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
+                                            is_persistent=persistent_datapoint)
+
+        start_time = time.perf_counter()
+        load_dict = {int((wave.split('_ch')[2]).split('.')[0]):wave for wave in wfm_list}
+        self.pulsegenerator().load_waveform(load_dict)
+        self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
+                                            is_persistent=persistent_datapoint)
+
+        load_dict_no_ext = {key:_wavename_no_extension(val) for (key,val) in load_dict.items()}
+        if self.pulsegenerator().get_loaded_assets()[0] != load_dict_no_ext:
+            self.log.warning("Loading of waves {} failed, still: {}".format(load_dict,
+                                                                            self.pulsegenerator().get_loaded_assets()[0]))
+
+        #if len(loaded_waves_old) > 0:
+        #    self.pulsegenerator().load_waveform(loaded_waves_old)
+        self.pulsegenerator().delete_waveform(waveform_name)
+
+        self.sigSampleEnsembleComplete.emit(None)
+        self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
+
+        return 0, list(), dict()
+
+    def _create_pg_device_id_hash(self):
+        """
+        Creates a unique id for the currently used pulse generator.
+        :return: pg_id
+        """
+
+        # indirect creation, as the pulser interface doesn't provide eg. the serial number or model of the device
+        # based on 1. ScalarConstraints in device constraints, 2. config options of device
+        id_dict = OrderedDict(
+            (key, val.__dict__) for (key, val) in self.pulsegenerator().get_constraints().__dict__.items() if
+            isinstance(val, ScalarConstraint))
+        id_dict.update(self.pulsegenerator()._configuration)
+
+        return hashlib.md5(str(id_dict).encode('utf-8')).hexdigest()
+
+    def get_speed_write_load(self):
+        """
+        Get the estimated speed of the pulse generator for writing and loading a waveform.
+        :return: speed (Sa/s)
+        """
+        return 1/(1/self._benchmark_write.estimate_speed() + 1/self._benchmark_load.estimate_speed())
+
+
