@@ -2296,6 +2296,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self.log.info("Pulse generator benchmark finished after {} chunks.".format(i))
 
 
+
     def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk', persistent_datapoint=False):
 
         def  _get_all_channels():
@@ -2315,7 +2316,11 @@ class SequenceGeneratorLogic(GenericLogic):
             return a_channels, d_channels
 
         def _wavename_no_extension(wavename):
-            return ''.join(wavename.split(".")[:-1])
+            import re
+            pattern = '.*_ch.*\..*'
+            if re.match(pattern, wavename):
+                return ''.join(wavename.split(".")[:-1])
+            return wavename
 
         n_samples = int(n_samples)
         pg_chs_a, pg_chs_d = _get_all_channels()
@@ -2366,14 +2371,14 @@ class SequenceGeneratorLogic(GenericLogic):
 
         start_time = time.perf_counter()
         load_dict = {int((wave.split('_ch')[2]).split('.')[0]):wave for wave in wfm_list}
-        self.pulsegenerator().load_waveform(load_dict)
+        actually_load_dict = self.pulsegenerator().load_waveform(load_dict)[0]
         self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
 
         load_dict_no_ext = {key:_wavename_no_extension(val) for (key,val) in load_dict.items()}
-        if self.pulsegenerator().get_loaded_assets()[0] != load_dict_no_ext:
+        if actually_load_dict != load_dict_no_ext:
             self.log.warning("Loading of waves {} failed, still: {}".format(load_dict,
-                                                                            self.pulsegenerator().get_loaded_assets()[0]))
+                                                                            actually_load_dict))
 
         #if len(loaded_waves_old) > 0:
         #    self.pulsegenerator().load_waveform(loaded_waves_old)
