@@ -111,10 +111,8 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         self.setWindowTitle('ODMR Scan Control')
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
-        if frequency_range is None:
-            self._frequency_range = (0, np.inf)
-        if points_range is None:
-            self._points_range = (2, 2 ** 31 - 1)
+        self._frequency_range = (0, np.inf) if frequency_range is None else tuple(frequency_range)
+        self._points_range = (2, 2 ** 31 - 1) if points_range is None else tuple(points_range)
 
         # create central widget and layout
         main_widget = QtWidgets.QWidget()

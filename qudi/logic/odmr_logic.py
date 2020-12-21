@@ -167,7 +167,7 @@ class OdmrLogic(LogicBase):
         samples_per_line = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
         # Add 5% Safety; Minimum of 1 line
         self.__estimated_lines = max(1, int(1.05 * estimated_samples / samples_per_line))
-        for channel in ('APD Counter', 'Photodiode'):
+        for channel in self.channels:
             self._raw_data[channel] = [
                 np.full((freq_arr.size, self.__estimated_lines), np.nan) for freq_arr in
                 self._frequency_data
