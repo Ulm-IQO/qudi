@@ -115,7 +115,10 @@ class OdmrPlotWidget(QtWidgets.QWidget):
                 self._image_item.set_image(image=data,
                                            autoLevels=False,
                                            levels=self._colorbar.limits)
-            self._image_item.set_image_extent(((frequency[0], frequency[-1]), (0, data.shape[1])))
+            if frequency is not None:
+                self._image_item.set_image_extent(
+                    ((frequency[0], frequency[-1]), (0, data.shape[1]))
+                )
 
     def set_signal_data(self, frequency, data):
         if data is None:

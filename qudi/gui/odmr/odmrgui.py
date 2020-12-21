@@ -95,25 +95,39 @@ class OdmrGui(GuiBase):
         *.ui file and configures the event handling between the modules.
         """
         # Create main window
+        logic = self._odmr_logic()
+        constraints = logic.constraints
+        channel_units = logic.channel_units
+        print(constraints)
         self._mw = OdmrMainWindow()
         self._plot_widget = self._mw.centralWidget()
-        self._scan_control_dockwidget = OdmrScanControlDockWidget(parent=self._mw)
-        self._cw_control_dockwidget = OdmrCwControlDockWidget(parent=self._mw)
+        self._scan_control_dockwidget = OdmrScanControlDockWidget(
+            parent=self._mw,
+            power_range=constraints['power_limits'],
+            frequency_range=constraints['frequency_limits'],
+            data_channels=tuple(channel_units),
+            points_range=constraints['points_limits']
+        )
+        self._cw_control_dockwidget = OdmrCwControlDockWidget(
+            parent=self._mw,
+            power_range=constraints['power_limits'],
+            frequency_range=constraints['frequency_limits']
+        )
         self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw)
         self.restore_default_view()
 
-        channel_units = {'APD counts': 'c/s', 'analog scanner': 'V', 'saasdggag': 'ppm'}
-        frequencies = [np.linspace(2e9, 3e9, ii) for ii in (100, 150, 200)]
-        rand_data = (np.random.rand(100), np.random.rand(150), np.random.rand(200))
-        data = {'APD counts'    : rand_data,
-                'analog scanner': tuple(10 * a for a in rand_data),
-                'saasdggag'     : tuple(100 * a for a in rand_data)}
-        fit = {'APD counts'    : tuple(np.ones(a.shape) for a in rand_data),
-               'analog scanner': tuple(10 * np.ones(a.shape) for a in rand_data),
-               'saasdggag'     : tuple(100 * np.ones(a.shape) for a in rand_data)}
-        image = {'APD counts'    : tuple(np.array((a, a)).transpose() for a in data['APD counts']),
-                 'analog scanner': tuple(np.array((a, a)).transpose() for a in data['analog scanner']),
-                 'saasdggag'     : tuple(np.array((a, a)).transpose() for a in data['saasdggag'])}
+        # channel_units = {'APD counts': 'c/s', 'analog scanner': 'V', 'saasdggag': 'ppm'}
+        # frequencies = [np.linspace(2e9, 3e9, ii) for ii in (100, 150, 200)]
+        # rand_data = (np.random.rand(100), np.random.rand(150), np.random.rand(200))
+        # data = {'APD counts'    : rand_data,
+        #         'analog scanner': tuple(10 * a for a in rand_data),
+        #         'saasdggag'     : tuple(100 * a for a in rand_data)}
+        # fit = {'APD counts'    : tuple(np.ones(a.shape) for a in rand_data),
+        #        'analog scanner': tuple(10 * np.ones(a.shape) for a in rand_data),
+        #        'saasdggag'     : tuple(100 * np.ones(a.shape) for a in rand_data)}
+        # image = {'APD counts'    : tuple(np.array((a, a)).transpose() for a in data['APD counts']),
+        #          'analog scanner': tuple(np.array((a, a)).transpose() for a in data['analog scanner']),
+        #          'saasdggag'     : tuple(np.array((a, a)).transpose() for a in data['saasdggag'])}
         self._update_scan_data()
         self.show()
         # self._sd = ODMRSettingDialog()
@@ -624,7 +638,7 @@ class OdmrGui(GuiBase):
         range_index = self._scan_control_dockwidget.selected_range
         channel = self._scan_control_dockwidget.selected_channel
         self._plot_widget.set_data(
-            None if frequency_data is None else frequencies[range_index],
+            None if frequency_data is None else frequency_data[range_index],
             None if raw_data is None else raw_data[channel][range_index],
             None if signal_data is None else signal_data[channel][range_index]
         )
