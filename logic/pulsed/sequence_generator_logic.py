@@ -2259,7 +2259,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         n_samples_min = self.pulsegenerator().get_constraints().waveform_length.min
         n_samples_max = self.pulsegenerator().get_constraints().waveform_length.max
-        n_samples_max = n_max_fix if n_max_fix > n_samples_max else n_samples_max
+        n_samples_max = n_max_fix if n_samples_max > n_max_fix else n_samples_max
 
         rescode, _, _, = self._sample_load_benchmark_chunk(n_samples_min, waveform_name,
                                                            persistent_datapoint=True)
@@ -2270,8 +2270,8 @@ class SequenceGeneratorLogic(GenericLogic):
         while time.perf_counter() - t_start < t_goal and rescode == 0:
 
             speed = self.get_speed_write_load()
+            t_left = t_goal - (time.perf_counter() - t_start)
             if self._benchmark_write.sanity and self._benchmark_load.sanity:
-                t_left = t_goal - (time.perf_counter() - t_start)
                 n_samples = speed * t_left / time_fraction
                 n_samples = round_to_granularity(n_samples)
             else:  # poor speed estimate so far
@@ -2291,10 +2291,13 @@ class SequenceGeneratorLogic(GenericLogic):
                     self._benchmark_write.estimate_speed() / 1e6,
                     self._benchmark_load.estimate_speed() / 1e6, speed / 1e6,
                     n_samples, t_est, t_left))
+            if t_est > t_left:
+                self.log.debug("Skipped benchmark while trying to exceed time limit.")
+                continue
             rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name,
                                                                persistent_datapoint=True)
 
-            time_fraction = time_fraction / 2.
+            time_fraction = time_fraction / 2. if time_fraction > 2 else 2
             i += 1
 
         self.log.info("Pulse generator benchmark finished after {} chunks.".format(i))
