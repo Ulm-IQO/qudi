@@ -2327,6 +2327,17 @@ class SequenceGeneratorLogic(GenericLogic):
                 return ''.join(wavename.split(".")[:-1])
             return wavename
 
+        def _wave_list_2_dict(wfm_list):
+            # todo: should be unique how loaded dict comes from pulser interface
+            wave_dict = {}
+            for i, wave in enumerate(wfm_list):
+                pattern = '.*_ch.*\..*'
+                if re.match(pattern, wave):
+                    wave_dict[int((wave.split('_ch')[2]).split('.')[0])] = wave
+                else:
+                    wave_dict[i+1] = wave
+            return wave_dict
+
         n_samples = int(n_samples)
         pg_chs_a, pg_chs_d = _get_all_channels()
 
@@ -2374,7 +2385,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                             is_persistent=persistent_datapoint)
 
         start_time = time.perf_counter()
-        load_dict = {int((wave.split('_ch')[2]).split('.')[0]):wave for wave in wfm_list}
+        load_dict =  _wave_list_2_dict(wfm_list)
         actually_load_dict = self.pulsegenerator().load_waveform(load_dict)[0]
         self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
