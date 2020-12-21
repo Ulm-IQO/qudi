@@ -232,7 +232,7 @@ class PulsedMeasurementGui(GUIBase):
             layout.addWidget(label2)
             layout.addWidget(button_box)
             button_box.accepted.connect(dialog.accept)
-            button_box.accepted.connect(self.trigger_pg_benchmark)
+            button_box.accepted.connect(self.run_pg_benchmark)
             button_box.rejected.connect(dialog.accept)
             dialog.setLayout(layout)
             dialog.exec()
@@ -309,7 +309,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pgs.accepted.connect(self.apply_generator_settings)
         self._pgs.rejected.connect(self.keep_former_generator_settings)
         self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_generator_settings)
-        self._pgs.trigger_pg_benchmark.clicked.connect(self.trigger_pg_benchmark)
+        self._pgs.pg_benchmark.clicked.connect(self.run_pg_benchmark)
 
         # Connect signals used in fit settings dialog
         self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
@@ -586,10 +586,6 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigMeasurementSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.disconnect()
-        #self.pulsedmasterlogic().sigSampleBlockEnsemble.disconnect()
-        #self.pulsedmasterlogic().sigLoadBlockEnsemble.disconnect()
-        #self.pulsedmasterlogic().sigLoadSequence.disconnect()
-        #self.pulsedmasterlogic().sigSampleSequence.disconnect()
 
         self.pulsedmasterlogic().sigBlockDictUpdated.disconnect()
         self.pulsedmasterlogic().sigEnsembleDictUpdated.disconnect()
@@ -748,11 +744,11 @@ class PulsedMeasurementGui(GUIBase):
 
         # Enable/Disable widgets
         if is_running:
+            # todo: not disabled on only turning pulser on without starting measurement
             self._pgs.gen_use_interleave_CheckBox.setEnabled(False)
             self._pgs.gen_sample_freq_DSpinBox.setEnabled(False)
             self._pgs.gen_activation_config_ComboBox.setEnabled(False)
-            # todo: not disabled on only turning pulser on
-            self._pgs.trigger_pg_benchmark.setEnabled(False)
+            self._pgs.pg_benchmark.setEnabled(False)
             for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
                 widget1.setEnabled(False)
                 widget2.setEnabled(False)
@@ -785,7 +781,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pgs.gen_use_interleave_CheckBox.setEnabled(True)
             self._pgs.gen_sample_freq_DSpinBox.setEnabled(True)
             self._pgs.gen_activation_config_ComboBox.setEnabled(True)
-            self._pgs.trigger_pg_benchmark.setEnabled(True)
+            self._pgs.pg_benchmark.setEnabled(True)
             for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
                 widget1.setEnabled(True)
                 widget2.setEnabled(True)
@@ -3177,7 +3173,7 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     @QtCore.Slot()
-    def trigger_pg_benchmark(self):
+    def run_pg_benchmark(self):
 
         self.pulsedmasterlogic().sequencegeneratorlogic().sigRunPgBenchmark.emit()
         self.pulsedmasterlogic().sigGeneratorSettingsChanged.emit({})
