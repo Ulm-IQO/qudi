@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>444</width>
-    <height>406</height>
+    <height>409</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -375,7 +375,7 @@ voltage</string>
        </widget>
       </item>
       <item row="0" column="2">
-       <widget class="QPushButton" name="trigger_pg_benchmark">
+       <widget class="QPushButton" name="pg_benchmark">
         <property name="text">
          <string>Benchmark</string>
         </property>
