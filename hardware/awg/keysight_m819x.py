@@ -1061,6 +1061,10 @@ class AWGM819X(Base, PulserInterface):
                         except ValueError:  # got already deleted
                             continue
                         self.write('TRAC{}:DEL {:d}'.format(ch_num, id))
+                        # set to available segment
+                        ids_avail = self.get_loaded_assets_id(ch_num)
+                        if ids_avail:
+                            self.write('TRAC{}:SEL {:d}'.format(ch_num, ids_avail[0]))
                     deleted_waveforms.append(waveform)
 
             for loaded_waveform in self.get_loaded_assets()[0].values():
