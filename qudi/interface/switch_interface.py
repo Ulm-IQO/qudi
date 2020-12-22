@@ -101,7 +101,6 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         return {switch: self.get_state(switch) for switch in self.available_states}
 
     @states.setter
-    @interface_method
     def states(self, state_dict):
         """ The setter for the states of the hardware.
 
@@ -110,7 +109,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
 
         @param dict state_dict: state dict of the form {"switch": "state"}
         """
-        assert isinstance(state_dict), 'Parameter "state_dict" must be dict type'
+        assert isinstance(state_dict, dict), 'Parameter "state_dict" must be dict type'
         for switch, state in state_dict.items():
             self.set_state(switch, state)
 

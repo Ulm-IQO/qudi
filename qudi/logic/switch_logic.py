@@ -198,8 +198,5 @@ class SwitchLogic(LogicBase):
                               state != self._old_states[switch]}
                 self._old_states = curr_states
                 if diff_state:
-                    print('state_changed', diff_state)
                     self.sigSwitchesChanged.emit(diff_state)
-                else:
-                    print('Nope')
                 QtCore.QTimer.singleShot(self._watchdog_interval_ms, self._watchdog_body)
