@@ -29,6 +29,7 @@ import scipy.interpolate
 from fnmatch import fnmatch
 from collections import OrderedDict
 from abc import abstractmethod
+import re
 
 from core.module import Base
 from core.configoption import ConfigOption
@@ -1245,7 +1246,8 @@ class AWGM819X(Base, PulserInterface):
             has_ch_ext = True
 
             for waveform in load_dict:
-                has_ch_ext = '_ch' in waveform
+                pattern = "'.*_ch[0-9]+.*"
+                has_ch_ext = True if re.match(pattern, waveform) is not None else False
                 if has_ch_ext:
                     channel = int(waveform.rsplit('_ch', 1)[1][0])
                     new_dict[channel] = waveform
