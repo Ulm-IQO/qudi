@@ -90,6 +90,7 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * New SwitchInterface and updated logic plus GUI
 * Added biexponential fit function, model and estimator
 * Added custom circular loading indicator widget `qtwidgets.loading_indicator.CircleLoadingIndicator`
+* added property disable_wheel to custom ScienSponBox and ScienDSpinBox to deactivate wheel scrolling if required
 
 
 Config changes:
