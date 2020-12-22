@@ -2321,22 +2321,15 @@ class SequenceGeneratorLogic(GenericLogic):
 
             return a_channels, d_channels
 
-        def _wavename_no_extension(wavename):
-            pattern = '.*_ch.*\..*'
-            if re.match(pattern, wavename):
-                return ''.join(wavename.split(".")[:-1])
-            return wavename
+        def _check_loaded(loaded_dict, should_load_list):
+            try:
+                is_substr = all([wavename in should_load_list[i] for i, (key, wavename) in enumerate(loaded_dict.items())])
+                is_empty = all([wavename == '' for (key, wavename) in loaded_dict.items()])
+            except Exception as e:
+                self.log.warning("{}".format(e))
+                return False
 
-        def _wave_list_2_dict(wfm_list):
-            # todo: should be unique how loaded dict comes from pulser interface
-            wave_dict = {}
-            for i, wave in enumerate(wfm_list):
-                pattern = '.*_ch.*\..*'
-                if re.match(pattern, wave):
-                    wave_dict[int((wave.split('_ch')[2]).split('.')[0])] = wave
-                else:
-                    wave_dict[i+1] = wave
-            return wave_dict
+            return is_substr and not is_empty
 
         n_samples = int(n_samples)
         pg_chs_a, pg_chs_d = _get_all_channels()
@@ -2385,15 +2378,14 @@ class SequenceGeneratorLogic(GenericLogic):
                                             is_persistent=persistent_datapoint)
 
         start_time = time.perf_counter()
-        load_dict =  _wave_list_2_dict(wfm_list)
-        actually_load_dict = self.pulsegenerator().load_waveform(load_dict)[0]
+
+        loaded_dict = self.pulsegenerator().load_waveform(wfm_list)[0]
         self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
 
-        load_dict_no_ext = {key:_wavename_no_extension(val) for (key,val) in load_dict.items()}
-        if actually_load_dict != load_dict_no_ext:
-            self.log.warning("Loading of waves {} failed, still: {}".format(load_dict,
-                                                                            actually_load_dict))
+        if not _check_loaded(loaded_dict, wfm_list):
+            self.log.warning("Loading of waves {} failed, still: {}".format(wfm_list,
+                                                                            loaded_dict))
 
         #if len(loaded_waves_old) > 0:
         #    self.pulsegenerator().load_waveform(loaded_waves_old)
