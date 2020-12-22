@@ -1250,7 +1250,7 @@ class AWGM819X(Base, PulserInterface):
             has_ch_ext = True
 
             for waveform in load_dict:
-                pattern = "'.*_ch[0-9]+.*"
+                pattern = ".*_ch[0-9]+?"
                 has_ch_ext = True if re.match(pattern, waveform) is not None else False
                 if has_ch_ext:
                     channel = int(waveform.rsplit('_ch', 1)[1][0])
