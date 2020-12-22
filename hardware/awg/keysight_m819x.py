@@ -327,7 +327,7 @@ class AWGM819X(Base, PulserInterface):
 
         # Get all active channels
         active_analog = self._get_active_d_or_a_channels(only_analog=True)
-        channel_numbers = self.chstr_2_chnum(active_analog)
+        channel_numbers = self.chstr_2_chnum(active_analog, return_list=True)
 
         # Get assets per channel
         loaded_assets = dict()
@@ -985,7 +985,7 @@ class AWGM819X(Base, PulserInterface):
         elif self._wave_mem_mode == 'awg_segments':
 
             active_analog = self._get_active_d_or_a_channels(only_analog=True)
-            channel_numbers = self.chstr_2_chnum(active_analog)
+            channel_numbers = self.chstr_2_chnum(active_analog, return_list=True)
 
             for chnl_num in channel_numbers:
                 names.extend(self.get_loaded_assets_name(chnl_num, 'segment'))
@@ -2022,7 +2022,7 @@ class AWGM819X(Base, PulserInterface):
         # todo: need to implement? alernatively shuffle sequuence while generating
         raise NotImplementedError
 
-    def chstr_2_chnum(self, chstr):
+    def chstr_2_chnum(self, chstr, return_list=False):
         """
         Converts a channel name like 'a_ch1' to channel number internally used to address
         this channel in VISA commands. Eg. 'd_ch1' -> 3 on M8195A.
@@ -2048,7 +2048,7 @@ class AWGM819X(Base, PulserInterface):
 
         num_list = [single_str_2_num(s) for s in chstr]
 
-        if len(num_list) == 1:
+        if len(num_list) == 1 and not return_list:
             return num_list[0]
 
         return num_list
@@ -2156,7 +2156,7 @@ class AWGM8195A(AWGM819X):
         # manual 1.5.4: Depending on the Sample Rate Divider, the 256 sample wide output of the sequencer
         # is divided by 1, 2 or 4.
         constraints.waveform_length.step = 256 / self._sample_rate_div
-        constraints.waveform_length.min = 1
+        constraints.waveform_length.min = 1280  # todo: check with manual
         constraints.waveform_length.max = int(16e9)
         constraints.waveform_length.default = 1280
 
