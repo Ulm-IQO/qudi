@@ -62,9 +62,9 @@ class BenchmarkTool(object):
 
     @property
     def sanity(self):
-        a, t0 = self._get_speed_fit()
+        a, t0, da = self._get_speed_fit()
 
-        if a < 0 or t0 < 0:
+        if a + da < 0 or t0 < 0:
             return False
 
         return True
@@ -93,7 +93,7 @@ class BenchmarkTool(object):
 
     def estimate_time(self, y, check_sanity=True):
 
-        a, t0 = self._get_speed_fit()
+        a, t0, _ = self._get_speed_fit()
 
         if self.sanity or not check_sanity:
             return t0 + a * y
@@ -102,7 +102,7 @@ class BenchmarkTool(object):
 
     def estimate_speed(self, check_sanity=True):
         # units: [y] per s
-        a, t0 = self._get_speed_fit()
+        a, t0, _ = self._get_speed_fit()
 
         if self.sanity or not check_sanity:
             return 1. / a
@@ -149,13 +149,13 @@ class BenchmarkTool(object):
             weighted_data = all_data
 
         if len(all_data) < 1:
-            return np.nan, np.nan
+            return np.nan, np.nan, np.nan
         if len(np.unique(all_data[:,1])) == 1:
             # fit needs at least 2 different datapoints in y
-            return np.average(all_data[:,0])/all_data[0,1], 0
-        a, t0, _, _, _ = scipy.stats.linregress(weighted_data[:, 1], weighted_data[:, 0])
+            return np.average(all_data[:,0])/all_data[0,1], 0, np.nan
+        a, t0, _, _, da = scipy.stats.linregress(weighted_data[:, 1], weighted_data[:, 0])
 
-        return a, t0
+        return a, t0, da
 
 class SequenceGeneratorLogic(GenericLogic):
     """
@@ -2281,7 +2281,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 # don't repeat uninformatively at same n_samples
                 n_samples = round_to_granularity(np.random.uniform(1, 10) * n_samples_min)
             if n_samples > n_samples_max:
-                n_samples = round_to_granularity(n_samples_max)
+                n_samples = round_to_granularity(np.random.uniform(0.9, 1.0) * n_samples_max)
 
             t_est = n_samples / speed
             self.log.debug(
