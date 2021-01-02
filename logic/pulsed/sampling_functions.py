@@ -50,6 +50,34 @@ class DDMethods(Enum):
              210., 180., 270., 180., 210., 300., 270., 360., 270., 300., 210., 180., 270., 180.,
              210., 300., 270., 360., 270., 300., 300., 270., 360., 270., 300., 210., 180., 270.,
              180., 210., 300., 270., 360., 270., 300., 210., 180., 270., 180., 210.]
+    # define a function to calculate the phases of the UR sequences
+    def ur_phases_function(xn):
+        # define phi_large, depending on the number of pulses in the UR sequence
+        if xn % 4 == 0:
+            phi_large = 720./xn
+        elif xn % 4 == 2:
+            phi_large = 180. * (xn - 2) / xn
+        else:
+            phi_large = 0.
+            print("Error: the UR sequence can only have an even number of pulses")
+        # formula for the UR sequences phases, we round the degrees to the 8th digit to avoid some small machine
+        # numbers in the phases when calculated from the formula but rounding is not necessary, in principle
+        ur_phases_array = [(round(k * ((k-1) * phi_large / 2 + phi_large) % 360., 8)) for k in range(xn)]
+        return ur_phases_array
+    # define the specific UR sequences to use
+    UR4 = ur_phases_function(4)
+    UR6 = ur_phases_function(6)
+    UR8 = ur_phases_function(8)
+    UR10 = ur_phases_function(10)
+    UR12 = ur_phases_function(12)
+    UR14 = ur_phases_function(14)
+    UR16 = ur_phases_function(16)
+    UR18 = ur_phases_function(18)
+    UR20 = ur_phases_function(20)
+    UR40 = ur_phases_function(40)
+    UR80 = ur_phases_function(80)
+    UR100 = ur_phases_function(100)
+
 
     def __init__(self, phases):
         self._phases = phases
