@@ -1087,16 +1087,14 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_DD_tau_scan(self, name='DD_tau_scan', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                             DD_type=DDMethods.XY8, DD_order=1, alternating=True):
+    def generate_dd_tau_scan(self, name='dd_tau_scan', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                             dd_type=DDMethods.XY8, dd_order=1, alternating=True):
         """
 
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
-
-        print(DD_type.phases)
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
@@ -1138,35 +1136,35 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
 
         # Create block and append to created_blocks list
-        DD_block = PulseBlock(name=name)
-        DD_block.append(pihalf_element)
-        for n in range(DD_order):
+        dd_block = PulseBlock(name=name)
+        dd_block.append(pihalf_element)
+        for n in range(dd_order):
             # create the DD sequence for a single order
-            for pulse_number in range(DD_type.suborder):
-                DD_block.append(tauhalf_element)
-                DD_block.append(pi_element_function(DD_type.phases[pulse_number]))
-                DD_block.append(tauhalf_element)
-        DD_block.append(pihalf_element)
-        DD_block.append(laser_element)
-        DD_block.append(delay_element)
-        DD_block.append(waiting_element)
+            for pulse_number in range(dd_type.suborder):
+                dd_block.append(tauhalf_element)
+                dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                dd_block.append(tauhalf_element)
+        dd_block.append(pihalf_element)
+        dd_block.append(laser_element)
+        dd_block.append(delay_element)
+        dd_block.append(waiting_element)
         if alternating:
-            DD_block.append(pihalf_element)
-            for n in range(DD_order):
+            dd_block.append(pihalf_element)
+            for n in range(dd_order):
                 # create the DD sequence for a single order
-                for pulse_number in range(DD_type.suborder):
-                    DD_block.append(tauhalf_element)
-                    DD_block.append(pi_element_function(DD_type.phases[pulse_number]))
-                    DD_block.append(tauhalf_element)
-            DD_block.append(pi3half_element)
-            DD_block.append(laser_element)
-            DD_block.append(delay_element)
-            DD_block.append(waiting_element)
-        created_blocks.append(DD_block)
+                for pulse_number in range(dd_type.suborder):
+                    dd_block.append(tauhalf_element)
+                    dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                    dd_block.append(tauhalf_element)
+            dd_block.append(pi3half_element)
+            dd_block.append(laser_element)
+            dd_block.append(delay_element)
+            dd_block.append(waiting_element)
+        created_blocks.append(dd_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append((DD_block.name, num_of_points - 1))
+        block_ensemble.append((dd_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
