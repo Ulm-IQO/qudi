@@ -84,6 +84,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     high_finesse_wavemeter:
         module.Class: 'high_finesse_wavemeter.HighFinesseWavemeter'
         measurement_timing: 10.0 # in seconds
+        this version includes the get frequency function of HighFinesse
 
     """
 
@@ -101,6 +102,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     _cCtrlStop                   = ctypes.c_uint16(0x00)
     # this following flag is modified to override every existing file
     _cCtrlStartMeasurment        = ctypes.c_uint16(0x1002)
+    _cReturnFrequency            = ctypes.c_long(0x0002)
     _cReturnWavelangthAir        = ctypes.c_long(0x0001)
     _cReturnWavelangthVac        = ctypes.c_long(0x0000)
 
@@ -114,6 +116,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # the current wavelength read by the wavemeter in nm (vac)
         self._current_wavelength = 0.0
         self._current_wavelength2 = 0.0
+        self._current_frequency = 0.0
 
 
     def on_activate(self):
@@ -142,6 +145,13 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self._wavemeterdll.GetWavelength.restype = ctypes.c_double
         # parameter data type of the GetWavelength function of the wavemeter
         self._wavemeterdll.GetWavelength.argtypes = [ctypes.c_double]
+
+        # define the use of the GetFrequency function of the wavemeter
+        #        self._GetFrequency = self._wavemeterdll.GetFrequency
+        # return data type of the GetWavelength function of the wavemeter
+        self._wavemeterdll.GetFrequency.restype = ctypes.c_double
+        # parameter data type of the GetWavelength function of the wavemeter
+        self._wavemeterdll.GetFrequency.argtypes = [ctypes.c_double]
 
         # define the use of the ConvertUnit function of the wavemeter
 #        self._ConvertUnit = self._wavemeterdll.ConvertUnit
@@ -270,6 +280,15 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             # for vacuum just return the current wavelength
             return float(self._current_wavelength2)
         return -2.0
+
+    def get_current_frequency(self):
+        """ This method returns the current wavelength of the second input channel.
+
+        @param string kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
+
+        @return float: wavelength (or negative value for errors)
+        """
+        return float(self._wavemeterdll.ConvertUnit(self._current_wavelength,self._cReturnWavelangthVac,self._cReturnFrequency))
 
     def get_timing(self):
         """ Get the timing of the internal measurement thread.
