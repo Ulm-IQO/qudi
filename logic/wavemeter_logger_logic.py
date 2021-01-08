@@ -65,7 +65,7 @@ class WavemeterLoggerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-        self._acqusition_start_time = 0
+        self._acquisition_start_time = 0
         self._bins = 200
         self._data_index = 0
 
@@ -133,7 +133,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self.sig_start_hardware_acquisition.connect(self._update_data, QtCore.Qt.QueuedConnection)
         self.last_point_time = time.time()
 
-        self.acquisition_running = True
+        # self.acquisition_running = True
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -158,7 +158,7 @@ class WavemeterLoggerLogic(GenericLogic):
         elif not self._acquisition_running and run:
             # TODO: Query on hardware if already measuring (GetOperationState) to avoid "wavemeter busy" errors
             self._acquisition_running = True
-            self.wavemeter().start_acqusition()
+            self.wavemeter().start_acquisition()
             self.sig_start_hardware_acquisition.emit()
 
     def _update_data(self):
@@ -169,7 +169,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         self.current_wavelength = 1.0 * self.wavemeter().get_current_wavelength()
 
-        time_stamp = time.time() - self._acqusition_start_time
+        time_stamp = time.time() - self._acquisition_start_time
 
         # only wavelength >200 nm make sense, ignore the rest
         if self.current_wavelength > 200 and self.module_state() == 'running':
@@ -256,7 +256,7 @@ class WavemeterLoggerLogic(GenericLogic):
             @param bool resume: whether to resume measurement
         """
 
-        # TO DO check first if state is still running
+        # TODO check first if state is still running
         self.module_state.run()
 
         if self._counter_logic.module_state() == 'idle':
@@ -268,7 +268,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self._counter_logic.start_saving(resume=resume)
 
         if not resume:
-            self._acqusition_start_time = self._counter_logic._saving_start_time
+            self._acquisition_start_time = self._counter_logic._saving_start_time
             self._wavelength_data = []
 
             self.data_index = 0
@@ -358,9 +358,6 @@ class WavemeterLoggerLogic(GenericLogic):
         # Run the old update histogram method to keep duplicate data
         self._update_histogram(False)
 
-        # Signal that data has been updated
-        self.sig_data_updated.emit()
-
         if self.module_state() == 'running':
             QtCore.QTimer.singleShot(int(self._logic_update_timing),
                                      self._attach_counts_to_wavelength)
@@ -437,6 +434,9 @@ class WavemeterLoggerLogic(GenericLogic):
 
             self._histogram_busy = False
 
+            # signal that data has been updated
+            self.sig_data_updated.emit()
+
     def save_data(self, tag=None):
         """ Save the counter trace data and writes it to a file.
 
@@ -471,7 +471,7 @@ class WavemeterLoggerLogic(GenericLogic):
         parameters['Xmin (nm)'] = self._xmin
         parameters['XMax (nm)'] = self._xmax
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
-                                                     time.localtime(self._acqusition_start_time)
+                                                     time.localtime(self._acquisition_start_time)
                                                      )
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
                                                     time.localtime(self._saving_stop_time)
@@ -493,7 +493,7 @@ class WavemeterLoggerLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
-                                                     time.localtime(self._acqusition_start_time)
+                                                     time.localtime(self._acquisition_start_time)
                                                      )
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
                                                     time.localtime(self._saving_stop_time)
@@ -544,7 +544,7 @@ class WavemeterLoggerLogic(GenericLogic):
         # write the parameters:
         parameters = OrderedDict()
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
-                                                     time.localtime(self._acqusition_start_time)
+                                                     time.localtime(self._acquisition_start_time)
                                                      )
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
                                                     time.localtime(self._saving_stop_time)

@@ -31,7 +31,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
     """
 
     @abstract_interface_method
-    def start_acqusition(self):
+    def start_acquisition(self):
         """ Method to start the wavemeter software.
 
         @return (int): error code (0:OK, -1:error)
@@ -42,7 +42,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def stop_acqusition(self):
+    def stop_acquisition(self):
         """ Stops the Wavemeter from measuring and kills the thread that queries the data.
 
         @return (int): error code (0:OK, -1:error)
