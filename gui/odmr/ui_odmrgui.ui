@@ -633,7 +633,7 @@
      <item row="1" column="0">
       <widget class="QLabel" name="fit_range_Label">
        <property name="text">
-        <string>Range</string>
+        <string>Fit range</string>
        </property>
       </widget>
      </item>
