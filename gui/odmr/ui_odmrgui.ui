@@ -626,7 +626,7 @@
      <item row="1" column="1">
       <widget class="QSpinBox" name="fit_range_SpinBox">
        <property name="maximum">
-        <number>0</number>
+        <number>-1</number>
        </property>
       </widget>
      </item>
