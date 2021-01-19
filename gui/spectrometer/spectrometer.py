@@ -30,7 +30,7 @@ from core.util.units import ScaledFloat
 from core.statusvariable import StatusVar
 from gui.guibase import GUIBase
 from gui.colordefs import ColorScaleInferno
-from gui.colordefs import QudiPalettePale as palette
+from gui.colordefs import QudiPalette as palette
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 from interface.grating_spectrometer_interface import PortType
 from logic.spectrum_logic import AcquisitionMode
@@ -376,7 +376,7 @@ class Main(GUIBase):
         self._colorbar = ColorbarWidget(self._image)
         self._image_tab.colorbar.addWidget(self._colorbar)
 
-        self.track_colors = ["#fc03032f", "#fcba032f", "#03fc392f", "#cc34eb2f"]
+        self.track_colors = [palette.c1, palette.c2, palette.c3, palette.c4]
         for i in range(4):
             self._track_buttons[i].setCheckable(True)
             self._track_buttons[i].clicked.connect(partial(self._manage_track_buttons, i))
@@ -386,7 +386,10 @@ class Main(GUIBase):
             else:
                 top_pos = 0
                 bottom_pos = 10
-            track = pg.LinearRegionItem(values=[top_pos,bottom_pos], orientation=pg.LinearRegionItem.Horizontal, brush=self.track_colors[i])
+            color = self.track_colors[i].getRgb()
+            track_color = pg.mkBrush(color[0], color[1], color[2], 100)
+            track = pg.LinearRegionItem(values=[top_pos,bottom_pos], orientation=pg.LinearRegionItem.Horizontal,
+                                        brush=track_color)
             track.hide()
             self._track_selector.append(track)
             self._image_tab.graph.addItem(track)
@@ -765,6 +768,7 @@ class Main(GUIBase):
                 width = self._spectrumlogic.camera_constraints.width
                 height = self._spectrumlogic.camera_constraints.height
                 self._image.setRect(QtCore.QRect(0,0,width,height))
+            self._image.setImage(self._image_data)
 
         elif index == 1:
 
