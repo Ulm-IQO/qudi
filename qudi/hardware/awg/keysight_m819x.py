@@ -1282,7 +1282,7 @@ class AWGM819X(Base, PulserInterface):
                 data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
                 n_samples = len(data)
                 if self.interleaved_wavefile:
-                    n_samples = n_samples / 2
+                    n_samples = int(n_samples / 2)
                 segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, n_samples)) \
                              + '_ch{:d}'.format(chnl_num)
                 segment_id_per_ch = segment_id.rsplit("_ch", 1)[0]
