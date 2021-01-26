@@ -20,22 +20,22 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
 import os
-import pyqtgraph as pg
 import datetime
-
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.util import units
-from core.util.helpers import natural_sort
-from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitSettingsDialog
-from gui.guibase import GUIBase
-from qtpy import QtCore, QtWidgets, uic
-from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+import numpy as np
+import pyqtgraph as pg
 from enum import Enum
 
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.util import units
+from qudi.core.util.helpers import natural_sort
+from qudi.core.gui.colordefs import QudiPalettePale as palette
+# from qudi.gui.fitsettings import FitSettingsDialog
+from qudi.core.module import GuiBase
+from qudi.core.gui import uic
+from PySide2 import QtCore, QtWidgets  # , uic
+from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 # TODO: Display the Pulse graphically (similar to AWG application)
 
@@ -141,7 +141,7 @@ class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
         uic.loadUi(ui_file, self)
 
 
-class PulsedMeasurementGui(GUIBase):
+class PulsedMeasurementGui(GuiBase):
     """ This is the main GUI Class for pulsed measurements. """
     ## declare connectors
     pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
@@ -260,7 +260,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.actionSave.triggered.connect(self.save_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
         self._mw.action_Settings_Generator.triggered.connect(self.show_generator_settings)
-        self._mw.action_FitSettings.triggered.connect(self._fsd.show)
+        # self._mw.action_FitSettings.triggered.connect(self._fsd.show)
         return
 
     def _connect_dialog_signals(self):
@@ -280,8 +280,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_generator_settings)
 
         # Connect signals used in fit settings dialog
-        self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
-        self._fsd.sigFitsUpdated.connect(self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions)
+        # self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
+        # self._fsd.sigFitsUpdated.connect(self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions)
         return
 
     def _connect_pulse_generator_tab_signals(self):
@@ -435,7 +435,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
 
         # Connect signals used in fit settings dialog
-        self._fsd.sigFitsUpdated.disconnect()
+        # self._fsd.sigFitsUpdated.disconnect()
         return
 
     def _disconnect_pulse_generator_tab_signals(self):
@@ -2235,10 +2235,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
 
         # Fit settings dialog
-        self._fsd = FitSettingsDialog(self.pulsedmasterlogic().fit_container)
-        self._fsd.applySettings()
-        self._pa.fit_param_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
-        self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
+        # self._fsd = FitSettingsDialog(self.pulsedmasterlogic().fit_container)
+        # self._fsd.applySettings()
+        # self._pa.fit_param_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
+        # self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
 
         # set boundaries
         self._pa.ana_param_num_laser_pulse_SpinBox.setMinimum(1)

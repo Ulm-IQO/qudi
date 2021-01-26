@@ -21,14 +21,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import copy
 
-from core.util.helpers import natural_sort
-from qtpy import QtCore, QtGui, QtWidgets
-from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
-from gui.pulsed.pulsed_item_delegates import MultipleCheckboxItemDelegate, CheckBoxItemDelegate
-from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, AnalogParametersItemDelegate
-from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
-from logic.pulsed.pulse_objects import PulseSequence
-from logic.pulsed.sampling_functions import SamplingFunctions
+from qudi.core.util.helpers import natural_sort
+from PySide2 import QtCore, QtGui, QtWidgets
+from qudi.gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
+from qudi.gui.pulsed.pulsed_item_delegates import MultipleCheckboxItemDelegate, CheckBoxItemDelegate
+from qudi.gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, AnalogParametersItemDelegate
+from qudi.logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
+from qudi.logic.pulsed.pulse_objects import PulseSequence
+from qudi.logic.pulsed.sampling_functions import SamplingFunctions
 
 
 class BlockEditorTableModel(QtCore.QAbstractTableModel):

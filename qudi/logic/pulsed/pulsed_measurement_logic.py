@@ -380,7 +380,7 @@ class PulsedMeasurementLogic(LogicBase):
 
     @property
     def ext_microwave_constraints(self):
-        return self.microwave().get_limits()
+        return self.microwave().constraints
 
     def microwave_on(self):
         """
