@@ -325,7 +325,7 @@ voltage</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
+   <header>qudi.core.gui.qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

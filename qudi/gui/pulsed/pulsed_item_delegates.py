@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from qtpy import QtCore, QtGui, QtWidgets
-from gui.pulsed.pulsed_custom_widgets import MultipleCheckboxWidget, AnalogParametersWidget#, FlagChannelsWidget
-from qtwidgets.scientific_spinbox import ScienDSpinBox
+from PySide2 import QtCore, QtGui, QtWidgets
+from qudi.gui.pulsed.pulsed_custom_widgets import MultipleCheckboxWidget, AnalogParametersWidget
+from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
 class CheckBoxItemDelegate(QtGui.QStyledItemDelegate):
@@ -120,7 +120,7 @@ class CheckBoxItemDelegate(QtGui.QStyledItemDelegate):
         widget = QtWidgets.QCheckBox()
         widget.setGeometry(r)
         widget.setChecked(index.data(self._access_role))
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
 
@@ -236,7 +236,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
             widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
 
@@ -351,7 +351,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
             widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
 
@@ -444,7 +444,7 @@ class ComboBoxItemDelegate(QtGui.QStyledItemDelegate):
         widget = QtGui.QComboBox()
         widget.addItem(index.data(self._access_role))
         widget.setGeometry(r)
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
 
@@ -536,7 +536,7 @@ class MultipleCheckboxItemDelegate(QtGui.QStyledItemDelegate):
         painter.translate(r.topLeft())
         widget = MultipleCheckboxWidget(None, self._label_list)
         widget.setData(index.data(self._access_role))
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
 
@@ -631,5 +631,5 @@ class AnalogParametersItemDelegate(QtGui.QStyledItemDelegate):
         parameters = index.data(self._access_role[0]).params
         widget = AnalogParametersWidget(None, parameters)
         widget.setData(index.data(self._access_role[1]))
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()

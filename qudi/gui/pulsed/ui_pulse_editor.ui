@@ -870,22 +870,22 @@ last</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
+   <header>qudi.core.gui.qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
    <class>ScienSpinBox</class>
    <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
+   <header>qudi.core.gui.qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
    <class>BlockEditor</class>
    <extends>QTableView</extends>
-   <header>gui.pulsed.pulse_editors.h</header>
+   <header>qudi.gui.pulsed.pulse_editors.h</header>
   </customwidget>
   <customwidget>
    <class>EnsembleEditor</class>
    <extends>QTableView</extends>
-   <header>gui.pulsed.pulse_editors.h</header>
+   <header>qudi.gui.pulsed.pulse_editors.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
