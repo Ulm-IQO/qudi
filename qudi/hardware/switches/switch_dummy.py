@@ -58,7 +58,7 @@ class SwitchDummy(Base, SwitchInterface):
 
         # Choose config name for this module if no name is given in ConfigOptions
         if self._hardware_name is None:
-            self._hardware_name = self._name
+            self._hardware_name = self._module_meta['name']
 
         # reset states if requested, otherwise use the saved states
         if self._remember_states and isinstance(self._states, dict) and \
