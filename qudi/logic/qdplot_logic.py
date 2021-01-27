@@ -26,15 +26,17 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.configoption import ConfigOption
-from core.util.mutex import RecursiveMutex
-from logic.generic_logic import GenericLogic
-from core.util import units
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
+from qudi.core.util.mutex import RecursiveMutex
+from qudi.core.module import LogicBase
+from qudi.core.util import units
+from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
 
 
-class QDPlotLogic(GenericLogic):
+class QDPlotLogic(LogicBase):
     """ This logic module helps display user data in plots, and makes it easy to save.
     
     There are phythonic setters and getters for each of the parameter and data. 
@@ -47,8 +49,6 @@ class QDPlotLogic(GenericLogic):
 
     qdplotlogic:
         module.Class: 'qdplot_logic.QDPlotLogic'
-        connect:
-            save_logic: 'savelogic'
             fit_logic: 'fitlogic'
         default_plot_number: 3
     """
@@ -58,8 +58,7 @@ class QDPlotLogic(GenericLogic):
     sigFitUpdated = QtCore.Signal(int, np.ndarray, str, str)
 
     # declare connectors
-    save_logic = Connector(interface='SaveLogic')
-    fit_logic = Connector(interface='FitLogic')
+    #fit_logic = Connector(interface='FitLogic')
 
     _default_plot_number = ConfigOption(name='default_plot_number', default=3)
 
@@ -73,8 +72,7 @@ class QDPlotLogic(GenericLogic):
         """
         super().__init__(*args, **kwargs)
 
-        self._save_logic = None
-        self._fit_logic = None
+        #self._fit_logic = None
 
         # locking for thread safety
         self.threadlock = RecursiveMutex()
@@ -99,8 +97,7 @@ class QDPlotLogic(GenericLogic):
             self.log.warning('Invalid number of plots encountered in config. Falling back to 1.')
             self._default_plot_number = 1
 
-        self._save_logic = self.save_logic()
-        self._fit_logic = self.fit_logic()
+        #self._fit_logic = self.fit_logic()
 
         self._clear_old = list()
         self._x_limits = list()
@@ -121,12 +118,12 @@ class QDPlotLogic(GenericLogic):
         """ De-initialisation performed during deactivation of the module. """
         for i in reversed(range(self.number_of_plots)):
             self.remove_plot(i)
-        self._save_logic = None
-        self._fit_logic = None
+        #self._fit_logic = None
 
     @fit_container.constructor
     def sv_set_fit(self, val):
         """ Set up fit container """
+        return None
         fc = self.fit_logic().make_fit_container('Plot QDPlotterLogic', '1d')
         fc.set_units(['', 'a.u.'])
         if not (isinstance(val, dict) and len(val) > 0):
@@ -137,6 +134,7 @@ class QDPlotLogic(GenericLogic):
     @fit_container.representer
     def sv_get_fit(self, val):
         """ Save configured fits """
+        return None
         if len(val.fit_list) > 0:
             return val.save_to_dict()
         else:
@@ -418,12 +416,15 @@ class QDPlotLogic(GenericLogic):
 
             # prepare the data in a dict or in an OrderedDict:
             data = OrderedDict()
+            header = list()
             for data_set in range(len(self._x_data[plot_index])):
+                header.append('{0} set {1:d}'.format(x_label, data_set + 1))
+                header.append('{0} set {1:d}'.format(y_label, data_set + 1))
                 data['{0} set {1:d}'.format(x_label, data_set + 1)] = self._x_data[plot_index][data_set]
                 data['{0} set {1:d}'.format(y_label, data_set + 1)] = self._y_data[plot_index][data_set]
 
             # Prepare the figure to save as a "data thumbnail"
-            plt.style.use(self._save_logic.mpl_qd_style)
+            plt.style.use(mpl_qd_style)
 
             fig, ax1 = plt.subplots()
 
@@ -495,14 +496,23 @@ class QDPlotLogic(GenericLogic):
 
             fig.tight_layout()
 
-            # Call save logic to write everything to file
-            file_path = self._save_logic.get_path_for_module(module_name='qdplot')
-            self._save_logic.save_data(data,
-                                       filepath=file_path,
-                                       parameters=parameters,
-                                       filelabel=file_label,
-                                       plotfig=fig,
-                                       delimiter='\t')
+            ds = TextDataStorage(column_headers=header,
+                                 number_format='%.9e',
+                                 comments='# ',
+                                 delimiter='\t',
+                                 sub_directory='QDPlot',
+                                 root_dir=r'C:\Data',
+                                 file_extension='.dat',
+                                 image_format=ImageFormat.PNG,
+                                 include_global_parameters=True,
+                                 use_daily_dir=True)
+
+            file_path, _, _ = ds.save_data(data,
+                                           parameters=parameters,
+                                           nametag='qd_plot')
+
+            ds.save_thumbnail(mpl_figure=fig, nametag='qd_plot')
+
             plt.close(fig)
             self.log.debug('Data saved to:\n{0}'.format(file_path))
 
