@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore, QtGui
 
 
 class ToggleSwitch(QtWidgets.QAbstractButton):
@@ -109,7 +109,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         return self._thumb_position
 
     @thumb_position.setter
-    def thumb_position(self, value):
+    def set_thumb_position(self, value):
         self._thumb_position = value
         self.update()
 
@@ -122,7 +122,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.thumb_position = self._thumb_end
+        self.set_thumb_position = self._thumb_end
 
     def paintEvent(self, event):
         # Set up painter
