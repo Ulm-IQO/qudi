@@ -121,7 +121,6 @@ class SwitchGui(GuiBase):
         """ Create all UI objects and show the window.
         """
         self._mw = SwitchMainWindow()
-        self.restoreWindowPos(self._mw)
         try:
             self._mw.switch_view_actions[self._switch_style].setChecked(True)
         except IndexError:

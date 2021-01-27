@@ -48,7 +48,7 @@ class SwitchCombinerInterfuse(Base, SwitchInterface):
         """ Activate the module and fill status variables.
         """
         if self._hardware_name is None:
-            self._hardware_name = self._name
+            self._hardware_name = self._module_meta['name']
 
     def on_deactivate(self):
         """ Deactivate the module and clean up.
