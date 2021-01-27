@@ -20,18 +20,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import lmfit
 import numpy as np
+from . import FitModelBase
 
 __all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'ExponentialDecayDoubleSine',
            'DoubleExponentialDecayDoubleSine')
 
 
-class Sine(lmfit.Model):
+class Sine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude', value=1., min=0., max=np.inf)
         self.set_param_hint('frequency', value=0., min=0., max=np.inf)
@@ -46,11 +46,11 @@ class Sine(lmfit.Model):
         return estimate
 
 
-class DoubleSine(lmfit.Model):
+class DoubleSine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
         self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
@@ -71,11 +71,11 @@ class DoubleSine(lmfit.Model):
         return estimate
 
 
-class ExponentialDecaySine(lmfit.Model):
+class ExponentialDecaySine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude', value=1., min=0., max=np.inf)
         self.set_param_hint('frequency', value=0., min=0., max=np.inf)
@@ -91,11 +91,11 @@ class ExponentialDecaySine(lmfit.Model):
         return estimate
 
 
-class ExponentialDecayDoubleSine(lmfit.Model):
+class ExponentialDecayDoubleSine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
         self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
@@ -117,12 +117,11 @@ class ExponentialDecayDoubleSine(lmfit.Model):
         return estimate
 
 
-class DoubleExponentialDecayDoubleSine(lmfit.Model):
+class DoubleExponentialDecayDoubleSine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name,
-                         **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
         self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)

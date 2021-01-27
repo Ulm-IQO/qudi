@@ -20,17 +20,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import lmfit
 import numpy as np
+from . import FitModelBase
 
 __all__ = ('Lorentzian',)
 
 
-class Lorentzian(lmfit.Model):
+class Lorentzian(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude', value=0., min=0., max=np.inf)
         self.set_param_hint('center', value=0., min=-np.inf, max=np.inf)
