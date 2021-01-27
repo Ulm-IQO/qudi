@@ -31,11 +31,12 @@ from qtpy import QtCore
 from qtpy import uic
 from pyqtgraph import SignalProxy, mkColor
 
-from core.connector import Connector
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
-from gui.guibase import GUIBase
-from gui.fitsettings import FitSettingsDialog
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
+from qudi.core.module import GuiBase
+
+from .fit_dockwidget_placeholder import FitDockWidget
 
 
 class QDPlotMainWindow(QtWidgets.QMainWindow):
@@ -82,7 +83,7 @@ class PlotDockWidget(QtWidgets.QDockWidget):
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
 
-class QDPlotterGui(GUIBase):
+class QDPlotterGui(GuiBase):
     """ GUI  for displaying up to 3 custom plots.
     The plots are held in tabified DockWidgets and can either be manipulated in the logic
     or by corresponding parameter DockWidgets.
@@ -150,7 +151,7 @@ class QDPlotterGui(GUIBase):
         self._mw = QDPlotMainWindow()
 
         # Fit settings dialogs
-        self._fsd = FitSettingsDialog(self._plot_logic.fit_container)
+        self._fsd = FitDockWidget(self._plot_logic.fit_container)
         self._fsd.applySettings()
         self._mw.fit_settings_Action.triggered.connect(self._fsd.show)
 
@@ -248,7 +249,7 @@ class QDPlotterGui(GUIBase):
         while count > len(self._plot_dockwidgets):
             index = len(self._plot_dockwidgets)
             dockwidget = PlotDockWidget('Plot {0:d}'.format(index + 1), self._mw)
-            dockwidget.widget().fit_comboBox.setFitFunctions(self._fsd.currentFits)
+            #dockwidget.widget().fit_comboBox.setFitFunctions(self._fsd.currentFits)
             dockwidget.widget().show_fit_checkBox.setChecked(False)
             dockwidget.widget().show_controls_checkBox.setChecked(False)
             dockwidget.widget().fit_groupBox.setVisible(False)
@@ -263,7 +264,7 @@ class QDPlotterGui(GUIBase):
 
     def _connect_plot_signals(self, index):
         dockwidget = self._plot_dockwidgets[index].widget()
-        self._fsd.sigFitsUpdated.connect(dockwidget.fit_comboBox.setFitFunctions)
+        #self._fsd.sigFitsUpdated.connect(dockwidget.fit_comboBox.setFitFunctions)
         dockwidget.fit_pushButton.clicked.connect(functools.partial(self.fit_clicked, index))
 
         x_lim_callback = functools.partial(self.x_limits_changed, index)
@@ -299,7 +300,7 @@ class QDPlotterGui(GUIBase):
 
     def _disconnect_plot_signals(self, index):
         dockwidget = self._plot_dockwidgets[index].widget()
-        self._fsd.sigFitsUpdated.disconnect(dockwidget.fit_comboBox.setFitFunctions)
+        #self._fsd.sigFitsUpdated.disconnect(dockwidget.fit_comboBox.setFitFunctions)
         dockwidget.fit_pushButton.clicked.disconnect()
 
         dockwidget.x_lower_limit_DoubleSpinBox.valueChanged.disconnect()
@@ -570,8 +571,8 @@ class QDPlotterGui(GUIBase):
 
     def fit_clicked(self, plot_index=0):
         """ Triggers the fit to be done. Attention, this runs in the GUI thread. """
-        current_fit_method = self._plot_dockwidgets[plot_index].widget().fit_comboBox.getCurrentFit()[0]
-        self.sigDoFit.emit(current_fit_method, plot_index)
+        #current_fit_method = self._plot_dockwidgets[plot_index].widget().fit_comboBox.getCurrentFit()[0]
+        #self.sigDoFit.emit(current_fit_method, plot_index)
 
     @QtCore.Slot(int, np.ndarray, str, str)
     def update_fit_data(self, plot_index, fit_data=None, formatted_fitresult=None, fit_method=None):
@@ -590,11 +591,11 @@ class QDPlotterGui(GUIBase):
         if not fit_method:
             fit_method = 'No Fit'
 
-        dockwidget.fit_comboBox.blockSignals(True)
+        #dockwidget.fit_comboBox.blockSignals(True)
 
         dockwidget.show_fit_checkBox.setChecked(True)
         dockwidget.fit_textBrowser.clear()
-        dockwidget.fit_comboBox.setCurrentFit(fit_method)
+        #dockwidget.fit_comboBox.setCurrentFit(fit_method)
         if fit_method == 'No Fit':
             for index, curve in enumerate(self._fit_curves[plot_index]):
                 if curve in dockwidget.plot_PlotWidget.items():
@@ -606,7 +607,7 @@ class QDPlotterGui(GUIBase):
                     dockwidget.plot_PlotWidget.addItem(curve)
                 curve.setData(x=fit_data[index][0], y=fit_data[index][1])
 
-        dockwidget.fit_comboBox.blockSignals(False)
+        #dockwidget.fit_comboBox.blockSignals(False)
 
     def _pyqtgraph_x_limits_changed(self, plot_index, limits):
         plot_item = self._plot_dockwidgets[plot_index].widget().plot_PlotWidget.getPlotItem()
