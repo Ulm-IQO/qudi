@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from PySide2 import QtWidgets, QtCore, QtGui
+from qtpy import QtWidgets, QtCore, QtGui
 
 
 class CircleLoadingIndicator(QtWidgets.QWidget):
@@ -73,7 +73,7 @@ class CircleLoadingIndicator(QtWidgets.QWidget):
         return self._indicator_position
 
     @indicator_position.setter
-    def set_indicator_position(self, value):
+    def indicator_position(self, value):
         self._indicator_position = value
         self.update()
 
