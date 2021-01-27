@@ -20,10 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base
-from interface.switch_interface import SwitchInterface
-from core.configoption import ConfigOption
-from core.connector import Connector
+from qudi.core.module import Base
+from qudi.interface.switch_interface import SwitchInterface
+from qudi.core.configoption import ConfigOption
+from qudi.core.connector import Connector
 
 
 class SwitchCombinerInterfuse(Base, SwitchInterface):

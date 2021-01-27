@@ -19,8 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtWidgets, QtCore, QtGui
-from qtwidgets.toggle_switch import ToggleSwitch
+from PySide2 import QtWidgets, QtCore, QtGui
+from qudi.core.gui.qtwidgets.toggle_switch import ToggleSwitch
 
 
 class SwitchRadioButtonWidget(QtWidgets.QWidget):

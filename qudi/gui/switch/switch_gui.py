@@ -20,10 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from enum import IntEnum
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from gui.guibase import GUIBase
-from qtpy import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore, QtGui
+
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.module import GuiBase
+
 from .switch_state_widgets import SwitchRadioButtonWidget, ToggleSwitchWidget
 
 
@@ -89,7 +91,7 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
         return
 
 
-class SwitchGui(GUIBase):
+class SwitchGui(GuiBase):
     """ A graphical interface to switch a hardware by hand.
     """
 
