@@ -110,15 +110,19 @@ class FitConfiguration:
             self._parameters_units = value.copy() if value is not None else None
 
     def formatted_result(self, fit_result):
-        params = dict()
-        units = self._parameters_units if self._parameters_units is not None else dict()
+        assert self._model == fit_result.name.split('(', 1)[1].rsplit(')', 1)[0], \
+            'lmfit.ModelResult does not match model of FitConfiguration'
+        units = self.parameter_units
+        if units is None:
+            units = dict()
+        parameters_to_format = dict()
         for name, param in fit_result.params.items():
             if not param.vary:
                 continue
-            params[name] = {'value': param.value,
-                            'error': param.stderr,
-                            'unit': units.get(name, '')}
-        return create_formatted_output(params)
+            parameters_to_format[name] = {'value': param.value,
+                                          'error': param.stderr,
+                                          'unit': units.get(name, '')}
+        return create_formatted_output(parameters_to_format)
 
 
 class FitContainer(QtCore.QObject):
