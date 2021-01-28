@@ -21,12 +21,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from . import FitModelBase
+from . import FitModelBase, estimator
 
 __all__ = ('StretchedExponentialDecay',)
 
 
-class StretchedExponentialDecay(FitModelBase):
+class ExponentialDecay(FitModelBase):
     """
     """
     def __init__(self, **kwargs):
@@ -40,15 +40,33 @@ class StretchedExponentialDecay(FitModelBase):
     def _model_function(x, offset, amplitude, decay, stretch):
         return offset + amplitude * np.exp(-(x / decay) ** stretch)
 
-    def guess(self, data, x):
-        # ToDo: Better estimator actually suited for a STRETCHED exponential
+    @estimator('Decay')
+    def estimate_decay(self, data, x):
+        estimate = self.make_params()
         offset = data[-1]
         amplitude = data[0] - offset
         decay = (data[1] - data[0]) / (x[-1] - x[0]) / (data[-1] - data[0])
-        stretch = 2
-        estimate = self.make_params(offset=offset,
-                                    amplitude=amplitude,
-                                    decay=decay,
-                                    stretch=stretch)
-        estimate['decay'].set(min=abs(x[1]-x[0]))
+        estimate['offset'].set(value=offset, max=max(data))
+        estimate['amplitude'].set(value=amplitude)
+        estimate['decay'].set(value=decay, min=abs(x[1] - x[0]))
+        estimate['stretch'].set(value=1, vary=False)
+        return estimate
+
+    @estimator('Stretched Decay')
+    def estimate_stretched_decay(self, data, x):
+        # ToDo: Better estimator actually suited for a STRETCHED exponential
+        estimate = self.estimate_decay(data, x)
+        estimate['stretch'].set(value=2, min=abs(x[1]-x[0]))
+        return estimate
+
+    @estimator('Decay (no offset)')
+    def estimate_decay_no_offset(self, data, x):
+        estimate = self.estimate_decay(data, x)
+        estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
+        return estimate
+
+    @estimator('Stretched Decay (no offset)')
+    def estimate_stretched_decay_no_offset(self, data, x):
+        estimate = self.estimate_stretched_decay(data, x)
+        estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
         return estimate

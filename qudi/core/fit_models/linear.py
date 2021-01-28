@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains models of linear fitting routines for qudi based on the lmfit package.
+This file contains models for linear fitting routines for qudi based on the lmfit package.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,48 +21,43 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from . import FitModelBase
+from . import FitModelBase, estimator
 
-__all__ = ('Constant', 'Linear')
-
-
-class Constant(FitModelBase):
-    """
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset):
-        return np.full(len(x), offset)
-
-    def guess(self, data, x):
-        estimate = self.make_params(offset=np.median(data))
-        estimate['offset'].set(min=min(data), max=max(data))
-        return estimate
+__all__ = ('Linear',)
 
 
 class Linear(FitModelBase):
-    """
-    """
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.set_param_hint('intersect', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('slope', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('offset', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('slope', value=0, min=-np.inf, max=np.inf)
 
     @staticmethod
-    def _model_function(x, intersect, slope):
-        return intersect + slope * x
+    def _model_function(x, offset, slope):
+        return offset + slope * x
 
-    def guess(self, data, x):
-        y_span = data[-1] - data[0]
-        x_span = x[-1] - x[0]
-        slope = y_span / x_span
-        intersect = data[0] - x[0] * slope
-        estimate = self.make_params(intersect=intersect, slope=slope)
-        estimate['intersect'].set(min=-np.inf, max=np.inf)
-        estimate['slope'].set(min=-np.inf, max=np.inf)
+    @estimator('default')
+    def estimate(self, data, x):
+        estimate = self.make_params()
+        try:
+            data = np.asarray(data)
+            x = np.asarray(x)
+            # calculate the parameters using Least-squares estimation of linear regression
+            x_mean = np.mean(x)
+            data_mean = np.mean(data)
+            a_1 = np.sum((x - x_mean) * (data - data_mean))
+            a_2 = np.sum(np.power(x - x_mean, 2))
+
+            slope = a_1 / a_2
+            intercept = data_mean - slope * x_mean
+            estimate['offset'].value = intercept
+            estimate['slope'].value = slope
+        except:
+            self.log.warning('The estimation for Linear fit model did not work.')
+        return estimate
+
+    @estimator('No Offset')
+    def estimate_no_offset(self, data, x):
+        estimate = self.estimate()
+        estimate['offset'].set(value=0, vary=False)
         return estimate
