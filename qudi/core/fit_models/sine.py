@@ -20,18 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import lmfit
 import numpy as np
+from ._general import FitModelBase, estimator
 
-__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'ExponentialDecayDoubleSine',
-           'DoubleExponentialDecayDoubleSine')
+__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine')
 
 
-class Sine(lmfit.Model):
+class Sine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude', value=1., min=0., max=np.inf)
         self.set_param_hint('frequency', value=0., min=0., max=np.inf)
@@ -41,16 +40,29 @@ class Sine(lmfit.Model):
     def _model_function(x, offset, amplitude, frequency, phase):
         return offset + amplitude * np.sin(2 * np.pi * frequency * x + phase)
 
-    def guess(self, data, x):
+    @estimator('default')
+    def estimate(self, data, x):
         estimate = self.make_params()
         return estimate
 
+    @estimator('No Offset')
+    def estimate_no_offset(self, data, x):
+        estimate = self.make_params()
+        estimate['offset'].set(value=0, vary=False)
+        return estimate
 
-class DoubleSine(lmfit.Model):
+    @estimator('Zero Phase')
+    def estimate_zero_phase(self, data, x):
+        estimate = self.make_params()
+        estimate['phase'].set(value=0, vary=False)
+        return estimate
+
+
+class DoubleSine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
         self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
@@ -66,80 +78,108 @@ class DoubleSine(lmfit.Model):
         result += amplitude_2 * np.sin(2 * np.pi * frequency_2 * x + phase_2)
         return result + offset
 
-    def guess(self, data, x):
+    @estimator('default')
+    def estimate(self, data, x):
         estimate = self.make_params()
         return estimate
 
+    @estimator('No Offset')
+    def estimate_no_offset(self, data, x):
+        estimate = self.make_params()
+        estimate['offset'].set(value=0, vary=False)
+        return estimate
 
-class ExponentialDecaySine(lmfit.Model):
+
+class ExponentialDecaySine(FitModelBase):
     """
     """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
         self.set_param_hint('amplitude', value=1., min=0., max=np.inf)
         self.set_param_hint('frequency', value=0., min=0., max=np.inf)
         self.set_param_hint('phase', value=0., min=-np.pi, max=np.pi)
         self.set_param_hint('decay', value=1., min=0., max=np.inf)
+        self.set_param_hint('stretch', value=1., min=0., max=np.inf)
 
     @staticmethod
-    def _model_function(x, offset, amplitude, frequency, phase, decay):
-        return offset + amplitude * np.exp(-x / decay) * np.sin(2 * np.pi * frequency * x + phase)
+    def _model_function(x, offset, amplitude, frequency, phase, decay, stretch):
+        return offset + amplitude * np.exp(-(x / decay) ** stretch) * np.sin(
+            2 * np.pi * frequency * x + phase)
 
-    def guess(self, data, x):
+    @estimator('Decay')
+    def estimate_decay(self, data, x):
+        estimate = self.make_params()
+        estimate['stretch'].set(value=1, vary=False)
+        return estimate
+
+    @estimator('Stretched Decay')
+    def estimate_stretched_decay(self, data, x):
         estimate = self.make_params()
         return estimate
 
-
-class ExponentialDecayDoubleSine(lmfit.Model):
-    """
-    """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name, **kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
-        self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
-        self.set_param_hint('frequency_1', value=0., min=0., max=np.inf)
-        self.set_param_hint('frequency_2', value=0., min=0., max=np.inf)
-        self.set_param_hint('phase_1', value=0., min=-np.pi, max=np.pi)
-        self.set_param_hint('phase_2', value=0., min=-np.pi, max=np.pi)
-        self.set_param_hint('decay', value=1., min=0., max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset, amplitude_1, amplitude_2, frequency_1, frequency_2, phase_1,
-                        phase_2, decay):
-        result = amplitude_1 * np.sin(2 * np.pi * frequency_1 * x + phase_1)
-        result += amplitude_2 * np.sin(2 * np.pi * frequency_2 * x + phase_2)
-        return np.exp(-x / decay) * result + offset
-
-    def guess(self, data, x):
+    @estimator('Decay (no offset)')
+    def estimate_no_offset(self, data, x):
         estimate = self.make_params()
+        estimate['stretch'].set(value=1, vary=False)
+        estimate['offset'].set(value=0, vary=False)
+        return estimate
+
+    @estimator('Stretched Decay (no offset)')
+    def estimate_zero_phase(self, data, x):
+        estimate = self.make_params()
+        estimate['offset'].set(value=0, vary=False)
         return estimate
 
 
-class DoubleExponentialDecayDoubleSine(lmfit.Model):
-    """
-    """
-    def __init__(self, missing=None, prefix='', name=None, **kwargs):
-        super().__init__(self._model_function, missing=missing, prefix=prefix, name=name,
-                         **kwargs)
-        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
-        self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
-        self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
-        self.set_param_hint('frequency_1', value=0., min=0., max=np.inf)
-        self.set_param_hint('frequency_2', value=0., min=0., max=np.inf)
-        self.set_param_hint('phase_1', value=0., min=-np.pi, max=np.pi)
-        self.set_param_hint('phase_2', value=0., min=-np.pi, max=np.pi)
-        self.set_param_hint('decay_1', value=1., min=0., max=np.inf)
-        self.set_param_hint('decay_2', value=1., min=0., max=np.inf)
-
-    @staticmethod
-    def _model_function(x, offset, amplitude_1, amplitude_2, frequency_1, frequency_2, phase_1,
-                        phase_2, decay_1, decay_2):
-        result = np.exp(-x / decay_1) * amplitude_1 * np.sin(2 * np.pi * frequency_1 * x + phase_1)
-        result += np.exp(-x / decay_2) * amplitude_2 * np.sin(2 * np.pi * frequency_2 * x + phase_2)
-        return result + offset
-
-    def guess(self, data, x):
-        estimate = self.make_params()
-        return estimate
+# class ExponentialDecayDoubleSine(FitModelBase):
+#     """
+#     """
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
+#         self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
+#         self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
+#         self.set_param_hint('frequency_1', value=0., min=0., max=np.inf)
+#         self.set_param_hint('frequency_2', value=0., min=0., max=np.inf)
+#         self.set_param_hint('phase_1', value=0., min=-np.pi, max=np.pi)
+#         self.set_param_hint('phase_2', value=0., min=-np.pi, max=np.pi)
+#         self.set_param_hint('decay', value=1., min=0., max=np.inf)
+#
+#     @staticmethod
+#     def _model_function(x, offset, amplitude_1, amplitude_2, frequency_1, frequency_2, phase_1,
+#                         phase_2, decay):
+#         result = amplitude_1 * np.sin(2 * np.pi * frequency_1 * x + phase_1)
+#         result += amplitude_2 * np.sin(2 * np.pi * frequency_2 * x + phase_2)
+#         return np.exp(-x / decay) * result + offset
+#
+#     def guess(self, data, x):
+#         estimate = self.make_params()
+#         return estimate
+#
+#
+# class DoubleExponentialDecayDoubleSine(FitModelBase):
+#     """
+#     """
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
+#         self.set_param_hint('amplitude_1', value=1., min=0., max=np.inf)
+#         self.set_param_hint('amplitude_2', value=1., min=0., max=np.inf)
+#         self.set_param_hint('frequency_1', value=0., min=0., max=np.inf)
+#         self.set_param_hint('frequency_2', value=0., min=0., max=np.inf)
+#         self.set_param_hint('phase_1', value=0., min=-np.pi, max=np.pi)
+#         self.set_param_hint('phase_2', value=0., min=-np.pi, max=np.pi)
+#         self.set_param_hint('decay_1', value=1., min=0., max=np.inf)
+#         self.set_param_hint('decay_2', value=1., min=0., max=np.inf)
+#
+#     @staticmethod
+#     def _model_function(x, offset, amplitude_1, amplitude_2, frequency_1, frequency_2, phase_1,
+#                         phase_2, decay_1, decay_2):
+#         result = np.exp(-x / decay_1) * amplitude_1 * np.sin(2 * np.pi * frequency_1 * x + phase_1)
+#         result += np.exp(-x / decay_2) * amplitude_2 * np.sin(2 * np.pi * frequency_2 * x + phase_2)
+#         return result + offset
+#
+#     def guess(self, data, x):
+#         estimate = self.make_params()
+#         return estimate
