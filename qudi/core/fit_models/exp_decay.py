@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from . import FitModelBase, estimator
+from ._general import FitModelBase, estimator
 
-__all__ = ('StretchedExponentialDecay',)
+__all__ = ('ExponentialDecay',)
 
 
 class ExponentialDecay(FitModelBase):
