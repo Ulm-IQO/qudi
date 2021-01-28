@@ -85,8 +85,8 @@ def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
         timestamp = datetime.now()
 
     # Determine daily directory path
-    leaf_dir = '{0:d}{1:d}{2:d}'.format(timestamp.year, timestamp.month, timestamp.day)
-    daily_dir = os.path.join(root, str(timestamp.year), str(timestamp.month), leaf_dir)
+    leaf_dir = '{0:04d}{1:02d}{2:02d}'.format(timestamp.year, timestamp.month, timestamp.day)
+    daily_dir = os.path.join(root, '{0:04d}'.format(timestamp.year), '{0:02d}'.format(timestamp.month), leaf_dir)
 
     # Create directory if necessary
     if not os.path.exists(daily_dir):
