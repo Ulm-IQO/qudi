@@ -694,7 +694,7 @@ class ManagedModule(QtCore.QObject):
 
                 # Check if imported class is a valid qudi module class
                 if not issubclass(mod_class, Base):
-                    logger.error('Qudi module main class must be subclass of core.module.Base')
+                    logger.error('Qudi module main class "{0}" must be subclass of core.module.Base'.format(mod_class))
                     return False
 
                 # Try to instantiate the imported qudi module class
