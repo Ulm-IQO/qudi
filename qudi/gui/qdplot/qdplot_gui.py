@@ -31,6 +31,7 @@ from qtpy import QtCore
 from qtpy import uic
 from pyqtgraph import SignalProxy, mkColor
 
+from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
@@ -225,10 +226,10 @@ class QDPlotterGui(GuiBase):
         # disconnect GUI elements
         self.update_number_of_plots(0)
 
-        self._fsd.sigFitsUpdated.disconnect()
+        #self._fsd.sigFitsUpdated.disconnect()
         self._mw.close()
 
-    @QtCore.Slot(int)
+    @qudi_slot(int)
     def update_number_of_plots(self, count):
         """ Adjust number of QDockWidgets to current number of plots. Does NO initialization of the
         contents.
@@ -245,6 +246,7 @@ class QDPlotterGui(GuiBase):
             del self._pen_colors[-1]
             del self._plot_dockwidgets[-1]
             del self._pg_signal_proxys[-1]
+
         # Add dock widgets if plot count increased
         while count > len(self._plot_dockwidgets):
             index = len(self._plot_dockwidgets)
@@ -318,7 +320,6 @@ class QDPlotterGui(GuiBase):
         dockwidget.save_pushButton.clicked.disconnect()
         dockwidget.remove_pushButton.clicked.disconnect()
         for sig_proxy in self._pg_signal_proxys[index]:
-            sig_proxy.sigDelayed.disconnect()
             sig_proxy.disconnect()
 
     @property
@@ -357,7 +358,7 @@ class QDPlotterGui(GuiBase):
         """ Restore the arrangement of DockWidgets to the default """
         self.restore_view(alignment='tabbed')
 
-    @QtCore.Slot()
+    @qudi_slot()
     def restore_view(self, alignment=None):
         """ Restore the arrangement of DockWidgets to the default """
 
@@ -404,7 +405,7 @@ class QDPlotterGui(GuiBase):
             self._mw.resizeDocks(
                 self._plot_dockwidgets, [1]*len(self._plot_dockwidgets), QtCore.Qt.Horizontal)
 
-    @QtCore.Slot(int, list, list, bool)
+    @qudi_slot(int, list, list, bool)
     def update_data(self, plot_index, x_data=None, y_data=None, clear_old=None):
         """ Function creates empty plots, grabs the data and sends it to them. """
         if not (0 <= plot_index < len(self._plot_dockwidgets)):
@@ -438,8 +439,8 @@ class QDPlotterGui(GuiBase):
             self._fit_curves[plot_index].append(dockwidget.plot_PlotWidget.plot())
             self._fit_curves[plot_index][-1].setPen('r')
 
-    @QtCore.Slot(int)
-    @QtCore.Slot(int, dict)
+    @qudi_slot(int)
+    @qudi_slot(int, dict)
     def update_plot_parameters(self, plot_index, params=None):
         """ Function updated limits, labels and units in the plot and parameter widgets. """
         if not (0 <= plot_index < len(self._plot_dockwidgets)):
@@ -574,7 +575,7 @@ class QDPlotterGui(GuiBase):
         #current_fit_method = self._plot_dockwidgets[plot_index].widget().fit_comboBox.getCurrentFit()[0]
         #self.sigDoFit.emit(current_fit_method, plot_index)
 
-    @QtCore.Slot(int, np.ndarray, str, str)
+    @qudi_slot(int, np.ndarray, str, str)
     def update_fit_data(self, plot_index, fit_data=None, formatted_fitresult=None, fit_method=None):
         """ Function that handles the fit results received from the logic via a signal.
 

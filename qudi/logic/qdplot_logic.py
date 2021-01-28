@@ -27,6 +27,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from qudi.core.connector import Connector
+from qudi.core import qudi_slot
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.mutex import RecursiveMutex
@@ -145,7 +146,7 @@ class QDPlotLogic(LogicBase):
         with self.threadlock:
             return len(self._clear_old)
 
-    @QtCore.Slot()
+    @qudi_slot()
     def add_plot(self):
         with self.threadlock:
             self._clear_old.append(True)
@@ -180,15 +181,14 @@ class QDPlotLogic(LogicBase):
                       'y_limits': self._y_limits[plot_index]}
             self.sigPlotParamsUpdated.emit(plot_index, params)
 
-    @QtCore.Slot()
-    @QtCore.Slot(int)
+    @qudi_slot()
+    @qudi_slot(int)
     def remove_plot(self, plot_index=None):
         with self.threadlock:
             if plot_index is None or plot_index == -1:
                 plot_index = -1
             elif not (0 <= plot_index < self.number_of_plots):
                 raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
-
             del self._clear_old[plot_index]
             del self._x_limits[plot_index]
             del self._y_limits[plot_index]
@@ -215,7 +215,7 @@ class QDPlotLogic(LogicBase):
                           'y_limits': self._y_limits[i]}
                 self.sigPlotParamsUpdated.emit(i, params)
 
-    @QtCore.Slot(int)
+    @qudi_slot(int)
     def set_number_of_plots(self, plt_count):
         with self.threadlock:
             if not isinstance(plt_count, int):
@@ -305,7 +305,7 @@ class QDPlotLogic(LogicBase):
                 self.update_auto_range(plot_index, True, True)
             return 0
 
-    @QtCore.Slot(str, int)
+    @qudi_slot(str, int)
     def do_fit(self, fit_method, plot_index=0):
         """ Get the data of the x-axis being plotted.
         
@@ -414,15 +414,6 @@ class QDPlotLogic(LogicBase):
             x_label = self._x_label[plot_index] + ' (' + self._x_unit[plot_index] + ')'
             y_label = self._y_label[plot_index] + ' (' + self._y_unit[plot_index] + ')'
 
-            # prepare the data in a dict or in an OrderedDict:
-            data = OrderedDict()
-            header = list()
-            for data_set in range(len(self._x_data[plot_index])):
-                header.append('{0} set {1:d}'.format(x_label, data_set + 1))
-                header.append('{0} set {1:d}'.format(y_label, data_set + 1))
-                data['{0} set {1:d}'.format(x_label, data_set + 1)] = self._x_data[plot_index][data_set]
-                data['{0} set {1:d}'.format(y_label, data_set + 1)] = self._y_data[plot_index][data_set]
-
             # Prepare the figure to save as a "data thumbnail"
             plt.style.use(mpl_qd_style)
 
@@ -495,6 +486,17 @@ class QDPlotLogic(LogicBase):
             ax1.set_ylim(self._y_limits[plot_index])
 
             fig.tight_layout()
+
+            # prepare the data in a dict or in an OrderedDict:
+            data = list()
+            header = list()
+            for data_set in range(len(self._x_data[plot_index])):
+                header.append('{0} set {1:d}'.format(x_label, data_set + 1))
+                header.append('{0} set {1:d}'.format(y_label, data_set + 1))
+                data.append(self._x_data[plot_index][data_set])
+                data.append(self._y_data[plot_index][data_set])
+
+            data = np.array(data).T
 
             ds = TextDataStorage(column_headers=header,
                                  number_format='%.9e',
@@ -717,7 +719,7 @@ class QDPlotLogic(LogicBase):
                 raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
             return self._clear_old[plot_index]
 
-    @QtCore.Slot(int, dict)
+    @qudi_slot(int, dict)
     def update_plot_parameters(self, plot_index, params):
         with self.threadlock:
             if 0 <= plot_index < len(self._x_data):
@@ -734,7 +736,7 @@ class QDPlotLogic(LogicBase):
                 if 'y_limits' in params:
                     self.set_y_limits(params['y_limits'], plot_index)
 
-    @QtCore.Slot(int, bool, bool)
+    @qudi_slot(int, bool, bool)
     def update_auto_range(self, plot_index, auto_x, auto_y):
         with self.threadlock:
             if 0 <= plot_index < len(self._x_data):
