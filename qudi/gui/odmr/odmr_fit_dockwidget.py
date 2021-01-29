@@ -20,9 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from PySide2 import QtCore, QtWidgets, QtGui
-
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.core.gui.qtwidgets.fitting import FitWidget
 
 __all__ = ('OdmrFitDockWidget',)
 
@@ -36,8 +35,10 @@ class OdmrFitDockWidget(AdvancedDockWidget):
         self.setWindowTitle('ODMR Fit')
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
-        label = QtWidgets.QLabel('This is a placeholder for future fit controls')
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        label.setMinimumSize(300, 300)
-        label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.setWidget(label)
+        self.fit_widget = FitWidget()
+        self.setWidget(self.fit_widget)
+        # label = QtWidgets.QLabel('This is a placeholder for future fit controls')
+        # label.setAlignment(QtCore.Qt.AlignCenter)
+        # label.setMinimumSize(300, 300)
+        # label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # self.setWidget(label)
