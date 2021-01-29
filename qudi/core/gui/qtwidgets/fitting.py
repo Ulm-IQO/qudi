@@ -38,9 +38,12 @@ class FitWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.selection_combobox = QtWidgets.QComboBox()
+        self.selection_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         self.fit_pushbutton = QtWidgets.QPushButton('Fit')
+        self.fit_pushbutton.setMinimumWidth(3 * self.fit_pushbutton.sizeHint().width())
         self.result_label = QtWidgets.QLabel()
         self.result_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         main_layout.addWidget(self.fit_pushbutton, 0, 0)
@@ -105,6 +108,7 @@ class FitConfigurationWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(main_layout)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '64x64')
 
@@ -135,6 +139,8 @@ class FitConfigurationWidget(QtWidgets.QWidget):
         self.add_config_toolbutton.clicked.connect(self._add_config_clicked)
 
         self.__fit_container_refs = list()
+        if fit_containers is not None:
+            self.link_fit_containers(fit_containers)
 
     def link_fit_containers(self, fit_containers):
         assert all(isinstance(fc, FitContainer) for fc in fit_containers) or not fit_containers, \
