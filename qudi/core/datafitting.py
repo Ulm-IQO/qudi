@@ -146,6 +146,18 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
             )
 
     @property
+    def model_names(self):
+        return tuple(_fit_models)
+
+    @property
+    def model_estimators(self):
+        return {name: tuple(model.estimators) for name, model in _fit_models.items()}
+
+    @property
+    def model_default_parameters(self):
+        return {name: model().make_params() for name, model in _fit_models.items()}
+
+    @property
     def configuration_names(self):
         return tuple(fc.name for fc in self._fit_configurations)
 
@@ -240,18 +252,6 @@ class FitContainer(QtCore.QObject):
         self._configuration_model.sigFitConfigurationsChanged.connect(
             self.sigFitConfigurationsChanged
         )
-
-    @property
-    def model_names(self):
-        return tuple(_fit_models)
-
-    @property
-    def model_estimators(self):
-        return {name: tuple(model.estimators) for name, model in _fit_models.items()}
-
-    @property
-    def model_default_parameters(self):
-        return {name: model().make_params() for name, model in _fit_models.items()}
 
     @property
     def fit_configurations(self):

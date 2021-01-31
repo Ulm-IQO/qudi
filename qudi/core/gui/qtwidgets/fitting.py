@@ -23,9 +23,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import weakref
 from PySide2 import QtCore, QtWidgets, QtGui
-from qudi.core.datafitting import FitContainer
-from qudi.core import qudi_slot
+from qudi.core.datafitting import FitContainer, FitConfigurationsModel, FitConfiguration
 from qudi.core.util.paths import get_artwork_dir
+from qudi.core import qudi_slot
 
 
 class FitWidget(QtWidgets.QWidget):
@@ -80,12 +80,12 @@ class FitWidget(QtWidgets.QWidget):
                 self.update_fit_result, QtCore.Qt.QueuedConnection
             )
 
-    @qudi_slot(dict)
-    def update_fit_configurations(self, fit_configs):
+    @qudi_slot(tuple)
+    def update_fit_configurations(self, config_names):
         old_text = self.selection_combobox.currentText()
         self.selection_combobox.clear()
-        self.selection_combobox.addItems(tuple(fit_configs))
-        if old_text in fit_configs:
+        self.selection_combobox.addItems(config_names)
+        if old_text in config_names:
             self.selection_combobox.setCurrentText(old_text)
 
     @qudi_slot(object, object)
@@ -100,11 +100,32 @@ class FitWidget(QtWidgets.QWidget):
         self.sigDoFit.emit(config)
 
 
+class FitConfigPanel(QtWidgets.QWidget):
+    """
+    """
+    def __init__(self, *args, fit_config, **kwargs):
+        assert isinstance(fit_config, FitConfiguration)
+        super().__init__(*args, **kwargs)
+        main_layout = QtWidgets.QGridLayout()
+        self.setLayout(main_layout)
+
+
+
+
+class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
+    """
+    """
+    def __init__(self, *args, **kwargs):
+
+
+
 class FitConfigurationWidget(QtWidgets.QWidget):
     """
     """
+    _sigAddNewConfig = QtCore.Signal(str, str)  # name, model
 
-    def __init__(self, *args, fit_containers=None, **kwargs):
+    def __init__(self, *args, fit_config_model, **kwargs):
+        assert isinstance(fit_config_model, FitConfigurationsModel)
         super().__init__(*args, **kwargs)
         main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(main_layout)
@@ -115,6 +136,7 @@ class FitConfigurationWidget(QtWidgets.QWidget):
         # Create new fit config editor elements
         self.model_combobox = QtWidgets.QComboBox()
         self.model_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        self.model_combobox.addItems(fit_config_model.model_names)
         self.name_lineedit = QtWidgets.QLineEdit()
         self.add_config_toolbutton = QtWidgets.QToolButton()
         self.add_config_toolbutton.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
@@ -133,31 +155,14 @@ class FitConfigurationWidget(QtWidgets.QWidget):
         self.config_listview.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
+        self.config_listview.setModel(fit_config_model)
         main_layout.addWidget(self.config_listview)
         main_layout.setStretch(1, 1)
 
         self.add_config_toolbutton.clicked.connect(self._add_config_clicked)
-
-        self.__fit_container_refs = list()
-        if fit_containers is not None:
-            self.link_fit_containers(fit_containers)
-
-    def link_fit_containers(self, fit_containers):
-        assert all(isinstance(fc, FitContainer) for fc in fit_containers) or not fit_containers, \
-            'Can only link qudi FitContainer instances.'
-        old_containers = [fc_ref() for fc_ref in self.__fit_container_refs]
-        old_containers = [fc for fc in old_containers if fc is not None]
-        self.__fit_container_refs.clear()
-        # disconnect old fit container if present
-        # ToDo: update fit containers in config model
-        for fc in old_containers:
-            pass
-        # link new fit container
-        self.model_combobox.clear()
-        if fit_containers:
-            fc = fit_containers[0]
-            self.model_combobox.addItems(fc.model_names)
-            self.__fit_container_refs.extend(weakref.ref(fc) for fc in fit_containers)
+        self._sigAddNewConfig.connect(
+            fit_config_model.add_configuration, QtCore.Qt.QueuedConnection
+        )
 
     @qudi_slot()
     def _add_config_clicked(self):
@@ -165,7 +170,4 @@ class FitConfigurationWidget(QtWidgets.QWidget):
         name = self.name_lineedit.text()
         if name and model:
             self.name_lineedit.clear()
-            containers = [fc_ref() for fc_ref in self.__fit_container_refs]
-            containers = [fc for fc in containers if fc is not None]
-            for fc in containers:
-                fc.add_fit_configuration(name, model)
+            self._sigAddNewConfig.emit(name, model)
