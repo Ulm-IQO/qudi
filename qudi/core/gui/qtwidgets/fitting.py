@@ -88,11 +88,14 @@ class FitWidget(QtWidgets.QWidget):
         if old_text in config_names:
             self.selection_combobox.setCurrentText(old_text)
 
-    @qudi_slot(object, object)
+    @qudi_slot(str, object)
     def update_fit_result(self, fit_config, fit_result):
-        if self.selection_combobox.currentText() != fit_config.name:
-            self.selection_combobox.setCurrentText(fit_config.name)
-        self.result_label.setText(fit_config.formatted_result(fit_result))
+        if fit_config is not None:
+            container = self.__fit_container_ref()
+            if container is not None:
+                if self.selection_combobox.currentText() != fit_config:
+                    self.selection_combobox.setCurrentText(fit_config)
+                self.result_label.setText(container.formatted_result(fit_result))
 
     @qudi_slot()
     def _fit_clicked(self):
@@ -128,22 +131,20 @@ class FitConfigPanel(QtWidgets.QWidget):
         main_layout.addWidget(hline)
 
         # add parameters
-        # self.parameters_spinboxes = dict()
-        # param_layout = QtWidgets.QGridLayout()
-        # main_layout.addLayout(param_layout)
+        self.parameters_widgets = dict()
+        self.parameters_layout = QtWidgets.QGridLayout()
+        main_layout.addLayout(self.parameters_layout)
 
-        self._fit_config = None
         if fit_config is not None:
-            self.set_fit_config(fit_config)
+            self.update_fit_config(fit_config)
 
     @property
     def estimator(self):
         return self.estimator_selection_combobox.currentText()
 
-    def set_fit_config(self, config):
-        self._fit_config = config
+    def update_fit_config(self, config):
         self.estimator_selection_combobox.clear()
-        self.estimator_selection_combobox.addItems(tuple(config.model().estimators))
+        self.estimator_selection_combobox.addItems(tuple(config.available_estimators))
 
 
 class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -153,28 +154,28 @@ class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
         super().__init__(*args, **kwargs)
 
     def createEditor(self, parent, option, index):
-        editor = FitConfigPanel()
+        editor = FitConfigPanel(parent=parent)
         return editor
 
     def setEditorData(self, editor, index):
         if index.isValid():
-            editor.set_fit_config(index.data(QtCore.Qt.DisplayRole))
+            editor.update_fit_config(index.data(QtCore.Qt.DisplayRole))
 
     def setModelData(self, editor, model, index):
-        print('setModelData:', editor.estimator)
+        print('setModelData:', index.row(), editor.estimator)
 
     def updateEditorGeometry(self, editor, option, index):
         return editor.sizeHint()
 
     def sizeHint(self, option, index):
-        return FitConfigPanel().sizeHint()
+        return FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole)).sizeHint()
 
     def paint(self, painter, option, index):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
         widget = FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole))
-        widget.render(painter)
+        widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
 
@@ -211,8 +212,8 @@ class FitConfigurationWidget(QtWidgets.QWidget):
 
         # Create fit config editor list view
         self.config_listview = QtWidgets.QListView()
-        self.config_item_delegate = FitConfigurationItemDelegate()
-        self.config_listview.setItemDelegate(self.config_item_delegate)
+        config_item_delegate = FitConfigurationItemDelegate()
+        self.config_listview.setItemDelegate(config_item_delegate)
         self.config_listview.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
