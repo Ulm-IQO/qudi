@@ -70,7 +70,7 @@ class FitConfiguration:
     @estimator.setter
     def estimator(self, value):
         if value is not None:
-            assert value in self.estimator_names, \
+            assert value in self.available_estimators, \
                 f'Invalid fit model estimator encountered: "{value}"'
         self._estimator = value
 
@@ -80,7 +80,7 @@ class FitConfiguration:
 
     @property
     def default_parameters(self):
-        return _fit_models[self._model].make_params()
+        return _fit_models[self._model]().make_params()
 
     @property
     def custom_parameters(self):
