@@ -80,7 +80,8 @@ class FitConfiguration:
 
     @property
     def default_parameters(self):
-        return _fit_models[self._model]().make_params()
+        params = _fit_models[self._model]().make_params()
+        return dict() if params is None else params
 
     @property
     def custom_parameters(self):
@@ -94,7 +95,7 @@ class FitConfiguration:
             assert not invalid, f'Invalid model parameters encountered: {invalid}'
             assert all(isinstance(p, lmfit.Parameter) for p in
                        value.values()), 'Fit parameters must be of type <lmfit.Parameter>.'
-        self._parameters = copy.deepcopy(value) if value is not None else None
+        self._custom_parameters = copy.deepcopy(value) if value is not None else None
 
 
 class FitConfigurationsModel(QtCore.QAbstractListModel):
@@ -145,8 +146,7 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
         except ValueError:
             return
         self.beginRemoveRows(self.createIndex(row_index, 0), row_index, row_index)
-        config = self._fit_configurations.pop(row_index)
-        config.setParent(None)
+        self._fit_configurations.pop(row_index)
         self.endRemoveRows()
         self.sigFitConfigurationsChanged.emit(self.configuration_names)
 
@@ -177,15 +177,30 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
 
     def data(self, index=QtCore.QModelIndex(), role=QtCore.Qt.DisplayRole):
         if (role == QtCore.Qt.DisplayRole) and (index.isValid()):
-            return self._fit_configurations[index.row()]
+            try:
+                return self._fit_configurations[index.row()]
+            except IndexError:
+                pass
         return None
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
         if index.isValid():
             config = index.data(QtCore.Qt.DisplayRole)
-            config.estimator = value[0]
-            config.custom_parameters = value[1]
-            self.dataChanged.emit(index, index)
+            if config is None:
+                return False
+            new_params = value[1]
+            params = {n: p for n, p in config.default_parameters.items() if n in new_params}
+            for name, p in params.items():
+                value_tuple = new_params[name]
+                p.set(vary=value_tuple[0],
+                      value=value_tuple[1],
+                      min=value_tuple[2],
+                      max=value_tuple[3])
+            print('setData:', params)
+            config.estimator = None if not value[0] else value[0]
+            config.custom_parameters = None if not params else params
+            self.dataChanged.emit(self.createIndex(index.row(), 0),
+                                  self.createIndex(index.row(), 0))
             return True
         return False
 

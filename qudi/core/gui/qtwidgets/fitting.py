@@ -107,7 +107,7 @@ class FitWidget(QtWidgets.QWidget):
 class FitConfigPanel(QtWidgets.QWidget):
     """
     """
-    sigConfigurationChanged = QtCore.Signal()
+    sigConfigurationRemovedClicked = QtCore.Signal(str)
 
     def __init__(self, *args, fit_config, **kwargs):
         assert isinstance(fit_config, FitConfiguration)
@@ -116,16 +116,30 @@ class FitConfigPanel(QtWidgets.QWidget):
         self.setLayout(layout)
         layout.setContentsMargins(0, 0, 0, 0)
         groupbox = QtWidgets.QGroupBox(fit_config.name)
+        font = groupbox.font()
+        font.setBold(True)
+        font.setPointSize(font.pointSize() + 4)
+        groupbox.setFont(font)
         layout.addWidget(groupbox)
         main_layout = QtWidgets.QVBoxLayout()
         groupbox.setLayout(main_layout)
-        # main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # add remove button
+        icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '64x64')
+        self._name = fit_config.name
+        self.remove_config_toolbutton = QtWidgets.QToolButton()
+        self.remove_config_toolbutton.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
+        self.remove_config_toolbutton.setIcon(
+            QtGui.QIcon(os.path.join(icon_dir, 'remove-icon.png'))
+        )
+        self.remove_config_toolbutton.clicked.connect(
+            lambda: self.sigConfigurationRemovedClicked.emit(self._name)
+        )
 
         # add estimator combobox
         self.estimator_selection_combobox = QtWidgets.QComboBox()
         self.estimator_selection_combobox.addItems(fit_config.available_estimators)
         self.estimator_selection_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
-        self.estimator_selection_combobox.currentIndexChanged.connect(self.sigConfigurationChanged)
         label = QtWidgets.QLabel('Estimator:')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         hlayout = QtWidgets.QHBoxLayout()
@@ -133,6 +147,7 @@ class FitConfigPanel(QtWidgets.QWidget):
         hlayout.addWidget(label)
         hlayout.addWidget(self.estimator_selection_combobox)
         hlayout.addStretch(1)
+        hlayout.addWidget(self.remove_config_toolbutton)
 
         # add horizontal line
         hline = QtWidgets.QFrame()
@@ -142,45 +157,55 @@ class FitConfigPanel(QtWidgets.QWidget):
         # add parameters
         param_layout = QtWidgets.QGridLayout()
         main_layout.addLayout(param_layout)
+        label = QtWidgets.QLabel('customize?')
+        param_layout.addWidget(label, 0, 0)
         label = QtWidgets.QLabel('vary?')
-        param_layout.addWidget(label, 0, 1)
-        label = QtWidgets.QLabel('init:')
         param_layout.addWidget(label, 0, 2)
-        label = QtWidgets.QLabel('min:')
+        label = QtWidgets.QLabel('init:')
         param_layout.addWidget(label, 0, 3)
-        label = QtWidgets.QLabel('max:')
+        label = QtWidgets.QLabel('min:')
         param_layout.addWidget(label, 0, 4)
-        # ToDo: Determine minimum size for SpinBoxes based on font metrics
+        label = QtWidgets.QLabel('max:')
+        param_layout.addWidget(label, 0, 5)
+        # determine minimum width for SpinBoxes based on font metrics
         min_width = QtGui.QFontMetrics(label.font()).horizontalAdvance('999.999')
         self.parameters_widgets = dict()
         row = 1
         for param_name, param in fit_config.default_parameters.items():
+            customize_checkbox = QtWidgets.QCheckBox()
+            param_layout.addWidget(customize_checkbox, row, 0)
             label = QtWidgets.QLabel(param_name + ':')
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            param_layout.addWidget(label, row, 0)
-            checkbox = QtWidgets.QCheckBox()
-            checkbox.clicked.connect(self.sigConfigurationChanged)
-            param_layout.addWidget(checkbox, row, 1)
+            param_layout.addWidget(label, row, 1)
+            vary_checkbox = QtWidgets.QCheckBox()
+            vary_checkbox.setChecked(param.vary)
+            customize_checkbox.toggled.connect(vary_checkbox.setEnabled)
+            param_layout.addWidget(vary_checkbox, row, 2)
             init_spinbox = ScienDSpinBox()
             init_spinbox.setMinimumWidth(min_width)
             init_spinbox.setRange(param.min, param.max)
-            init_spinbox.valueChanged.connect(self.sigConfigurationChanged)
-            param_layout.addWidget(init_spinbox, row, 2)
+            init_spinbox.setValue(param.value)
+            customize_checkbox.toggled.connect(init_spinbox.setEnabled)
+            param_layout.addWidget(init_spinbox, row, 3)
             min_spinbox = ScienDSpinBox()
             min_spinbox.setMinimumWidth(min_width)
             min_spinbox.setRange(param.min, param.max)
-            min_spinbox.valueChanged.connect(self.sigConfigurationChanged)
-            param_layout.addWidget(min_spinbox, row, 3)
+            min_spinbox.setValue(param.min)
+            customize_checkbox.toggled.connect(min_spinbox.setEnabled)
+            param_layout.addWidget(min_spinbox, row, 4)
             max_spinbox = ScienDSpinBox()
             max_spinbox.setMinimumWidth(min_width)
             max_spinbox.setRange(param.min, param.max)
-            max_spinbox.valueChanged.connect(self.sigConfigurationChanged)
-            param_layout.addWidget(max_spinbox, row, 4)
-            self.parameters_widgets[param_name] = (checkbox, init_spinbox, min_spinbox, max_spinbox)
+            max_spinbox.setValue(param.max)
+            customize_checkbox.toggled.connect(max_spinbox.setEnabled)
+            param_layout.addWidget(max_spinbox, row, 5)
+            self.parameters_widgets[param_name] = (
+                customize_checkbox, vary_checkbox, init_spinbox, min_spinbox, max_spinbox
+            )
             row += 1
-        param_layout.setColumnStretch(2, 1)
         param_layout.setColumnStretch(3, 1)
         param_layout.setColumnStretch(4, 1)
+        param_layout.setColumnStretch(5, 1)
         self.update_fit_config(fit_config)
 
     @property
@@ -189,20 +214,32 @@ class FitConfigPanel(QtWidgets.QWidget):
 
     @property
     def custom_parameters(self):
-        # ToDo:
-        return None
+        parameters = dict()
+        for param_name, widgets in self.parameters_widgets.items():
+            if widgets[0].isChecked():
+                parameters[param_name] = (widgets[1].isChecked(),
+                                          widgets[2].value(),
+                                          widgets[3].value(),
+                                          widgets[4].value())
+        return parameters
 
     def update_fit_config(self, config):
         self.blockSignals(True)
         self.estimator_selection_combobox.setCurrentText(config.estimator)
         custom_params = config.custom_parameters
-        if custom_params is not None:
-            for param_name, param in custom_params.items():
-                widgets = self.parameters_widgets[param_name]
-                widgets[0].setChecked(param.vary)
-                widgets[1].setValue(param.value)
-                widgets[2].setValue(param.min)
-                widgets[3].setValue(param.max)
+        for param_name, widgets in self.parameters_widgets.items():
+            customize = (custom_params is not None) and (param_name in custom_params)
+            widgets[0].setChecked(customize)
+            widgets[1].setEnabled(customize)
+            widgets[2].setEnabled(customize)
+            widgets[3].setEnabled(customize)
+            widgets[4].setEnabled(customize)
+            if customize:
+                param = custom_params[param_name]
+                widgets[1].setChecked(param.vary)
+                widgets[2].setValue(param.value)
+                widgets[3].setValue(param.min)
+                widgets[4].setValue(param.max)
         self.blockSignals(False)
 
 
@@ -212,9 +249,10 @@ class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
         if index.isValid():
+            print('createEditor:', index.row())
             editor = FitConfigPanel(parent=parent, fit_config=index.data(QtCore.Qt.DisplayRole))
             editor.setGeometry(option.rect)
-            editor.sigConfigurationChanged.connect(lambda: self.commitData.emit(editor))
+            editor.sigConfigurationRemovedClicked.connect(self.parent().remove_config_clicked)
             return editor
         return None
 
@@ -223,6 +261,7 @@ class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
             editor.update_fit_config(index.data(QtCore.Qt.DisplayRole))
 
     def setModelData(self, editor, model, index):
+        print('setModelData:', index.row())
         data = (editor.estimator, editor.custom_parameters)
         model.setData(index, data)
 
@@ -243,24 +282,49 @@ class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
         widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
 
+    def destroyEditor(self, editor, index):
+        print('destroyEditor:', index.row())
+        editor.sigConfigurationRemovedClicked.disconnect()
+        self.setModelData(editor, index.model(), index)
+        return super().destroyEditor(editor, index)
+
 
 class FitConfigurationListView(QtWidgets.QListView):
     """
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setVerticalScrollMode(self.ScrollPerPixel)
+        self.setMouseTracking(True)
+        self.installEventFilter(self)
+        config_item_delegate = FitConfigurationItemDelegate(parent=self)
+        self.setItemDelegate(config_item_delegate)
         self.__previous_index = QtCore.QModelIndex()
 
     def mouseMoveEvent(self, event):
         curr_index = self.indexAt(event.pos())
-
         if curr_index != self.__previous_index:
-            if self.__previous_index is not None:
+            if self.__previous_index.isValid():
                 self.closePersistentEditor(self.__previous_index)
             if curr_index.isValid():
                 self.openPersistentEditor(curr_index)
             self.__previous_index = curr_index
         return super().mouseMoveEvent(event)
+
+    def eventFilter(self, object, event):
+        if event.type() == QtCore.QEvent.HoverLeave:
+            if not self.geometry().contains(event.pos()):
+                if self.__previous_index.isValid():
+                    self.closePersistentEditor(self.__previous_index)
+                self.__previous_index = QtCore.QModelIndex()
+                return True
+        return False
+
+    def remove_config_clicked(self, config_name):
+        if self.__previous_index.isValid():
+            self.closePersistentEditor(self.__previous_index)
+        self.__previous_index = QtCore.QModelIndex()
+        self.model().remove_configuration(config_name)
 
 
 class FitConfigurationWidget(QtWidgets.QWidget):
@@ -296,9 +360,6 @@ class FitConfigurationWidget(QtWidgets.QWidget):
 
         # Create fit config editor list view
         self.config_listview = FitConfigurationListView()
-        self.config_listview.setMouseTracking(True)
-        config_item_delegate = FitConfigurationItemDelegate()
-        self.config_listview.setItemDelegate(config_item_delegate)
         self.config_listview.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
