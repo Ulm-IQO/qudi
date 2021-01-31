@@ -58,7 +58,7 @@ class FitWidget(QtWidgets.QWidget):
             self.link_fit_container(fit_container)
 
     def link_fit_container(self, fit_container):
-        assert isinstance(fit_container, FitContainer) or fit_container is None, \
+        assert (fit_container is None) or isinstance(fit_container, FitContainer), \
             'Can only link qudi FitContainer instances.'
         old_container = self.__fit_container_ref()
         # disconnect old fit container if present
@@ -103,20 +103,79 @@ class FitWidget(QtWidgets.QWidget):
 class FitConfigPanel(QtWidgets.QWidget):
     """
     """
-    def __init__(self, *args, fit_config, **kwargs):
-        assert isinstance(fit_config, FitConfiguration)
+    def __init__(self, *args, fit_config=None, **kwargs):
+        # assert (fit_config is None) or isinstance(fit_config, FitConfiguration)
         super().__init__(*args, **kwargs)
-        main_layout = QtWidgets.QGridLayout()
+        main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(main_layout)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setContentsMargins(0, 0, 0, 0)
 
+        # add estimator combobox
+        self.estimator_selection_combobox = QtWidgets.QComboBox()
+        self.estimator_selection_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        label = QtWidgets.QLabel('Estimator:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        hlayout = QtWidgets.QHBoxLayout()
+        main_layout.addLayout(hlayout)
+        hlayout.addWidget(label)
+        hlayout.addWidget(self.estimator_selection_combobox)
+        hlayout.addStretch(1)
 
+        # add horizontal line
+        hline = QtWidgets.QFrame()
+        hline.setFrameShape(QtWidgets.QFrame.HLine)
+        main_layout.addWidget(hline)
+
+        # add parameters
+        # self.parameters_spinboxes = dict()
+        # param_layout = QtWidgets.QGridLayout()
+        # main_layout.addLayout(param_layout)
+
+        self._fit_config = None
+        if fit_config is not None:
+            self.set_fit_config(fit_config)
+
+    @property
+    def estimator(self):
+        return self.estimator_selection_combobox.currentText()
+
+    def set_fit_config(self, config):
+        self._fit_config = config
+        self.estimator_selection_combobox.clear()
+        self.estimator_selection_combobox.addItems(tuple(config.model().estimators))
 
 
 class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
     """
     """
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+    def createEditor(self, parent, option, index):
+        editor = FitConfigPanel()
+        return editor
+
+    def setEditorData(self, editor, index):
+        if index.isValid():
+            editor.set_fit_config(index.data(QtCore.Qt.DisplayRole))
+
+    def setModelData(self, editor, model, index):
+        print('setModelData:', editor.estimator)
+
+    def updateEditorGeometry(self, editor, option, index):
+        return editor.sizeHint()
+
+    def sizeHint(self, option, index):
+        return FitConfigPanel().sizeHint()
+
+    def paint(self, painter, option, index):
+        painter.save()
+        r = option.rect
+        painter.translate(r.topLeft())
+        widget = FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole))
+        widget.render(painter)
+        painter.restore()
 
 
 class FitConfigurationWidget(QtWidgets.QWidget):
@@ -152,6 +211,8 @@ class FitConfigurationWidget(QtWidgets.QWidget):
 
         # Create fit config editor list view
         self.config_listview = QtWidgets.QListView()
+        self.config_item_delegate = FitConfigurationItemDelegate()
+        self.config_listview.setItemDelegate(self.config_item_delegate)
         self.config_listview.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
