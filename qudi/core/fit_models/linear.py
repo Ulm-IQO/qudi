@@ -39,21 +39,18 @@ class Linear(FitModelBase):
     @estimator('default')
     def estimate(self, data, x):
         estimate = self.make_params()
-        try:
-            data = np.asarray(data)
-            x = np.asarray(x)
-            # calculate the parameters using Least-squares estimation of linear regression
-            x_mean = np.mean(x)
-            data_mean = np.mean(data)
-            a_1 = np.sum((x - x_mean) * (data - data_mean))
-            a_2 = np.sum(np.power(x - x_mean, 2))
+        data = np.asarray(data)
+        x = np.asarray(x)
+        # calculate the parameters using Least-squares estimation of linear regression
+        x_mean = np.mean(x)
+        data_mean = np.mean(data)
+        a_1 = np.sum((x - x_mean) * (data - data_mean))
+        a_2 = np.sum(np.power(x - x_mean, 2))
 
-            slope = a_1 / a_2
-            intercept = data_mean - slope * x_mean
-            estimate['offset'].value = intercept
-            estimate['slope'].value = slope
-        except:
-            self.log.warning('The estimation for Linear fit model did not work.')
+        slope = a_1 / a_2
+        intercept = data_mean - slope * x_mean
+        estimate['offset'].value = intercept
+        estimate['slope'].value = slope
         return estimate
 
     @estimator('No Offset')

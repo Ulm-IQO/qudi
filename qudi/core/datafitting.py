@@ -64,8 +64,12 @@ class FitConfiguration(QtCore.QObject):
         return self._name
 
     @property
-    def model(self):
+    def model_name(self):
         return self._model
+
+    @property
+    def model(self):
+        return _fit_models[self._model]
 
     @property
     def estimator(self):
@@ -74,8 +78,8 @@ class FitConfiguration(QtCore.QObject):
     @estimator.setter
     def estimator(self, value):
         if value is not None:
-            assert value in _fit_models[
-                self._model].estimators, f'Invalid fit model estimator encountered: "{value}"'
+            assert value in self.estimator_names, \
+                f'Invalid fit model estimator encountered: "{value}"'
         with self._access_lock:
             self._estimator = value
             self.sigConfigurationChanged.emit(self)
@@ -136,8 +140,7 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
     sigFitConfigurationsChanged = QtCore.Signal(tuple)
 
     def __init__(self, *args, configurations=None, **kwargs):
-        assert all(isinstance(c, FitConfiguration) for c in configurations) or (
-                    configurations is None)
+        assert (configurations is None) or all(isinstance(c, FitConfiguration) for c in configurations)
         super().__init__(*args, **kwargs)
         self._fit_configurations = list() if configurations is None else list(configurations)
         for config in self._fit_configurations:
@@ -220,7 +223,7 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
         if (role == QtCore.Qt.DisplayRole) and (index.isValid()):
             row = index.row()
             # ToDo: Return the entire object to an item delegate instead of the name
-            return self._fit_configurations[row].name
+            return self._fit_configurations[row]
         return None
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
@@ -270,7 +273,7 @@ class FitContainer(QtCore.QObject):
     def fit_data(self, fit_config, x, data):
         with self._access_lock:
             config = self._configuration_model.get_configuration_by_name(fit_config)
-            model = _fit_models[config.model]
+            model = config.model
             estimator = config.estimator
             add_parameters = config.parameters
             if estimator is None:
