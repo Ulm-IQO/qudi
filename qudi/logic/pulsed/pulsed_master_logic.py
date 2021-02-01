@@ -380,8 +380,12 @@ class PulsedMasterLogic(LogicBase):
         return self.pulsedmeasurementlogic().alternative_data_type
 
     @property
-    def fit_container(self):
-        return self.pulsedmeasurementlogic().fc
+    def fit_containers(self):
+        return self.pulsedmeasurementlogic().fc, self.pulsedmeasurementlogic().alt_fc
+
+    @property
+    def fit_config_model(self):
+        return self.pulsedmeasurementlogic().fit_config_model
 
     #######################################################################
     ###             Pulsed measurement methods                          ###
