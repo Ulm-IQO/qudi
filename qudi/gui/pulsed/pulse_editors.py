@@ -488,18 +488,15 @@ class BlockEditor(QtWidgets.QTableView):
         self.setItemDelegateForColumn(
             1, ScienDSpinBoxItemDelegate(self, increment_item_dict, self.model().incrementRole))
 
-        self.setItemDelegateForColumn(
-            2, CheckBoxItemDelegate(self, self.model().laserRole))
-
         # If any digital channels are present, set item delegate (custom multi-CheckBox widget)
         # for digital channels column.
         if len(self.model().digital_channels) > 0:
             chnl_labels = natural_sort(chnl.split('d_ch')[1] for chnl in self.model().digital_channels)
             self.setItemDelegateForColumn(
-                3, MultipleCheckboxItemDelegate(self, chnl_labels, self.model().digitalStateRole))
-            offset_index = 4  # to indicate which column comes next.
-        else:
+                2, MultipleCheckboxItemDelegate(self, chnl_labels, self.model().digitalStateRole))
             offset_index = 3  # to indicate which column comes next.
+        else:
+            offset_index = 2  # to indicate which column comes next.
 
         # loop through all analog channels and set two item delegates for each channel.
         # First a ComboBox delegate for the analog shape column and second a custom
@@ -554,15 +551,13 @@ class BlockEditor(QtWidgets.QTableView):
         index = self.currentIndex()
         if index.isValid():
             return index.row()
-        else:
-            return 0
+        return 0
 
     def currentColumn(self):
         index = self.currentIndex()
         if index.isValid():
             return index.column()
-        else:
-            return 0
+        return 0
 
     def add_elements(self, count=1, at_position=None):
         """
