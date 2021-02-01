@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from PySide2 import QtCore
-from collections import OrderedDict
 import numpy as np
 import copy
 import time
@@ -32,6 +31,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.network import netobtain
+from qudi.core import qudi_slot
 from qudi.core.datafitting import FitConfigurationsModel, FitContainer
 from qudi.core.util import units
 from qudi.core.util.math import compute_ft
@@ -99,7 +99,7 @@ class PulsedMeasurementLogic(LogicBase):
     # notification signals for master module (i.e. GUI)
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
+    sigFitUpdated = QtCore.Signal(str, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -136,7 +136,7 @@ class PulsedMeasurementLogic(LogicBase):
         self.laser_data = np.zeros((10, 20), dtype='int64')
         self.raw_data = np.zeros((10, 20), dtype='int64')
 
-        self._saved_raw_data = OrderedDict()  # temporary saved raw data
+        self._saved_raw_data = dict()  # temporary saved raw data
         self._recalled_raw_data_tag = None  # the currently recalled raw data dict key
 
         # Paused measurement flag
@@ -148,8 +148,6 @@ class PulsedMeasurementLogic(LogicBase):
         self.fit_config_model = None  # Model for custom fit configurations
         self.fc = None  # Fit container
         self.alt_fc = None
-        self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
-        self.signal_fit_alt_data = np.empty((2, 0), dtype=float)
         return
 
     def on_activate(self):
@@ -248,7 +246,7 @@ class PulsedMeasurementLogic(LogicBase):
     def fast_counter_constraints(self):
         return self.fastcounter().get_constraints()
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
         Either accepts a settings dictionary as positional argument or keyword arguments.
@@ -308,7 +306,7 @@ class PulsedMeasurementLogic(LogicBase):
         """
         return self.fastcounter().stop_measure()
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_fast_counter(self, switch_on):
         """
         """
@@ -335,7 +333,7 @@ class PulsedMeasurementLogic(LogicBase):
         """
         return self.fastcounter().continue_measure()
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def fast_counter_pause_continue(self, continue_counter):
         """
         """
@@ -402,7 +400,7 @@ class PulsedMeasurementLogic(LogicBase):
         self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_status()[1])
         return err
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_microwave(self, switch_on):
         """
         Turn the external microwave output on/off.
@@ -419,7 +417,7 @@ class PulsedMeasurementLogic(LogicBase):
             err = self.microwave_off()
         return err
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_microwave_settings(self, settings_dict=None, **kwargs):
         """
         Apply new settings to the external microwave device.
@@ -491,7 +489,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.sigPulserRunningUpdated.emit(False)
         return err
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_pulse_generator(self, switch_on):
         """
         Switch the pulse generator on or off.
@@ -618,7 +616,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.set_extraction_settings(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_analysis_settings(self, settings_dict=None, **kwargs):
         """
         Apply new analysis settings.
@@ -648,7 +646,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.sigAnalysisSettingsUpdated.emit(self.analysis_settings)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_extraction_settings(self, settings_dict=None, **kwargs):
         """
         Apply new analysis settings.
@@ -673,7 +671,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_measurement_settings(self, settings_dict=None, **kwargs):
         """
         Apply new measurement settings.
@@ -730,7 +728,7 @@ class PulsedMeasurementLogic(LogicBase):
         self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
         return self.measurement_settings
 
-    @QtCore.Slot(bool, str)
+    @qudi_slot(bool, str)
     def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
         """
         Convenience method to start/stop measurement
@@ -743,7 +741,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.stop_pulsed_measurement(stash_raw_data_tag)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def start_pulsed_measurement(self, stashed_raw_data_tag=''):
         """Start the analysis loop."""
         self.sigMeasurementStatusUpdated.emit(True, False)
@@ -807,7 +805,7 @@ class PulsedMeasurementLogic(LogicBase):
                 self.log.warning('Unable to start pulsed measurement. Measurement already running.')
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def stop_pulsed_measurement(self, stash_raw_data_tag=''):
         """
         Stop the measurement
@@ -844,7 +842,7 @@ class PulsedMeasurementLogic(LogicBase):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_measurement_pause(self, pause):
         """
         Convenience method to pause/continue measurement
@@ -857,7 +855,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.continue_pulsed_measurement()
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def pause_pulsed_measurement(self):
         """
         Pauses the measurement
@@ -884,7 +882,7 @@ class PulsedMeasurementLogic(LogicBase):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def continue_pulsed_measurement(self):
         """
         Continues the measurement
@@ -910,8 +908,8 @@ class PulsedMeasurementLogic(LogicBase):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
-    @QtCore.Slot(float)
-    @QtCore.Slot(int)
+    @qudi_slot(float)
+    @qudi_slot(int)
     def set_timer_interval(self, interval):
         """
         Change the interval of the measurement analysis timer
@@ -931,7 +929,7 @@ class PulsedMeasurementLogic(LogicBase):
                                       self.__timer_interval)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def set_alternative_data_type(self, alt_data_type):
         """
 
@@ -956,7 +954,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.sigMeasurementDataUpdated.emit()
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def manually_pull_data(self):
         """ Analyse and display the data
         """
@@ -964,46 +962,30 @@ class PulsedMeasurementLogic(LogicBase):
             self._pulsed_analysis_loop()
         return
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(str, bool)
-    def do_fit(self, fit_method, use_alternative_data=False, data=None):
+    @qudi_slot(str)
+    @qudi_slot(str, bool)
+    def do_fit(self, fit_config, use_alternative_data=False):
         """
         Performs the chosen fit on the measured data.
 
-        @param str fit_method: name of the fit method to use
+        @param str fit_config: name of the fit configuration to use
         @param bool use_alternative_data: Flag indicating if the signal data (False) or the
                                           alternative signal data (True) should be fitted.
                                           Ignored if data is given as parameter
-        @param 2D numpy.ndarray data: the x and y data points for the fit (shape=(2,X))
 
-        @return (2D numpy.ndarray, result object): the resulting fit data and the fit result object
+        @return result_object: the lmfit result object
         """
-        # Set current fit
         container = self.alt_fc if use_alternative_data else self.fc
-
-        if data is None:
-            data = self.signal_alt_data if use_alternative_data else self.signal_data
-            update_fit_data = True
-        else:
-            update_fit_data = False
-
+        data = self.signal_alt_data if use_alternative_data else self.signal_data
+        print('Data to fit:', data.shape)
         try:
-            result = container.fit_data(fit_method, data[0], data[1])
+            config, result = container.fit_data(fit_config, data[0], data[1])
         except:
+            config, result = '', None
             self.log.exception('Something went wrong while trying to perform data fit.')
 
-        fit_data = np.array([data[0], result.best_fit])
-
-        if update_fit_data:
-            if use_alternative_data:
-                self.signal_fit_alt_data = fit_data
-                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data,
-                                        self.alt_fit_result, use_alternative_data)
-            else:
-                self.signal_fit_data = fit_data
-                self.sigFitUpdated.emit(fit_method, self.signal_fit_data, result,
-                                        use_alternative_data)
-        return fit_data, result
+        self.sigFitUpdated.emit(config, result, use_alternative_data)
+        return result
 
     def _apply_invoked_settings(self):
         """
@@ -1241,7 +1223,7 @@ class PulsedMeasurementLogic(LogicBase):
     # FIXME: Revise everything below
 
     ############################################################################
-    @QtCore.Slot(str, bool)
+    @qudi_slot(str, bool)
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
                               save_figure=True):
         """
