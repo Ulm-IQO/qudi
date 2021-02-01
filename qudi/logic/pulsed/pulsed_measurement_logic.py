@@ -431,7 +431,7 @@ class PulsedMeasurementLogic(LogicBase):
         @return:
         """
         # Check if microwave is running and do nothing if that is the case
-        if self.microwave().get_status()[1]:
+        if self.microwave().output_state[1]:
             self.log.warning('Microwave device is running.\nUnable to apply new settings.')
         else:
             # Determine complete settings dictionary
@@ -450,10 +450,9 @@ class PulsedMeasurementLogic(LogicBase):
 
             if self.__use_ext_microwave:
                 # Apply the settings to hardware
-                self.__microwave_freq, \
-                self.__microwave_power, \
-                dummy = self.microwave().set_cw(frequency=self.__microwave_freq,
-                                                power=self.__microwave_power)
+                self.microwave().set_cw(frequency=self.__microwave_freq,
+                                        power=self.__microwave_power)
+                self.__microwave_freq, self.__microwave_power = self.microwave().cw_parameters
 
         # emit update signal for master (GUI or other logic module)
         self.sigExtMicrowaveSettingsUpdated.emit({'power': self.__microwave_power,

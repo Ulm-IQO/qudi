@@ -356,16 +356,28 @@ class PulsedMeasurementGui(GuiBase):
 
     def _connect_extraction_tab_signals(self):
         # Connect pulse extraction tab signals
-        self._pe.extract_param_ana_window_start_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_ana_window_width_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_ref_window_start_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_ref_window_width_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self.sig_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
-        self.sig_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
-        self.ref_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
-        self.ref_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.connect(self.analysis_settings_changed)
-        self._pe.extract_param_method_comboBox.currentIndexChanged.connect(self.extraction_settings_changed)
+        self._pe.extract_param_ana_window_start_DSpinBox.editingFinished.connect(
+            self.analysis_settings_changed
+        )
+        self._pe.extract_param_ana_window_width_DSpinBox.editingFinished.connect(
+            self.analysis_settings_changed
+        )
+        self._pe.extract_param_ref_window_start_DSpinBox.editingFinished.connect(
+            self.analysis_settings_changed
+        )
+        self._pe.extract_param_ref_window_width_DSpinBox.editingFinished.connect(
+            self.analysis_settings_changed
+        )
+        self.sig_start_line.sigPositionChangeFinished.connect(self.analysis_settings_lines_dragged)
+        self.sig_end_line.sigPositionChangeFinished.connect(self.analysis_settings_lines_dragged)
+        self.ref_start_line.sigPositionChangeFinished.connect(self.analysis_settings_lines_dragged)
+        self.ref_end_line.sigPositionChangeFinished.connect(self.analysis_settings_lines_dragged)
+        self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.connect(
+            self.analysis_settings_changed
+        )
+        self._pe.extract_param_method_comboBox.currentIndexChanged.connect(
+            self.extraction_settings_changed
+        )
 
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.update_laser_data)
         self._pe.laserpulses_display_raw_CheckBox.stateChanged.connect(self.update_laser_data)
@@ -1156,7 +1168,7 @@ class PulsedMeasurementGui(GuiBase):
                 self._pm.global_param_gridLayout.addWidget(widget, 0, combo_count + 1)
                 combo_count += 2
                 self._channel_selection_comboboxes.append(widget)
-                widget.currentIndexChanged.connect(self.generation_parameters_changed)
+                widget.currentIndexChanged.connect(lambda: self.generation_parameters_changed())
                 continue
 
             # Create all other widgets for int, float, bool and str and save them in a list for
@@ -1236,11 +1248,11 @@ class PulsedMeasurementGui(GuiBase):
             gen_button = QtWidgets.QPushButton(groupBox)
             gen_button.setText('Generate')
             gen_button.setObjectName('gen_' + method_name)
-            gen_button.clicked.connect(self.generate_predefined_clicked)
+            gen_button.clicked.connect(self.__generate_predefined_slot(method_name, False))
             samplo_button = QtWidgets.QPushButton(groupBox)
             samplo_button.setText('GenSampLo')
             samplo_button.setObjectName('samplo_' + method_name)
-            samplo_button.clicked.connect(self.generate_predefined_clicked)
+            samplo_button.clicked.connect(self.__generate_predefined_slot(method_name, True))
             gridLayout.addWidget(gen_button, 0, 0, 1, 1)
             gridLayout.addWidget(samplo_button, 1, 0, 1, 1)
             self._pm.gen_buttons[method_name] = gen_button
@@ -1876,26 +1888,13 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().load_ensemble(ensemble_name)
         return
 
-    @QtCore.Slot(bool)
-    def generate_predefined_clicked(self, button_obj=None):
+    def generate_predefined_clicked(self, method_name, sample_and_load=False):
         """
 
-        @param button_obj:
-        @return:
+        @param str method_name:
+        @param bool sample_and_load:
         """
-        if isinstance(button_obj, bool):
-            button_obj = self.sender()
-        method_name = button_obj.objectName()
-        if method_name.startswith('gen_'):
-            sample_and_load = False
-            method_name = method_name[4:]
-        elif method_name.startswith('samplo_'):
-            sample_and_load = True
-            method_name = method_name[7:]
-        else:
-            self.log.error('Strange naming of generate buttons in predefined methods occured.')
-            return
-
+        print('generate_predefined_clicked:', method_name, sample_and_load)
         # get parameters from input widgets
         # Store parameters together with the parameter names in a dictionary
         param_dict = dict()
@@ -1921,8 +1920,8 @@ class PulsedMeasurementGui(GuiBase):
                 button.setEnabled(False)
 
         self.pulsedmasterlogic().generate_predefined_sequence(
-            method_name, param_dict, sample_and_load)
-        return
+            method_name, param_dict, sample_and_load
+        )
 
     @qudi_slot(object, bool)
     def predefined_generated(self, asset_name, is_sequence):
@@ -2969,26 +2968,31 @@ class PulsedMeasurementGui(GuiBase):
         """
         settings_dict = dict()
 
-        # Check if the signal has been emitted by a dragged line in the laser plot
-        if self.sender().__class__.__name__ == 'InfiniteLine':
-            sig_start = self.sig_start_line.value()
-            sig_end = self.sig_end_line.value()
-            ref_start = self.ref_start_line.value()
-            ref_end = self.ref_end_line.value()
-            settings_dict['signal_start'] = sig_start if sig_start <= sig_end else sig_end
-            settings_dict['signal_end'] = sig_end if sig_end >= sig_start else sig_start
-            settings_dict['norm_start'] = ref_start if ref_start <= ref_end else ref_end
-            settings_dict['norm_end'] = ref_end if ref_end >= ref_start else ref_start
-        else:
-            signal_width = self._pe.extract_param_ana_window_width_DSpinBox.value()
-            settings_dict['signal_start'] = self._pe.extract_param_ana_window_start_DSpinBox.value()
-            settings_dict['signal_end'] = settings_dict['signal_start'] + signal_width
-            norm_width = self._pe.extract_param_ref_window_width_DSpinBox.value()
-            settings_dict['norm_start'] = self._pe.extract_param_ref_window_start_DSpinBox.value()
-            settings_dict['norm_end'] = settings_dict['norm_start'] + norm_width
+        signal_width = self._pe.extract_param_ana_window_width_DSpinBox.value()
+        settings_dict['signal_start'] = self._pe.extract_param_ana_window_start_DSpinBox.value()
+        settings_dict['signal_end'] = settings_dict['signal_start'] + signal_width
+        norm_width = self._pe.extract_param_ref_window_width_DSpinBox.value()
+        settings_dict['norm_start'] = self._pe.extract_param_ref_window_start_DSpinBox.value()
+        settings_dict['norm_end'] = settings_dict['norm_start'] + norm_width
 
         settings_dict['method'] = self._pe.extract_param_analysis_method_comboBox.currentText()
+        self.pulsedmasterlogic().set_analysis_settings(settings_dict)
+        return
 
+    @QtCore.Slot()
+    def analysis_settings_lines_dragged(self):
+        settings_dict = dict()
+
+        sig_start = self.sig_start_line.value()
+        sig_end = self.sig_end_line.value()
+        ref_start = self.ref_start_line.value()
+        ref_end = self.ref_end_line.value()
+        settings_dict['signal_start'] = sig_start if sig_start <= sig_end else sig_end
+        settings_dict['signal_end'] = sig_end if sig_end >= sig_start else sig_start
+        settings_dict['norm_start'] = ref_start if ref_start <= ref_end else ref_end
+        settings_dict['norm_end'] = ref_end if ref_end >= ref_start else ref_start
+
+        settings_dict['method'] = self._pe.extract_param_analysis_method_comboBox.currentText()
         self.pulsedmasterlogic().set_analysis_settings(settings_dict)
         return
 
@@ -3077,4 +3081,9 @@ class PulsedMeasurementGui(GuiBase):
         self.lasertrace_image.setData(x=x_data, y=y_data)
         return
 
-
+    def __generate_predefined_slot(self, method_name, sample_and_load):
+        assert method_name and isinstance(method_name, str)
+        assert isinstance(sample_and_load, bool)
+        def slot():
+            self.generate_predefined_clicked(method_name, sample_and_load)
+        return slot
