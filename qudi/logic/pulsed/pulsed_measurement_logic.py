@@ -977,7 +977,6 @@ class PulsedMeasurementLogic(LogicBase):
         """
         container = self.alt_fc if use_alternative_data else self.fc
         data = self.signal_alt_data if use_alternative_data else self.signal_data
-        print('Data to fit:', data.shape)
         try:
             config, result = container.fit_data(fit_config, data[0], data[1])
         except:
