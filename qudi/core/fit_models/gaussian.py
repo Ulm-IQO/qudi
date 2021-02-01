@@ -24,7 +24,7 @@ import numpy as np
 from scipy.ndimage import filters
 from ._general import FitModelBase, estimator
 
-__all__ = ('Gaussian', 'BaseGaussian2D')
+__all__ = ('Gaussian', 'Gaussian2D')
 
 
 class Gaussian(FitModelBase):
@@ -90,7 +90,7 @@ class Gaussian(FitModelBase):
         return estimate
 
 
-class BaseGaussian2D(FitModelBase):
+class Gaussian2D(FitModelBase):
     """
     """
     def __init__(self, **kwargs):
