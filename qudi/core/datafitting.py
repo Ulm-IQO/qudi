@@ -255,7 +255,8 @@ class FitContainer(QtCore.QObject):
                     else:
                         parameters = model.estimators[estimator](data, x)
                     if add_parameters is not None:
-                        parameters.update(add_parameters)
+                        for name, param in add_parameters.items():
+                            parameters[name] = param
                     self._last_fit_result = model.fit(data, parameters, x=x)
                     self._last_fit_config = fit_config
                 self.sigLastFitResultChanged.emit(self._last_fit_config, self._last_fit_result)
