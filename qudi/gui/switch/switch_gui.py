@@ -101,12 +101,12 @@ class SwitchGui(GuiBase):
     # declare status variables
     _switch_style = StatusVar(name='switch_style',
                               default=SwitchStyle.TOGGLE_SWITCH,
-                              representer=lambda _, x: int(x),
-                              constructor=lambda _, x: SwitchStyle(x))
+                              representer=lambda x: int(x),
+                              constructor=lambda x: SwitchStyle(x))
     _state_colorscheme = StatusVar(name='state_colorscheme',
                                    default=StateColorScheme.DEFAULT,
-                                   representer=lambda _, x: int(x),
-                                   constructor=lambda _, x: StateColorScheme(x))
+                                   representer=lambda x: int(x),
+                                   constructor=lambda x: StateColorScheme(x))
     _alt_toggle_switch_style = StatusVar(name='alt_toggle_switch_style', default=False)
 
     # declare signals
