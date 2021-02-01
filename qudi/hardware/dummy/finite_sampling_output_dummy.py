@@ -23,19 +23,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 import numpy as np
-from enum import Enum
 from PySide2.QtCore import QTimer
 from qudi.core.module import Base
+from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputInterface
+from qudi.interface.finite_sampling_output_interface import SamplingOutputMode
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
 
 
-class SamplingOutputMode(Enum):
-    JUMP_LIST = 0
-    EQUIDISTANT_SWEEP = 1
-
-
-class FiniteSamplingOutputDummy(Base):
+class FiniteSamplingOutputDummy(Base, FiniteSamplingOutputInterface):
     """
     ToDo: Document
     """

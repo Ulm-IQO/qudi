@@ -25,6 +25,7 @@ import time
 import numpy as np
 from enum import Enum
 from qudi.core.module import Base
+from qudi.interface.finite_sampling_input_interface import FiniteSamplingInputInterface
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
 
@@ -34,7 +35,7 @@ class SimulationMode(Enum):
     ODMR = 1
 
 
-class FiniteSamplingInputDummy(Base):
+class FiniteSamplingInputDummy(Base, FiniteSamplingInputInterface):
     """
     ToDo: Document
     """
@@ -135,8 +136,8 @@ class FiniteSamplingInputDummy(Base):
                 'Unable to set active channels. Data acquisition in progress.'
             self._active_channels = chnl_set
 
-    def set_frame_size(self, length):
-        samples = int(round(length))
+    def set_frame_size(self, size):
+        samples = int(round(size))
         assert self._frame_size_limits[0] <= samples <= self._frame_size_limits[1], \
             f'frame size "{samples}" to set is out of bounds {self._frame_size_limits}'
         with self._thread_lock:
