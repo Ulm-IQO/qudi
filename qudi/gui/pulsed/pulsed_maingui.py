@@ -2380,7 +2380,8 @@ class PulsedMeasurementGui(GuiBase):
                 if self.second_fit_image in self._pa.pulse_analysis_second_PlotWidget.items():
                     self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_fit_image)
             else:
-                self.second_fit_image.setData(x=self.second_plot_image.xData, y=result.best_fit)
+                self.second_fit_image.setData(x=result.high_res_best_fit[0],
+                                              y=result.high_res_best_fit[1])
                 if self.second_fit_image not in self._pa.pulse_analysis_second_PlotWidget.items():
                     self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
         else:
@@ -2388,7 +2389,8 @@ class PulsedMeasurementGui(GuiBase):
                 if self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
                     self._pa.pulse_analysis_PlotWidget.removeItem(self.second_fit_image)
             else:
-                self.fit_image.setData(x=self.signal_image.xData, y=result.best_fit)
+                self.fit_image.setData(x=result.high_res_best_fit[0],
+                                       y=result.high_res_best_fit[1])
                 if self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
                     self._pa.pulse_analysis_PlotWidget.addItem(self.second_fit_image)
         return
