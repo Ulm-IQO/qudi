@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import copy
 import inspect
 import lmfit
+import numpy as np
 from PySide2 import QtCore, QtWidgets
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.units import create_formatted_output
@@ -257,7 +258,12 @@ class FitContainer(QtCore.QObject):
                     if add_parameters is not None:
                         for name, param in add_parameters.items():
                             parameters[name] = param
-                    self._last_fit_result = model.fit(data, parameters, x=x)
+                    result = model.fit(data, parameters, x=x)
+                    # Mutate lmfit.ModelResult object to include high-resolution result curve
+                    high_res_x = np.linspace(x[0], x[-1], len(x) * 10)
+                    result.high_res_best_fit = (high_res_x,
+                                                model.eval(**result.best_values, x=high_res_x))
+                    self._last_fit_result = result
                     self._last_fit_config = fit_config
                 self.sigLastFitResultChanged.emit(self._last_fit_config, self._last_fit_result)
                 return self._last_fit_config, self._last_fit_result
