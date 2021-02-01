@@ -215,7 +215,7 @@ class Base(QtCore.QObject):
                 if cfg_opt.constructor_function is None:
                     setattr(self, attr_name, converted_val)
                 else:
-                    setattr(self, attr_name, cfg_opt.constructor_function(self, converted_val))
+                    setattr(self, attr_name, cfg_opt.constructor_function(converted_val))
 
         # set instance attributes according to connector meta objects
         for attr_name, conn in self._module_meta.get('connectors', dict()).items():
@@ -279,7 +279,7 @@ class Base(QtCore.QObject):
                 if var.constructor_function is None:
                     setattr(self, attr_name, value)
                 else:
-                    setattr(self, attr_name, var.constructor_function(self, value))
+                    setattr(self, attr_name, var.constructor_function(value))
         # activate
         self.on_activate()
 
