@@ -31,9 +31,8 @@ from qudi.core import fit_models as __models
 
 
 def __is_fit_model(cls):
-    if inspect.isclass(cls) and issubclass(cls, __models.FitModelBase):
-        return True
-    return False
+    return inspect.isclass(cls) and issubclass(cls, __models.FitModelBase) and (
+                cls is not __models.FitModelBase)
 
 
 _fit_models = {name: cls for name, cls in inspect.getmembers(__models, __is_fit_model)}
@@ -47,6 +46,7 @@ class FitConfiguration:
         assert isinstance(name, str), 'FitConfiguration name must be str type.'
         assert name, 'FitConfiguration name must be non-empty string.'
         assert model in _fit_models, f'Invalid fit model name encountered: "{model}".'
+        assert name != 'No Fit', '"No Fit" is a reserved name for fit configs. Choose another.'
 
         self._name = name
         self._model = model
@@ -132,6 +132,7 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
     @qudi_slot(str, str)
     def add_configuration(self, name, model):
         assert name not in self.configuration_names, f'Fit config "{name}" already defined.'
+        assert name != 'No Fit', '"No Fit" is a reserved name for fit configs. Choose another.'
         config = FitConfiguration(name, model)
         new_row = len(self._fit_configurations)
         self.beginInsertRows(self.createIndex(new_row, 0), new_row, new_row)
@@ -217,7 +218,7 @@ class FitContainer(QtCore.QObject):
         self._access_lock = Mutex()
         self._configuration_model = config_model
         self._last_fit_result = None
-        self._last_fit_config = None
+        self._last_fit_config = 'No Fit'
 
         self._configuration_model.sigFitConfigurationsChanged.connect(
             self.sigFitConfigurationsChanged
@@ -239,22 +240,30 @@ class FitContainer(QtCore.QObject):
     @qudi_slot(str, object, object)
     def fit_data(self, fit_config, x, data):
         with self._access_lock:
-            config = self._configuration_model.get_configuration_by_name(fit_config)
-            model = config.model
-            estimator = config.estimator
-            add_parameters = config.parameters
-            if estimator is None:
-                parameters = model.make_params()
-            else:
-                parameters = model.estimators[estimator](data, x)
-            if add_parameters is not None:
-                parameters.update(add_parameters)
-            self._last_fit_result = model.fit(data, parameters, x=x)
-            self._last_fit_config = fit_config
-            self.sigLastFitResultChanged.emit(self._last_fit_config, self._last_fit_result)
+            if fit_config:
+                # Handle "No Fit" case
+                if fit_config == 'No Fit':
+                    self._last_fit_result = None
+                    self._last_fit_config = 'No Fit'
+                else:
+                    config = self._configuration_model.get_configuration_by_name(fit_config)
+                    model = config.model
+                    estimator = config.estimator
+                    add_parameters = config.parameters
+                    if estimator is None:
+                        parameters = model.make_params()
+                    else:
+                        parameters = model.estimators[estimator](data, x)
+                    if add_parameters is not None:
+                        parameters.update(add_parameters)
+                    self._last_fit_result = model.fit(data, parameters, x=x)
+                    self._last_fit_config = fit_config
+                self.sigLastFitResultChanged.emit(self._last_fit_config, self._last_fit_result)
 
     @staticmethod
     def formatted_result(fit_result, parameters_units=None):
+        if fit_result is None:
+            return ''
         if parameters_units is None:
             parameters_units = dict()
         parameters_to_format = dict()

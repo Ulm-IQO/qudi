@@ -71,6 +71,7 @@ class FitWidget(QtWidgets.QWidget):
         # link new fit container
         self.result_label.clear()
         self.selection_combobox.clear()
+        self.selection_combobox.addItem('No Fit')
         if fit_container is None:
             self.__fit_container_ref = lambda: None
         else:
@@ -93,12 +94,14 @@ class FitWidget(QtWidgets.QWidget):
 
     @qudi_slot(str, object)
     def update_fit_result(self, fit_config, fit_result):
-        if fit_config is not None:
+        if fit_config:
+            if self.selection_combobox.currentText() != fit_config:
+                self.selection_combobox.setCurrentText(fit_config)
             container = self.__fit_container_ref()
             if container is not None:
-                if self.selection_combobox.currentText() != fit_config:
-                    self.selection_combobox.setCurrentText(fit_config)
                 self.result_label.setText(container.formatted_result(fit_result))
+            else:
+                self.result_label.setText('')
 
     @qudi_slot()
     def _fit_clicked(self):
