@@ -28,7 +28,7 @@ import traceback
 import numpy as np
 
 from PySide2 import QtCore
-from collections import OrderedDict
+from qudi.core import qudi_slot
 from qudi.core.statusvariable import StatusVar
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
@@ -76,17 +76,19 @@ class SequenceGeneratorLogic(LogicBase):
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
     # generation for predefined methods.
-    _generation_parameters = StatusVar(default=OrderedDict([('laser_channel', 'd_ch1'),
-                                                            ('sync_channel', ''),
-                                                            ('gate_channel', ''),
-                                                            ('microwave_channel', 'a_ch1'),
-                                                            ('microwave_frequency', 2.87e9),
-                                                            ('microwave_amplitude', 0.0),
-                                                            ('rabi_period', 100e-9),
-                                                            ('laser_length', 3e-6),
-                                                            ('laser_delay', 500e-9),
-                                                            ('wait_time', 1e-6),
-                                                            ('analog_trigger_voltage', 0.0)]))
+    _generation_parameters = StatusVar(
+        default={'laser_channel': 'd_ch1',
+                 'sync_channel': '',
+                 'gate_channel': '',
+                 'microwave_channel': 'a_ch1',
+                 'microwave_frequency': 2.87e9,
+                 'microwave_amplitude': 0.0,
+                 'rabi_period': 100e-9,
+                 'laser_length': 3e-6,
+                 'laser_delay': 500e-9,
+                 'wait_time': 1e-6,
+                 'analog_trigger_voltage': 0.0}
+    )
 
     # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
     # these dictionaries. The keys are the names.
@@ -135,9 +137,9 @@ class SequenceGeneratorLogic(LogicBase):
 
         # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
         # these dictionaries. The keys are the names.
-        self._saved_pulse_blocks = OrderedDict()
-        self._saved_pulse_block_ensembles = OrderedDict()
-        self._saved_pulse_sequences = OrderedDict()
+        self._saved_pulse_blocks = dict()
+        self._saved_pulse_block_ensembles = dict()
+        self._saved_pulse_sequences = dict()
         return
 
     def on_activate(self):
@@ -188,9 +190,9 @@ class SequenceGeneratorLogic(LogicBase):
         self._read_settings_from_device()
 
         # Update saved blocks/ensembles/sequences from serialized files
-        self._saved_pulse_blocks = OrderedDict()
-        self._saved_pulse_block_ensembles = OrderedDict()
-        self._saved_pulse_sequences = OrderedDict()
+        self._saved_pulse_blocks = dict()
+        self._saved_pulse_block_ensembles = dict()
+        self._saved_pulse_sequences = dict()
         self._update_blocks_from_file()
         self._update_ensembles_from_file()
         self._update_sequences_from_file()
@@ -208,7 +210,7 @@ class SequenceGeneratorLogic(LogicBase):
 
     # @_saved_pulse_blocks.constructor
     # def _restore_saved_blocks(self, block_list):
-    #     return_block_dict = OrderedDict()
+    #     return_block_dict = dict()
     #     if block_list is not None:
     #         for block_dict in block_list:
     #             return_block_dict[block_dict['name']] = PulseBlock.block_from_dict(block_dict)
@@ -227,7 +229,7 @@ class SequenceGeneratorLogic(LogicBase):
     #
     # @_saved_pulse_block_ensembles.constructor
     # def _restore_saved_ensembles(self, ensemble_list):
-    #     return_ensemble_dict = OrderedDict()
+    #     return_ensemble_dict = dict()
     #     if ensemble_list is not None:
     #         for ensemble_dict in ensemble_list:
     #             return_ensemble_dict[ensemble_dict['name']] = PulseBlockEnsemble.ensemble_from_dict(
@@ -246,7 +248,7 @@ class SequenceGeneratorLogic(LogicBase):
     #
     # @_saved_pulse_sequences.constructor
     # def _restore_saved_sequences(self, sequence_list):
-    #     return_sequence_dict = OrderedDict()
+    #     return_sequence_dict = dict()
     #     if sequence_list is not None:
     #         for sequence_dict in sequence_list:
     #             return_sequence_dict[sequence_dict['name']] = PulseBlockEnsemble.ensemble_from_dict(
@@ -327,7 +329,7 @@ class SequenceGeneratorLogic(LogicBase):
             return '', ''
         return return_name, return_type
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -438,7 +440,7 @@ class SequenceGeneratorLogic(LogicBase):
             pass
         return self.pulse_generator_settings
 
-    @QtCore.Slot()
+    @qudi_slot()
     def clear_pulser(self):
         """
         """
@@ -460,8 +462,8 @@ class SequenceGeneratorLogic(LogicBase):
         self.sigLoadedAssetUpdated.emit('', '')
         return 0
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(object)
+    @qudi_slot(str)
+    @qudi_slot(object)
     def load_ensemble(self, ensemble):
         """
 
@@ -502,8 +504,8 @@ class SequenceGeneratorLogic(LogicBase):
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
         return 0
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(object)
+    @qudi_slot(str)
+    @qudi_slot(object)
     def load_sequence(self, sequence):
         """
 
@@ -637,7 +639,7 @@ class SequenceGeneratorLogic(LogicBase):
     def saved_pulse_sequences(self):
         return self._saved_pulse_sequences
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_generation_parameters(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -1622,7 +1624,7 @@ class SequenceGeneratorLogic(LogicBase):
         # Return error code
         return -1 if ensembles_missing else 0
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
@@ -1892,7 +1894,7 @@ class SequenceGeneratorLogic(LogicBase):
         self.sigSampleEnsembleComplete.emit(ensemble)
         return offset_bin, natural_sort(written_waveforms), ensemble_info
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def sample_pulse_sequence(self, sequence):
         """ Samples the PulseSequence object, which serves as the construction plan.
 
