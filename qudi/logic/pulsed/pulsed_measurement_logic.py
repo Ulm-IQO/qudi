@@ -987,11 +987,10 @@ class PulsedMeasurementLogic(LogicBase):
         else:
             update_fit_data = False
 
-        if len(data) < 2 or len(data[0]) < 2 or len(data[1]) < 2:
-            self.log.debug('The data you are trying to fit does not contain enough data for a fit.')
-            return
-
-        result = container.fit_data(fit_method, data[0], data[1])
+        try:
+            result = container.fit_data(fit_method, data[0], data[1])
+        except:
+            self.log.exception('Something went wrong while trying to perform data fit.')
 
         fit_data = np.array([data[0], result.best_fit])
 
