@@ -32,6 +32,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.network import netobtain
+from qudi.core.datafitting import FitConfigurationsModel, FitContainer
 from qudi.core.util import units
 from qudi.core.util.math import compute_ft
 from qudi.core.module import LogicBase
@@ -45,8 +46,6 @@ class PulsedMeasurementLogic(LogicBase):
     """
 
     # declare connectors
-    # fitlogic = Connector(interface='FitLogic')
-    # savelogic = Connector(interface='SaveLogic')
     fastcounter = Connector(interface='FastCounterInterface')
     microwave = Connector(interface='MicrowaveInterface')
     pulsegenerator = Connector(interface='PulserInterface')
@@ -146,9 +145,9 @@ class PulsedMeasurementLogic(LogicBase):
         self._elapsed_pause = 0
 
         # for fit:
+        self.fit_config_model = None  # Model for custom fit configurations
         self.fc = None  # Fit container
-        self.fit_result = None
-        self.alt_fit_result = None
+        self.alt_fc = None
         self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
         self.signal_fit_alt_data = np.empty((2, 0), dtype=float)
         return
@@ -168,13 +167,11 @@ class PulsedMeasurementLogic(LogicBase):
         self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
                                               QtCore.Qt.QueuedConnection)
 
+        # ToDo: Save and recall configured fits
         # Fitting
-        # self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
-        # self.fc.set_units(self._data_units)
-
-        # Recall saved status variables
-        # if 'fits' in self._statusVariables and isinstance(self._statusVariables.get('fits'), dict):
-        #     self.fc.load_from_dict(self._statusVariables['fits'])
+        self.fit_config_model = FitConfigurationsModel(parent=self)
+        self.fc = FitContainer(parent=self, config_model=self.fit_config_model)
+        self.alt_fc = FitContainer(parent=self, config_model=self.fit_config_model)
 
         # Turn off pulse generator
         self.pulse_generator_off()
@@ -219,8 +216,7 @@ class PulsedMeasurementLogic(LogicBase):
             self.stop_pulsed_measurement()
 
         self._statusVariables['_controlled_variable'] = list(self._controlled_variable)
-        # if len(self.fc.fit_list) > 0:
-        #     self._statusVariables['fits'] = self.fc.save_to_dict()
+        # ToDo: Save and recall configured fits
 
         self.extraction_parameters = self._pulseextractor.full_settings_dict
         self.analysis_parameters = self._pulseanalyzer.full_settings_dict
@@ -982,36 +978,33 @@ class PulsedMeasurementLogic(LogicBase):
 
         @return (2D numpy.ndarray, result object): the resulting fit data and the fit result object
         """
-        pass
         # Set current fit
-        # self.fc.set_current_fit(fit_method)
+        container = self.alt_fc if use_alternative_data else self.fc
 
-        # if data is None:
-        #     data = self.signal_alt_data if use_alternative_data else self.signal_data
-        #     update_fit_data = True
-        # else:
-        #     update_fit_data = False
-        #
-        # if len(data) < 2 or len(data[0]) < 2 or len(data[1]) < 2:
-        #     self.log.debug('The data you are trying to fit does not contain enough data for a fit.')
-        #     return
-        #
-        # x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
-        #
-        # fit_data = np.array([x_fit, y_fit])
-        #
-        # if update_fit_data:
-        #     if use_alternative_data:
-        #         self.signal_fit_alt_data = fit_data
-        #         self.alt_fit_result = copy.deepcopy(self.fc.current_fit_result)
-        #         self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data,
-        #                                 self.alt_fit_result, use_alternative_data)
-        #     else:
-        #         self.signal_fit_data = fit_data
-        #         self.fit_result = copy.deepcopy(self.fc.current_fit_result)
-        #         self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_data, self.fit_result,
-        #                                 use_alternative_data)
-        # return fit_data, self.fc.current_fit_result
+        if data is None:
+            data = self.signal_alt_data if use_alternative_data else self.signal_data
+            update_fit_data = True
+        else:
+            update_fit_data = False
+
+        if len(data) < 2 or len(data[0]) < 2 or len(data[1]) < 2:
+            self.log.debug('The data you are trying to fit does not contain enough data for a fit.')
+            return
+
+        result = container.fit_data(fit_method, data[0], data[1])
+
+        fit_data = np.array([data[0], result.best_fit])
+
+        if update_fit_data:
+            if use_alternative_data:
+                self.signal_fit_alt_data = fit_data
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data,
+                                        self.alt_fit_result, use_alternative_data)
+            else:
+                self.signal_fit_data = fit_data
+                self.sigFitUpdated.emit(fit_method, self.signal_fit_data, result,
+                                        use_alternative_data)
+        return fit_data, result
 
     def _apply_invoked_settings(self):
         """
