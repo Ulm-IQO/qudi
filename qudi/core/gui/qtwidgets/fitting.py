@@ -41,7 +41,6 @@ class FitWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.selection_combobox = QtWidgets.QComboBox()
         self.selection_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
