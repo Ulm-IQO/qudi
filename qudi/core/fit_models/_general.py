@@ -62,7 +62,6 @@ class FitModelBase(Model, metaclass=FitModelMeta):
     def __init__(self, **kwargs):
         kwargs.pop('name', None)
         super().__init__(self._model_function, name=self.__class__.__name__, **kwargs)
-        print(self.estimators)
 
     @property
     def estimators(self):
