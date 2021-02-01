@@ -231,6 +231,7 @@ class ScanningOptimizeLogic(LogicBase):
             print('next sequence step')
             if self.module_state() == 'idle':
                 return
+            print('... module not idle. Toggling scan ...')
 
             if self._scan_logic().toggle_scan(True,
                                               self._scan_sequence[self._sequence_index],
@@ -273,7 +274,7 @@ class ScanningOptimizeLogic(LogicBase):
                 if fit_data is None:
                     self.stop_optimize()
                     return
-
+            print('... Scan complete ...')
             self._sequence_index += 1
 
             # Terminate optimize sequence if finished; continue with next sequence step otherwise
@@ -303,8 +304,9 @@ class ScanningOptimizeLogic(LogicBase):
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
         model = Gaussian2D()
+        print('fit 2D gaussian')
         try:
-            fit_result = model.fit(data, xy=xy, **model.guess(data, xy))
+            fit_result = model.fit(data, xy=xy, **model.estimate_peak(data, xy))
         except:
             x_min, x_max = xy[0].min(), xy[0].max()
             y_min, y_max = xy[1].min(), xy[1].max()
@@ -312,16 +314,19 @@ class ScanningOptimizeLogic(LogicBase):
             y_middle = (y_max - y_min) / 2 + y_min
             self.log.exception('2D Gaussian fit unsuccessful. Aborting optimization sequence.')
             return (x_middle, y_middle), None
+        print('DONE: fit 2D gaussian')
         return (fit_result.best_values['center_x'],
                 fit_result.best_values['center_y']), fit_result.best_fit.reshape(xy[0].shape)
 
     def _get_pos_from_1d_gauss_fit(self, x, data):
         model = Gaussian()
+        print('fit 1D gaussian')
         try:
-            fit_result = model.fit(data, x=x, **model.guess(data, x))
+            fit_result = model.fit(data, x=x, **model.estimate_peak(data, x))
         except:
             x_min, x_max = x.min(), x.max()
             middle = (x_max - x_min) / 2 + x_min
             self.log.exception('1D Gaussian fit unsuccessful. Aborting optimization sequence.')
             return middle, None
+        print('DONE: fit 1D gaussian')
         return (fit_result.best_values['center'],), fit_result.best_fit
