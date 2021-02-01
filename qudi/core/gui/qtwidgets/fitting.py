@@ -48,6 +48,7 @@ class FitWidget(QtWidgets.QWidget):
         self.fit_pushbutton = QtWidgets.QPushButton('Fit')
         self.fit_pushbutton.setMinimumWidth(3 * self.fit_pushbutton.sizeHint().width())
         self.result_label = QtWidgets.QLabel()
+        self.result_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         self.result_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         main_layout.addWidget(self.fit_pushbutton, 0, 0)
         main_layout.addWidget(self.selection_combobox, 0, 1)
