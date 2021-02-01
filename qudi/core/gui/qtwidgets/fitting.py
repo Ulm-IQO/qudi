@@ -28,6 +28,8 @@ from qudi.core.util.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core import qudi_slot
 
+__all__ = ('FitWidget', 'FitConfigurationWidget', 'FitConfigurationDialog')
+
 
 class FitWidget(QtWidgets.QWidget):
     """
@@ -104,7 +106,126 @@ class FitWidget(QtWidgets.QWidget):
         self.sigDoFit.emit(config)
 
 
-class FitConfigPanel(QtWidgets.QWidget):
+class FitConfigurationWidget(QtWidgets.QWidget):
+    """
+    """
+    _sigAddNewConfig = QtCore.Signal(str, str)  # name, model
+
+    def __init__(self, *args, fit_config_model, **kwargs):
+        assert isinstance(fit_config_model, FitConfigurationsModel)
+        super().__init__(*args, **kwargs)
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '64x64')
+
+        # Create new fit config editor elements
+        self.model_combobox = QtWidgets.QComboBox()
+        self.model_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        self.model_combobox.addItems(fit_config_model.model_names)
+        self.name_lineedit = QtWidgets.QLineEdit()
+        self.add_config_toolbutton = QtWidgets.QToolButton()
+        self.add_config_toolbutton.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
+        self.add_config_toolbutton.setIcon(QtGui.QIcon(os.path.join(icon_dir, 'add-icon.png')))
+        hlayout = QtWidgets.QHBoxLayout()
+        hlayout.addWidget(self.model_combobox)
+        hlayout.addWidget(self.name_lineedit)
+        hlayout.addWidget(self.add_config_toolbutton)
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        # hlayout.setStretch(0, 1)
+        hlayout.setStretch(1, 1)
+        main_layout.addLayout(hlayout)
+
+        # Create fit config editor list view
+        self.config_listview = FitConfigurationListView()
+        self.config_listview.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        self.config_listview.setModel(fit_config_model)
+        main_layout.addWidget(self.config_listview)
+        main_layout.setStretch(1, 1)
+
+        self.add_config_toolbutton.clicked.connect(self._add_config_clicked)
+        self._sigAddNewConfig.connect(
+            fit_config_model.add_configuration, QtCore.Qt.QueuedConnection
+        )
+
+    @qudi_slot()
+    def _add_config_clicked(self):
+        model = self.model_combobox.currentText()
+        name = self.name_lineedit.text()
+        if name and model:
+            self.name_lineedit.clear()
+            self._sigAddNewConfig.emit(name, model)
+
+
+class FitConfigurationDialog(QtWidgets.QDialog):
+    """
+    """
+
+    def __init__(self, *args, fit_config_model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle('Fit Configuration')
+        # create main layout
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
+        # create config widget
+        self.fit_config_widget = FitConfigurationWidget(fit_config_model=fit_config_model)
+        main_layout.addWidget(self.fit_config_widget)
+        # create dialog buttonbox
+        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok, QtCore.Qt.Horizontal)
+        min_width = QtGui.QFontMetrics(QtGui.QFont()).horizontalAdvance('OK OK OK')
+        button_box.buttons()[0].setMinimumWidth(min_width)
+        button_box.setCenterButtons(True)
+        button_box.accepted.connect(self.accept)
+        main_layout.addWidget(button_box)
+        current_size = self.sizeHint()
+        current_size.setWidth(current_size.width() * 2)
+        current_size.setHeight(current_size.height() * 2)
+        self.resize(current_size)
+
+
+class FitConfigurationListView(QtWidgets.QListView):
+    """
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setVerticalScrollMode(self.ScrollPerPixel)
+        self.setMouseTracking(True)
+        self.installEventFilter(self)
+        config_item_delegate = _FitConfigurationItemDelegate(parent=self)
+        self.setItemDelegate(config_item_delegate)
+        self.__previous_index = QtCore.QModelIndex()
+
+    def mouseMoveEvent(self, event):
+        curr_index = self.indexAt(event.pos())
+        if curr_index != self.__previous_index:
+            if self.__previous_index.isValid():
+                self.closePersistentEditor(self.__previous_index)
+            if curr_index.isValid():
+                self.openPersistentEditor(curr_index)
+            self.__previous_index = curr_index
+        return super().mouseMoveEvent(event)
+
+    def eventFilter(self, object, event):
+        if event.type() == QtCore.QEvent.HoverLeave:
+            if not self.geometry().contains(event.pos()):
+                if self.__previous_index.isValid():
+                    self.closePersistentEditor(self.__previous_index)
+                self.__previous_index = QtCore.QModelIndex()
+                return True
+        return False
+
+    @qudi_slot(str)
+    def remove_config_clicked(self, config_name):
+        if self.__previous_index.isValid():
+            self.closePersistentEditor(self.__previous_index)
+        self.__previous_index = QtCore.QModelIndex()
+        self.model().remove_configuration(config_name)
+
+
+class _FitConfigPanel(QtWidgets.QWidget):
     """
     """
     sigConfigurationRemovedClicked = QtCore.Signal(str)
@@ -243,14 +364,14 @@ class FitConfigPanel(QtWidgets.QWidget):
         self.blockSignals(False)
 
 
-class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
+class _FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
     """
     """
 
     def createEditor(self, parent, option, index):
         if index.isValid():
             print('createEditor:', index.row())
-            editor = FitConfigPanel(parent=parent, fit_config=index.data(QtCore.Qt.DisplayRole))
+            editor = _FitConfigPanel(parent=parent, fit_config=index.data(QtCore.Qt.DisplayRole))
             editor.setGeometry(option.rect)
             editor.sigConfigurationRemovedClicked.connect(self.parent().remove_config_clicked)
             return editor
@@ -270,14 +391,14 @@ class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
         return option.rect
 
     def sizeHint(self, option, index):
-        size = FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole)).sizeHint()
+        size = _FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole)).sizeHint()
         return size
 
     def paint(self, painter, option, index):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
-        widget = FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole))
+        widget = _FitConfigPanel(fit_config=index.data(QtCore.Qt.DisplayRole))
         widget.setGeometry(r)
         widget.render(painter, QtCore.QPoint(0, 0), painter.viewport())
         painter.restore()
@@ -287,122 +408,3 @@ class FitConfigurationItemDelegate(QtWidgets.QStyledItemDelegate):
         editor.sigConfigurationRemovedClicked.disconnect()
         self.setModelData(editor, index.model(), index)
         return super().destroyEditor(editor, index)
-
-
-class FitConfigurationListView(QtWidgets.QListView):
-    """
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setVerticalScrollMode(self.ScrollPerPixel)
-        self.setMouseTracking(True)
-        self.installEventFilter(self)
-        config_item_delegate = FitConfigurationItemDelegate(parent=self)
-        self.setItemDelegate(config_item_delegate)
-        self.__previous_index = QtCore.QModelIndex()
-
-    def mouseMoveEvent(self, event):
-        curr_index = self.indexAt(event.pos())
-        if curr_index != self.__previous_index:
-            if self.__previous_index.isValid():
-                self.closePersistentEditor(self.__previous_index)
-            if curr_index.isValid():
-                self.openPersistentEditor(curr_index)
-            self.__previous_index = curr_index
-        return super().mouseMoveEvent(event)
-
-    def eventFilter(self, object, event):
-        if event.type() == QtCore.QEvent.HoverLeave:
-            if not self.geometry().contains(event.pos()):
-                if self.__previous_index.isValid():
-                    self.closePersistentEditor(self.__previous_index)
-                self.__previous_index = QtCore.QModelIndex()
-                return True
-        return False
-
-    def remove_config_clicked(self, config_name):
-        if self.__previous_index.isValid():
-            self.closePersistentEditor(self.__previous_index)
-        self.__previous_index = QtCore.QModelIndex()
-        self.model().remove_configuration(config_name)
-
-
-class FitConfigurationWidget(QtWidgets.QWidget):
-    """
-    """
-    _sigAddNewConfig = QtCore.Signal(str, str)  # name, model
-
-    def __init__(self, *args, fit_config_model, **kwargs):
-        assert isinstance(fit_config_model, FitConfigurationsModel)
-        super().__init__(*args, **kwargs)
-        main_layout = QtWidgets.QVBoxLayout()
-        self.setLayout(main_layout)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-
-        icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '64x64')
-
-        # Create new fit config editor elements
-        self.model_combobox = QtWidgets.QComboBox()
-        self.model_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
-        self.model_combobox.addItems(fit_config_model.model_names)
-        self.name_lineedit = QtWidgets.QLineEdit()
-        self.add_config_toolbutton = QtWidgets.QToolButton()
-        self.add_config_toolbutton.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
-        self.add_config_toolbutton.setIcon(QtGui.QIcon(os.path.join(icon_dir, 'add-icon.png')))
-        hlayout = QtWidgets.QHBoxLayout()
-        hlayout.addWidget(self.model_combobox)
-        hlayout.addWidget(self.name_lineedit)
-        hlayout.addWidget(self.add_config_toolbutton)
-        hlayout.setContentsMargins(0, 0, 0, 0)
-        # hlayout.setStretch(0, 1)
-        hlayout.setStretch(1, 1)
-        main_layout.addLayout(hlayout)
-
-        # Create fit config editor list view
-        self.config_listview = FitConfigurationListView()
-        self.config_listview.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
-        self.config_listview.setModel(fit_config_model)
-        main_layout.addWidget(self.config_listview)
-        main_layout.setStretch(1, 1)
-
-        self.add_config_toolbutton.clicked.connect(self._add_config_clicked)
-        self._sigAddNewConfig.connect(
-            fit_config_model.add_configuration, QtCore.Qt.QueuedConnection
-        )
-
-    @qudi_slot()
-    def _add_config_clicked(self):
-        model = self.model_combobox.currentText()
-        name = self.name_lineedit.text()
-        if name and model:
-            self.name_lineedit.clear()
-            self._sigAddNewConfig.emit(name, model)
-
-
-class FitConfigurationDialog(QtWidgets.QDialog):
-    """
-    """
-
-    def __init__(self, *args, fit_config_model, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setWindowTitle('Fit Configuration')
-        # create main layout
-        main_layout = QtWidgets.QVBoxLayout()
-        self.setLayout(main_layout)
-        # create config widget
-        self.fit_config_widget = FitConfigurationWidget(fit_config_model=fit_config_model)
-        main_layout.addWidget(self.fit_config_widget)
-        # create dialog buttonbox
-        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok, QtCore.Qt.Horizontal)
-        min_width = QtGui.QFontMetrics(QtGui.QFont()).horizontalAdvance('OK OK OK')
-        button_box.buttons()[0].setMinimumWidth(min_width)
-        button_box.setCenterButtons(True)
-        button_box.accepted.connect(self.accept)
-        main_layout.addWidget(button_box)
-        current_size = self.sizeHint()
-        current_size.setWidth(current_size.width() * 2)
-        current_size.setHeight(current_size.height() * 2)
-        self.resize(current_size)
-
