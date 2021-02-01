@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from PySide2 import QtCore
 
+from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.module import LogicBase
 
@@ -70,7 +71,7 @@ class PulsedMasterLogic(LogicBase):
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
+    sigFitUpdated = QtCore.Signal(str, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -390,7 +391,7 @@ class PulsedMasterLogic(LogicBase):
     #######################################################################
     ###             Pulsed measurement methods                          ###
     #######################################################################
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_measurement_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -403,7 +404,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigMeasurementSettingsChanged.emit(kwargs)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -416,7 +417,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigFastCounterSettingsChanged.emit(kwargs)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_ext_microwave_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -429,7 +430,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigExtMicrowaveSettingsChanged.emit(kwargs)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_analysis_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -442,7 +443,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigAnalysisSettingsChanged.emit(kwargs)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_extraction_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -455,8 +456,8 @@ class PulsedMasterLogic(LogicBase):
             self.sigExtractionSettingsChanged.emit(kwargs)
         return
 
-    @QtCore.Slot(int)
-    @QtCore.Slot(float)
+    @qudi_slot(int)
+    @qudi_slot(float)
     def set_timer_interval(self, interval):
         """
 
@@ -466,7 +467,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigTimerIntervalChanged.emit(interval)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def set_alternative_data_type(self, alt_data_type):
         """
 
@@ -477,14 +478,14 @@ class PulsedMasterLogic(LogicBase):
             self.sigAlternativeDataTypeChanged.emit(alt_data_type)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def manually_pull_data(self):
         """
         """
         self.sigManuallyPullData.emit()
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_ext_microwave(self, switch_on):
         """
 
@@ -494,7 +495,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigToggleExtMicrowave.emit(switch_on)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def ext_microwave_running_updated(self, is_running):
         """
 
@@ -505,7 +506,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigExtMicrowaveRunningUpdated.emit(is_running)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_pulse_generator(self, switch_on):
         """
 
@@ -515,7 +516,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigTogglePulser.emit(switch_on)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def pulser_running_updated(self, is_running):
         """
 
@@ -526,8 +527,8 @@ class PulsedMasterLogic(LogicBase):
             self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    @QtCore.Slot(bool)
-    @QtCore.Slot(bool, str)
+    @qudi_slot(bool)
+    @qudi_slot(bool, str)
     def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
         """
 
@@ -538,7 +539,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigToggleMeasurement.emit(start, stash_raw_data_tag)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def toggle_pulsed_measurement_pause(self, pause):
         """
 
@@ -548,7 +549,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigToggleMeasurementPause.emit(pause)
         return
 
-    @QtCore.Slot(bool, bool)
+    @qudi_slot(bool, bool)
     def measurement_status_updated(self, is_running, is_paused):
         """
 
@@ -560,8 +561,8 @@ class PulsedMasterLogic(LogicBase):
             self.sigMeasurementStatusUpdated.emit(is_running, is_paused)
         return
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(str, bool)
+    @qudi_slot(str)
+    @qudi_slot(str, bool)
     def do_fit(self, fit_function, use_alternative_data=False):
         """
 
@@ -573,14 +574,14 @@ class PulsedMasterLogic(LogicBase):
             self.sigDoFit.emit(fit_function, use_alternative_data)
         return
 
-    @QtCore.Slot(str, np.ndarray, object, bool)
-    def fit_updated(self, fit_name, fit_data, fit_result, use_alternative_data):
+    @qudi_slot(str, object, bool)
+    def fit_updated(self, fit_name, fit_result, use_alternative_data):
         """
 
         @return:
         """
         self.status_dict['fitting_busy'] = False
-        self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
+        self.sigFitUpdated.emit(fit_name, fit_result, use_alternative_data)
         return
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
@@ -659,7 +660,7 @@ class PulsedMasterLogic(LogicBase):
     #######################################################################
     ###             Sequence generator methods                          ###
     #######################################################################
-    @QtCore.Slot()
+    @qudi_slot()
     def clear_pulse_generator(self):
         still_busy = self.status_dict['sampling_ensemble_busy'] or self.status_dict[
             'sampling_sequence_busy'] or self.status_dict['loading_busy'] or self.status_dict[
@@ -676,8 +677,8 @@ class PulsedMasterLogic(LogicBase):
             self.sigClearPulseGenerator.emit()
         return
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(str, bool)
+    @qudi_slot(str)
+    @qudi_slot(str, bool)
     def sample_ensemble(self, ensemble_name, with_load=False):
         already_busy = self.status_dict['sampling_ensemble_busy'] or self.status_dict[
             'sampling_sequence_busy'] or self.sequencegeneratorlogic().module_state() == 'locked'
@@ -691,7 +692,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigSampleBlockEnsemble.emit(ensemble_name)
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def sample_ensemble_finished(self, ensemble):
         self.status_dict['sampling_ensemble_busy'] = False
         self.sigSampleEnsembleComplete.emit(ensemble)
@@ -703,8 +704,8 @@ class PulsedMasterLogic(LogicBase):
                 self.load_ensemble(ensemble.name)
         return
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(str, bool)
+    @qudi_slot(str)
+    @qudi_slot(str, bool)
     def sample_sequence(self, sequence_name, with_load=False):
         already_busy = self.status_dict['sampling_ensemble_busy'] or self.status_dict[
             'sampling_sequence_busy'] or self.sequencegeneratorlogic().module_state() == 'locked'
@@ -718,7 +719,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigSampleSequence.emit(sequence_name)
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def sample_sequence_finished(self, sequence):
         self.status_dict['sampling_sequence_busy'] = False
         self.sigSampleSequenceComplete.emit(sequence)
@@ -730,7 +731,7 @@ class PulsedMasterLogic(LogicBase):
                 self.load_sequence(sequence.name)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def load_ensemble(self, ensemble_name):
         if self.status_dict['loading_busy']:
             self.log.error('Loading of a different asset already in progress.\n'
@@ -749,7 +750,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigLoadBlockEnsemble.emit(ensemble_name)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def load_sequence(self, sequence_name):
         if self.status_dict['loading_busy']:
             self.log.error('Loading of a different asset already in progress.\n'
@@ -768,7 +769,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigLoadSequence.emit(sequence_name)
         return
 
-    @QtCore.Slot(str, str)
+    @qudi_slot(str, str)
     def loaded_asset_updated(self, asset_name, asset_type):
         """
 
@@ -800,7 +801,7 @@ class PulsedMasterLogic(LogicBase):
             self.pulsedmeasurementlogic().measurement_information = object_instance.measurement_information
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def save_pulse_block(self, block_instance):
         """
 
@@ -810,7 +811,7 @@ class PulsedMasterLogic(LogicBase):
         self.sigSavePulseBlock.emit(block_instance)
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def save_block_ensemble(self, ensemble_instance):
         """
 
@@ -821,7 +822,7 @@ class PulsedMasterLogic(LogicBase):
         self.sigSaveBlockEnsemble.emit(ensemble_instance)
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def save_sequence(self, sequence_instance):
         """
 
@@ -831,7 +832,7 @@ class PulsedMasterLogic(LogicBase):
         self.sigSaveSequence.emit(sequence_instance)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def delete_pulse_block(self, block_name):
         """
 
@@ -841,7 +842,7 @@ class PulsedMasterLogic(LogicBase):
         self.sigDeletePulseBlock.emit(block_name)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def delete_all_pulse_blocks(self):
         """
         Helper method to delete all pulse blocks at once.
@@ -851,7 +852,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigDeletePulseBlock.emit(block_name)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def delete_block_ensemble(self, ensemble_name):
         """
 
@@ -866,7 +867,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def delete_all_block_ensembles(self):
         """
         Helper method to delete all pulse block ensembles at once.
@@ -880,7 +881,7 @@ class PulsedMasterLogic(LogicBase):
                 self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
-    @QtCore.Slot(str)
+    @qudi_slot(str)
     def delete_sequence(self, sequence_name):
         """
 
@@ -894,7 +895,7 @@ class PulsedMasterLogic(LogicBase):
             self.sigDeleteSequence.emit(sequence_name)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def delete_all_pulse_sequences(self):
         """
         Helper method to delete all pulse sequences at once.
@@ -908,7 +909,7 @@ class PulsedMasterLogic(LogicBase):
                 self.sigDeleteSequence.emit(sequence_name)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -927,7 +928,7 @@ class PulsedMasterLogic(LogicBase):
         self.sigGeneratorSettingsChanged.emit(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def set_generation_parameters(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -950,9 +951,9 @@ class PulsedMasterLogic(LogicBase):
         self.sigSamplingSettingsChanged.emit(settings_dict)
         return
 
-    @QtCore.Slot(str)
-    @QtCore.Slot(str, dict)
-    @QtCore.Slot(str, dict, bool)
+    @qudi_slot(str)
+    @qudi_slot(str, dict)
+    @qudi_slot(str, dict, bool)
     def generate_predefined_sequence(self, generator_method_name, kwarg_dict=None, sample_and_load=False):
         """
 
@@ -969,7 +970,7 @@ class PulsedMasterLogic(LogicBase):
         self.sigGeneratePredefinedSequence.emit(generator_method_name, kwarg_dict)
         return
 
-    @QtCore.Slot(object, bool)
+    @qudi_slot(object, bool)
     def predefined_sequence_generated(self, asset_name, is_sequence):
         self.status_dict['predefined_generation_busy'] = False
         if asset_name is None:

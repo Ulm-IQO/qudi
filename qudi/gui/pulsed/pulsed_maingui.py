@@ -2372,43 +2372,25 @@ class PulsedMeasurementGui(GuiBase):
         @param bool use_alternative_data:
         @return:
         """
-        # Get formatted result string
-        if fit_method == 'No Fit':
-            formatted_fitresult = 'No Fit'
-        else:
-            try:
-                formatted_fitresult = units.create_formatted_output(result.result_str_dict)
-            except:
-                formatted_fitresult = 'This fit does not return formatted results'
+        print('fit_data_updated')
 
-        # block signals.
-        # Clear text widget and show formatted result string.
-        # Update plot and fit function selection ComboBox.
-        # Unblock signals.
+        # Update plot.
         if use_alternative_data:
-            self._pa.fit_param_alt_fit_func_ComboBox.blockSignals(True)
-            self._pa.alt_fit_param_results_TextBrowser.clear()
-            self._pa.alt_fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
-            if fit_method:
-                self._pa.fit_param_alt_fit_func_ComboBox.setCurrentFit(fit_method)
-            self.second_fit_image.setData(x=fit_data[0], y=fit_data[1])
-            if fit_method == 'No Fit' and self.second_fit_image in self._pa.pulse_analysis_second_PlotWidget.items():
-                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_fit_image)
-            elif fit_method != 'No Fit' and self.second_fit_image not in self._pa.pulse_analysis_second_PlotWidget.items():
-                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
-            self._pa.fit_param_alt_fit_func_ComboBox.blockSignals(False)
+            if not fit_config or fit_config == 'No Fit':
+                if self.second_fit_image in self._pa.pulse_analysis_second_PlotWidget.items():
+                    self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_fit_image)
+            else:
+                self.second_fit_image.setData(x=self.second_plot_image.xData, y=result.best_fit)
+                if self.second_fit_image not in self._pa.pulse_analysis_second_PlotWidget.items():
+                    self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
         else:
-            self._pa.fit_param_fit_func_ComboBox.blockSignals(True)
-            self._pa.fit_param_results_TextBrowser.clear()
-            self._pa.fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
-            if fit_method:
-                self._pa.fit_param_fit_func_ComboBox.setCurrentFit(fit_method)
-            self.fit_image.setData(x=fit_data[0], y=fit_data[1])
-            if fit_method == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
-                self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
-            elif fit_method != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
-                self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
-            self._pa.fit_param_fit_func_ComboBox.blockSignals(False)
+            if not fit_config or fit_config == 'No Fit':
+                if self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
+                    self._pa.pulse_analysis_PlotWidget.removeItem(self.second_fit_image)
+            else:
+                self.fit_image.setData(x=self.signal_image.xData, y=result.best_fit)
+                if self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
+                    self._pa.pulse_analysis_PlotWidget.addItem(self.second_fit_image)
         return
 
     @QtCore.Slot()
