@@ -204,11 +204,11 @@ class FitConfigurationListView(QtWidgets.QListView):
     def mouseMoveEvent(self, event):
         curr_index = self.indexAt(event.pos())
         if curr_index != self.__previous_index:
-            if self.__previous_index.isValid():
-                self.closePersistentEditor(self.__previous_index)
             if curr_index.isValid():
+                if self.__previous_index.isValid():
+                    self.closePersistentEditor(self.__previous_index)
                 self.openPersistentEditor(curr_index)
-            self.__previous_index = curr_index
+                self.__previous_index = curr_index
         return super().mouseMoveEvent(event)
 
     def eventFilter(self, object, event):
@@ -224,7 +224,7 @@ class FitConfigurationListView(QtWidgets.QListView):
     def remove_config_clicked(self, config_name):
         if self.__previous_index.isValid():
             self.closePersistentEditor(self.__previous_index)
-        self.__previous_index = QtCore.QModelIndex()
+            self.__previous_index = QtCore.QModelIndex()
         self.model().remove_configuration(config_name)
 
 
