@@ -259,6 +259,8 @@ class FitContainer(QtCore.QObject):
                     self._last_fit_result = model.fit(data, parameters, x=x)
                     self._last_fit_config = fit_config
                 self.sigLastFitResultChanged.emit(self._last_fit_config, self._last_fit_result)
+                return self._last_fit_config, self._last_fit_result
+            return '', None
 
     @staticmethod
     def formatted_result(fit_result, parameters_units=None):
