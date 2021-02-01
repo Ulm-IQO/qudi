@@ -379,3 +379,30 @@ class FitConfigurationWidget(QtWidgets.QWidget):
         if name and model:
             self.name_lineedit.clear()
             self._sigAddNewConfig.emit(name, model)
+
+
+class FitConfigurationDialog(QtWidgets.QDialog):
+    """
+    """
+
+    def __init__(self, *args, fit_config_model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle('Fit Configuration')
+        # create main layout
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
+        # create config widget
+        self.fit_config_widget = FitConfigurationWidget(fit_config_model=fit_config_model)
+        main_layout.addWidget(self.fit_config_widget)
+        # create dialog buttonbox
+        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok, QtCore.Qt.Horizontal)
+        min_width = QtGui.QFontMetrics(QtGui.QFont()).horizontalAdvance('OK OK OK')
+        button_box.buttons()[0].setMinimumWidth(min_width)
+        button_box.setCenterButtons(True)
+        button_box.accepted.connect(self.accept)
+        main_layout.addWidget(button_box)
+        current_size = self.sizeHint()
+        current_size.setWidth(current_size.width() * 2)
+        current_size.setHeight(current_size.height() * 2)
+        self.resize(current_size)
+
