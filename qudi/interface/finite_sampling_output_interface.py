@@ -164,3 +164,11 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         @param dict data: The frame data (values) to be emitted for all active channels (keys)
         """
         pass
+
+
+# ToDo: implement
+# class FiniteSamplingOutputConstraints:
+#     """
+#     """
+#     def __init__(self):
+
