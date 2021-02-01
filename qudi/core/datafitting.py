@@ -247,7 +247,7 @@ class FitContainer(QtCore.QObject):
                     self._last_fit_config = 'No Fit'
                 else:
                     config = self._configuration_model.get_configuration_by_name(fit_config)
-                    model = config.model
+                    model = _fit_models[config.model]()
                     estimator = config.estimator
                     add_parameters = config.custom_parameters
                     if estimator is None:
