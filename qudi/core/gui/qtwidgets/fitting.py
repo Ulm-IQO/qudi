@@ -41,13 +41,13 @@ class FitWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.selection_combobox = QtWidgets.QComboBox()
         self.selection_combobox.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         self.fit_pushbutton = QtWidgets.QPushButton('Fit')
         self.fit_pushbutton.setMinimumWidth(3 * self.fit_pushbutton.sizeHint().width())
         self.result_label = QtWidgets.QLabel()
+        self.result_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         self.result_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         main_layout.addWidget(self.fit_pushbutton, 0, 0)
         main_layout.addWidget(self.selection_combobox, 0, 1)
@@ -71,6 +71,7 @@ class FitWidget(QtWidgets.QWidget):
         # link new fit container
         self.result_label.clear()
         self.selection_combobox.clear()
+        self.selection_combobox.addItem('No Fit')
         if fit_container is None:
             self.__fit_container_ref = lambda: None
         else:
@@ -93,12 +94,14 @@ class FitWidget(QtWidgets.QWidget):
 
     @qudi_slot(str, object)
     def update_fit_result(self, fit_config, fit_result):
-        if fit_config is not None:
+        if fit_config:
+            if self.selection_combobox.currentText() != fit_config:
+                self.selection_combobox.setCurrentText(fit_config)
             container = self.__fit_container_ref()
             if container is not None:
-                if self.selection_combobox.currentText() != fit_config:
-                    self.selection_combobox.setCurrentText(fit_config)
                 self.result_label.setText(container.formatted_result(fit_result))
+            else:
+                self.result_label.setText('')
 
     @qudi_slot()
     def _fit_clicked(self):
@@ -201,11 +204,11 @@ class FitConfigurationListView(QtWidgets.QListView):
     def mouseMoveEvent(self, event):
         curr_index = self.indexAt(event.pos())
         if curr_index != self.__previous_index:
-            if self.__previous_index.isValid():
-                self.closePersistentEditor(self.__previous_index)
             if curr_index.isValid():
+                if self.__previous_index.isValid():
+                    self.closePersistentEditor(self.__previous_index)
                 self.openPersistentEditor(curr_index)
-            self.__previous_index = curr_index
+                self.__previous_index = curr_index
         return super().mouseMoveEvent(event)
 
     def eventFilter(self, object, event):
@@ -221,7 +224,7 @@ class FitConfigurationListView(QtWidgets.QListView):
     def remove_config_clicked(self, config_name):
         if self.__previous_index.isValid():
             self.closePersistentEditor(self.__previous_index)
-        self.__previous_index = QtCore.QModelIndex()
+            self.__previous_index = QtCore.QModelIndex()
         self.model().remove_configuration(config_name)
 
 
