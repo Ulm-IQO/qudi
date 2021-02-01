@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1341</width>
+    <width>1231</width>
     <height>703</height>
    </rect>
   </property>
@@ -25,26 +25,15 @@
      <property name="title">
       <string>Fourier Transform</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_23">
-      <item row="0" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0,0">
-        <property name="spacing">
-         <number>12</number>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QSplitter" name="second_plot_splitter">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
         </property>
-        <item>
-         <widget class="PlotWidget" name="pulse_analysis_second_PlotWidget"/>
-        </item>
-        <item>
-         <widget class="Line" name="line_3">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="FitWidget" name="widget_2" native="true"/>
-        </item>
-       </layout>
+        <widget class="PlotWidget" name="pulse_analysis_second_PlotWidget"/>
+        <widget class="FitWidget" name="second_plot_fitwidget" native="true"/>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -60,42 +49,22 @@
      <property name="title">
       <string>Analysis Trace</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_19">
-      <item row="1" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,0">
-        <property name="spacing">
-         <number>12</number>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QSplitter" name="first_plot_splitter">
+        <property name="midLineWidth">
+         <number>0</number>
         </property>
-        <item>
-         <widget class="PlotWidget" name="pulse_analysis_PlotWidget">
-          <property name="sizeAdjustPolicy">
-           <enum>QAbstractScrollArea::AdjustIgnored</enum>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="Line" name="line_2">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="FitWidget" name="widget" native="true"/>
-        </item>
-       </layout>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="PlotWidget" name="pulse_analysis_PlotWidget">
+         <property name="sizeAdjustPolicy">
+          <enum>QAbstractScrollArea::AdjustIgnored</enum>
+         </property>
+        </widget>
+        <widget class="FitWidget" name="first_plot_fitwidget" native="true"/>
+       </widget>
       </item>
      </layout>
     </widget>

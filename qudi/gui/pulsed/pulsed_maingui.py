@@ -31,7 +31,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.util import units
 from qudi.core.util.helpers import natural_sort
 from qudi.core.gui.colordefs import QudiPalettePale as palette
-# from qudi.gui.fitsettings import FitSettingsDialog
+from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.module import GuiBase
 from qudi.core.gui import uic
 from PySide2 import QtCore, QtWidgets  # , uic
@@ -179,6 +179,10 @@ class PulsedMeasurementGui(GuiBase):
         self._as = AnalysisSettingDialog()
         self._pgs = GeneratorSettingDialog()
         self._pm_cfg = PredefinedMethodsConfigDialog()
+        self._fcd = FitConfigurationDialog(
+            parent=self._mw,
+            fit_config_model=self.pulsedmasterlogic().fit_config_model
+        )
 
         self._mw.tabWidget.addTab(self._pa, 'Analysis')
         self._mw.tabWidget.addTab(self._pe, 'Pulse Extraction')
@@ -260,7 +264,7 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.actionSave.triggered.connect(self.save_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
         self._mw.action_Settings_Generator.triggered.connect(self.show_generator_settings)
-        # self._mw.action_FitSettings.triggered.connect(self._fsd.show)
+        self._mw.action_FitSettings.triggered.connect(self._fcd.show)
         return
 
     def _connect_dialog_signals(self):
@@ -278,10 +282,6 @@ class PulsedMeasurementGui(GuiBase):
         self._pgs.accepted.connect(self.apply_generator_settings)
         self._pgs.rejected.connect(self.keep_former_generator_settings)
         self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_generator_settings)
-
-        # Connect signals used in fit settings dialog
-        # self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
-        # self._fsd.sigFitsUpdated.connect(self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions)
         return
 
     def _connect_pulse_generator_tab_signals(self):
@@ -333,9 +333,6 @@ class PulsedMeasurementGui(GuiBase):
 
     def _connect_analysis_tab_signals(self):
         # Connect pulse analysis tab signals
-        self._pa.fit_param_PushButton.clicked.connect(self.fit_clicked)
-        self._pa.alt_fit_param_PushButton.clicked.connect(self.fit_clicked)
-
         self._pa.ext_control_use_mw_CheckBox.stateChanged.connect(self.microwave_settings_changed)
         self._pa.ext_control_mw_freq_DoubleSpinBox.editingFinished.connect(self.microwave_settings_changed)
         self._pa.ext_control_mw_power_DoubleSpinBox.editingFinished.connect(self.microwave_settings_changed)
@@ -433,9 +430,6 @@ class PulsedMeasurementGui(GuiBase):
         self._pgs.accepted.disconnect()
         self._pgs.rejected.disconnect()
         self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
-
-        # Connect signals used in fit settings dialog
-        # self._fsd.sigFitsUpdated.disconnect()
         return
 
     def _disconnect_pulse_generator_tab_signals(self):
@@ -2235,10 +2229,15 @@ class PulsedMeasurementGui(GuiBase):
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
 
         # Fit settings dialog
-        # self._fsd = FitSettingsDialog(self.pulsedmasterlogic().fit_container)
-        # self._fsd.applySettings()
-        # self._pa.fit_param_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
-        # self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
+        fit_containers = self.pulsedmasterlogic().fit_containers
+        self._pa.first_plot_fitwidget.link_fit_container(fit_containers[0])
+        self._pa.second_plot_fitwidget.link_fit_container(fit_containers[1])
+        # ToDo: Init fit config dialog
+
+        # Adjust splitter ratio
+        window_width = self._mw.geometry().width()
+        self._pa.first_plot_splitter.setSizes((window_width, window_width/3))
+        self._pa.second_plot_splitter.setSizes((window_width, window_width / 3))
 
         # set boundaries
         self._pa.ana_param_num_laser_pulse_SpinBox.setMinimum(1)
