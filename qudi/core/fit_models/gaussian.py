@@ -103,20 +103,6 @@ class Gaussian2D(FitModelBase):
         self.set_param_hint('sigma_y', value=0, min=0, max=np.inf)
         self.set_param_hint('theta', value=0., min=-np.pi, max=np.pi)
 
-    # @staticmethod
-    # def _model_function(xy, offset, amplitude, center_x, center_y, sigma_x, sigma_y, theta):
-    #     try:
-    #         a = np.cos(-theta) ** 2 / (2 * sigma_x ** 2) + np.sin(-theta) ** 2 / (2 * sigma_y ** 2)
-    #         b = np.sin(2 * -theta) / (4 * sigma_y ** 2) - np.sin(2 * -theta) / (4 * sigma_x ** 2)
-    #         c = np.sin(-theta) ** 2 / (2 * sigma_x ** 2) + np.cos(-theta) ** 2 / (2 * sigma_y ** 2)
-    #     except ZeroDivisionError:
-    #         return np.full(xy[0].shape, offset)
-    #     x_prime = xy[0] - center_x
-    #     y_prime = xy[1] - center_y
-    #     gauss = offset + amplitude * np.exp(
-    #         -(a * x_prime ** 2 + 2 * b * x_prime * y_prime + c * y_prime ** 2))
-    #     return gauss.ravel()
-
     @staticmethod
     def _model_function(xy, offset, amplitude, center_x, center_y, sigma_x, sigma_y, theta):
         try:
@@ -124,12 +110,12 @@ class Gaussian2D(FitModelBase):
             b = np.sin(2 * -theta) / (4 * sigma_y ** 2) - np.sin(2 * -theta) / (4 * sigma_x ** 2)
             c = np.sin(-theta) ** 2 / (2 * sigma_x ** 2) + np.cos(-theta) ** 2 / (2 * sigma_y ** 2)
         except ZeroDivisionError:
-            return offset
+            return np.full(xy[0].shape, offset)
         x_prime = xy[0] - center_x
         y_prime = xy[1] - center_y
         gauss = offset + amplitude * np.exp(
             -(a * x_prime ** 2 + 2 * b * x_prime * y_prime + c * y_prime ** 2))
-        return gauss
+        return gauss.ravel()
 
     @estimator('Peak')
     def estimate_peak(self, data, xy):
