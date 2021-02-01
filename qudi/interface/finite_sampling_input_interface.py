@@ -160,3 +160,11 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         @return dict: Sample arrays (values) for each active channel (keys)
         """
         pass
+
+
+# ToDo: implement
+# class FiniteSamplingInputConstraints:
+#     """
+#     """
+#     def __init__(self):
+
