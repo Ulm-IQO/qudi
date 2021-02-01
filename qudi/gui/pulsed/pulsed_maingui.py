@@ -26,6 +26,7 @@ import numpy as np
 import pyqtgraph as pg
 from enum import Enum
 
+from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.util import units
@@ -481,8 +482,6 @@ class PulsedMeasurementGui(GuiBase):
 
     def _disconnect_analysis_tab_signals(self):
         # Connect pulse analysis tab signals
-        self._pa.fit_param_PushButton.clicked.disconnect()
-        self._pa.alt_fit_param_PushButton.clicked.disconnect()
         self._pa.ext_control_use_mw_CheckBox.stateChanged.disconnect()
         self._pa.ext_control_mw_freq_DoubleSpinBox.editingFinished.disconnect()
         self._pa.ext_control_mw_power_DoubleSpinBox.editingFinished.disconnect()
@@ -599,7 +598,7 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def pulser_on_off_clicked(self, checked):
         """ Manually switch the pulser output on/off. """
         if checked:
@@ -609,7 +608,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().toggle_pulse_generator(checked)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def pulser_running_updated(self, is_running):
         """
 
@@ -637,13 +636,13 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.pulser_on_off_PushButton.blockSignals(False)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def clear_pulser_clicked(self):
         """ Delete all loaded files in the device's current memory. """
         self.pulsedmasterlogic().clear_pulse_generator()
         return
 
-    @QtCore.Slot(str, str)
+    @qudi_slot(str, str)
     def loaded_asset_updated(self, asset_name, asset_type):
         """ Check the current loaded asset from the logic and update the display. """
         label = self._mw.current_loaded_asset_Label
@@ -789,14 +788,14 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.actionSave.setEnabled(True)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def measurement_timer_changed(self):
         """ This method handles the analysis timing"""
         timer_interval = self._pa.time_param_ana_periode_DoubleSpinBox.value()
         self.pulsedmasterlogic().set_timer_interval(timer_interval)
         return
 
-    @QtCore.Slot(float, int, float)
+    @qudi_slot(float, int, float)
     def measurement_timer_updated(self, elapsed_time, elapsed_sweeps, timer_interval):
         """
         Refreshes the elapsed time and sweeps of the measurement.
@@ -1328,7 +1327,7 @@ class PulsedMeasurementGui(GuiBase):
         # TODO: implement
         pass
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def pulse_generator_settings_updated(self, settings_dict):
         """
 
@@ -1480,7 +1479,7 @@ class PulsedMeasurementGui(GuiBase):
                 widget.blockSignals(False)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def generation_parameters_changed(self):
         """
 
@@ -1513,7 +1512,7 @@ class PulsedMeasurementGui(GuiBase):
         self._pg.block_editor.set_laser_channel_is_digital(settings_dict['laser_channel'].startswith('d'))
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def generation_parameters_updated(self, settings_dict):
         """
 
@@ -1755,7 +1754,7 @@ class PulsedMeasurementGui(GuiBase):
         self._pg.curr_ensemble_laserpulses_SpinBox.setValue(lasers)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def update_block_dict(self, block_dict):
         """
 
@@ -1784,7 +1783,7 @@ class PulsedMeasurementGui(GuiBase):
         self._pg.saved_blocks_ComboBox.blockSignals(False)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def update_ensemble_dict(self, ensemble_dict):
         """
 
@@ -1835,7 +1834,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().sample_ensemble(ensemble_name, False)
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def sample_ensemble_finished(self, ensemble):
         """
         This method
@@ -1925,7 +1924,7 @@ class PulsedMeasurementGui(GuiBase):
             method_name, param_dict, sample_and_load)
         return
 
-    @QtCore.Slot(object, bool)
+    @qudi_slot(object, bool)
     def predefined_generated(self, asset_name, is_sequence):
         # Enable all "Generate" buttons in predefined methods tab
         for button in self._pm.gen_buttons.values():
@@ -1948,7 +1947,7 @@ class PulsedMeasurementGui(GuiBase):
                 self._sg.sample_sequence_PushButton.setEnabled(False)
         return
 
-    @QtCore.Slot(list)
+    @qudi_slot(list)
     def waveform_list_updated(self, waveform_list):
         """
 
@@ -2069,7 +2068,7 @@ class PulsedMeasurementGui(GuiBase):
         self._sg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def update_sequence_dict(self, sequence_dict):
         """
 
@@ -2118,7 +2117,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().sample_sequence(sequence_name, False)
         return
 
-    @QtCore.Slot(object)
+    @qudi_slot(object)
     def sample_sequence_finished(self, sequence):
         """
         This method
@@ -2160,7 +2159,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().load_sequence(sequence_name)
         return
 
-    @QtCore.Slot(list)
+    @qudi_slot(list)
     def sequence_list_updated(self, sequence_list):
         """
 
@@ -2232,7 +2231,12 @@ class PulsedMeasurementGui(GuiBase):
         fit_containers = self.pulsedmasterlogic().fit_containers
         self._pa.first_plot_fitwidget.link_fit_container(fit_containers[0])
         self._pa.second_plot_fitwidget.link_fit_container(fit_containers[1])
-        # ToDo: Init fit config dialog
+        self._pa.first_plot_fitwidget.sigDoFit.connect(
+            lambda x: self.pulsedmasterlogic().do_fit(x, False)
+        )
+        self._pa.second_plot_fitwidget.sigDoFit.connect(
+            lambda x: self.pulsedmasterlogic().do_fit(x, True)
+        )
 
         # Adjust splitter ratio
         window_width = self._mw.geometry().width()
@@ -2304,7 +2308,7 @@ class PulsedMeasurementGui(GuiBase):
         self._pa.ana_param_fc_bins_ComboBox.blockSignals(False)
         return
 
-    @QtCore.Slot()
+    @qudi_slot()
     def measurement_data_updated(self):
         """
 
@@ -2359,24 +2363,11 @@ class PulsedMeasurementGui(GuiBase):
         self.update_laser_data()
         return
 
-    @QtCore.Slot()
-    def fit_clicked(self):
-        """Fits the current data"""
-        if self.sender().objectName().startswith('alt_fit_param'):
-            current_fit_method = self._pa.fit_param_alt_fit_func_ComboBox.getCurrentFit()[0]
-            use_alt_data = True
-        else:
-            current_fit_method = self._pa.fit_param_fit_func_ComboBox.getCurrentFit()[0]
-            use_alt_data = False
-        self.pulsedmasterlogic().do_fit(current_fit_method, use_alt_data)
-        return
-
-    @QtCore.Slot(str, np.ndarray, object, bool)
-    def fit_data_updated(self, fit_method, fit_data, result, use_alternative_data):
+    @qudi_slot(str, object, bool)
+    def fit_data_updated(self, fit_config, result, use_alternative_data):
         """
 
-        @param str fit_method:
-        @param numpy.ndarray fit_data:
+        @param str fit_config:
         @param object result:
         @param bool use_alternative_data:
         @return:
@@ -2451,7 +2442,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().set_ext_microwave_settings(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def microwave_settings_updated(self, settings_dict):
         """
 
@@ -2500,7 +2491,7 @@ class PulsedMeasurementGui(GuiBase):
             self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(False)
         return
 
-    @QtCore.Slot(bool)
+    @qudi_slot(bool)
     def microwave_running_updated(self, is_running):
         """
 
@@ -2522,7 +2513,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().set_fast_counter_settings(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def fast_counter_settings_updated(self, settings_dict):
         """
 
@@ -2580,7 +2571,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().set_measurement_settings(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def measurement_settings_updated(self, settings_dict):
         """
 
@@ -2877,7 +2868,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().set_extraction_settings(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def extraction_settings_updated(self, settings_dict):
         """
 
@@ -3017,7 +3008,7 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().set_analysis_settings(settings_dict)
         return
 
-    @QtCore.Slot(dict)
+    @qudi_slot(dict)
     def analysis_settings_updated(self, settings_dict):
         """
 
