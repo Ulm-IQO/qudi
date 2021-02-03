@@ -148,6 +148,16 @@ class Base(QtCore.QObject):
     _threaded = False
     _module_meta = {'base': 'hardware'}  # can be overwritten by subclasses of Base
 
+    # This entire __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
+    # See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
+    def __new__(cls, *args, **kwargs):
+        for attr_name in dir(cls):
+            attr = getattr(cls, attr_name)
+            if hasattr(attr, '__isabstractmethod__') and getattr(attr, '__isabstractmethod__'):
+                raise TypeError(f'Can\'t instantiate abstract class {cls.__name__} '
+                                f'with abstract method {attr_name}')
+        return super(Base, cls).__new__(cls, *args, **kwargs)
+
     def __init__(self, qudi_main_weakref, name, config=None, callbacks=None, **kwargs):
         """
         Initialise Base class object and set up its state machine.
