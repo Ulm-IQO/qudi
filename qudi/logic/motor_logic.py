@@ -59,11 +59,18 @@ class MotorLogic(LogicBase):
         """
         if 'unit' in param_dict:
             if param_dict['unit'] == 'step':
+                try:
+                    param_dict['x'] = int(round(param_dict['x']))
+                except KeyError:
+                    pass
+                try:
+                    param_dict['y'] = int(round(param_dict['y']))
+                except KeyError:
+                    pass
                 return self._motor().move_rel(param_dict)
             elif param_dict['unit'] == 'm':
                 try:
                     param_dict['x'] = int(round(param_dict['x'] / self.constraints['x']['resolution']))
-                    print(param_dict['x'])
                 except KeyError:
                     pass
                 try:

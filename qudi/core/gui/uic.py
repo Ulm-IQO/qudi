@@ -50,8 +50,8 @@ def loadUi(file_path, base_widget):
     file_path = _convert_ui_to_absolute_paths(file_path)
 
     # Compile .ui-file into python code
+    file_path = '"' + file_path + '"'
     compiled = os.popen('pyside2-uic {0}'.format(file_path)).read()
-    print("name is ", compiled)
     # Find class name
     match = __ui_class_pattern.search(compiled)
     if match is None:

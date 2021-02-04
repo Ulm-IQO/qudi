@@ -32,7 +32,7 @@ class StepperMotor(Base, MotorInterface):
     _com_port = ConfigOption('comport', 'COM4', missing='warn')
     _baud_rate = ConfigOption('baudrate', 9600, missing='warn')
     _resolution = ConfigOption('resolution', 0.625, missing='warn')
-    _unit = ConfigOption('unit', default='m')
+    _unit = ConfigOption('unit', default='step')
     _timeout = ConfigOption('timeout', default=10)
     _write_timeout = ConfigOption('write_timeout', default=0)
 
@@ -149,7 +149,7 @@ class StepperMotor(Base, MotorInterface):
             xvalue = 0
         except TypeError:
             self.log.error('Input must be an integer')
-            return -1
+            raise TypeError
         try:
             yvalue = param_dict['y']
             yvalue = self._check_input(yvalue)
