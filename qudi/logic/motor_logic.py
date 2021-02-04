@@ -37,12 +37,11 @@ class MotorLogic(LogicBase):
         """ Initialisation performed during activation of the module.
         """
         # Store references to connected modules
-        self._motor = self._motor()
-        self._motor.set_velocity({'x': self._motor_velocity, 'y': self._motor_velocity})
+        self._motor().set_velocity({'x': self._motor_velocity, 'y': self._motor_velocity})
         self.constraints = self.get_constraints()
 
     def on_deactivate(self):
-        self._motor.abort()
+        self._motor().abort()
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -51,7 +50,7 @@ class MotorLogic(LogicBase):
                       that proper display elements with boundary conditions
                       could be made.
         """
-        constraints = self._motor.get_constraints()
+        constraints = self._motor().get_constraints()
         return constraints
 
     def move_rel(self, param_dict):
@@ -60,7 +59,7 @@ class MotorLogic(LogicBase):
         """
         if 'unit' in param_dict:
             if param_dict['unit'] == 'step':
-                return self._motor.move_rel(param_dict)
+                return self._motor().move_rel(param_dict)
             elif param_dict['unit'] == 'm':
                 try:
                     param_dict['x'] = int(round(param_dict['x'] / self.constraints['x']['resolution']))
@@ -71,29 +70,29 @@ class MotorLogic(LogicBase):
                     param_dict['y'] = int(round(param_dict['y'] / self.constraints['y']['resolution']))
                 except KeyError:
                     pass
-                return self._motor.move_rel(param_dict)
+                return self._motor().move_rel(param_dict)
         else:
-            return self._motor.move_rel(param_dict)
+            return self._motor().move_rel(param_dict)
 
     def abort(self):
-        return self._motor.abort()
+        return self._motor().abort()
 
     def get_position(self):
         """Retrieve position of each motor axis"""
-        param_dict = self._motor.get_pos()
+        param_dict = self._motor().get_pos()
         return param_dict
 
     def get_status(self):
         """Retrieve status of each motor axis"""
-        param_dict = self._motor.get_status()
+        param_dict = self._motor().get_status()
         return param_dict
 
     def get_velocity(self):
         """Retrieve velocity of each motor axis"""
-        param_dict = self._motor.get_velocity()
+        param_dict = self._motor().get_velocity()
         return param_dict
 
     def set_velocity(self, param_dict):
         """Set velocity of each motor axis"""
         # todo also in units if this turns out to be helpful
-        return self._motor.set_velocity(param_dict)
+        return self._motor().set_velocity(param_dict)
