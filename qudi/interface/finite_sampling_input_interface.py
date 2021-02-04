@@ -21,17 +21,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.core.interface import abstract_interface_method
-from qudi.core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import InterfaceBase
 
 
-class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
+class FiniteSamplingInputInterface(InterfaceBase):
     """
     ToDo: Document
     """
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def constraints(self):
         """
         ToDo: Document
@@ -39,7 +39,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def active_channels(self):
         """ Names of all currently active channels.
 
@@ -48,7 +48,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def sample_rate(self):
         """ The sample rate (in Hz) at which the samples will be acquired.
 
@@ -57,7 +57,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def frame_size(self):
         """ Currently set number of samples per channel to acquire for each data frame.
 
@@ -66,7 +66,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def samples_in_buffer(self):
         """ Currently available samples per channel being held in the input buffer.
         This is the current minimum number of samples to be read with "get_buffered_samples()"
@@ -76,7 +76,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_sample_rate(self, rate):
         """ Will set the sample rate to a new value.
 
@@ -84,7 +84,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_active_channels(self, channels):
         """ Will set the currently active channels. All other channels will be deactivated.
 
@@ -92,7 +92,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_frame_size(self, size):
         """ Will set the number of samples per channel to acquire within one frame.
 
@@ -100,7 +100,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def start_buffered_acquisition(self):
         """ Will start the acquisition of a data frame in a non-blocking way.
         Must return immediately and not wait for the data acquisition to finish.
@@ -109,7 +109,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def stop_buffered_acquisition(self):
         """ Will abort the currently running data frame acquisition.
         Will return AFTER the data acquisition has been terminated without waiting for all samples
@@ -119,7 +119,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active channels read from the frame
         buffer.
@@ -144,7 +144,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def acquire_frame(self, frame_size=None):
         """ Acquire a single data frame for all active channels.
         This method call is blocking until the entire data frame has been acquired.
