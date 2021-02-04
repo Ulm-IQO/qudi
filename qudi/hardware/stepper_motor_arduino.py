@@ -20,13 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import re
 import time
-from qudi.core.module import Base
 from qudi.interface.motor_interface import MotorInterface
 import serial
 from qudi.core.configoption import ConfigOption
 
 
-class StepperMotor(Base, MotorInterface):
+class StepperMotor(MotorInterface):
     """todo"""
     _com_port = ConfigOption('comport', 'COM4', missing='warn')
     _baud_rate = ConfigOption('baudrate', 9600, missing='warn')
