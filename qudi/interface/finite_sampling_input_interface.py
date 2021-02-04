@@ -21,17 +21,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.core.interface import abstract_interface_method
-from qudi.core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import InterfaceBase
+from qudi.core.util.helpers import in_range
 
 
-class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
+class FiniteSamplingInputInterface(InterfaceBase):
     """
     ToDo: Document
     """
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def constraints(self):
         """
         ToDo: Document
@@ -39,7 +40,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def active_channels(self):
         """ Names of all currently active channels.
 
@@ -48,7 +49,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def sample_rate(self):
         """ The sample rate (in Hz) at which the samples will be acquired.
 
@@ -57,7 +58,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def frame_size(self):
         """ Currently set number of samples per channel to acquire for each data frame.
 
@@ -66,7 +67,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def samples_in_buffer(self):
         """ Currently available samples per channel being held in the input buffer.
         This is the current minimum number of samples to be read with "get_buffered_samples()"
@@ -76,7 +77,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_sample_rate(self, rate):
         """ Will set the sample rate to a new value.
 
@@ -84,7 +85,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_active_channels(self, channels):
         """ Will set the currently active channels. All other channels will be deactivated.
 
@@ -92,7 +93,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_frame_size(self, size):
         """ Will set the number of samples per channel to acquire within one frame.
 
@@ -100,7 +101,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def start_buffered_acquisition(self):
         """ Will start the acquisition of a data frame in a non-blocking way.
         Must return immediately and not wait for the data acquisition to finish.
@@ -109,7 +110,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def stop_buffered_acquisition(self):
         """ Will abort the currently running data frame acquisition.
         Will return AFTER the data acquisition has been terminated without waiting for all samples
@@ -119,7 +120,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active channels read from the frame
         buffer.
@@ -144,7 +145,7 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def acquire_frame(self, frame_size=None):
         """ Acquire a single data frame for all active channels.
         This method call is blocking until the entire data frame has been acquired.
@@ -162,9 +163,62 @@ class FiniteSamplingInputInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-# ToDo: implement
-# class FiniteSamplingInputConstraints:
-#     """
-#     """
-#     def __init__(self):
+class FiniteSamplingInputConstraints:
+    """ A container to hold all constraints for finite input sampling devices.
+    """
+    def __init__(self, channel_units, frame_size_limits, sample_rate_limits):
+        assert len(sample_rate_limits) == 2, 'Sample rate limits must be iterable of length 2'
+        assert len(frame_size_limits) == 2, 'Frame size limits must be iterable of length 2'
+        assert all(lim > 0 for lim in sample_rate_limits), 'Sample rate limits must be > 0'
+        assert all(lim > 0 for lim in frame_size_limits), 'Frame size limits must be > 0'
+        assert len(channel_units) > 0, 'Specify at least one channel with unit in config'
+        assert all(isinstance(name, str) and name for name in channel_units), \
+            'Channel names must be non-empty strings'
+        assert all(isinstance(unit, str) for unit in channel_units.values()), \
+            'Channel units must be strings'
 
+        self._sample_rate_limits = (float(min(sample_rate_limits)), float(max(sample_rate_limits)))
+        self._frame_size_limits = (int(round(min(frame_size_limits))),
+                                   int(round(max(frame_size_limits))))
+        self._channel_units = channel_units.copy()
+
+    @property
+    def channel_units(self):
+        return self._channel_units.copy()
+
+    @property
+    def channel_names(self):
+        return tuple(self._channel_units)
+
+    @property
+    def sample_rate_limits(self):
+        return self._sample_rate_limits
+
+    @property
+    def min_sample_rate(self):
+        return self._sample_rate_limits[0]
+
+    @property
+    def max_sample_rate(self):
+        return self._sample_rate_limits[1]
+
+    @property
+    def frame_size_limits(self):
+        return self._frame_size_limits
+
+    @property
+    def min_frame_size(self):
+        return self._frame_size_limits[0]
+
+    @property
+    def max_frame_size(self):
+        return self._frame_size_limits[1]
+
+    def channel_valid(self, channel):
+        return channel in self._channel_units
+
+    def sample_rate_in_range(self, rate):
+        return in_range(rate, *self._sample_rate_limits)
+
+    def frame_size_in_range(self, size):
+        return in_range(size, *self._frame_size_limits)

@@ -23,13 +23,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from qudi.core.module import Base
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
 from qudi.interface.microwave_interface import MicrowaveMode, TriggerEdge
 
 
-class MicrowaveDummy(Base, MicrowaveInterface):
+class MicrowaveDummy(MicrowaveInterface):
     """ A dummy class to emulate a microwave source.
 
     Example config for copy-paste:
