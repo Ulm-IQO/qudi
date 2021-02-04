@@ -168,13 +168,13 @@ class FiniteSamplingOutputInterface(InterfaceBase):
 
 
 class FiniteSamplingOutputConstraints:
-    """ A container to hold all limits for microwave sources.
+    """ A container to hold all constraints for finite output sampling devices.
     """
     def __init__(self, supported_modes, channel_units, frame_size_limits, sample_rate_limits):
         assert len(sample_rate_limits) == 2, 'Sample rate limits must be iterable of length 2'
-        assert len(frame_size_limits) == 2, 'Acquisition limits must be iterable of length 2'
+        assert len(frame_size_limits) == 2, 'Frame size limits must be iterable of length 2'
         assert all(lim > 0 for lim in sample_rate_limits), 'Sample rate limits must be > 0'
-        assert all(lim > 0 for lim in frame_size_limits), 'Acquisition limits must be > 0'
+        assert all(lim > 0 for lim in frame_size_limits), 'Frame size limits must be > 0'
         assert len(channel_units) > 0, 'Specify at least one channel with unit in config'
         assert all(isinstance(name, str) and name for name in channel_units), \
             'Channel names must be non-empty strings'
