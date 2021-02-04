@@ -22,7 +22,7 @@ top-level directory of this distribution and at
 
 import copy
 import weakref
-from qudi.core.interface import InterfaceMethod
+from qudi.core.interface import InterfaceAttributeMapper
 
 
 class Connector:
@@ -44,52 +44,22 @@ class Connector:
         self.interface = interface
         self.name = name
         self.optional = optional
-        self.obj_ref = None
+        self.obj_ref = lambda: None
 
     def __call__(self):
         """ Return reference to the module that this connector is connected to. """
-        obj = None if self.obj_ref is None else self.obj_ref()
-
+        obj = self.obj_ref()
         if obj is None:
             if self.optional:
                 return None
             raise Exception(
                 'Connector {0} (interface {1}) is not connected.'.format(self.name, self.interface))
 
-        class ConnectedInterfaceProxy:
-            """
-
-            """
-            def __getattribute__(*args):
-                attr = getattr(obj, args[1])
-                if isinstance(attr, InterfaceMethod):
-                    return attr[self.interface]
-                else:
-                    return attr
-
-            def __setattr__(*args):
-                return setattr(obj, args[1], args[2])
-
-            def __delattr__(*args):
-                return delattr(obj, args[1])
-
-            def __repr__(*args):
-                return repr(obj)
-
-            def __str__(*args):
-                return str(obj)
-
-            def __dir__(*args):
-                return dir(obj)
-
-            def __sizeof__(*args):
-                return obj.__sizeof__()
-
-        return ConnectedInterfaceProxy()
+        return _ConnectedInterfaceProxy(obj, self.interface)
 
     @property
     def is_connected(self):
-        return self.obj_ref is not None and self.obj_ref() is not None
+        return self.obj_ref() is not None
 
     def connect(self, target):
         """ Check if target is connectible by this connector and connect."""
@@ -117,7 +87,7 @@ class Connector:
 
     def disconnect(self):
         """ Disconnect connector. """
-        self.obj_ref = None
+        self.obj_ref = lambda: None
 
     # def __repr__(self):
     #     return '<{0}: name={1}, interface={2}, object={3}>'.format(
@@ -129,3 +99,101 @@ class Connector:
                    'optional': copy.copy(self.optional)}
         newargs.update(kwargs)
         return Connector(**newargs)
+
+
+class _ConnectedInterfaceProxy:
+    """ Instances of this class serve as proxies for qudi hardware modules to be able to hide
+    overloaded attributes from the user when connecting via qudi.core.connector.Connector objects.
+
+    Heavily inspired by this python recipe under PSF License:
+    https://code.activestate.com/recipes/496741-object-proxying/
+    """
+
+    __slots__ = ["_obj", "_interface", "__weakref__"]
+
+    def __init__(self, obj, interface):
+        object.__setattr__(self, "_obj", obj)
+        object.__setattr__(self, "_interface", interface)
+
+    # proxying (special cases)
+    def __getattribute__(self, name):
+        attr = getattr(object.__getattribute__(self, "_obj"), name)
+        if isinstance(attr, InterfaceAttributeMapper):
+            return attr[object.__getattribute__(self, "_interface")]
+        return attr
+
+    def __delattr__(self, name):
+        attr = getattr(object.__getattribute__(self, "_obj"), name)
+        if isinstance(attr, InterfaceAttributeMapper):
+            del attr[object.__getattribute__(self, "_interface")]
+        else:
+            delattr(object.__getattribute__(self, "_obj"), name)
+
+    def __setattr__(self, name, value):
+        attr = getattr(object.__getattribute__(self, "_obj"), name)
+        if isinstance(attr, InterfaceAttributeMapper):
+            attr[object.__getattribute__(self, "_interface")] = value
+        else:
+            setattr(object.__getattribute__(self, "_obj"), name, value)
+
+    def __nonzero__(self):
+        return bool(object.__getattribute__(self, "_obj"))
+
+    def __str__(self):
+        return str(object.__getattribute__(self, "_obj"))
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, "_obj"))
+
+    # factories
+    _special_names = (
+        '__abs__', '__add__', '__and__', '__call__', '__cmp__', '__coerce__',
+        '__contains__', '__delitem__', '__delslice__', '__div__', '__divmod__',
+        '__eq__', '__float__', '__floordiv__', '__ge__', '__getitem__',
+        '__getslice__', '__gt__', '__hash__', '__hex__', '__iadd__', '__iand__',
+        '__idiv__', '__idivmod__', '__ifloordiv__', '__ilshift__', '__imod__',
+        '__imul__', '__int__', '__invert__', '__ior__', '__ipow__', '__irshift__',
+        '__isub__', '__iter__', '__itruediv__', '__ixor__', '__le__', '__len__',
+        '__long__', '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__',
+        '__neg__', '__oct__', '__or__', '__pos__', '__pow__', '__radd__',
+        '__rand__', '__rdiv__', '__rdivmod__', '__reduce__', '__reduce_ex__',
+        '__repr__', '__reversed__', '__rfloorfiv__', '__rlshift__', '__rmod__',
+        '__rmul__', '__ror__', '__rpow__', '__rrshift__', '__rshift__', '__rsub__',
+        '__rtruediv__', '__rxor__', '__setitem__', '__setslice__', '__sub__',
+        '__truediv__', '__xor__', 'next',
+    )
+
+    @classmethod
+    def _create_class_proxy(cls, theclass):
+        """creates a proxy for the given class"""
+
+        def make_method(name):
+            def method(self, *args, **kw):
+                return getattr(object.__getattribute__(self, "_obj"), name)(*args, **kw)
+
+            return method
+
+        namespace = {}
+        for name in cls._special_names:
+            if hasattr(theclass, name) and not hasattr(cls, name):
+                namespace[name] = make_method(name)
+        return type(f'{cls.__name__}({theclass.__name__})', (cls,), namespace)
+
+    def __new__(cls, obj, interface, *args, **kwargs):
+        """
+        creates an proxy instance referencing `obj`. (obj, *args, **kwargs) are
+        passed to this class' __init__, so deriving classes can define an
+        __init__ method of their own.
+        note: _class_proxy_cache is unique per deriving class (each deriving
+        class must hold its own cache)
+        """
+        try:
+            cache = cls.__dict__["_class_proxy_cache"]
+        except KeyError:
+            cls._class_proxy_cache = cache = {}
+        try:
+            theclass = cache[obj.__class__]
+        except KeyError:
+            cache[obj.__class__] = theclass = cls._create_class_proxy(obj.__class__)
+        ins = object.__new__(theclass)
+        return ins

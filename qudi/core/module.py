@@ -32,6 +32,8 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.paths import get_appdata_dir
 from qudi.core.config import load, save
+from qudi.core.meta import InterfaceMeta
+from qudi.core.interface import InterfaceAttributeMapper
 
 
 def get_module_app_data_path(cls_name, module_base, module_name):
@@ -147,16 +149,6 @@ class Base(QtCore.QObject):
     """
     _threaded = False
     _module_meta = {'base': 'hardware'}  # can be overwritten by subclasses of Base
-
-    # This entire __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
-    # See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
-    def __new__(cls, *args, **kwargs):
-        for attr_name in dir(cls):
-            attr = getattr(cls, attr_name)
-            if hasattr(attr, '__isabstractmethod__') and getattr(attr, '__isabstractmethod__'):
-                raise TypeError(f'Can\'t instantiate abstract class {cls.__name__} '
-                                f'with abstract method {attr_name}')
-        return super(Base, cls).__new__(cls, *args, **kwargs)
 
     def __init__(self, qudi_main_weakref, name, config=None, callbacks=None, **kwargs):
         """
@@ -376,6 +368,26 @@ class Base(QtCore.QObject):
         """
         self.log.error('Please implement and specify the deactivation method {0}.'
                        ''.format(self.__class__.__name__))
+
+
+class InterfaceBase(Base, metaclass=InterfaceMeta):
+    """
+
+    """
+
+    def __new__(cls, *args, **kwargs):
+        # FIXME: This part has the sole purpose to circumvent a known PySide2(6) bug.
+        #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
+        abstract = getattr(cls, '__abstractmethods__', frozenset())
+        if abstract:
+            raise TypeError(f'Can\'t instantiate abstract class "{cls.__name__}" '
+                            f'with abstract methods {set(abstract)}')
+
+        # Add overloaded attributes
+        obj = super(InterfaceBase, cls).__new__(cls, *args, **kwargs)
+        for base_attr, interfac_map in cls._meta_attribute_mapping.items():
+            setattr(obj, base_attr, InterfaceAttributeMapper(obj, interfac_map))
+        return obj
 
 
 class LogicBase(Base):

@@ -23,20 +23,55 @@ top-level directory of this distribution and at
 from abc import ABCMeta
 from PySide2.QtCore import QObject
 
-__all__ = ('InterfaceMetaclass', 'QObjectMetaclass', 'TaskMetaclass')
-
-QObjectMetaclass = type(QObject)
+__all__ = ('ABCQObjectMeta', 'InterfaceMeta', 'QObjectMeta')
 
 
-class TaskMetaclass(QObjectMetaclass, ABCMeta):
+QObjectMeta = type(QObject)
+
+
+class ABCQObjectMeta(QObjectMeta, ABCMeta):
     """
-    Metaclass for interfaces.
+    Metaclass for abstract QObject subclasses.
     """
-    pass
+
+    def __new__(mcs, name, bases, attributes):
+        cls = super(ABCQObjectMeta, mcs).__new__(mcs, name, bases, attributes)
+        # Compute set of abstract method names
+        abstracts = {
+            attr_name for attr_name, attr in attributes.items() if \
+            getattr(attr, '__isabstractmethod__', False)
+        }
+        for base in bases:
+            for attr_name in getattr(base, '__abstractmethods__', set()):
+                attr = getattr(cls, attr_name, None)
+                if getattr(attr, '__isabstractmethod__', False):
+                    abstracts.add(attr_name)
+        cls.__abstractmethods__ = frozenset(abstracts)
+        return cls
 
 
-class InterfaceMetaclass(QObjectMetaclass, ABCMeta):
+class InterfaceMeta(ABCQObjectMeta):
     """
-    Metaclass for interfaces.
+
     """
-    pass
+    def __new__(mcs, name, bases, attributes):
+        _attr_mapping = dict()
+        for attr_name, attr in attributes.items():
+            if isinstance(attr, property):
+                mapping = getattr(attr.fget, '_interface_overload_mapping', None)
+            else:
+                mapping = getattr(attr, '_interface_overload_mapping', None)
+            if mapping is not None:
+                map_to, interface = mapping
+                if map_to in _attr_mapping:
+                    _attr_mapping[map_to][interface] = attr
+                else:
+                    _attr_mapping[map_to] = {interface: attr}
+        cls = super(InterfaceMeta, mcs).__new__(mcs, name, bases, attributes)
+        cls._meta_attribute_mapping = _attr_mapping
+        abstract = getattr(cls, '__abstractmethods__', None)
+        if abstract is not None:
+            setattr(cls,
+                    '__abstractmethods__',
+                    frozenset(a for a in abstract if a in _attr_mapping))
+        return cls
