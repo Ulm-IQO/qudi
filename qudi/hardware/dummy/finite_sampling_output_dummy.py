@@ -25,6 +25,7 @@ import time
 import numpy as np
 from PySide2.QtCore import QTimer
 from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputInterface
+from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputConstraints
 from qudi.interface.finite_sampling_output_interface import SamplingOutputMode
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
@@ -39,9 +40,9 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
     _channel_units = ConfigOption(name='channel_units',
                                   default={'Frequency': 'Hz', 'Voltage': 'V'})
-    _output_mode = ConfigOption(name='output_mode',
-                                default='JUMP_LIST',
-                                constructor=lambda x: SamplingOutputMode[x])
+    _default_output_mode = ConfigOption(name='default_output_mode',
+                                        default='JUMP_LIST',
+                                        constructor=lambda x: SamplingOutputMode[x])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -50,38 +51,34 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
         self._sample_rate = -1
         self._frame_size = -1
         self._active_channels = frozenset()
+        self._output_mode = None
+        self._constraints = None
 
         self.__start_time = 0.0
         self.__emitted_samples = 0
         self.__frame_buffer = None
-        self.__constraints = dict()
 
     def on_activate(self):
-        # Check and refine ConfigOptions
-        assert len(self._channel_units) > 0, 'Specify at least one channel with unit in config'
-        assert all(isinstance(name, str) and name for name in self._channel_units), \
-            'Channel names must be non-empty strings'
-        assert all(isinstance(unit, str) for unit in self._channel_units.values()), \
-            'Channel units must be strings'
-        assert len(self._sample_rate_limits) == 2, 'Sample rate limits must be iterable of length 2'
-        assert len(self._frame_size_limits) == 2, 'Acquisition limits must be iterable of length 2'
-        assert all(lim > 0 for lim in self._sample_rate_limits), 'Sample rate limits must be > 0'
-        assert all(lim > 0 for lim in self._frame_size_limits), 'Acquisition limits must be > 0'
-        self._sample_rate_limits = (float(min(self._sample_rate_limits)),
-                                    float(max(self._sample_rate_limits)))
-        self._frame_size_limits = (int(round(min(self._frame_size_limits))),
-                                   int(round(max(self._frame_size_limits))))
+        # Create constraints object and perform sanity/type checking
+        self._constraints = FiniteSamplingOutputConstraints(
+            supported_modes=tuple(SamplingOutputMode),
+            channel_units=self._channel_units,
+            frame_size_limits=self._frame_size_limits,
+            sample_rate_limits=self._sample_rate_limits
+        )
+        # Make sure the ConfigOptions have correct values and types
+        # (ensured by FiniteSamplingOutputConstraints)
+        self._sample_rate_limits = self._constraints.sample_rate_limits
+        self._frame_size_limits = self._constraints.frame_size_limits
+        self._channel_units = self._constraints.channel_units
+        if not self._constraints.mode_supported(self._default_output_mode):
+            self._default_output_mode = next(iter(self._constraints.supported_modes))
 
         # initialize default settings
-        self._sample_rate = self._sample_rate_limits[1]
-        self._frame_size = self._frame_size_limits[1]
-        self._active_channels = frozenset(self._channel_units)
-        self.__constraints = {
-            'sample_rate_limits': self._sample_rate_limits,
-            'frame_size_limits': self._frame_size_limits,
-            'channel_units': self._channel_units.copy(),
-            'output_modes': frozenset(SamplingOutputMode)
-        }
+        self._sample_rate = self._constraints.max_sample_rate
+        self._frame_size = self._constraints.max_frame_size
+        self._active_channels = frozenset(self._constraints.channel_names)
+        self._output_mode = self._default_output_mode
 
         # process parameters
         self.__start_time = 0.0
@@ -93,7 +90,7 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
 
     @property
     def constraints(self):
-        return self.__constraints.copy()
+        return self._constraints
 
     @property
     def active_channels(self):
@@ -123,8 +120,9 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
 
     def set_sample_rate(self, rate):
         sample_rate = float(rate)
-        assert self._sample_rate_limits[0] <= sample_rate <= self._sample_rate_limits[1], \
-            f'Sample rate "{sample_rate}Hz" to set is out of bounds {self._sample_rate_limits}'
+        assert self._constraints.sample_rate_in_range(sample_rate), \
+            f'Sample rate "{sample_rate}Hz" to set is out of ' \
+            f'bounds {self._constraints.sample_rate_limits}'
         with self._thread_lock:
             assert self.module_state() == 'idle', \
                 'Unable to set sample rate. Sampling output in progress.'
@@ -132,7 +130,7 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
 
     def set_active_channels(self, channels):
         chnl_set = frozenset(channels)
-        assert chnl_set.issubset(self._channel_units), \
+        assert chnl_set.issubset(self._constraints.channel_names), \
             'Invalid channels encountered to set active'
         with self._thread_lock:
             assert self.module_state() == 'idle', \
@@ -157,8 +155,9 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
                 frame_size = next(iter(data.values()))[-1]
                 assert all(d[-1] == frame_size for d in data.values()), \
                     'Frame data arrays for all channels must be of equal length.'
-            assert self._frame_size_limits[0] <= frame_size <= self._frame_size_limits[1], \
-                f'Frame size "{frame_size}" to set is out of bounds {self._frame_size_limits}'
+            assert self._constraints.frame_size_in_range(frame_size), \
+                f'Frame size "{frame_size}" to set is out of ' \
+                f'bounds {self._constraints.frame_size_limits}'
         with self._thread_lock:
             assert self.module_state() == 'idle', \
                 'Unable to set frame data. Sampling output in progress.'
@@ -173,7 +172,7 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
                 self.__frame_buffer = {ch: np.linspace(*d) for ch, d in data.items()}
 
     def set_output_mode(self, mode):
-        assert mode in self.__constraints['output_modes'], f'Invalid output mode "{mode}"'
+        assert self._constraints.mode_supported(mode), f'Invalid output mode "{mode}"'
         with self._thread_lock:
             assert self.module_state() == 'idle', \
                 'Unable to set output mode. Sampling output in progress.'
