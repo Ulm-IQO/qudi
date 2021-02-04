@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from abc import abstractmethod
 from qudi.core.module import InterfaceBase
+from qudi.core.util.helpers import in_range
 
 
 class FiniteSamplingInputInterface(InterfaceBase):
@@ -162,9 +163,62 @@ class FiniteSamplingInputInterface(InterfaceBase):
         pass
 
 
-# ToDo: implement
-# class FiniteSamplingInputConstraints:
-#     """
-#     """
-#     def __init__(self):
+class FiniteSamplingInputConstraints:
+    """ A container to hold all constraints for finite input sampling devices.
+    """
+    def __init__(self, channel_units, frame_size_limits, sample_rate_limits):
+        assert len(sample_rate_limits) == 2, 'Sample rate limits must be iterable of length 2'
+        assert len(frame_size_limits) == 2, 'Frame size limits must be iterable of length 2'
+        assert all(lim > 0 for lim in sample_rate_limits), 'Sample rate limits must be > 0'
+        assert all(lim > 0 for lim in frame_size_limits), 'Frame size limits must be > 0'
+        assert len(channel_units) > 0, 'Specify at least one channel with unit in config'
+        assert all(isinstance(name, str) and name for name in channel_units), \
+            'Channel names must be non-empty strings'
+        assert all(isinstance(unit, str) for unit in channel_units.values()), \
+            'Channel units must be strings'
 
+        self._sample_rate_limits = (float(min(sample_rate_limits)), float(max(sample_rate_limits)))
+        self._frame_size_limits = (int(round(min(frame_size_limits))),
+                                   int(round(max(frame_size_limits))))
+        self._channel_units = channel_units.copy()
+
+    @property
+    def channel_units(self):
+        return self._channel_units.copy()
+
+    @property
+    def channel_names(self):
+        return tuple(self._channel_units)
+
+    @property
+    def sample_rate_limits(self):
+        return self._sample_rate_limits
+
+    @property
+    def min_sample_rate(self):
+        return self._sample_rate_limits[0]
+
+    @property
+    def max_sample_rate(self):
+        return self._sample_rate_limits[1]
+
+    @property
+    def frame_size_limits(self):
+        return self._frame_size_limits
+
+    @property
+    def min_frame_size(self):
+        return self._frame_size_limits[0]
+
+    @property
+    def max_frame_size(self):
+        return self._frame_size_limits[1]
+
+    def channel_valid(self, channel):
+        return channel in self._channel_units
+
+    def sample_rate_in_range(self, rate):
+        return in_range(rate, *self._sample_rate_limits)
+
+    def frame_size_in_range(self, size):
+        return in_range(size, *self._frame_size_limits)

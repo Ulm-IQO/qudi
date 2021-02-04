@@ -42,7 +42,7 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
                                   default={'Frequency': 'Hz', 'Voltage': 'V'})
     _default_output_mode = ConfigOption(name='default_output_mode',
                                         default='JUMP_LIST',
-                                        constructor=lambda x: SamplingOutputMode[x])
+                                        constructor=lambda x: SamplingOutputMode[x.upper()])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
