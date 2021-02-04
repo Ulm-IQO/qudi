@@ -24,13 +24,12 @@ import time
 import os
 import numpy as np
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.paths import get_main_dir
 from qudi.interface.fast_counter_interface import FastCounterInterface
 
 
-class FastCounterDummy(Base, FastCounterInterface):
+class FastCounterDummy(FastCounterInterface):
     """ Implementation of the FastCounter interface methods for a dummy usage.
 
     Example config for copy-paste:

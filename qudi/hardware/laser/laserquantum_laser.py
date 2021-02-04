@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 from enum import Enum
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.interface.simple_laser_interface import SimpleLaserInterface
 from qudi.interface.simple_laser_interface import ControlMode, ShutterState, LaserState
@@ -37,7 +36,7 @@ class PSUTypes(Enum):
     SMD6000 = 3
 
 
-class LaserQuantumLaser(Base, SimpleLaserInterface):
+class LaserQuantumLaser(SimpleLaserInterface):
     """ ToDo: describe
 
     Example config for copy-paste:

@@ -27,15 +27,14 @@ import visa
 import time
 import numpy as np
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.microwave_interface import MicrowaveInterface
-from interface.microwave_interface import MicrowaveLimits
-from interface.microwave_interface import MicrowaveMode
-from interface.microwave_interface import TriggerEdge
+from qudi.core.configoption import ConfigOption
+from qudi.interface.microwave_interface import MicrowaveInterface
+from qudi.interface.microwave_interface import MicrowaveConstraints
+from qudi.interface.microwave_interface import MicrowaveMode
+from qudi.interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveAnritsu(Base, MicrowaveInterface):
+class MicrowaveAnritsu(MicrowaveInterface):
     """ Hardware control file for Anritsu Devices.
 
     Tested for the model MG3691C with OPTION 2.

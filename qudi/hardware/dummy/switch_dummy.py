@@ -19,13 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.core.module import Base
 from qudi.interface.switch_interface import SwitchInterface
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 
 
-class SwitchDummy(Base, SwitchInterface):
+class SwitchDummy(SwitchInterface):
     """ Methods to control slow switching devices.
 
     Example config for copy-paste:
