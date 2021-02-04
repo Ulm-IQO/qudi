@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from PySide2 import QtCore
-from collections import OrderedDict
-from qudi.interface.microwave_interface import MicrowaveMode, TriggerEdge
 import numpy as np
 import time
 import datetime
@@ -40,7 +38,11 @@ class OdmrLogic(LogicBase):
     """ This is the Logic class for CW ODMR measurements """
 
     # declare connectors
-    _odmr_scanner = Connector(name='odmr_scanner', interface='OdmrNicardScannerInterfuse')
+    _cw_microwave_source = Connector(name='cw_microwave_source',
+                                     interface='MicrowaveInterface',
+                                     optional=True)
+    _odmr_scanner = Connector(name='odmr_scanner',
+                              interface='OdmrNicardScannerInterfuse')
 
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
     _cw_power = StatusVar(name='cw_power', default=-30)
@@ -49,7 +51,7 @@ class OdmrLogic(LogicBase):
                                        default=[(2820e6, 2920e6, 101)])
     _run_time = StatusVar(name='run_time', default=60)
     _lines_to_average = StatusVar(name='lines_to_average', default=0)
-    _sample_rate = StatusVar(name='sample_rate', default=200)
+    _data_rate = StatusVar(name='data_rate', default=200)
     _oversampling_factor = StatusVar(name='oversampling_factor', default=1)
 
     # Internal signals
@@ -120,7 +122,7 @@ class OdmrLogic(LogicBase):
     #     if isinstance(val, dict) and len(val) > 0:
     #         fc.load_from_dict(val)
     #     else:
-    #         d1 = OrderedDict()
+    #         d1 = dict()
     #         d1['Lorentzian dip'] = {
     #             'fit_function': 'lorentzian',
     #             'estimator': 'dip'
@@ -141,7 +143,7 @@ class OdmrLogic(LogicBase):
     #             'fit_function': 'gaussiandouble',
     #             'estimator': 'dip'
     #         }
-    #         default_fits = OrderedDict()
+    #         default_fits = dict()
     #         default_fits['1d'] = d1
     #         fc.load_from_dict(default_fits)
     #     return fc
@@ -163,7 +165,7 @@ class OdmrLogic(LogicBase):
         self._raw_data = dict()
         self._fit_data = dict()
         self._signal_data = dict()
-        estimated_samples = self._run_time * self._sample_rate / self._oversampling_factor
+        estimated_samples = self._run_time * self._data_rate / self._oversampling_factor
         samples_per_line = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
         # Add 5% Safety; Minimum of 1 line
         self.__estimated_lines = max(1, int(1.05 * estimated_samples / samples_per_line))
@@ -197,16 +199,21 @@ class OdmrLogic(LogicBase):
                                                                       axis=1).compressed()
 
     @property
-    def constraints(self):
+    def scanner_constraints(self):
         return self._odmr_scanner().constraints
 
     @property
-    def channels(self):
-        return tuple(self._odmr_scanner().channel_units)
+    def microwave_constraints(self):
+        return self._cw_microwave_source().constraints
 
     @property
-    def channel_units(self):
-        return self._odmr_scanner().channel_units
+    def active_channels(self):
+        return self._odmr_scanner().active_channels
+
+    @property
+    def active_channel_units(self):
+        scanner = self._odmr_scanner()
+        return {ch: u for ch, u in scanner.channel_units.items() if ch in scanner.active_channels}
 
     @property
     def signal_data(self):
@@ -280,14 +287,14 @@ class OdmrLogic(LogicBase):
             self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
 
     @property
-    def sample_rate(self):
-        return self._sample_rate
+    def data_rate(self):
+        return self._data_rate
 
-    @sample_rate.setter
-    def sample_rate(self, rate):
-        self.set_sample_rate(rate)
+    @data_rate.setter
+    def data_rate(self, rate):
+        self.set_data_rate(rate)
 
-    def set_sample_rate(self, rate):
+    def set_data_rate(self, rate):
         """ Sets the frequency or rate of the sample acquisition.
         This is the physical sampling rate of the hardware, so the actually displayed data rate is
         this sampling rate divided by the oversampling factor.
@@ -297,10 +304,15 @@ class OdmrLogic(LogicBase):
         with self._threadlock:
             # checks if scanner is still running
             if self.module_state() == 'locked':
-                self.log.error('Unable to set sample rate. ODMR measurement in progress.')
+                self.log.error('Unable to set data rate. ODMR measurement in progress.')
             else:
-                self._sample_rate = float(rate)
-            self.sigScanParametersUpdated.emit({'sample_rate': self._sample_rate})
+                rate = float(rate)
+                if self.scanner_constraints.sample_rate_in_range(rate * self._oversampling_factor):
+                    self._data_rate = rate
+                else:
+                    self.log.error('Unable to set data rate. Resulting sample rate out of bounds '
+                                   'for ODMR scanner constraints.')
+            self.sigScanParametersUpdated.emit({'sample_rate': self._data_rate})
 
     @property
     def oversampling(self):
@@ -316,8 +328,12 @@ class OdmrLogic(LogicBase):
             if self.module_state() == 'locked':
                 self.log.error('Unable to set oversampling factor. ODMR scan in progress.')
             else:
-                self._oversampling_factor = max(1, int(factor))
-                # ToDo: Set oversampling in hardware?
+                factor = max(1, int(factor))
+                if self.scanner_constraints.sample_rate_in_range(self._data_rate * factor):
+                    self._oversampling_factor = factor
+                else:
+                    self.log.error('Unable to set oversampling factor. Resulting sample rate out '
+                                   'of bounds for ODMR scanner constraints.')
             self.sigScanParametersUpdated.emit({'oversampling': self._oversampling_factor})
 
     @property
@@ -368,12 +384,28 @@ class OdmrLogic(LogicBase):
 
             self.module_state.lock()
 
-            # ToDo: Set up scan parameters in hardware and make it ready to scan lines
+            # Set up scanner hardware
+            scanner = self._odmr_scanner()
+            try:
+                scanner.sample_rate = self._oversampling_factor * self._data_rate
+                self._data_rate = scanner.sample_rate / self._oversampling_factor
+                scanner.set_frequency_samples(self._frequency_data)
+            except:
+                self.log.exception(
+                    'Unable to start ODMR scan. Error while setting up scanner hardware.'
+                )
+                self.module_state.unlock()
+                self.sigScanStateUpdated.emit(False)
+                return -1
+            finally:
+                # ToDo: Emit new parameters
+                pass
+
             # ToDo: Clear old fit
 
-            self.elapsed_sweeps = 0
-            self.elapsed_time = 0.0
-            self.sigElapsedUpdated.emit(self.elapsed_time, self.elapsed_sweeps)
+            self._elapsed_sweeps = 0
+            self._elapsed_time = 0.0
+            self.sigElapsedUpdated.emit(self._elapsed_time, self._elapsed_sweeps)
             self._initialize_odmr_data()
             self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
             self.sigScanStateUpdated.emit(True)
@@ -408,7 +440,7 @@ class OdmrLogic(LogicBase):
         """
         with self._threadlock:
             if self.module_state() == 'locked':
-                # ToDo: Stop hardware
+                self._odmr_scanner().stop_scan()
                 self.module_state.unlock()
             self.sigScanStateUpdated.emit(False)
             return 0
@@ -420,8 +452,9 @@ class OdmrLogic(LogicBase):
                 self._elapsed_time = 0.0
                 self._elapsed_sweeps = 0
                 self._initialize_odmr_data()
+                self.sigElapsedUpdated.emit(self._elapsed_time, self._elapsed_sweeps)
+                self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
                 self.__start_time = time.time()
-        return
 
     def _scan_odmr_line(self):
         """ Scans one line in ODMR
@@ -433,13 +466,12 @@ class OdmrLogic(LogicBase):
             if self.module_state() != 'locked':
                 return
 
-            # ToDo: Acquire count data
-            # try:
-            #     error, new_counts = self._odmr_counter.count_odmr(length=self.odmr_plot_x.size)
-            # except:
-            #     self.log.exception('Error while trying to read ODMR scan data from hardware:')
-            #     self.stop_odmr_scan()
-            #     return
+            try:
+                new_counts = self._odmr_scanner().get_single_scan_data()
+            except:
+                self.log.exception('Error while trying to read ODMR scan data from hardware:')
+                self.stop_odmr_scan()
+                return
 
             # Add new count data to raw_data array and append if array is too small
             current_line_buffer_size = next(iter(self._raw_data.values()))[0].shape[1]
@@ -480,48 +512,26 @@ class OdmrLogic(LogicBase):
                 self._sigNextLine.emit()
             return
 
-    def get_odmr_channels(self):
-        return self._odmr_counter.get_odmr_channels()
-
-    def get_fit_functions(self):
-        return list(self.fc.fit_list)
-
-    def do_fit(self, fit_function=None, x_data=None, y_data=None, channel_index=0, fit_range=0):
+    @qudi_slot(str, str, int)
+    def do_fit(self, fit_config, channel='', fit_range=-1, x_data=None, y_data=None):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
+        if not fit_config:
+            self.log.error(f'Unable to perform fit. Invalid fit_config encountered: "{fit_config}"')
+            return
         if (x_data is None) or (y_data is None):
-            x_data = self.frequency_lists[fit_range]
-            x_data_full_length = np.zeros(len(self.final_freq_list))
-            # how to insert the data at the right position?
-            start_pos = np.where(np.isclose(self.final_freq_list, self.mw_starts[fit_range]))[0][0]
-            x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
-            y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
-            y_data = self.odmr_plot_y[channel_index][y_args]
-        if fit_function is not None and isinstance(fit_function, str):
-            if fit_function in self.get_fit_functions():
-                self.fc.set_current_fit(fit_function)
-            else:
-                self.fc.set_current_fit('No Fit')
-                if fit_function != 'No Fit':
-                    self.log.warning('Fit function "{0}" not available in ODMRLogic fit container.'
-                                     ''.format(fit_function))
+            if fit_range < 0 or not channel:
+                self.log.error(f'Unable to perform fit. You must either provide x_data AND y_data '
+                               f'or you must provide the data channel AND range index to fit.')
+                return
+            x_data = self._frequency_data[fit_range]
+            y_data = self._signal_data[channel][fit_range]
 
-        self.odmr_fit_x, self.odmr_fit_y, result = self.fc.do_fit(x_data, y_data)
-        key = 'channel: {0}, range: {1}'.format(channel_index, fit_range)
-        if fit_function != 'No Fit':
-            self.fits_performed[key] = (self.odmr_fit_x, self.odmr_fit_y, result, self.fc.current_fit)
-        else:
-            if key in self.fits_performed:
-                self.fits_performed.pop(key)
+        # ToDo: Perform fit
 
-        if result is None:
-            result_str_dict = {}
-        else:
-            result_str_dict = result.result_str_dict
-        self.sigOdmrFitUpdated.emit(
-            self.odmr_fit_x, self.odmr_fit_y, result_str_dict, self.fc.current_fit)
-        return
+        # self.sigOdmrFitUpdated.emit(
+        #     self.odmr_fit_x, self.odmr_fit_y, result_str_dict, self.fc.current_fit)
 
     def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
@@ -538,13 +548,13 @@ class OdmrLogic(LogicBase):
             else:
                 filelabel_raw = 'ODMR_data_ch{0}_raw'.format(nch)
 
-            data_raw = OrderedDict()
-            data_raw['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, nch, :]
-            parameters = OrderedDict()
+            data_raw = dict()
+            data_raw['count data (counts/s)'] = self.odmr_raw_data[:self._elapsed_sweeps, nch, :]
+            parameters = dict()
             parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
             parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
             parameters['Run Time (s)'] = self.run_time
-            parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
+            parameters['Number of frequency sweeps (#)'] = self._elapsed_sweeps
             parameters['Start Frequencies (Hz)'] = self.mw_starts
             parameters['Stop Frequencies (Hz)'] = self.mw_stops
             parameters['Step sizes (Hz)'] = self.mw_steps
@@ -566,8 +576,8 @@ class OdmrLogic(LogicBase):
                 else:
                     filelabel = 'ODMR_data_ch{0}_range{1}'.format(nch, ii)
 
-                # prepare the data in a dict or in an OrderedDict:
-                data = OrderedDict()
+                # prepare the data in a dict:
+                data = dict()
                 data['frequency (Hz)'] = frequency_arr
 
                 num_points = len(frequency_arr)
@@ -575,11 +585,11 @@ class OdmrLogic(LogicBase):
                 data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
                 data_start_ind += num_points
 
-                parameters = OrderedDict()
+                parameters = dict()
                 parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
                 parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
                 parameters['Run Time (s)'] = self.run_time
-                parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
+                parameters['Number of frequency sweeps (#)'] = self._elapsed_sweeps
                 parameters['Start Frequency (Hz)'] = frequency_arr[0]
                 parameters['Stop Frequency (Hz)'] = frequency_arr[-1]
                 parameters['Step size (Hz)'] = frequency_arr[1] - frequency_arr[0]
