@@ -27,15 +27,14 @@ import visa
 import numpy as np
 import time
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.microwave_interface import MicrowaveInterface
-from interface.microwave_interface import MicrowaveLimits
-from interface.microwave_interface import MicrowaveMode
-from interface.microwave_interface import TriggerEdge
+from qudi.core.configoption import ConfigOption
+from qudi.interface.microwave_interface import MicrowaveInterface
+from qudi.interface.microwave_interface import MicrowaveConstraints
+from qudi.interface.microwave_interface import MicrowaveMode
+from qudi.interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveGigatronics(Base, MicrowaveInterface):
+class MicrowaveGigatronics(MicrowaveInterface):
     """ Hardware file for Gigatronics. Tested for the model 2400/2500.
 
     Example config for copy-paste:

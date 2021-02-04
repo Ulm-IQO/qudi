@@ -22,14 +22,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 
-from qudi.core.module import Base
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.helpers import natural_sort
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
-class PulserDummy(Base, PulserInterface):
+class PulserDummy(PulserInterface):
     """ Dummy class for  PulseInterface
 
     Be careful in adjusting the method names in that class, since some of them

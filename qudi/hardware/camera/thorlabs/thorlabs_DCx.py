@@ -28,13 +28,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from ctypes import *
 import numpy as np
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.interface.camera_interface import CameraInterface
 from .uc480_h import *
 
 
-class CameraThorlabs(Base, CameraInterface):
+class CameraThorlabs(CameraInterface):
     """ Main class of the module
 
     Example config for copy-paste:

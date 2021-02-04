@@ -24,7 +24,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 from enum import Enum
-from qudi.core.module import Base
 from qudi.interface.finite_sampling_input_interface import FiniteSamplingInputInterface
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
@@ -35,7 +34,7 @@ class SimulationMode(Enum):
     ODMR = 1
 
 
-class FiniteSamplingInputDummy(Base, FiniteSamplingInputInterface):
+class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
     """
     ToDo: Document
     """

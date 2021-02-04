@@ -20,14 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import visa
-
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.interface.simple_laser_interface import SimpleLaserInterface
 from qudi.interface.simple_laser_interface import ControlMode, ShutterState, LaserState
 
 
-class MillenniaeVLaser(Base, SimpleLaserInterface):
+class MillenniaeVLaser(SimpleLaserInterface):
     """ Spectra Physics Millennia diode pumped solid state laser.
 
     Example config for copy-paste:

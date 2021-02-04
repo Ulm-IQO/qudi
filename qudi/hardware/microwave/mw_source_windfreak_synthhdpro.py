@@ -20,17 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import visa
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.microwave_interface import MicrowaveInterface
-from interface.microwave_interface import MicrowaveLimits
-from interface.microwave_interface import MicrowaveMode
-from interface.microwave_interface import TriggerEdge
 import time
+import visa
+
+from qudi.core.configoption import ConfigOption
+from qudi.interface.microwave_interface import MicrowaveInterface
+from qudi.interface.microwave_interface import MicrowaveConstraints
+from qudi.interface.microwave_interface import MicrowaveMode
+from qudi.interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveSynthHDPro(Base, MicrowaveInterface):
+class MicrowaveSynthHDPro(MicrowaveInterface):
     """ Hardware class to controls a SynthHD Pro.
 
     Example config for copy-paste:

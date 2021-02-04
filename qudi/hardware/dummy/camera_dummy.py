@@ -23,12 +23,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.interface.camera_interface import CameraInterface
 
 
-class CameraDummy(Base, CameraInterface):
+class CameraDummy(CameraInterface):
     """ Dummy hardware for camera interface
 
     Example config for copy-paste:

@@ -24,14 +24,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.core.util.helpers import natural_sort
 from qudi.interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
 from qudi.interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 
 
-class InStreamDummy(Base, DataInStreamInterface):
+class InStreamDummy(DataInStreamInterface):
     """
     A dummy module to act as data in-streaming device (continuously read values)
 

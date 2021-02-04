@@ -29,7 +29,6 @@ from enum import Enum
 from ctypes import *
 import numpy as np
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.interface.camera_interface import CameraInterface
 
@@ -102,7 +101,7 @@ ERROR_DICT = {
 }
 
 
-class IxonUltra(Base, CameraInterface):
+class IxonUltra(CameraInterface):
     """ Hardware class for Andors Ixon Ultra 897
 
     Example config for copy-paste:

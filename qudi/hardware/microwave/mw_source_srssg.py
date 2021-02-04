@@ -24,14 +24,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 import time
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.microwave_interface import MicrowaveInterface
-from interface.microwave_interface import MicrowaveLimits
-from interface.microwave_interface import MicrowaveMode
-from interface.microwave_interface import TriggerEdge
+from qudi.core.configoption import ConfigOption
+from qudi.interface.microwave_interface import MicrowaveInterface
+from qudi.interface.microwave_interface import MicrowaveConstraints
+from qudi.interface.microwave_interface import MicrowaveMode
+from qudi.interface.microwave_interface import TriggerEdge
 
-class MicrowaveSRSSG(Base, MicrowaveInterface):
+
+class MicrowaveSRSSG(MicrowaveInterface):
     """ Hardware control class to controls SRS SG390 devices.
 
     Example config for copy-paste:

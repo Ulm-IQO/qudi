@@ -23,13 +23,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import serial
 import time
 
-from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.interface.simple_laser_interface import SimpleLaserInterface
 from qudi.interface.simple_laser_interface import LaserState, ShutterState, ControlMode
 
 
-class OBISLaser(Base, SimpleLaserInterface):
+class OBISLaser(SimpleLaserInterface):
 
     """ Implements the Coherent OBIS laser.
 

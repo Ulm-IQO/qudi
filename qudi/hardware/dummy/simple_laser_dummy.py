@@ -24,12 +24,11 @@ import math
 import time
 import random
 
-from qudi.core.module import Base
 from qudi.interface.simple_laser_interface import SimpleLaserInterface
 from qudi.interface.simple_laser_interface import LaserState, ShutterState, ControlMode
 
 
-class SimpleLaserDummy(Base, SimpleLaserInterface):
+class SimpleLaserDummy(SimpleLaserInterface):
     """ Lazor dummy
 
     Example config for copy-paste:
