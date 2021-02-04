@@ -24,7 +24,6 @@ from qudi.core.module import Base
 from qudi.interface.motor_interface import MotorInterface
 import serial
 from qudi.core.configoption import ConfigOption
-from qudi.core.statusvariable import StatusVar
 
 
 class StepperMotor(Base, MotorInterface):
@@ -169,6 +168,7 @@ class StepperMotor(Base, MotorInterface):
             return 0
         except:
             self.log.error('Command could not be sent to arduino')
+            raise ValueError
             return -1
 
     def move_abs(self, param_dict):

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>372</width>
-    <height>318</height>
+    <width>378</width>
+    <height>307</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>372</width>
+     <width>378</width>
      <height>21</height>
     </rect>
    </property>
@@ -122,37 +122,63 @@
                 </item>
                </layout>
               </item>
-              <item>
-               <widget class="QRadioButton" name="radioButton_step">
-                <property name="text">
-                 <string>Steps</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QRadioButton" name="radioButton_um">
-                <property name="text">
-                 <string>µm</string>
-                </property>
-               </widget>
-              </item>
              </layout>
             </item>
             <item>
-             <spacer name="verticalSpacer_2">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
+             <layout class="QHBoxLayout" name="horizontalLayout_15">
+              <item>
+               <widget class="QGroupBox" name="groupBox_3">
+                <property name="title">
+                 <string>Unit</string>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_5">
+                 <item>
+                  <widget class="QRadioButton" name="radioButton_step">
+                   <property name="text">
+                    <string>Steps</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QRadioButton" name="radioButton_um">
+                   <property name="text">
+                    <string>m</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_2">
+                <property name="title">
+                 <string>Mode</string>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_6">
+                 <item>
+                  <widget class="QRadioButton" name="radioButton_mode_step">
+                   <property name="text">
+                    <string>Steps</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QRadioButton" name="radioButton_mode_jog">
+                   <property name="text">
+                    <string>Jog</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -316,10 +342,6 @@
    </widget>
   </widget>
   <action name="actionClose">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../core/artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../core/artwork/icons/oxygen/22x22/application-exit.png</iconset>
-   </property>
    <property name="text">
     <string>Close</string>
    </property>
