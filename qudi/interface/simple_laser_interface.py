@@ -20,8 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from enum import IntEnum
-from qudi.core.interface import abstract_interface_method
-from qudi.core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import InterfaceBase
 
 
 class ControlMode(IntEnum):
@@ -44,7 +44,7 @@ class LaserState(IntEnum):
     UNKNOWN = 3
 
 
-class SimpleLaserInterface(metaclass=InterfaceMetaclass):
+class SimpleLaserInterface(InterfaceBase):
     """ This interface can be used to control a simple laser. It handles power control, control modes and shutter states
 
     This interface is useful for a standard, fixed wavelength laser that you can find in a lab.
@@ -53,7 +53,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
 
     """
 
-    @abstract_interface_method
+    @abstractmethod
     def get_power_range(self):
         """ Return laser power range
 
@@ -61,7 +61,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_power(self):
         """ Return actual laser power
 
@@ -69,7 +69,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_power(self, power):
         """ Set power setpoint.
 
@@ -77,7 +77,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_power_setpoint(self):
         """ Return laser power setpoint.
 
@@ -85,7 +85,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_current_unit(self):
         """ Get unit for laser current.
 
@@ -93,7 +93,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_current(self):
         """ Get actual laser current
 
@@ -101,7 +101,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_current_range(self):
         """ Get laser current range.
 
@@ -109,7 +109,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_current_setpoint(self):
         """ Get laser current setpoint
 
@@ -117,7 +117,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_current(self, current):
         """ Set laser current setpoint
 
@@ -125,7 +125,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def allowed_control_modes(self):
         """ Get supported control modes
 
@@ -133,7 +133,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_control_mode(self):
         """ Get the currently active control mode
 
@@ -141,7 +141,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_control_mode(self, control_mode):
         """ Set the active control mode
 
@@ -149,7 +149,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_laser_state(self):
         """ Get laser state
 
@@ -157,7 +157,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_laser_state(self, state):
         """ Set laser state.
 
@@ -165,7 +165,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_shutter_state(self):
         """ Get laser shutter state
 
@@ -173,7 +173,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_shutter_state(self, state):
         """ Set laser shutter state.
 
@@ -181,7 +181,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_temperatures(self):
         """ Get all available temperatures.
 
@@ -189,7 +189,7 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_extra_info(self):
         """ Show dianostic information about lasers.
           @return str: diagnostic info as a string

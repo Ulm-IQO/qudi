@@ -22,12 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from enum import Enum
-from qudi.core.interface import abstract_interface_method
-from qudi.core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import InterfaceBase
 from qudi.core.interface import ScalarConstraint
 
 
-class DataInStreamInterface(metaclass=InterfaceMetaclass):
+class DataInStreamInterface(InterfaceBase):
     """
     Interface for a generic input stream of data points with fixed sampling rate and data type.
 
@@ -35,7 +35,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
     are acquired continuously into a (circular) read buffer.
     """
     @property
-    @abstract_interface_method
+    @abstractmethod
     def sample_rate(self):
         """
         The currently set sample rate
@@ -45,7 +45,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def data_type(self):
         """
         Read-only property.
@@ -56,7 +56,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def buffer_size(self):
         """
         The currently set buffer size.
@@ -69,7 +69,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def use_circular_buffer(self):
         """
         A flag indicating if circular sample buffering is being used or not.
@@ -79,7 +79,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def streaming_mode(self):
         """
         The currently configured streaming mode Enum.
@@ -90,7 +90,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def stream_length(self):
         """
         Property holding the total number of samples per channel to be acquired by this stream.
@@ -101,7 +101,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def all_settings(self):
         """
         Read-only property to return a dict containing all current settings and values that can be
@@ -112,7 +112,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def number_of_channels(self):
         """
         Read-only property to return the currently configured number of active data channels.
@@ -122,7 +122,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def active_channels(self):
         """
         The currently configured data channel properties.
@@ -135,7 +135,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def available_channels(self):
         """
         Read-only property to return the currently used data channel properties.
@@ -148,7 +148,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def available_samples(self):
         """
         Read-only property to return the currently available number of samples per channel ready
@@ -159,7 +159,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def buffer_overflown(self):
         """
         Read-only flag to check if the read buffer has overflown.
@@ -173,7 +173,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def is_running(self):
         """
         Read-only flag indicating if the data acquisition is running.
@@ -182,7 +182,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def configure(self, sample_rate=None, streaming_mode=None, active_channels=None,
                   total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
         """
@@ -201,7 +201,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_constraints(self):
         """
         Return the constraints on the settings for this data streamer.
@@ -210,7 +210,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def start_stream(self):
         """
         Start the data acquisition and data stream.
@@ -219,7 +219,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def stop_stream(self):
         """
         Stop the data acquisition and data stream.
@@ -228,7 +228,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def read_data_into_buffer(self, buffer, number_of_samples=None):
         """
         Read data from the stream buffer into a 1D/2D numpy array given as parameter.
@@ -250,7 +250,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def read_available_data_into_buffer(self, buffer):
         """
         Read data from the stream buffer into a 1D/2D numpy array given as parameter.
@@ -270,7 +270,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def read_data(self, number_of_samples=None):
         """
         Read data from the stream buffer into a 2D numpy array and return it.
@@ -292,7 +292,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def read_single_point(self):
         """
         This method will initiate a single sample read on each configured data channel.

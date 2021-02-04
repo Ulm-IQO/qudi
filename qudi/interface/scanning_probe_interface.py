@@ -22,18 +22,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import datetime
 import numpy as np
+from abc import abstractmethod
+from qudi.core.module import InterfaceBase
 
-from qudi.core.interface import abstract_interface_method
-from qudi.core.meta import InterfaceMetaclass
 
-
-class ScanningProbeInterface(metaclass=InterfaceMetaclass):
+class ScanningProbeInterface(InterfaceBase):
     """ This is the Interface class to define the controls for a scanning probe device
 
     A scanner device is hardware that can move multiple axes.
     """
 
-    @abstract_interface_method
+    @abstractmethod
     def get_constraints(self):
         """ Get hardware constraints/limitations.
 
@@ -41,13 +40,13 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def reset(self):
         """ Hard reset of the hardware.
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def configure_scan(self, settings):
         """ Configure the hardware with all parameters needed for a 1D or 2D scan.
 
@@ -58,7 +57,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def move_absolute(self, position, velocity=None):
         """ Move the scanning probe to an absolute position as fast as possible or with a defined
         velocity.
@@ -67,7 +66,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def move_relative(self, distance, velocity=None):
         """ Move the scanning probe by a relative distance from the current target position as fast
         as possible or with a defined velocity.
@@ -79,7 +78,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_target(self):
         """ Get the current target position of the scanner hardware
         (i.e. the "theoretical" position).
@@ -88,7 +87,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_position(self):
         """ Get a snapshot of the actual scanner position (i.e. from position feedback sensors).
         For the same target this value can fluctuate according to the scanners positioning accuracy.
@@ -100,7 +99,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def start_scan(self):
         """
 
@@ -108,7 +107,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def stop_scan(self):
         """
 
@@ -116,7 +115,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_scan_data(self):
         """
 
@@ -124,7 +123,7 @@ class ScanningProbeInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def emergency_stop(self):
         """
 

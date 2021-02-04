@@ -22,8 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from enum import Enum
-from qudi.core.meta import InterfaceMetaclass
-from qudi.core.interface import abstract_interface_method
+from abc import abstractmethod
+from qudi.core.module import InterfaceBase
 
 
 class SamplingOutputMode(Enum):
@@ -31,13 +31,13 @@ class SamplingOutputMode(Enum):
     EQUIDISTANT_SWEEP = 1
 
 
-class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
+class FiniteSamplingOutputInterface(InterfaceBase):
     """
     ToDo: Document
     """
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def constraints(self):
         """
         ToDo: Document
@@ -45,7 +45,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def active_channels(self):
         """ Names of all currently active channels.
 
@@ -54,7 +54,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def sample_rate(self):
         """ The sample rate (in Hz) at which the samples will be emitted.
 
@@ -63,7 +63,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def frame_size(self):
         """ Currently set number of samples per channel to emit for each data frame.
 
@@ -72,7 +72,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def output_mode(self):
         """ Currently set output mode.
 
@@ -81,7 +81,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def samples_in_buffer(self):
         """ Current number of samples per channel still pending to be emitted.
 
@@ -89,7 +89,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_sample_rate(self, rate):
         """ Will set the sample rate to a new value.
 
@@ -97,7 +97,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_active_channels(self, channels):
         """ Will set the currently active channels. All other channels will be deactivated.
 
@@ -105,7 +105,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_frame_data(self, data):
         """ Fills the frame buffer for the next data frame to be emitted. Data must be a dict
         containing exactly all active channels as keys with corresponding sample data as values.
@@ -122,7 +122,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_output_mode(self, mode):
         """ Setter for the current output mode.
 
@@ -130,7 +130,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def start_buffered_output(self):
         """ Will start the output of the previously set data frame in a non-blocking way.
         Must return immediately and not wait for the frame to finish.
@@ -139,7 +139,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def stop_buffered_output(self):
         """ Will abort the currently running data frame output.
         Will return AFTER the frame output has been terminated without waiting for all samples
@@ -152,7 +152,7 @@ class FiniteSamplingOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def emit_samples(self, data):
         """ Emit a single data frame for all active channels.
         This method call is blocking until the entire data frame has been emitted.
