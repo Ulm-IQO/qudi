@@ -124,13 +124,13 @@ class OdmrMainWindow(QtWidgets.QMainWindow):
         # Connect close actions
         self.action_close.triggered.connect(self.close)
 
-    def set_elapsed(self, time=None,sweeps=None):
+    def set_elapsed(self, time=None, sweeps=None):
         status_bar = self.statusBar()
         if sweeps is not None:
             status_bar.elapsed_sweeps_spinbox.setValue(sweeps)
         if time is not None:
             if time >= 0:
-                status_bar.elapsed_time_lineedit.setText(str(datetime.timedelta(time)))
+                status_bar.elapsed_time_lineedit.setText(str(datetime.timedelta(seconds=round(time))))
             else:
                 status_bar.elapsed_time_lineedit.setText('0:00:00')
 

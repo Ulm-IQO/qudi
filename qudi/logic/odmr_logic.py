@@ -543,6 +543,7 @@ class OdmrLogic(LogicBase):
             for ch, range_list in self._raw_data.items():
                 start = 0
                 for range_index, range_params in enumerate(self._scan_frequency_ranges):
+                    range_list[range_index] = np.roll(range_list[range_index], 1, axis=1)
                     range_list[range_index][:, 0] = new_counts[ch][start:start + range_params[-1]]
                     start += range_params[-1]
 
