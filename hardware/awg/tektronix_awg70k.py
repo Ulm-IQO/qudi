@@ -35,7 +35,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits, MicrowaveMode, TriggerEdge
 
 
@@ -346,7 +346,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             # wait until the AWG is actually running
             while not self._is_output_on():
                 time.sleep(0.25)
-        return self.get_status()[0]
+        return self.get_status['PulserInterface']()[0]
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -361,7 +361,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             # wait until the AWG has actually stopped
             while self._is_output_on():
                 time.sleep(0.25)
-        return self.get_status()[0]
+        return self.get_status['PulserInterface']()[0]
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
@@ -824,6 +824,10 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         @return float: The current sample rate of the device (in Hz)
         """
         return_rate = float(self.query('CLOCK:SRATE?'))
+        return return_rate
+
+    def get_wave_form_compiler_sample_rate(self):
+        return_rate = float(self.query('BWAV:SRAT?'))
         return return_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
@@ -1763,7 +1767,6 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         """
         return self.pulser_off()
 
-
     @MicrowaveInterface.get_status.register('MicrowaveInterface')
     def get_microwave_status(self):
         """
@@ -1889,8 +1892,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         self.__mw_mode = MicrowaveMode.LIST
 
-        if frequency is not None and any(
-                freq != frequency[ii] for ii, freq in enumerate(self.__mw_list_params['freq'])):
+        if frequency is not None and tuple(frequency) != tuple(self.__mw_list_params['freq']):
             self.__mw_list_params['freq'] = frequency
             self.__mw_list_params['generated'] = False
         if power is not None and power != self.__mw_list_params['power']:
@@ -2157,7 +2159,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         freq = self.__mw_cw_params['freq']
         amp = self.dbm_to_volts(self.__mw_cw_params['power'])
-        sample_rate = self.get_sample_rate()
+        sample_rate = self.get_wave_form_compiler_sample_rate()
         samples_per_period = sample_rate / freq
         cycles = max(100, int(np.ceil(2 * self.__min_waveform_length / samples_per_period)))
 
@@ -2183,7 +2185,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         amp = self.dbm_to_volts(power)
         a_ch = int(self._microwave_channel.rsplit('_ch', 1)[-1])
-        sample_rate = self.get_sample_rate()
+        sample_rate = self.get_wave_form_compiler_sample_rate()
 
         self.new_sequence('_mw_sweep', len(frequencies) + 1)
         for ii, freq in enumerate(frequencies, 1):
@@ -2191,6 +2193,11 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             samples_per_period = sample_rate / freq
             cycles = max(100, int(np.ceil(2 * self.__min_waveform_length / samples_per_period)))
 
+            samples = np.round(cycles * samples_per_period)
+
+            while samples % 2 != 0:
+                cycles += 1
+                samples = np.round(cycles * samples_per_period)
             # Write waveform for channel 1 and add to sequence
             name = '_mw_sweep_{0:d}_ch1'.format(ii)
             if a_ch == 1:
