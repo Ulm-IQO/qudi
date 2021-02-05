@@ -89,7 +89,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
 
     @property
     def constraints(self):
-        return self.__constraints.copy()
+        return self._constraints.copy()
 
     @property
     def active_channels(self):
