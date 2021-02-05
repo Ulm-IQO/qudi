@@ -2305,21 +2305,38 @@ class SequenceGeneratorLogic(GenericLogic):
     def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk',
                                      persistent_datapoint=False):
 
-        def _get_all_channels():
+        def _count_chs(config):
+
+            config_d = sorted([ch for ch in config if ch.startswith('d_')])
+            config_a = sorted([ch for ch in config if ch.startswith('a_')])
+            return len(config_a), len(config_d)
+
+        def _get_largest_channel_config():
+            # find the config that transfers the most data
+            # assumes that analog channels are heavier than digital channels
             configs = self.pulsegenerator().get_constraints().activation_config
             if 'all' in configs:
                 largest_config = configs['all']
             else:
-                largest_config = list(configs.values())[0]
+                lens_config = []
                 for config in configs.values():
-                    if len(largest_config) < len(config):
-                        largest_config = config
-            largest_config = sorted(largest_config)
+                    len_d, len_a = _count_chs(config)
+                    lens_config.append((len_d, len_a))
+                lens_config = np.asarray(lens_config)
 
-            a_channels = [chnl for chnl in largest_config if chnl.startswith('a')]
-            d_channels = [chnl for chnl in largest_config if chnl.startswith('d')]
+                # biggest config of configs with max analog channel size
+                idxs_a = list(np.argwhere(lens_config[:,0] == np.amax(lens_config[:,0])))
+                idxs_a = [i[0] for i in idxs_a]
+                idxs_a_and_len_d = np.asarray([(i, lens_config[i][1]) for i in idxs_a])
+                idx_d = np.argmax(idxs_a_and_len_d[:,1])
+                idx_tot = idxs_a_and_len_d[idx_d][0]
 
-            return a_channels, d_channels
+                largest_config = list(configs)[idx_tot]
+
+            a_chs = sorted([ch for ch in configs[largest_config] if ch.startswith('a_')])
+            d_chs = sorted([ch for ch in configs[largest_config] if ch.startswith('d_')])
+
+            return a_chs, d_chs
 
         def _check_loaded(loaded_dict, should_load_list):
             try:
@@ -2332,7 +2349,10 @@ class SequenceGeneratorLogic(GenericLogic):
             return is_substr and not is_empty
 
         n_samples = int(n_samples)
-        pg_chs_a, pg_chs_d = _get_all_channels()
+        pg_chs_a, pg_chs_d = _get_largest_channel_config()
+        active_channels_saved = self.pulsegenerator().get_active_channels()
+        # benchmark the pg with all channels
+        self.pulsegenerator().set_active_channels({ch: True for ch in(pg_chs_a + pg_chs_d)})
 
         # lock module if it's not already locked (sequence sampling in progress)
         if self.module_state() == 'idle':
@@ -2390,6 +2410,7 @@ class SequenceGeneratorLogic(GenericLogic):
         #if len(loaded_waves_old) > 0:
         #    self.pulsegenerator().load_waveform(loaded_waves_old)
         self.pulsegenerator().delete_waveform(waveform_name)
+        self.pulsegenerator().set_active_channels(active_channels_saved)
 
         self.sigSampleEnsembleComplete.emit(None)
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
