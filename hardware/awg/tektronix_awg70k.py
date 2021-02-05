@@ -786,7 +786,8 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         self.__mw_sweep_params['generated'] = False
         return 0
 
-    def get_status(self):
+    @PulserInterface.get_status.register('PulserInterface')
+    def get_awg_status(self):
         """ Retrieves the status of the pulsing hardware
 
         @return (int, dict): inter value of the current status with the
@@ -1762,6 +1763,8 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         """
         return self.pulser_off()
 
+
+    @MicrowaveInterface.get_status.register('MicrowaveInterface')
     def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
