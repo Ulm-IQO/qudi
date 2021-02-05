@@ -21,18 +21,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from enum import Enum
 from abc import abstractmethod
 from qudi.core.module import InterfaceBase
 from qudi.core.util.helpers import in_range
+from qudi.interface.finite_sampling_output_interface import SamplingOutputMode
 
 
-class SamplingOutputMode(Enum):
-    JUMP_LIST = 0
-    EQUIDISTANT_SWEEP = 1
-
-
-class FiniteSamplingOutputInterface(InterfaceBase):
+class FiniteSamplingIOInterface(InterfaceBase):
     """
     ToDo: Document
     """
@@ -155,7 +150,7 @@ class FiniteSamplingOutputInterface(InterfaceBase):
         pass
 
     @abstractmethod
-    def get_buffered_samples(self, number_of_samples=None):
+    def get_input_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active input channels read from the
         input frame buffer.
         If parameter <number_of_samples> is omitted, this method will return the currently
@@ -194,38 +189,53 @@ class FiniteSamplingOutputInterface(InterfaceBase):
         pass
 
 
-class FiniteSamplingOutputConstraints:
-    """ A container to hold all constraints for finite output sampling devices.
+class FiniteSamplingIOConstraints:
+    """ A container to hold all constraints for finite IO sampling devices.
     """
-    def __init__(self, supported_modes, channel_units, frame_size_limits, sample_rate_limits):
+    def __init__(self, supported_output_modes, input_channel_units, output_channel_units,
+                 frame_size_limits, sample_rate_limits):
         assert len(sample_rate_limits) == 2, 'Sample rate limits must be iterable of length 2'
         assert len(frame_size_limits) == 2, 'Frame size limits must be iterable of length 2'
         assert all(lim > 0 for lim in sample_rate_limits), 'Sample rate limits must be > 0'
         assert all(lim > 0 for lim in frame_size_limits), 'Frame size limits must be > 0'
-        assert len(channel_units) > 0, 'Specify at least one channel with unit in config'
-        assert all(isinstance(name, str) and name for name in channel_units), \
+        assert len(input_channel_units) > 0, 'Specify at least one input channel with unit'
+        assert len(output_channel_units) > 0, 'Specify at least one output channel with unit'
+        assert all(isinstance(name, str) and name for name in input_channel_units), \
             'Channel names must be non-empty strings'
-        assert all(isinstance(unit, str) for unit in channel_units.values()), \
+        assert all(isinstance(name, str) and name for name in output_channel_units), \
+            'Channel names must be non-empty strings'
+        assert all(isinstance(unit, str) for unit in input_channel_units.values()), \
             'Channel units must be strings'
-        assert all(isinstance(mode, SamplingOutputMode) for mode in supported_modes)
+        assert all(isinstance(unit, str) for unit in output_channel_units.values()), \
+            'Channel units must be strings'
+        assert all(isinstance(mode, SamplingOutputMode) for mode in supported_output_modes)
 
-        self._supported_modes = frozenset(supported_modes)
+        self._supported_output_modes = frozenset(supported_output_modes)
         self._sample_rate_limits = (float(min(sample_rate_limits)), float(max(sample_rate_limits)))
         self._frame_size_limits = (int(round(min(frame_size_limits))),
                                    int(round(max(frame_size_limits))))
-        self._channel_units = channel_units.copy()
+        self._output_channel_units = output_channel_units.copy()
+        self._input_channel_units = input_channel_units.copy()
 
     @property
-    def supported_modes(self):
-        return self._supported_modes
+    def supported_output_modes(self):
+        return self._supported_output_modes
 
     @property
-    def channel_units(self):
-        return self._channel_units.copy()
+    def output_channel_units(self):
+        return self._output_channel_units.copy()
 
     @property
-    def channel_names(self):
-        return tuple(self._channel_units)
+    def input_channel_units(self):
+        return self._input_channel_units.copy()
+
+    @property
+    def output_channel_names(self):
+        return tuple(self._output_channel_units)
+
+    @property
+    def input_channel_names(self):
+        return tuple(self._input_channel_units)
 
     @property
     def sample_rate_limits(self):
@@ -251,11 +261,14 @@ class FiniteSamplingOutputConstraints:
     def max_frame_size(self):
         return self._frame_size_limits[1]
 
-    def mode_supported(self, mode):
-        return mode in self._supported_modes
+    def output_mode_supported(self, mode):
+        return mode in self._supported_output_modes
 
-    def channel_valid(self, channel):
-        return channel in self._channel_units
+    def output_channel_valid(self, channel):
+        return channel in self._output_channel_units
+
+    def input_channel_valid(self, channel):
+        return channel in self._input_channel_units
 
     def sample_rate_in_range(self, rate):
         return in_range(rate, *self._sample_rate_limits)
