@@ -79,9 +79,9 @@ class FiniteSamplingIOInterface(InterfaceBase):
     @property
     @abstractmethod
     def samples_in_buffer(self):
-        """ Current number of samples per channel in input/output buffer.
+        """ Current number of acquired but unread samples per channel in the input buffer.
 
-        @return (int, int): Samples in input buffer, samples in output buffer
+        @return int: Unread samples in input buffer
         """
         pass
 
@@ -100,6 +100,13 @@ class FiniteSamplingIOInterface(InterfaceBase):
 
         @param iterable(str) input_channels: Iterable of input channel names to set active
         @param iterable(str) output_channels: Iterable of output channel names to set active
+        """
+        pass
+
+    @abstractmethod
+    def set_frame_size(self, size):
+        """
+        ToDo: Document
         """
         pass
 
@@ -141,16 +148,16 @@ class FiniteSamplingIOInterface(InterfaceBase):
         Will return AFTER the io has been terminated without waiting for the frame to finish
         (if possible).
 
-        After the io operation has been stopped, the output frame buffer will keep its state until
-        new frame data will be set. The input frame buffer will also stay and can be emptied by
-        reading the available samples.
+        After the io operation has been stopped, the output frame buffer will keep its state and
+        can be re-run or overwritten by calling <set_frame_data>.
+        The input frame buffer will also stay and can be emptied by reading the available samples.
 
         Must NOT raise exceptions if no frame output is running.
         """
         pass
 
     @abstractmethod
-    def get_input_buffered_samples(self, number_of_samples=None):
+    def get_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active input channels read from the
         input frame buffer.
         If parameter <number_of_samples> is omitted, this method will return the currently

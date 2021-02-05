@@ -89,7 +89,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
 
     @property
     def constraints(self):
-        return self._constraints.copy()
+        return self._constraints
 
     @property
     def active_channels(self):
@@ -228,6 +228,6 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
                 offset = np.random.rand() * 1000
                 amp = offset / 30
                 noise = np.sqrt(amp)
-                data[ch] = amp + (np.random.rand() - 0.5) * noise + amp * gamma ** 2 / (
+                data[ch] = amp + (np.random.rand() - 0.5) * noise - amp * gamma ** 2 / (
                             (x - pos) ** 2 + gamma ** 2)
         self.__simulated_samples = data

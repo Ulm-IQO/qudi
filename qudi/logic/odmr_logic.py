@@ -32,6 +32,7 @@ from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+from qudi.interface.finite_sampling_io_interface import SamplingOutputMode
 
 
 class OdmrLogic(LogicBase):
@@ -41,8 +42,7 @@ class OdmrLogic(LogicBase):
     _cw_microwave_source = Connector(name='cw_microwave_source',
                                      interface='MicrowaveInterface',
                                      optional=True)
-    _odmr_scanner = Connector(name='odmr_scanner',
-                              interface='OdmrNicardScannerInterfuse')
+    _odmr_scanner = Connector(name='odmr_scanner', interface='FiniteSamplingIOInterface')
 
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
     _cw_power = StatusVar(name='cw_power', default=-30)
@@ -74,6 +74,7 @@ class OdmrLogic(LogicBase):
         self._elapsed_sweeps = 0
         self.__estimated_lines = 0
         self.__start_time = 0.0
+        self._sweep_parameter_channel = None
 
         self._raw_data = None
         self._signal_data = None
@@ -96,6 +97,17 @@ class OdmrLogic(LogicBase):
         self._elapsed_sweeps = 0
         self.__estimated_lines = 0
         self.__start_time = 0.0
+
+        # ToDo: Find a better way to choose sweep channel to use
+        self._sweep_parameter_channel = None
+        for channel, unit in self.scanner_constraints.output_channel_units.items():
+            if unit == 'Hz':
+                self._sweep_parameter_channel = channel
+                break
+        assert self._sweep_parameter_channel is not None, \
+            'Could not find an output channel with parameter unit "Hz" to use in ODMR. Improve ' \
+            'ODMR logic to overcome this limitation or provide a FiniteSamplingIOInterface ' \
+            'hardware with Frequency output channel.'
 
         # Initialize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_data()
@@ -165,11 +177,11 @@ class OdmrLogic(LogicBase):
         self._raw_data = dict()
         self._fit_data = dict()
         self._signal_data = dict()
-        estimated_samples = self._run_time * self._data_rate / self._oversampling_factor
+        estimated_samples = self._run_time * self._data_rate
         samples_per_line = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
         # Add 5% Safety; Minimum of 1 line
         self.__estimated_lines = max(1, int(1.05 * estimated_samples / samples_per_line))
-        for channel in self.channels:
+        for channel in self.active_channels:
             self._raw_data[channel] = [
                 np.full((freq_arr.size, self.__estimated_lines), np.nan) for freq_arr in
                 self._frequency_data
@@ -204,16 +216,20 @@ class OdmrLogic(LogicBase):
 
     @property
     def microwave_constraints(self):
+        hardware = self._cw_microwave_source()
+        if hardware is None:
+            return None
         return self._cw_microwave_source().constraints
 
     @property
     def active_channels(self):
-        return self._odmr_scanner().active_channels
+        return self._odmr_scanner().active_channels[0]
 
     @property
     def active_channel_units(self):
         scanner = self._odmr_scanner()
-        return {ch: u for ch, u in scanner.channel_units.items() if ch in scanner.active_channels}
+        return {ch: u for ch, u in scanner.constraints.input_channel_units.items() if
+                ch in scanner.active_channels[0]}
 
     @property
     def signal_data(self):
@@ -241,9 +257,11 @@ class OdmrLogic(LogicBase):
         @param int lines_to_average: desired number of lines to average (0 means all)
         """
         with self._threadlock:
-            self._lines_to_average = int(lines_to_average)
-            self._calculate_signal_data()
-            self.sigScanDataUpdated.emit(self._signal_data, None)
+            lines_to_average = int(lines_to_average)
+            if lines_to_average != self._lines_to_average:
+                self._lines_to_average = lines_to_average
+                self._calculate_signal_data()
+                self.sigScanDataUpdated.emit(self._signal_data, None)
 
     @property
     def runtime(self):
@@ -312,7 +330,7 @@ class OdmrLogic(LogicBase):
                 else:
                     self.log.error('Unable to set data rate. Resulting sample rate out of bounds '
                                    'for ODMR scanner constraints.')
-            self.sigScanParametersUpdated.emit({'sample_rate': self._data_rate})
+            self.sigScanParametersUpdated.emit({'data_rate': self._data_rate})
 
     @property
     def oversampling(self):
@@ -387,9 +405,37 @@ class OdmrLogic(LogicBase):
             # Set up scanner hardware
             scanner = self._odmr_scanner()
             try:
-                scanner.sample_rate = self._oversampling_factor * self._data_rate
+                scanner.set_active_channels(
+                    input_channels=self.scanner_constraints.input_channel_names,
+                    output_channels=(self._sweep_parameter_channel,)
+                )
+                scan_length = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
+                scanner.set_frame_size(scan_length * self._oversampling_factor)
+                scanner.set_sample_rate(self._oversampling_factor * self._data_rate)
                 self._data_rate = scanner.sample_rate / self._oversampling_factor
-                scanner.set_frequency_samples(self._frequency_data)
+
+                # switch scan mode if necessary
+                if scanner.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                    if len(self._scan_frequency_ranges) != 1:
+                        if scanner.constraints.output_mode_supported(SamplingOutputMode.JUMP_LIST):
+                            self.log.warning('Multiple ODMR scan ranges set up. Switching scanner '
+                                             'to output mode "{SamplingOutputMode.JUMP_LIST}"')
+                            scanner.set_output_mode(SamplingOutputMode.JUMP_LIST)
+                        else:
+                            raise Exception(f'Unable to start ODMR scanner. Output mode '
+                                            f'"{SamplingOutputMode.EQUIDISTANT_SWEEP}" is not '
+                                            f'supported but necessary for multiple scan ranges. '
+                                            f'Stick to a single scan range and try again.')
+                if scanner.output_mode == SamplingOutputMode.JUMP_LIST:
+                    frame_data = np.concatenate(self._frequency_data)
+                    if self._oversampling_factor > 1:
+                        frame_data = np.repeat(frame_data, self._oversampling_factor)
+                elif scanner.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                    frame_data = self._scan_frequency_ranges
+                else:
+                    raise Exception(f'Unhandled/Unknown scanner output mode encountered: '
+                                    f'"{scanner.output_mode}"')
+                scanner.set_frame_data({self._sweep_parameter_channel: frame_data})
             except:
                 self.log.exception(
                     'Unable to start ODMR scan. Error while setting up scanner hardware.'
@@ -398,11 +444,10 @@ class OdmrLogic(LogicBase):
                 self.sigScanStateUpdated.emit(False)
                 return -1
             finally:
-                # ToDo: Emit new parameters
-                pass
+                # ToDo: Emit all new parameters
+                self.sigScanParametersUpdated.emit({'data_rate': self._data_rate})
 
             # ToDo: Clear old fit
-
             self._elapsed_sweeps = 0
             self._elapsed_time = 0.0
             self.sigElapsedUpdated.emit(self._elapsed_time, self._elapsed_sweeps)
@@ -440,7 +485,6 @@ class OdmrLogic(LogicBase):
         """
         with self._threadlock:
             if self.module_state() == 'locked':
-                self._odmr_scanner().stop_scan()
                 self.module_state.unlock()
             self.sigScanStateUpdated.emit(False)
             return 0
@@ -467,7 +511,13 @@ class OdmrLogic(LogicBase):
                 return
 
             try:
-                new_counts = self._odmr_scanner().get_single_scan_data()
+                new_counts = self._odmr_scanner().get_frame()
+                if self._oversampling_factor > 1:
+                    for ch in new_counts:
+                        new_counts[ch] = np.mean(
+                            new_counts[ch].reshape(-1, self._oversampling_factor),
+                            axis=1
+                        )
             except:
                 self.log.exception('Error while trying to read ODMR scan data from hardware:')
                 self.stop_odmr_scan()

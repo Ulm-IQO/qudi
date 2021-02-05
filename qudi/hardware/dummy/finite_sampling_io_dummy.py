@@ -104,7 +104,7 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
 
     @property
     def constraints(self):
-        return self._constraints.copy()
+        return self._constraints
 
     @property
     def active_channels(self):
@@ -131,11 +131,7 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
                                              int(elapsed_time * self._sample_rate))
 
             input_buffer_count = max(0, self.__elapsed_samples - self.__returned_samples)
-            if self.__frame_buffer is None:
-                output_buffer_count = 0
-            else:
-                output_buffer_count = max(0, self._frame_size - self.__elapsed_samples)
-            return input_buffer_count, output_buffer_count
+            return input_buffer_count
 
     def set_output_mode(self, mode):
         assert self._constraints.output_mode_supported(mode), f'Invalid output mode "{mode}"'
@@ -186,7 +182,7 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
     def set_frame_data(self, data):
         assert isinstance(data, dict) or (data is None)
         if data is not None:
-            assert frozenset(data) is self._active_output_channels, \
+            assert frozenset(data) == self._active_output_channels, \
                 f'Must provide data for all active output channels: {self._active_output_channels}'
             if self._output_mode == SamplingOutputMode.JUMP_LIST:
                 frame_size = len(next(iter(data.values())))
@@ -247,7 +243,7 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
                     )
                 self.module_state.unlock()
 
-    def get_input_buffered_samples(self, number_of_samples=None):
+    def get_buffered_samples(self, number_of_samples=None):
         with self._thread_lock:
             available_samples = self.samples_in_buffer
             if number_of_samples is None:
@@ -272,12 +268,13 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
             self.__returned_samples += number_of_samples
             return data
 
-    def get_frame(self, data):
+    def get_frame(self, data=None):
         with self._thread_lock:
-            self.set_frame_data(data)
-            self.start_buffered_acquisition()
+            if data is not None:
+                self.set_frame_data(data)
+            self.start_buffered_frame()
             data = self.get_buffered_samples(self._frame_size)
-            self.stop_buffered_acquisition()
+            self.stop_buffered_frame()
             return data
 
     def __simulate_random(self, length):
@@ -297,6 +294,6 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
             offset = np.random.rand() * 1000
             amp = offset / 30
             noise = np.sqrt(amp)
-            data[ch] = amp + (np.random.rand() - 0.5) * noise + amp * gamma ** 2 / (
+            data[ch] = amp + (np.random.rand() - 0.5) * noise - amp * gamma ** 2 / (
                         (x - pos) ** 2 + gamma ** 2)
         self.__simulated_samples = data

@@ -96,23 +96,30 @@ class OdmrGui(GuiBase):
         """
         # Create main window
         logic = self._odmr_logic()
-        constraints = logic.constraints
-        channel_units = logic.channel_units
-        print(constraints)
+        scanner_constraints = logic.scanner_constraints
+        cw_constraints = logic.microwave_constraints
         self._mw = OdmrMainWindow()
         self._plot_widget = self._mw.centralWidget()
+        # ToDo: Actual channel constraints
         self._scan_control_dockwidget = OdmrScanControlDockWidget(
             parent=self._mw,
-            power_range=constraints['power_limits'],
-            frequency_range=constraints['frequency_limits'],
-            data_channels=tuple(channel_units),
-            points_range=constraints['points_limits']
+            power_range=(-30, 30),
+            frequency_range=(0, 10e9),
+            data_channels=scanner_constraints.input_channel_names,
+            points_range=scanner_constraints.frame_size_limits
         )
-        self._cw_control_dockwidget = OdmrCwControlDockWidget(
-            parent=self._mw,
-            power_range=constraints['power_limits'],
-            frequency_range=constraints['frequency_limits']
-        )
+        if cw_constraints is None:
+            self._cw_control_dockwidget = OdmrCwControlDockWidget(
+                parent=self._mw,
+                power_range=(-30, 30),
+                frequency_range=(0, 10e9)
+            )
+        else:
+            self._cw_control_dockwidget = OdmrCwControlDockWidget(
+                parent=self._mw,
+                power_range=cw_constraints['power_limits'],
+                frequency_range=cw_constraints['frequency_limits']
+            )
         self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw)
         self.restore_default_view()
 
