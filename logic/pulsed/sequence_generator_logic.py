@@ -37,125 +37,13 @@ from core.configoption import ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from core.util.helpers import natural_sort
 from core.util.network import netobtain
+from core.util.benchmark import BenchmarkTool
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
 from interface.pulser_interface import SequenceOption
 
-from collections import deque, namedtuple
-import scipy
-
-
-Datapoint = namedtuple('Datapoint', 'time_s y')
-
-
-class BenchmarkTool(object):
-
-    def __init__(self, n_save_datapoints=20):
-        self._datapoints = deque(maxlen=n_save_datapoints)  # fifo-like
-        self._datapoints_fixed = list()
-
-    @property
-    def n_benchmarks(self):
-        return len(self._datapoints) + len(self._datapoints_fixed)
-
-    @property
-    def sanity(self):
-        a, t0, da = self._get_speed_fit()
-
-        if a + da < 0 or t0 < 0:
-            return False
-
-        return True
-
-    def reset(self):
-        self._datapoints_fixed = []
-        self._datapoints.clear()
-
-    def add_benchmark(self, time_s, y, is_persistent=False):
-
-        """"
-        dev_id_old = self._write_speed_benchmark['pg_device_hash']
-        dev_id = self._create_pg_device_id_hash()
-        if dev_id != dev_id_old:
-            self.log.debug("Resetting benchmark. Old->new id: {}, {}".format(dev_id_old, dev_id))
-            self._reset_write_benchmark()
-        """
-
-        if time_s <= 0.:
-            return
-
-        if not is_persistent:
-            self._datapoints.append(Datapoint(time_s, y))
-        else:
-            self._datapoints_fixed.append(Datapoint(time_s, y))
-
-    def estimate_time(self, y, check_sanity=True):
-
-        a, t0, _ = self._get_speed_fit()
-
-        if self.sanity or not check_sanity:
-            return t0 + a * y
-
-        return -1
-
-    def estimate_speed(self, check_sanity=True):
-        # units: [y] per s
-        a, t0, _ = self._get_speed_fit()
-
-        if self.sanity or not check_sanity:
-            return 1. / a
-
-        return np.nan
-
-    def save(self, obj=None, value=None):
-        # function signature needs to fulfill the StatusVar logic
-
-        save_dict = copy.deepcopy(self.__dict__)
-        # make deque serializable
-        save_dict['_datapoints'] = copy.deepcopy(list(self._datapoints))
-
-        # make DataPoint serializable
-        new_datapoints = [tuple(el) for el in save_dict['_datapoints']]
-        save_dict['_datapoints'] = new_datapoints
-        new_datapoints = [tuple(el) for el in save_dict['_datapoints_fixed']]
-        save_dict['_datapoints_fixed'] = new_datapoints
-
-        return save_dict
-
-    def load_from_dict(self, obj=None, saved_dict=None):
-
-        if saved_dict != None:
-            saved_dict['_datapoints'] = deque(saved_dict['_datapoints'])
-
-            # load serialized tuples to datapoints
-            new_datapoints = [Datapoint(el[0], el[1]) for el in saved_dict['_datapoints']]
-            saved_dict['_datapoints'] = new_datapoints
-            new_datapoints = [Datapoint(el[0], el[1]) for el in saved_dict['_datapoints_fixed']]
-            saved_dict['_datapoints_fixed'] = new_datapoints
-
-            self.__dict__.update(saved_dict)
-
-    def _get_speed_fit(self):
-
-        # linear fit t= a*y + t0 over all data with t: time, y: benchmark quantitiy
-        all_data = np.asarray(self._datapoints_fixed + list(self._datapoints))
-
-        if len(self._datapoints) > len(self._datapoints_fixed):
-            # ensure rolling data has max 50:50 weight
-            weighted_data = np.asarray(self._datapoints_fixed + list(self._datapoints[-len(self._datapoints_fixed):]))
-        else:
-            weighted_data = all_data
-
-        if len(all_data) < 1:
-            return np.nan, np.nan, np.nan
-        if len(np.unique(all_data[:,1])) == 1:
-            # fit needs at least 2 different datapoints in y
-            return np.average(all_data[:,0])/all_data[0,1], 0, np.nan
-        a, t0, _, _, da = scipy.stats.linregress(weighted_data[:, 1], weighted_data[:, 0])
-
-        return a, t0, da
 
 class SequenceGeneratorLogic(GenericLogic):
     """
@@ -226,8 +114,6 @@ class SequenceGeneratorLogic(GenericLogic):
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
     sigAvailableWaveformsUpdated = QtCore.Signal(list)
     sigAvailableSequencesUpdated = QtCore.Signal(list)
-    sigRunPgBenchmark = QtCore.Signal()
-
 
     sigPredefinedSequenceGenerated = QtCore.Signal(object, bool)
 
@@ -324,9 +210,6 @@ class SequenceGeneratorLogic(GenericLogic):
         self._pog = PulseObjectGenerator(sequencegeneratorlogic=self)
 
         self.__sequence_generation_in_progress = False
-
-        self.sigRunPgBenchmark.connect(
-            self.run_pg_benchmark, QtCore.Qt.QueuedConnection)
 
         return
 
@@ -2357,17 +2240,15 @@ class SequenceGeneratorLogic(GenericLogic):
         # lock module if it's not already locked (sequence sampling in progress)
         if self.module_state() == 'idle':
             self.module_state.lock()
-        elif not self.__sequence_generation_in_progress:
+        else:
             self.log.error("Module is locked, can't sample benchmark chunk")
             return -1, list(), dict()
 
         analog_samples, digital_samples = {},{}
 
         for chnl in pg_chs_a:
-            analog_samples[chnl] = np.empty(n_samples, dtype='float32')
-            analog_samples[chnl] = np.random.random_sample(n_samples)
+            analog_samples[chnl] = np.random.random_sample(n_samples).astype('float32')
         for chnl in pg_chs_d:
-            digital_samples[chnl] = np.empty(n_samples, dtype=bool)
             digital_samples[chnl] = np.random.randint(0, 2, n_samples, bool)
 
         #loaded_waves_old = {key: val for key, val in self.pulsegenerator().get_loaded_assets()[0].items() if val != ''}
@@ -2391,8 +2272,6 @@ class SequenceGeneratorLogic(GenericLogic):
                            ''.format(written_samples,
                                      n_samples))
 
-        if not self.__sequence_generation_in_progress:
-            self.module_state.unlock()
 
         self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
@@ -2402,6 +2281,8 @@ class SequenceGeneratorLogic(GenericLogic):
         loaded_dict = self.pulsegenerator().load_waveform(wfm_list)[0]
         self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
+
+        self.module_state.unlock()
 
         if not _check_loaded(loaded_dict, wfm_list):
             self.log.warning("Loading of waves {} failed, still: {}".format(wfm_list,
