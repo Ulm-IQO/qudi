@@ -4,6 +4,8 @@
 
 Changes/New features:
 
+* Added visual indication of ongoing waveform upload in pulsed gui. 
+* Added estimated time for waveform upload, issued for long expected upload times (threshold value configurable).  
 * Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
 in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
