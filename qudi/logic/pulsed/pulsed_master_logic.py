@@ -921,6 +921,16 @@ class PulsedMasterLogic(LogicBase):
                 self.sigDeleteSequence.emit(sequence_name)
         return
 
+    @QtCore.Slot()
+    def refresh_pulse_generator_settings(self):
+        """
+        Trigger updated settings when values within might have changed without being
+        explicitly set by the setter method.
+        :return:
+        """
+        # causes update of benchmark results
+        self.sigGeneratorSettingsChanged.emit({})
+
     @QtCore.Slot(dict)
     def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
         """

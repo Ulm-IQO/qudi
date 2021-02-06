@@ -162,6 +162,10 @@ class PulsedMeasurementGui(GUIBase):
     _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
     _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
 
+    # signals
+    sigPulseGeneratorSettingsUpdated = QtCore.Signal()
+    sigPulseGeneratorRunBenchmark = QtCore.Signal()
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -205,6 +209,13 @@ class PulsedMeasurementGui(GUIBase):
         self._connect_sequence_generator_tab_signals()
         self._connect_dialog_signals()
         self._connect_logic_signals()
+
+        self.sigPulseGeneratorSettingsUpdated.connect(
+            self.pulsedmasterlogic().refresh_pulse_generator_settings,
+            QtCore.Qt.QueuedConnection)
+        self.sigPulseGeneratorRunBenchmark.connect(
+            self.pulsedmasterlogic().sequencegeneratorlogic().run_pg_benchmark,
+            QtCore.Qt.QueuedConnection)
 
         self.show()
 
@@ -264,6 +275,9 @@ class PulsedMeasurementGui(GUIBase):
         self._disconnect_sequence_generator_tab_signals()
         self._disconnect_dialog_signals()
         self._disconnect_logic_signals()
+
+        self.sigPulseGeneratorSettingsUpdated.disconnect()
+        self.sigPulseGeneratorRunBenchmark.disconnect()
 
         self._mw.close()
         return
@@ -1095,8 +1109,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def show_generator_settings(self):
         """ Open the Pulse generator settings window. """
-        # update settings with current values
-        self.pulsedmasterlogic().sigGeneratorSettingsChanged.emit({})
+        self.sigPulseGeneratorSettingsUpdated.emit()
         self._pgs.exec_()
         return
 
@@ -3175,5 +3188,5 @@ class PulsedMeasurementGui(GUIBase):
     @QtCore.Slot()
     def run_pg_benchmark(self):
 
-        self.pulsedmasterlogic().sequencegeneratorlogic().sigRunPgBenchmark.emit()
-        self.pulsedmasterlogic().sigGeneratorSettingsChanged.emit({})
+        self.sigPulseGeneratorRunBenchmark.emit()
+        self.sigPulseGeneratorSettingsUpdated.emit()
