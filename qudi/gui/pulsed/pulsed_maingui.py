@@ -220,33 +220,21 @@ class PulsedMeasurementGui(GUIBase):
         self.show()
 
         if np.isnan(self.pulsedmasterlogic().sequencegeneratorlogic().get_speed_write_load()):
-            dialog = QtWidgets.QDialog(self._mw)
-            dialog.setWindowTitle('Benchmark missing')
-            label1 = QtWidgets.QLabel('Benchmark missing:')
-            label1.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            font = label1.font()
-            font.setPointSize(12)
-            label1.setFont(font)
-            label2 = QtWidgets.QLabel("Didn't find benchmark data for pulse generator. "
+
+            dialog = QtWidgets.QMessageBox()
+            dialog.setWindowTitle("Benchmark missing")
+            dialog.setText("<center><h2>Benchmark missing:</h2></center>")
+            dialog.setInformativeText("Didn't find benchmark data for the pulse generator. "
                                       "Would you like to run a benchmark now? \n \n"
                                       "Otherwise, upload time estimation might be unavailable. "
                                       "Make sure to close the pulsed gui gracefully to save "
                                       "pulse generator information for future use.")
-            label2.setAlignment(QtCore.Qt.AlignVCenter)
-            label2.setWordWrap(True)
-            button_box = QtWidgets.QDialogButtonBox()
-            button_box.addButton(QtWidgets.QDialogButtonBox.Yes)
-            button_box.addButton(QtWidgets.QDialogButtonBox.No)
-            button_box.setCenterButtons(True)
-            layout = QtWidgets.QVBoxLayout()
-            layout.addWidget(label1)
-            layout.addWidget(label2)
-            layout.addWidget(button_box)
-            button_box.accepted.connect(dialog.accept)
-            button_box.accepted.connect(self.run_pg_benchmark)
-            button_box.rejected.connect(dialog.accept)
-            dialog.setLayout(layout)
-            dialog.exec()
+            dialog.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            dialog.setDefaultButton(QtWidgets.QMessageBox.Yes)
+
+            ret = dialog.exec()
+            if ret == QtWidgets.QMessageBox.Yes:
+                self.run_pg_benchmark()
 
         return
 
