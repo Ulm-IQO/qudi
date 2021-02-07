@@ -48,6 +48,50 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def tau_2_phys_spacing(self, t, inverse=False,
+                           custom_func=[None, None], **custom_kwwargs):
+        """
+        Converts tau to the physical pulse spacing between (microwave) pulses.
+        By definition, tau = 1/f where f is the filter frequency of a dynamical decoupling
+        experiment. For many cases this tau equals the time between the center of
+        consecutive pi pulses.
+        Thus, the default behavior is to subtract the duration of a pi pulse from tau.
+
+        :param t: tau to be converted. If inverse=True
+        :param bool inverse: do the inverse transformation tau -> t_phys
+        :param [func, inv_func] custom_func: provide function pointers for custom transformations
+        :param custom_kwwargs: kwargs to the custom transformation functions
+        :return:
+        """
+        def subtract_pi(t, **kwargs):
+            return t - self.rabi_period / 2
+
+        def add_pi(t, **kwargs):
+            return t + self.rabi_period / 2
+
+        def check_sanity(tau, t_phys):
+            t_phys = np.asarray(t_phys)
+            tau = np.asarray(tau)
+            if np.any(t_phys < 0):
+                self.log.warning("Adjusting negative physical pulse spacing to 0. Affected tau: {} "
+                                 .format(tau[t_phys < 0]))
+                t_phys[t_phys < 0] = 0
+
+            return t_phys
+
+        func = subtract_pi
+        func_inverse = add_pi
+
+        if custom_func[0] is not None:
+            func = custom_func[0]
+        if custom_func[1] is not None:
+            func_inverse = custom_func[1]
+
+        if inverse:
+            return func_inverse(t, **custom_kwwargs)
+        return check_sanity(t, func(t, **custom_kwwargs))
+
+
     ################################################################################################
     #                             Generation methods for waveforms                                 #
     ################################################################################################
@@ -1100,6 +1144,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         # calculate "real" start length of tau due to finite pi-pulse length
         real_start_tau = max(0, tau_start - self.rabi_period / 2)
+        start_tau_phys = self.tau_2_phys_spacing(tau_start)
+        #self.log.debug("So far tau_start: {}, new: {}".format(real_start_tau, start_tau_phys))
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1131,8 +1177,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tauhalf_element = self._get_idle_element(length=real_start_tau / 2, increment=tau_step / 2)
-        tau_element = self._get_idle_element(length=real_start_tau, increment=tau_step)
+        tauhalf_element = self._get_idle_element(length=start_tau_phys / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=start_tau_phys, increment=tau_step)
 
 
         # Create block and append to created_blocks list
@@ -1198,11 +1244,18 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         freq_array = freq_start + np.arange(num_of_points) * freq_step
         # get tau array from freq array
         tau_array = 1 / (2 * freq_array)
-        # calculate "real" tau array (finite pi-pulse length)
+        tau_phys_array = self.tau_2_phys_spacing(tau_array)
+
+        # old tansformation to "real tau"
         real_tau_array = tau_array - self.rabi_period / 2
         np.clip(real_tau_array, 0, None, real_tau_array)
+
         # Convert back to frequency in order to account for clipped values
-        freq_array = 1 / (2 * (real_tau_array + self.rabi_period / 2))
+        freq_array_old = 1 / (2 * (real_tau_array + self.rabi_period / 2))
+        freq_array = 1 / (2 * (self.tau_2_phys_spacing(tau_phys_array, inverse=True)))
+
+        self.log.debug("So far tau: {}, \nnew: {}".format(real_tau_array, tau_phys_array))
+        self.log.debug("So far freq: {}, \nnew: {}".format(freq_array_old, freq_array))
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1239,7 +1292,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         xy8_block = PulseBlock(name=name)
-        for ii, tau in enumerate(real_tau_array):
+        for ii, tau in enumerate(tau_phys_array):
             tauhalf_element = self._get_idle_element(length=tau / 2, increment=0)
             tau_element = self._get_idle_element(length=tau, increment=0)
             xy8_block.append(pihalf_element)
