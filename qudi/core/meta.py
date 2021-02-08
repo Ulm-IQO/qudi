@@ -73,5 +73,5 @@ class InterfaceMeta(ABCQObjectMeta):
         if abstract is not None:
             setattr(cls,
                     '__abstractmethods__',
-                    frozenset(a for a in abstract if a in _attr_mapping))
+                    frozenset(a for a in abstract if a not in _attr_mapping))
         return cls
