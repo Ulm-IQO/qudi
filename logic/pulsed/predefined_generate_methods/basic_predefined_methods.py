@@ -57,8 +57,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         consecutive pi pulses.
         Thus, the default behavior is to subtract the duration of a pi pulse from tau.
 
-        :param t: tau to be converted. If inverse=True
-        :param bool inverse: do the inverse transformation tau -> t_phys
+        :param t: tau (or tau_phys, if inverse==True) to be converted.
+        :param bool inverse: do the inverse transformation tau -> tau_phys
         :param [func, inv_func] custom_func: provide function pointers for custom transformations
         :param custom_kwwargs: kwargs to the custom transformation functions
         :return:
@@ -317,6 +317,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
+        tau_phys_start = self.tau_2_phys_spacing(tau_start)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -342,7 +343,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
+        tau_element = self._get_idle_element(length=tau_phys_start, increment=tau_step)
 
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
@@ -395,6 +396,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             tau_array = csv_2_list(tau_list)
         except TypeError:
             tau_array = tau_list
+        tau_phys_array = self.tau_2_phys_spacing(tau_array)
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
@@ -424,8 +426,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
-        for tau in tau_array:
-            tau_element = self._get_idle_element(length=tau, increment=0)
+        for tau_phys in tau_phys_array:
+            tau_element = self._get_idle_element(length=tau_phys, increment=0)
             ramsey_block.append(pihalf_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(tau_element)
@@ -476,6 +478,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
+        tau_phys_start = self.tau_2_phys_spacing(tau_start)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -506,7 +509,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
+        tau_element = self._get_idle_element(length=tau_phys_start, increment=tau_step)
 
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
@@ -567,6 +570,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         else:
             tau_array = np.geomspace(tau_start, tau_end, num_of_points)
 
+        tau_phys_array = self.tau_2_phys_spacing(tau_array)
+
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
@@ -599,8 +604,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
-        for tau in tau_array:
-            tau_element = self._get_idle_element(length=tau, increment=0.0)
+        for tau_phys in tau_phys_array:
+            tau_element = self._get_idle_element(length=tau_phys, increment=0.0)
             hahn_block.append(pihalf_element)
             hahn_block.append(tau_element)
             hahn_block.append(pi_element)
@@ -1016,7 +1021,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         # calculate "real" start length of tau due to finite pi-pulse length
-        real_start_tau = max(0, tau_start - self.rabi_period / 2)
+        tau_phys_start = self.tau_2_phys_spacing(tau_start)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1050,8 +1055,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                            amp=self.microwave_amplitude,
                                            freq=self.microwave_frequency,
                                            phase=90)
-        tauhalf_element = self._get_idle_element(length=real_start_tau / 2, increment=tau_step / 2)
-        tau_element = self._get_idle_element(length=real_start_tau, increment=tau_step)
+        tauhalf_element = self._get_idle_element(length=tau_phys_start / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=tau_phys_start, increment=tau_step)
 
         # Create block and append to created_blocks list
         xy8_block = PulseBlock(name=name)
