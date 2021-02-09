@@ -21,6 +21,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
 from abc import abstractmethod
 from qudi.core.module import InterfaceBase
 from qudi.core.util.helpers import in_range
