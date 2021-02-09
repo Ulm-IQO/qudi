@@ -55,6 +55,9 @@ class AWGM819X(Base, PulserInterface):
     _wave_file_extension = '.bin'
     _wave_transfer_datatype = 'h'
 
+    # explicitly set low/high levels for [(d_ch1_low, d_ch1_high), (d_ch2_low, d_ch2_high), ...]
+    _d_ch_level_low_high = ConfigOption(name='assets_storage_path', default=[], missing='nothing')
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -1578,7 +1581,6 @@ class AWGM819X(Base, PulserInterface):
 
         return waveforms
 
-
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
@@ -1780,7 +1782,6 @@ class AWGM819X(Base, PulserInterface):
 
         return active_ch
 
-
     def _get_all_digital_channels(self):
         """
         Helper method to return a sorted list of all technically available digital channel
@@ -1789,6 +1790,25 @@ class AWGM819X(Base, PulserInterface):
         @return list: Sorted list of digital channels
         """
         return [chnl for chnl in self._get_all_channels() if chnl.startswith('d')]
+
+    def _output_levels_by_config(self, d_ampl_low, d_ampl_high):
+        if self._d_ch_level_low_high:
+            for i in range(len(self._d_ch_level_low_high)):
+                ch_idx = i + 1
+                low = self._d_ch_level_low_high[i][0]
+                high = self._d_ch_level_low_high[i][0]
+                ch_str = 'd_ch{:d}'.format(ch_idx)
+
+                if ch_str in d_ampl_low.keys() and ch_str in d_ampl_high.keys():
+                    d_ampl_low['d_ch{:d}'.format(ch_idx)] = low
+                    d_ampl_high['d_ch{:d}'.format(ch_idx)] = high
+        else:
+            pass  # use passed (default) values
+
+        self.log.debug("Overriding output levels from config: d_ampl_low: {}, d_ampl_high: {}".format(
+                    d_ampl_low, d_ampl_high))
+
+        return d_ampl_low, d_ampl_high
 
     def update_segment_table(self):
         segment_table_1 = self.read_segment_table(1)
@@ -1963,8 +1983,6 @@ class AWGM819X(Base, PulserInterface):
         idx = names.index(name)
 
         return self.get_loaded_assets_id(ch_num, mode)[idx]
-
-
 
     def get_sequencer_state(self, ch_num):
         """
@@ -2256,7 +2274,7 @@ class AWGM8195A(AWGM819X):
         elif self.awg_mode == 'FOUR':
 
             a_ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default,
-                    'a_ch3': constr.a_ch_amplitude.default, 'a_ch4': constr.a_ch_amplitude.default}
+                      'a_ch3': constr.a_ch_amplitude.default, 'a_ch4': constr.a_ch_amplitude.default}
             a_offs = {'a_ch1': constr.a_ch_offset.default, 'a_ch2': constr.a_ch_offset.default_marker,
                       'a_ch3': constr.a_ch_offset.default_marker, 'a_ch4': constr.a_ch_offset.default_marker}
             d_ampl_low = {}
@@ -2265,6 +2283,7 @@ class AWGM8195A(AWGM819X):
         else:
             self.log.error('The chosen AWG ({0}) mode is not implemented yet!'.format(self.awg_mode))
 
+        d_ampl_low, d_ampl_high = self._output_levels_by_config(d_ampl_low, d_ampl_high)
 
         return {'a_ampl': a_ampl, 'a_offs': a_offs,
                 'd_ampl_low': d_ampl_low, 'd_ampl_high': d_ampl_high}
@@ -2625,10 +2644,13 @@ class AWGM8190A(AWGM819X):
         constr = self.get_constraints()
 
         a_ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default}
+
         d_ampl_low = {'d_ch1': constr.d_ch_low.default, 'd_ch2': constr.d_ch_low.default,
                       'd_ch3': constr.d_ch_low.default, 'd_ch4': constr.d_ch_low.default}
         d_ampl_high = {'d_ch1': constr.d_ch_high.default, 'd_ch2': constr.d_ch_high.default,
                        'd_ch3': constr.d_ch_high.default, 'd_ch4': constr.d_ch_high.default}
+        d_ampl_low, d_ampl_high = self._output_levels_by_config(d_ampl_low, d_ampl_high)
+
         a_offs = {}
 
         return {'a_ampl': a_ampl, 'a_offs': a_offs,
