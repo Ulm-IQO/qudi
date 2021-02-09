@@ -243,7 +243,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -698,7 +698,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -762,7 +762,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -1464,6 +1464,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         t1_sequence.measurement_information['laser_ignore_list'] = list()
         t1_sequence.measurement_information['controlled_variable'] = tau_array
         t1_sequence.measurement_information['units'] = ('s', '')
+        t1_sequence.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
         t1_sequence.measurement_information['number_of_lasers'] = len(tau_array)
         t1_sequence.measurement_information['counting_length'] = count_length
 
