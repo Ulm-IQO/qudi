@@ -49,6 +49,27 @@ class ProcessSetpointInterface(InterfaceBase):
 
     @property
     @abstractmethod
+    def channel_states(self):
+        """ Current channel state for all channels. States are bool type and refer to active (True)
+        and inactive (False).
+        Example state dict: {'channel_1': True, 'channel_2': False}
+
+        @return dict: Channel states (values) for each channel (keys)
+        """
+        pass
+
+    @channel_states.setter
+    def channel_states(self, states):
+        """ Set channel state for all channels. States are bool type and refer to active (True)
+        and inactive (False).
+        Example state dict: {'channel_1': True, 'channel_2': False}
+
+        @param dict states: Channel states (values) for each channel (keys) to set
+        """
+        pass
+
+    @property
+    @abstractmethod
     def setpoints(self):
         """ The current setpoints for all channels.
 
@@ -61,6 +82,16 @@ class ProcessSetpointInterface(InterfaceBase):
         """ Set the setpoints for all channels at once.
 
         @param dict values: Target values (values) to set for all channels (keys)
+        """
+        pass
+
+    @abstractmethod
+    def set_channel_state(self, active, channel):
+        """ Set channel state for a single channel. States are bool type and refer to active (True)
+        and inactive (False).
+
+        @param bool active: Channel state flag (active: True, inactive: False)
+        @param str channel: The channel to set
         """
         pass
 
@@ -103,10 +134,41 @@ class ProcessValueInterface(InterfaceBase):
 
     @property
     @abstractmethod
+    def channel_states(self):
+        """ Current channel state for all channels. States are bool type and refer to active (True)
+        and inactive (False).
+        Example state dict: {'channel_1': True, 'channel_2': False}
+
+        @return dict: Channel states (values) for each channel (keys)
+        """
+        pass
+
+    @channel_states.setter
+    def channel_states(self, states):
+        """ Set channel state for all channels. States are bool type and refer to active (True)
+        and inactive (False).
+        Example state dict: {'channel_1': True, 'channel_2': False}
+
+        @param dict states: Channel states (values) for each channel (keys) to set
+        """
+        pass
+
+    @property
+    @abstractmethod
     def process_values(self):
         """ Read-Only property returning a snapshot of current process values for all channels.
 
         @return dict: Snapshot of the current process values (values) for all channels (keys)
+        """
+        pass
+
+    @abstractmethod
+    def set_channel_state(self, active, channel):
+        """ Set channel state for a single channel. States are bool type and refer to active (True)
+        and inactive (False).
+
+        @param bool active: Channel state flag (active: True, inactive: False)
+        @param str channel: The channel to set
         """
         pass
 
