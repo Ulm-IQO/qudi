@@ -50,22 +50,20 @@ class ProcessSetpointInterface(InterfaceBase):
 
     @property
     @abstractmethod
-    def channel_states(self):
-        """ Current channel state for all channels. States are bool type and refer to active (True)
-        and inactive (False).
-        Example state dict: {'channel_1': True, 'channel_2': False}
+    def is_active(self):
+        """ Current activity state.
+        State is bool type and refers to active (True) and inactive (False).
 
-        @return dict: Channel states (values) for each channel (keys)
+        @return bool: Activity state (active: True, inactive: False)
         """
         pass
 
-    @channel_states.setter
-    def channel_states(self, states):
-        """ Set channel state for all channels. States are bool type and refer to active (True)
-        and inactive (False).
-        Example state dict: {'channel_1': True, 'channel_2': False}
+    @is_active.setter
+    def is_active(self, active):
+        """ Set activity state.
+        State is bool type and refers to active (True) and inactive (False).
 
-        @param dict states: Channel states (values) for each channel (keys) to set
+        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
@@ -87,23 +85,10 @@ class ProcessSetpointInterface(InterfaceBase):
         pass
 
     @abstractmethod
-    def set_channel_state(self, active, channel):
-        """ Set channel state for a single channel. States are bool type and refer to active (True)
-        and inactive (False).
+    def set_activity_state(self, active):
+        """ Set activity state. State is bool type and refers to active (True) and inactive (False).
 
-        @param bool active: Channel state flag (active: True, inactive: False)
-        @param str channel: The channel to set
-        """
-        pass
-
-    @abstractmethod
-    def get_channel_state(self, channel):
-        """ Get current channel state for a single channel. States are bool type and refer to
-        active (True) and inactive (False).
-
-        @param str channel: The channel to set
-
-        @return bool: Current channel state flag (active: True, inactive: False)
+        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
@@ -146,22 +131,20 @@ class ProcessValueInterface(InterfaceBase):
 
     @property
     @abstractmethod
-    def channel_states(self):
-        """ Current channel state for all channels. States are bool type and refer to active (True)
-        and inactive (False).
-        Example state dict: {'channel_1': True, 'channel_2': False}
+    def is_active(self):
+        """ Current activity state.
+        State is bool type and refers to active (True) and inactive (False).
 
-        @return dict: Channel states (values) for each channel (keys)
+        @return bool: Activity state (active: True, inactive: False)
         """
         pass
 
-    @channel_states.setter
-    def channel_states(self, states):
-        """ Set channel state for all channels. States are bool type and refer to active (True)
-        and inactive (False).
-        Example state dict: {'channel_1': True, 'channel_2': False}
+    @is_active.setter
+    def is_active(self, active):
+        """ Set activity state.
+        State is bool type and refers to active (True) and inactive (False).
 
-        @param dict states: Channel states (values) for each channel (keys) to set
+        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
@@ -175,23 +158,10 @@ class ProcessValueInterface(InterfaceBase):
         pass
 
     @abstractmethod
-    def set_channel_state(self, active, channel):
-        """ Set channel state for a single channel. States are bool type and refer to active (True)
-        and inactive (False).
+    def set_activity_state(self, active):
+        """ Set activity state. State is bool type and refers to active (True) and inactive (False).
 
-        @param bool active: Channel state flag (active: True, inactive: False)
-        @param str channel: The channel to set
-        """
-        pass
-
-    @abstractmethod
-    def get_channel_state(self, channel):
-        """ Get current channel state for a single channel. States are bool type and refer to
-        active (True) and inactive (False).
-
-        @param str channel: The channel to set
-
-        @return bool: Current channel state flag (active: True, inactive: False)
+        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
