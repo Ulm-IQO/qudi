@@ -96,6 +96,17 @@ class ProcessSetpointInterface(InterfaceBase):
         pass
 
     @abstractmethod
+    def get_channel_state(self, channel):
+        """ Get current channel state for a single channel. States are bool type and refer to
+        active (True) and inactive (False).
+
+        @param str channel: The channel to set
+
+        @return bool: Current channel state flag (active: True, inactive: False)
+        """
+        pass
+
+    @abstractmethod
     def set_setpoint(self, value, channel):
         """ Set new setpoint for a single channel.
 
@@ -169,6 +180,17 @@ class ProcessValueInterface(InterfaceBase):
 
         @param bool active: Channel state flag (active: True, inactive: False)
         @param str channel: The channel to set
+        """
+        pass
+
+    @abstractmethod
+    def get_channel_state(self, channel):
+        """ Get current channel state for a single channel. States are bool type and refer to
+        active (True) and inactive (False).
+
+        @param str channel: The channel to set
+
+        @return bool: Current channel state flag (active: True, inactive: False)
         """
         pass
 
