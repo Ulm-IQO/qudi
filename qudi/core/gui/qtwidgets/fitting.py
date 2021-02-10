@@ -88,6 +88,7 @@ class FitWidget(QtWidgets.QWidget):
     def update_fit_configurations(self, config_names):
         old_text = self.selection_combobox.currentText()
         self.selection_combobox.clear()
+        self.selection_combobox.addItem('No Fit')
         self.selection_combobox.addItems(config_names)
         if old_text in config_names:
             self.selection_combobox.setCurrentText(old_text)
