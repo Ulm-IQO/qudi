@@ -1312,7 +1312,6 @@ class AWGM819X(Base, PulserInterface):
                     segment_id = self.asset_name_2_id(name, chnl_num, mode='segment')
                 else:
                     segment_id = np.int(name.split(',')[0])
-                    self.log.warning("Loading segments via name will deprecate.")
                 self.write(':TRAC{0}:SEL {1}'.format(chnl_num, segment_id))
 
 
