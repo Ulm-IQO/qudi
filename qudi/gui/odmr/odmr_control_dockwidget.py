@@ -84,9 +84,13 @@ class OdmrCwControlDockWidget(AdvancedDockWidget):
 
     def set_cw_parameters(self, frequency=None, power=None):
         if power is not None:
+            self.cw_power_spinbox.blockSignals(True)
             self.cw_power_spinbox.setValue(power)
+            self.cw_power_spinbox.blockSignals(False)
         if frequency is not None:
+            self.cw_frequency_spinbox.blockSignals(True)
             self.cw_frequency_spinbox.setValue(frequency)
+            self.cw_frequency_spinbox.blockSignals(False)
 
     def parameters_set_enabled(self, enable):
         self.cw_power_spinbox.setEnabled(enable)
@@ -103,7 +107,7 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
     sigRangeCountChanged = QtCore.Signal(int)
     sigRangeChanged = QtCore.Signal(float, float, int, int)
     sigRuntimeChanged = QtCore.Signal(float)
-    sigAveragedLinesChanged = QtCore.Signal(int)
+    sigAveragedScansChanged = QtCore.Signal(int)
     sigDataSelectionChanged = QtCore.Signal(str, int)
 
     def __init__(self, *args, power_range=None, frequency_range=None, data_channels=None, points_range=None,  **kwargs):
@@ -133,10 +137,10 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         self.remove_frequency_range_button.setFixedSize(
             self.remove_frequency_range_button.sizeHint()
         )
-        self.remove_frequency_range_button.clicked.connect(self.remove_frequency_range)
+        self.remove_frequency_range_button.clicked.connect(self._remove_frequency_clicked_cb)
         self.add_frequency_range_button = QtWidgets.QPushButton('Add Range')
         self.add_frequency_range_button.setFixedSize(self.remove_frequency_range_button.sizeHint())
-        self.add_frequency_range_button.clicked.connect(self.add_frequency_range)
+        self.add_frequency_range_button.clicked.connect(self._add_frequency_clicked_cb)
         h_layout.addWidget(self.add_frequency_range_button)
         h_layout.addWidget(self.remove_frequency_range_button)
         label = QtWidgets.QLabel('Power:')
@@ -190,14 +194,14 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         self.runtime_spinbox.setSuffix('s')
         self.runtime_spinbox.valueChanged.connect(self._runtime_changed_cb)
         layout.addWidget(self.runtime_spinbox, 0, 1)
-        label = QtWidgets.QLabel('Lines to Average:')
+        label = QtWidgets.QLabel('Scans to Average:')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         layout.addWidget(label, 0, 2)
-        self.average_lines_spinbox = QtWidgets.QSpinBox()
-        self.average_lines_spinbox.setMinimumWidth(_min_spinbox_width)
-        self.average_lines_spinbox.setMinimum(0)
-        self.average_lines_spinbox.valueChanged.connect(self.sigAveragedLinesChanged)
-        layout.addWidget(self.average_lines_spinbox, 0, 3)
+        self.average_scans_spinbox = QtWidgets.QSpinBox()
+        self.average_scans_spinbox.setMinimumWidth(_min_spinbox_width)
+        self.average_scans_spinbox.setMinimum(0)
+        self.average_scans_spinbox.valueChanged.connect(self.sigAveragedScansChanged)
+        layout.addWidget(self.average_scans_spinbox, 0, 3)
         layout.addWidget(self.runtime_spinbox, 0, 1)
 
         label = QtWidgets.QLabel('Data Channel:')
@@ -221,11 +225,11 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
 
         # Add single frequency scan
         self._range_widgets = list()
-        self.add_frequency_range()
+        self._add_frequency_range()
 
     @property
-    def averaged_lines(self):
-        return self.average_lines_spinbox.value()
+    def averaged_scans(self):
+        return self.average_scans_spinbox.value()
 
     @property
     def selected_channel(self):
@@ -257,7 +261,13 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         except IndexError:
             return None
 
-    @QtCore.Slot(tuple, int)
+    @QtCore.Slot(float)
+    def set_scan_power(self, value):
+        self.scan_power_spinbox.blockSignals(True)
+        self.scan_power_spinbox.setValue(value)
+        self.scan_power_spinbox.blockSignals(False)
+
+    # @QtCore.Slot(tuple, int)
     def set_frequency_range(self, values, index):
         try:
             spinboxes = self._range_widgets[index]
@@ -265,7 +275,9 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
             raise IndexError(f'Frequency range index "{index}" out of range.')
         try:
             for ii, sb in enumerate(spinboxes):
+                sb.blockSignals(True)
                 sb.setValue(values[ii])
+                sb.blockSignals(False)
         except IndexError:
             raise IndexError(f'set_scan_range is expecting 3 float values (start, step, stop)')
 
@@ -278,25 +290,28 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
                 spinbox.setEnabled(enable)
 
     @QtCore.Slot(int)
-    def set_averaged_lines(self, value):
-        self.average_lines_spinbox.setValue(value)
+    def set_averaged_scans(self, value):
+        self.average_scans_spinbox.blockSignals(True)
+        self.average_scans_spinbox.setValue(value)
+        self.average_scans_spinbox.blockSignals(False)
 
     @QtCore.Slot(float)
     def set_runtime(self, value):
+        self.runtime_spinbox.blockSignals(True)
         self.runtime_spinbox.setValue(value)
+        self.runtime_spinbox.blockSignals(False)
 
     @QtCore.Slot(int)
     def set_range_count(self, count):
         assert count > 0, 'Frequency range count must be >= 1'
         self.blockSignals(True)
         while self.range_count > count:
-            self.remove_frequency_range()
+            self._remove_frequency_range()
         while self.range_count < count:
-            self.add_frequency_range()
+            self._add_frequency_range()
         self.blockSignals(False)
 
-    @QtCore.Slot()
-    def add_frequency_range(self):
+    def _add_frequency_range(self):
         row = self.range_count + 2
         start_spinbox = ScienDSpinBox()
         start_spinbox.setMinimumWidth(_min_spinbox_width)
@@ -319,10 +334,8 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         start_spinbox.valueChanged.connect(callback)
         stop_spinbox.valueChanged.connect(callback)
         points_spinbox.valueChanged.connect(callback)
-        self.sigRangeCountChanged.emit(len(self._range_widgets))
 
-    @QtCore.Slot()
-    def remove_frequency_range(self):
+    def _remove_frequency_range(self):
         if self.range_count > 1:
             for widget in self._range_widgets[-1]:
                 self._ranges_layout.removeWidget(widget)
@@ -330,7 +343,6 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
                 widget.deleteLater()
             del self._range_widgets[-1]
             self._range_index_spinbox.setMaximum(len(self._range_widgets) - 1)
-            self.sigRangeCountChanged.emit(len(self._range_widgets))
 
     @QtCore.Slot()
     def _data_selection_changed_cb(self):
@@ -339,6 +351,15 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
     @QtCore.Slot()
     def _runtime_changed_cb(self):
         self.sigRuntimeChanged.emit(self.runtime_spinbox.value())
+
+    @QtCore.Slot()
+    def _add_frequency_clicked_cb(self):
+        self.sigRangeCountChanged.emit(len(self._range_widgets) + 1)
+
+    @QtCore.Slot()
+    def _remove_frequency_clicked_cb(self):
+        if len(self._range_widgets) > 1:
+            self.sigRangeCountChanged.emit(len(self._range_widgets) - 1)
 
     def __get_range_change_cb(self, index):
         def range_changed_cb():

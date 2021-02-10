@@ -196,6 +196,7 @@ class FiniteSamplingIOInterface(InterfaceBase):
         pass
 
 
+# ToDo: value limits for (output) channels
 class FiniteSamplingIOConstraints:
     """ A container to hold all constraints for finite IO sampling devices.
     """

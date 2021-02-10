@@ -48,7 +48,7 @@ class OdmrLogic(LogicBase):
     _scan_frequency_ranges = StatusVar(name='scan_frequency_ranges',
                                        default=[(2820e6, 2920e6, 101)])
     _run_time = StatusVar(name='run_time', default=60)
-    _lines_to_average = StatusVar(name='lines_to_average', default=10)
+    _scans_to_average = StatusVar(name='scans_to_average', default=0)
     _data_rate = StatusVar(name='data_rate', default=200)
     _oversampling_factor = StatusVar(name='oversampling_factor', default=1)
 
@@ -57,6 +57,7 @@ class OdmrLogic(LogicBase):
 
     # Update signals, e.g. for GUI module
     sigScanParametersUpdated = QtCore.Signal(dict)
+    sigCwParametersUpdated = QtCore.Signal(dict)
     sigElapsedUpdated = QtCore.Signal(float, int)
     sigScanStateUpdated = QtCore.Signal(bool)
     sigCwStateUpdated = QtCore.Signal(bool)
@@ -191,9 +192,9 @@ class OdmrLogic(LogicBase):
                 if masked_raw_data.compressed().size == 0:
                     arr_size = self._frequency_data[range_index].size
                     self._signal_data[channel][range_index] = np.zeros(arr_size)
-                elif self._lines_to_average > 0:
+                elif self._scans_to_average > 0:
                     self._signal_data[channel][range_index] = np.mean(
-                        masked_raw_data[:, :self._lines_to_average],
+                        masked_raw_data[:, :self._scans_to_average],
                         axis=1
                     ).compressed()
                     if self._signal_data[channel][range_index].size == 0:
@@ -234,23 +235,24 @@ class OdmrLogic(LogicBase):
         return self._frequency_data.copy()
 
     @property
-    def average_length(self):
-        return self._lines_to_average
+    def scans_to_average(self):
+        return self._scans_to_average
 
-    @average_length.setter
-    def average_length(self, lines_to_average):
-        self.set_average_length(lines_to_average)
+    @scans_to_average.setter
+    def scans_to_average(self, number_of_scans):
+        self.set_scans_to_average(number_of_scans)
 
-    def set_average_length(self, lines_to_average):
-        """ Sets the number of lines to average for the sum of the data
+    def set_scans_to_average(self, number_of_scans):
+        """ Sets the number of scans to average for the sum of the data
 
-        @param int lines_to_average: desired number of lines to average (0 means all)
+        @param int number_of_scans: desired number of scans to average (0 means all)
         """
         with self._threadlock:
-            lines_to_average = int(lines_to_average)
-            if lines_to_average != self._lines_to_average:
-                self._lines_to_average = lines_to_average
+            scans_to_average = int(number_of_scans)
+            if scans_to_average != self._scans_to_average:
+                self._scans_to_average = scans_to_average
                 self._calculate_signal_data()
+                self.sigScanParametersUpdated.emit({'averaged_scans': self._scans_to_average})
                 self.sigScanDataUpdated.emit()
 
     @property
@@ -279,20 +281,53 @@ class OdmrLogic(LogicBase):
 
     def set_frequency_range(self, start, stop, points, index):
         with self._threadlock:
-            if self.module_state() == 'locked':
+            print('set_frequency_range:', index, start, stop, points)
+            if self.module_state() != 'idle':
                 self.log.error('Unable to set frequency range. ODMR scan in progress.')
             else:
                 try:
-                    self._scan_frequency_ranges[index] = (start, stop, points)
-                    self._frequency_data[index] = np.linspace(start, stop, points)
-                    for channel, data_list in self._raw_data.items():
-                        data_list[index] = np.full((points, 1), np.nan)
-                        self._signal_data[channel][index] = np.zeros(points)
+                    new_range = (start, stop, points)
+                    if new_range != self._scan_frequency_ranges[index]:
+                        self._scan_frequency_ranges[index] = new_range
+                        self._initialize_odmr_data()
+                        self.sigScanDataUpdated.emit()
                 except IndexError:
                     self.log.exception('Frequency range index is out of range.')
                 except:
                     self.log.exception('Error while trying to set frequency range:')
-            self.sigScanDataUpdated.emit()
+            self.sigScanParametersUpdated.emit({'frequency_ranges': self.frequency_ranges})
+
+    @property
+    def frequency_range_count(self):
+        return len(self._scan_frequency_ranges)
+
+    def set_frequency_range_count(self, number_of_ranges):
+        if number_of_ranges < 1:
+            self.log.error('Number of frequency ranges can not be smaller than 1.')
+            self.sigScanParametersUpdated.emit({'frequency_ranges': self.frequency_ranges})
+            return
+
+        with self._threadlock:
+            if self.module_state() != 'idle':
+                self.log.error('Unable to set frequency range count. ODMR scan in progress.')
+                self.sigScanParametersUpdated.emit({'frequency_ranges': self.frequency_ranges})
+                return
+
+            number_diff = number_of_ranges - self.frequency_range_count
+            if number_diff < 0:
+                del self._scan_frequency_ranges[number_of_ranges:]
+            elif number_diff > 0:
+                constraints = self.scanner_constraints
+                if constraints.output_mode_supported(SamplingOutputMode.JUMP_LIST):
+                    new_range = self._scan_frequency_ranges[-1]
+                    self._scan_frequency_ranges.extend([new_range] * number_diff)
+                else:
+                    self.log.error('Multiple frequency ranges not supported by ODMR scanner '
+                                   '(no "JUMP_LIST" output mode).')
+            if number_diff != 0:
+                self._initialize_odmr_data()
+                self.sigScanDataUpdated.emit()
+                self.sigScanParametersUpdated.emit({'frequency_ranges': self.frequency_ranges})
 
     @property
     def data_rate(self):
@@ -345,8 +380,18 @@ class OdmrLogic(LogicBase):
             self.sigScanParametersUpdated.emit({'oversampling': self._oversampling_factor})
 
     @property
+    def scan_parameters(self):
+        params = {'data_rate': self._data_rate,
+                  'oversampling': self._oversampling_factor,
+                  'frequency_ranges': self.frequency_ranges,
+                  'run_time': self._run_time,
+                  'averaged_scans': self._scans_to_average,
+                  'power': self._scan_power}
+        return params
+
+    @property
     def cw_parameters(self):
-        return self._cw_frequency, self._cw_power
+        return {'frequency': self._cw_frequency, 'power': self._cw_power}
 
     def set_cw_parameters(self, frequency, power):
         """ Set the desired new cw mode parameters.
@@ -361,8 +406,7 @@ class OdmrLogic(LogicBase):
                 self._cw_power = constraints.channel_value_in_range(power, 'Power')[1]
             except:
                 self.log.exception('Error while trying to set CW parameters:')
-            param_dict = {'cw_frequency': self._cw_frequency, 'cw_power': self._cw_power}
-            self.sigScanParametersUpdated.emit(param_dict)
+            self.sigCwParametersUpdated.emit(self.cw_parameters)
 
     def toggle_cw_output(self, enable):
         with self._threadlock:
@@ -381,7 +425,7 @@ class OdmrLogic(LogicBase):
                 microwave.is_active = enable
             except:
                 self.log.exception('Error while trying to toggle microwave CW output:')
-            self.sigCwStateUpdated(microwave.is_active)
+            self.sigCwStateUpdated.emit(microwave.is_active)
 
     def toggle_odmr_scan(self, start, resume):
         """

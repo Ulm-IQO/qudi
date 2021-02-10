@@ -25,6 +25,7 @@ import numpy as np
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
 from qudi.core.util import units
 from qudi.core.module import GuiBase
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
@@ -58,6 +59,9 @@ class OdmrGui(GuiBase):
     # declare connectors
     _odmr_logic = Connector(name='odmr_logic', interface='OdmrLogic')
 
+    # declare status variables
+    _max_shown_scans = StatusVar(name='max_shown_scans', default=50)
+
     sigToggleScan = QtCore.Signal(bool, bool)
     sigToggleCw = QtCore.Signal(bool)
 
@@ -77,7 +81,7 @@ class OdmrGui(GuiBase):
         cw_constraints = logic.cw_constraints
         self._mw = OdmrMainWindow()
         self._plot_widget = self._mw.centralWidget()
-        # ToDo: Actual channel constraints
+        # ToDo: Get constraints from scanner
         self._scan_control_dockwidget = OdmrScanControlDockWidget(
             parent=self._mw,
             power_range=(-30, 30),
@@ -91,9 +95,12 @@ class OdmrGui(GuiBase):
             frequency_range=cw_constraints.channel_limits['Frequency']
         )
         self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw)
-        self.restore_default_view()
 
         self._update_scan_data()
+        self._update_scan_parameters()
+        self._update_scan_state()
+        self._update_cw_parameters()
+        self._update_cw_state()
 
         # Connect signals
         self.__connect_main_window_actions()
@@ -102,6 +109,8 @@ class OdmrGui(GuiBase):
         self.__connect_scan_control_signals()
         self.__connect_logic_signals()
         self.__connect_gui_signals()
+
+        self.restore_default_view()
         self.show()
 
     def on_deactivate(self):
@@ -136,15 +145,17 @@ class OdmrGui(GuiBase):
 
     def __connect_scan_control_signals(self):
         logic = self._odmr_logic()
-        self._scan_control_dockwidget.sigRangeCountChanged.connect(self._range_count_changed)
+        self._scan_control_dockwidget.sigRangeCountChanged.connect(
+            logic.set_frequency_range_count, QtCore.Qt.QueuedConnection
+        )
         self._scan_control_dockwidget.sigRangeChanged.connect(
             logic.set_frequency_range, QtCore.Qt.QueuedConnection
         )
         self._scan_control_dockwidget.sigRuntimeChanged.connect(
             logic.set_runtime, QtCore.Qt.QueuedConnection
         )
-        self._scan_control_dockwidget.sigAveragedLinesChanged.connect(
-            logic.set_average_length, QtCore.Qt.QueuedConnection
+        self._scan_control_dockwidget.sigAveragedScansChanged.connect(
+            logic.set_scans_to_average, QtCore.Qt.QueuedConnection
         )
         self._scan_control_dockwidget.sigDataSelectionChanged.connect(self._data_selection_changed)
 
@@ -161,6 +172,7 @@ class OdmrGui(GuiBase):
         logic.sigScanParametersUpdated.connect(
             self._update_scan_parameters, QtCore.Qt.QueuedConnection
         )
+        logic.sigCwParametersUpdated.connect(self._update_cw_parameters, QtCore.Qt.QueuedConnection)
         logic.sigScanDataUpdated.connect(self._update_scan_data, QtCore.Qt.QueuedConnection)
         # ToDo: Connect fit signal
 
@@ -200,21 +212,6 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleScan.emit(True, True)  # start measurement, resume flag
 
-    def _update_scan_state(self, running):
-        """
-        Update the display for a change in the microwave status (mode and output).
-
-        @param bool running:
-        """
-        # set controls state
-        self._mw.action_toggle_measurement.setEnabled(True)
-        self._mw.action_resume_measurement.setEnabled(not running)
-        self._mw.action_save_measurement.setEnabled(True)
-        self._mw.action_toggle_cw.setEnabled(not running)
-        self._cw_control_dockwidget.parameters_set_enabled(not running)
-        self._scan_control_dockwidget.scan_parameters_set_enabled(not running)
-        self._mw.action_toggle_measurement.setChecked(running)
-
     def toggle_cw_mode(self, is_checked):
         """ Starts or stops CW microwave output if no measurement is running. """
         # Disable controls until logic feedback is activating them again
@@ -225,18 +222,45 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleCw.emit(is_checked)
 
-    def _update_cw_state(self, running):
+    def _update_scan_state(self, running=None):
         """
         Update the display for a change in the microwave status (mode and output).
 
         @param bool running:
         """
+        if running is None:
+            running = self._odmr_logic().module_state() != 'idle'
+        # set controls state
+        self._mw.action_toggle_measurement.setEnabled(True)
+        self._mw.action_resume_measurement.setEnabled(not running)
+        self._mw.action_save_measurement.setEnabled(True)
+        self._mw.action_toggle_cw.setEnabled(not running)
+        self._cw_control_dockwidget.parameters_set_enabled(not running)
+        self._scan_control_dockwidget.scan_parameters_set_enabled(not running)
+        self._mw.action_toggle_measurement.setChecked(running)
+
+    def _update_cw_state(self, running=None):
+        """
+        Update the display for a change in the microwave status (mode and output).
+
+        @param bool running:
+        """
+        # ToDo: Get running state if running is None
+        if running is None:
+            return
+        print('_update_cw_state:', running)
         # set controls state
         self._mw.action_toggle_measurement.setEnabled(not running)
         self._mw.action_resume_measurement.setEnabled(not running)
         self._mw.action_toggle_cw.setEnabled(True)
         self._mw.action_toggle_cw.setChecked(running)
         self._cw_control_dockwidget.parameters_set_enabled(not running)
+
+    def _update_cw_parameters(self, parameters=None):
+        if parameters is None:
+            parameters = self._odmr_logic().cw_parameters
+        self._cw_control_dockwidget.set_cw_parameters(frequency=parameters.get('frequency', None),
+                                                      power=parameters.get('power', None))
 
     def _update_scan_data(self):
         """ Refresh the plot widgets with new data. """
@@ -246,85 +270,13 @@ class OdmrGui(GuiBase):
         signal_data = logic.signal_data
         raw_data = logic.raw_data
         frequency_data = logic.frequency_data
-        average_lines = logic.average_length
         self._plot_widget.set_data(
             frequency_data[range_index],
-            raw_data[channel][range_index][:, :average_lines] if average_lines > 0 else raw_data[channel][range_index],
+            raw_data[channel][range_index][:, :self._max_shown_scans],
             signal_data[channel][range_index]
         )
 
-    def average_level_changed(self):
-        """
-        Sends to lines to average to the logic
-        """
-        self.sigAverageLinesChanged.emit(self._mw.average_level_SpinBox.value())
-        return
-
-    def update_elapsedtime(self, elapsed_time, scanned_lines):
-        """ Updates current elapsed measurement time and completed frequency sweeps """
-        self._mw.elapsed_time_DisplayWidget.display(int(np.rint(elapsed_time)))
-        self._mw.elapsed_sweeps_DisplayWidget.display(scanned_lines)
-        return
-
-    def update_settings(self):
-        """ Write the new settings from the gui to the file. """
-        number_of_lines = self._sd.matrix_lines_SpinBox.value()
-        clock_frequency = self._sd.clock_frequency_DoubleSpinBox.value()
-        oversampling = self._sd.oversampling_SpinBox.value()
-        lock_in = self._sd.lock_in_CheckBox.isChecked()
-        self.sigOversamplingChanged.emit(oversampling)
-        self.sigLockInChanged.emit(lock_in)
-        self.sigClockFreqChanged.emit(clock_frequency)
-        self.sigNumberOfLinesChanged.emit(number_of_lines)
-        return
-
-    def reject_settings(self):
-        """ Keep the old settings and restores the old settings in the gui. """
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
-        self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
-        self._sd.oversampling_SpinBox.setValue(self._odmr_logic.oversampling)
-        self._sd.lock_in_CheckBox.setChecked(self._odmr_logic.lock_in)
-        return
-
-    def do_fit(self):
-        fit_function = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
-        self.sigDoFit.emit(fit_function, None, None, self._mw.odmr_channel_ComboBox.currentIndex(),
-                           self._mw.fit_range_SpinBox.value())
-        return
-
-    def update_fit(self, x_data, y_data, result_str_dict, current_fit):
-        """ Update the shown fit. """
-        if current_fit != 'No Fit':
-            # display results as formatted text
-            self._mw.odmr_fit_results_DisplayWidget.clear()
-            try:
-                formated_results = units.create_formatted_output(result_str_dict)
-            except:
-                formated_results = 'this fit does not return formatted results'
-            self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
-
-        self._mw.fit_methods_ComboBox.blockSignals(True)
-        self._mw.fit_methods_ComboBox.setCurrentFit(current_fit)
-        self._mw.fit_methods_ComboBox.blockSignals(False)
-
-        # check which Fit method is used and remove or add again the
-        # odmr_fit_image, check also whether a odmr_fit_image already exists.
-        if current_fit != 'No Fit':
-            self.odmr_fit_image.setData(x=x_data, y=y_data)
-            if self.odmr_fit_image not in self._mw.odmr_PlotWidget.listDataItems():
-                self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
-        else:
-            if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
-                self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-
-        self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
-        return
-
-    def update_fit_range(self):
-        self._odmr_logic.range_to_fit = self._mw.fit_range_SpinBox.value()
-        return
-
-    def _update_scan_parameters(self, param_dict):
+    def _update_scan_parameters(self, param_dict=None):
         """ Update the scan parameetrs in the GUI
 
         @param param_dict:
@@ -334,146 +286,50 @@ class OdmrGui(GuiBase):
         The update will block the GUI signals from emitting a change back to the
         logic.
         """
+        if param_dict is None:
+            logic = self._odmr_logic()
+            param_dict = logic.scan_parameters
+
         print('_update_scan_parameters:', param_dict)
-        param = param_dict.get('sweep_mw_power')
+
+        # ToDo: Handle data rate
+        param = param_dict.get('data_rate')
         if param is not None:
-            self._mw.sweep_power_DoubleSpinBox.blockSignals(True)
-            self._mw.sweep_power_DoubleSpinBox.setValue(param)
-            self._mw.sweep_power_DoubleSpinBox.blockSignals(False)
+            print('data_rate updated from logic:', param)
 
-        mw_starts = param_dict.get('mw_starts')
-        mw_steps = param_dict.get('mw_steps')
-        mw_stops = param_dict.get('mw_stops')
-
-        if mw_starts is not None:
-            start_frequency_boxes = self.get_freq_dspinboxes_from_groubpox('start')
-            for mw_start, start_frequency_box in zip(mw_starts, start_frequency_boxes):
-                start_frequency_box.blockSignals(True)
-                start_frequency_box.setValue(mw_start)
-                start_frequency_box.blockSignals(False)
-
-        if mw_steps is not None:
-            step_frequency_boxes = self.get_freq_dspinboxes_from_groubpox('step')
-            for mw_step, step_frequency_box in zip(mw_steps, step_frequency_boxes):
-                step_frequency_box.blockSignals(True)
-                step_frequency_box.setValue(mw_step)
-                step_frequency_box.blockSignals(False)
-
-        if mw_stops is not None:
-            stop_frequency_boxes = self.get_freq_dspinboxes_from_groubpox('stop')
-            for mw_stop, stop_frequency_box in zip(mw_stops, stop_frequency_boxes):
-                stop_frequency_box.blockSignals(True)
-                stop_frequency_box.setValue(mw_stop)
-                stop_frequency_box.blockSignals(False)
+        # ToDo: Handle oversampling
+        param = param_dict.get('oversampling')
+        if param is not None:
+            print('oversampling updated from logic:', param)
 
         param = param_dict.get('run_time')
         if param is not None:
-            self._mw.runtime_DoubleSpinBox.blockSignals(True)
-            self._mw.runtime_DoubleSpinBox.setValue(param)
-            self._mw.runtime_DoubleSpinBox.blockSignals(False)
+            print('run_time updated from logic:', param)
+            self._scan_control_dockwidget.set_runtime(param)
 
-        param = param_dict.get('number_of_lines')
+        param = param_dict.get('averaged_scans')
         if param is not None:
-            self._sd.matrix_lines_SpinBox.blockSignals(True)
-            self._sd.matrix_lines_SpinBox.setValue(param)
-            self._sd.matrix_lines_SpinBox.blockSignals(False)
+            print('average_length updated from logic:', param)
+            self._scan_control_dockwidget.set_averaged_scans(param)
 
-        param = param_dict.get('clock_frequency')
+        param = param_dict.get('power')
         if param is not None:
-            self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
-            self._sd.clock_frequency_DoubleSpinBox.setValue(param)
-            self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
+            print('scan power updated from logic:', param)
+            self._scan_control_dockwidget.set_scan_power(param)
 
-        param = param_dict.get('oversampling')
+        param = param_dict.get('frequency_ranges')
         if param is not None:
-            self._sd.oversampling_SpinBox.blockSignals(True)
-            self._sd.oversampling_SpinBox.setValue(param)
-            self._sd.oversampling_SpinBox.blockSignals(False)
-
-        param = param_dict.get('lock_in')
-        if param is not None:
-            self._sd.lock_in_CheckBox.blockSignals(True)
-            self._sd.lock_in_CheckBox.setChecked(param)
-            self._sd.lock_in_CheckBox.blockSignals(False)
-
-        param = param_dict.get('cw_mw_frequency')
-        if param is not None:
-            self._mw.cw_frequency_DoubleSpinBox.blockSignals(True)
-            self._mw.cw_frequency_DoubleSpinBox.setValue(param)
-            self._mw.cw_frequency_DoubleSpinBox.blockSignals(False)
-
-        param = param_dict.get('cw_mw_power')
-        if param is not None:
-            self._mw.cw_power_DoubleSpinBox.blockSignals(True)
-            self._mw.cw_power_DoubleSpinBox.setValue(param)
-            self._mw.cw_power_DoubleSpinBox.blockSignals(False)
-
-        param = param_dict.get('average_length')
-        if param is not None:
-            self._mw.average_level_SpinBox.blockSignals(True)
-            self._mw.average_level_SpinBox.setValue(param)
-            self._mw.average_level_SpinBox.blockSignals(False)
-        return
-
-    ############################################################################
-    #                        Widget callback methods (Qt slots)                #
-    ############################################################################
-
-    def _range_count_changed(self, count):
-        # ToDo: Implement
-        print(f'range count changed to {count}')
+            print('frequency_ranges updated from logic:', param)
+            self._scan_control_dockwidget.set_range_count(len(param))
+            for ii, range_tuple in enumerate(param):
+                self._scan_control_dockwidget.set_frequency_range(range_tuple, ii)
 
     def _data_selection_changed(self, channel, range_index):
-        print(f'data selection changed: channel "{channel}", range index {range_index}')
-
-    def change_cw_params(self):
-        """ Change CW frequency and power of microwave source """
-        frequency = self._mw.cw_frequency_DoubleSpinBox.value()
-        power = self._mw.cw_power_DoubleSpinBox.value()
-        self.sigMwCwParamsChanged.emit(frequency, power)
-        return
-
-    def change_sweep_params(self):
-        """ Change start, stop and step frequency of frequency sweep """
-        starts = []
-        steps = []
-        stops = []
-
-        num = self._odmr_logic.ranges
-
-        for counter in range(num):
-            # construct strings
-            start, stop, step = self.get_frequencies_from_row(counter)
-
-            starts.append(start)
-            steps.append(step)
-            stops.append(stop)
-
-        power = self._mw.sweep_power_DoubleSpinBox.value()
-        self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
-        return
-
-    def change_fit_range(self):
-        self._odmr_logic.fit_range = self._mw.fit_range_SpinBox.value()
-        return
-
-    def change_runtime(self):
-        """ Change time after which microwave sweep is stopped """
-        runtime = self._mw.runtime_DoubleSpinBox.value()
-        self.sigRuntimeChanged.emit(runtime)
-        return
+        # ToDo: Update fit data
+        self._update_scan_data()
 
     def save_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
         filetag = self._mw.save_nametag_lineedit.text()
         print(f'save measurement with tag "{filetag}"')
-        # cb_range = self.get_matrix_cb_range()
-        #
-        # # Percentile range is None, unless the percentile scaling is selected in GUI.
-        # pcile_range = None
-        # if self._mw.odmr_cb_centiles_RadioButton.isChecked():
-        #     low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
-        #     high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
-        #     pcile_range = [low_centile, high_centile]
-        #
-        # self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
+        # ToDo: Implement saving
