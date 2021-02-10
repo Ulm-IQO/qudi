@@ -188,16 +188,16 @@ def in_range(value, lower_limit, upper_limit):
     @param value: value to be checked
     @param lower_limit: lowest allowed value
     @param upper_limit: highest allowed value
-    @return: value closest to value in range
+    @return (bool, type(value)): in_range indicator, value closest to value in range
     """
     if upper_limit < lower_limit:
         lower_limit, upper_limit = upper_limit, lower_limit
 
     if value > upper_limit:
-        return upper_limit
+        return False, upper_limit
     if value < lower_limit:
-        return lower_limit
-    return value
+        return False, lower_limit
+    return True, value
 
 
 def csv_2_list(csv_string, str_2_val=None):
