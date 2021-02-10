@@ -115,7 +115,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
 
     def set_sample_rate(self, rate):
         sample_rate = float(rate)
-        assert self._constraints.sample_rate_in_range(sample_rate), \
+        assert self._constraints.sample_rate_in_range(sample_rate)[0], \
             f'Sample rate "{sample_rate}Hz" to set is out of ' \
             f'bounds {self._constraints.sample_rate_limits}'
         with self._thread_lock:
@@ -134,7 +134,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
 
     def set_frame_size(self, size):
         samples = int(round(size))
-        assert self._constraints.frame_size_in_range(samples), \
+        assert self._constraints.frame_size_in_range(samples)[0], \
             f'frame size "{samples}" to set is out of bounds {self._constraints.frame_size_limits}'
         with self._thread_lock:
             assert self.module_state() == 'idle', \
