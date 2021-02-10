@@ -55,8 +55,8 @@ class AWGM819X(Base, PulserInterface):
     _wave_file_extension = '.bin'
     _wave_transfer_datatype = 'h'
 
-    # explicitly set low/high levels for [(d_ch1_low, d_ch1_high), (d_ch2_low, d_ch2_high), ...]
-    _d_ch_level_low_high = ConfigOption(name='assets_storage_path', default=[], missing='nothing')
+    # explicitly set low/high levels for [[d_ch1_low, d_ch1_high], [d_ch2_low, d_ch2_high], ...]
+    _d_ch_level_low_high = ConfigOption(name='d_ch_level_low_high', default=[], missing='nothing')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -1796,7 +1796,7 @@ class AWGM819X(Base, PulserInterface):
             for i in range(len(self._d_ch_level_low_high)):
                 ch_idx = i + 1
                 low = self._d_ch_level_low_high[i][0]
-                high = self._d_ch_level_low_high[i][0]
+                high = self._d_ch_level_low_high[i][1]
                 ch_str = 'd_ch{:d}'.format(ch_idx)
 
                 if ch_str in d_ampl_low.keys() and ch_str in d_ampl_high.keys():
