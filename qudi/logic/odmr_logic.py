@@ -39,9 +39,7 @@ class OdmrLogic(LogicBase):
     """ This is the Logic class for CW ODMR measurements """
 
     # declare connectors
-    _cw_microwave_source = Connector(name='cw_microwave_source',
-                                     interface='MicrowaveInterface',
-                                     optional=True)
+    _cw_microwave = Connector(name='cw_microwave', interface='ProcessSetpointInterface')
     _odmr_scanner = Connector(name='odmr_scanner', interface='FiniteSamplingIOInterface')
 
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
@@ -50,7 +48,7 @@ class OdmrLogic(LogicBase):
     _scan_frequency_ranges = StatusVar(name='scan_frequency_ranges',
                                        default=[(2820e6, 2920e6, 101)])
     _run_time = StatusVar(name='run_time', default=60)
-    _lines_to_average = StatusVar(name='lines_to_average', default=0)
+    _lines_to_average = StatusVar(name='lines_to_average', default=10)
     _data_rate = StatusVar(name='data_rate', default=200)
     _oversampling_factor = StatusVar(name='oversampling_factor', default=1)
 
@@ -62,7 +60,7 @@ class OdmrLogic(LogicBase):
     sigElapsedUpdated = QtCore.Signal(float, int)
     sigScanStateUpdated = QtCore.Signal(bool)
     sigCwStateUpdated = QtCore.Signal(bool)
-    sigScanDataUpdated = QtCore.Signal(object, object)
+    sigScanDataUpdated = QtCore.Signal()
     sigFitUpdated = QtCore.Signal(object, object, str, int)
 
     def __init__(self, config, **kwargs):
@@ -73,7 +71,7 @@ class OdmrLogic(LogicBase):
         self._elapsed_time = 0.0
         self._elapsed_sweeps = 0
         self.__estimated_lines = 0
-        self.__start_time = 0.0
+        self._start_time = 0.0
         self._sweep_parameter_channel = None
 
         self._raw_data = None
@@ -87,7 +85,7 @@ class OdmrLogic(LogicBase):
         """
         # Set/recall microwave parameters and check against constraints
         # ToDo: check all StatusVars
-        # limits = self.microwave_constraints
+        # limits = self.cw_constraints
         # self._cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
         # self._cw_mw_power = limits.power_in_range(self.cw_mw_power)
         # self._scan_mw_power = limits.power_in_range(self.sweep_mw_power)
@@ -96,9 +94,8 @@ class OdmrLogic(LogicBase):
         self._elapsed_time = 0.0
         self._elapsed_sweeps = 0
         self.__estimated_lines = 0
-        self.__start_time = 0.0
+        self._start_time = 0.0
 
-        # ToDo: Find a better way to choose sweep channel to use
         self._sweep_parameter_channel = None
         for channel, unit in self.scanner_constraints.output_channel_units.items():
             if unit == 'Hz':
@@ -123,8 +120,6 @@ class OdmrLogic(LogicBase):
         self._sigNextLine.disconnect()
         if self.module_state() == 'locked':
             self.stop_odmr_scan()
-        # Switch off microwave source for sure (also if CW mode is active or module is still locked)
-        self._odmr_scanner().off()
 
     # @fc.constructor
     # def sv_set_fits(self, val):
@@ -172,8 +167,6 @@ class OdmrLogic(LogicBase):
         """ Initializing the ODMR data arrays (signal and raw data matrix). """
         self._frequency_data = [np.linspace(*r) for r in self._scan_frequency_ranges]
 
-        # ToDo: Get proper channel constraints
-        # constraints = self.microwave_constraints
         self._raw_data = dict()
         self._fit_data = dict()
         self._signal_data = dict()
@@ -215,11 +208,8 @@ class OdmrLogic(LogicBase):
         return self._odmr_scanner().constraints
 
     @property
-    def microwave_constraints(self):
-        hardware = self._cw_microwave_source()
-        if hardware is None:
-            return None
-        return self._cw_microwave_source().constraints
+    def cw_constraints(self):
+        return self._cw_microwave().constraints
 
     @property
     def active_channels(self):
@@ -261,7 +251,7 @@ class OdmrLogic(LogicBase):
             if lines_to_average != self._lines_to_average:
                 self._lines_to_average = lines_to_average
                 self._calculate_signal_data()
-                self.sigScanDataUpdated.emit(self._signal_data, None)
+                self.sigScanDataUpdated.emit()
 
     @property
     def runtime(self):
@@ -302,7 +292,7 @@ class OdmrLogic(LogicBase):
                     self.log.exception('Frequency range index is out of range.')
                 except:
                     self.log.exception('Error while trying to set frequency range:')
-            self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
+            self.sigScanDataUpdated.emit()
 
     @property
     def data_rate(self):
@@ -325,7 +315,7 @@ class OdmrLogic(LogicBase):
                 self.log.error('Unable to set data rate. ODMR measurement in progress.')
             else:
                 rate = float(rate)
-                if self.scanner_constraints.sample_rate_in_range(rate * self._oversampling_factor):
+                if self.scanner_constraints.sample_rate_in_range(rate * self._oversampling_factor)[0]:
                     self._data_rate = rate
                 else:
                     self.log.error('Unable to set data rate. Resulting sample rate out of bounds '
@@ -347,7 +337,7 @@ class OdmrLogic(LogicBase):
                 self.log.error('Unable to set oversampling factor. ODMR scan in progress.')
             else:
                 factor = max(1, int(factor))
-                if self.scanner_constraints.sample_rate_in_range(self._data_rate * factor):
+                if self.scanner_constraints.sample_rate_in_range(self._data_rate * factor)[0]:
                     self._oversampling_factor = factor
                 else:
                     self.log.error('Unable to set oversampling factor. Resulting sample rate out '
@@ -366,26 +356,41 @@ class OdmrLogic(LogicBase):
         """
         with self._threadlock:
             try:
-                constraints = self.microwave_constraints
-                self._cw_frequency = constraints.frequency_in_range(frequency)
-                self._cw_power = constraints.power_in_range(power)
-                # ToDo: Hardware calls
-                # self._mw_device.set_cw(frequency_to_set, power_to_set)
-                # self._cw_mw_frequency, self._cw_mw_power = self._mw_device.get_cw()
+                constraints = self.cw_constraints
+                self._cw_frequency = constraints.channel_value_in_range(frequency, 'Frequency')[1]
+                self._cw_power = constraints.channel_value_in_range(power, 'Power')[1]
             except:
                 self.log.exception('Error while trying to set CW parameters:')
             param_dict = {'cw_frequency': self._cw_frequency, 'cw_power': self._cw_power}
             self.sigScanParametersUpdated.emit(param_dict)
 
     def toggle_cw_output(self, enable):
-        # ToDo: implement
-        self.sigCwStateUpdated.emit(enable)
+        with self._threadlock:
+            microwave = self._cw_microwave()
+            # Return early if CW output is already in desired state
+            if enable == microwave.is_active:
+                return
+            # Throw error and return early if CW output can not be turned on
+            if enable and self.module_state() != 'idle':
+                self.log.error('Unable to turn on microwave CW output. ODMR scan in progress.')
+                return
+            # Toggle microwave output
+            try:
+                if enable:
+                    microwave.setpoints = {'Frequency': self._cw_frequency, 'Power': self._cw_power}
+                microwave.is_active = enable
+            except:
+                self.log.exception('Error while trying to toggle microwave CW output:')
+            self.sigCwStateUpdated(microwave.is_active)
 
-    def toggle_odmr_scan(self, start):
+    def toggle_odmr_scan(self, start, resume):
         """
         """
         if start:
-            self.start_odmr_scan()
+            if resume:
+                self.continue_odmr_scan()
+            else:
+                self.start_odmr_scan()
         else:
             self.stop_odmr_scan()
 
@@ -395,10 +400,12 @@ class OdmrLogic(LogicBase):
         @return int: error code (0:OK, -1:error)
         """
         with self._threadlock:
-            if self.module_state() == 'locked':
+            if self.module_state() != 'idle':
                 self.log.error('Can not start ODMR scan. Measurement is already running.')
                 self.sigScanStateUpdated.emit(True)
                 return -1
+
+            self.toggle_cw_output(False)
 
             self.module_state.lock()
 
@@ -436,6 +443,9 @@ class OdmrLogic(LogicBase):
                     raise Exception(f'Unhandled/Unknown scanner output mode encountered: '
                                     f'"{scanner.output_mode}"')
                 scanner.set_frame_data({self._sweep_parameter_channel: frame_data})
+
+                # Set scan power
+                self._cw_microwave().set_setpoint(self._scan_power, 'Power')
             except:
                 self.log.exception(
                     'Unable to start ODMR scan. Error while setting up scanner hardware.'
@@ -452,9 +462,9 @@ class OdmrLogic(LogicBase):
             self._elapsed_time = 0.0
             self.sigElapsedUpdated.emit(self._elapsed_time, self._elapsed_sweeps)
             self._initialize_odmr_data()
-            self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
+            self.sigScanDataUpdated.emit()
             self.sigScanStateUpdated.emit(True)
-            self.__start_time = time.time()
+            self._start_time = time.time()
             self._sigNextLine.emit()
             return 0
 
@@ -474,7 +484,7 @@ class OdmrLogic(LogicBase):
             # ToDo: see start_odmr_scan
 
             self.sigScanStateUpdated.emit(True)
-            self.__start_time = time.time() - self._elapsed_time
+            self._start_time = time.time() - self._elapsed_time
             self._sigNextLine.emit()
             return 0
 
@@ -497,8 +507,8 @@ class OdmrLogic(LogicBase):
                 self._elapsed_sweeps = 0
                 self._initialize_odmr_data()
                 self.sigElapsedUpdated.emit(self._elapsed_time, self._elapsed_sweeps)
-                self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
-                self.__start_time = time.time()
+                self.sigScanDataUpdated.emit()
+                self._start_time = time.time()
 
     def _scan_odmr_line(self):
         """ Scans one line in ODMR
@@ -552,11 +562,11 @@ class OdmrLogic(LogicBase):
 
             # Update elapsed time/sweeps
             self._elapsed_sweeps += 1
-            self._elapsed_time = time.time() - self.__start_time
+            self._elapsed_time = time.time() - self._start_time
 
             # Fire update signals
             self.sigElapsedUpdated.emit(self._elapsed_time, self._elapsed_sweeps)
-            self.sigScanDataUpdated.emit(self._signal_data, self._raw_data)
+            self.sigScanDataUpdated.emit()
             if self._elapsed_time >= self._run_time:
                 self.stop_odmr_scan()
             else:
@@ -821,47 +831,3 @@ class OdmrLogic(LogicBase):
         y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
         odmr_matrix_range = odmr_matrix_dp[:, y_args]
         return odmr_matrix_range
-
-    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, channel, runtime,
-                                 fit_function='No Fit', save_after_meas=True, name_tag=''):
-        """ An independant method, which can be called by a task with the proper input values
-            to perform an odmr measurement.
-
-        @return
-        """
-        timeout = 30
-        start_time = time.time()
-        while self.module_state() != 'idle':
-            time.sleep(0.5)
-            timeout -= (time.time() - start_time)
-            if timeout <= 0:
-                self.log.error('perform_odmr_measurement failed. Logic module was still locked '
-                               'and 30 sec timeout has been reached.')
-                return tuple()
-
-        # set all relevant parameter:
-        self.set_sweep_parameters(freq_start, freq_stop, freq_step, power)
-        self.set_runtime(runtime)
-
-        # start the scan
-        self.start_odmr_scan()
-
-        # wait until the scan has started
-        while self.module_state() != 'locked':
-            time.sleep(1)
-        # wait until the scan has finished
-        while self.module_state() == 'locked':
-            time.sleep(1)
-
-        # Perform fit if requested
-        if fit_function != 'No Fit':
-            self.do_fit(fit_function, channel_index=channel)
-            fit_params = self.fc.current_fit_param
-        else:
-            fit_params = None
-
-        # Save data if requested
-        if save_after_meas:
-            self.save_odmr_data(tag=name_tag)
-
-        return self.odmr_plot_x, self.odmr_plot_y, fit_params

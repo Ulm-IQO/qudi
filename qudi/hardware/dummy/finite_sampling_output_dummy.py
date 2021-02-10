@@ -120,7 +120,7 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
 
     def set_sample_rate(self, rate):
         sample_rate = float(rate)
-        assert self._constraints.sample_rate_in_range(sample_rate), \
+        assert self._constraints.sample_rate_in_range(sample_rate)[0], \
             f'Sample rate "{sample_rate}Hz" to set is out of ' \
             f'bounds {self._constraints.sample_rate_limits}'
         with self._thread_lock:
@@ -155,7 +155,7 @@ class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
                 frame_size = next(iter(data.values()))[-1]
                 assert all(d[-1] == frame_size for d in data.values()), \
                     'Frame data arrays for all channels must be of equal length.'
-            assert self._constraints.frame_size_in_range(frame_size), \
+            assert self._constraints.frame_size_in_range(frame_size)[0], \
                 f'Frame size "{frame_size}" to set is out of ' \
                 f'bounds {self._constraints.frame_size_limits}'
         with self._thread_lock:
