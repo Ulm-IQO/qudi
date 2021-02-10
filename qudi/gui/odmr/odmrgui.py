@@ -96,7 +96,7 @@ class OdmrGui(GuiBase):
         )
         self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw)
 
-        self._update_scan_data()
+        self._data_selection_changed()
         self._update_scan_parameters()
         self._update_scan_state()
         self._update_cw_parameters()
@@ -324,8 +324,14 @@ class OdmrGui(GuiBase):
             for ii, range_tuple in enumerate(param):
                 self._scan_control_dockwidget.set_frequency_range(range_tuple, ii)
 
-    def _data_selection_changed(self, channel, range_index):
+    def _data_selection_changed(self, channel=None, range_index=None):
         # ToDo: Update fit data
+        if channel is None:
+            channel = self._scan_control_dockwidget.selected_channel
+        if range_index is None:
+            range_index = self._scan_control_dockwidget.selected_range
+        channel_unit = self._odmr_logic().active_channel_units[channel]
+        self._plot_widget.set_signal_label(channel, channel_unit)
         self._update_scan_data()
 
     def save_data(self):
