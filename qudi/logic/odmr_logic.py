@@ -27,6 +27,7 @@ import datetime
 import matplotlib.pyplot as plt
 
 from qudi.core import qudi_slot
+from qudi.core.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.module import LogicBase
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
@@ -62,7 +63,7 @@ class OdmrLogic(LogicBase):
     sigScanStateUpdated = QtCore.Signal(bool)
     sigCwStateUpdated = QtCore.Signal(bool)
     sigScanDataUpdated = QtCore.Signal()
-    sigFitUpdated = QtCore.Signal(object, object, str, int)
+    sigFitUpdated = QtCore.Signal(object, str, int)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -74,11 +75,13 @@ class OdmrLogic(LogicBase):
         self.__estimated_lines = 0
         self._start_time = 0.0
         self._sweep_parameter_channel = None
+        self._fit_container = None
+        self._fit_config_model = None
 
         self._raw_data = None
         self._signal_data = None
         self._frequency_data = None
-        self._fit_data = None
+        self._fit_results = None
 
     def on_activate(self):
         """
@@ -90,6 +93,9 @@ class OdmrLogic(LogicBase):
         # self._cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
         # self._cw_mw_power = limits.power_in_range(self.cw_mw_power)
         # self._scan_mw_power = limits.power_in_range(self.sweep_mw_power)
+
+        self._fit_config_model = FitConfigurationsModel(parent=self)
+        self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
 
         # Elapsed measurement time and number of sweeps
         self._elapsed_time = 0.0
@@ -169,7 +175,7 @@ class OdmrLogic(LogicBase):
         self._frequency_data = [np.linspace(*r) for r in self._scan_frequency_ranges]
 
         self._raw_data = dict()
-        self._fit_data = dict()
+        self._fit_results = dict()
         self._signal_data = dict()
         estimated_samples = self._run_time * self._data_rate
         samples_per_line = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
@@ -183,7 +189,7 @@ class OdmrLogic(LogicBase):
             self._signal_data[channel] = [
                 np.zeros(freq_arr.size) for freq_arr in self._frequency_data
             ]
-            self._fit_data[channel] = [None] * len(self._frequency_data)
+            self._fit_results[channel] = [None] * len(self._frequency_data)
 
     def _calculate_signal_data(self):
         for channel, raw_data_list in self._raw_data.items():
@@ -203,6 +209,18 @@ class OdmrLogic(LogicBase):
                 else:
                     self._signal_data[channel][range_index] = np.mean(masked_raw_data,
                                                                       axis=1).compressed()
+
+    @property
+    def fit_config_model(self):
+        return self._fit_config_model
+
+    @property
+    def fit_container(self):
+        return self._fit_container
+
+    @property
+    def fit_results(self):
+        return self._fit_results.copy()
 
     @property
     def scanner_constraints(self):
@@ -618,25 +636,29 @@ class OdmrLogic(LogicBase):
             return
 
     @qudi_slot(str, str, int)
-    def do_fit(self, fit_config, channel='', fit_range=-1, x_data=None, y_data=None):
+    def do_fit(self, fit_config, channel, range_index):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
-        if not fit_config:
-            self.log.error(f'Unable to perform fit. Invalid fit_config encountered: "{fit_config}"')
+        print('do_fit:', fit_config, channel, range_index)
+        if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
+            self.log.error(f'Unknown fit configuration "{fit_config}" encountered.')
             return
-        if (x_data is None) or (y_data is None):
-            if fit_range < 0 or not channel:
-                self.log.error(f'Unable to perform fit. You must either provide x_data AND y_data '
-                               f'or you must provide the data channel AND range index to fit.')
-                return
-            x_data = self._frequency_data[fit_range]
-            y_data = self._signal_data[channel][fit_range]
 
-        # ToDo: Perform fit
+        x_data = self._frequency_data[range_index]
+        y_data = self._signal_data[channel][range_index]
 
-        # self.sigOdmrFitUpdated.emit(
-        #     self.odmr_fit_x, self.odmr_fit_y, result_str_dict, self.fc.current_fit)
+        try:
+            fit_config, fit_result = self._fit_container.fit_data(fit_config, x_data, y_data)
+        except:
+            self.log.exception('Data fitting failed:')
+            return
+
+        if fit_result is not None:
+            self._fit_results[channel][range_index] = (fit_config, fit_result)
+        else:
+            self._fit_results[channel][range_index] = None
+        self.sigFitUpdated.emit(self._fit_results[channel][range_index], channel, range_index)
 
     def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""

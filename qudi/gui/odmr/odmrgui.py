@@ -28,6 +28,7 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.util import units
 from qudi.core.module import GuiBase
+from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.util.paths import get_artwork_dir
 
@@ -64,6 +65,7 @@ class OdmrGui(GuiBase):
 
     sigToggleScan = QtCore.Signal(bool, bool)
     sigToggleCw = QtCore.Signal(bool)
+    sigDoFit = QtCore.Signal(str, str, int)  # fit_config, channel, range_index
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -73,6 +75,7 @@ class OdmrGui(GuiBase):
         self._scan_control_dockwidget = None
         self._cw_control_dockwidget = None
         self._fit_dockwidget = None
+        self._fit_config_dialog = None
 
     def on_activate(self):
         # Create main window
@@ -94,8 +97,11 @@ class OdmrGui(GuiBase):
             power_range=cw_constraints.channel_limits['Power'],
             frequency_range=cw_constraints.channel_limits['Frequency']
         )
-        self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw)
+        self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw, fit_container=logic.fit_container)
+        self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
+                                                         fit_config_model=logic.fit_config_model)
 
+        # Initialize widget contents
         self._data_selection_changed()
         self._update_scan_parameters()
         self._update_scan_state()
@@ -112,6 +118,7 @@ class OdmrGui(GuiBase):
 
         self.restore_default_view()
         self.show()
+        self._fit_config_dialog.exec_()
 
     def on_deactivate(self):
         pass
@@ -141,7 +148,7 @@ class OdmrGui(GuiBase):
         )
 
     def __connect_fit_control_signals(self):
-        pass
+        self._fit_dockwidget.fit_widget.sigDoFit.connect(self._fit_clicked)
 
     def __connect_scan_control_signals(self):
         logic = self._odmr_logic()
@@ -163,6 +170,7 @@ class OdmrGui(GuiBase):
         logic = self._odmr_logic()
         self.sigToggleScan.connect(logic.toggle_odmr_scan, QtCore.Qt.QueuedConnection)
         self.sigToggleCw.connect(logic.toggle_cw_output, QtCore.Qt.QueuedConnection)
+        self.sigDoFit.connect(logic.do_fit, QtCore.Qt.QueuedConnection)
 
     def __connect_logic_signals(self):
         logic = self._odmr_logic()
@@ -174,7 +182,7 @@ class OdmrGui(GuiBase):
         )
         logic.sigCwParametersUpdated.connect(self._update_cw_parameters, QtCore.Qt.QueuedConnection)
         logic.sigScanDataUpdated.connect(self._update_scan_data, QtCore.Qt.QueuedConnection)
-        # ToDo: Connect fit signal
+        logic.sigFitUpdated.connect(self._update_fit_result, QtCore.Qt.QueuedConnection)
 
     def restore_default_view(self):
         self._scan_control_dockwidget.setFloating(False)
@@ -325,14 +333,34 @@ class OdmrGui(GuiBase):
                 self._scan_control_dockwidget.set_frequency_range(range_tuple, ii)
 
     def _data_selection_changed(self, channel=None, range_index=None):
-        # ToDo: Update fit data
         if channel is None:
             channel = self._scan_control_dockwidget.selected_channel
         if range_index is None:
             range_index = self._scan_control_dockwidget.selected_range
-        channel_unit = self._odmr_logic().active_channel_units[channel]
+        logic = self._odmr_logic()
+        channel_unit = logic.active_channel_units[channel]
         self._plot_widget.set_signal_label(channel, channel_unit)
         self._update_scan_data()
+        fit_cfg_result = logic.fit_results[channel][range_index]
+        self._update_fit_result(fit_cfg_result, channel, range_index)
+
+    def _update_fit_result(self, fit_cfg_result, channel, range_index):
+        print('_update_fit_result',fit_cfg_result, channel, range_index)
+        current_channel = self._scan_control_dockwidget.selected_channel
+        current_range_index = self._scan_control_dockwidget.selected_range
+        if current_channel == channel and current_range_index == range_index:
+            if fit_cfg_result is None:
+                self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
+                self._plot_widget.set_fit_data(None, None)
+            else:
+                self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
+                self._plot_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
+
+    def _fit_clicked(self, fit_config):
+        channel = self._scan_control_dockwidget.selected_channel
+        range_index = self._scan_control_dockwidget.selected_range
+        print('fit clicked:', fit_config, channel, range_index)
+        self.sigDoFit.emit(fit_config, channel, range_index)
 
     def save_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
