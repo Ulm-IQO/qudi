@@ -1540,14 +1540,14 @@ class AWGM819X(Base, PulserInterface):
                     # todo: this breaks if there is a , in the name without number
                     segment_id = np.int(name.split(',')[0])
                     self.log.warning("Loading wave to specified segment via name will deprecate.")
-                if to_segment_id == -1:
+                if segment_id == -1:
                     # to next free segment
                     segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(analog_samples[ch_str])))
                     # only need the next free id, definition and writing is performed below again
                     # so delete defined segment again
                     self.write("TRAC{:d}:DEL {}".format(ch_num, segment_id))
 
-                segment_id_ch = segment_id + '_ch{:d}'.format(ch_num)
+                segment_id_ch = str(segment_id) + '_ch{:d}'.format(ch_num)
                 self.log.debug("Writing wave {} to ch {} segment_id {}".format(wave_name, ch_str, segment_id_ch))
 
                 # delete if the segment is already existing
