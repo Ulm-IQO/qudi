@@ -52,6 +52,7 @@ class OdmrPlotWidget(QtWidgets.QWidget):
                                           symbolSize=7)
         self._fit_data_item = pg.PlotDataItem(pen=pg.mkPen(palette.c2))
         self._plot_widget.addItem(self._data_item)
+        self._plot_widget.addItem(self._fit_data_item)
         self._plot_widget.setMinimumWidth(100)
         self._plot_widget.setMinimumHeight(100)
         self._plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,

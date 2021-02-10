@@ -30,15 +30,10 @@ class OdmrFitDockWidget(AdvancedDockWidget):
     """
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, fit_container=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('ODMR Fit')
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
-        self.fit_widget = FitWidget()
+        self.fit_widget = FitWidget(fit_container=fit_container)
         self.setWidget(self.fit_widget)
-        # label = QtWidgets.QLabel('This is a placeholder for future fit controls')
-        # label.setAlignment(QtCore.Qt.AlignCenter)
-        # label.setMinimumSize(300, 300)
-        # label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        # self.setWidget(label)
