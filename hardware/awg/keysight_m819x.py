@@ -1538,7 +1538,7 @@ class AWGM819X(Base, PulserInterface):
                 if name.split(',')[0] != name:
                     # todo: this breaks if there is a , in the name without number
                     segment_id = np.int(name.split(',')[0])
-                    self.log.warning("Loading wave to specified segment via name will deprecate.")
+                    self.log.warning("Loading wave to specified segment ({}) via name will deprecate.".format(segment_id))
                 if segment_id == -1:
                     # to next free segment
                     segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(analog_samples[ch_str])))
