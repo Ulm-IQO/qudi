@@ -78,7 +78,7 @@ class GratingSpectrometerInterface(metaclass=InterfaceMetaclass):
     #                            Gratings functions
     ##############################################################################
     @abstract_interface_method
-    def get_grating_index(self):
+    def get_grating(self):
         """ Returns the current grating index
 
         @return (int): Current grating index
@@ -86,7 +86,7 @@ class GratingSpectrometerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def set_grating_index(self, value):
+    def set_grating(self, value):
         """ Sets the grating by index
 
         @param (int) value: grating index

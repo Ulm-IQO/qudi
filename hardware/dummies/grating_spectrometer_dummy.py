@@ -53,7 +53,7 @@ class Main(Base, GratingSpectrometerInterface):
 
         self._constraints = self._build_constraints()
 
-        self._grating_index = 0
+        self._grating = 0
         self._center_wavelength = 600e-9
         self._input_port = PortType.INPUT_FRONT
         self._output_port = PortType.OUTPUT_SIDE
@@ -140,19 +140,19 @@ class Main(Base, GratingSpectrometerInterface):
         """
         return self._constraints
 
-    def get_grating_index(self):
+    def get_grating(self):
         """ Returns the current grating index
 
         @return (int): Current grating index
         """
-        return self._grating_index
+        return self._grating
 
-    def set_grating_index(self, value):
+    def set_grating(self, value):
         """ Sets the grating by index
 
         @param (int) value: grating index
         """
-        self._grating_index = value
+        self._grating = value
 
     def get_wavelength(self):
         """ Returns the current central wavelength in meter
@@ -166,8 +166,8 @@ class Main(Base, GratingSpectrometerInterface):
 
         @params (float) value: The new central wavelength (meter)
         """
-        grating_index = self.get_grating_index()
-        maxi = self.get_constraints().gratings[grating_index].wavelength_max
+        grating = self.get_grating()
+        maxi = self.get_constraints().gratings[grating].wavelength_max
         if 0 <= value <= maxi:
             self._center_wavelength = value
         else:

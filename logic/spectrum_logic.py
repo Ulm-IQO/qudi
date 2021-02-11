@@ -103,7 +103,7 @@ class SpectrumLogic(GenericLogic):
         self.camera_constraints = None
 
         # Private attributes
-        self._grating_index = None
+        self._grating = None
         self._center_wavelength = None
         self._input_ports = None
         self._output_ports = None
@@ -132,7 +132,7 @@ class SpectrumLogic(GenericLogic):
                              port.type == PortType.INPUT_FRONT]
 
         # Get current physical state
-        self._grating_index = self.spectrometer().get_grating_index()
+        self._grating = self.spectrometer().get_grating()
         self._center_wavelength = self.spectrometer().get_wavelength()
         self._input_port = self.spectrometer().get_input_port()
         self._output_port = self.spectrometer().get_output_port()
@@ -299,7 +299,7 @@ class SpectrumLogic(GenericLogic):
         self._acquisition_params['scan_delay (s)'] = self.scan_delay
         self._acquisition_params['number_of_scan'] = self.number_of_scan
         self._acquisition_params['center_wavelength  (m)'] = self.center_wavelength
-        self._acquisition_params['grating_index'] = self.grating_index
+        self._acquisition_params['grating'] = self.grating
         self._acquisition_params['spectro_ports'] = self.input_port, self.output_port
         self._acquisition_params['slit_width (m)'] = self._input_slit_width, self._output_slit_width
         self._acquisition_params['wavelength_calibration (m)'] = self.wavelength_calibration
@@ -327,33 +327,33 @@ class SpectrumLogic(GenericLogic):
     ##############################################################################
 
     @property
-    def grating_index(self):
+    def grating(self):
         """ Getter method returning the grating index used by the spectrometer.
 
         @return (int): active grating index
         """
-        return self._grating_index
+        return self._grating
 
-    @grating_index.setter
-    def grating_index(self, grating_index):
+    @grating.setter
+    def grating(self, grating):
         """ Setter method setting the grating index to use by the spectrometer.
 
-        @param (int) grating_index: gating index to set active
+        @param (int) grating: gating index to set active
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
                            " until the acquisition is completely stopped ")
             return
-        grating_index = int(grating_index)
-        if grating_index == self._grating_index:
+        grating = int(grating)
+        if grating == self._grating:
             return
         number_of_gratings = len(self.spectro_constraints.gratings)
-        if not 0 <= grating_index < number_of_gratings:
+        if not 0 <= grating < number_of_gratings:
             self.log.error('Grating number parameter is not correct : it must be in range 0 to {} '
                            .format(number_of_gratings - 1))
             return
-        self.spectrometer().set_grating_index(grating_index)
-        self._grating_index = self.spectrometer().get_grating_index()
+        self.spectrometer().set_grating(grating)
+        self._grating = self.spectrometer().get_grating()
         self.sigUpdateSettings.emit()
 
     ##############################################################################
@@ -390,7 +390,7 @@ class SpectrumLogic(GenericLogic):
             wavelength = float(wavelength - self.wavelength_calibration)
         else:
             wavelength = float(wavelength)
-        wavelength_max = self.spectro_constraints.gratings[self.grating_index].wavelength_max
+        wavelength_max = self.spectro_constraints.gratings[self.grating].wavelength_max
         if not 0 <= wavelength < wavelength_max:
             self.log.error('Wavelength parameter is not correct : it must be in range {} to {} '
                            .format(0, wavelength_max))
@@ -420,7 +420,7 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) wavelength_calibration used for spectrum calibration
         """
-        return self._wavelength_calibration[self.grating_index]
+        return self._wavelength_calibration[self.grating]
 
     @wavelength_calibration.setter
     def wavelength_calibration(self, wavelength_calibration):
@@ -433,7 +433,7 @@ class SpectrumLogic(GenericLogic):
             self.log.error("Acquisition process is currently running : you can't change this parameter"
                            " until the acquisition is completely stopped ")
             return
-        self._wavelength_calibration[self.grating_index] = wavelength_calibration
+        self._wavelength_calibration[self.grating] = wavelength_calibration
         self.sigUpdateSettings.emit()
 
 

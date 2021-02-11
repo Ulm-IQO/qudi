@@ -34,6 +34,8 @@ from gui.colordefs import QudiPalette as palette
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 from interface.grating_spectrometer_interface import PortType
 from logic.spectrum_logic import AcquisitionMode
+from PyQt5.Qt import QRectF, QPoint
+
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
@@ -230,7 +232,11 @@ class Main(GUIBase):
                 round(self._spectrumlogic.spectro_constraints.gratings[i].ruling/1000)))
             self._grating_buttons[i].setCheckable(True)
             self._grating_buttons[i].clicked.connect(partial(self._manage_grating_buttons, i))
+<<<<<<< HEAD
             if i == self._spectrumlogic.grating_index:
+=======
+            if i == self.spectrumlogic().grating:
+>>>>>>> cb22fd0... small corrections
                 self._grating_buttons[i].setDown(True)
 
         self._input_ports = [port for port in spectro_constraints.ports if port.type in [PortType.INPUT_FRONT, PortType.INPUT_SIDE]]
@@ -337,7 +343,14 @@ class Main(GUIBase):
 
     def _activate_image_tab(self):
 
+<<<<<<< HEAD
         for read_mode in self._spectrumlogic.camera_constraints.read_modes:
+=======
+        camera_width = self.spectrumlogic().camera_constraints.width
+        camera_height = self.spectrumlogic().camera_constraints.height
+
+        for read_mode in self.spectrumlogic().camera_constraints.read_modes:
+>>>>>>> cb22fd0... small corrections
             if read_mode.name[:5] == "IMAGE":
                 self._image_tab.read_modes.addItem(read_mode.name, read_mode.name)
                 if read_mode == self._image_read_mode:
@@ -396,15 +409,21 @@ class Main(GUIBase):
 
         self._image_tab.image_advanced.setCheckable(True)
         self._image_tab.image_advanced.clicked.connect(self._manage_image_advanced_button)
-        self._image_advanced_widget = pg.ROI([0,0], [100,100])
+        self._image_advanced_widget = pg.ROI([0,0], [camera_width, camera_height],
+                                             maxBounds=QRectF(QPoint(0, 0), QPoint(camera_width, camera_height)))
         self._image_advanced_widget.addScaleHandle((1,0), (0,1))
         self._image_advanced_widget.addScaleHandle((0,1), (1,0))
         self._image_advanced_widget.hide()
         self._image_tab.graph.addItem(self._image_advanced_widget)
 
+<<<<<<< HEAD
         self._image_tab.horizontal_binning.setRange(1, self._spectrumlogic.camera_constraints.width-1)
         self._image_tab.vertical_binning.setRange(1, self._spectrumlogic.camera_constraints.height-1)
 
+=======
+        self._image_tab.horizontal_binning.setRange(1, camera_width-1)
+        self._image_tab.vertical_binning.setRange(1, camera_height-1)
+>>>>>>> cb22fd0... small corrections
 
         self._image_tab.horizontal_binning.editingFinished.connect(self.set_image_params)
         self._image_tab.vertical_binning.editingFinished.connect(self.set_image_params)
@@ -500,7 +519,11 @@ class Main(GUIBase):
 
     def _update_settings(self):
         """
+<<<<<<< HEAD
         self._manage_grating_buttons(self._spectrumlogic.grating_index)
+=======
+        self._manage_grating_buttons(self.spectrumlogic().grating)
+>>>>>>> cb22fd0... small corrections
 
         if len(self._input_ports)>1:
             input_port_index = 0 if self._spectrumlogic.input_port == PortType.INPUT_FRONT else 1
@@ -621,7 +644,11 @@ class Main(GUIBase):
             if i == index:
                 btn.setChecked(True)
                 btn.setDown(True)
+<<<<<<< HEAD
                 self._spectrumlogic.grating_index = i
+=======
+                self.spectrumlogic().grating = i
+>>>>>>> cb22fd0... small corrections
             else:
                 btn.setChecked(False)
                 btn.setDown(False)
