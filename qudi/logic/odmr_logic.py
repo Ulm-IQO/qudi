@@ -52,6 +52,7 @@ class OdmrLogic(LogicBase):
     _scans_to_average = StatusVar(name='scans_to_average', default=0)
     _data_rate = StatusVar(name='data_rate', default=200)
     _oversampling_factor = StatusVar(name='oversampling_factor', default=1)
+    _fit_configs = StatusVar(name='fit_configs', default=None)
 
     # Internal signals
     _sigNextLine = QtCore.Signal()
@@ -64,6 +65,18 @@ class OdmrLogic(LogicBase):
     sigCwStateUpdated = QtCore.Signal(bool)
     sigScanDataUpdated = QtCore.Signal()
     sigFitUpdated = QtCore.Signal(object, str, int)
+
+    __default_fit_configs = (
+        {'name': 'Gaussian Dip',
+         'model': 'Gaussian',
+         'estimator': 'Dip',
+         'custom_parameters': None},
+
+        {'name': 'Lorentzian Dip',
+         'model': 'Lorentzian',
+         'estimator': 'Dip',
+         'custom_parameters': None},
+    )
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -95,6 +108,7 @@ class OdmrLogic(LogicBase):
         # self._scan_mw_power = limits.power_in_range(self.sweep_mw_power)
 
         self._fit_config_model = FitConfigurationsModel(parent=self)
+        self._fit_config_model.load_configs(self._fit_configs)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
 
         # Elapsed measurement time and number of sweeps
@@ -128,47 +142,18 @@ class OdmrLogic(LogicBase):
         if self.module_state() == 'locked':
             self.stop_odmr_scan()
 
-    # @fc.constructor
-    # def sv_set_fits(self, val):
-    #     # Setup fit container
-    #     fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
-    #     fc.set_units(['Hz', 'c/s'])
-    #     if isinstance(val, dict) and len(val) > 0:
-    #         fc.load_from_dict(val)
-    #     else:
-    #         d1 = dict()
-    #         d1['Lorentzian dip'] = {
-    #             'fit_function': 'lorentzian',
-    #             'estimator': 'dip'
-    #         }
-    #         d1['Two Lorentzian dips'] = {
-    #             'fit_function': 'lorentziandouble',
-    #             'estimator': 'dip'
-    #         }
-    #         d1['N14'] = {
-    #             'fit_function': 'lorentziantriple',
-    #             'estimator': 'N14'
-    #         }
-    #         d1['N15'] = {
-    #             'fit_function': 'lorentziandouble',
-    #             'estimator': 'N15'
-    #         }
-    #         d1['Two Gaussian dips'] = {
-    #             'fit_function': 'gaussiandouble',
-    #             'estimator': 'dip'
-    #         }
-    #         default_fits = dict()
-    #         default_fits['1d'] = d1
-    #         fc.load_from_dict(default_fits)
-    #     return fc
-    #
-    # @fc.representer
-    # def sv_get_fits(self, val):
-    #     """ save configured fits """
-    #     if len(val.fit_list) > 0:
-    #         return val.save_to_dict()
-    #     else:
-    #         return None
+    @_fit_configs.representer
+    def __repr_fit_configs(self, value):
+        configs = self.fit_config_model.dump_configs()
+        if len(configs) < 1:
+            configs = None
+        return configs
+
+    @_fit_configs.constructor
+    def __constr_fit_configs(self, value):
+        if not value:
+            return self.__default_fit_configs
+        return value
 
     def _initialize_odmr_data(self):
         """ Initializing the ODMR data arrays (signal and raw data matrix). """
