@@ -192,6 +192,9 @@ class Base(QtCore.QObject, metaclass=ABCQObjectMeta):
                     status_vars[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
                 elif isinstance(attr, ConfigOption):
                     config_opt[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
+                elif attr_name in config_opt:
+                    # Allow subclass overwriting of ConfigOptions with hard-coded attribute values
+                    del config_opt[attr_name]
         self._module_meta['connectors'] = connectors
         self._module_meta['status_variables'] = status_vars
         self._module_meta['config_options'] = config_opt
