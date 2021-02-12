@@ -67,14 +67,14 @@ class OdmrLogic(LogicBase):
     sigFitUpdated = QtCore.Signal(object, str, int)
 
     __default_fit_configs = (
-        {'name': 'Gaussian Dip',
-         'model': 'Gaussian',
-         'estimator': 'Dip',
+        {'name'             : 'Gaussian Dip',
+         'model'            : 'Gaussian',
+         'estimator'        : 'Dip',
          'custom_parameters': None},
 
-        {'name': 'Lorentzian Dip',
-         'model': 'Lorentzian',
-         'estimator': 'Dip',
+        {'name'             : 'Lorentzian Dip',
+         'model'            : 'Lorentzian',
+         'estimator'        : 'Dip',
          'custom_parameters': None},
     )
 
