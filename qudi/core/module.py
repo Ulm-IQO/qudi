@@ -32,8 +32,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.paths import get_appdata_dir
 from qudi.core.config import load, save
-from qudi.core.meta import InterfaceMeta
-from qudi.core.interface import InterfaceAttributeMapper
+from qudi.core.meta import ABCQObjectMeta
 
 
 def get_module_app_data_path(cls_name, module_base, module_name):
@@ -370,7 +369,7 @@ class Base(QtCore.QObject):
                        ''.format(self.__class__.__name__))
 
 
-class InterfaceBase(Base, metaclass=InterfaceMeta):
+class InterfaceBase(Base, metaclass=ABCQObjectMeta):
     """
 
     """
@@ -382,12 +381,7 @@ class InterfaceBase(Base, metaclass=InterfaceMeta):
         if abstract:
             raise TypeError(f'Can\'t instantiate abstract class "{cls.__name__}" '
                             f'with abstract methods {set(abstract)}')
-
-        # Add overloaded attributes
-        obj = super(InterfaceBase, cls).__new__(cls, *args, **kwargs)
-        for base_attr, interfac_map in cls._meta_attribute_mapping.items():
-            setattr(obj, base_attr, InterfaceAttributeMapper(obj, interfac_map))
-        return obj
+        return super(InterfaceBase, cls).__new__(cls, *args, **kwargs)
 
 
 class LogicBase(Base):
