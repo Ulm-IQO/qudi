@@ -29,13 +29,12 @@ from enum import Enum
 from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
-from qudi.core.util import units
 from qudi.core.util.helpers import natural_sort
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.module import GuiBase
 from qudi.core.gui import uic
-from PySide2 import QtCore, QtWidgets  # , uic
+from PySide2 import QtCore, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 # TODO: Display the Pulse graphically (similar to AWG application)
@@ -606,7 +605,7 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
 
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
-        self._mw.save_tag_LineEdit.setMaximumWidth(200)
+        # self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
         return
 
