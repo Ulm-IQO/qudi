@@ -56,9 +56,11 @@ class ConfigOption:
 
         self.name = name
         self.default = default
-        self.constructor_function = constructor
         self.checker = checker
         self.converter = converter
+        self.constructor_function = None
+        if constructor is not None:
+            self.constructor(constructor)
 
     def copy(self, **kwargs):
         """ Create a new instance of ConfigOption with copied values and update
