@@ -75,7 +75,7 @@ class QudiMainGui(GuiBase):
         """
         # Create main window and restore position
         self.mw = QudiMainWindow()
-        self._restore_window_pos(self.mw)
+        self._restore_window_geometry(self.mw)
         # Create error dialog for error message popups
         self.error_dialog = ErrorDialog()
 
@@ -120,7 +120,7 @@ class QudiMainGui(GuiBase):
         self._disconnect_signals()
         self.stop_ipython_widget()
         self.stop_ipython()
-        self._save_window_pos(self.mw)
+        self._save_window_geometry(self.mw)
         self.mw.close()
 
     @property

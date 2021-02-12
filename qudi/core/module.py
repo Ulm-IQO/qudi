@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import logging
 import copy
+from abc import abstractmethod
 from uuid import uuid4
 from fysom import Fysom  # provides a finite state machine
 
@@ -130,7 +131,7 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
         super().deactivate()
 
 
-class Base(QtCore.QObject):
+class Base(QtCore.QObject, metaclass=ABCQObjectMeta):
     """
     Base class for all loadable modules
 
@@ -148,6 +149,15 @@ class Base(QtCore.QObject):
     """
     _threaded = False
     _module_meta = {'base': 'hardware'}  # can be overwritten by subclasses of Base
+
+    def __new__(cls, *args, **kwargs):
+        # FIXME: This part has the sole purpose to circumvent a known PySide2(6) bug.
+        #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
+        abstract = getattr(cls, '__abstractmethods__', frozenset())
+        if abstract:
+            raise TypeError(f'Can\'t instantiate abstract class "{cls.__name__}" '
+                            f'with abstract methods {set(abstract)}')
+        return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, qudi_main_weakref, name, config=None, callbacks=None, **kwargs):
         """
@@ -354,94 +364,65 @@ class Base(QtCore.QObject):
             return
         qudi_main.gui.pop_up_message(title, message)
 
+    @abstractmethod
     def on_activate(self):
         """
         Method called when module is activated. If not overridden this method returns an error.
         """
-        self.log.error('Please implement and specify the activation method for {0}.'
-                       ''.format(self.__class__.__name__))
+        raise NotImplementedError(f'Please implement and specify the activation method for '
+                                  f'{self.__class__.__name__}.')
 
+    @abstractmethod
     def on_deactivate(self):
         """
         Method called when module is deactivated. If not overridden this method returns an error.
         """
-        self.log.error('Please implement and specify the deactivation method {0}.'
-                       ''.format(self.__class__.__name__))
-
-
-class InterfaceBase(Base, metaclass=ABCQObjectMeta):
-    """
-
-    """
-
-    def __new__(cls, *args, **kwargs):
-        # FIXME: This part has the sole purpose to circumvent a known PySide2(6) bug.
-        #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
-        abstract = getattr(cls, '__abstractmethods__', frozenset())
-        if abstract:
-            raise TypeError(f'Can\'t instantiate abstract class "{cls.__name__}" '
-                            f'with abstract methods {set(abstract)}')
-        return super(InterfaceBase, cls).__new__(cls, *args, **kwargs)
+        raise NotImplementedError(f'Please implement and specify the deactivation method '
+                                  f'{self.__class__.__name__}.')
 
 
 class LogicBase(Base):
     """
     """
     _threaded = True
-    _module_meta = {'base': 'logic'}  # can be overwritten by subclasses
-
-    def __init__(self, *args, **kwargs):
-        """
-        Initialize a logic module.
-        """
-        super().__init__(*args, **kwargs)
-        self._module_meta['base'] = 'logic'
-
-        self.task_lock = Mutex()  # FIXME: What's this? Is it needed?
-
-    # FIXME: exposing this seems like a great opportunity to shoot yourself in the foot.
-    #  Is it really needed? If the reference to task_runner is really needed and must be protected
-    #  by a Mutex, then the manager should handle safe access. (maybe a manager property?)
-    def get_task_runner(self):
-        """
-        Get a reference to the task runner module registered in the manager.
-        If there is no registered task runner, an exception is raised.
-
-        @return object: reference to task runner
-        """
-        with self._manager.lock:
-            if self._manager.task_runner is not None:
-                return self._manager.task_runner
-            else:
-                raise Exception('Tried to access task runner without loading one!')
+    _module_meta = {'base': 'logic'}
 
 
 class GuiBase(Base):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
     _threaded = False
-    _module_meta = {'base': 'gui'}  # can be overwritten by subclasses
+    _module_meta = {'base': 'gui'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Add windows position StatusVar to module
-        stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
+        # Add window geometry StatusVar to module
+        stat_var_name = '_{0}__window_geometry'.format(self.__class__.__name__)
         if stat_var_name not in self._module_meta['status_variables']:
-            stat_var = StatusVar(stat_var_name, None)
+            stat_var = StatusVar(name='window_geometry', default=None)
             self._module_meta['status_variables'][stat_var_name] = stat_var
             setattr(self, stat_var_name, stat_var)
 
+    @abstractmethod
     def show(self):
-        self.log.error('Every GUI module needs to implement the show() method!')
+        raise NotImplementedError('Every GUI module needs to implement the show() method!')
 
-    def _save_window_pos(self, window):
-        stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
+    def _save_window_geometry(self, window):
+        stat_var_name = '_{0}__window_geometry'.format(self.__class__.__name__)
         if hasattr(self, stat_var_name):
-            setattr(self, stat_var_name, (window.pos().x(), window.pos().y()))
+            try:
+                setattr(self, stat_var_name, window.saveGeometry().toHex().data().decode())
+            except:
+                self.log.exception('Unable to save window geometry:')
+                setattr(self, stat_var_name, None)
 
-    def _restore_window_pos(self, window):
-        stat_var_name = '_{0}__win_pos'.format(self.__class__.__name__)
-        win_pos = getattr(self, stat_var_name, None)
-        if win_pos is not None:
-            window.move(*win_pos)
+    def _restore_window_geometry(self, window):
+        stat_var_name = '_{0}__window_geometry'.format(self.__class__.__name__)
+        geometry = getattr(self, stat_var_name, None)
+        if isinstance(geometry, str):
+            try:
+                encoded = QtCore.QByteArray(geometry.encode('utf-8'))
+                window.restoreGeometry(QtCore.QByteArray.fromHex(encoded))
+            except:
+                self.log.exception('Unable to restore window geometry:')
