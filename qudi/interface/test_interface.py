@@ -21,10 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 
 
-class FirstTestInterface(InterfaceBase):
+class FirstTestInterface(Base):
 
     @property
     @abstractmethod
@@ -41,7 +41,7 @@ class FirstTestInterface(InterfaceBase):
         print('FirstTestInterface default herp called')
 
 
-class SecondTestInterface(InterfaceBase):
+class SecondTestInterface(Base):
 
     @property
     def y(self):
