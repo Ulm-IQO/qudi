@@ -89,6 +89,9 @@ class PulsedMeasurementLogic(LogicBase):
     # Container to store information about the sampled waveform/sequence currently loaded
     _sampling_information = StatusVar(default=dict())
 
+    # Data fitting
+    _fit_configs = StatusVar(name='fit_configs', default=None)
+
     # alternative signal computation settings:
     _alternative_data_type = StatusVar(default=None)
     zeropad = StatusVar(default=0)
@@ -111,6 +114,43 @@ class PulsedMeasurementLogic(LogicBase):
     # Internal signals
     sigStartTimer = QtCore.Signal()
     sigStopTimer = QtCore.Signal()
+
+    __default_fit_configs = (
+        {'name'             : 'Gaussian Dip',
+         'model'            : 'Gaussian',
+         'estimator'        : 'Dip',
+         'custom_parameters': None},
+
+        {'name'             : 'Lorentzian Dip',
+         'model'            : 'Lorentzian',
+         'estimator'        : 'Dip',
+         'custom_parameters': None},
+
+        {'name'             : 'Sine',
+         'model'            : 'Sine',
+         'estimator'        : 'default',
+         'custom_parameters': None},
+
+        {'name'             : 'Double Sine',
+         'model'            : 'DoubleSine',
+         'estimator'        : 'default',
+         'custom_parameters': None},
+
+        {'name'             : 'Exp. Decay Sine',
+         'model'            : 'ExponentialDecaySine',
+         'estimator'        : 'Decay',
+         'custom_parameters': None},
+
+        {'name'             : 'Stretched Exp. Decay Sine',
+         'model'            : 'ExponentialDecaySine',
+         'estimator'        : 'Stretched Decay',
+         'custom_parameters': None},
+
+        {'name'             : 'Stretched Exp. Decay',
+         'model'            : 'ExponentialDecay',
+         'estimator'        : 'Stretched Decay',
+         'custom_parameters': None},
+    )
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -168,6 +208,7 @@ class PulsedMeasurementLogic(LogicBase):
         # ToDo: Save and recall configured fits
         # Fitting
         self.fit_config_model = FitConfigurationsModel(parent=self)
+        self.fit_config_model.load_configs(self._fit_configs)
         self.fc = FitContainer(parent=self, config_model=self.fit_config_model)
         self.alt_fc = FitContainer(parent=self, config_model=self.fit_config_model)
 
@@ -223,6 +264,19 @@ class PulsedMeasurementLogic(LogicBase):
         self.sigStartTimer.disconnect()
         self.sigStopTimer.disconnect()
         return
+
+    @_fit_configs.representer
+    def __repr_fit_configs(self, value):
+        configs = self.fit_config_model.dump_configs()
+        if len(configs) < 1:
+            configs = None
+        return configs
+
+    @_fit_configs.constructor
+    def __constr_fit_configs(self, value):
+        if not value:
+            return self.__default_fit_configs
+        return value
 
     ############################################################################
     # Fast counter control methods and properties
