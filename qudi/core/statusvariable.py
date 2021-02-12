@@ -22,6 +22,7 @@ top-level directory of this distribution and at
 """
 
 import copy
+import inspect
 
 
 class StatusVar:
@@ -37,17 +38,20 @@ class StatusVar:
         @param representer: representer function for status variable; use for saving conversion
         """
         self.name = name
-
-        self.constructor_function = constructor
-        self.representer_function = representer
         self.default = default
+        self.constructor_function = None
+        self.representer_function = None
+        if constructor is not None:
+            self.constructor(constructor)
+        if representer is not None:
+            self.representer(representer)
 
     def copy(self, **kwargs):
         """ Create a new instance of StatusVar with copied and updated values.
 
         @param kwargs: Additional or overridden parameters for the constructor of this class
         """
-        newargs = {'name': copy.copy(self.name),
+        newargs = {'name': self.name,
                    'default': copy.deepcopy(self.default),
                    'constructor': self.constructor_function,
                    'representer': self.representer_function}
@@ -60,8 +64,7 @@ class StatusVar:
         @param func: constructor function for this StatusVar
         @return: return the original function so this can be used as a decorator
         """
-        if callable(func):
-            self.constructor_function = func
+        self.constructor_function = self._assert_func_signature(func)
         return func
 
     def representer(self, func):
@@ -70,6 +73,19 @@ class StatusVar:
         @param func: representer function for this StatusVar
         @return: return the original function so this can be used as a decorator
         """
-        if callable(func):
-            self.representer_function = func
+        self.representer_function = self._assert_func_signature(func)
         return func
+
+    @staticmethod
+    def _assert_func_signature(func):
+        assert callable(func), 'StatusVar constructor/representer must be callable'
+        params = tuple(inspect.signature(func).parameters)
+        assert 0 < len(params) < 3, 'StatusVar constructor/representer must be function with ' \
+                                    '1 (static) or 2 (bound method) parameters.'
+        if len(params) == 1:
+            def wrapper(instance, value):
+                return func(value)
+
+            return wrapper
+        return func
+

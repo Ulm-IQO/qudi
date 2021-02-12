@@ -23,6 +23,7 @@ top-level directory of this distribution and at
 """
 
 import copy
+import inspect
 from enum import Enum
 
 
@@ -64,9 +65,9 @@ class ConfigOption:
 
         @param kwargs: extra arguments or overrides for the constructor of this class
         """
-        newargs = {'name': copy.copy(self.name),
-                   'default': copy.copy(self.default),
-                   'missing': copy.copy(self.missing.name),
+        newargs = {'name': self.name,
+                   'default': copy.deepcopy(self.default),
+                   'missing': self.missing.name,
                    'constructor': self.constructor_function,
                    'checker': self.checker,
                    'converter': self.converter}
@@ -97,6 +98,18 @@ class ConfigOption:
         @param func: constructor function for this ConfigOption
         @return: return the original function so this can be used as a decorator
         """
-        if callable(func):
-            self.constructor_function = func
+        self.constructor_function = self._assert_func_signature(func)
+        return func
+
+    @staticmethod
+    def _assert_func_signature(func):
+        assert callable(func), 'ConfigOption constructor must be callable'
+        params = tuple(inspect.signature(func).parameters)
+        assert 0 < len(params) < 3, 'ConfigOption constructor must be function with ' \
+                                    '1 (static) or 2 (bound method) parameters.'
+        if len(params) == 1:
+            def wrapper(instance, value):
+                return func(value)
+
+            return wrapper
         return func
