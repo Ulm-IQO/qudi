@@ -20,45 +20,105 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
+import weakref
 
-def interface_overload(overload, interface):
-    assert isinstance(overload, str)
-    assert isinstance(interface, str)
-
-    def decorator(func):
-        setattr(func, '_interface_overload_mapping', (overload, interface))
-        return func
-    return decorator
+__all__ = ('OverloadedAttribute', 'OverloadedAttributeMapper', 'ScalarConstraint')
 
 
-class InterfaceAttributeMapper:
-    def __init__(self, parent, map_dict):
-        self.__map_dict = map_dict.copy()
-        self.__parent = parent
+class OverloadedAttributeMapper:
+    def __init__(self):
+        self._map_dict = dict()
+        self._parent = lambda: None
+
+    def add_mapping(self, key, obj):
+        self._map_dict[key] = obj
+
+    def remove_mapping(self, key):
+        del self._map_dict[key]
+
+    @property
+    def parent(self):
+        return self._parent()
+
+    @parent.setter
+    def parent(self, obj):
+        self._parent = weakref.ref(obj)
+
+    def get_mapped(self, key):
+        if key not in self._map_dict:
+            raise KeyError(f'No attribute overload found for key "{key}"')
+        return self._map_dict[key]
 
     def __getitem__(self, key):
-        mapped_attr = self.__map_dict.get(key, None)
-        if mapped_attr is None:
-            raise KeyError
-        return mapped_attr.__get__(self.__parent)
+        mapped_obj = self.get_mapped(key)
+        if hasattr(mapped_obj, '__get__'):
+            return mapped_obj.__get__(self.parent)
+        else:
+            return mapped_obj
 
     def __setitem__(self, key, value):
-        mapped_attr = self.__map_dict.get(key, None)
-        if mapped_attr is None:
-            raise KeyError
-        if hasattr(mapped_attr, '__set__'):
-            mapped_attr.__set__(self.__parent, value)
+        mapped_obj = self.get_mapped(key)
+        if hasattr(mapped_obj, '__set__'):
+            mapped_obj.__set__(self.parent, value)
         else:
-            self.__map_dict[key] = value
+            self._map_dict[key] = value
 
     def __delitem__(self, key):
-        mapped_attr = self.__map_dict.get(key, None)
-        if mapped_attr is None:
-            raise KeyError
-        if hasattr(mapped_attr, '__delete__'):
-            mapped_attr.__delete__(self.__parent)
+        mapped_obj = self.get_mapped(key)
+        if hasattr(mapped_obj, '__delete__'):
+            mapped_obj.__delete__(self.parent)
         else:
-            del self.__map_dict[key]
+            del self._map_dict[key]
+
+
+class OverloadedAttribute:
+    def __init__(self):
+        self._attr_mapper = OverloadedAttributeMapper()
+
+    def overload(self, key):
+        def decorator(attr):
+            self._attr_mapper.add_mapping(key, attr)
+            return self
+        return decorator
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+        self._attr_mapper.parent = instance
+        return self._attr_mapper
+
+    def __set__(self, instance, value):
+        raise AttributeError('can\'t set attribute')
+
+    def __delete__(self, instance):
+        raise AttributeError('can\'t delete attribute')
+
+    def setter(self, key):
+        obj = self._attr_mapper.get_mapped(key)
+
+        def decorator(attr):
+            self._attr_mapper.add_mapping(key, obj.setter(attr))
+            return self
+
+        return decorator
+
+    def getter(self, key):
+        obj = self._attr_mapper.get_mapped(key)
+
+        def decorator(attr):
+            self._attr_mapper.add_mapping(key, obj.getter(attr))
+            return self
+
+        return decorator
+
+    def deleter(self, key):
+        obj = self._attr_mapper.get_mapped(key)
+
+        def decorator(attr):
+            self._attr_mapper.add_mapping(key, obj.deleter(attr))
+            return self
+
+        return decorator
 
 
 class ScalarConstraint:

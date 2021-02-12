@@ -23,13 +23,13 @@ top-level directory of this distribution and at
 from abc import ABCMeta
 from PySide2.QtCore import QObject
 
-__all__ = ('ABCQObjectMeta', 'InterfaceMeta', 'QObjectMeta')
+__all__ = ('ABCQObjectMeta', 'QObjectMeta')
 
 
 QObjectMeta = type(QObject)
 
 
-class ABCQObjectMeta(QObjectMeta, ABCMeta):
+class ABCQObjectMeta(ABCMeta, QObjectMeta):
     """
     Metaclass for abstract QObject subclasses.
     """
@@ -47,31 +47,4 @@ class ABCQObjectMeta(QObjectMeta, ABCMeta):
                 if getattr(attr, '__isabstractmethod__', False):
                     abstracts.add(attr_name)
         cls.__abstractmethods__ = frozenset(abstracts)
-        return cls
-
-
-class InterfaceMeta(ABCQObjectMeta):
-    """
-
-    """
-    def __new__(mcs, name, bases, attributes):
-        _attr_mapping = dict()
-        for attr_name, attr in attributes.items():
-            if isinstance(attr, property):
-                mapping = getattr(attr.fget, '_interface_overload_mapping', None)
-            else:
-                mapping = getattr(attr, '_interface_overload_mapping', None)
-            if mapping is not None:
-                map_to, interface = mapping
-                if map_to in _attr_mapping:
-                    _attr_mapping[map_to][interface] = attr
-                else:
-                    _attr_mapping[map_to] = {interface: attr}
-        cls = super(InterfaceMeta, mcs).__new__(mcs, name, bases, attributes)
-        cls._meta_attribute_mapping = _attr_mapping
-        abstract = getattr(cls, '__abstractmethods__', None)
-        if abstract is not None:
-            setattr(cls,
-                    '__abstractmethods__',
-                    frozenset(a for a in abstract if a not in _attr_mapping))
         return cls
