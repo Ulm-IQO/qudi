@@ -47,7 +47,7 @@ class PulsedMeasurementLogic(LogicBase):
 
     # declare connectors
     fastcounter = Connector(interface='FastCounterInterface')
-    microwave = Connector(interface='MicrowaveInterface')
+    microwave = Connector(interface='MicrowaveInterface', optional=True)
     pulsegenerator = Connector(interface='PulserInterface')
 
     # Config options
@@ -74,7 +74,9 @@ class PulsedMeasurementLogic(LogicBase):
     # Pulsed measurement settings
     _invoke_settings_from_sequence = StatusVar(default=False)
     _number_of_lasers = StatusVar(default=50)
-    _controlled_variable = StatusVar(default=list(range(50)))
+    _controlled_variable = StatusVar(default=list(range(50)),
+                                     constructor=lambda x: np.array(x, dtype=float),
+                                     representer=lambda x: list(x))
     _alternating = StatusVar(default=False)
     _laser_ignore_list = StatusVar(default=list())
     _data_units = StatusVar(default=('s', ''))
@@ -205,7 +207,6 @@ class PulsedMeasurementLogic(LogicBase):
         self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
                                               QtCore.Qt.QueuedConnection)
 
-        # ToDo: Save and recall configured fits
         # Fitting
         self.fit_config_model = FitConfigurationsModel(parent=self)
         self.fit_config_model.load_configs(self._fit_configs)
@@ -234,9 +235,6 @@ class PulsedMeasurementLogic(LogicBase):
                                         power=self.__microwave_power,
                                         use_ext_microwave=True)
 
-        # Convert controlled variable list into numpy.ndarray
-        self._controlled_variable = np.array(self._controlled_variable, dtype=float)
-
         # initialize arrays for the measurement data
         self._initialize_data_arrays()
 
@@ -253,17 +251,18 @@ class PulsedMeasurementLogic(LogicBase):
         """
         if self.module_state() == 'locked':
             self.stop_pulsed_measurement()
-
-        self._statusVariables['_controlled_variable'] = list(self._controlled_variable)
-        # ToDo: Save and recall configured fits
-
-        self.extraction_parameters = self._pulseextractor.full_settings_dict
-        self.analysis_parameters = self._pulseanalyzer.full_settings_dict
-
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()
         self.sigStopTimer.disconnect()
         return
+
+    @extraction_parameters.representer
+    def __repr_extraction_parameters(self, value):
+        return self._pulseextractor.full_settings_dict
+
+    @analysis_parameters.representer
+    def __repr_analysis_parameters(self, value):
+        return self._pulseanalyzer.full_settings_dict
 
     @_fit_configs.representer
     def __repr_fit_configs(self, value):
