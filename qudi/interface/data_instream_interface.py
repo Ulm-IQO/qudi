@@ -23,11 +23,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from enum import Enum
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 from qudi.core.interface import ScalarConstraint
 
 
-class DataInStreamInterface(InterfaceBase):
+class DataInStreamInterface(Base):
     """
     Interface for a generic input stream of data points with fixed sampling rate and data type.
 

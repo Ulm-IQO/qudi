@@ -21,10 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 
 
-class CameraInterface(InterfaceBase):
+class CameraInterface(Base):
     """ This interface is used to manage and visualize a simple camera
     """
 

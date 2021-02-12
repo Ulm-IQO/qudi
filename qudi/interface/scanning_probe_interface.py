@@ -23,10 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import datetime
 import numpy as np
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 
 
-class ScanningProbeInterface(InterfaceBase):
+class ScanningProbeInterface(Base):
     """ This is the Interface class to define the controls for a scanning probe device
 
     A scanner device is hardware that can move multiple axes.

@@ -19,10 +19,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 
 
-class SwitchInterface(InterfaceBase):
+class SwitchInterface(Base):
     """ Methods to control slow (mechanical) switching devices.
 
     Getter and setter functions to control single switches need to be implemented by the hardware

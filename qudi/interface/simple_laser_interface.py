@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from enum import IntEnum
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 
 
 class ControlMode(IntEnum):
@@ -44,7 +44,7 @@ class LaserState(IntEnum):
     UNKNOWN = 3
 
 
-class SimpleLaserInterface(InterfaceBase):
+class SimpleLaserInterface(Base):
     """ This interface can be used to control a simple laser. It handles power control, control modes and shutter states
 
     This interface is useful for a standard, fixed wavelength laser that you can find in a lab.

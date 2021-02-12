@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from enum import Enum
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 from qudi.core.util.helpers import in_range
 
 
@@ -32,7 +32,7 @@ class SamplingOutputMode(Enum):
     EQUIDISTANT_SWEEP = 1
 
 
-class FiniteSamplingOutputInterface(InterfaceBase):
+class FiniteSamplingOutputInterface(Base):
     """
     ToDo: Document
     """

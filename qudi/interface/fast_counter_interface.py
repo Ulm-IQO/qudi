@@ -21,10 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 
 
-class FastCounterInterface(InterfaceBase):
+class FastCounterInterface(Base):
     """ Interface class to define the controls for fast counting devices.
 
     A "fast counter" is a hardware device that count events with a "good" time resolution.
