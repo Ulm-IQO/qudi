@@ -22,12 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 from qudi.core.util.helpers import in_range
 from qudi.interface.finite_sampling_output_interface import SamplingOutputMode
 
 
-class FiniteSamplingIOInterface(InterfaceBase):
+class FiniteSamplingIOInterface(Base):
     """
     ToDo: Document
     """

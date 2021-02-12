@@ -22,11 +22,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from enum import Enum
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 from qudi.core.interface import ScalarConstraint
 
 
-class PulserInterface(InterfaceBase):
+class PulserInterface(Base):
     """ Interface class to define the abstract controls and communication with all pulsing devices.
 
     A pulsing device is a device that will generate outputs, generally voltages, to control an experiment in a timely

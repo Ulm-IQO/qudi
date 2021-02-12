@@ -23,14 +23,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from abc import abstractmethod
-from qudi.core.module import InterfaceBase
+from qudi.core.module import Base
 from qudi.core.util.helpers import in_range
 
 __all__ = ('ProcessSetpointInterface', 'ProcessValueInterface', 'ProcessControlInterface',
            'ProcessControlConstraints')
 
 
-class ProcessSetpointInterface(InterfaceBase):
+class ProcessSetpointInterface(Base):
     """ A simple interface to control the setpoint for one or multiple process values.
 
     This interface is in fact a very general/universal interface that can be used for a lot of
@@ -111,7 +111,7 @@ class ProcessSetpointInterface(InterfaceBase):
         pass
 
 
-class ProcessValueInterface(InterfaceBase):
+class ProcessValueInterface(Base):
     """ A simple interface to read one or multiple process values.
 
     This interface is in fact a very general/universal interface that can be used for a lot of
