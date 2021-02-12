@@ -22,7 +22,7 @@ top-level directory of this distribution and at
 
 import copy
 import weakref
-from qudi.core.interface import InterfaceAttributeMapper
+from qudi.core.interface import OverloadedAttributeMapper
 
 
 class Connector:
@@ -44,22 +44,22 @@ class Connector:
         self.interface = interface
         self.name = name
         self.optional = optional
-        self.obj_ref = lambda: None
+        self._obj_proxy = None
+        self._obj_ref = lambda: None
 
     def __call__(self):
         """ Return reference to the module that this connector is connected to. """
-        obj = self.obj_ref()
-        if obj is None:
-            if self.optional:
-                return None
-            raise Exception(
-                'Connector {0} (interface {1}) is not connected.'.format(self.name, self.interface))
-
-        return _ConnectedInterfaceProxy(obj, self.interface)
+        if self.is_connected:
+            return self._obj_proxy
+        if self.optional:
+            return None
+        raise Exception(
+            'Connector {0} (interface {1}) is not connected.'.format(self.name, self.interface)
+        )
 
     @property
     def is_connected(self):
-        return self.obj_ref() is not None
+        return self._obj_proxy is not None
 
     def connect(self, target):
         """ Check if target is connectible by this connector and connect."""
@@ -69,17 +69,16 @@ class Connector:
                 raise Exception(
                     'Module {0} connected to connector {1} does not implement interface {2}.'
                     ''.format(target, self.name, self.interface))
-
-            self.obj_ref = weakref.ref(target, self.__module_died_callback)
         elif isinstance(self.interface, type):
             if not isinstance(target, self.interface):
                 raise Exception(
                     'Module {0} connected to connector {1} does not implement interface {2}.'
                     ''.format(target, self.name, self.interface.__name__))
-            self.obj_ref = weakref.ref(target, self.__module_died_callback)
         else:
             raise Exception(
                 'Unknown type for <Connector>.interface: "{0}"'.format(type(self.interface)))
+        self._obj_proxy = _ConnectedInterfaceProxy(target, self.interface)
+        self._obj_ref = weakref.ref(target, self.__module_died_callback)
         return
 
     def __module_died_callback(self, ref=None):
@@ -87,7 +86,7 @@ class Connector:
 
     def disconnect(self):
         """ Disconnect connector. """
-        self.obj_ref = lambda: None
+        self._obj_proxy = None
 
     # def __repr__(self):
     #     return '<{0}: name={1}, interface={2}, object={3}>'.format(
@@ -109,41 +108,44 @@ class _ConnectedInterfaceProxy:
     https://code.activestate.com/recipes/496741-object-proxying/
     """
 
-    __slots__ = ["_obj", "_interface", "__weakref__"]
+    __slots__ = ["_obj_ref", "_interface", "__weakref__"]
 
     def __init__(self, obj, interface):
-        object.__setattr__(self, "_obj", obj)
+        object.__setattr__(self, "_obj_ref", weakref.ref(obj))
         object.__setattr__(self, "_interface", interface)
 
     # proxying (special cases)
     def __getattribute__(self, name):
-        attr = getattr(object.__getattribute__(self, "_obj"), name)
-        if isinstance(attr, InterfaceAttributeMapper):
+        obj = object.__getattribute__(self, "_obj_ref")()
+        attr = getattr(obj, name)
+        if isinstance(attr, OverloadedAttributeMapper):
             return attr[object.__getattribute__(self, "_interface")]
         return attr
 
     def __delattr__(self, name):
-        attr = getattr(object.__getattribute__(self, "_obj"), name)
-        if isinstance(attr, InterfaceAttributeMapper):
+        obj = object.__getattribute__(self, "_obj_ref")()
+        attr = getattr(obj, name)
+        if isinstance(attr, OverloadedAttributeMapper):
             del attr[object.__getattribute__(self, "_interface")]
         else:
-            delattr(object.__getattribute__(self, "_obj"), name)
+            delattr(obj, name)
 
     def __setattr__(self, name, value):
-        attr = getattr(object.__getattribute__(self, "_obj"), name)
-        if isinstance(attr, InterfaceAttributeMapper):
+        obj = object.__getattribute__(self, "_obj_ref")()
+        attr = getattr(obj, name)
+        if isinstance(attr, OverloadedAttributeMapper):
             attr[object.__getattribute__(self, "_interface")] = value
         else:
-            setattr(object.__getattribute__(self, "_obj"), name, value)
+            setattr(obj, name, value)
 
     def __nonzero__(self):
-        return bool(object.__getattribute__(self, "_obj"))
+        return bool(object.__getattribute__(self, "_obj_ref")())
 
     def __str__(self):
-        return str(object.__getattribute__(self, "_obj"))
+        return str(object.__getattribute__(self, "_obj_ref")())
 
     def __repr__(self):
-        return repr(object.__getattribute__(self, "_obj"))
+        return repr(object.__getattribute__(self, "_obj_ref")())
 
     # factories
     _special_names = (
@@ -169,7 +171,7 @@ class _ConnectedInterfaceProxy:
 
         def make_method(name):
             def method(self, *args, **kw):
-                return getattr(object.__getattribute__(self, "_obj"), name)(*args, **kw)
+                return getattr(object.__getattribute__(self, "_obj_ref")(), name)(*args, **kw)
 
             return method
 

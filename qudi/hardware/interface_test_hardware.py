@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.core.interface import interface_overload
+from qudi.core.interface import OverloadedAttribute
 from qudi.interface.test_interface import FirstTestInterface, SecondTestInterface
 
 
@@ -36,10 +36,12 @@ class TestHardware(FirstTestInterface, SecondTestInterface):
     def x(self):
         print('TestHardware.x called')
 
-    @interface_overload('herp', 'FirstTestInterface')
-    def herp1(self):
+    herp = OverloadedAttribute()
+
+    @herp.overload('FirstTestInterface')
+    def herp(self):
         print('herp1 called')
 
-    @interface_overload('herp', 'SecondTestInterface')
-    def herp2(self):
+    @herp.overload('SecondTestInterface')
+    def herp(self):
         print('herp2 called')
