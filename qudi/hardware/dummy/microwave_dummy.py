@@ -21,7 +21,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.core.interface import interface_overload
 from qudi.core.configoption import ConfigOption
 from qudi.hardware.dummy.finite_sampling_io_dummy import FiniteSamplingIODummy, SimulationMode
 from qudi.hardware.dummy.process_control_dummy import ProcessSetpointDummy
