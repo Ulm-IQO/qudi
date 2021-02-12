@@ -20,7 +20,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import copy
 import inspect
 import lmfit
 import numpy as np
@@ -82,11 +81,11 @@ class FitConfiguration:
     @property
     def default_parameters(self):
         params = _fit_models[self._model]().make_params()
-        return dict() if params is None else params
+        return lmfit.Parameters() if params is None else params
 
     @property
     def custom_parameters(self):
-        return copy.deepcopy(self._custom_parameters) if self._custom_parameters is not None else None
+        return self._custom_parameters.copy() if self._custom_parameters is not None else None
 
     @custom_parameters.setter
     def custom_parameters(self, value):
@@ -94,9 +93,26 @@ class FitConfiguration:
             default_params = self.default_parameters
             invalid = set(value).difference(default_params)
             assert not invalid, f'Invalid model parameters encountered: {invalid}'
-            assert all(isinstance(p, lmfit.Parameter) for p in
-                       value.values()), 'Fit parameters must be of type <lmfit.Parameter>.'
-        self._custom_parameters = copy.deepcopy(value) if value is not None else None
+            assert isinstance(value, lmfit.Parameters), \
+                'Property custom_parameters must be of type <lmfit.Parameters>.'
+        self._custom_parameters = value.copy() if value is not None else None
+
+    def to_dict(self):
+        return {
+            'name': self._name,
+            'model': self._model,
+            'estimator': self._estimator,
+            'custom_parameters': None if self._custom_parameters is None else self._custom_parameters.dumps()
+        }
+
+    @classmethod
+    def from_dict(cls, dict_repr):
+        assert set(dict_repr) == {'name', 'model', 'estimator', 'custom_parameters'}
+        if isinstance(dict_repr['custom_parameters'], str):
+            dict_repr['custom_parameters'] = lmfit.Parameters().loads(
+                dict_repr['custom_parameters']
+            )
+        return cls(**dict_repr)
 
 
 class FitConfigurationsModel(QtCore.QAbstractListModel):
@@ -191,7 +207,9 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
             if config is None:
                 return False
             new_params = value[1]
-            params = {n: p for n, p in config.default_parameters.items() if n in new_params}
+            params = config.default_parameters
+            for name in [p for p in params if p not in new_params]:
+                del params[name]
             for name, p in params.items():
                 value_tuple = new_params[name]
                 p.set(vary=value_tuple[0],
@@ -205,6 +223,28 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
                                   self.createIndex(index.row(), 0))
             return True
         return False
+
+    def dump_configs(self):
+        """ Returns all currently held fit configurations as dicts representations containing only
+        data types that can be dumped as YAML in qudi app status.
+
+        @return list: List of fit config dict representations.
+        """
+        return [cfg.to_dict() for cfg in self._fit_configurations]
+
+    def load_configs(self, configs):
+        """ Initializes/overwrites all currently held fit configurations by a given iterable of dict
+        representations (see also: FitConfigurationsModel.dump_configs).
+
+        Calling this method will reset the list model.
+
+        @param iterable configs: Iterable of FitConfiguration dict representations
+        """
+        config_objects = [FitConfiguration.from_dict(cfg) for cfg in configs]
+        self.beginResetModel()
+        self._fit_configurations = config_objects
+        self.endResetModel()
+        self.sigFitConfigurationsChanged.emit(self.configuration_names)
 
 
 class FitContainer(QtCore.QObject):
