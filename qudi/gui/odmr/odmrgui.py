@@ -118,7 +118,6 @@ class OdmrGui(GuiBase):
 
         self.restore_default_view()
         self.show()
-        self._fit_config_dialog.exec_()
 
     def on_deactivate(self):
         pass
