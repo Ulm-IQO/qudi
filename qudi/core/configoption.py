@@ -62,6 +62,12 @@ class ConfigOption:
         if constructor is not None:
             self.constructor(constructor)
 
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self.copy()
+
     def copy(self, **kwargs):
         """ Create a new instance of ConfigOption with copied values and update
 
