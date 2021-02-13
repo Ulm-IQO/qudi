@@ -23,15 +23,14 @@ top-level directory of this distribution and at
 from abc import ABCMeta
 from PySide2.QtCore import QObject
 
-__all__ = ('ABCQObjectMeta', 'QObjectMeta')
+__all__ = ('ABCQObjectMeta', 'ModuleMeta', 'QObjectMeta')
 
 
 QObjectMeta = type(QObject)
 
 
 class ABCQObjectMeta(ABCMeta, QObjectMeta):
-    """
-    Metaclass for abstract QObject subclasses.
+    """ Metaclass for abstract QObject subclasses.
     """
 
     def __new__(mcs, name, bases, attributes):
@@ -47,4 +46,20 @@ class ABCQObjectMeta(ABCMeta, QObjectMeta):
                 if getattr(attr, '__isabstractmethod__', False):
                     abstracts.add(attr_name)
         cls.__abstractmethods__ = frozenset(abstracts)
+        return cls
+
+
+class ModuleMeta(ABCQObjectMeta):
+    """ Metaclass for all qudi modules (GUI, logic and hardware)
+    """
+
+    def __new__(mcs, name, bases, attributes):
+        cls = super(ModuleMeta, mcs).__new__(mcs, name, bases, attributes)
+        # Merge _module_meta class dicts in case of multiple inheritance of qudi modules
+        module_meta = dict()
+        for base in reversed(bases):
+            module_meta.update(getattr(base, '_module_meta', dict()))
+        if module_meta:
+            module_meta.update(getattr(cls, '_module_meta', dict()))
+            cls._module_meta = module_meta
         return cls

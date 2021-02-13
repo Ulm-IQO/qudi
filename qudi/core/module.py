@@ -33,7 +33,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.paths import get_appdata_dir
 from qudi.core.config import load, save
-from qudi.core.meta import ABCQObjectMeta
+from qudi.core.meta import ModuleMeta
 
 
 def get_module_app_data_path(cls_name, module_base, module_name):
@@ -131,7 +131,7 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
         super().deactivate()
 
 
-class Base(QtCore.QObject, metaclass=ABCQObjectMeta):
+class Base(QtCore.QObject, metaclass=ModuleMeta):
     """
     Base class for all loadable modules
 
@@ -397,35 +397,23 @@ class GuiBase(Base):
     _threaded = False
     _module_meta = {'base': 'gui'}
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Add window geometry StatusVar to module
-        stat_var_name = '_{0}__window_geometry'.format(self.__class__.__name__)
-        if stat_var_name not in self._module_meta['status_variables']:
-            stat_var = StatusVar(name='window_geometry', default=None)
-            self._module_meta['status_variables'][stat_var_name] = stat_var
-            setattr(self, stat_var_name, stat_var)
+    __window_geometry = StatusVar(name='_GuiBase__window_geometry', default=None)
 
     @abstractmethod
     def show(self):
         raise NotImplementedError('Every GUI module needs to implement the show() method!')
 
     def _save_window_geometry(self, window):
-        stat_var_name = '_{0}__window_geometry'.format(self.__class__.__name__)
-        if hasattr(self, stat_var_name):
-            try:
-                setattr(self, stat_var_name, window.saveGeometry().toHex().data().decode())
-            except:
-                self.log.exception('Unable to save window geometry:')
-                setattr(self, stat_var_name, None)
+        try:
+            self.__window_geometry = window.saveGeometry().toHex().data().decode()
+        except:
+            self.log.exception('Unable to save window geometry:')
+            self.__window_geometry = None
 
     def _restore_window_geometry(self, window):
-        stat_var_name = '_{0}__window_geometry'.format(self.__class__.__name__)
-        geometry = getattr(self, stat_var_name, None)
-        if isinstance(geometry, str):
+        if isinstance(self.__window_geometry, str):
             try:
-                encoded = QtCore.QByteArray(geometry.encode('utf-8'))
+                encoded = QtCore.QByteArray(self.__window_geometry.encode('utf-8'))
                 window.restoreGeometry(QtCore.QByteArray.fromHex(encoded))
             except:
                 self.log.exception('Unable to restore window geometry:')
