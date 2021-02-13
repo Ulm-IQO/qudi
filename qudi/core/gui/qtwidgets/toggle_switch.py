@@ -109,7 +109,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         return self._thumb_position
 
     @thumb_position.setter
-    def set_thumb_position(self, value):
+    def thumb_position(self, value):
         self._thumb_position = value
         self.update()
 
@@ -122,7 +122,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.set_thumb_position = self._thumb_end
+        self.thumb_position = self._thumb_end
 
     def paintEvent(self, event):
         # Set up painter
