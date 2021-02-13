@@ -57,6 +57,12 @@ class Connector:
             'Connector {0} (interface {1}) is not connected.'.format(self.name, self.interface)
         )
 
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self.copy()
+
     @property
     def is_connected(self):
         return self._obj_proxy is not None

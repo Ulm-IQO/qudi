@@ -46,6 +46,12 @@ class StatusVar:
         if representer is not None:
             self.representer(representer)
 
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self.copy()
+
     def copy(self, **kwargs):
         """ Create a new instance of StatusVar with copied and updated values.
 
