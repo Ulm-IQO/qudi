@@ -2299,6 +2299,10 @@ class AWGM8195A(AWGM819X):
         else:
             raise ValueError("Unknown mode: {}".format(awg_mode))
 
+        if awg_mode != 'MARK':
+            self.log.error("Setting awg mode {} that is currently not supported!"
+                           "Be careful and please report bugs and bug fixes back on github.".format(awg_mode))
+
         if self.awg_mode != awg_mode:
             self.log.error("Setting awg mode failed, is still: {}".format(self.awg_mode))
 
