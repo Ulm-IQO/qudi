@@ -123,14 +123,6 @@ class QudiMainGui(GuiBase):
         self._save_window_geometry(self.mw)
         self.mw.close()
 
-    @property
-    def _qudi_main(self):
-        qudi_main = super()._qudi_main
-        if qudi_main is None:
-            raise Exception('Unexpected missing qudi main instance. It has either been deleted or '
-                            'garbage collected.')
-        return qudi_main
-
     def _connect_signals(self):
         signal_handler.sigMessageLogged.connect(self.handle_log_entry, QtCore.Qt.QueuedConnection)
         qudi_main = self._qudi_main
