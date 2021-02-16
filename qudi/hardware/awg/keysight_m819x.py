@@ -33,7 +33,7 @@ import re
 
 from core.module import Base
 from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption#, SequenceOrderOption
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 from core.util.modules import get_home_dir
 
 
@@ -2081,14 +2081,15 @@ class AWGM8195A(AWGM819X):
 
       Example config for copy-paste:
 
-          myawg:
+          awg8195:
               module.Class: 'awg.keysight_M819x.AWGM8195A'
               awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
               awg_timeout: 20
-              pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
-              assets_storage_path: 'C:/Software/saved_pulsed_assets'     # to the ones in sequencegeneratorlogic
+              pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directories should be equal
+              assets_storage_path: 'C:/Software/saved_pulsed_assets'    # to the ones in sequencegeneratorlogic
+              sample_rate_div: 1
+              awg_mode: 'MARK'
       """
-
 
     awg_mode_cfg = ConfigOption(name='awg_mode', default='MARK', missing='warn')
 
@@ -2177,7 +2178,7 @@ class AWGM8195A(AWGM819X):
         # manual 1.5.4: Depending on the Sample Rate Divider, the 256 sample wide output of the sequencer
         # is divided by 1, 2 or 4.
         constraints.waveform_length.step = 256 / self._sample_rate_div
-        constraints.waveform_length.min = 1280  # todo: check with manual
+        constraints.waveform_length.min = 1280  # todo: 128 on p 108 manual
         constraints.waveform_length.max = int(16e9)
         constraints.waveform_length.default = 1280
 
@@ -2232,12 +2233,6 @@ class AWGM8195A(AWGM819X):
         constraints.repetitions.max = 65536
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
-
-        # ToDo: Check how many external triggers are available
-        # constraints.trigger_in.min = 0
-        # constraints.trigger_in.max = 1
-        # constraints.trigger_in.step = 1
-        # constraints.trigger_in.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
@@ -2478,12 +2473,14 @@ class AWGM8190A(AWGM819X):
 
     Example config for copy-paste:
 
-        myawg:
+        awg8190:
             module.Class: 'awg.keysight_M819x.AWGM8190A'
             awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
             awg_timeout: 20
-            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
+            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directories should be equal
             assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
+            sample_rate_div: 1
+            dac_resolution_bits: 14
     """
 
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
@@ -2613,12 +2610,6 @@ class AWGM8190A(AWGM819X):
         constraints.repetitions.max = 65536
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
-
-        # ToDo: Check how many external triggers are available
-        # constraints.trigger_in.min = 0
-        # constraints.trigger_in.max = 1
-        # constraints.trigger_in.step = 1
-        # constraints.trigger_in.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
