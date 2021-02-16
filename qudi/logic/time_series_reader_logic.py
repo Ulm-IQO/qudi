@@ -53,8 +53,7 @@ class TimeSeriesReaderLogic(LogicBase):
     _sigNextDataFrame = QtCore.Signal()  # internal signal
 
     # declare connectors
-    _streamer_con = Connector(interface='DataInStreamInterface')
-    # _savelogic_con = Connector(interface='SaveLogic')
+    _streamer = Connector(name='streamer', interface='DataInStreamInterface')
 
     # config options
     _max_frame_rate = ConfigOption('max_frame_rate', default=10, missing='warn')
@@ -72,9 +71,6 @@ class TimeSeriesReaderLogic(LogicBase):
         """
         """
         super().__init__(*args, **kwargs)
-
-        self._streamer = None
-        self._savelogic = None
 
         # locking for thread safety
         self.threadlock = Mutex()
@@ -96,9 +92,8 @@ class TimeSeriesReaderLogic(LogicBase):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # Store references to connected modules
-        self._streamer = self._streamer_con()
-        # self._savelogic = self._savelogic_con()
+        # Temp reference to connected hardware module
+        streamer = self._streamer()
 
         # Flag to stop the loop and process variables
         self._stop_requested = True
@@ -107,16 +102,16 @@ class TimeSeriesReaderLogic(LogicBase):
 
         # Check valid StatusVar
         # active channels
-        avail_channels = tuple(ch.name for ch in self._streamer.available_channels)
+        avail_channels = tuple(ch.name for ch in streamer.available_channels)
         if self._active_channels is None:
-            if self._streamer.active_channels:
-                self._active_channels = tuple(ch.name for ch in self._streamer.active_channels)
+            if streamer.active_channels:
+                self._active_channels = tuple(ch.name for ch in streamer.active_channels)
             else:
                 self._active_channels = avail_channels
         elif any(ch not in avail_channels for ch in self._active_channels):
             self.log.warning('Invalid active channels found in StatusVar. StatusVar ignored.')
-            if self._streamer.active_channels:
-                self._active_channels = tuple(ch.name for ch in self._streamer.active_channels)
+            if streamer.active_channels:
+                self._active_channels = tuple(ch.name for ch in streamer.active_channels)
             else:
                 self._active_channels = avail_channels
 
@@ -179,7 +174,7 @@ class TimeSeriesReaderLogic(LogicBase):
 
         @return SlowCounterConstraints: object with constraints for the counter
         """
-        return self._streamer.get_constraints()
+        return self._streamer().get_constraints()
 
     @property
     def data_rate(self):
@@ -231,24 +226,24 @@ class TimeSeriesReaderLogic(LogicBase):
 
     @property
     def sampling_rate(self):
-        return self._streamer.sample_rate
+        return self._streamer().sample_rate
 
     @property
     def available_channels(self):
-        return self._streamer.available_channels
+        return self._streamer().available_channels
 
     @property
     def active_channels(self):
-        return self._streamer.active_channels
+        return self._streamer().active_channels
 
     @property
     def active_channel_names(self):
-        return tuple(ch.name for ch in self._streamer.active_channels)
+        return tuple(ch.name for ch in self._streamer().active_channels)
 
     @property
     def active_channel_units(self):
         unit_dict = dict()
-        for ch in self._streamer.active_channels:
+        for ch in self._streamer().active_channels:
             if self._calc_digital_freq and ch.type == StreamChannelType.DIGITAL:
                 unit_dict[ch.name] = 'Hz'
             else:
@@ -257,15 +252,15 @@ class TimeSeriesReaderLogic(LogicBase):
 
     @property
     def active_channel_types(self):
-        return {ch.name: ch.type for ch in self._streamer.active_channels}
+        return {ch.name: ch.type for ch in self._streamer().active_channels}
 
     @property
     def has_active_analog_channels(self):
-        return any(ch.type == StreamChannelType.ANALOG for ch in self._streamer.active_channels)
+        return any(ch.type == StreamChannelType.ANALOG for ch in self._streamer().active_channels)
 
     @property
     def has_active_digital_channels(self):
-        return any(ch.type == StreamChannelType.DIGITAL for ch in self._streamer.active_channels)
+        return any(ch.type == StreamChannelType.DIGITAL for ch in self._streamer().active_channels)
 
     @property
     def averaged_channel_names(self):
@@ -273,7 +268,7 @@ class TimeSeriesReaderLogic(LogicBase):
 
     @property
     def number_of_active_channels(self):
-        return self._streamer.number_of_channels
+        return self._streamer().number_of_channels
 
     @property
     def trace_data(self):
@@ -329,7 +324,7 @@ class TimeSeriesReaderLogic(LogicBase):
 
         with self.threadlock:
             constraints = self.streamer_constraints
-            all_ch = tuple(ch.name for ch in self._streamer.available_channels)
+            all_ch = tuple(ch.name for ch in self._streamer().available_channels)
             data_rate = self.data_rate
             active_ch = self.active_channel_names
 
@@ -446,11 +441,11 @@ class TimeSeriesReaderLogic(LogicBase):
                     self._averaged_channels = new_val
 
             # Apply settings to hardware if needed
-            self._streamer.configure(sample_rate=data_rate * self.oversampling_factor,
-                                     streaming_mode=StreamingMode.CONTINUOUS,
-                                     active_channels=active_ch,
-                                     buffer_size=10000000,
-                                     use_circular_buffer=True)
+            self._streamer().configure(sample_rate=data_rate * self.oversampling_factor,
+                                       streaming_mode=StreamingMode.CONTINUOUS,
+                                       active_channels=active_ch,
+                                       buffer_size=10000000,
+                                       use_circular_buffer=True)
 
             # update actually set values
             self._averaged_channels = tuple(
@@ -486,7 +481,7 @@ class TimeSeriesReaderLogic(LogicBase):
             self.sigStatusChanged.emit(True, self._data_recording_active)
 
             # # Configure streaming device
-            # curr_settings = self._streamer.configure(sample_rate=self.sampling_rate,
+            # curr_settings = self._streamer().configure(sample_rate=self.sampling_rate,
             #                                          streaming_mode=StreamingMode.CONTINUOUS,
             #                                          active_channels=self._active_channels,
             #                                          buffer_size=10000000,
@@ -506,7 +501,7 @@ class TimeSeriesReaderLogic(LogicBase):
                 self._record_start_time = dt.datetime.now()
                 self._recorded_data = list()
 
-            if self._streamer.start_stream() < 0:
+            if self._streamer().start_stream() < 0:
                 self.log.error('Error while starting streaming device data acquisition.')
                 self._stop_requested = True
                 self._sigNextDataFrame.emit()
@@ -539,7 +534,7 @@ class TimeSeriesReaderLogic(LogicBase):
                 # check for break condition
                 if self._stop_requested:
                     # terminate the hardware streaming
-                    if self._streamer.stop_stream() < 0:
+                    if self._streamer().stop_stream() < 0:
                         self.log.error(
                             'Error while trying to stop streaming device data acquisition.')
                     if self._data_recording_active:
@@ -551,14 +546,14 @@ class TimeSeriesReaderLogic(LogicBase):
                     return
 
                 samples_to_read = max(
-                    (self._streamer.available_samples // self._oversampling_factor) * self._oversampling_factor,
+                    (self._streamer().available_samples // self._oversampling_factor) * self._oversampling_factor,
                     self._samples_per_frame * self._oversampling_factor)
                 if samples_to_read < 1:
                     self._sigNextDataFrame.emit()
                     return
 
                 # read the current counter values
-                data = self._streamer.read_data(number_of_samples=samples_to_read)
+                data = self._streamer().read_data(number_of_samples=samples_to_read)
                 if data.shape[1] != samples_to_read:
                     self.log.error('Reading data from streamer went wrong; '
                                    'killing the stream with next data frame.')
@@ -803,7 +798,7 @@ class TimeSeriesReaderLogic(LogicBase):
         with self.threadlock:
             self._stop_requested = True
             # terminate the hardware streaming
-            if self._streamer.stop_stream() < 0:
+            if self._streamer().stop_stream() < 0:
                 self.log.error(
                     'Error while trying to stop streaming device data acquisition.')
             if self._data_recording_active:
