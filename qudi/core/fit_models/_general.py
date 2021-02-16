@@ -21,123 +21,283 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import inspect
-from abc import ABCMeta, abstractmethod
-from lmfit import Model, CompositeModel
-
-__all__ = (
-    'estimator', 'FitCompositeModelBase', 'FitCompositeModelMeta', 'FitModelBase', 'FitModelMeta'
-)
+import numpy as np
+from scipy.ndimage import filters
+from scipy.signal.windows import gaussian
+from lmfit import Model
 
 
-def estimator(name):
-    assert isinstance(name, str) and name, 'estimator name must be non-empty str'
+class estimator:
+    def __init__(self, name):
+        self.name = name
 
-    def _decorator(func):
-        assert callable(func), 'estimator must be callable'
-        params = tuple(inspect.signature(func).parameters)
-        assert len(params) == 3, \
-            'estimator must be bound method with 2 positional parameters. First parameter is the ' \
-            'y data array to use and second parameter is the corresponding independent variable.'
-        func._estimator_name = name
-        func._estimator_independent_var = params[2]
+    def __call__(self, func):
+        # ToDo: Sanity checking for appropriate estimator method. Keep in mind other decorators
+        #  (i.e. staticmethod, classmethod etc.)
+        #  Do not flag function if it is an invalid estimator.
+        func.estimator_name = self.name
         return func
 
-    return _decorator
 
-
-class FitModelMeta(ABCMeta):
+class FitModelMeta(type):
     def __init__(cls, name, bases, attrs):
-        super().__init__(name, bases, attrs)
-
-        # collect marked estimator methods in a dict "_estimators" and attach it to created class
         estimators = dict()
-        for attr_name in [a for a in dir(cls) if not a.startswith('__')]:
-            attr = getattr(cls, attr_name)
-            name = getattr(attr, '_estimator_name', None)
-            if isinstance(name, str):
-                estimators[name] = attr
-        cls._estimators = estimators
+        for name, method in attrs.items():
+            if hasattr(method, 'estimator_name'):
+                estimators[method.estimator_name] = name
 
-        # The following is just performed on lmfit.Model subclasses, NOT CompositeModel subclasses
-        if not issubclass(cls, CompositeModel):
-            # inspect static _model_function and perform sanity checks
-            model_func = inspect.getattr_static(cls, '_model_function', None)
-            assert isinstance(model_func, staticmethod), '"_model_function" must be staticmethod'
-            params = tuple(inspect.signature(cls._model_function).parameters)
-            assert len(params) > 0, '"_model_function" must accept at least 1 positional argument' \
-                                    ' representing the independent variable'
-            indep_var_name = params[0]
+        @property
+        def _estimators(self):
+            names = estimators.copy()
+            try:
+                names.update(super(cls, self)._estimators)
+            except AttributeError:
+                pass
+            return names
 
-            for estimator_name, estimator in estimators.items():
-                assert getattr(estimator, '_estimator_independent_var', '') == indep_var_name, \
-                    f'estimator "{estimator_name}" second argument must have the same name as the' \
-                    f' independent variable of "_model_function"'
-
-
-class FitCompositeModelMeta(type):
-    def __init__(cls, name, bases, attrs):
-        super().__init__(name, bases, attrs)
-
-        # collect marked estimator methods in a dict "_estimators" and attach it to created class.
-        # The main difference to FitModelMeta.__init__ is the fact that we just collect estimators
-        # in cls.__dict__ here (not from possible base classes)
-        cls._estimators = {attr._estimator_name: attr for attr in attrs.values() if
-                           hasattr(attr, '_estimator_name')}
-        independent_vars = {e._estimator_independent_var for e in cls._estimators.values()}
-        assert len(independent_vars) < 2, \
-            'More than one independent variable name encountered in estimators. Use only the ' \
-            'independent variable name that has been used in the Models "_model_function".'
+        cls._estimators = _estimators
 
 
 class FitModelBase(Model, metaclass=FitModelMeta):
-    """ ToDo: Document
+    """
     """
 
     def __init__(self, **kwargs):
-        kwargs['name'] = self.__class__.__name__
-        super().__init__(self._model_function, **kwargs)
-        assert len(self.independent_vars) == 1, \
-            'Qudi fit models must contain exactly 1 independent variable.'
-        # Shadow FitModelBase._estimators with a similar dict containing the bound method objects.
-        # This instance-level dict has read-only access via property "estimators"
-        self._estimators = {name: getattr(self, e.__name__) for name, e in self._estimators.items()}
+        kwargs.pop('name', None)
+        super().__init__(self._model_function, name=self.__class__.__name__, **kwargs)
 
     @property
     def estimators(self):
-        """ Read-only dict property holding available estimator names as keys and the corresponding
-        estimator methods as values.
-
-        @return dict: Available estimator methods (values) with corresponding names (keys)
-        """
-        return self._estimators.copy()
-
-    @staticmethod
-    @abstractmethod
-    def _model_function(x):
-        """ ToDo: Document
-        """
-        raise NotImplementedError('FitModel object must implement staticmethod "_model_function".')
+        return {name: getattr(self, attr) for name, attr in self._estimators.items()}
 
 
-class FitCompositeModelBase(CompositeModel, metaclass=FitCompositeModelMeta):
-    """ ToDo: Document
+def _search_end_of_dip(direction, data, peak_arg, start_arg, end_arg, sigma_threshold, minimal_threshold):
+    """ Data has to be offset leveled such that offset is subtracted
     """
+    absolute_min = data[peak_arg]
 
-    def __init__(self, *args, **kwargs):
-        kwargs['name'] = self.__class__.__name__
-        super().__init__(*args, **kwargs)
-        assert len(self.independent_vars) == 1, \
-            'Qudi fit models must contain exactly 1 independent variable.'
-        # Shadow FitCompositeModelBase._estimators with a similar dict containing the bound method
-        # objects. This instance-level dict has read-only access via property "estimators"
-        self._estimators = {name: getattr(self, e.__name__) for name, e in self._estimators.items()}
+    if direction == 'left':
+        mult = -1
+        sigma_arg = start_arg
+    elif direction == 'right':
+        mult = +1
+        sigma_arg = end_arg
+    else:
+        raise ValueError('No valid direction in search end of dip')
 
-    @property
-    def estimators(self):
-        """ Read-only dict property holding available estimator names as keys and the corresponding
-        estimator methods as values.
+    ii = 0
+    # if the minimum is at the end set this as border
+    if peak_arg != start_arg and direction == 'left' or peak_arg != end_arg and direction == 'right':
+        while True:
+            # if no minimum can be found decrease threshold
+            if (peak_arg-ii<start_arg and direction == 'left') or (peak_arg+ii>end_arg and direction=='right'):
+                sigma_threshold *= 0.9
+                ii=0
 
-        @return dict: Available estimator methods (values) with corresponding names (keys)
-        """
-        return self._estimators.copy()
+            #if the dip is always over threshold the end is as
+            # set before
+            if abs(sigma_threshold/absolute_min)<abs(minimal_threshold):
+                break
+
+             #check if value was changed and search is finished
+            if ((sigma_arg == start_arg and direction == 'left') or
+                (sigma_arg == end_arg   and direction=='right')):
+                # check if if value is lower as threshold this is the
+                # searched value
+                if abs(data[peak_arg+(mult*ii)])<abs(sigma_threshold):
+                    # value lower than threshold found - left end found
+                    sigma_arg=peak_arg+(mult*ii)
+                    break
+            ii+=1
+
+    # in this case the value is the last index and should be search set as right argument
+    else:
+        sigma_arg=peak_arg
+
+    return sigma_threshold, sigma_arg
+
+
+def _search_double_dip(x_axis, data, threshold_fraction=0.3, minimal_threshold=0.01,
+                       sigma_threshold_fraction=0.3):
+    """ This method searches for a double dip. There are three values which can be set in order to
+    adjust the search. A threshold which defines when a minimum is a dip, this threshold is then
+    lowered if no dip can be found until the minimal threshold which sets the absolute border and a
+    sigma_threshold_fraction which defines when the
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param float threshold_fraction: x values
+    @param float minimal_threshold: x values
+    @param float sigma_threshold_fraction: x values
+    @return int error: error code (0:OK, -1:error)
+    @return int sigma0_argleft: index of left side of 1st peak
+    @return int dip0_arg: index of max of 1st peak
+    @return int sigma0_argright: index of right side of 1st peak
+    @return int sigma1_argleft: index of left side of 2nd peak
+    @return int dip1_arg: index of max side of 2nd peak
+    @return int sigma1_argright: index of right side of 2nd peak
+    """
+    if sigma_threshold_fraction is None:
+        sigma_threshold_fraction = threshold_fraction
+
+    error = 0
+
+    # first search for absolute minimum
+    absolute_min = np.min(data)
+    absolute_argmin = np.argmin(data)
+
+    # adjust thresholds
+    threshold = threshold_fraction*absolute_min
+    sigma_threshold=sigma_threshold_fraction*absolute_min
+
+    dip0_arg = absolute_argmin
+
+    # ====== search for the left end of the dip ======
+
+    sigma_threshold, sigma0_argleft = _search_end_of_dip(
+                             direction='left',
+                             data=data,
+                             peak_arg = absolute_argmin,
+                             start_arg = 0,
+                             end_arg = len(data)-1,
+                             sigma_threshold = sigma_threshold,
+                             minimal_threshold = minimal_threshold)
+
+    # ====== search for the right end of the dip ======
+    # reset sigma_threshold
+    sigma_threshold, sigma0_argright = _search_end_of_dip(
+                             direction='right',
+                             data=data,
+                             peak_arg = absolute_argmin,
+                             start_arg = 0,
+                             end_arg = len(data)-1,
+                             sigma_threshold = sigma_threshold_fraction*absolute_min,
+                             minimal_threshold = minimal_threshold)
+
+    # ======== search for second lorentzian dip ========
+    left_index=int(0)
+    right_index=len(x_axis)-1
+
+    mid_index_left=sigma0_argleft
+    mid_index_right=sigma0_argright
+
+    # if main first dip covers the whole left side search on the right
+    # side only
+    if mid_index_left==left_index:
+        # if one dip is within the second they have to be set to one
+        if mid_index_right==right_index:
+            dip1_arg=dip0_arg
+        else:
+            dip1_arg=data[mid_index_right:right_index].argmin()+mid_index_right
+
+    # if main first dip covers the whole right side search on the left side only
+    elif mid_index_right==right_index:
+        #if one dip is within the second they have to be set to one
+        if mid_index_left==left_index:
+            dip1_arg=dip0_arg
+        else:
+            dip1_arg=data[left_index:mid_index_left].argmin()
+
+    # search for peak left and right of the dip
+    else:
+        while True:
+            # set search area excluding the first dip
+            left_min=data[left_index:mid_index_left].min()
+            left_argmin=data[left_index:mid_index_left].argmin()
+            right_min=data[mid_index_right:right_index].min()
+            right_argmin=data[mid_index_right:right_index].argmin()
+
+            if abs(left_min) > abs(threshold) and \
+               abs(left_min) > abs(right_min):
+                # there is a minimum on the left side which is higher
+                # than the minimum on the right side
+                dip1_arg = left_argmin+left_index
+                break
+            elif abs(right_min)>abs(threshold):
+                # there is a minimum on the right side which is higher
+                # than on left side
+                dip1_arg=right_argmin+mid_index_right
+                break
+            else:
+                # no minimum at all over threshold so lowering threshold
+                #  and resetting search area
+                threshold*=0.9
+                left_index=int(0)
+                right_index=len(x_axis)-1
+                mid_index_left=sigma0_argleft
+                mid_index_right=sigma0_argright
+                # if no second dip can be found set both to same value
+                if abs(threshold/absolute_min)<abs(minimal_threshold):
+                    # self.log.warning('Threshold to minimum ratio was too '
+                    #         'small to estimate two minima. So both '
+                    #         'are set to the same value')
+                    error=-1
+                    dip1_arg=dip0_arg
+                    break
+
+    # if the dip is exactly at one of the boarders that means
+    # the dips are most probably overlapping
+    if dip1_arg in (sigma0_argleft, sigma0_argright):
+        distance_left  = abs(dip0_arg - sigma0_argleft)
+        distance_right = abs(dip0_arg - sigma0_argright)
+        sigma1_argleft = sigma0_argleft
+        sigma1_argright = sigma0_argright
+        if distance_left > distance_right:
+            dip1_arg = dip0_arg - abs(distance_left-distance_right)
+        elif distance_left < distance_right:
+            dip1_arg = dip0_arg + abs(distance_left-distance_right)
+        else:
+            dip1_arg = dip0_arg
+    else:
+        # if the peaks are not overlapping search for left and right
+        # boarder of the dip
+
+        # ====== search for the right end of the dip ======
+        sigma_threshold, sigma1_argleft = _search_end_of_dip(
+                                 direction='left',
+                                 data=data,
+                                 peak_arg = dip1_arg,
+                                 start_arg = 0,
+                                 end_arg = len(data)-1,
+                                 sigma_threshold = sigma_threshold_fraction*absolute_min,
+                                 minimal_threshold = minimal_threshold)
+
+        # ====== search for the right end of the dip ======
+        sigma_threshold, sigma1_argright = _search_end_of_dip(
+                                 direction='right',
+                                 data=data,
+                                 peak_arg = dip1_arg,
+                                 start_arg = 0,
+                                 end_arg = len(data)-1,
+                                 sigma_threshold = sigma_threshold_fraction*absolute_min,
+                                 minimal_threshold = minimal_threshold)
+
+    return error, sigma0_argleft, dip0_arg, sigma0_argright, sigma1_argleft, dip1_arg, sigma1_argright
+
+
+def find_offset_parameter(x_values=None, data=None):
+    """ This method convolves the data with a Lorentzian and the finds the offset which is supposed
+    to be the most likely valy via a histogram. Additional the smoothed data is returned.
+
+    @param array x_values: x values
+    @param array data: value of each data point corresponding to
+                        x values
+    @return int error: error code (0:OK, -1:error)
+    @return float array data_smooth: smoothed data
+    @return float offset: estimated offset
+    """
+    if len(x_values) < 20.:
+        len_x = 5
+    elif len(x_values) >= 100.:
+        len_x = 10
+    else:
+        len_x = int(len(x_values)/10.)+1
+
+    lorentz = (len_x/4) ** 2 / ((np.linspace(0, len_x, len_x) - len_x/2) ** 2 + (len_x/4) ** 2)
+    data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(), mode='constant', cval=max(data))
+
+    # finding most frequent value which is supposed to be the offset
+    hist = np.histogram(data_smooth, bins=10)
+    offset = (hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+
+    return data_smooth, offset
