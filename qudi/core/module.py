@@ -148,7 +148,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
     * Reload module data (from saved variables)
     """
     _threaded = False
-    _module_meta = {'base': 'hardware'}  # can be overwritten by subclasses of Base
+    _module_meta = dict()  # Will be populated by metaclass
 
     def __new__(cls, *args, **kwargs):
         # FIXME: This part has the sole purpose to circumvent a known PySide2(6) bug.
@@ -161,7 +161,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
     def __init__(self, qudi_main_weakref, name, config=None, callbacks=None, **kwargs):
         """
-        Initialise Base class object and set up its state machine.
+        Initialise Base instance and set up its state machine.
 
         @param object self: the object being initialised
         @param str name: unique name for this module instance
@@ -170,70 +170,53 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         """
         super().__init__(**kwargs)
 
-        # Keep weak reference to qudi main instance
-        self.__qudi_main_weakref = qudi_main_weakref
-
-        # add module meta objects to avoid cluttering namespace
-        self._module_meta = copy.deepcopy(self._module_meta)
-        self._module_meta['name'] = name
-        self._module_meta['configuration'] = copy.deepcopy(config)
-        # Collect meta objects of class and create copies for this instance
-        connectors = dict()
-        status_vars = dict()
-        config_opt = dict()
-        for cls in reversed(self.__class__.mro()):
-            # Those classes don't have the meta objects we are searching for
-            if not issubclass(cls, Base):
-                continue
-            for attr_name, attr in vars(cls).items():
-                if isinstance(attr, Connector):
-                    connectors[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
-                elif isinstance(attr, StatusVar):
-                    status_vars[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
-                elif isinstance(attr, ConfigOption):
-                    config_opt[attr_name] = attr.copy() if attr.name else attr.copy(name=attr_name)
-                elif attr_name in config_opt:
-                    # Allow subclass overwriting of ConfigOptions with hard-coded attribute values
-                    del config_opt[attr_name]
-        self._module_meta['connectors'] = connectors
-        self._module_meta['status_variables'] = status_vars
-        self._module_meta['config_options'] = config_opt
-
         if config is None:
             config = dict()
         if callbacks is None:
             callbacks = dict()
 
-        default_callbacks = {'onbeforeactivate': self.__activation_callback,
-                             'ondeactivate': self.__deactivation_callback}
-        default_callbacks.update(callbacks)
-        self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
+        # Keep weak reference to qudi main instance
+        self.__qudi_main_weakref = qudi_main_weakref
+
+        # Create logger instance for module
+        self.__logger = logging.getLogger(f'{self.__module__}.{self.__class__.__name__}')
+
+        # Create a copy of the _module_meta class dict and attach it to the created instance
+        self._module_meta = copy.deepcopy(self._module_meta)
+        # Add additional meta info to _module_meta dict
+        self._module_meta['name'] = name,
+        self._module_meta['configuration'] = copy.deepcopy(config)
 
         # set instance attributes according to config_option meta objects
-        for attr_name, cfg_opt in self._module_meta.get('config_options', dict()).items():
+        for attr_name, cfg_opt in self._module_meta['config_options'].items():
             if cfg_opt.name in config:
-                cfg_val = config[cfg_opt.name]
+                cfg_val = copy.deepcopy(config[cfg_opt.name])
             else:
                 if cfg_opt.missing == MissingOption.error:
-                    raise Exception('Required variable >>{0}<< not given in configuration.\n'
-                                    'Configuration is: {1}'.format(cfg_opt.name, config))
-                msg = 'No variable >>{0}<< configured, using default value "{1}" instead.'.format(
-                    cfg_opt.name, cfg_opt.default)
-                cfg_val = cfg_opt.default
+                    raise Exception(f'Required ConfigOption >>{cfg_opt.name}<< not given in '
+                                    f'configuration.\nConfiguration is: {config}')
+                msg = f'No ConfigOption >>{cfg_opt.name}<< configured, using default value ' \
+                      f'"{cfg_opt.default}" instead.'
+                cfg_val = copy.deepcopy(cfg_opt.default)
                 if cfg_opt.missing == MissingOption.warn:
                     self.log.warning(msg)
                 elif cfg_opt.missing == MissingOption.info:
                     self.log.info(msg)
             if cfg_opt.check(cfg_val):
-                converted_val = cfg_opt.convert(cfg_val)
-                if cfg_opt.constructor_function is None:
-                    setattr(self, attr_name, converted_val)
-                else:
-                    setattr(self, attr_name, cfg_opt.constructor_function(self, converted_val))
+                cfg_val = cfg_opt.convert(cfg_val)
+                if cfg_opt.constructor_function is not None:
+                    cfg_val = cfg_opt.constructor_function(self, cfg_val)
+                setattr(self, attr_name, cfg_val)
 
         # set instance attributes according to connector meta objects
-        for attr_name, conn in self._module_meta.get('connectors', dict()).items():
+        for attr_name, conn in self._module_meta['connectors'].items():
             setattr(self, attr_name, conn)
+
+        # Initialize module FSM
+        default_callbacks = {'onbeforeactivate': self.__activation_callback,
+                             'ondeactivate'    : self.__deactivation_callback}
+        default_callbacks.update(callbacks)
+        self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
         return
 
     @QtCore.Slot()
@@ -260,40 +243,38 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
     @property
     def _qudi_main(self):
-        return self.__qudi_main_weakref()
+        qudi_main = self.__qudi_main_weakref()
+        if qudi_main is None:
+            raise Exception('Unexpected missing qudi main instance. It has either been deleted or '
+                            'garbage collected.')
+        return qudi_main
 
     def __activation_callback(self, event=None):
-        """
-        Restore status variables before activation and invoke on_activate method.
+        """ Restore status variables before activation and invoke on_activate method.
 
         @param object event: Fysom event object
         """
-        # Load status variables from disk only if this module is one of gui, logic or hardware base
-        if self._module_meta.get('base', None) in ('gui', 'logic', 'hardware'):
-            file_path = get_module_app_data_path(self.__class__.__name__,
-                                                 self._module_meta['base'],
-                                                 self._module_meta['name'])
-            try:
-                variables = load(file_path) if os.path.isfile(file_path) else dict()
-            except:
-                self.log.exception('Failed to load status variables for module "{0}_{1}_{2}".'
-                                   ''.format(self.__class__.__name__,
-                                             self._module_meta['base'],
-                                             self._module_meta['name']))
-                variables = dict()
+        # Load status variables from app data directory
+        print(self._module_meta)
+        class_name = self.__class__.__name__
+        name = self._module_meta['name']
+        base = self._module_meta['base']
+        file_path = get_module_app_data_path(class_name, base, name)
+        try:
+            variables = load(file_path) if os.path.isfile(file_path) else dict()
+        except:
+            variables = dict()
+            self.log.exception(
+                f'Failed to load status variables for module "{class_name}_{base}_{name}".'
+            )
 
-            # add StatusVar values to instance attributes
-            for attr_name, var in self._module_meta['status_variables'].items():
-                if isinstance(var.default, dict) and var.name in variables:
-                    value = copy.deepcopy(var.default)
-                    value.update(variables[var.name])
-                else:
-                    value = variables.get(var.name, copy.deepcopy(var.default))
+        # Set instance attributes according to StatusVar meta objects
+        for attr_name, var in self._module_meta['status_variables'].items():
+            value = variables.get(var.name, copy.deepcopy(var.default))
+            if var.constructor_function is not None:
+                value = var.constructor_function(self, value)
+            setattr(self, attr_name, value)
 
-                if var.constructor_function is None:
-                    setattr(self, attr_name, value)
-                else:
-                    setattr(self, attr_name, var.constructor_function(self, value))
         # activate
         self.on_activate()
 
@@ -309,36 +290,34 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
             raise
         finally:
             # save status vars even if deactivation failed
-            if self._module_meta.get('base', None) in ('gui', 'logic', 'hardware'):
-                file_path = get_module_app_data_path(self.__class__.__name__,
-                                                     self._module_meta['base'],
-                                                     self._module_meta['name'])
-                # collect StatusVar values into dictionary
-                variables = dict()
-                for attr_name, var in self._module_meta['status_variables'].items():
-                    if hasattr(self, attr_name):
-                        value = getattr(self, attr_name)
-                        if not isinstance(value, StatusVar):
-                            if var.representer_function is None:
-                                variables[var.name] = value
-                            else:
-                                variables[var.name] = var.representer_function(self, value)
-                # Save to file if any StatusVars have been found
-                if variables:
-                    try:
-                        save(file_path, variables)
-                    except:
-                        self.log.exception('Failed to save status variables for module '
-                                           '"{0}.{1}.{2}".'.format(self.__class__.__name__,
-                                                                   self._module_meta['base'],
-                                                                   self._module_meta['name']))
+            class_name = self.__class__.__name__
+            name = self._module_meta['name']
+            base = self._module_meta['base']
+            file_path = get_module_app_data_path(class_name, base, name)
+            # collect StatusVar values into dictionary
+            variables = dict()
+            for attr_name, var in self._module_meta['status_variables'].items():
+                if hasattr(self, attr_name):
+                    value = getattr(self, attr_name)
+                    if not isinstance(value, StatusVar):
+                        if var.representer_function is not None:
+                            value = var.representer_function(self, value)
+                        variables[var.name] = value
+
+            # Save to file if any StatusVars have been found
+            if variables:
+                try:
+                    save(file_path, variables)
+                except:
+                    self.log.exception(
+                        f'Failed to save status variables for module "{class_name}.{base}.{name}".'
+                    )
 
     @property
     def log(self):
+        """ Returns the module logger instance
         """
-        Returns a logger object
-        """
-        return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
+        return self.__logger
 
     @property
     def is_module_threaded(self):
@@ -369,16 +348,14 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
     @abstractmethod
     def on_activate(self):
-        """
-        Method called when module is activated. If not overridden this method returns an error.
+        """ Method called when module is activated. Must be implemented by actual qudi module.
         """
         raise NotImplementedError(f'Please implement and specify the activation method for '
                                   f'{self.__class__.__name__}.')
 
     @abstractmethod
     def on_deactivate(self):
-        """
-        Method called when module is deactivated. If not overridden this method returns an error.
+        """ Method called when module is deactivated. Must be implemented by actual qudi module.
         """
         raise NotImplementedError(f'Please implement and specify the deactivation method '
                                   f'{self.__class__.__name__}.')
@@ -388,15 +365,12 @@ class LogicBase(Base):
     """
     """
     _threaded = True
-    _module_meta = {'base': 'logic'}
 
 
 class GuiBase(Base):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
     _threaded = False
-    _module_meta = {'base': 'gui'}
-
     __window_geometry = StatusVar(name='_GuiBase__window_geometry', default=None)
 
     @abstractmethod
