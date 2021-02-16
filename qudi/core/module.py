@@ -20,17 +20,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import logging
 import copy
+import logging
 from abc import abstractmethod
 from uuid import uuid4
 from fysom import Fysom  # provides a finite state machine
-
 from PySide2 import QtCore
-from qudi.core.configoption import MissingOption, ConfigOption
-from qudi.core.connector import Connector
+
+from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.util.mutex import Mutex
 from qudi.core.util.paths import get_appdata_dir
 from qudi.core.config import load, save
 from qudi.core.meta import ModuleMeta
@@ -132,16 +130,13 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
 
 
 class Base(QtCore.QObject, metaclass=ModuleMeta):
-    """
-    Base class for all loadable modules
+    """ Base class for all loadable modules
 
-    * Ensure that the program will not die during the load of modules in any case,
-      and therefore do nothing!!!
+    * Ensure that the program will not die during the load of modules
     * Initialize modules
     * Provides a self identification of the used module
-    * Output redirection (instead of print)
+    * per-module logging facility
     * Provides a self de-initialization of the used module
-    * Reload the module with code changes
     * Get your own configuration (for save)
     * Get name of status variables
     * Get status variables
@@ -150,9 +145,9 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
     _threaded = False
     _module_meta = dict()  # Will be populated by metaclass
 
+    # FIXME: This __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
+    #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
     def __new__(cls, *args, **kwargs):
-        # FIXME: This part has the sole purpose to circumvent a known PySide2(6) bug.
-        #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
         abstract = getattr(cls, '__abstractmethods__', frozenset())
         if abstract:
             raise TypeError(f'Can\'t instantiate abstract class "{cls.__name__}" '
@@ -160,8 +155,8 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, qudi_main_weakref, name, config=None, callbacks=None, **kwargs):
-        """
-        Initialise Base instance and set up its state machine.
+        """ Initialise Base instance. Set up its state machine and initialize ConfigOption meta
+        attributes from given config.
 
         @param object self: the object being initialised
         @param str name: unique name for this module instance
@@ -254,8 +249,39 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
         @param object event: Fysom event object
         """
+        self._load_status_variables()
+        self.on_activate()
+
+    def __deactivation_callback(self, event=None):
+        """ Invoke on_deactivate method and save status variables afterwards even if deactivation
+        fails.
+
+        @param object event: Fysom event object
+        """
+        try:
+            self.on_deactivate()
+        except:
+            raise
+        finally:
+            # save status variables even if deactivation failed
+            self._dump_status_variables()
+
+    @property
+    def log(self):
+        """ Returns the module logger instance
+        """
+        return self.__logger
+
+    @property
+    def is_module_threaded(self):
+        """ Returns whether the module shall be started in its own thread.
+        """
+        return self._threaded
+
+    def _load_status_variables(self):
+        """ Load status variables from app data directory on disc.
+        """
         # Load status variables from app data directory
-        print(self._module_meta)
         class_name = self.__class__.__name__
         name = self._module_meta['name']
         base = self._module_meta['base']
@@ -269,33 +295,30 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
             )
 
         # Set instance attributes according to StatusVar meta objects
-        for attr_name, var in self._module_meta['status_variables'].items():
-            value = variables.get(var.name, copy.deepcopy(var.default))
-            if var.constructor_function is not None:
-                value = var.constructor_function(self, value)
-            setattr(self, attr_name, value)
-
-        # activate
-        self.on_activate()
-
-    def __deactivation_callback(self, event=None):
-        """
-        Invoke on_deactivate method and save status variables afterwards even if deactivation fails.
-
-        @param object event: Fysom event object
-        """
         try:
-            self.on_deactivate()
+            for attr_name, var in self._module_meta['status_variables'].items():
+                value = variables.get(var.name, copy.deepcopy(var.default))
+                if var.constructor_function is not None:
+                    value = var.constructor_function(self, value)
+                setattr(self, attr_name, value)
         except:
-            raise
-        finally:
-            # save status vars even if deactivation failed
-            class_name = self.__class__.__name__
-            name = self._module_meta['name']
-            base = self._module_meta['base']
-            file_path = get_module_app_data_path(class_name, base, name)
-            # collect StatusVar values into dictionary
-            variables = dict()
+            self.log.exception(
+                f'Error while settings status variables in module "{class_name}_{base}_{name}".'
+            )
+
+    def _dump_status_variables(self):
+        """ Dump status variables to app data directory on disc.
+
+        This method can also be used to manually dump status variables independent of the automatic
+        dump during module deactivation.
+        """
+        class_name = self.__class__.__name__
+        name = self._module_meta['name']
+        base = self._module_meta['base']
+        file_path = get_module_app_data_path(class_name, base, name)
+        # collect StatusVar values into dictionary
+        variables = dict()
+        try:
             for attr_name, var in self._module_meta['status_variables'].items():
                 if hasattr(self, attr_name):
                     value = getattr(self, attr_name)
@@ -303,28 +326,19 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
                         if var.representer_function is not None:
                             value = var.representer_function(self, value)
                         variables[var.name] = value
+        except:
+            self.log.exception(
+                f'Error while collecting status variables from module "{class_name}_{base}_{name}".'
+            )
 
-            # Save to file if any StatusVars have been found
-            if variables:
-                try:
-                    save(file_path, variables)
-                except:
-                    self.log.exception(
-                        f'Failed to save status variables for module "{class_name}.{base}.{name}".'
-                    )
-
-    @property
-    def log(self):
-        """ Returns the module logger instance
-        """
-        return self.__logger
-
-    @property
-    def is_module_threaded(self):
-        """
-        Returns whether the module shall be started in a thread.
-        """
-        return self._threaded
+        # Save to file if any StatusVars have been found
+        if variables:
+            try:
+                save(file_path, variables)
+            except:
+                self.log.exception(
+                    f'Failed to save status variables for module "{class_name}.{base}.{name}".'
+                )
 
     def _send_balloon_message(self, title, message, time=None, icon=None):
         qudi_main = self.__qudi_main_weakref()
