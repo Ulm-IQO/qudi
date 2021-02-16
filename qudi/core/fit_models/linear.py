@@ -55,6 +55,6 @@ class Linear(FitModelBase):
 
     @estimator('No Offset')
     def estimate_no_offset(self, data, x):
-        estimate = self.estimate()
-        estimate['offset'].set(value=0, vary=False)
+        estimate = self.estimate(data, x)
+        estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
         return estimate
