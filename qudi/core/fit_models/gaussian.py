@@ -128,53 +128,6 @@ class DoubleGaussian(FitModelBase):
         gauss += offset
         return gauss
 
-    @estimator('Peak')
-    def estimate_peak(self, data, x):
-        estimate = self.make_params()
-
-        x_span = abs(x[-1] - x[0])
-        x_step = abs(x[1] - x[0])
-        data_smoothed = filters.gaussian_filter1d(data, sigma=5)
-        y_span = max(data_smoothed) - min(data_smoothed)
-        # smooth_sum = np.sum(data_smoothed)
-        # smooth_mean = np.mean(data_smoothed)
-        # mom1 = np.sum(x * data_smoothed) / smooth_sum
-        # mom2 = np.sum(x ** 2 * data_smoothed) / smooth_sum
-        #
-        # estimate['offset'].set(value=smooth_mean,
-        #                        min=min(data_smoothed) - 5 * y_span,
-        #                        max=max(data_smoothed) + 5 * y_span)
-        # estimate['amplitude'].set(value=y_span, min=0, max=y_span * 5)
-        # estimate['center'].set(value=x[np.argmax(data_smoothed)],
-        #                        min=min(x) - x_span,
-        #                        max=max(x) + x_span)
-        estimate['offset'].set(value=np.mean(data_smoothed), min=min(data), max=max(data))
-        estimate['sigma_1'].set(value=x_span / 10, min=x_step, max=x_span)
-        estimate['sigma_2'].set(value=x_span / 10, min=x_step, max=x_span)
-        estimate['amplitude_1'].set(value=y_span, min=0, max=2*y_span)
-        estimate['amplitude_2'].set(value=y_span, min=0, max=2*y_span)
-        estimate['center_1'].set(value=x[0] + x_span / 4,
-                                 min=x[0] - x_span / 2,
-                                 max=x[-1] + x_span / 2)
-        estimate['center_2'].set(value=x[0] + 3 * x_span / 4,
-                                 min=x[0] - x_span / 2,
-                                 max=x[-1] + x_span / 2)
-        return estimate
-
-    @estimator('Dip')
-    def estimate_dip(self, data, x):
-        estimate = self.estimate_peak(-data, x)
-        estimate['offset'].set(value=-estimate['offset'].value,
-                               min=-estimate['offset'].max,
-                               max=-estimate['offset'].min)
-        estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
-                                    min=-estimate['amplitude_1'].max,
-                                    max=-estimate['amplitude_1'].min)
-        estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
-                                    min=-estimate['amplitude_2'].max,
-                                    max=-estimate['amplitude_2'].min)
-        return estimate
-
 
 class Gaussian2D(FitModelBase):
     """
