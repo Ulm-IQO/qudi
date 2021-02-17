@@ -384,17 +384,17 @@ class Main(Base, ScienceCameraInterface):
         """
 
         self._active_tracks = value
-        if self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
-            self._update_active_tracks()
+        self._update_active_tracks()
 
     def _update_active_tracks(self):
         """ Internal function that send the current active tracks to the DLL """
-        flatten_tracks = np.array(self._active_tracks).flatten()+1
-        self._dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
-        status_code = self._check(self._dll.SetRandomTracks(len(self._active_tracks), flatten_tracks.ctypes.data))
-        self._check(status_code)
-        if status_code != OK_CODE:  # Clear tracks if an error has occurred
-            self._active_tracks = []
+        if self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
+            flatten_tracks = np.array(self._active_tracks).flatten()+1
+            self._dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
+            status_code = self._check(self._dll.SetRandomTracks(len(self._active_tracks), flatten_tracks.ctypes.data))
+            self._check(status_code)
+            if status_code != OK_CODE:  # Clear tracks if an error has occurred
+                self._active_tracks = []
 
     def get_image_advanced_parameters(self):
         """ Getter method returning the image parameters of the camera.

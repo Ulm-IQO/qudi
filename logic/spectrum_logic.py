@@ -409,9 +409,12 @@ class SpectrumLogic(GenericLogic):
         Tested : yes (need to
         SI check : yes
         """
-        image_width = self.camera_constraints.width
         pixel_width = self.camera_constraints.pixel_size_width
-        return self.spectrometer().get_spectrometer_dispersion(image_width, pixel_width) + self.wavelength_calibration
+        image_width = self.camera_constraints.width
+        if self._center_wavelength == 0:
+            return np.arange(0, image_width)*pixel_width
+        else:
+            return self.spectrometer().get_spectrometer_dispersion(image_width, pixel_width) + self.wavelength_calibration
 
     @property
     def wavelength_calibration(self):
@@ -809,7 +812,9 @@ class SpectrumLogic(GenericLogic):
             return
         if not len(active_tracks)%2 == 0:
             active_tracks = np.append(active_tracks, image_height-1)
-        active_tracks = [(active_tracks[i], active_tracks[i+1]) for i in range(0, len(active_tracks)-1, 2)]
+        active_tracks = [(active_tracks[i], active_tracks[i+1]) for i in range(0, len(active_tracks), 2)]
+        for i in range(active_tracks.size):
+            
         self.camera().set_active_tracks(active_tracks)
         self._active_tracks = self.camera().get_active_tracks()
 

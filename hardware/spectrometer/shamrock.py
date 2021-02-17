@@ -184,7 +184,7 @@ class Shamrock(Base, GratingSpectrometerInterface):
         """
         return self._constraints
 
-    def get_grating_index(self):
+    def get_grating(self):
         """ Returns the current grating index
 
         @return (int): Current grating index
@@ -195,7 +195,7 @@ class Shamrock(Base, GratingSpectrometerInterface):
         self._check(self._dll.ShamrockGetGrating(self._device_id, ct.byref(grating)))
         return grating.value-1  # DLL starts at 1
 
-    def set_grating_index(self, value):
+    def set_grating(self, value):
         """ Sets the grating by index
 
         @param (int) value: grating index
