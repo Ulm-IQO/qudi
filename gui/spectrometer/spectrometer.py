@@ -136,9 +136,6 @@ class Main(GUIBase):
     _spectrum_exposure_time = StatusVar('spectrum_exposure_time', None)
     _spectrum_readout_speed = StatusVar('spectrum_readout_speed', None)
 
-    _active_tracks = StatusVar('active_tracks', [])
-    _image_advanced = StatusVar('image_advanced', [])
-
     _image_data = StatusVar('image_data', np.zeros((1000, 1000)))
     _image_dark = StatusVar('image_dark', np.zeros((1000, 1000)))
     _image_params = StatusVar('image_params', dict())
@@ -387,16 +384,18 @@ class Main(GUIBase):
         for i in range(4):
             self._track_buttons[i].setCheckable(True)
             self._track_buttons[i].clicked.connect(partial(self._manage_track_buttons, i))
-            if 2*i<len(self._active_tracks):
-                top_pos = self._active_tracks[2*i]
-                bottom_pos = self._active_tracks[2*i+1]
+            tracks = self._spectrumlogic.active_tracks
+            if 2*i<len(tracks):
+                top_pos = tracks[2*i]
+                bottom_pos = tracks[2*i+1]
             else:
                 top_pos = 0
                 bottom_pos = 10
             color = self.track_colors[i].getRgb()
             track_color = pg.mkBrush(color[0], color[1], color[2], 100)
-            track = pg.LinearRegionItem(values=[top_pos,bottom_pos], orientation=pg.LinearRegionItem.Horizontal,
+            track = pg.LinearRegionItem(values=[top_pos, bottom_pos], orientation=pg.LinearRegionItem.Horizontal,
                                         brush=track_color)
+            track.setBounds([0, height])
             track.hide()
             self._track_selector.append(track)
             self._image_tab.graph.addItem(track)
@@ -541,6 +540,9 @@ class Main(GUIBase):
 
     def set_settings_params(self):
 
+        if self._spectrumlogic.module_state() == 'locked':
+            return
+
         self._spectrumlogic.wavelength_calibration = self._calibration_widget.value()
         self._spectrumlogic.camera_gain = self._settings_tab.camera_gains.currentData()
         self._spectrumlogic.trigger_mode = self._settings_tab.trigger_modes.currentData()
@@ -549,16 +551,30 @@ class Main(GUIBase):
 
     def set_image_params(self):
 
+        if self._spectrumlogic.module_state() == 'locked':
+            return
+        
         self._manage_image_advanced()
-        self._spectrumlogic.acquisition_mode = self._image_tab.acquisition_modes.currentData()
-        self._spectrumlogic.read_mode = self._image_tab.read_modes.currentData()
-        self._spectrumlogic.exposure_time = self.image_exposure_time_widget.value()
-        self._spectrumlogic.readout_speed = self._image_tab.readout_speed.currentData()
+        if self._image_tab.acquisition_modes.currentData() != self._spectrumlogic.acquisition_mode:
+            self._image_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.acquisition_mode = self._image_tab.acquisition_modes.currentData()
+        if self._spectrumlogic.read_mode != self._image_tab.read_modes.currentData():
+            self._image_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.read_mode = self._image_tab.read_modes.currentData()
+        if self._spectrumlogic.exposure_time != self.image_exposure_time_widget.value():
+            self._image_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.exposure_time = self.image_exposure_time_widget.value()
+        if self._spectrumlogic.readout_speed != self._image_tab.readout_speed.currentData():
+            self._image_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.readout_speed = self._image_tab.readout_speed.currentData()
 
         self._spectrumlogic._update_acquisition_params()
         self._image_params = self._spectrumlogic.acquisition_params
 
     def set_alignment_params(self):
+
+        if self._spectrumlogic.module_state() == 'locked':
+            return
 
         self._spectrumlogic.acquisition_mode = "LIVE_SCAN"
         self._spectrumlogic.read_mode = self._alignment_tab.read_modes.currentData()
@@ -570,14 +586,29 @@ class Main(GUIBase):
 
     def set_spectrum_params(self):
 
-        self._spectrumlogic.acquisition_mode = self._spectrum_tab.acquisition_modes.currentData()
-        self._spectrumlogic.read_mode = self._spectrum_tab.read_modes.currentData()
-        self._spectrumlogic.exposure_time = self.spectrum_exposure_time_widget.value()
-        self._spectrumlogic.readout_speed = self._spectrum_tab.readout_speed.currentData()
-        self._spectrumlogic.scan_delay = self._spectrum_scan_delay_widget.value()
-        self._spectrumlogic.number_of_scan = self._spectrum_tab.scan_number_spin.value()
+        if self._spectrumlogic.module_state() == 'locked':
+            return
 
         self._manage_tracks()
+        if self._spectrumlogic.acquisition_mode != self._spectrum_tab.acquisition_modes.currentData():
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.acquisition_mode = self._spectrum_tab.acquisition_modes.currentData()
+        if self._spectrumlogic.read_mode != self._spectrum_tab.read_modes.currentData():
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.read_mode = self._spectrum_tab.read_modes.currentData()
+        if self._spectrumlogic.exposure_time != self.spectrum_exposure_time_widget.value():
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.exposure_time = self.spectrum_exposure_time_widget.value()
+        if self._spectrumlogic.readout_speed != self._spectrum_tab.readout_speed.currentData():
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.readout_speed = self._spectrum_tab.readout_speed.currentData()
+        if self._spectrumlogic.scan_delay != self._spectrum_scan_delay_widget.value():
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.scan_delay = self._spectrum_scan_delay_widget.value()
+        if self._spectrumlogic.number_of_scan != self._spectrum_tab.scan_number_spin.value():
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")   
+            self._spectrumlogic.number_of_scan = self._spectrum_tab.scan_number_spin.value()
+
         self._spectrumlogic._update_acquisition_params()
         self._spectrum_params = self._spectrumlogic.acquisition_params
 
@@ -676,7 +707,7 @@ class Main(GUIBase):
         self._mw.center_wavelength_current.setText("{:.2r}m".format(ScaledFloat(self._spectrumlogic.center_wavelength)))
 
     def _manage_tracks(self):
-        self._active_tracks = []
+        active_tracks = []
         for i in range(4):
             if self._track_selector[i].isVisible():
                 track = self._track_selector[i].getRegion()
@@ -689,12 +720,28 @@ class Main(GUIBase):
 
     def _manage_image_advanced(self):
 
+        height = self._spectrumlogic.camera_constraints.height
+        width = self._spectrumlogic.camera_constraints.width
+
         hbin = self._image_tab.horizontal_binning.value()
         vbin = self._image_tab.vertical_binning.value()
-        self._spectrumlogic.image_advanced_binning = (hbin, vbin)
+        image_binning = list((hbin, vbin))
+        if list(self._spectrumlogic.image_advanced_binning.values()) != image_binning:
+            self._image_tab.dark_acquired_msg.setText("No Dark Acquired")
+            self._spectrumlogic.image_advanced_binning = image_binning
+
         image_advanced = self._image_advanced_widget.getArraySlice(self._image_data, self._image, returnSlice=False)[0]
-        self._image_advanced = list(image_advanced[1])+list(image_advanced[0])
-        self._spectrumlogic.image_advanced_area = self._image_advanced
+        if (self._image.width(), self._image.height()) != (width, height):
+            vertical_range = list(np.array(image_advanced[0])* self._spectrumlogic._image_advanced.vertical_binning
+                                  + self._spectrumlogic._image_advanced.vertical_start)
+            horizontal_range = list(np.array(image_advanced[1])*self._spectrumlogic._image_advanced.horizontal_binning
+                                    + self._spectrumlogic._image_advanced.horizontal_start)
+            image_advanced = horizontal_range + vertical_range
+        else:
+            image_advanced = list(image_advanced[1]) + list(image_advanced[0])
+        if list(self._spectrumlogic.image_advanced_area.values()) != image_advanced:
+            self._image_tab.dark_acquired_msg.setText("No Dark Acquired")
+            self._spectrumlogic.image_advanced_area = image_advanced
 
     def _manage_track_buttons(self, index):
 
@@ -761,18 +808,18 @@ class Main(GUIBase):
 
     def _update_data(self, index):
 
-        data = np.array(self._spectrumlogic.acquired_data)
+        data = self._spectrumlogic.acquired_data
 
         if index == 0:
-
-            if self._image_dark.shape == data.shape[:-2]:
+            if self._image_dark.shape == data.shape:
                 self._image_data = data - self._image_dark
             else:
                 self._image_data = data
                 self._image_tab.dark_acquired_msg.setText("No Dark Acquired")
 
             if self._spectrumlogic.read_mode == "IMAGE_ADVANCED":
-                self._image.setRect(self._image_advanced_widget.parentBounds())
+                rectf = self._image_advanced_widget.parentBounds()
+                self._image.setRect(rectf)
             else:
                 width = self._spectrumlogic.camera_constraints.width
                 height = self._spectrumlogic.camera_constraints.height
@@ -781,7 +828,7 @@ class Main(GUIBase):
 
         elif index == 1:
 
-            counts = data.sum()
+            counts = data.mean()
             x = self._counter_data[0]+self._spectrumlogic.exposure_time
             y = np.append(self._counter_data[1][1:], counts)
             self._counter_data = np.array([x, y])
@@ -791,7 +838,7 @@ class Main(GUIBase):
         elif index == 2:
 
             x = self._spectrumlogic.wavelength_spectrum
-            if self._image_dark.shape == data.shape[:-1]:
+            if self._spectrum_dark.shape[-1] == data.shape[-1]:
                 y = data - self._spectrum_dark
             else:
                 y = data
@@ -800,13 +847,26 @@ class Main(GUIBase):
             if self._spectrumlogic.acquisition_mode == "MULTI_SCAN":
                 self._spectrum_data = np.array([[x, scan] for scan in y])
                 self._spectrum_tab.graph.clear()
+
                 if self._spectrumlogic.read_mode == "MULTIPLE_TRACKS":
+                    tracks = y[-1]
+                    if self._spectrumlogic.number_of_scan == y.shape[0]:
+                        if self._spectrum_tab.multipe_scan_mode.currentText() == "Scan Average":
+                            tracks = np.mean(y.transpose(0,2,1), axis=0).T
+                        if self._spectrum_tab.multipe_scan_mode.currentText() == "Scan Median":
+                            tracks = np.median(y.transpose(0,2,1), axis=0).T
                     i = 0
-                    for track in y[-1]:
+                    for track in tracks:
                         self._spectrum_tab.graph.plot(x, track, pen=self.track_colors[i])
                         i += 1
                 else:
-                    self._spectrum_tab.graph.plot(x, y[-1], pen=self.track_colors[0])
+                    tracks = y[-1]
+                    if self._spectrumlogic.number_of_scan == y.shape[0]:
+                        if self._spectrum_tab.multipe_scan_mode.currentText() == "Scan Average":
+                            tracks = np.mean(y, axis=0)
+                        if self._spectrum_tab.multipe_scan_mode.currentText() == "Scan Median":
+                            tracks = np.median(y, axis=0)
+                    self._spectrum_tab.graph.plot(x, tracks, pen=self.track_colors[0])
             else:
                 self._spectrum_data = np.array([x, y])
                 self._spectrum_tab.graph.clear()
@@ -824,7 +884,7 @@ class Main(GUIBase):
 
     def _update_dark(self, index):
 
-        dark = np.array(self._spectrumlogic.acquired_data)
+        dark = self._spectrumlogic.acquired_data
 
         if index == 0:
             self._image_dark = dark

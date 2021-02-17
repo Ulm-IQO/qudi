@@ -77,6 +77,8 @@ class SpectrumLogic(GenericLogic):
     _acquisition_mode = StatusVar('acquisition_mode', 'SINGLE_SCAN')
     _temperature_setpoint = StatusVar('temperature_setpoint', None)
     _shutter_state = StatusVar('shutter_state', "AUTO")
+    _active_tracks = StatusVar('active_tracks', [])
+    _image_advanced = StatusVar('image_advanced', None)
 
     # cosmic rejection coeff :
     _coeff_rej_cosmic = StatusVar('coeff_cosmic_rejection', 2.2)
@@ -114,11 +116,9 @@ class SpectrumLogic(GenericLogic):
         self._output_slit_width = None
         self._read_mode = None
         self._trigger_mode = None
-        self._image_advanced = None
         self._loop_counter = None
         self._loop_timer = None
         self._acquisition_params = None
-        self._active_tracks = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -157,7 +157,13 @@ class SpectrumLogic(GenericLogic):
             else:
                 self.temperature_setpoint = self.camera().get_temperature_setpoint()
 
-        self._image_advanced = self.camera().get_image_advanced_parameters()
+        if self._image_advanced:
+            self.camera().set_image_advanced_parameters(self._image_advanced)
+        else:
+            self._image_advanced = self.camera().get_image_advanced_parameters()
+
+        if self._active_tracks != []:
+            self.camera().set_active_tracks(self.active_tracks)
 
         self._cooler_status = self.cooler_status
 
@@ -283,7 +289,7 @@ class SpectrumLogic(GenericLogic):
     @property
     def acquired_data(self):
         """ Getter method returning the last acquired data. """
-        return self._acquired_data
+        return np.array(self._acquired_data)
 
     @property
     def acquisition_params(self):
@@ -311,11 +317,13 @@ class SpectrumLogic(GenericLogic):
     def save_acquired_data(self):
 
         filepath = self.savelogic().get_path_for_module(module_name='spectrum_logic')
+        data = self._acquired_data.flatten()/self._acquisition_params['exposure_time (s)']
 
         if self.acquisition_params['read_mode'] == 'IMAGE_ADVANCED':
-            data = {'data' : np.array(self._acquired_data).flatten()}
+            data = {'data' : np.array(self._acquired_data).flatten()/self._acquisition_params['exposure_time (s)']}
         else:
-            data = {'wavelength (m)' : self.wavelength_spectrum, 'data' : self._acquired_data.flatten()}
+            data = {'wavelength (m)' : self.wavelength_spectrum,
+                    'data' : self._acquired_data.flatten()/self._acquisition_params['exposure_time (s)']}
 
         self.savelogic().save_data(data, filepath=filepath, parameters=self.acquisition_params)
 
@@ -395,7 +403,10 @@ class SpectrumLogic(GenericLogic):
                            .format(0, wavelength_max))
             return
         self.spectrometer().set_wavelength(wavelength)
-        self._center_wavelength = self.spectrometer().get_wavelength() + self.wavelength_calibration
+        if wavelength == 0:
+            self._center_wavelength = self.spectrometer().get_wavelength()
+        else:
+            self._center_wavelength = self.spectrometer().get_wavelength() + self.wavelength_calibration
         self.sigUpdateSettings.emit()
 
     @property
@@ -838,14 +849,14 @@ class SpectrumLogic(GenericLogic):
             image_advanced_area[0], image_advanced_area[1] = image_advanced_area[1], image_advanced_area[0]
         if 0 > image_advanced_area[0]:
             image_advanced_area[0] = 0
-        if image_advanced_area[1] < width:
-            image_advanced_area[1] = width
+        if image_advanced_area[1] > width:
+            image_advanced_area[1] = width-1
         if image_advanced_area[2] > image_advanced_area[3]:
             image_advanced_area[2], image_advanced_area[3] = image_advanced_area[3], image_advanced_area[2]
         if 0 > image_advanced_area[2]:
             image_advanced_area[2] = 0
-        if image_advanced_area[3] < height:
-            image_advanced_area[3] = height
+        if image_advanced_area[3] > height:
+            image_advanced_area[3] = height-1
 
         hbin = self._image_advanced.horizontal_binning
         vbin = self._image_advanced.vertical_binning

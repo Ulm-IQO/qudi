@@ -80,19 +80,19 @@ class Main(Base, GratingSpectrometerInterface):
         number_of_gratings = 3
 
         grating = Grating()
-        grating.ruling = 150e-3
+        grating.ruling = 150e3
         grating.blaze = 600e-9
         grating.wavelength_max = 1500e-9
         constraints.gratings.append(grating)
 
         grating = Grating()
-        grating.ruling = 300e-3
+        grating.ruling = 300e3
         grating.blaze = 700e-9
         grating.wavelength_max = 1600e-9
         constraints.gratings.append(grating)
 
         grating = Grating()
-        grating.ruling = 600e-3
+        grating.ruling = 600e3
         grating.blaze = 500e-9
         grating.wavelength_max = 1200e-9
         constraints.gratings.append(grating)
