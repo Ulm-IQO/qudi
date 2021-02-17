@@ -103,6 +103,7 @@ class SpectrumLogic(GenericLogic):
         self.camera_constraints = None
 
         # Private attributes
+        self._cooler_status = None
         self._grating = None
         self._center_wavelength = None
         self._input_ports = None
@@ -157,6 +158,8 @@ class SpectrumLogic(GenericLogic):
                 self.temperature_setpoint = self.camera().get_temperature_setpoint()
 
         self._image_advanced = self.camera().get_image_advanced_parameters()
+
+        self._cooler_status = self.cooler_status
 
         # QTimer for asynchronous execution :
         self._loop_counter = 0
@@ -366,8 +369,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) the spectrum center wavelength
 
-        Tested : yes
-        SI check : yes
         """
         return self._center_wavelength
 
@@ -378,8 +379,6 @@ class SpectrumLogic(GenericLogic):
         @param wavelength: (float) center wavelength
 
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -406,8 +405,7 @@ class SpectrumLogic(GenericLogic):
 
         @return: (ndarray) measured wavelength array
 
-        Tested : yes (need to
-        SI check : yes
+
         """
         pixel_width = self.camera_constraints.pixel_size_width
         image_width = self.camera_constraints.width
@@ -450,8 +448,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (int) active input port (0 front and 1 side)
 
-        Tested : yes
-        SI check : yes
         """
         return self._input_port.name
 
@@ -462,8 +458,6 @@ class SpectrumLogic(GenericLogic):
         @param input_port: (str|PortType) active input port (front or side)
 
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -493,8 +487,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (int) active output port (0 front and 1 side)
 
-        Tested : yes
-        SI check : yes
         """
         return self._output_port.name
 
@@ -505,8 +497,6 @@ class SpectrumLogic(GenericLogic):
         @param output_port: (int) active output port (0 front and 1 side)
 
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -553,8 +543,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) output port slit width
 
-        Tested : yes
-        SI check : yes
         """
         return self.get_output_slit_width()
 
@@ -564,8 +552,6 @@ class SpectrumLogic(GenericLogic):
 
         @param slit_width: (float) output port slit width
 
-        Tested : yes
-        SI check : yes
         """
         self.set_output_slit_width(slit_width)
 
@@ -628,8 +614,6 @@ class SpectrumLogic(GenericLogic):
         @param output port: (Port|str) port
         @return: (float) output port slit width
 
-        Tested : yes
-        SI check : yes
         """
         if port == 'current':
             port = self._output_port
@@ -657,8 +641,6 @@ class SpectrumLogic(GenericLogic):
         @param slit_width: (float) output port slit width
         @param output port: (Port|str) port
 
-        Tested : yes
-        SI check : yes
         """
         slit_width = float(slit_width)
         if port == 'current':
@@ -718,8 +700,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (str) read mode logic attribute
 
-        Tested : yes
-        SI check : yes
         """
         return self._read_mode
 
@@ -751,8 +731,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) readout speed in Hz
 
-        Tested : yes
-        SI check : yes
         """
         return self._readout_speed
 
@@ -763,8 +741,6 @@ class SpectrumLogic(GenericLogic):
         @param readout_speed: (float) readout speed in Hz
 
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -784,8 +760,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (list) active tracks positions [1st track start, 1st track end, ... ]
 
-        Tested : yes
-        SI check : yes
         """
         return self._active_tracks
 
@@ -794,11 +768,9 @@ class SpectrumLogic(GenericLogic):
         """
         Setter method setting the read mode tracks parameters of the camera.
 
-        @param active_tracks: (list) active tracks positions [1st track start, 1st track end, ... ]
+        @param active_tracks: (list/ndarray) active tracks positions [1st track start, 1st track end, ... ]
 
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -806,15 +778,14 @@ class SpectrumLogic(GenericLogic):
             return
         active_tracks = np.array(active_tracks, dtype=int)
         image_height = self.camera_constraints.height
-        if not (np.all(0<=active_tracks) and np.all(active_tracks<image_height)):
-            self.log.error("Active tracks positions are out of range : some position given are outside the "
-                             "camera width in pixel ")
-            return
+
+
         if not len(active_tracks)%2 == 0:
             active_tracks = np.append(active_tracks, image_height-1)
-        active_tracks = [(active_tracks[i], active_tracks[i+1]) for i in range(0, len(active_tracks), 2)]
-        for i in range(active_tracks.size):
-            
+        sorted_tracks = np.argsort(active_tracks)
+        if np.any(np.abs(sorted_tracks[::2]-sorted_tracks[1::2])!= 1):
+            self.log.error("The input active tracks are overlapping !")
+            return
         self.camera().set_active_tracks(active_tracks)
         self._active_tracks = self.camera().get_active_tracks()
 
@@ -900,8 +871,6 @@ class SpectrumLogic(GenericLogic):
 
         @return (str): acquisition mode
 
-        Tested : yes
-        SI check : yes
         """
         return self._acquisition_mode
 
@@ -912,8 +881,6 @@ class SpectrumLogic(GenericLogic):
 
         @param (str|AcquisitionMode): Acquisition mode as a string or an object
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -933,8 +900,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) exposure gain
 
-        Tested : yes
-        SI check : yes
         """
         return self._camera_gain
 
@@ -946,8 +911,6 @@ class SpectrumLogic(GenericLogic):
         internal gain list given by the constraints dictionary.
 
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -969,8 +932,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) exposure time
 
-        Tested : yes
-        SI check : yes
         """
         return self._exposure_time
 
@@ -980,8 +941,6 @@ class SpectrumLogic(GenericLogic):
 
         @param exposure_time: (float) desired new exposure time
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -1002,8 +961,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (float) scan delay
 
-        Tested : yes
-        SI check : yes
         """
         return self._scan_delay
 
@@ -1013,8 +970,6 @@ class SpectrumLogic(GenericLogic):
 
         @param scan_delay: (float) scan delay
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -1066,8 +1021,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (str) trigger mode (must be compared to the list)
 
-        Tested : yes
-        SI check : yes
         """
         return self._trigger_mode
 
@@ -1077,8 +1030,6 @@ class SpectrumLogic(GenericLogic):
 
         @param trigger_mode: (str) trigger mode
 
-        Tested : yes
-        SI check : yes
         """
         if self.module_state() == 'locked':
             self.log.error("Acquisition process is currently running : you can't change this parameter"
@@ -1106,8 +1057,6 @@ class SpectrumLogic(GenericLogic):
 
         @return: (str) shutter state
 
-        Tested : yes
-        SI check : yes
         """
         if not self.camera_constraints.has_shutter:
             self.log.error("No shutter is available in your hardware ")
@@ -1157,13 +1106,11 @@ class SpectrumLogic(GenericLogic):
 
         @param (bool) value: True to turn it on, False to turn it off
 
-        Tested : yes
-        SI check : yes
         """
         if not self.camera_constraints.has_cooler:
             self.log.error("No cooler is available in your hardware ")
             return
-        cooler_status = bool(cooler_status)
+        self._cooler_status = bool(cooler_status)
         self.camera().set_cooler_on(cooler_status)
         self.sigUpdateSettings.emit()
 

@@ -107,7 +107,7 @@ class Main(Base, ScienceCameraInterface):
         if self.get_read_mode() == ReadMode.FVB:
             self._acquired_data = self._get_fake_spectra()
         elif self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
-            self._acquired_data = [self._get_fake_spectra() for track in self.get_active_tracks()]
+            self._acquired_data = [self._get_fake_spectra() for i in range(int(len(self.get_active_tracks())/2))]
         elif self.get_read_mode() == ReadMode.IMAGE:
             self._acquired_data = self._get_fake_image()
         elif self.get_read_mode() == ReadMode.IMAGE_ADVANCED:

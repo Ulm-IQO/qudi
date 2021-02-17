@@ -40,7 +40,7 @@ import time
 class ColorbarWidget(QtWidgets.QWidget):
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
 
-    def __init__(self, image_widget):
+    def __init__(self, image_widget, unit='c/s'):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_colorbar.ui')
@@ -51,6 +51,7 @@ class ColorbarWidget(QtWidgets.QWidget):
 
         self._cb_min = 0
         self._cb_max = 100
+        self.unit = unit
 
         self.init_spin_box()
         self.init_colorbar()
@@ -72,14 +73,14 @@ class ColorbarWidget(QtWidgets.QWidget):
         self._min_percentile.setMaximum(100)
         self._min_percentile.setValue(0)
 
-        self._min_manual.setSuffix('c/s')
+        self._min_manual.setSuffix(self.unit)
 
         self._max_percentile.setSuffix('%')
         self._max_percentile.setMinimum(0)
         self._max_percentile.setMaximum(100)
         self._max_percentile.setValue(100)
 
-        self._max_manual.setSuffix('c/s')
+        self._max_manual.setSuffix(self.unit)
 
         self.min.addWidget(self._min_manual)
         self.min.addWidget(self._min_percentile)
@@ -101,7 +102,7 @@ class ColorbarWidget(QtWidgets.QWidget):
         self._cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=self._cb_min, cb_max=self._cb_max)
         self.colorbar.addItem(self._cb)
         self.colorbar.hideAxis('bottom')
-        self.colorbar.setLabel('left', 'Intensity', units='c/s')
+        self.colorbar.setLabel('left', 'Intensity', units=self.unit)
         self.colorbar.setMouseEnabled(x=False, y=False)
 
     def set_image(self, image_widget):

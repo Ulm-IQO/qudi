@@ -39,6 +39,7 @@ from PyQt5.Qt import QRectF, QPoint
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
+
 from gui.gui_components.colorbar.colorbar import ColorbarWidget
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -83,14 +84,14 @@ class ImageTab(QtWidgets.QWidget):
         uic.loadUi(ui_file, self)
         self.show()
 
-class AlignementTab(QtWidgets.QWidget):
+class AlignmentTab(QtWidgets.QWidget):
 
     def __init__(self):
         """ Create the laser scanner window.
         """
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_alignement_tab.ui')
+        ui_file = os.path.join(this_dir, 'ui_alignment_tab.ui')
 
         # Load it
         super().__init__()
@@ -121,9 +122,9 @@ class Main(GUIBase):
 
     _cooler_temperature_unit = ConfigOption('cooler_temperature_unit')
 
-    _alignement_read_mode = StatusVar('alignement_read_mode', 'FVB')
-    _alignement_exposure_time = StatusVar('alignement_exposure_time', 0)
-    _alignement_time_window = StatusVar('alignement_time_window', 60)
+    _alignment_read_mode = StatusVar('alignment_read_mode', 'FVB')
+    _alignment_exposure_time = StatusVar('alignment_exposure_time', 0)
+    _alignment_time_window = StatusVar('alignment_time_window', 60)
 
     _image_read_mode = StatusVar('image_read_mode', 'IMAGE_ADVANCED')
     _image_acquisition_mode = StatusVar('image_acquisition_mode', 'LIVE')
@@ -158,12 +159,12 @@ class Main(GUIBase):
         self._mw = MainWindow()
         self._settings_tab = SettingsTab()
         self._image_tab = ImageTab()
-        self._alignement_tab = AlignementTab()
+        self._alignment_tab = AlignmentTab()
         self._spectrum_tab = SpectrumTab()
 
         self._mw.tab.addTab(self._settings_tab, "Settings")
         self._mw.tab.addTab(self._image_tab, "Image")
-        self._mw.tab.addTab(self._alignement_tab, "Aligement")
+        self._mw.tab.addTab(self._alignment_tab, "Alignment")
         self._mw.tab.addTab(self._spectrum_tab, "Spectrum")
 
         self._acquire_dark_buttons = []
@@ -179,8 +180,8 @@ class Main(GUIBase):
             self._image_exposure_time = self._spectrumlogic.exposure_time
         if not self._image_readout_speed:
             self._image_readout_speed = self._spectrumlogic.readout_speed
-        if not self._alignement_exposure_time:
-            self._alignement_exposure_time = self._spectrumlogic.exposure_time
+        if not self._alignment_exposure_time:
+            self._alignment_exposure_time = self._spectrumlogic.exposure_time
         if not self._spectrum_exposure_time:
             self._spectrum_exposure_time = self._spectrumlogic.exposure_time
         if not self._spectrum_readout_speed:
@@ -188,9 +189,9 @@ class Main(GUIBase):
 
         self._activate_settings_tab()
         self._activate_image_tab()
-        self._activate_alignement_tab()
+        self._activate_alignment_tab()
         self._activate_spectrum_tab()
-        self._settings_window = [self._image_tab.image_settings, self._alignement_tab.counter_settings,
+        self._settings_window = [self._image_tab.image_settings, self._alignment_tab.counter_settings,
                     self._spectrum_tab.spectrum_settings]
 
         self._manage_stop_acquisition()
@@ -198,8 +199,8 @@ class Main(GUIBase):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        self._alignement_read_mode = self._alignement_tab.read_modes.currentData()
-        self._alignement_exposure_time = self.alignement_exposure_time_widget.value()
+        self._alignment_read_mode = self._alignment_tab.read_modes.currentData()
+        self._alignment_exposure_time = self.alignment_exposure_time_widget.value()
         self._image_acquisition_mode = self._image_tab.acquisition_modes.currentData()
         self._image_read_mode = self._image_tab.read_modes.currentData()
         self._image_exposure_time = self.image_exposure_time_widget.value()
@@ -382,6 +383,7 @@ class Main(GUIBase):
         self._image_tab.colorbar.addWidget(self._colorbar)
 
         self.track_colors = [palette.c1, palette.c2, palette.c3, palette.c4]
+        height = self._spectrumlogic.camera_constraints.height
         for i in range(4):
             self._track_buttons[i].setCheckable(True)
             self._track_buttons[i].clicked.connect(partial(self._manage_track_buttons, i))
@@ -418,39 +420,39 @@ class Main(GUIBase):
         self.image_exposure_time_widget.editingFinished.connect(self.set_image_params)
         self._image_tab.readout_speed.currentTextChanged.connect(self.set_image_params)
 
-    def _activate_alignement_tab(self):
+    def _activate_alignment_tab(self):
 
         self.time_window_widget = ScienDSpinBox()
         self.time_window_widget.setMinimum(0)
-        self.time_window_widget.setValue(self._alignement_time_window)
+        self.time_window_widget.setValue(self._alignment_time_window)
         self.time_window_widget.setSuffix('s')
         self.time_window_widget.editingFinished.connect(self._change_time_window)
-        self._alignement_tab.time_window_layout.addWidget(self.time_window_widget,1)
-        self._alignement_tab.clean.clicked.connect(self._clean_time_window)
+        self._alignment_tab.time_window_layout.addWidget(self.time_window_widget,1)
+        self._alignment_tab.clean.clicked.connect(self._clean_time_window)
 
         for read_mode in self._spectrumlogic.camera_constraints.read_modes:
-            self._alignement_tab.read_modes.addItem(str(read_mode.name), read_mode.name)
-            if read_mode == self._alignement_read_mode:
-                self._alignement_tab.read_modes.setCurrentText(str(read_mode.name))
+            self._alignment_tab.read_modes.addItem(str(read_mode.name), read_mode.name)
+            if read_mode == self._alignment_read_mode:
+                self._alignment_tab.read_modes.setCurrentText(str(read_mode.name))
 
-        self.alignement_exposure_time_widget = ScienDSpinBox()
-        self.alignement_exposure_time_widget.setMinimum(0)
-        self.alignement_exposure_time_widget.setValue(self._alignement_exposure_time)
-        self.alignement_exposure_time_widget.setSuffix('s')
-        self._alignement_tab.exposure_time_layout.addWidget(self.alignement_exposure_time_widget)
+        self.alignment_exposure_time_widget = ScienDSpinBox()
+        self.alignment_exposure_time_widget.setMinimum(0)
+        self.alignment_exposure_time_widget.setValue(self._alignment_exposure_time)
+        self.alignment_exposure_time_widget.setSuffix('s')
+        self._alignment_tab.exposure_time_layout.addWidget(self.alignment_exposure_time_widget)
         self._change_time_window()
 
-        self._alignement_tab.start_acquisition.clicked.connect(partial(self.start_acquisition, 1))
-        self._start_acquisition_buttons.append(self._alignement_tab.start_acquisition)
-        self._alignement_tab.stop_acquisition.clicked.connect(self.stop_acquisition)
-        self._stop_acquisition_buttons.append(self._alignement_tab.stop_acquisition)
+        self._alignment_tab.start_acquisition.clicked.connect(partial(self.start_acquisition, 1))
+        self._start_acquisition_buttons.append(self._alignment_tab.start_acquisition)
+        self._alignment_tab.stop_acquisition.clicked.connect(self.stop_acquisition)
+        self._stop_acquisition_buttons.append(self._alignment_tab.stop_acquisition)
 
-        self._alignement_tab.graph.setLabel('left', 'photon counts', units='counts/s')
-        self._alignement_tab.graph.setLabel('bottom', 'acquisition time', units='s')
-        self._counter_plot = self._alignement_tab.graph.plot(self._counter_data[0], self._counter_data[1])
+        self._alignment_tab.graph.setLabel('left', 'photon counts', units='counts/s')
+        self._alignment_tab.graph.setLabel('bottom', 'acquisition time', units='s')
+        self._counter_plot = self._alignment_tab.graph.plot(self._counter_data[0], self._counter_data[1])
 
-        self._alignement_tab.read_modes.currentTextChanged.connect(self.set_alignement_params)
-        self.alignement_exposure_time_widget.editingFinished.connect(self.set_alignement_params)
+        self._alignment_tab.read_modes.currentTextChanged.connect(self.set_alignment_params)
+        self.alignment_exposure_time_widget.editingFinished.connect(self.set_alignment_params)
 
     def _activate_spectrum_tab(self):
 
@@ -504,39 +506,38 @@ class Main(GUIBase):
         self._spectrum_tab.scan_number_spin.editingFinished.connect(self.set_spectrum_params)
 
     def _update_settings(self):
-        """
-        self._manage_grating_buttons(self.spectrumlogic().grating)
+
+        self._manage_grating_buttons(self.spectrumlogic()._grating)
 
         if len(self._input_ports)>1:
-            input_port_index = 0 if self._spectrumlogic.input_port == PortType.INPUT_FRONT else 1
+            input_port_index = 0 if self._spectrumlogic._input_port == PortType.INPUT_FRONT else 1
             self._manage_port_buttons(input_port_index)
-            self._input_slit_width[input_port_index].setValue(self._spectrumlogic.input_slit_width)
+            self._input_slit_width[input_port_index].setValue(self._spectrumlogic._input_slit_width[input_port_index])
         else:
-            self._input_slit_width[0].setValue(self._spectrumlogic.input_slit_width)
+            self._input_slit_width[0].setValue(self._spectrumlogic._input_slit_width[0])
         if len(self._output_ports)>1:
-            output_port_index = 0 if self._spectrumlogic.output_port == PortType.OUTPUT_FRONT else 1
+            output_port_index = 0 if self._spectrumlogic._output_port == PortType.OUTPUT_FRONT else 1
             self._manage_port_buttons(output_port_index+2)
-            self._output_slit_width[output_port_index] = self._spectrumlogic.output_slit_width
+            self._output_slit_width[output_port_index].setValue(self._spectrumlogic._output_slit_width[output_port_index])
         else:
-            self._output_slit_width[0] = self._spectrumlogic.output_slit_width
+            self._output_slit_width[0].setValue(self._spectrumlogic._output_slit_width[0])
 
-        self._calibration_widget.setValue(self._spectrumlogic.wavelength_calibration)
-        self._settings_tab.camera_gains.setCurrentText(str(self._spectrumlogic.camera_gain))
-        self._settings_tab.trigger_modes.setCurrentText(self._spectrumlogic.trigger_mode)
-        self._temperature_widget.setValue(self._spectrumlogic.temperature_setpoint-273.15)
+        self._calibration_widget.setValue(self._spectrumlogic._wavelength_calibration[self.spectrumlogic()._grating])
+        self._settings_tab.camera_gains.setCurrentText(str(int(self._spectrumlogic._camera_gain)))
+        self._settings_tab.trigger_modes.setCurrentText(self._spectrumlogic._trigger_mode)
+        self._temperature_widget.setValue(self._spectrumlogic._temperature_setpoint-273.15)
 
-        cooler_on = not self._spectrumlogic.cooler_status
-        if self._settings_tab.cooler_on.isChecked() == cooler_on:
+        cooler_on = self._spectrumlogic._cooler_status
+        if self._settings_tab.cooler_on.isDown() != cooler_on:
             self._settings_tab.cooler_on.setChecked(cooler_on)
             self._settings_tab.cooler_on.setDown(cooler_on)
-            self._settings_tab.cooler_on.setText("ON" if cooler_on else "OFF")
-            self._mw.cooler_on_label.setText("Cooler {}".format("ON" if not cooler_on else "OFF"))
-        if self._spectrumlogic.camera_constraints.has_shutter:
-            self._settings_tab.shutter_modes.setCurrentText(self._spectrumlogic.shutter_state)
+            self._settings_tab.cooler_on.setText("ON" if not cooler_on else "OFF")
+            self._mw.cooler_on_label.setText("Cooler {}".format("ON" if cooler_on else "OFF"))
 
-        self._mw.center_wavelength_current.setText("{:.2r}m".format(ScaledFloat(self._spectrumlogic.center_wavelength)))
-        """
-        pass
+        if self._spectrumlogic.camera_constraints.has_shutter:
+            self._settings_tab.shutter_modes.setCurrentText(self._spectrumlogic._shutter_state)
+
+        self._mw.center_wavelength_current.setText("{:.2r}m".format(ScaledFloat(self._spectrumlogic._center_wavelength)))
 
     def set_settings_params(self):
 
@@ -557,11 +558,11 @@ class Main(GUIBase):
         self._spectrumlogic._update_acquisition_params()
         self._image_params = self._spectrumlogic.acquisition_params
 
-    def set_alignement_params(self):
+    def set_alignment_params(self):
 
         self._spectrumlogic.acquisition_mode = "LIVE_SCAN"
-        self._spectrumlogic.read_mode = self._alignement_tab.read_modes.currentData()
-        self._spectrumlogic.exposure_time = self.alignement_exposure_time_widget.value()
+        self._spectrumlogic.read_mode = self._alignment_tab.read_modes.currentData()
+        self._spectrumlogic.exposure_time = self.alignment_exposure_time_widget.value()
         self._spectrumlogic.readout_speed = max(self._spectrumlogic.camera_constraints.readout_speeds)
 
         self._manage_tracks()
@@ -607,7 +608,7 @@ class Main(GUIBase):
         if index==0:
             self.set_image_params()
         elif index==1:
-            self.set_alignement_params()
+            self.set_alignment_params()
         elif index==2:
             self.set_spectrum_params()
 
@@ -678,10 +679,13 @@ class Main(GUIBase):
         self._active_tracks = []
         for i in range(4):
             if self._track_selector[i].isVisible():
-                track = list(self._track_selector[i].getRegion())
-                self._active_tracks.append(track[0])
-                self._active_tracks.append(track[1])
-        self._spectrumlogic.active_tracks = self._active_tracks
+                track = self._track_selector[i].getRegion()
+                active_tracks.append(int(track[0]))
+                active_tracks.append(int(track[1]))
+        active_tracks = np.array(active_tracks)
+        if np.any(self._spectrumlogic.active_tracks != active_tracks):
+            self._spectrum_tab.dark_acquired_msg.setText("Dark Outdated")
+            self._spectrumlogic.active_tracks = active_tracks
 
     def _manage_image_advanced(self):
 
@@ -744,7 +748,7 @@ class Main(GUIBase):
     def _change_time_window(self):
 
         time_window = self.time_window_widget.value()
-        exposure_time = self.alignement_exposure_time_widget.value()
+        exposure_time = self.alignment_exposure_time_widget.value()
         number_points = int(time_window / exposure_time)
         x = np.linspace(self._counter_data[0, -1] - time_window, self._counter_data[0, -1], number_points)
         if self._counter_data.shape[1] < number_points:
@@ -753,7 +757,7 @@ class Main(GUIBase):
         else:
             y = self._counter_data[1,-number_points:]
         self._counter_data = np.array([x, y])
-        self._alignement_tab.graph.setRange(xRange=(x[-1]-self.time_window_widget.value(), x[-1]))
+        self._alignment_tab.graph.setRange(xRange=(x[-1]-self.time_window_widget.value(), x[-1]))
 
     def _update_data(self, index):
 
@@ -781,7 +785,7 @@ class Main(GUIBase):
             x = self._counter_data[0]+self._spectrumlogic.exposure_time
             y = np.append(self._counter_data[1][1:], counts)
             self._counter_data = np.array([x, y])
-            self._alignement_tab.graph.setRange(xRange=(x[-1]-self.time_window_widget.value(), x[-1]))
+            self._alignment_tab.graph.setRange(xRange=(x[-1]-self.time_window_widget.value(), x[-1]))
             self._counter_plot.setData(x, y)
 
         elif index == 2:

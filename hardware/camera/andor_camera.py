@@ -186,7 +186,7 @@ class Main(Base, ScienceCameraInterface):
         if self._constraints.has_cooler:
             self.set_cooler_on(True)
 
-        self._active_tracks = [(0, self._constraints.height-1)]
+        self._active_tracks = np.array([0, self._constraints.height-1])
         self._image_advanced_parameters = ImageAdvancedParameters()
         self._image_advanced_parameters.horizontal_end = self._constraints.width-1
         self._image_advanced_parameters.vertical_end = self._constraints.height-1
@@ -296,7 +296,7 @@ class Main(Base, ScienceCameraInterface):
         if self.get_read_mode() == ReadMode.FVB:
             height = 1
         elif self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
-            height = len(self.get_active_tracks())
+            height = int(len(self.get_active_tracks())/2)
         elif self.get_read_mode() == ReadMode.IMAGE:
             height = self.get_constraints().height
         elif self.get_read_mode() == ReadMode.IMAGE_ADVANCED:
@@ -313,6 +313,9 @@ class Main(Base, ScienceCameraInterface):
 
         if self.get_read_mode() == ReadMode.FVB:
             return np.array(c_image)
+        if self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
+            sorted_data = np.array([int(i) for i in self._sorted_tracks[::2]/2])
+            return  np.reshape(np.array(c_image), (height, width))[sorted_data]
         else:
             return np.reshape(np.array(c_image), (height, width))
 
@@ -380,7 +383,7 @@ class Main(Base, ScienceCameraInterface):
     def set_active_tracks(self, value):
         """ Setter method for the active tracks of the camera.
 
-        @param (list) value: active tracks positions  as [(start_1, end_1), (start_2, end_2), ... ]
+        @param (ndarray) value: active tracks positions  as [start_1, end_1, start_2, end_2, ... ]
         """
 
         self._active_tracks = value
@@ -389,9 +392,10 @@ class Main(Base, ScienceCameraInterface):
     def _update_active_tracks(self):
         """ Internal function that send the current active tracks to the DLL """
         if self.get_read_mode() == ReadMode.MULTIPLE_TRACKS:
-            flatten_tracks = np.array(self._active_tracks).flatten()+1
+            self._sorted_tracks = np.argsort(self._active_tracks)
+            tracks = self._active_tracks[self._sorted_tracks]+1
             self._dll.SetRandomTracks.argtypes = [ct.c_int32, ct.c_void_p]
-            status_code = self._check(self._dll.SetRandomTracks(len(self._active_tracks), flatten_tracks.ctypes.data))
+            status_code = self._check(self._dll.SetRandomTracks(int(len(tracks)/2), tracks.ctypes.data))
             self._check(status_code)
             if status_code != OK_CODE:  # Clear tracks if an error has occurred
                 self._active_tracks = []
