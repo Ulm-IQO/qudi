@@ -992,7 +992,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Ramps executed (#)'] = self.elapsed_sweeps
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['ScanSpeed (Hz)'] = self._scan_frequency
-        parameters['Volts per second (V/s)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
+        parameters['Volts per second (V/s)'] = abs(self._start_voltage - self._end_voltage) * self._scan_frequency
         parameters["Scan Resolution (V/Step)"] = self._scan_resolution
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
