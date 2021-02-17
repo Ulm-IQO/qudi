@@ -96,7 +96,7 @@ class WavemeterDummy(Base, WavemeterInterface):
     def on_activate(self):
         """ Activate module.
         """
-        # create an indepentent thread for the hardware communication
+        # create an independent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
 
         # create an object for the hardware communication and let it live on the new thread
@@ -147,6 +147,7 @@ class WavemeterDummy(Base, WavemeterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+
         # check status just for a sanity check
         if self.module_state() == 'idle' or self.module_state() == 'deactivated':
             self.log.warning('Wavemeter was already stopped, stopping it '

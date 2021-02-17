@@ -300,6 +300,8 @@ class WavemeterLoggerLogic(GenericLogic):
         if self._counter_logic.get_saving_state():
             self._counter_logic.save_data(to_file=False)
 
+        self.acquisition_running = False
+
         return 0
 
     def _attach_counts_to_wavelength(self):
