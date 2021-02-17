@@ -24,7 +24,7 @@ import numpy as np
 from scipy.ndimage import filters
 from ._general import FitModelBase, estimator
 
-__all__ = ('Gaussian', 'Gaussian2D')
+__all__ = ('DoubleGaussian', 'Gaussian', 'Gaussian2D')
 
 
 class Gaussian(FitModelBase):
@@ -87,6 +87,74 @@ class Gaussian(FitModelBase):
     def estimate_dip_no_offset(self, data, x):
         estimate = self.estimate_dip(data, x)
         estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
+        return estimate
+
+
+class DoubleGaussian(FitModelBase):
+    """ ToDo: Document and implement estimators
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_param_hint('offset', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_1', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_2', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('center_1', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('center_2', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('sigma_1', value=0., min=0., max=np.inf)
+        self.set_param_hint('sigma_2', value=0., min=0., max=np.inf)
+
+    @staticmethod
+    def _model_function(x, offset, amplitude_1, center_1, sigma_1, amplitude_2, center_2, sigma_2):
+        gauss = amplitude_1 * np.exp(-((x - center_1) ** 2) / (2 * sigma_1 ** 2))
+        gauss += amplitude_2 * np.exp(-((x - center_2) ** 2) / (2 * sigma_2 ** 2))
+        gauss += offset
+        return gauss
+
+    @estimator('Peak')
+    def estimate_peak(self, data, x):
+        estimate = self.make_params()
+
+        x_span = abs(x[-1] - x[0])
+        x_step = abs(x[1] - x[0])
+        data_smoothed = filters.gaussian_filter1d(data, sigma=5)
+        y_span = max(data_smoothed) - min(data_smoothed)
+        # smooth_sum = np.sum(data_smoothed)
+        # smooth_mean = np.mean(data_smoothed)
+        # mom1 = np.sum(x * data_smoothed) / smooth_sum
+        # mom2 = np.sum(x ** 2 * data_smoothed) / smooth_sum
+        #
+        # estimate['offset'].set(value=smooth_mean,
+        #                        min=min(data_smoothed) - 5 * y_span,
+        #                        max=max(data_smoothed) + 5 * y_span)
+        # estimate['amplitude'].set(value=y_span, min=0, max=y_span * 5)
+        # estimate['center'].set(value=x[np.argmax(data_smoothed)],
+        #                        min=min(x) - x_span,
+        #                        max=max(x) + x_span)
+        estimate['offset'].set(value=np.mean(data_smoothed), min=min(data), max=max(data))
+        estimate['sigma_1'].set(value=x_span / 10, min=x_step, max=x_span)
+        estimate['sigma_2'].set(value=x_span / 10, min=x_step, max=x_span)
+        estimate['amplitude_1'].set(value=y_span, min=0, max=2*y_span)
+        estimate['amplitude_2'].set(value=y_span, min=0, max=2*y_span)
+        estimate['center_1'].set(value=x[0] + x_span / 4,
+                                 min=x[0] - x_span / 2,
+                                 max=x[-1] + x_span / 2)
+        estimate['center_2'].set(value=x[0] + 3 * x_span / 4,
+                                 min=x[0] - x_span / 2,
+                                 max=x[-1] + x_span / 2)
+        return estimate
+
+    @estimator('Dip')
+    def estimate_dip(self, data, x):
+        estimate = self.estimate_peak(-data, x)
+        estimate['offset'].set(value=-estimate['offset'].value,
+                               min=-estimate['offset'].max,
+                               max=-estimate['offset'].min)
+        estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
+                                    min=-estimate['amplitude_1'].max,
+                                    max=-estimate['amplitude_1'].min)
+        estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
+                                    min=-estimate['amplitude_2'].max,
+                                    max=-estimate['amplitude_2'].min)
         return estimate
 
 
