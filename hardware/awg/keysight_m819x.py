@@ -2586,19 +2586,19 @@ class AWGM8190A(AWGM819X):
         constraints.d_ch_low.step = 0.0002
         constraints.d_ch_low.default = 0.0
 
-        constraints.d_ch_high.min = -0.5
+        constraints.d_ch_high.min = 0.5  # manual p. 245
         constraints.d_ch_high.max = 1.75
         constraints.d_ch_high.step = 0.0002
         constraints.d_ch_high.default = 1.5
 
         constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16_000_000
+        constraints.waveform_num.max = 16000000
         constraints.waveform_num.default = 1
         # The sample memory can be split into a maximum of 16 M waveform segments
 
         # FIXME: Check the proper number for your device
         constraints.sequence_num.min = 1
-        constraints.sequence_num.max = 4000
+        constraints.sequence_num.max = 512000 - 2   # manual p. 251
         constraints.sequence_num.step = 1
         constraints.sequence_num.default = 1
 
