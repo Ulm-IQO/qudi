@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi logic class that captures and processes photoluminescence
-spectra and the spot image.
+This file contains a Qudi logic module to interface a spectrometer camera and grating.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -56,7 +55,6 @@ class AcquisitionMode(Enum):
 class SpectrumLogic(GenericLogic):
     """ This logic module handle the spectrometer gratings and camera """
 
-    # declare connectors
     spectrometer = Connector(interface='GratingSpectrometerInterface')
     camera = Connector(interface='ScienceCameraInterface')
     savelogic = Connector(interface='SaveLogic')
@@ -196,7 +194,6 @@ class SpectrumLogic(GenericLogic):
         """ Method use by other modules and script to start acquisition, wait for the end and return the result
 
         @return (np.ndarray):  The newly acquired data
-
         """
         if self.module_state() == 'locked':
             self.log.error("Module acquisition is still running, module state is currently locked.")
@@ -216,16 +213,14 @@ class SpectrumLogic(GenericLogic):
         self._sigStart.emit()
 
     def _start_acquisition(self):
-        """ Start acquisition method initializing the acquisitions constants and calling the acquisition method
-        """
-
+        """ Start acquisition method initializing the acquisitions constants and calling the acquisition method """
         self._acquired_data = []
         if self.acquisition_mode == 'MULTI_SCAN':
             self._loop_counter = self.number_of_scan
         self._acquisition_loop()
 
     def get_ready_state(self):
-        """ Getter method returning if the camera hardware is acquiring or not
+        """ Getter method returning if the camera hardware is ready to acquire or not
 
         @return: (bool) camera hardware idle ?
         """
