@@ -97,7 +97,7 @@ class CavityStabilisationGui(GUIBase):
 
         # GUI element:
         self._mw = CavityStabilisationMainWindow()
-        self._lab= CavityLabBookWindow(self._cavity_stabilisation_logic)
+        self._lab = CavityLabBookWindow(self._cavity_stabilisation_logic)
         self._mw.action_show_labbook.triggered.connect(self.show_labbook)
 
         # set up dock widgets
@@ -135,6 +135,8 @@ class CavityStabilisationGui(GUIBase):
         self.digital_data_plot.addItem(self.digital_data_PlotItem)
         self.digital_data_plot.setGeometry(self.analog_data_plot.vb.sceneBoundingRect())
         self.digital_data_plot.linkedViewChanged(self.analog_data_plot.vb, self.digital_data_plot.XAxis)
+
+        self._mw.show_counter_checkBox.toggled.connect(self.show_counter_changed)
 
         self._mw.ramp_scan_PlotWidget.setLabel(axis='left', text='Output Voltage', units='V')
         self._mw.ramp_scan_PlotWidget.setLabel(axis='right', text='Output Voltage', units='V')
@@ -375,11 +377,15 @@ class CavityStabilisationGui(GUIBase):
         """
         # Update mean signal plot
         self.analog_data_PlotItem.setData(cavity_scan_data_x, cavity_scan_data_y)
-        self.digital_data_PlotItem.setData(cavity_scan_data_x, cavity_scan_data_y2)
         self.cavity_ramp_image.setData(cavity_scan_data_x, cavity_ramp_data)
 
-        self.digital_data_plot.setGeometry(self.analog_data_plot.vb.sceneBoundingRect())
-        self.digital_data_plot.linkedViewChanged(self.analog_data_plot.vb, self.digital_data_plot.XAxis)
+        if self._mw.show_counter_checkBox.isChecked():
+            self.digital_data_PlotItem.setData(cavity_scan_data_x, cavity_scan_data_y2, symbolSize=5)
+            self.digital_data_plot.setGeometry(self.analog_data_plot.vb.sceneBoundingRect())
+            self.digital_data_plot.linkedViewChanged(self.analog_data_plot.vb, self.digital_data_plot.XAxis)
+        else:
+            self.digital_data_PlotItem.setData([], [], symbolSize=0)
+
 
     def update_gui(self):
         """ Update the gui elements after scanning.
@@ -395,6 +401,12 @@ class CavityStabilisationGui(GUIBase):
                                                0]) / self.slider_res)
         self.toggle_scan_resolution()
         self.toggle_cavity_mode()
+
+    def show_counter_changed(self):
+        pass
+        # this can not do anything et, because the data is not saved inside this class and therefore the plot can
+        # not be updated soley from here
+        # if not self._mw.show_counter_checkBox.isChecked():
 
     ##########   Cavity Scan Parameters   ########
 
