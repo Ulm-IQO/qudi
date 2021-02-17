@@ -349,6 +349,7 @@ class Main(GUIBase):
         self._start_acquisition_buttons.append(self._image_tab.start_acquisition)
         self._image_tab.stop_acquisition.clicked.connect(self.stop_acquisition)
         self._stop_acquisition_buttons.append(self._image_tab.stop_acquisition)
+        self._image_tab.remove_dark.clicked.connect(partial(self.remove_dark, 0))
 
         self.my_colors = ColorScaleInferno()
         self._image = pg.ImageItem(image=self._image_data, axisOrder='row-major')
@@ -472,6 +473,7 @@ class Main(GUIBase):
         self._start_acquisition_buttons.append(self._spectrum_tab.start_acquisition)
         self._spectrum_tab.stop_acquisition.clicked.connect(self.stop_acquisition)
         self._stop_acquisition_buttons.append(self._spectrum_tab.stop_acquisition)
+        self._spectrum_tab.remove_dark.clicked.connect(partial(self.remove_dark, 1))
 
         self._spectrum_tab.graph.setLabel('left', 'Photoluminescence', units='counts/s')
         self._spectrum_tab.graph.setLabel('bottom', 'wavelength', units='m')
@@ -512,8 +514,9 @@ class Main(GUIBase):
             self._settings_tab.cooler_on.setText("ON" if not cooler_on else "OFF")
             self._mw.cooler_on_label.setText("Cooler {}".format("ON" if cooler_on else "OFF"))
 
-        if self.spectrumlogic().camera_constraints.has_shutter:
-            self._settings_tab.shutter_modes.setCurrentText(self.spectrumlogic()._shutter_state)
+        # TODO : fix bug with shutter state update : the shutter state can't be changed !
+        #if self.spectrumlogic().camera_constraints.has_shutter:
+        #    self._settings_tab.shutter_modes.setCurrentText(self.spectrumlogic()._shutter_state)
 
         self._mw.center_wavelength_current.setText("{:.2r}m".format(ScaledFloat(self.spectrumlogic()._center_wavelength)))
 
@@ -711,9 +714,9 @@ class Main(GUIBase):
 
         image_advanced = self._image_advanced_widget.getArraySlice(self._image_data, self._image, returnSlice=False)[0]
         if (self._image.width(), self._image.height()) != (width, height):
-            vertical_range = list(np.array(image_advanced[0])* self.spectrumlogic()._image_advanced.vertical_binning
+            vertical_range = list(np.array(image_advanced[0])* hbin
                                   + self.spectrumlogic()._image_advanced.vertical_start)
-            horizontal_range = list(np.array(image_advanced[1])*self.spectrumlogic()._image_advanced.horizontal_binning
+            horizontal_range = list(np.array(image_advanced[1])*vbin
                                     + self.spectrumlogic()._image_advanced.horizontal_start)
             image_advanced = horizontal_range + vertical_range
         else:
@@ -821,7 +824,8 @@ class Main(GUIBase):
         elif index == 2:
 
             x = self.spectrumlogic().wavelength_spectrum
-            if self._spectrum_dark.shape[-2] == data.shape[-2] or self._spectrum_dark.shape[-2] == 1:
+            if self._spectrum_dark.shape[-1] == data.shape[-1]:
+                # TODO : fix bug with dark in multiple tracks and data in FVB : broadcasting error
                 y = data - self._spectrum_dark
             else:
                 y = data
@@ -879,6 +883,15 @@ class Main(GUIBase):
         self.spectrumlogic().sigUpdateData.disconnect()
         self._manage_stop_acquisition()
         self.spectrumlogic().shutter_state = self._settings_tab.shutter_modes.currentText()
+
+    def remove_dark(self, index):
+
+        if index == 0:
+            self._image_dark = np.zeros((1000, 1000))
+            self._image_tab.dark_acquired_msg.setText("No Dark Acquired")
+        if index == 1:
+            self._spectrum_dark = np.zeros(1000)
+            self._spectrum_tab.dark_acquired_msg.setText("No Dark Acquired")
 
     def save_data(self, index):
 
