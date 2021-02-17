@@ -88,7 +88,7 @@ class Lorentzian(FitModelBase):
         x_span = abs(x[-1] - x[0])
 
         estimate = self.make_params()
-        estimate['amplitude'].set(value=amplitude, min=2 * amplitude, max=0)
+        estimate['amplitude'].set(value=amplitude, min=-np.inf, max=0)
         estimate['sigma'].set(value=sigma, min=x_spacing, max=x_span)
         estimate['center'].set(value=center, min=min(x) - x_span / 2, max=max(x) + x_span / 2)
         estimate['offset'].set(value=offset, min=min(data), max=max(data))
