@@ -24,7 +24,7 @@ import numpy as np
 from scipy.ndimage import filters
 from ._general import FitModelBase, estimator
 
-__all__ = ('Gaussian', 'Gaussian2D')
+__all__ = ('DoubleGaussian', 'Gaussian', 'Gaussian2D')
 
 
 class Gaussian(FitModelBase):
@@ -106,6 +106,27 @@ class Gaussian(FitModelBase):
         estimate = self.estimate_dip(data, x)
         estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
         return estimate
+
+
+class DoubleGaussian(FitModelBase):
+    """ ToDo: Document and implement estimators
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_param_hint('offset', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_1', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_2', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('center_1', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('center_2', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('sigma_1', value=0., min=0., max=np.inf)
+        self.set_param_hint('sigma_2', value=0., min=0., max=np.inf)
+
+    @staticmethod
+    def _model_function(x, offset, amplitude_1, center_1, sigma_1, amplitude_2, center_2, sigma_2):
+        gauss = amplitude_1 * np.exp(-((x - center_1) ** 2) / (2 * sigma_1 ** 2))
+        gauss += amplitude_2 * np.exp(-((x - center_2) ** 2) / (2 * sigma_2 ** 2))
+        gauss += offset
+        return gauss
 
 
 class Gaussian2D(FitModelBase):
