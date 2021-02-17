@@ -43,31 +43,45 @@ class Gaussian(FitModelBase):
 
     @estimator('Peak')
     def estimate_peak(self, data, x):
-        estimate = self.make_params()
+        # check if input x-axis is ordered and increasing
+        if not np.all(val > 0 for val in np.ediff1d(x)):
+            x = x[np.argsort(x)]
+            data = data[np.argsort(x)]
 
-        x_span = abs(x[-1] - x[0])
-        x_step = abs(x[1] - x[0])
+        # Smooth data
         if len(x) <= 10:
             filter_width = 1
         else:
-            filter_width = min(10, int(round(len(x)/10)))
+            filter_width = min(10, int(round(len(x) / 10)))
         data_smoothed = filters.gaussian_filter1d(data, sigma=filter_width)
-        y_span = max(data_smoothed) - min(data_smoothed)
-        smooth_sum = np.sum(data_smoothed)
-        smooth_mean = np.mean(data_smoothed)
-        mom1 = np.sum(x * data_smoothed) / smooth_sum
-        mom2 = np.sum(x ** 2 * data_smoothed) / smooth_sum
 
-        estimate['offset'].set(value=smooth_mean,
-                               min=min(data_smoothed) - 5 * y_span,
-                               max=max(data_smoothed) + 5 * y_span)
-        estimate['amplitude'].set(value=y_span, min=0, max=y_span * 5)
-        estimate['center'].set(value=x[np.argmax(data_smoothed)],
-                               min=min(x) - x_span,
-                               max=max(x) + x_span)
-        estimate['sigma'].set(value=np.sqrt(abs(mom2 - mom1 ** 2)),
-                              min=x_step,
-                              max=x_span)
+        # determine peak position
+        center = x[np.argmax(data_smoothed)]
+
+        # determine offset from histogram
+        hist = np.histogram(data_smoothed, bins=filter_width)
+        offset = (hist[1][hist[0].argmax()] + hist[1][hist[0].argmax() + 1]) / 2
+        data_smoothed -= offset
+
+        # calculate amplitude
+        amplitude = abs(max(data) - offset)
+
+        # according to the derived formula, calculate sigma. The crucial part is here that the
+        # offset was estimated correctly, then the area under the curve is calculated correctly:
+        numerical_integral = np.trapz(data_smoothed, x)
+        sigma = abs(numerical_integral / (np.sqrt(2 * np.pi) * amplitude))
+
+        x_spacing = min(abs(np.ediff1d(x)))
+        x_span = abs(x[-1] - x[0])
+        data_span = abs(max(data) - min(data))
+
+        estimate = self.make_params()
+        estimate['amplitude'].set(value=amplitude, min=0, max=2 * amplitude)
+        estimate['sigma'].set(value=sigma, min=x_spacing, max=x_span)
+        estimate['center'].set(value=center, min=min(x) - x_span / 2, max=max(x) + x_span / 2)
+        estimate['offset'].set(
+            value=offset, min=min(data) - data_span / 2, max=max(data) + data_span / 2
+        )
         return estimate
 
     @estimator('Dip')
