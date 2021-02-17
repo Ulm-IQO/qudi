@@ -791,11 +791,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             return analog_counts[0], count_result[0]
 
         except Exception as e:
-           self.log.error('The scan went wrong, killing the scanner.')
-           self._close_scanner()
-           # if self.hold_max is True:
-           #   self.signal_scan_next_line.emit()
-           raise e
+            self.log.error('The scan went wrong, killing the scanner.')
+            self._close_scanner()
+            # if self.hold_max is True:
+            #   self.signal_scan_next_line.emit()
+            raise e
 
     def _do_next_line(self):
         """If stopRequested then finish the scan, otherwise perform next repeat of the scan line
@@ -996,6 +996,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters["Scan Resolution (V/Step)"] = self._scan_resolution
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
+        parameters['Ramp smoothing used'] = self.smoothing
+        parameters['Smoothing steps at beginning and end of ramp'] = self._smoothing_steps
 
         self._save_logic.save_data(data,
                                    filepath=filepath,
