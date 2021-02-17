@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module contains a GUI for operating the spectrometer camera logic module.
+This module contains a GUI component to crate easily a colorbar in any GUI module
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ import numpy as np
 import time
 
 class ColorbarWidget(QtWidgets.QWidget):
-    """ Create the SettingsDialog window, based on the corresponding *.ui file."""
+    """ Create the widget, based on the corresponding *.ui file."""
 
     def __init__(self, image_widget, unit='c/s'):
         # Get the path to the *.ui file
@@ -62,7 +62,7 @@ class ColorbarWidget(QtWidgets.QWidget):
         self.percentile.setChecked(True)
 
     def init_spin_box(self):
-
+        """ Initialize all the spinboxes """
         self._min_percentile = ScienDSpinBox()
         self._min_manual = ScienDSpinBox()
         self._max_percentile = ScienDSpinBox()
@@ -96,7 +96,7 @@ class ColorbarWidget(QtWidgets.QWidget):
         self.percentile.clicked.connect(self.update_cb_range)
 
     def init_colorbar(self):
-
+        """ Create the colorbar """
         self.my_colors = ColorScaleInferno()
         self._color_map = ColorScaleMagma()
         self._cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=self._cb_min, cb_max=self._cb_max)
@@ -106,6 +106,7 @@ class ColorbarWidget(QtWidgets.QWidget):
         self.colorbar.setMouseEnabled(x=False, y=False)
 
     def set_image(self, image_widget):
+        """ Set the image widget associated to the colorbar """
         self._image = image_widget
         self._min_manual.setValue(np.min(self._image.image))
         self._min_percentile.setValue(0)
@@ -114,8 +115,7 @@ class ColorbarWidget(QtWidgets.QWidget):
         self.refresh_colorbar()
 
     def get_cb_range(self):
-        """ Determines the cb_min and cb_max values for the image
-        """
+        """ Determines the cb_min and cb_max values for the image """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
         if self.manual.isChecked() or np.count_nonzero(self._image.image) < 1:
             cb_min = self._min_manual.value()
@@ -138,40 +138,29 @@ class ColorbarWidget(QtWidgets.QWidget):
         return cb_range
 
     def refresh_colorbar(self):
-        """ Adjust the colorbar.
-
-        Calls the refresh method from colorbar, which takes either the lowest
-        and higherst value in the image or predefined ranges. Note that you can
-        invert the colorbar if the lower border is bigger then the higher one.
-        """
+        """ Adjust the colorbar. """
         cb_range = self.get_cb_range()
         self._cb.refresh_colorbar(cb_range[0], cb_range[1])
 
     def refresh_image(self):
-        """ Update the current Depth image from the logic.
-
-        Everytime the scanner is scanning a line in depth the
-        image is rebuild and updated in the GUI.
-        """
+        """ Update the image colors range."""
 
         image_data = self._image.image
         cb_range = self.get_cb_range()
-
-        # Now update image with new color scale, and update colorbar
         self._image.setImage(image=image_data, levels=(cb_range[0], cb_range[1]))
         self.refresh_colorbar()
 
     def update_cb_range(self):
-        """Redraw colour bar and scan image."""
+        """ Redraw colour bar and image."""
         self.refresh_colorbar()
         self.refresh_image()
 
     def shortcut_to_cb_manual(self):
-        """Someone edited the absolute counts range for the xy colour bar, better update."""
+        """ Someone edited the absolute counts range for the colour bar, better update."""
         self.manual.setChecked(True)
         self.update_cb_range()
 
     def shortcut_to_cb_centiles(self):
-        """Someone edited the centiles range for the xy colour bar, better update."""
+        """Someone edited the centiles range for the colour bar, better update."""
         self.percentile.setChecked(True)
         self.update_cb_range()
