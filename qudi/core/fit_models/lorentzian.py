@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+from scipy.ndimage import filters
 from ._general import FitModelBase, estimator
 
 __all__ = ('Lorentzian',)
@@ -43,32 +44,54 @@ class Lorentzian(FitModelBase):
 
     @estimator('Peak')
     def estimate_peak(self, data, x):
-        estimate = self.make_params()
-        x_range = abs(x[-1] - x[0])
-
-        offset = np.mean(data)
-        amplitude = np.max(data) - np.min(data)
-        center = x[np.argmax(data)]
-        sigma = x_range / 10
-        estimate['offset'].set(value=offset,
-                               min=np.min(data) - amplitude / 2,
-                               max=np.max(data) + amplitude / 2)
-        estimate['amplitude'].set(value=amplitude, min=0, max=amplitude * 1.5)
-        estimate['center'].set(value=center,
-                               min=np.min(x) - x_range / 2,
-                               max=np.max(x) + x_range / 2)
-        estimate['sigma'].set(value=sigma, min=0, max=x_range)
-        return estimate
-
-    @estimator('Dip')
-    def estimate_dip(self, data, x):
-        estimate = self.estimate_peak(-data, x)
+        estimate = self.estimate_dip(-data, x)
         estimate['offset'].set(value=-estimate['offset'].value,
                                min=-estimate['offset'].max,
                                max=-estimate['offset'].min)
         estimate['amplitude'].set(value=-estimate['amplitude'].value,
                                   min=-estimate['amplitude'].max,
                                   max=-estimate['amplitude'].min)
+        return estimate
+
+    @estimator('Dip')
+    def estimate_dip(self, data, x):
+        # check if input x-axis is ordered and increasing
+        if not np.all(val > 0 for val in np.ediff1d(x)):
+            x_sort_args = np.argsort(x)
+            x = x[x_sort_args]
+            data = data[x_sort_args]
+
+        # Smooth data
+        if len(x) <= 10:
+            filter_width = 1
+        else:
+            filter_width = min(10, int(round(len(x)/10)))
+        data_smoothed = filters.gaussian_filter1d(data, sigma=filter_width)
+
+        # determine dip position
+        center = x[np.argmin(data_smoothed)]
+
+        # determine offset from histogram
+        hist = np.histogram(data_smoothed, bins=filter_width)
+        offset = (hist[1][hist[0].argmax()] + hist[1][hist[0].argmax() + 1]) / 2
+        data_smoothed -= offset
+
+        # calculate from the leveled data the amplitude:
+        amplitude = min(data_smoothed)
+
+        # according to the derived formula, calculate sigma. The crucial part is here that the
+        # offset was estimated correctly, then the area under the curve is calculated correctly:
+        numerical_integral = np.trapz(data_smoothed, x)
+        sigma = abs(numerical_integral / (np.pi * amplitude))
+
+        x_spacing = min(abs(np.ediff1d(x)))
+        x_span = abs(x[-1] - x[0])
+
+        estimate = self.make_params()
+        estimate['amplitude'].set(value=amplitude, min=2 * amplitude, max=0)
+        estimate['sigma'].set(value=sigma, min=x_spacing, max=x_span)
+        estimate['center'].set(value=center, min=min(x) - x_span / 2, max=max(x) + x_span / 2)
+        estimate['offset'].set(value=offset, min=min(data), max=max(data))
         return estimate
 
     @estimator('Peak (no offset)')

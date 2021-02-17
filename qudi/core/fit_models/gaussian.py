@@ -47,7 +47,11 @@ class Gaussian(FitModelBase):
 
         x_span = abs(x[-1] - x[0])
         x_step = abs(x[1] - x[0])
-        data_smoothed = filters.gaussian_filter1d(data, sigma=2)
+        if len(x) <= 10:
+            filter_width = 1
+        else:
+            filter_width = min(10, int(round(len(x)/10)))
+        data_smoothed = filters.gaussian_filter1d(data, sigma=filter_width)
         y_span = max(data_smoothed) - min(data_smoothed)
         smooth_sum = np.sum(data_smoothed)
         smooth_mean = np.mean(data_smoothed)
