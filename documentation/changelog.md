@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Added support for Keysight M8195A and M8190A AWGs.
 * Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
 in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
