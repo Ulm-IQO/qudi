@@ -218,7 +218,7 @@ def find_peaks(data, peak_count, **kwargs):
     # Only keep requested number of highest peaks
     peaks = peaks[-peak_count:]
     peak_heights = data[peaks]
-    peak_widths = _peak_widths(data, peaks, rel_height=0.5)  # full-width at half-maximum
+    peak_widths = _peak_widths(data, peaks, rel_height=0.5)[0]  # full-width at half-maximum
 
     # Check if data borders are more promising as peak locations
     width = max(2, int(round(max(peak_widths))))

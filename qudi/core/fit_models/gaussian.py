@@ -151,9 +151,9 @@ class DoubleGaussian(FitModelBase):
 
         # Replace missing peaks with sensible default value
         while len(peak_indices) < 2:
-            peak_indices.append(x // 2)
-            peak_heights.append(data_span)
-            peak_widths.append(x_spacing * 10)
+            peak_indices = np.append(peak_indices, [len(x) // 2])
+            peak_heights = np.append(peak_heights, [data_span])
+            peak_widths = np.append(peak_widths, [x_spacing * 10])
 
         estimate = self.make_params()
         estimate['amplitude_1'].set(value=peak_heights[0], min=0, max=2 * data_span)
