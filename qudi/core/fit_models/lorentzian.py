@@ -24,7 +24,7 @@ import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
 from ._general import FitModelBase, estimator, correct_offset_histogram, find_peaks
 
-__all__ = ('Lorentzian',)
+__all__ = ('DoubleLorentzian', 'Lorentzian',)
 
 
 class Lorentzian(FitModelBase):
