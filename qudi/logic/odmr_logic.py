@@ -72,9 +72,19 @@ class OdmrLogic(LogicBase):
          'estimator'        : 'Dip',
          'custom_parameters': None},
 
+        {'name'             : 'Two Gaussian Dips',
+         'model'            : 'DoubleGaussian',
+         'estimator'        : 'Dips',
+         'custom_parameters': None},
+
         {'name'             : 'Lorentzian Dip',
          'model'            : 'Lorentzian',
          'estimator'        : 'Dip',
+         'custom_parameters': None},
+
+        {'name'             : 'Two Lorentzian Dips',
+         'model'            : 'DoubleLorentzian',
+         'estimator'        : 'Dips',
          'custom_parameters': None},
     )
 
