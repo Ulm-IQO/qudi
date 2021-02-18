@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
-from ._general import FitModelBase, estimator, correct_offset_histogram
+from ._general import FitModelBase, estimator, correct_offset_histogram, find_peaks
 
 __all__ = ('Lorentzian',)
 
@@ -104,4 +104,88 @@ class Lorentzian(FitModelBase):
     def estimate_dip_no_offset(self, data, x):
         estimate = self.estimate_dip(data, x)
         estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
+        return estimate
+
+
+class DoubleLorentzian(FitModelBase):
+    """ ToDo: Document
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_param_hint('offset', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_1', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_2', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('center_1', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('center_2', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('sigma_1', value=0., min=0., max=np.inf)
+        self.set_param_hint('sigma_2', value=0., min=0., max=np.inf)
+
+    @staticmethod
+    def _model_function(x, offset, amplitude_1, center_1, sigma_1, amplitude_2, center_2, sigma_2):
+        gauss = amplitude_1 * sigma_1 ** 2 / ((x - center_1) ** 2 + sigma_1 ** 2)
+        gauss += amplitude_2 * sigma_2 ** 2 / ((x - center_2) ** 2 + sigma_2 ** 2)
+        gauss += offset
+        return gauss
+
+    @estimator('Peaks')
+    def estimate_peaks(self, data, x):
+        # check if input x-axis is ordered and increasing
+        if not np.all(val > 0 for val in np.ediff1d(x)):
+            x = x[np.argsort(x)]
+            data = data[np.argsort(x)]
+
+        # Smooth data
+        filter_width = min(1, int(round(len(x) / 100)))
+        data_smoothed = _gaussian_filter(data, sigma=filter_width)
+
+        # determine offset from histogram
+        data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
+
+        # Find peaks along with width and amplitude estimation
+        peak_indices, peak_heights, peak_widths = find_peaks(data_smoothed,
+                                                             peak_count=2,
+                                                             width=filter_width)
+
+        x_spacing = min(abs(np.ediff1d(x)))
+        x_span = abs(x[-1] - x[0])
+        data_span = abs(max(data) - min(data))
+
+        # Replace missing peaks with sensible default value
+        while len(peak_indices) < 2:
+            peak_indices = np.append(peak_indices, [len(x) // 2])
+            peak_heights = np.append(peak_heights, [data_span])
+            peak_widths = np.append(peak_widths, [x_spacing * 10])
+
+        estimate = self.make_params()
+        estimate['amplitude_1'].set(value=peak_heights[0], min=0, max=2 * data_span)
+        estimate['amplitude_2'].set(value=peak_heights[1], min=0, max=2 * data_span)
+        estimate['sigma_1'].set(value=peak_widths[0] * x_spacing / 2.3548,
+                                min=x_spacing,
+                                max=x_span)
+        estimate['sigma_2'].set(value=peak_widths[1] * x_spacing / 2.3548,
+                                min=x_spacing,
+                                max=x_span)
+        estimate['center_1'].set(value=x[peak_indices[0]],
+                                 min=min(x) - x_span / 2,
+                                 max=max(x) + x_span / 2)
+        estimate['center_2'].set(value=x[peak_indices[1]],
+                                 min=min(x) - x_span / 2,
+                                 max=max(x) + x_span / 2)
+        estimate['offset'].set(value=offset,
+                               min=min(data) - data_span / 2,
+                               max=max(data) + data_span / 2)
+        return estimate
+
+    @estimator('Dips')
+    def estimate_dips(self, data, x):
+        estimate = self.estimate_peaks(-data, x)
+        estimate['offset'].set(value=-estimate['offset'].value,
+                               min=-estimate['offset'].max,
+                               max=-estimate['offset'].min)
+        estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
+                                    min=-estimate['amplitude_1'].max,
+                                    max=-estimate['amplitude_1'].min)
+        estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
+                                    min=-estimate['amplitude_2'].max,
+                                    max=-estimate['amplitude_2'].min)
         return estimate
