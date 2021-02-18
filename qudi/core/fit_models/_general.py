@@ -23,11 +23,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import inspect
 import numpy as np
+from scipy.signal import find_peaks as _find_peaks
+from scipy.signal import peak_widths as _peak_widths
 from abc import ABCMeta, abstractmethod
 from lmfit import Model, CompositeModel
 
 __all__ = (
-    'estimator', 'FitCompositeModelBase', 'FitCompositeModelMeta', 'FitModelBase', 'FitModelMeta'
+    'correct_offset_histogram', 'find_peaks', 'estimator', 'FitCompositeModelBase',
+    'FitCompositeModelMeta', 'FitModelBase', 'FitModelMeta'
 )
 
 
@@ -144,40 +147,125 @@ class FitCompositeModelBase(CompositeModel, metaclass=FitCompositeModelMeta):
         return self._estimators.copy()
 
 
-def search_single_peak(data, peak_type=None):
-    """ ToDo: Document
-    Assuming equally spaced data points. Data must be smoothed and offset corrected beforehand.
+def correct_offset_histogram(data, bin_width=None):
+    """ Subtracts a constant offset from a copy of given data array and returns it.
+    The offset is assumed to be the most common value in data. This value is determined by creating
+    a histogram of <data> with bin width <bin_width> and taking the value with most occurrences.
+    If no bin width has been specified, assume bin width of 1/50th of data length (min. 1).
+
+    For best results, make sure to filter noisy data beforehand. The used smoothing filter width
+    is a good estimate for optimal bin_width.
+
+    @param iterable data: Peak data to correct offset for. Must be convertible using numpy.asarray.
+    @param int bin_width: optional, bin width in samples to use for histogram creation.
+
+    @return numpy.ndarray, float: New array with offset-corrected data, the offset value
     """
-    amplitude = max(data)
-    position = np.argmax(data)
-    if peak_type == 'gauss':
-        approx_width = abs(np.trapz(data) / (np.sqrt(2*np.pi) * amplitude))
-    else:
-        approx_width = abs(np.trapz(data) / (np.pi * amplitude))
-
-    # Find threshold that approximately corresponds to the peak width estimated.
-    # Search in steps of 10% multiples of amplitude.
-    start_index, stop_index = 0, len(data) - 1
-    width_diff = np.inf
-    for threshold in [ii * amplitude/10 for ii in reversed(range(1, 11))]:
-        args = np.argwhere(data >= threshold)[:, 0]
-        # Stop here if no arguments are found
-        if len(args) == 0:
-            continue
-        consecutive_args = np.split(args, np.where(np.ediff1d(args) != 1)[0]+1)
-        max_streak_length = max(len(arr) for arr in consecutive_args if position in arr)
-        for args in consecutive_args:
-            if len(args) == max_streak_length:
-                break
-        diff = abs(approx_width - args.size)
-        if diff < width_diff:
-            width_diff = diff
-            start_index, stop_index = args[0], args[-1]
-
-    # Take middle of determined range as peak position index
-    position = (stop_index - start_index) // 2 + start_index
-    return position, (start_index, stop_index)
+    data = np.asarray(data)
+    if bin_width is None:
+        bin_width = max(1, data.size // 50)
+    elif not isinstance(bin_width, int):
+        bin_width = max(1, int(round(bin_width)))
+    hist = np.histogram(data, bins=bin_width)
+    offset = (hist[1][hist[0].argmax()] + hist[1][hist[0].argmax() + 1]) / 2
+    return data - offset, offset
 
 
-def search_double_peak(data):
-    pass
+def find_peaks(data, peak_count, **kwargs):
+    """ Find peaks using scipy.signal.find_peaks().
+    ToDo: Document
+    """
+    peak_count = int(peak_count)
+    assert peak_count > 0, 'Parameter "peak_count" must be integer >= 1'
+    assert len(data) >= 5, 'Data must contain at least 5 data points'
+
+    # Start at 90% of maximum peak height and decrease the peak height limit until the required
+    # number of peaks has been found. Each iteration reduces the height limit by 10%.
+    # Iteration limit corresponds to a height value of 5% of max(data). So peak heights can
+    # differ by max. 95% from maximum data value.
+    height = 0.9 * max(data)
+    max_iter = 25
+    while max_iter > 0:
+        max_iter -= 1
+        kwargs['height'] = height
+        peaks, properties = _find_peaks(data, **kwargs)
+        if len(peaks) >= 2:
+            break
+        height *= 0.9
+
+    if len(peaks) == 0:
+        # ToDo: warn
+        return list(), list(), list()
+
+    # Sort found peaks by increasing peak height
+    sorted_args = np.argsort(data[peaks])
+    peaks = peaks[sorted_args]
+
+    # Handle case if the required number of peaks could not be found.
+    # if max_iter < 1:
+    #     # ToDo: warnings
+    #     if len(peaks) == 0:
+    #         peaks =
+    #     else:
+    #         print(
+    #             'WARNING: No two peaks could be found. Positioning two peaks at found position split by sigma.')
+    #         middle = peaks[0]
+    #     peaks = [max(0, int(round(middle - sigma))), min(len(data) - 1, int(round(middle + sigma)))]
+    #     if peaks[0] == peaks[1]:
+    #         peaks[1] = min(len(data) - 1, peaks[1] + 1)
+    #         peaks[0] = max(0, peaks[0] - 1)
+
+    # Only keep requested number of highest peaks
+    peaks = peaks[-peak_count:]
+    peak_heights = data[peaks]
+    peak_widths = _peak_widths(data, peaks, rel_height=0.5)  # full-width at half-maximum
+
+    # Check if data borders are more promising as peak locations
+    width = max(2, int(round(max(peak_widths))))
+    left_mean = np.mean(data[:width])
+    right_mean = np.mean(data[-width:])
+    if 2 * min(peak_heights) < left_mean and min(peaks) > 2 * width:
+        min_arg = np.argmin(peak_heights)
+        peaks[min_arg] = np.argmax(data[:width])
+        peak_heights[min_arg] = data[peaks[min_arg]]
+    if 2 * min(peak_heights) < 2 * right_mean and max(peaks) < len(data) - 1 - 2 * width:
+        min_arg = np.argmin(peak_heights)
+        peaks[min_arg] = np.argmax(data[-width:])
+        peak_heights[min_arg] = data[peaks[min_arg]]
+
+    return peaks, peak_heights, peak_widths
+
+
+# def search_single_peak(data, peak_type=None):
+#     """ ToDo: Document
+#     Assuming equally spaced data points. Data must be smoothed and offset corrected beforehand.
+#     """
+#     amplitude = max(data)
+#     position = np.argmax(data)
+#     if peak_type == 'gauss':
+#         approx_width = abs(np.trapz(data) / (np.sqrt(2*np.pi) * amplitude))
+#     else:
+#         approx_width = abs(np.trapz(data) / (np.pi * amplitude))
+#
+#     # Find threshold that approximately corresponds to the peak width estimated.
+#     # Search in steps of 10% multiples of amplitude.
+#     start_index, stop_index = 0, len(data) - 1
+#     width_diff = np.inf
+#     for threshold in [ii * amplitude/10 for ii in reversed(range(1, 11))]:
+#         args = np.argwhere(data >= threshold)[:, 0]
+#         # Stop here if no arguments are found
+#         if len(args) == 0:
+#             continue
+#         consecutive_args = np.split(args, np.where(np.ediff1d(args) != 1)[0]+1)
+#         max_streak_length = max(len(arr) for arr in consecutive_args if position in arr)
+#         for args in consecutive_args:
+#             if len(args) == max_streak_length:
+#                 break
+#         diff = abs(approx_width - args.size)
+#         if diff < width_diff:
+#             width_diff = diff
+#             start_index, stop_index = args[0], args[-1]
+#
+#     # Take middle of determined range as peak position index
+#     position = (stop_index - start_index) // 2 + start_index
+#     return position, (start_index, stop_index)

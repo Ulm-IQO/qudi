@@ -21,8 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from scipy.ndimage import filters
-from ._general import FitModelBase, estimator
+from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
+from ._general import FitModelBase, estimator, correct_offset_histogram
 
 __all__ = ('Lorentzian',)
 
@@ -54,15 +54,13 @@ class Lorentzian(FitModelBase):
             filter_width = 1
         else:
             filter_width = min(10, int(round(len(x) / 10)))
-        data_smoothed = filters.gaussian_filter1d(data, sigma=filter_width)
+        data_smoothed = _gaussian_filter(data, sigma=filter_width)
 
         # determine peak position
         center = x[np.argmax(data_smoothed)]
 
         # determine offset from histogram
-        hist = np.histogram(data_smoothed, bins=filter_width)
-        offset = (hist[1][hist[0].argmax()] + hist[1][hist[0].argmax() + 1]) / 2
-        data_smoothed -= offset
+        data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
 
         # calculate amplitude
         amplitude = abs(max(data) - offset)
