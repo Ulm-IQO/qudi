@@ -107,7 +107,7 @@ class Gaussian(FitModelBase):
 
 
 class DoubleGaussian(FitModelBase):
-    """ ToDo: Document and implement estimators
+    """ ToDo: Document
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
