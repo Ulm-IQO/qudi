@@ -27,6 +27,22 @@ from ._general import FitModelBase, estimator, correct_offset_histogram, find_hi
 __all__ = ('DoubleLorentzian', 'Lorentzian',)
 
 
+def _multiple_lorentzian_1d(x, centers, sigmas, amplitudes):
+    """ Mathematical definition of the sum of multiple (physical) Lorentzian functions without any
+    bias.
+
+    WARNING: iterable parameters "centers", "sigmas" and "amplitudes" must have same length.
+
+    @param float x: The independent variable to calculate lorentz(x)
+    @param iterable centers: Iterable containing center positions for all lorentzians
+    @param iterable sigmas: Iterable containing sigmas for all lorentzians
+    @param iterable amplitudes: Iterable containing amplitudes for all lorentzians
+    """
+    assert len(centers) == len(sigmas) == len(amplitudes)
+    return sum(amp * sig ** 2 / ((x - c) ** 2 + sig ** 2) for c, sig, amp in
+               zip(centers, sigmas, amplitudes))
+
+
 class Lorentzian(FitModelBase):
     """
     """
@@ -40,7 +56,7 @@ class Lorentzian(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, center, sigma, amplitude):
-        return offset + amplitude * sigma ** 2 / ((x - center) ** 2 + sigma ** 2)
+        return offset + _multiple_lorentzian_1d(x, (center,), (sigma,), (amplitude,))
 
     @estimator('Peak')
     def estimate_peak(self, data, x):
@@ -122,10 +138,10 @@ class DoubleLorentzian(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, center_1, center_2, sigma_1, sigma_2, amplitude_1, amplitude_2):
-        gauss = amplitude_1 * sigma_1 ** 2 / ((x - center_1) ** 2 + sigma_1 ** 2)
-        gauss += amplitude_2 * sigma_2 ** 2 / ((x - center_2) ** 2 + sigma_2 ** 2)
-        gauss += offset
-        return gauss
+        return offset + _multiple_lorentzian_1d(x,
+                                                (center_1, center_2),
+                                                (sigma_1, sigma_2),
+                                                (amplitude_1, amplitude_2))
 
     @estimator('Peaks')
     def estimate_peaks(self, data, x):

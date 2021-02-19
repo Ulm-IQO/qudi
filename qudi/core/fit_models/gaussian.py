@@ -27,6 +27,21 @@ from ._general import FitModelBase, estimator, correct_offset_histogram, find_hi
 __all__ = ('DoubleGaussian', 'Gaussian', 'Gaussian2D')
 
 
+def _multiple_gaussian_1d(x, centers, sigmas, amplitudes):
+    """ Mathematical definition of the sum of multiple gaussian functions without any bias.
+
+    WARNING: iterable parameters "centers", "sigmas" and "amplitudes" must have same length.
+
+    @param float x: The independent variable to calculate gauss(x)
+    @param iterable centers: Iterable containing center positions for all gaussians
+    @param iterable sigmas: Iterable containing sigmas for all gaussians
+    @param iterable amplitudes: Iterable containing amplitudes for all gaussians
+    """
+    assert len(centers) == len(sigmas) == len(amplitudes)
+    return sum(amp * np.exp(-((x - c) ** 2) / (2 * sig ** 2)) for c, sig, amp in
+               zip(centers, sigmas, amplitudes))
+
+
 class Gaussian(FitModelBase):
     """
     """
@@ -39,7 +54,7 @@ class Gaussian(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, center, sigma, amplitude):
-        return offset + amplitude * np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
+        return offset + _multiple_gaussian_1d(x, (center,), (sigma,), (amplitude,))
 
     @estimator('Peak')
     def estimate_peak(self, data, x):
@@ -49,10 +64,7 @@ class Gaussian(FitModelBase):
             data = data[np.argsort(x)]
 
         # Smooth data
-        if len(x) <= 10:
-            filter_width = 1
-        else:
-            filter_width = min(10, int(round(len(x) / 10)))
+        filter_width = max(1, int(round(len(x) / 100)))
         data_smoothed = _gaussian_filter(data, sigma=filter_width)
 
         # determine peak position
@@ -121,10 +133,10 @@ class DoubleGaussian(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, center_1, center_2, sigma_1, sigma_2, amplitude_1, amplitude_2):
-        gauss = amplitude_1 * np.exp(-((x - center_1) ** 2) / (2 * sigma_1 ** 2))
-        gauss += amplitude_2 * np.exp(-((x - center_2) ** 2) / (2 * sigma_2 ** 2))
-        gauss += offset
-        return gauss
+        return offset + _multiple_gaussian_1d(x,
+                                              (center_1, center_2),
+                                              (sigma_1, sigma_2),
+                                              (amplitude_1, amplitude_2))
 
     @estimator('Peaks')
     def estimate_peaks(self, data, x):
