@@ -28,6 +28,24 @@ from ._general import FitModelBase, estimator
 __all__ = ('ExponentialDecay',)
 
 
+def _multiple_exponential_decay(x, amplitudes, decays, stretches):
+    """ Mathematical definition of the sum of multiple stretched exponential decays without any
+    bias.
+
+    WARNING: iterable parameters "amplitudes", "decays" and "stretches" must have same length.
+
+    @param float x: The independent variable to calculate f(x)
+    @param iterable amplitudes: Iterable containing amplitudes for all exponentials
+    @param iterable decays: Iterable containing decay constants for all exponentials
+    @param iterable stretches: Iterable containing stretch constants for all exponentials
+
+    @return float|numpy.ndarray: The result given x for f(x)
+    """
+    assert len(decays) == len(amplitudes) == len(stretches)
+    return sum(amp * np.exp(-(x / decay) ** stretch) for amp, decay, stretch in
+               zip(amplitudes, decays, stretches))
+
+
 class ExponentialDecay(FitModelBase):
     """
     """
@@ -40,7 +58,7 @@ class ExponentialDecay(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, amplitude, decay, stretch):
-        return offset + amplitude * np.exp(-(x / decay) ** stretch)
+        return offset + _multiple_exponential_decay(x, (amplitude,), (decay,), (stretch,))
 
     @estimator('Decay')
     def estimate_decay(self, data, x):
@@ -111,3 +129,25 @@ class ExponentialDecay(FitModelBase):
         estimate = self.estimate_stretched_decay(data, x)
         estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
         return estimate
+
+
+class DoubleExponentialDecay(FitModelBase):
+    """
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_param_hint('offset', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_1', value=1., min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude_2', value=1., min=-np.inf, max=np.inf)
+        self.set_param_hint('decay_1', value=1., min=0., max=np.inf)
+        self.set_param_hint('decay_2', value=1., min=0., max=np.inf)
+        self.set_param_hint('stretch_1', value=1., min=0., max=np.inf)
+        self.set_param_hint('stretch_2', value=1., min=0., max=np.inf)
+
+    @staticmethod
+    def _model_function(x, offset, amplitude_1, amplitude_2, decay_1, decay_2, stretch_1,
+                        stretch_2):
+        return offset + _multiple_exponential_decay(x,
+                                                    (amplitude_1, amplitude_2),
+                                                    (decay_1, decay_2),
+                                                    (stretch_1, stretch_2))

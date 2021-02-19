@@ -182,6 +182,22 @@ class TripleGaussian(FitModelBase):
         return estimate_triple_dips(self.make_params(), data, x)
 
 
+class GaussianLinear(FitModelBase):
+    """
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_param_hint('offset', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('slope', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('center', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('sigma', value=0., min=0., max=np.inf)
+
+    @staticmethod
+    def _model_function(x, offset, slope, center, sigma, amplitude):
+        return offset + x * slope * _multiple_gaussian_1d(x, (center,), (sigma,), (amplitude,))
+
+
 class Gaussian2D(FitModelBase):
     """
     """
