@@ -83,6 +83,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
         self.__start_time = 0.0
         self.__returned_samples = 0
         self.__simulated_samples = None
+        self.__simulated_odmr_params = dict()
 
     def on_deactivate(self):
         self.__simulated_samples = None
@@ -222,12 +223,11 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
         gamma = 2
         data = dict()
         x = np.arange(length, dtype=np.float64)
-        for ch in self._constraints.channel_names:
-            if ch in self._active_channels:
-                pos = length / 2 + (np.random.rand() - 0.5) * length / 3
-                offset = np.random.rand() * 1000
-                amp = offset / 30
-                noise = np.sqrt(amp)
-                data[ch] = amp + (np.random.rand() - 0.5) * noise - amp * gamma ** 2 / (
-                            (x - pos) ** 2 + gamma ** 2)
+        for ch in self._active_channels:
+            offset = ((np.random.rand() - 0.5) * 0.05 + 1) * 200000
+            pos = length / 2 + (np.random.rand() - 0.5) * length / 10
+            amp = offset / 20
+            noise = amp / 2
+            data[ch] = offset + (np.random.rand(length) - 0.5) * noise - amp * gamma ** 2 / (
+                    (x - pos) ** 2 + gamma ** 2)
         self.__simulated_samples = data

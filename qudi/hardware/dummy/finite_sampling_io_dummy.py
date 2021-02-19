@@ -289,10 +289,10 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
         data = dict()
         x = np.arange(length, dtype=np.float64)
         for ch in self._active_input_channels:
+            offset = ((np.random.rand() - 0.5) * 0.05 + 1) * 200000
             pos = length / 2 + (np.random.rand() - 0.5) * length / 10
-            offset = np.random.rand() * 100
-            amp = offset / 30
-            noise = np.sqrt(amp)
-            data[ch] = amp + (np.random.rand() - 0.5) * noise - amp * gamma ** 2 / (
+            amp = offset / 20
+            noise = amp
+            data[ch] = offset + (np.random.rand(length) - 0.5) * noise - amp * gamma ** 2 / (
                         (x - pos) ** 2 + gamma ** 2)
         self.__simulated_samples = data
