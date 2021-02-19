@@ -54,29 +54,17 @@ class FitModelMeta(ABCMeta):
     def __init__(cls, name, bases, attrs):
         super().__init__(name, bases, attrs)
 
-        # collect marked estimator methods in a dict "_estimators" and attach it to created class
-        estimators = dict()
-        for attr_name in [a for a in dir(cls) if not a.startswith('__')]:
-            attr = getattr(cls, attr_name)
-            name = getattr(attr, '_estimator_name', None)
-            if isinstance(name, str):
-                estimators[name] = attr
-        cls._estimators = estimators
-
-        # The following is just performed on lmfit.Model subclasses, NOT CompositeModel subclasses
-        if not issubclass(cls, CompositeModel):
-            # inspect static _model_function and perform sanity checks
-            model_func = inspect.getattr_static(cls, '_model_function', None)
-            assert isinstance(model_func, staticmethod), '"_model_function" must be staticmethod'
-            params = tuple(inspect.signature(cls._model_function).parameters)
-            assert len(params) > 0, '"_model_function" must accept at least 1 positional argument' \
-                                    ' representing the independent variable'
-            indep_var_name = params[0]
-
-            for estimator_name, estimator in estimators.items():
-                assert getattr(estimator, '_estimator_independent_var', '') == indep_var_name, \
-                    f'estimator "{estimator_name}" second argument must have the same name as the' \
-                    f' independent variable of "_model_function"'
+        # collect marked estimator methods in a dict "_estimators" and attach it to created class.
+        # NOTE: Estimators defined in base classes will not be taken into account. If you want to
+        # do inheritance shenanigans with these fit model classes, you need to manually handle this
+        # in the implementation.
+        # Generally one can not assume parent estimators to be valid for a subclass.
+        cls._estimators = {attr._estimator_name: attr for attr in attrs.values() if
+                           hasattr(attr, '_estimator_name')}
+        independent_vars = {e._estimator_independent_var for e in cls._estimators.values()}
+        assert len(independent_vars) < 2, \
+            'More than one independent variable name encountered in estimators. Use only the ' \
+            'independent variable name that has been used in the Models "_model_function".'
 
 
 class FitCompositeModelMeta(type):
@@ -84,8 +72,10 @@ class FitCompositeModelMeta(type):
         super().__init__(name, bases, attrs)
 
         # collect marked estimator methods in a dict "_estimators" and attach it to created class.
-        # The main difference to FitModelMeta.__init__ is the fact that we just collect estimators
-        # in cls.__dict__ here (not from possible base classes)
+        # NOTE: Estimators defined in base classes will not be taken into account. If you want to
+        # do inheritance shenanigans with these fit model classes, you need to manually handle this
+        # in the implementation.
+        # Generally one can not assume parent estimators to be valid for a subclass.
         cls._estimators = {attr._estimator_name: attr for attr in attrs.values() if
                            hasattr(attr, '_estimator_name')}
         independent_vars = {e._estimator_independent_var for e in cls._estimators.values()}
