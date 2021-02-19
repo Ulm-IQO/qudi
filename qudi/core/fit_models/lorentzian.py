@@ -26,7 +26,7 @@ from ._general import FitModelBase, estimator, correct_offset_histogram
 from ._peak_helpers import estimate_double_peaks, estimate_double_dips
 from ._peak_helpers import estimate_triple_peaks, estimate_triple_dips
 
-__all__ = ('DoubleLorentzian', 'Lorentzian', 'TripleLorentzian')
+__all__ = ('DoubleLorentzian', 'Lorentzian', 'LorentzianLinear', 'TripleLorentzian')
 
 
 def _multiple_lorentzian_1d(x, centers, sigmas, amplitudes):
@@ -182,3 +182,19 @@ class TripleLorentzian(FitModelBase):
     @estimator('Dips')
     def estimate_dips(self, data, x):
         return estimate_triple_dips(self.make_params(), data, x)
+
+
+class LorentzianLinear(FitModelBase):
+    """
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_param_hint('offset', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('slope', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('amplitude', value=0, min=-np.inf, max=np.inf)
+        self.set_param_hint('center', value=0., min=-np.inf, max=np.inf)
+        self.set_param_hint('sigma', value=0., min=0., max=np.inf)
+
+    @staticmethod
+    def _model_function(x, offset, slope, center, sigma, amplitude):
+        return offset + x * slope * _multiple_lorentzian_1d(x, (center,), (sigma,), (amplitude,))
