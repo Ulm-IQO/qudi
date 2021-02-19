@@ -142,9 +142,12 @@ class DoubleLorentzian(FitModelBase):
         data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
 
         # Find peaks along with width and amplitude estimation
-        peak_indices, peak_heights, peak_widths = find_highest_peaks(data_smoothed,
-                                                                     peak_count=2,
-                                                                     width=filter_width)
+        peak_indices, peak_heights, peak_widths = find_highest_peaks(
+            data_smoothed,
+            peak_count=2,
+            width=filter_width,
+            height=0.05 * max(data_smoothed)
+        )
 
         x_spacing = min(abs(np.ediff1d(x)))
         x_span = abs(x[-1] - x[0])
