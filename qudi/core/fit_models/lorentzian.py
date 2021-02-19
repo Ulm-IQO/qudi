@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
-from ._general import FitModelBase, estimator, correct_offset_histogram, find_peaks
+from ._general import FitModelBase, estimator, correct_offset_histogram, find_highest_peaks
 
 __all__ = ('DoubleLorentzian', 'Lorentzian',)
 
@@ -39,7 +39,7 @@ class Lorentzian(FitModelBase):
         self.set_param_hint('sigma', value=0., min=0., max=np.inf)
 
     @staticmethod
-    def _model_function(x, offset, amplitude, center, sigma):
+    def _model_function(x, offset, center, sigma, amplitude):
         return offset + amplitude * sigma ** 2 / ((x - center) ** 2 + sigma ** 2)
 
     @estimator('Peak')
@@ -121,7 +121,7 @@ class DoubleLorentzian(FitModelBase):
         self.set_param_hint('sigma_2', value=0., min=0., max=np.inf)
 
     @staticmethod
-    def _model_function(x, offset, amplitude_1, center_1, sigma_1, amplitude_2, center_2, sigma_2):
+    def _model_function(x, offset, center_1, center_2, sigma_1, sigma_2, amplitude_1, amplitude_2):
         gauss = amplitude_1 * sigma_1 ** 2 / ((x - center_1) ** 2 + sigma_1 ** 2)
         gauss += amplitude_2 * sigma_2 ** 2 / ((x - center_2) ** 2 + sigma_2 ** 2)
         gauss += offset
@@ -142,19 +142,27 @@ class DoubleLorentzian(FitModelBase):
         data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
 
         # Find peaks along with width and amplitude estimation
-        peak_indices, peak_heights, peak_widths = find_peaks(data_smoothed,
-                                                             peak_count=2,
-                                                             width=filter_width)
+        peak_indices, peak_heights, peak_widths = find_highest_peaks(data_smoothed,
+                                                                     peak_count=2,
+                                                                     width=filter_width)
 
         x_spacing = min(abs(np.ediff1d(x)))
         x_span = abs(x[-1] - x[0])
         data_span = abs(max(data) - min(data))
 
         # Replace missing peaks with sensible default value
-        while len(peak_indices) < 2:
-            peak_indices = np.append(peak_indices, [len(x) // 2])
-            peak_heights = np.append(peak_heights, [data_span])
-            peak_widths = np.append(peak_widths, [x_spacing * 10])
+        if len(peak_indices) == 1:
+            # If just one peak was found, assume it is two peaks overlapping and split it into two
+            left_peak_index = max(0, int(round(peak_indices[0] - peak_widths[0] / 2)))
+            right_peak_index = min(len(x) - 1, int(round(peak_indices[0] + peak_widths[0] / 2)))
+            peak_indices = (left_peak_index, right_peak_index)
+            peak_heights = (peak_heights[0] / 2, peak_heights[0] / 2)
+            peak_widths = (peak_widths[0] / 2, peak_widths[0] / 2)
+        elif len(peak_indices) == 0:
+            # If no peaks have been found, just make a wild guess
+            peak_indices = (len(x) // 4, 3 * len(x) // 4)
+            peak_heights = (data_span, data_span)
+            peak_widths = (x_spacing * 10, x_spacing * 10)
 
         estimate = self.make_params()
         estimate['amplitude_1'].set(value=peak_heights[0], min=0, max=2 * data_span)

@@ -29,7 +29,7 @@ from abc import ABCMeta, abstractmethod
 from lmfit import Model, CompositeModel
 
 __all__ = (
-    'correct_offset_histogram', 'find_peaks', 'estimator', 'FitCompositeModelBase',
+    'correct_offset_histogram', 'find_highest_peaks', 'estimator', 'FitCompositeModelBase',
     'FitCompositeModelMeta', 'FitModelBase', 'FitModelMeta'
 )
 
@@ -171,7 +171,7 @@ def correct_offset_histogram(data, bin_width=None):
     return data - offset, offset
 
 
-def find_peaks(data, peak_count, **kwargs):
+def find_highest_peaks(data, peak_count, **kwargs):
     """ Find peaks using scipy.signal.find_peaks().
     ToDo: Document
     """
