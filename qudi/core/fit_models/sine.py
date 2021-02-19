@@ -21,9 +21,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+from qudi.core.util.math import compute_ft
 from ._general import FitModelBase, estimator
 
 __all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine')
+
+
+def _estimate_frequency(data, x):
+    # calculate PSD with zeropadding to obtain nicer interpolation between the appearing peaks.
+    dft_x, dft_y = compute_ft(x, data, zeropad_num=1, psd=True)
+    # Maximum PSD value corresponds to most likely frequency
+    return abs(dft_x[dft_y.argmax()])
 
 
 class Sine(FitModelBase):
@@ -42,19 +50,61 @@ class Sine(FitModelBase):
 
     @estimator('default')
     def estimate(self, data, x):
-        estimate = self.make_params()
+        x_span = abs(max(data) - min(data))
+        offset = np.mean(data)
+
+        estimate = self.estimate_no_offset(data - offset, x)
+        if 1/(2 * estimate['frequency'].value) > x_span:
+            estimate['offset'].set(value=offset, min=-np.inf, max=np.inf, vary=True)
+        else:
+            estimate['offset'].set(value=offset, min=min(data), max=max(data), vary=True)
         return estimate
 
     @estimator('No Offset')
     def estimate_no_offset(self, data, x):
+        x_step = min(abs(np.ediff1d(x)))
+        data_span = abs(max(data) - min(data))
+        amplitude = data_span / 2
+
+        frequency = _estimate_frequency(data, x)
+
+        # Find an estimate for the phase
+        # Procedure: Create sin waves with different phases and perform a summation.
+        #            The sum shows how well the sine was fitting to the actual data.
+        #            The best fitting sine should be a maximum of the summed time
+        #            trace.
+        iter_steps = max(1, int(round(1 / (frequency * x_step))))
+        test_phases = 2 * np.pi * np.arange(iter_steps) / iter_steps
+        sum_res = np.zeros(iter_steps)
+        for ii, phase in enumerate(test_phases):
+            sum_res[ii] = np.abs(data - amplitude * np.sin(2 * np.pi * frequency * x + phase)).sum()
+        phase = test_phases[sum_res.argmax()] - np.pi  # Maximum sum value corresponds to worst fit
+
         estimate = self.make_params()
-        estimate['offset'].set(value=0, vary=False)
+        estimate['frequency'].set(value=frequency, min=0, max=1 / (2 * x_step), vary=True)
+        estimate['amplitude'].set(value=amplitude, min=0, max=2 * data_span, vary=True)
+        estimate['phase'].set(value=phase, min=-np.pi, max=np.pi, vary=True)
+        estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
         return estimate
 
     @estimator('Zero Phase')
     def estimate_zero_phase(self, data, x):
+        x_step = min(abs(np.ediff1d(x)))
+        x_span = abs(max(data) - min(data))
+        data_span = abs(max(data) - min(data))
+
+        amplitude = data_span / 2
+        offset = np.mean(data)
+        frequency = _estimate_frequency(data - offset, x)
+
         estimate = self.make_params()
-        estimate['phase'].set(value=0, vary=False)
+        estimate['frequency'].set(value=frequency, min=0, max=1 / (2 * x_step), vary=True)
+        estimate['amplitude'].set(value=amplitude, min=0, max=2 * data_span, vary=True)
+        if 1/(2 * frequency) > x_span:
+            estimate['offset'].set(value=offset, min=-np.inf, max=np.inf, vary=True)
+        else:
+            estimate['offset'].set(value=offset, min=min(data), max=max(data), vary=True)
+        estimate['phase'].set(value=0, min=-np.pi, max=np.pi, vary=False)
         return estimate
 
 

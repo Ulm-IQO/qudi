@@ -38,7 +38,6 @@ class Linear(FitModelBase):
 
     @estimator('default')
     def estimate(self, data, x):
-        estimate = self.make_params()
         data = np.asarray(data)
         x = np.asarray(x)
         # calculate the parameters using Least-squares estimation of linear regression
@@ -49,12 +48,23 @@ class Linear(FitModelBase):
 
         slope = a_1 / a_2
         intercept = data_mean - slope * x_mean
-        estimate['offset'].value = intercept
-        estimate['slope'].value = slope
+
+        max_slope = (max(data) - min(data)) / abs(x[-1] - x[0])  # maximum slope possible
+
+        estimate = self.make_params()
+        estimate['offset'].set(value=intercept, min=-np.inf, max=np.inf)
+        estimate['slope'].set(value=slope, min=-max_slope, max=max_slope)
         return estimate
 
     @estimator('No Offset')
     def estimate_no_offset(self, data, x):
         estimate = self.estimate(data, x)
         estimate['offset'].set(value=0, min=-np.inf, max=np.inf, vary=False)
+        return estimate
+
+    @estimator('Constant')
+    def estimate_no_offset(self, data, x):
+        estimate = self.make_params()
+        estimate['slope'].set(value=0, min=-np.inf, max=np.inf, vary=False)
+        estimate['offset'].set(value=np.mean(data), min=min(data), max=max(data))
         return estimate
