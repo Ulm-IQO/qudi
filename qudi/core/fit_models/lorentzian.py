@@ -66,10 +66,7 @@ class Lorentzian(FitModelBase):
             data = data[np.argsort(x)]
 
         # Smooth data
-        if len(x) <= 10:
-            filter_width = 1
-        else:
-            filter_width = min(10, int(round(len(x) / 10)))
+        filter_width = max(1, int(round(len(x) / 100)))
         data_smoothed = _gaussian_filter(data, sigma=filter_width)
 
         # determine peak position
@@ -151,7 +148,7 @@ class DoubleLorentzian(FitModelBase):
             data = data[np.argsort(x)]
 
         # Smooth data
-        filter_width = min(1, int(round(len(x) / 100)))
+        filter_width = max(1, int(round(len(x) / 100)))
         data_smoothed = _gaussian_filter(data, sigma=filter_width)
 
         # determine offset from histogram
