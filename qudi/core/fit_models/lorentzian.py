@@ -22,14 +22,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
-from ._general import FitModelBase, estimator, correct_offset_histogram
-from ._peak_helpers import estimate_double_peaks, estimate_double_dips
-from ._peak_helpers import estimate_triple_peaks, estimate_triple_dips
+from ._general import FitModelBase, estimator, correct_offset_histogram, smooth_data
+from ._general import sort_check_data
+from ._peak_helpers import estimate_double_peaks, estimate_triple_peaks
 
-__all__ = ('DoubleLorentzian', 'Lorentzian', 'LorentzianLinear', 'TripleLorentzian')
+__all__ = (
+    'DoubleLorentzian', 'Lorentzian', 'LorentzianLinear', 'TripleLorentzian', 'multiple_lorentzian'
+)
 
 
-def _multiple_lorentzian_1d(x, centers, sigmas, amplitudes):
+def multiple_lorentzian(x, centers, sigmas, amplitudes):
     """ Mathematical definition of the sum of multiple (physical) Lorentzian functions without any
     bias.
 
@@ -58,27 +60,21 @@ class Lorentzian(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, center, sigma, amplitude):
-        return offset + _multiple_lorentzian_1d(x, (center,), (sigma,), (amplitude,))
+        return offset + multiple_lorentzian(x, (center,), (sigma,), (amplitude,))
 
     @estimator('Peak')
     def estimate_peak(self, data, x):
-        # check if input x-axis is ordered and increasing
-        if not np.all(val > 0 for val in np.ediff1d(x)):
-            x = x[np.argsort(x)]
-            data = data[np.argsort(x)]
-
+        data, x = sort_check_data(data, x)
         # Smooth data
-        filter_width = max(1, int(round(len(x) / 100)))
-        data_smoothed = _gaussian_filter(data, sigma=filter_width)
+        filter_width = max(1, int(round(len(x) / 20)))
+        data_smoothed, _ = smooth_data(data, filter_width)
+        data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=2 * filter_width)
 
         # determine peak position
         center = x[np.argmax(data_smoothed)]
 
-        # determine offset from histogram
-        data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
-
         # calculate amplitude
-        amplitude = abs(max(data) - offset)
+        amplitude = abs(max(data_smoothed))
 
         # according to the derived formula, calculate sigma. The crucial part is here that the
         # offset was estimated correctly, then the area under the curve is calculated correctly:
@@ -137,18 +133,53 @@ class DoubleLorentzian(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, center_1, center_2, sigma_1, sigma_2, amplitude_1, amplitude_2):
-        return offset + _multiple_lorentzian_1d(x,
+        return offset + multiple_lorentzian(x,
                                                 (center_1, center_2),
                                                 (sigma_1, sigma_2),
                                                 (amplitude_1, amplitude_2))
 
     @estimator('Peaks')
     def estimate_peaks(self, data, x):
-        return estimate_double_peaks(self.make_params(), data, x)
+        data, x = sort_check_data(data, x)
+        data_smoothed, filter_width = smooth_data(data)
+        leveled_data_smooth, offset = correct_offset_histogram(data_smoothed,
+                                                               bin_width=2 * filter_width)
+        estimate, limits = estimate_double_peaks(leveled_data_smooth, x, filter_width)
+
+        params = self.make_params()
+        params['amplitude_1'].set(value=estimate['height'][0],
+                                  min=limits['height'][0][0],
+                                  max=limits['height'][0][1])
+        params['amplitude_2'].set(value=estimate['height'][1],
+                                  min=limits['height'][1][0],
+                                  max=limits['height'][1][1])
+        params['center_1'].set(value=estimate['center'][0],
+                               min=limits['center'][0][0],
+                               max=limits['center'][0][1])
+        params['center_2'].set(value=estimate['center'][1],
+                               min=limits['center'][1][0],
+                               max=limits['center'][1][1])
+        params['sigma_1'].set(value=estimate['fwhm'][0] / 2.3548,
+                              min=limits['fwhm'][0][0] / 2.3548,
+                              max=limits['fwhm'][0][1] / 2.3548)
+        params['sigma_2'].set(value=estimate['fwhm'][1] / 2.3548,
+                              min=limits['fwhm'][1][0] / 2.3548,
+                              max=limits['fwhm'][1][1] / 2.3548)
+        return params
 
     @estimator('Dips')
     def estimate_dips(self, data, x):
-        return estimate_double_dips(self.make_params(), data, x)
+        estimate = self.estimate_peaks(-data, x)
+        estimate['offset'].set(value=-estimate['offset'].value,
+                               min=-estimate['offset'].max,
+                               max=-estimate['offset'].min)
+        estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
+                                    min=-estimate['amplitude_1'].max,
+                                    max=-estimate['amplitude_1'].min)
+        estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
+                                    min=-estimate['amplitude_2'].max,
+                                    max=-estimate['amplitude_2'].min)
+        return estimate
 
 
 class TripleLorentzian(FitModelBase):
@@ -170,18 +201,65 @@ class TripleLorentzian(FitModelBase):
     @staticmethod
     def _model_function(x, offset, center_1, center_2, center_3, sigma_1, sigma_2, sigma_3,
                         amplitude_1, amplitude_2, amplitude_3):
-        return offset + _multiple_lorentzian_1d(x,
-                                                (center_1, center_2, center_3),
-                                                (sigma_1, sigma_2, sigma_3),
-                                                (amplitude_1, amplitude_2, amplitude_3))
+        return offset + multiple_lorentzian(x,
+                                            (center_1, center_2, center_3),
+                                            (sigma_1, sigma_2, sigma_3),
+                                            (amplitude_1, amplitude_2, amplitude_3))
 
     @estimator('Peaks')
     def estimate_peaks(self, data, x):
-        return estimate_triple_peaks(self.make_params(), data, x)
+        data, x = sort_check_data(data, x)
+        data_smoothed, filter_width = smooth_data(data)
+        leveled_data_smooth, offset = correct_offset_histogram(data_smoothed,
+                                                               bin_width=2 * filter_width)
+        estimate, limits = estimate_triple_peaks(leveled_data_smooth, x, filter_width)
+
+        params = self.make_params()
+        params['amplitude_1'].set(value=estimate['height'][0],
+                                  min=limits['height'][0][0],
+                                  max=limits['height'][0][1])
+        params['amplitude_2'].set(value=estimate['height'][1],
+                                  min=limits['height'][1][0],
+                                  max=limits['height'][1][1])
+        params['amplitude_3'].set(value=estimate['height'][2],
+                                  min=limits['height'][2][0],
+                                  max=limits['height'][2][1])
+        params['center_1'].set(value=estimate['center'][0],
+                               min=limits['center'][0][0],
+                               max=limits['center'][0][1])
+        params['center_2'].set(value=estimate['center'][1],
+                               min=limits['center'][1][0],
+                               max=limits['center'][1][1])
+        params['center_3'].set(value=estimate['center'][2],
+                               min=limits['center'][2][0],
+                               max=limits['center'][2][1])
+        params['sigma_1'].set(value=estimate['fwhm'][0] / 2.3548,
+                              min=limits['fwhm'][0][0] / 2.3548,
+                              max=limits['fwhm'][0][1] / 2.3548)
+        params['sigma_2'].set(value=estimate['fwhm'][1] / 2.3548,
+                              min=limits['fwhm'][1][0] / 2.3548,
+                              max=limits['fwhm'][1][1] / 2.3548)
+        params['sigma_3'].set(value=estimate['fwhm'][2] / 2.3548,
+                              min=limits['fwhm'][2][0] / 2.3548,
+                              max=limits['fwhm'][2][1] / 2.3548)
+        return params
 
     @estimator('Dips')
     def estimate_dips(self, data, x):
-        return estimate_triple_dips(self.make_params(), data, x)
+        estimate = self.estimate_peaks(-data, x)
+        estimate['offset'].set(value=-estimate['offset'].value,
+                               min=-estimate['offset'].max,
+                               max=-estimate['offset'].min)
+        estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
+                                    min=-estimate['amplitude_1'].max,
+                                    max=-estimate['amplitude_1'].min)
+        estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
+                                    min=-estimate['amplitude_2'].max,
+                                    max=-estimate['amplitude_2'].min)
+        estimate['amplitude_3'].set(value=-estimate['amplitude_3'].value,
+                                    min=-estimate['amplitude_3'].max,
+                                    max=-estimate['amplitude_3'].min)
+        return estimate
 
 
 class LorentzianLinear(FitModelBase):
@@ -197,4 +275,4 @@ class LorentzianLinear(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, slope, center, sigma, amplitude):
-        return offset + x * slope * _multiple_lorentzian_1d(x, (center,), (sigma,), (amplitude,))
+        return offset + x * slope * multiple_lorentzian(x, (center,), (sigma,), (amplitude,))

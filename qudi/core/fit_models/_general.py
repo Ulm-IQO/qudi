@@ -25,10 +25,11 @@ import inspect
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from lmfit import Model, CompositeModel
+from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
 
 __all__ = (
     'correct_offset_histogram', 'estimator', 'FitCompositeModelBase', 'FitCompositeModelMeta',
-    'FitModelBase', 'FitModelMeta'
+    'FitModelBase', 'FitModelMeta', 'sort_check_data', 'smooth_data'
 )
 
 
@@ -133,6 +134,20 @@ class FitCompositeModelBase(CompositeModel, metaclass=FitCompositeModelMeta):
         @return dict: Available estimator methods (values) with corresponding names (keys)
         """
         return self._estimators.copy()
+
+
+def sort_check_data(data, x):
+    # sort x in increasing order and data accordingly
+    sorted_args = np.argsort(x)
+    x = np.asarray(x[sorted_args])
+    data = np.asarray(data[sorted_args])
+    return data, x
+
+
+def smooth_data(data, filter_width=None):
+    if filter_width is None:
+        filter_width = max(1, int(round(len(data) / 100)))
+    return _gaussian_filter(data, sigma=filter_width), filter_width
 
 
 def correct_offset_histogram(data, bin_width=None):
