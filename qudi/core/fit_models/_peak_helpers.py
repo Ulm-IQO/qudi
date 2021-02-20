@@ -20,17 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import copy
 import numpy as np
 from scipy.signal import find_peaks as _find_peaks
 from scipy.signal import peak_widths as _peak_widths
-from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
-from ._general import correct_offset_histogram
 
-__all__ = (
-    'find_highest_peaks', 'estimate_double_peaks', 'estimate_double_dips', 'estimate_triple_peaks',
-    'estimate_triple_dips'
-)
+__all__ = ('find_highest_peaks', 'estimate_double_peaks', 'estimate_triple_peaks')
 
 
 def find_highest_peaks(data, peak_count, **kwargs):
@@ -89,26 +83,12 @@ def find_highest_peaks(data, peak_count, **kwargs):
     return peaks, peak_heights, peak_widths
 
 
-def estimate_double_peaks(default_params, data, x):
-    # check if input x-axis is ordered and increasing
-    if not np.all(val > 0 for val in np.ediff1d(x)):
-        x = x[np.argsort(x)]
-        data = data[np.argsort(x)]
-
-    # Smooth data
-    filter_width = max(1, int(round(len(x) / 100)))
-    data_smoothed = _gaussian_filter(data, sigma=filter_width)
-
-    # determine offset from histogram
-    data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
-
+def estimate_double_peaks(data, x, minimum_distance=None):
     # Find peaks along with width and amplitude estimation
-    peak_indices, peak_heights, peak_widths = find_highest_peaks(
-        data_smoothed,
-        peak_count=2,
-        width=filter_width,
-        height=0.05 * max(data_smoothed)
-    )
+    peak_indices, peak_heights, peak_widths = find_highest_peaks(data,
+                                                                 peak_count=2,
+                                                                 width=minimum_distance,
+                                                                 height=0.05 * max(data))
 
     x_spacing = min(abs(np.ediff1d(x)))
     x_span = abs(x[-1] - x[0])
@@ -128,61 +108,21 @@ def estimate_double_peaks(default_params, data, x):
         peak_heights = (data_span, data_span)
         peak_widths = (x_spacing * 10, x_spacing * 10)
 
-    estimate = copy.deepcopy(default_params)
-    estimate['amplitude_1'].set(value=peak_heights[0], min=0, max=2 * data_span)
-    estimate['amplitude_2'].set(value=peak_heights[1], min=0, max=2 * data_span)
-    estimate['sigma_1'].set(value=peak_widths[0] * x_spacing / 2.3548,
-                            min=x_spacing,
-                            max=x_span)
-    estimate['sigma_2'].set(value=peak_widths[1] * x_spacing / 2.3548,
-                            min=x_spacing,
-                            max=x_span)
-    estimate['center_1'].set(value=x[peak_indices[0]],
-                             min=min(x) - x_span / 2,
-                             max=max(x) + x_span / 2)
-    estimate['center_2'].set(value=x[peak_indices[1]],
-                             min=min(x) - x_span / 2,
-                             max=max(x) + x_span / 2)
-    estimate['offset'].set(value=offset,
-                           min=min(data) - data_span / 2,
-                           max=max(data) + data_span / 2)
-    return estimate
+    estimate = {'height': np.asarray(peak_heights),
+                'fwhm'  : np.asarray(peak_widths) * x_spacing,
+                'center': np.asarray(x[np.asarray(peak_indices)])}
+    limits = {'height': ((0, 2 * data_span),) * 2,
+              'fwhm'  : ((x_spacing, x_span),) * 2,
+              'center': ((min(x) - x_span / 2, max(x) + x_span / 2),) * 2}
+    return estimate, limits
 
 
-def estimate_double_dips(default_params, data, x):
-    estimate = estimate_double_peaks(default_params, -data, x)
-    estimate['offset'].set(value=-estimate['offset'].value,
-                           min=-estimate['offset'].max,
-                           max=-estimate['offset'].min)
-    estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
-                                min=-estimate['amplitude_1'].max,
-                                max=-estimate['amplitude_1'].min)
-    estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
-                                min=-estimate['amplitude_2'].max,
-                                max=-estimate['amplitude_2'].min)
-    return estimate
-
-
-def estimate_triple_peaks(default_params, data, x):
-    # check if input x-axis is ordered and increasing
-    if not np.all(val > 0 for val in np.ediff1d(x)):
-        x = x[np.argsort(x)]
-        data = data[np.argsort(x)]
-
-    # Smooth data
-    filter_width = max(1, int(round(len(x) / 100)))
-    data_smoothed = _gaussian_filter(data, sigma=filter_width)
-
-    # determine offset from histogram
-    data_smoothed, offset = correct_offset_histogram(data_smoothed, bin_width=filter_width)
-
+def estimate_triple_peaks(data, x, minimum_distance=None):
     # Find peaks along with width and amplitude estimation
-    peak_indices, peak_heights, peak_widths = find_highest_peaks(
-        data_smoothed,
-        peak_count=3,
-        width=filter_width,
-        height=0.05 * max(data_smoothed)
-    )
+    peak_indices, peak_heights, peak_widths = find_highest_peaks(data,
+                                                                 peak_count=3,
+                                                                 width=minimum_distance,
+                                                                 height=0.05 * max(data))
 
     x_spacing = min(abs(np.ediff1d(x)))
     x_span = abs(x[-1] - x[0])
@@ -211,46 +151,10 @@ def estimate_triple_peaks(default_params, data, x):
         peak_heights = (data_span, data_span, data_span)
         peak_widths = (x_spacing * 10, x_spacing * 10, x_spacing * 10)
 
-    estimate = copy.deepcopy(default_params)
-    estimate['amplitude_1'].set(value=peak_heights[0], min=0, max=2 * data_span)
-    estimate['amplitude_2'].set(value=peak_heights[1], min=0, max=2 * data_span)
-    estimate['amplitude_3'].set(value=peak_heights[2], min=0, max=2 * data_span)
-    estimate['sigma_1'].set(value=peak_widths[0] * x_spacing / 2.3548,
-                            min=x_spacing,
-                            max=x_span)
-    estimate['sigma_2'].set(value=peak_widths[1] * x_spacing / 2.3548,
-                            min=x_spacing,
-                            max=x_span)
-    estimate['sigma_3'].set(value=peak_widths[2] * x_spacing / 2.3548,
-                            min=x_spacing,
-                            max=x_span)
-    estimate['center_1'].set(value=x[peak_indices[0]],
-                             min=min(x) - x_span / 2,
-                             max=max(x) + x_span / 2)
-    estimate['center_2'].set(value=x[peak_indices[1]],
-                             min=min(x) - x_span / 2,
-                             max=max(x) + x_span / 2)
-    estimate['center_3'].set(value=x[peak_indices[2]],
-                             min=min(x) - x_span / 2,
-                             max=max(x) + x_span / 2)
-    estimate['offset'].set(value=offset,
-                           min=min(data) - data_span / 2,
-                           max=max(data) + data_span / 2)
-    return estimate
-
-
-def estimate_triple_dips(default_params, data, x):
-    estimate = estimate_triple_peaks(default_params, -data, x)
-    estimate['offset'].set(value=-estimate['offset'].value,
-                           min=-estimate['offset'].max,
-                           max=-estimate['offset'].min)
-    estimate['amplitude_1'].set(value=-estimate['amplitude_1'].value,
-                                min=-estimate['amplitude_1'].max,
-                                max=-estimate['amplitude_1'].min)
-    estimate['amplitude_2'].set(value=-estimate['amplitude_2'].value,
-                                min=-estimate['amplitude_2'].max,
-                                max=-estimate['amplitude_2'].min)
-    estimate['amplitude_3'].set(value=-estimate['amplitude_3'].value,
-                                min=-estimate['amplitude_3'].max,
-                                max=-estimate['amplitude_3'].min)
-    return estimate
+    estimate = {'height': np.asarray(peak_heights),
+                'fwhm'  : np.asarray(peak_widths) * x_spacing,
+                'center': np.asarray(x[np.asarray(peak_indices)])}
+    limits = {'height': ((0, 2 * data_span),) * 3,
+              'fwhm'  : ((x_spacing, x_span),) * 3,
+              'center': ((min(x) - x_span / 2, max(x) + x_span / 2),) * 3}
+    return estimate, limits

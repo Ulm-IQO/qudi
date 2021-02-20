@@ -25,10 +25,10 @@ import warnings
 from scipy.ndimage import filters
 from ._general import FitModelBase, estimator
 
-__all__ = ('ExponentialDecay',)
+__all__ = ('ExponentialDecay', 'multiple_exponential_decay')
 
 
-def _multiple_exponential_decay(x, amplitudes, decays, stretches):
+def multiple_exponential_decay(x, amplitudes, decays, stretches):
     """ Mathematical definition of the sum of multiple stretched exponential decays without any
     bias.
 
@@ -58,7 +58,7 @@ class ExponentialDecay(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, amplitude, decay, stretch):
-        return offset + _multiple_exponential_decay(x, (amplitude,), (decay,), (stretch,))
+        return offset + multiple_exponential_decay(x, (amplitude,), (decay,), (stretch,))
 
     @estimator('Decay')
     def estimate_decay(self, data, x):
@@ -147,7 +147,7 @@ class DoubleExponentialDecay(FitModelBase):
     @staticmethod
     def _model_function(x, offset, amplitude_1, amplitude_2, decay_1, decay_2, stretch_1,
                         stretch_2):
-        return offset + _multiple_exponential_decay(x,
-                                                    (amplitude_1, amplitude_2),
-                                                    (decay_1, decay_2),
-                                                    (stretch_1, stretch_2))
+        return offset + multiple_exponential_decay(x,
+                                                   (amplitude_1, amplitude_2),
+                                                   (decay_1, decay_2),
+                                                   (stretch_1, stretch_2))

@@ -24,10 +24,10 @@ import numpy as np
 from qudi.core.util.math import compute_ft
 from ._general import FitModelBase, estimator
 
-__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine')
+__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'estimate_frequency_ft')
 
 
-def _estimate_frequency(data, x):
+def estimate_frequency_ft(data, x):
     # calculate PSD with zeropadding to obtain nicer interpolation between the appearing peaks.
     dft_x, dft_y = compute_ft(x, data, zeropad_num=1, psd=True)
     # Maximum PSD value corresponds to most likely frequency
@@ -66,7 +66,7 @@ class Sine(FitModelBase):
         data_span = abs(max(data) - min(data))
         amplitude = data_span / 2
 
-        frequency = _estimate_frequency(data, x)
+        frequency = estimate_frequency_ft(data, x)
 
         # Find an estimate for the phase
         # Procedure: Create sin waves with different phases and perform a summation.
@@ -95,7 +95,7 @@ class Sine(FitModelBase):
 
         amplitude = data_span / 2
         offset = np.mean(data)
-        frequency = _estimate_frequency(data - offset, x)
+        frequency = estimate_frequency_ft(data - offset, x)
 
         estimate = self.make_params()
         estimate['frequency'].set(value=frequency, min=0, max=1 / (2 * x_step), vary=True)
