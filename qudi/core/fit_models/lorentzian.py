@@ -275,4 +275,5 @@ class LorentzianLinear(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, slope, center, sigma, amplitude):
-        return offset + x * slope * multiple_lorentzian(x, (center,), (sigma,), (amplitude,))
+        x0 = (x - min(x))
+        return offset + x0 * slope + multiple_lorentzian(x, (center,), (sigma,), (amplitude,))
