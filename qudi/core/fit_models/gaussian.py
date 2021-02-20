@@ -271,7 +271,8 @@ class GaussianLinear(FitModelBase):
 
     @staticmethod
     def _model_function(x, offset, slope, center, sigma, amplitude):
-        return offset + x * slope * multiple_gaussian(x, (center,), (sigma,), (amplitude,))
+        x0 = (x - min(x))
+        return offset + x0 * slope + multiple_gaussian(x, (center,), (sigma,), (amplitude,))
 
 
 class Gaussian2D(FitModelBase):
