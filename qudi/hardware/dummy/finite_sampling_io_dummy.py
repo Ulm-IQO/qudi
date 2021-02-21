@@ -165,7 +165,7 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
             self._active_input_channels = input_chnl_set
             self._active_output_channels = output_chnl_set
 
-    def set_frame_size(self, size):
+    def _set_frame_size(self, size):
         samples = int(round(size))
         assert self._constraints.frame_size_in_range(samples)[0], \
             f'frame size "{samples}" to set is out of bounds {self._constraints.frame_size_limits}'
@@ -194,19 +194,17 @@ class FiniteSamplingIODummy(FiniteSamplingIOInterface):
                 frame_size = next(iter(data.values()))[-1]
                 assert all(d[-1] == frame_size for d in data.values()), \
                     'Frame data arrays for all channels must be of equal length.'
-            assert frame_size == self._frame_size, \
-                'Frame data size does not match configured frame size.'
         with self._thread_lock:
             assert self.module_state() == 'idle', \
                 'Unable to set frame data. Sampling IO in progress.'
             if data is None:
-                self._frame_size = 0
+                self._set_frame_size(0)
                 self.__frame_buffer = None
             elif self._output_mode == SamplingOutputMode.JUMP_LIST:
-                self._frame_size = frame_size
+                self._set_frame_size(frame_size)
                 self.__frame_buffer = data.copy()
             elif self._output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                self._frame_size = frame_size
+                self._set_frame_size(frame_size)
                 self.__frame_buffer = {ch: np.linspace(*d) for ch, d in data.items()}
 
     def start_buffered_frame(self):

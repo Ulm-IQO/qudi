@@ -87,9 +87,9 @@ class OdmrGui(GuiBase):
         # ToDo: Get constraints from scanner
         self._scan_control_dockwidget = OdmrScanControlDockWidget(
             parent=self._mw,
-            power_range=(-30, 30),
-            frequency_range=(0, 10e9),
-            data_channels=scanner_constraints.input_channel_names,
+            power_range=scanner_constraints.power_limits,
+            frequency_range=scanner_constraints.frequency_limits,
+            data_channels=scanner_constraints.channel_names,
             points_range=scanner_constraints.frame_size_limits
         )
         self._cw_control_dockwidget = OdmrCwControlDockWidget(
@@ -337,7 +337,7 @@ class OdmrGui(GuiBase):
         if range_index is None:
             range_index = self._scan_control_dockwidget.selected_range
         logic = self._odmr_logic()
-        channel_unit = logic.active_channel_units[channel]
+        channel_unit = logic.scanner_constraints.channel_units[channel]
         self._plot_widget.set_signal_label(channel, channel_unit)
         self._update_scan_data()
         fit_cfg_result = logic.fit_results[channel][range_index]
