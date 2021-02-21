@@ -218,9 +218,13 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         """
         with self._thread_lock:
             if self._odmr_sampler.is_connected:
-                self._odmr_sampler().set_frame_data({self._frequency_channel: data})
+                sampler = self._odmr_sampler()
+                curr_channels = sampler.active_channels[0]
+                sampler.set_active_channels(curr_channels, {self._frequency_channel})
+                sampler.set_frame_data({self._frequency_channel: data})
             else:
                 freq_sampler = self._frequency_sampler()
+                freq_sampler.set_active_channels({self._frequency_channel})
                 freq_sampler.set_frame_data({self._frequency_channel: data})
                 frame_size = freq_sampler.frame_size
                 self._data_sampler().set_frame_size(frame_size)
@@ -253,10 +257,13 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @return dict: Frame data (values) for all active data channels (keys)
         """
         with self._thread_lock:
+            channels = self._constraints.channel_names
             if self._odmr_sampler.is_connected:
+                odmr_sampler = self._odmr_sampler()
                 self.module_state.lock()
                 try:
-                    return self._odmr_sampler().get_frame()
+                    odmr_sampler.set_active_channels(frozenset(channels), {self._frequency_channel})
+                    return odmr_sampler.get_frame()
                 finally:
                     self.module_state.unlock()
             else:
@@ -264,6 +271,8 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
                 data_sampler = self._data_sampler()
                 self.module_state.lock()
                 try:
+                    freq_sampler.set_active_channels({self._frequency_channel})
+                    data_sampler.set_active_channels(frozenset(channels))
                     freq_sampler.start_buffered_output()
                     data = data_sampler.acquire_frame()
                     freq_sampler.stop_buffered_output()
