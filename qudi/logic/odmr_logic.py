@@ -41,7 +41,7 @@ class OdmrLogic(LogicBase):
 
     # declare connectors
     _cw_microwave = Connector(name='cw_microwave', interface='ProcessSetpointInterface')
-    _odmr_scanner = Connector(name='odmr_scanner', interface='FiniteSamplingIOInterface')
+    _odmr_scanner = Connector(name='odmr_scanner', interface='OdmrScannerInterface')
 
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
     _cw_power = StatusVar(name='cw_power', default=-30)
@@ -502,7 +502,7 @@ class OdmrLogic(LogicBase):
                 scanner.set_frame_data({self._sweep_parameter_channel: frame_data})
 
                 # Set scan power
-                self._cw_microwave().set_setpoint(self._scan_power, 'Power')
+                self._odmr_scanner().set_power(self._scan_power)
             except:
                 self.log.exception(
                     'Unable to start ODMR scan. Error while setting up scanner hardware.'
