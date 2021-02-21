@@ -75,13 +75,14 @@ class Connector:
             if self.interface not in bases:
                 raise Exception(f'Module {target} connected to connector {self.name} does not '
                                 f'implement interface {self.interface}.')
+            self._obj_proxy = _ConnectedInterfaceProxy(target, self.interface)
         elif isinstance(self.interface, type):
             if not isinstance(target, self.interface):
                 raise Exception(f'Module {target} connected to connector {self.name} does not '
                                 f'implement interface {self.interface.__name__}.')
+            self._obj_proxy = _ConnectedInterfaceProxy(target, self.interface.__class__.__name__)
         else:
             raise Exception(f'Unknown type for <Connector>.interface: "{type(self.interface)}"')
-        self._obj_proxy = _ConnectedInterfaceProxy(target, self.interface)
         self._obj_ref = weakref.ref(target, self.__module_died_callback)
         return
 
