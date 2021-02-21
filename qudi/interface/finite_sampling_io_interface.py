@@ -104,22 +104,17 @@ class FiniteSamplingIOInterface(Base):
         pass
 
     @abstractmethod
-    def set_frame_size(self, size):
-        """
-        ToDo: Document
-        """
-        pass
-
-    @abstractmethod
     def set_frame_data(self, data):
         """ Fills the frame buffer for the next data frame to be emitted. Data must be a dict
         containing exactly all active channels as keys with corresponding sample data as values.
 
         If <output_mode> is SamplingOutputMode.JUMP_LIST, the values must be 1D numpy.ndarrays
-        containing the entire data frame of length <frame_size>.
+        containing the entire data frame.
         If <output_mode> is SamplingOutputMode.EQUIDISTANT_SWEEP, the values must be iterables of
-        length 2 representing the entire data frame to be constructed with numpy.linspace(),
-        i.e. (start, stop). Number of points is determined from currently set <frame_size>.
+        length 3 representing the entire data frame to be constructed with numpy.linspace(),
+        i.e. (start, stop, steps).
+
+        Calling this method will alter read-only property <frame_size>
 
         @param dict data: The frame data (values) to be set for all active channels (keys)
         """

@@ -33,9 +33,14 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
     """
 
     _frequency_sampler = Connector(name='frequency_sampler',
-                                   interface='FiniteSamplingOutputInterface')
+                                   interface='FiniteSamplingOutputInterface',
+                                   optional=True)
     _data_sampler = Connector(name='data_sampler',
-                              interface='FiniteSamplingInputInterface')
+                              interface='FiniteSamplingInputInterface',
+                              optional=True)
+    _odmr_sampler = Connector(name='odmr_sampler',
+                              interface='FiniteSamplingIOInterface',
+                              optional=True)
     _power_setter = Connector(name='power_setter', interface='ProcessSetpointInterface')
 
     _power_channel = ConfigOption(name='power_channel', default=None)
@@ -53,9 +58,17 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         freq_sampler = self._frequency_sampler()
         data_sampler = self._data_sampler()
         power_setter = self._power_setter()
+        odmr_sampler = self._odmr_sampler()
+        assert (freq_sampler is not None and data_sampler is not None) or odmr_sampler is not None,\
+            'You need to either connect "odmr_sampler" with "FiniteSamplingIOInterface" or both, ' \
+            '"data_sampler" and "frequency_sampler" with "FiniteSamplingInputInterface" and ' \
+            '"FiniteSamplingOutputInterface" respectively.'
 
         # Determine which frequency channel to use
-        output_channels = freq_sampler.constraints.channel_names
+        if freq_sampler is None:
+            output_channels = odmr_sampler.constraints.output_channel_names
+        else:
+            output_channels = freq_sampler.constraints.channel_names
         if self._frequency_channel is None:
             candidates = [ch for ch in output_channels if 'frequency' in ch.lower()]
             if not candidates:
@@ -85,20 +98,30 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
                 )
 
         # merge all component hardware constraints
-        freq_frame_limits = freq_sampler.constraints.frame_size_limits
-        data_frame_limits = data_sampler.constraints.frame_size_limits
-        freq_rate_limits = freq_sampler.constraints.sample_rate_limits
-        data_rate_limits = data_sampler.constraints.sample_rate_limits
-        self._constraints = OdmrScannerConstraints(
-            supported_output_modes=freq_sampler.constraints.supported_output_modes,
-            channel_units=data_sampler.constraints.channel_units,
-            frequency_limits=(1e3, 6e9),  # FIXME:
-            power_limits=power_setter.constraints.channel_limits[self._power_channel],
-            frame_size_limits=(max(freq_frame_limits[0], data_frame_limits[0]),
-                               min(freq_frame_limits[1], data_frame_limits[1])),
-            sample_rate_limits=(max(freq_rate_limits[0], data_rate_limits[0]),
-                                min(freq_rate_limits[1], data_rate_limits[1]))
-        )
+        if odmr_sampler is None:
+            freq_frame_limits = freq_sampler.constraints.frame_size_limits
+            data_frame_limits = data_sampler.constraints.frame_size_limits
+            freq_rate_limits = freq_sampler.constraints.sample_rate_limits
+            data_rate_limits = data_sampler.constraints.sample_rate_limits
+            self._constraints = OdmrScannerConstraints(
+                supported_output_modes=freq_sampler.constraints.supported_output_modes,
+                channel_units=data_sampler.constraints.channel_units,
+                frequency_limits=(1e3, 6e9),  # FIXME:
+                power_limits=power_setter.constraints.channel_limits[self._power_channel],
+                frame_size_limits=(max(freq_frame_limits[0], data_frame_limits[0]),
+                                   min(freq_frame_limits[1], data_frame_limits[1])),
+                sample_rate_limits=(max(freq_rate_limits[0], data_rate_limits[0]),
+                                    min(freq_rate_limits[1], data_rate_limits[1]))
+            )
+        else:
+            self._constraints = OdmrScannerConstraints(
+                supported_output_modes=odmr_sampler.constraints.supported_output_modes,
+                channel_units=odmr_sampler.constraints.input_channel_units,
+                frequency_limits=(1e3, 6e9),  # FIXME:
+                power_limits=power_setter.constraints.channel_limits[self._power_channel],
+                frame_size_limits=odmr_sampler.constraints.frame_size_limits,
+                sample_rate_limits=odmr_sampler.constraints.sample_rate_limits
+            )
 
     def on_deactivate(self):
         """ Perform qudi module deactivation
@@ -118,13 +141,16 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @return float: The current sample rate in Hz
         """
         with self._thread_lock:
-            data = self._data_sampler().sample_rate
-            frequency = self._frequency_sampler().sample_rate
-            if data != frequency:
-                self.log.warning(
-                    'data and frequency sampling rates have diverged. This should never happen!'
-                )
-            return data
+            if self._odmr_sampler.is_connected:
+                return self._odmr_sampler().sample_rate
+            else:
+                data = self._data_sampler().sample_rate
+                frequency = self._frequency_sampler().sample_rate
+                if data != frequency:
+                    self.log.warning(
+                        'data and frequency sampling rates have diverged. This should never happen!'
+                    )
+                return data
 
     @property
     def frame_size(self):
@@ -133,13 +159,16 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @return int: Number of samples per frame
         """
         with self._thread_lock:
-            data = self._data_sampler().frame_size
-            frequency = self._frequency_sampler().frame_size
-            if data != frequency:
-                self.log.warning(
-                    'data and frequency frame sizes have diverged. This should never happen!'
-                )
-            return data
+            if self._odmr_sampler.is_connected:
+                return self._odmr_sampler().frame_size
+            else:
+                data = self._data_sampler().frame_size
+                frequency = self._frequency_sampler().frame_size
+                if data != frequency:
+                    self.log.warning(
+                        'data and frequency frame sizes have diverged. This should never happen!'
+                    )
+                return data
 
     @property
     def output_mode(self):
@@ -148,7 +177,10 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @return SamplingOutputMode: Enum representing the currently active output mode
         """
         with self._thread_lock:
-            return self._frequency_sampler().output_mode
+            if self._odmr_sampler.is_connected:
+                return self._odmr_sampler().output_mode
+            else:
+                return self._frequency_sampler().output_mode
 
     @property
     def power(self):
@@ -165,8 +197,11 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @param float rate: The sample rate to set
         """
         with self._thread_lock:
-            self._data_sampler().set_sample_rate(rate)
-            self._frequency_sampler().set_sample_rate(rate)
+            if self._odmr_sampler.is_connected:
+                self._odmr_sampler().set_sample_rate(rate)
+            else:
+                self._data_sampler().set_sample_rate(rate)
+                self._frequency_sampler().set_sample_rate(rate)
 
     def set_frequency_data(self, data):
         """ Sets the frequency values to scan.
@@ -182,10 +217,13 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @param dict data: The frame data (values) to be set for all active channels (keys)
         """
         with self._thread_lock:
-            freq_sampler = self._frequency_sampler()
-            freq_sampler.set_frame_data(data)
-            frame_size = freq_sampler.frame_size
-            self._data_sampler().set_frame_size(frame_size)
+            if self._odmr_sampler.is_connected:
+                self._odmr_sampler().set_frame_data({self._frequency_channel: data})
+            else:
+                freq_sampler = self._frequency_sampler()
+                freq_sampler.set_frame_data({self._frequency_channel: data})
+                frame_size = freq_sampler.frame_size
+                self._data_sampler().set_frame_size(frame_size)
 
     def set_output_mode(self, mode):
         """ Setter for the current output mode.
@@ -193,7 +231,10 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @param SamplingOutputMode mode: The output mode to set as SamplingOutputMode Enum
         """
         with self._thread_lock:
-            self._frequency_sampler().set_output_mode(mode)
+            if self._odmr_sampler.is_connected:
+                self._odmr_sampler().set_output_mode(mode)
+            else:
+                self._frequency_sampler().set_output_mode(mode)
 
     def set_power(self, pwr):
         """ Setter for microwave scanning power in dBm.
@@ -212,13 +253,20 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         @return dict: Frame data (values) for all active data channels (keys)
         """
         with self._thread_lock:
-            freq_sampler = self._frequency_sampler()
-            data_sampler = self._data_sampler()
-            self.module_state.lock()
-            try:
-                freq_sampler.start_buffered_output()
-                data = data_sampler.acquire_frame()
-                freq_sampler.stop_buffered_output()
-                return data
-            finally:
-                self.module_state.unlock()
+            if self._odmr_sampler.is_connected:
+                self.module_state.lock()
+                try:
+                    return self._odmr_sampler().get_frame()
+                finally:
+                    self.module_state.unlock()
+            else:
+                freq_sampler = self._frequency_sampler()
+                data_sampler = self._data_sampler()
+                self.module_state.lock()
+                try:
+                    freq_sampler.start_buffered_output()
+                    data = data_sampler.acquire_frame()
+                    freq_sampler.stop_buffered_output()
+                    return data
+                finally:
+                    self.module_state.unlock()

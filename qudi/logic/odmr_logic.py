@@ -97,7 +97,6 @@ class OdmrLogic(LogicBase):
         self._elapsed_sweeps = 0
         self.__estimated_lines = 0
         self._start_time = 0.0
-        self._sweep_parameter_channel = None
         self._fit_container = None
         self._fit_config_model = None
 
@@ -126,16 +125,6 @@ class OdmrLogic(LogicBase):
         self._elapsed_sweeps = 0
         self.__estimated_lines = 0
         self._start_time = 0.0
-
-        self._sweep_parameter_channel = None
-        for channel, unit in self.scanner_constraints.output_channel_units.items():
-            if unit == 'Hz':
-                self._sweep_parameter_channel = channel
-                break
-        assert self._sweep_parameter_channel is not None, \
-            'Could not find an output channel with parameter unit "Hz" to use in ODMR. Improve ' \
-            'ODMR logic to overcome this limitation or provide a FiniteSamplingIOInterface ' \
-            'hardware with Frequency output channel.'
 
         # Initialize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_data()
@@ -176,7 +165,7 @@ class OdmrLogic(LogicBase):
         samples_per_line = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
         # Add 5% Safety; Minimum of 1 line
         self.__estimated_lines = max(1, int(1.05 * estimated_samples / samples_per_line))
-        for channel in self.active_channels:
+        for channel in self._odmr_scanner().constraints.channel_names:
             self._raw_data[channel] = [
                 np.full((freq_arr.size, self.__estimated_lines), np.nan) for freq_arr in
                 self._frequency_data
@@ -224,16 +213,6 @@ class OdmrLogic(LogicBase):
     @property
     def cw_constraints(self):
         return self._cw_microwave().constraints
-
-    @property
-    def active_channels(self):
-        return self._odmr_scanner().active_channels[0]
-
-    @property
-    def active_channel_units(self):
-        scanner = self._odmr_scanner()
-        return {ch: u for ch, u in scanner.constraints.input_channel_units.items() if
-                ch in scanner.active_channels[0]}
 
     @property
     def signal_data(self):
@@ -469,12 +448,6 @@ class OdmrLogic(LogicBase):
             # Set up scanner hardware
             scanner = self._odmr_scanner()
             try:
-                scanner.set_active_channels(
-                    input_channels=self.scanner_constraints.input_channel_names,
-                    output_channels=(self._sweep_parameter_channel,)
-                )
-                scan_length = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
-                scanner.set_frame_size(scan_length * self._oversampling_factor)
                 scanner.set_sample_rate(self._oversampling_factor * self._data_rate)
                 self._data_rate = scanner.sample_rate / self._oversampling_factor
 
@@ -499,7 +472,7 @@ class OdmrLogic(LogicBase):
                 else:
                     raise Exception(f'Unhandled/Unknown scanner output mode encountered: '
                                     f'"{scanner.output_mode}"')
-                scanner.set_frame_data({self._sweep_parameter_channel: frame_data})
+                scanner.set_frequency_data(frame_data)
 
                 # Set scan power
                 self._odmr_scanner().set_power(self._scan_power)
@@ -578,7 +551,7 @@ class OdmrLogic(LogicBase):
                 return
 
             try:
-                new_counts = self._odmr_scanner().get_frame()
+                new_counts = self._odmr_scanner().scan_frame()
                 if self._oversampling_factor > 1:
                     for ch in new_counts:
                         new_counts[ch] = np.mean(
