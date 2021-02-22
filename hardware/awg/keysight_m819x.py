@@ -2565,10 +2565,11 @@ class AWGM8190A(AWGM819X):
 
         constraints.waveform_length.max = 2147483648  # assumes option -02G
 
-        constraints.a_ch_amplitude.min = 0.100  # Channels amplitude control single ended min
-        constraints.a_ch_amplitude.max = 0.700  # Channels amplitude control single ended max
+        constraints.a_ch_amplitude.min = 0      # single ended min
+        constraints.a_ch_amplitude.max = 0.700  # ended max
         if self._dac_resolution == 12:
-            constraints.a_ch_amplitude.step = 1.7090e-4  # for AWG8190: actually 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
+            # 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
+            constraints.a_ch_amplitude.step = 1.7090e-4
         elif self._dac_resolution == 14:
             constraints.a_ch_amplitude.step = 4.2725e-5
         constraints.a_ch_amplitude.default = 0.500
@@ -2584,13 +2585,11 @@ class AWGM8190A(AWGM819X):
         constraints.d_ch_high.default = 1.5
 
         constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16000000
+        constraints.waveform_num.max = 524287 # manual p. 261
         constraints.waveform_num.default = 1
-        # The sample memory can be split into a maximum of 16 M waveform segments
 
-        # FIXME: Check the proper number for your device
         constraints.sequence_num.min = 1
-        constraints.sequence_num.max = 512000 - 2   # manual p. 251
+        constraints.sequence_num.max = 524288 - 1   # manual p. 251
         constraints.sequence_num.step = 1
         constraints.sequence_num.default = 1
 
