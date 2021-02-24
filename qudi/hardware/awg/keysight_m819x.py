@@ -2565,8 +2565,8 @@ class AWGM8190A(AWGM819X):
 
         constraints.waveform_length.max = 2147483648  # assumes option -02G
 
-        constraints.a_ch_amplitude.min = 0      # single ended min
-        constraints.a_ch_amplitude.max = 0.700  # ended max
+        constraints.a_ch_amplitude.min = 0.1    # from soft frontpanel, single ended min
+        constraints.a_ch_amplitude.max = 0.700  # single ended max
         if self._dac_resolution == 12:
             # 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
             constraints.a_ch_amplitude.step = 1.7090e-4
@@ -2811,6 +2811,4 @@ class AWGM8190A(AWGM819X):
         control += 0x1 << 24  # always enable markers
 
         return control
-
-
 
