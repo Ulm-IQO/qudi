@@ -221,9 +221,23 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleCw.emit(is_checked)
 
+    @QtCore.Slot()
+    def _apply_odmr_settings(self):
+        self._odmr_logic().set_sample_rate(
+            data_rate=self._odmr_settings_dialog.data_rate_spinbox.value(),
+            oversampling=self._odmr_settings_dialog.oversampling_spinbox.value()
+        )
+        self._max_shown_scans = self._odmr_settings_dialog.max_scans_shown_spinbox.value()
+
+    @QtCore.Slot()
+    def _restore_odmr_settings(self):
+        logic = self._odmr_logic()
+        self._odmr_settings_dialog.oversampling_spinbox.setValue(logic.oversampling)
+        self._odmr_settings_dialog.data_rate_spinbox.setValue(logic.data_rate)
+        self._odmr_settings_dialog.max_scans_shown_spinbox.setValue(self._max_shown_scans)
+
     def _update_scan_state(self, running=None):
-        """
-        Update the display for a change in the microwave status (mode and output).
+        """ Update the display for a change in the microwave status (mode and output).
 
         @param bool running:
         """
@@ -291,15 +305,15 @@ class OdmrGui(GuiBase):
 
         print('_update_scan_parameters:', param_dict)
 
-        # ToDo: Handle data rate
         param = param_dict.get('data_rate')
         if param is not None:
             print('data_rate updated from logic:', param)
+            self._odmr_settings_dialog.data_rate_spinbox.setValue(param)
 
-        # ToDo: Handle oversampling
         param = param_dict.get('oversampling')
         if param is not None:
             print('oversampling updated from logic:', param)
+            self._odmr_settings_dialog.oversampling_spinbox.setValue(param)
 
         param = param_dict.get('run_time')
         if param is not None:
