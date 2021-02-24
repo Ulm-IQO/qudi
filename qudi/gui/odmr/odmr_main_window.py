@@ -86,6 +86,19 @@ class OdmrMainWindow(QtWidgets.QMainWindow):
 
         self.action_restore_default_view = QtWidgets.QAction('Restore Default')
 
+        icon = QtGui.QIcon(os.path.join(icon_path, 'oxygen', '22x22', 'configure.png'))
+        self.action_show_odmr_settings = QtWidgets.QAction('ODMR Settings')
+        self.action_show_odmr_settings.setToolTip(
+            'Open a dialog to edit ODMR settings that are not very frequently used.'
+        )
+        self.action_show_odmr_settings.setIcon(icon)
+
+        self.action_show_fit_configuration = QtWidgets.QAction('Fit Configuration')
+        self.action_show_fit_configuration.setToolTip(
+            'Open a dialog to edit data fitting configurations available to ODMR.'
+        )
+        self.action_show_fit_configuration.setIcon(icon)
+
         # Create QLineEdit for save tag
         self.save_nametag_lineedit = QtWidgets.QLineEdit()
         self.save_nametag_lineedit.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
@@ -119,6 +132,9 @@ class OdmrMainWindow(QtWidgets.QMainWindow):
         menu.addAction(self.action_show_cw_controls)
         menu.addSeparator()
         menu.addAction(self.action_restore_default_view)
+        menu = menu_bar.addMenu('Settings')
+        menu.addAction(self.action_show_odmr_settings)
+        menu.addAction(self.action_show_fit_configuration)
         self.setMenuBar(menu_bar)
 
         # Connect close actions

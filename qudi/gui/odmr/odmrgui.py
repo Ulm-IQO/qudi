@@ -35,21 +35,7 @@ from qudi.core.util.paths import get_artwork_dir
 from .odmr_control_dockwidget import OdmrScanControlDockWidget, OdmrCwControlDockWidget
 from .odmr_fit_dockwidget import OdmrFitDockWidget
 from .odmr_main_window import OdmrMainWindow
-
-#
-#
-# class ODMRSettingDialog(QtWidgets.QDialog):
-#     """ The settings dialog for ODMR measurements.
-#     """
-#
-#     def __init__(self):
-#         # Get the path to the *.ui file
-#         this_dir = os.path.dirname(__file__)
-#         ui_file = os.path.join(this_dir, 'ui_odmr_settings.ui')
-#
-#         # Load it
-#         super(ODMRSettingDialog, self).__init__()
-#         uic.loadUi(ui_file, self)
+from .odmr_settings_dialog import OdmrSettingsDialog
 
 
 class OdmrGui(GuiBase):
@@ -76,6 +62,7 @@ class OdmrGui(GuiBase):
         self._cw_control_dockwidget = None
         self._fit_dockwidget = None
         self._fit_config_dialog = None
+        self._odmr_settings_dialog = None
 
     def on_activate(self):
         # Create main window
@@ -100,6 +87,7 @@ class OdmrGui(GuiBase):
         self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw, fit_container=logic.fit_container)
         self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
                                                          fit_config_model=logic.fit_config_model)
+        self._odmr_settings_dialog = OdmrSettingsDialog(parent=self._mw)
 
         # Initialize widget contents
         self._data_selection_changed()
@@ -137,6 +125,10 @@ class OdmrGui(GuiBase):
             self._cw_control_dockwidget.setVisible
         )
         self._mw.action_restore_default_view.triggered.connect(self.restore_default_view)
+        self._mw.action_show_odmr_settings.triggered.connect(self._odmr_settings_dialog.exec_)
+        # Let fit config be opened non-modal. So the user can switch back and forth between fit
+        # config editing and data fitting in ODMR main window.
+        self._mw.action_show_fit_configuration.triggered.connect(self._fit_config_dialog.show)
 
     def __connect_cw_control_signals(self):
         self._cw_control_dockwidget.sigCwParametersChanged.connect(
