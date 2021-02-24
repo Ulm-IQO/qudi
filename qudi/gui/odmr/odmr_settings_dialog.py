@@ -37,9 +37,9 @@ class OdmrSettingsDialog(QtWidgets.QDialog):
         self.setWindowTitle('ODMR Settings')
 
         # Spinbox defining maximum scan matrix lines shown
-        self.matrix_lines_shown_spinbox = QtWidgets.QSpinBox()
-        self.matrix_lines_shown_spinbox.setRange(1, 2 ** 31 - 1)
-        self.matrix_lines_shown_spinbox.setValue(50)
+        self.max_scans_shown_spinbox = QtWidgets.QSpinBox()
+        self.max_scans_shown_spinbox.setRange(1, 2 ** 31 - 1)
+        self.max_scans_shown_spinbox.setValue(50)
         # Spinbox defining data rate for scans (defining the spacing between shown data points)
         # This is NOT the hardware sample rate for the scan (would be oversampling * data_rate)
         self.data_rate_spinbox = ScienDSpinBox()
@@ -86,7 +86,7 @@ class OdmrSettingsDialog(QtWidgets.QDialog):
         label = QtWidgets.QLabel('Max. Displayed Number of Scans:')
         label.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight)
         layout.addWidget(label, 4, 0)
-        layout.addWidget(self.matrix_lines_shown_spinbox, 4, 1)
+        layout.addWidget(self.max_scans_shown_spinbox, 4, 1)
         layout.addWidget(self.button_box, 5, 0, 1, 2)
         layout.setColumnStretch(1, 1)
 

@@ -330,24 +330,10 @@ class OdmrLogic(LogicBase):
         self.set_data_rate(rate)
 
     def set_data_rate(self, rate):
-        """ Sets the frequency or rate of the sample acquisition.
-        This is the physical sampling rate of the hardware, so the actually displayed data rate is
-        this sampling rate divided by the oversampling factor.
-
-        @param float rate: desired sample rate in Hz
         """
-        with self._threadlock:
-            # checks if scanner is still running
-            if self.module_state() == 'locked':
-                self.log.error('Unable to set data rate. ODMR measurement in progress.')
-            else:
-                rate = float(rate)
-                if self.scanner_constraints.sample_rate_in_range(rate * self._oversampling_factor)[0]:
-                    self._data_rate = rate
-                else:
-                    self.log.error('Unable to set data rate. Resulting sample rate out of bounds '
-                                   'for ODMR scanner constraints.')
-            self.sigScanParametersUpdated.emit({'data_rate': self._data_rate})
+        @param float rate: desired data rate in Hz
+        """
+        self.set_sample_rate(data_rate=rate)
 
     @property
     def oversampling(self):
@@ -358,18 +344,32 @@ class OdmrLogic(LogicBase):
         self.set_oversampling(factor)
 
     def set_oversampling(self, factor):
+        self.set_sample_rate(oversampling=factor)
+
+    def set_sample_rate(self, data_rate=None, oversampling=None):
+        """ Helper method to set data rate and oversampling factor simultaneously. This method
+        should be used whenever possible in order to avoid out-of-range errors when setting these
+        two settings sequentially.
+        """
+        if data_rate is None and oversampling is None:
+            return
         with self._threadlock:
             # checks if scanner is still running
             if self.module_state() == 'locked':
-                self.log.error('Unable to set oversampling factor. ODMR scan in progress.')
+                self.log.error('Unable to set sample rate. ODMR measurement in progress.')
             else:
-                factor = max(1, int(factor))
-                if self.scanner_constraints.sample_rate_in_range(self._data_rate * factor)[0]:
-                    self._oversampling_factor = factor
+                data_rate = self.data_rate if data_rate is None else float(data_rate)
+                oversampling = self.oversampling if oversampling is None else max(1,
+                                                                                  int(oversampling))
+                if self.scanner_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
+                    self._data_rate = data_rate
+                    self._oversampling_factor = oversampling
                 else:
-                    self.log.error('Unable to set oversampling factor. Resulting sample rate out '
-                                   'of bounds for ODMR scanner constraints.')
-            self.sigScanParametersUpdated.emit({'oversampling': self._oversampling_factor})
+                    self.log.error('Unable to set sample rate. Resulting sample rate out of bounds '
+                                   'for ODMR scanner constraints.')
+            self.sigScanParametersUpdated.emit(
+                {'data_rate': self._data_rate, 'oversampling': self._oversampling_factor}
+            )
 
     @property
     def scan_parameters(self):
