@@ -25,6 +25,7 @@ from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
 from ._general import FitModelBase, estimator, correct_offset_histogram, smooth_data
 from ._general import sort_check_data
 from ._peak_helpers import estimate_double_peaks, estimate_triple_peaks
+from .linear import Linear
 
 __all__ = (
     'DoubleLorentzian', 'Lorentzian', 'LorentzianLinear', 'TripleLorentzian', 'multiple_lorentzian'
@@ -277,3 +278,49 @@ class LorentzianLinear(FitModelBase):
     def _model_function(x, offset, slope, center, sigma, amplitude):
         x0 = (x - min(x))
         return offset + x0 * slope + multiple_lorentzian(x, (center,), (sigma,), (amplitude,))
+
+    @estimator('Peak')
+    def estimate_peak(self, data, x):
+        data, x = sort_check_data(data, x)
+        data_span = abs(max(data) - min(data))
+
+        # Perform a normal Lorentzian peak fit and subtract the result from data
+        model = Lorentzian()
+        gauss_fit = model.fit(data, model.estimate_peak(data, x), x=x)
+        data_sub = data - gauss_fit.best_fit
+        # Perform a linear fit in subtracted data in order to estimate slope
+        model = Linear()
+        linear_fit = model.fit(data_sub, model.estimate(data_sub, x), x=x)
+        offset = linear_fit['offset'] + min(x) * linear_fit['slope']
+
+        # Merge fit results into parameter estimates
+        estimate = self.make_params()
+        estimate['offset'].set(value=offset,
+                               min=min(data) - data_span / 2,
+                               max=max(data) + data_span / 2,
+                               vary=True)
+        estimate['slope'].set(value=linear_fit['slope'].value, min=-np.inf, max=np.inf, vary=True)
+        estimate['amplitude'].set(value=gauss_fit['amplitude'].value,
+                                  min=gauss_fit['amplitude'].min,
+                                  max=gauss_fit['amplitude'].max,
+                                  vary=True)
+        estimate['center'].set(value=gauss_fit['center'].value,
+                               min=gauss_fit['center'].min,
+                               max=gauss_fit['center'].max,
+                               vary=True)
+        estimate['sigma'].set(value=gauss_fit['sigma'].value,
+                              min=gauss_fit['sigma'].min,
+                              max=gauss_fit['sigma'].max,
+                              vary=True)
+        return estimate
+
+    @estimator('Dip')
+    def estimate_dip(self, data, x):
+        estimate = self.estimate_peak(-data, x)
+        estimate['offset'].set(value=-estimate['offset'].value,
+                               min=-estimate['offset'].max,
+                               max=-estimate['offset'].min)
+        estimate['amplitude'].set(value=-estimate['amplitude'].value,
+                                  min=-estimate['amplitude'].max,
+                                  max=-estimate['amplitude'].min)
+        return estimate
