@@ -27,7 +27,7 @@ from scipy.signal import peak_widths as _peak_widths
 __all__ = ('find_highest_peaks', 'estimate_double_peaks', 'estimate_triple_peaks')
 
 
-def find_highest_peaks(data, peak_count, **kwargs):
+def find_highest_peaks(data, peak_count, allow_borders=True, **kwargs):
     """ Find peaks using scipy.signal.find_peaks().
     ToDo: Document
     """
@@ -55,30 +55,31 @@ def find_highest_peaks(data, peak_count, **kwargs):
     peak_widths = _peak_widths(data, peaks, rel_height=0.5)[0]  # full-width at half-maximum
 
     # Check if data borders are more promising as peak locations and replace found peaks
-    width = max(2, int(round(max(peak_widths))))
-    left_mean = np.mean(data[:width])
-    right_mean = np.mean(data[-width:])
-    if 2 * min(peak_heights) < left_mean and min(peaks) > 2 * width:
-        min_arg = np.argmin(peak_heights)
-        peaks[min_arg] = np.argmax(data[:width])
-        peak_heights[min_arg] = data[peaks[min_arg]]
-    if 2 * min(peak_heights) < 2 * right_mean and max(peaks) < len(data) - 1 - 2 * width:
-        min_arg = np.argmin(peak_heights)
-        peaks[min_arg] = np.argmax(data[-width:])
-        peak_heights[min_arg] = data[peaks[min_arg]]
-    # Check if some peaks are missing and manually add borders if they look promising
-    if len(peaks) < peak_count:
-        threshold = max(data) / 2
-        no_left_peak = min(peaks) > 2 * width
-        no_right_peak = max(peaks) < len(data) - 1 - 2 * width
-        if no_left_peak and left_mean > threshold:
-            peaks = np.append(peaks, np.argmax(data[:width]))
-            peak_heights = np.append(peak_heights, data[peaks[-1]])
-            peak_widths = np.append(peak_widths, width)
-        if no_right_peak and right_mean > threshold:
-            peaks = np.append(peaks, np.argmax(data[-width:]))
-            peak_heights = np.append(peak_heights, data[peaks[-1]])
-            peak_widths = np.append(peak_widths, width)
+    if allow_borders:
+        width = max(2, int(round(max(peak_widths))))
+        left_mean = np.mean(data[:width])
+        right_mean = np.mean(data[-width:])
+        if 2 * min(peak_heights) < left_mean and min(peaks) > 2 * width:
+            min_arg = np.argmin(peak_heights)
+            peaks[min_arg] = np.argmax(data[:width])
+            peak_heights[min_arg] = data[peaks[min_arg]]
+        if 2 * min(peak_heights) < 2 * right_mean and max(peaks) < len(data) - 1 - 2 * width:
+            min_arg = np.argmin(peak_heights)
+            peaks[min_arg] = np.argmax(data[-width:])
+            peak_heights[min_arg] = data[peaks[min_arg]]
+        # Check if some peaks are missing and manually add borders if they look promising
+        if len(peaks) < peak_count:
+            threshold = max(data) / 2
+            no_left_peak = min(peaks) > 2 * width
+            no_right_peak = max(peaks) < len(data) - 1 - 2 * width
+            if no_left_peak and left_mean > threshold:
+                peaks = np.append(peaks, np.argmax(data[:width]))
+                peak_heights = np.append(peak_heights, data[peaks[-1]])
+                peak_widths = np.append(peak_widths, width)
+            if no_right_peak and right_mean > threshold:
+                peaks = np.append(peaks, np.argmax(data[-width:]))
+                peak_heights = np.append(peak_heights, data[peaks[-1]])
+                peak_widths = np.append(peak_widths, width)
 
     return peaks, peak_heights, peak_widths
 
