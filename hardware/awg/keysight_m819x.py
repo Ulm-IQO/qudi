@@ -2178,12 +2178,12 @@ class AWGM8195A(AWGM819X):
         # manual 1.5.4: Depending on the Sample Rate Divider, the 256 sample wide output of the sequencer
         # is divided by 1, 2 or 4.
         constraints.waveform_length.step = 256 / self._sample_rate_div
-        constraints.waveform_length.min = 128  # p 108 manual
+        constraints.waveform_length.min = 1280  # != p 108 manual, but tested manually ('MARK')
         constraints.waveform_length.max = int(16e9)
         constraints.waveform_length.default = 1280
 
         # analog channel
-        constraints.a_ch_amplitude.min = 0
+        constraints.a_ch_amplitude.min = 0.075   # from soft frontpanel
         constraints.a_ch_amplitude.max = 2
         constraints.a_ch_amplitude.step = 0.0002 # not used anymore
         constraints.a_ch_amplitude.default = 1
