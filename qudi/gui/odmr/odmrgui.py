@@ -27,7 +27,6 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.util import units
-from qudi.core import qudi_slot
 from qudi.core.module import GuiBase
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
@@ -239,7 +238,7 @@ class OdmrGui(GuiBase):
         logic.sigScanDataUpdated.disconnect(self._update_scan_data)
         logic.sigFitUpdated.disconnect(self._update_fit_result)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def restore_default_view(self):
         self._scan_control_dockwidget.setFloating(False)
         self._fit_dockwidget.setFloating(False)
@@ -253,7 +252,7 @@ class OdmrGui(GuiBase):
                                  QtCore.Qt.Vertical)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
 
-    @qudi_slot(bool)
+    @QtCore.Slot(bool)
     def run_stop_odmr(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
         # Disable controls until logic feedback is activating them again
@@ -266,7 +265,7 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleScan.emit(is_checked, False)  # start measurement, resume flag
 
-    @qudi_slot()
+    @QtCore.Slot()
     def resume_odmr(self):
         # Disable controls until logic feedback is activating them again
         self._mw.action_toggle_measurement.setEnabled(False)
@@ -278,7 +277,7 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleScan.emit(True, True)  # start measurement, resume flag
 
-    @qudi_slot(bool)
+    @QtCore.Slot(bool)
     def toggle_cw_mode(self, is_checked):
         """ Starts or stops CW microwave output if no measurement is running. """
         # Disable controls until logic feedback is activating them again
@@ -289,7 +288,7 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleCw.emit(is_checked)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _apply_odmr_settings(self):
         self._odmr_logic().set_sample_rate(
             data_rate=self._odmr_settings_dialog.data_rate_spinbox.value(),
@@ -297,14 +296,14 @@ class OdmrGui(GuiBase):
         )
         self._max_shown_scans = self._odmr_settings_dialog.max_scans_shown_spinbox.value()
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _restore_odmr_settings(self):
         logic = self._odmr_logic()
         self._odmr_settings_dialog.oversampling_spinbox.setValue(logic.oversampling)
         self._odmr_settings_dialog.data_rate_spinbox.setValue(logic.data_rate)
         self._odmr_settings_dialog.max_scans_shown_spinbox.setValue(self._max_shown_scans)
 
-    @qudi_slot(bool)
+    @QtCore.Slot(bool)
     def _update_scan_state(self, running=None):
         """ Update the display for a change in the microwave status (mode and output).
 

@@ -34,7 +34,6 @@ from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core import qudi_slot
 from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
 
@@ -106,7 +105,7 @@ class ScanningDataLogic(LogicBase):
         with self._thread_lock:
             return self._curr_data_per_scan.copy()
 
-    @qudi_slot()
+    @QtCore.Slot()
     def history_previous(self):
         with self._thread_lock:
             if self._curr_history_index < 1:
@@ -115,7 +114,7 @@ class ScanningDataLogic(LogicBase):
                 return
             return self.restore_from_history(self._curr_history_index - 1)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def history_next(self):
         with self._thread_lock:
             if self._curr_history_index >= len(self._scan_history) - 1:
@@ -124,7 +123,7 @@ class ScanningDataLogic(LogicBase):
                 return
             return self.restore_from_history(self._curr_history_index + 1)
 
-    @qudi_slot(int)
+    @QtCore.Slot(int)
     def restore_from_history(self, index):
         with self._thread_lock:
             if self._scan_logic().module_state() != 'idle':
@@ -152,7 +151,7 @@ class ScanningDataLogic(LogicBase):
             self.sigHistoryScanDataRestored.emit(data)
             return
 
-    @qudi_slot(bool, object, object)
+    @QtCore.Slot(bool, object, object)
     def _update_scan_state(self, running, data, caller_id):
         with self._thread_lock:
             if not running and caller_id is self._logic_id:
@@ -166,7 +165,7 @@ class ScanningDataLogic(LogicBase):
         while len(self._scan_history) > self._max_history_length:
             self._scan_history.pop()
 
-    @qudi_slot(tuple)
+    @QtCore.Slot(tuple)
     def save_1d_scan(self, axis):
         with self.threadlock:
             if self.module_state() != 'idle':
@@ -274,7 +273,7 @@ class ScanningDataLogic(LogicBase):
                     arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    @qudi_slot(tuple, object)
+    @QtCore.Slot(tuple, object)
     def save_2d_scan(self, axes, color_range=None):
         axes = tuple(str(ax).lower() for ax in axes)
         with self._thread_lock:

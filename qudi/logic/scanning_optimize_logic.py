@@ -30,7 +30,6 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.fit_models.gaussian import Gaussian2D, Gaussian
-from qudi.core import qudi_slot
 
 from qudi.interface.scanning_probe_interface import ScanData
 
@@ -148,7 +147,7 @@ class ScanningOptimizeLogic(LogicBase):
     def optimal_position(self):
         return self._optimal_position.copy()
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_optimize_settings(self, settings):
         """
         """
@@ -174,13 +173,13 @@ class ScanningOptimizeLogic(LogicBase):
             self.sigOptimizeSettingsChanged.emit(settings_update)
             return settings_update
 
-    @qudi_slot(bool)
+    @QtCore.Slot(bool)
     def toggle_optimize(self, start):
         if start:
             return self.start_optimize()
         return self.stop_optimize()
 
-    @qudi_slot()
+    @QtCore.Slot()
     def start_optimize(self):
         with self._thread_lock:
             print('start optimize')
@@ -225,7 +224,7 @@ class ScanningOptimizeLogic(LogicBase):
             self._sigNextSequenceStep.emit()
             return 0
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _next_sequence_step(self):
         with self._thread_lock:
             print('next sequence step')
@@ -242,7 +241,7 @@ class ScanningOptimizeLogic(LogicBase):
                 self.stop_optimize()
             return
 
-    @qudi_slot(bool, object, object)
+    @QtCore.Slot(bool, object, object)
     def _scan_state_changed(self, is_running, data, caller_id):
         with self._thread_lock:
             if is_running or self.module_state() == 'idle' or caller_id != self.module_state.uuid:
@@ -284,7 +283,7 @@ class ScanningOptimizeLogic(LogicBase):
                 self._sigNextSequenceStep.emit()
             return
 
-    @qudi_slot()
+    @QtCore.Slot()
     def stop_optimize(self):
         with self._thread_lock:
             print('stop optimize')

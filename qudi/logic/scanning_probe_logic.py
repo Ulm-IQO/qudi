@@ -27,7 +27,6 @@ from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core import qudi_slot
 
 
 class ScanningProbeLogic(LogicBase):
@@ -146,7 +145,7 @@ class ScanningProbeLogic(LogicBase):
                     'resolution': self._scan_resolution.copy(),
                     'frequency': self._scan_frequency.copy()}
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_scan_settings(self, settings):
         with self._thread_lock:
             if 'range' in settings:
@@ -156,7 +155,7 @@ class ScanningProbeLogic(LogicBase):
             if 'frequency' in settings:
                 self.set_scan_frequency(settings['frequency'])
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_scan_range(self, ranges):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -180,7 +179,7 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanSettingsChanged.emit({'range': new_ranges})
             return new_ranges
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_scan_resolution(self, resolution):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -203,7 +202,7 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanSettingsChanged.emit({'resolution': new_resolution})
             return new_resolution
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_scan_frequency(self, frequency):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -226,8 +225,8 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanSettingsChanged.emit({'frequency': new_freq})
             return new_freq
 
-    @qudi_slot(dict)
-    @qudi_slot(dict, object)
+    @QtCore.Slot(dict)
+    @QtCore.Slot(dict, object)
     def set_target_position(self, pos_dict, caller_id=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -259,16 +258,16 @@ class ScanningProbeLogic(LogicBase):
             )
             return new_pos
 
-    @qudi_slot(bool, tuple)
-    @qudi_slot(bool, tuple, object)
+    @QtCore.Slot(bool, tuple)
+    @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
         with self._thread_lock:
             if start:
                 return self.start_scan(scan_axes, caller_id)
             return self.stop_scan()
 
-    @qudi_slot(tuple)
-    @qudi_slot(tuple, object)
+    @QtCore.Slot(tuple)
+    @QtCore.Slot(tuple, object)
     def start_scan(self, scan_axes, caller_id=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -326,7 +325,7 @@ class ScanningProbeLogic(LogicBase):
             self.__start_timer()
             return 0
 
-    @qudi_slot()
+    @QtCore.Slot()
     def stop_scan(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
@@ -341,7 +340,7 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
             return err
 
-    @qudi_slot()
+    @QtCore.Slot()
     def __scan_poll_loop(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
@@ -355,7 +354,7 @@ class ScanningProbeLogic(LogicBase):
             self.__scan_poll_timer.start()
             return
 
-    @qudi_slot()
+    @QtCore.Slot()
     def set_full_scan_ranges(self):
         scan_range = {ax: axis.value_bounds for ax, axis in self.scanner_constraints.axes.items()}
         return self.set_scan_range(scan_range)

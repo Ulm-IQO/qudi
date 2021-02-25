@@ -28,7 +28,6 @@ import traceback
 import numpy as np
 
 from PySide2 import QtCore
-from qudi.core import qudi_slot
 from qudi.core.statusvariable import StatusVar
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
@@ -329,7 +328,7 @@ class SequenceGeneratorLogic(LogicBase):
             return '', ''
         return return_name, return_type
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -440,7 +439,7 @@ class SequenceGeneratorLogic(LogicBase):
             pass
         return self.pulse_generator_settings
 
-    @qudi_slot()
+    @QtCore.Slot()
     def clear_pulser(self):
         """
         """
@@ -462,8 +461,8 @@ class SequenceGeneratorLogic(LogicBase):
         self.sigLoadedAssetUpdated.emit('', '')
         return 0
 
-    @qudi_slot(str)
-    @qudi_slot(object)
+    @QtCore.Slot(str)
+    @QtCore.Slot(object)
     def load_ensemble(self, ensemble):
         """
 
@@ -504,8 +503,8 @@ class SequenceGeneratorLogic(LogicBase):
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
         return 0
 
-    @qudi_slot(str)
-    @qudi_slot(object)
+    @QtCore.Slot(str)
+    @QtCore.Slot(object)
     def load_sequence(self, sequence):
         """
 
@@ -639,7 +638,7 @@ class SequenceGeneratorLogic(LogicBase):
     def saved_pulse_sequences(self):
         return self._saved_pulse_sequences
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def set_generation_parameters(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -1624,7 +1623,7 @@ class SequenceGeneratorLogic(LogicBase):
         # Return error code
         return -1 if ensembles_missing else 0
 
-    @qudi_slot(str)
+    @QtCore.Slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
@@ -1894,7 +1893,7 @@ class SequenceGeneratorLogic(LogicBase):
         self.sigSampleEnsembleComplete.emit(ensemble)
         return offset_bin, natural_sort(written_waveforms), ensemble_info
 
-    @qudi_slot(str)
+    @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):
         """ Samples the PulseSequence object, which serves as the construction plan.
 
