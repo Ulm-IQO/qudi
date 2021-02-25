@@ -21,9 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import sys
 import os
-import faulthandler
 import weakref
-
+import inspect
+import traceback
+import faulthandler
 from PySide2 import QtCore, QtWidgets
 
 from qudi.core.logger import init_rotating_file_handler, get_logger
@@ -81,7 +82,7 @@ class Qudi(QtCore.QObject):
         if import_check() != 0:
             raise Exception('Vital python packages missing. Unable to use qudi.')
 
-        self.log = get_logger(__name__)
+        self.log = get_logger(f'{__name__}.{__class__.__name__}')
         sys.excepthook = self._qudi_excepthook
         self.thread_manager = ThreadManager()
         self.module_manager = ModuleManager(qudi_main=self)
@@ -118,7 +119,24 @@ class Qudi(QtCore.QObject):
         if not issubclass(ex_type, Exception):
             sys.__excepthook__(ex_type, ex_value, ex_traceback)
             return
-        self.log.error('Unhandled qudi Exception:', exc_info=(ex_type, ex_value, ex_traceback))
+
+        # Get the most recent traceback
+        for most_recent_frame, _ in traceback.walk_tb(ex_traceback):
+            pass
+        # Try to extract the module and class name in which the exception has been raised
+        try:
+            obj = most_recent_frame.f_locals['self']
+            logger = get_logger(f'{obj.__module__}.{obj.__class__.__name__}')
+        except (KeyError, AttributeError):
+            # Try to extract just the module name in which the exception has been raised
+            mod = inspect.getmodule(most_recent_frame.f_code)
+            try:
+                logger = get_logger(mod.__name__)
+            except AttributeError:
+                # If no module and class name can be determined, use the application logger
+                logger = self.log
+        # Log exception with qudi log handler
+        logger.error('Unhandled qudi Exception:', exc_info=(ex_type, ex_value, ex_traceback))
 
     @classmethod
     def instance(cls):
