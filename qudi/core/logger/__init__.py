@@ -73,9 +73,6 @@ file_handler = None
 # Register Qt5 message handler
 QtCore.qInstallMessageHandler(qt_message_handler)
 
-for logger_name in ('core', 'gui', 'logic', 'hardware'):
-    logging.getLogger(logger_name).setLevel(logging.DEBUG)
-
 
 def register_handler(name, handler, silent=False):
     global _handlers

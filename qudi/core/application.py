@@ -79,9 +79,10 @@ class Qudi(QtCore.QObject):
 
         # Check vital packages for qudi, otherwise qudi will not even start.
         if import_check() != 0:
-            raise Exception('Vital python packages missing. Unable to use Qudi.')
+            raise Exception('Vital python packages missing. Unable to use qudi.')
 
         self.log = get_logger(__name__)
+        sys.excepthook = self._qudi_excepthook
         self.thread_manager = ThreadManager()
         self.module_manager = ModuleManager(qudi_main=self)
         self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
@@ -108,6 +109,16 @@ class Qudi(QtCore.QObject):
         self._configured_extension_paths = list()
         self._is_running = False
         self._shutting_down = False
+
+    def _qudi_excepthook(self, ex_type, ex_value, ex_traceback):
+        """ Handler function to be used as sys.excepthook. Should forward all unhandled exceptions
+        to logging module.
+        """
+        # Use default sys.excepthook if exception is exotic/no subclass of Exception.
+        if not issubclass(ex_type, Exception):
+            sys.__excepthook__(ex_type, ex_value, ex_traceback)
+            return
+        self.log.error('Unhandled qudi Exception:', exc_info=(ex_type, ex_value, ex_traceback))
 
     @classmethod
     def instance(cls):
