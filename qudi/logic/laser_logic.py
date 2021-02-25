@@ -24,7 +24,6 @@ import time
 import numpy as np
 from PySide2 import QtCore
 
-from qudi.core import qudi_slot
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
@@ -198,7 +197,7 @@ class LaserLogic(LogicBase):
     def control_mode(self, mode):
         self.set_control_mode(mode)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _query_loop_body(self):
         """ Get power, current, shutter state and temperatures from laser. """
         with self._thread_lock:
@@ -266,7 +265,7 @@ class LaserLogic(LogicBase):
                 self.sigDataChanged.emit(self.data)
                 self.__timer.start()
 
-    @qudi_slot()
+    @QtCore.Slot()
     def start_query_loop(self):
         """ Start the readout loop. """
         if self.thread() is not QtCore.QThread.currentThread():
@@ -280,7 +279,7 @@ class LaserLogic(LogicBase):
                 self.module_state.lock()
                 self.__timer.start()
 
-    @qudi_slot()
+    @QtCore.Slot()
     def stop_query_loop(self):
         """ Stop the readout loop. """
         if self.thread() is not QtCore.QThread.currentThread():
@@ -294,7 +293,7 @@ class LaserLogic(LogicBase):
                 self.__timer.stop()
                 self.module_state.unlock()
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def set_control_mode(self, mode):
         """ Change whether the laser output is controlled by current or power setpoint
         """
@@ -308,7 +307,7 @@ class LaserLogic(LogicBase):
                     self.log.exception('Error while setting laser control mode:')
             self.sigControlModeChanged.emit(self.control_mode)
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def set_laser_state(self, state):
         """ Turn laser on or off
         """
@@ -324,7 +323,7 @@ class LaserLogic(LogicBase):
                     self.log.exception('Error while setting laser state:')
             self.sigLaserStateChanged.emit(self.laser_state)
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def set_shutter_state(self, state):
         """ Open or close the laser shutter
         """
@@ -338,14 +337,14 @@ class LaserLogic(LogicBase):
                 self.log.error(f'Invalid shutter state to set: "{state}"')
             self.sigShutterStateChanged.emit(self.shutter_state)
 
-    @qudi_slot(float, object)
+    @QtCore.Slot(float, object)
     def set_power(self, power, caller_id=None):
         """ Set laser output power """
         with self._thread_lock:
             self._laser().set_power(power)
             self.sigPowerSetpointChanged.emit(self.power_setpoint, caller_id)
 
-    @qudi_slot(float, object)
+    @QtCore.Slot(float, object)
     def set_current(self, current, caller_id=None):
         """ Set laser (diode) current """
         with self._thread_lock:

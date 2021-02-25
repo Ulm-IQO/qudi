@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 from PySide2 import QtCore, QtWidgets, QtGui
 
-from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.module import GuiBase
@@ -321,7 +320,7 @@ class LaserGui(GuiBase):
         self._mw.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.output_graph_dock_widget)
         self._mw.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.temperature_graph_dock_widget)
 
-    @qudi_slot(bool)
+    @QtCore.Slot(bool)
     def _laser_clicked(self, checked):
         """ Laser button callback. Disables button and sends a signal to the logic. Logic
         response will enable the button again.
@@ -331,7 +330,7 @@ class LaserGui(GuiBase):
         self.control_dock_widget.laser_button.setEnabled(False)
         self.sigLaserToggled.emit(checked)
 
-    @qudi_slot(bool)
+    @QtCore.Slot(bool)
     def _shutter_clicked(self, checked):
         """ Shutter button callback. Disables button and sends a signal to the logic. Logic
         response will enable the button again.
@@ -341,7 +340,7 @@ class LaserGui(GuiBase):
         self.control_dock_widget.shutter_button.setEnabled(False)
         self.sigShutterToggled.emit(checked)
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def _control_mode_clicked(self, mode):
         """ Control mode button group callback. Disables control elements and sends a signal to the
         logic. Logic response will enable the control elements again.
@@ -356,19 +355,19 @@ class LaserGui(GuiBase):
         self.control_dock_widget.power_slider.setEnabled(False)
         self.sigControlModeChanged.emit(mode)
 
-    @qudi_slot(float)
+    @QtCore.Slot(float)
     def _power_slider_moving(self, value):
         """ ToDo: Document
         """
         self.control_dock_widget.power_setpoint_spinbox.setValue(value)
 
-    @qudi_slot(float)
+    @QtCore.Slot(float)
     def _current_slider_moving(self, value):
         """ ToDo: Document
         """
         self.control_dock_widget.current_setpoint_spinbox.setValue(value)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _power_slider_moved(self):
         """ ToDo: Document
         """
@@ -376,7 +375,7 @@ class LaserGui(GuiBase):
         self.control_dock_widget.power_setpoint_spinbox.setValue(value)
         self.sigPowerChanged.emit(value, self.module_state.uuid)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _current_slider_moved(self):
         """ ToDo: Document
         """
@@ -384,7 +383,7 @@ class LaserGui(GuiBase):
         self.control_dock_widget.current_setpoint_spinbox.setValue(value)
         self.sigCurrentChanged.emit(value, self.module_state.uuid)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _power_setpoint_edited(self):
         """ ToDo: Document
         """
@@ -392,7 +391,7 @@ class LaserGui(GuiBase):
         self.control_dock_widget.power_slider.setValue(value)
         self.sigPowerChanged.emit(value, self.module_state.uuid)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _current_setpoint_edited(self):
         """ ToDo: Document
         """
@@ -400,19 +399,19 @@ class LaserGui(GuiBase):
         self.control_dock_widget.current_slider.setValue(value)
         self.sigCurrentChanged.emit(value, self.module_state.uuid)
 
-    @qudi_slot(float, object)
+    @QtCore.Slot(float, object)
     def _power_setpoint_updated(self, value, caller_id):
         if caller_id != self.module_state.uuid:
             self.control_dock_widget.power_setpoint_spinbox.setValue(value)
             self.control_dock_widget.power_slider.setValue(value)
 
-    @qudi_slot(float, object)
+    @QtCore.Slot(float, object)
     def _current_setpoint_updated(self, value, caller_id):
         if caller_id != self.module_state.uuid:
             self.control_dock_widget.current_setpoint_spinbox.setValue(value)
             self.control_dock_widget.current_slider.setValue(value)
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def _control_mode_updated(self, mode):
         if mode == ControlMode.POWER:
             self.control_dock_widget.current_slider.setEnabled(False)
@@ -438,7 +437,7 @@ class LaserGui(GuiBase):
             self.control_dock_widget.control_power_radio_button.setEnabled(False)
             self.control_dock_widget.control_current_radio_button.setEnabled(False)
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def _laser_state_updated(self, state):
         self._mw.set_laser_state(state)
         if state == LaserState.ON:
@@ -461,7 +460,7 @@ class LaserGui(GuiBase):
             if self.control_dock_widget.laser_button.isVisible():
                 self.control_dock_widget.laser_button.setVisible(False)
 
-    @qudi_slot(object)
+    @QtCore.Slot(object)
     def _shutter_state_updated(self, state):
         self._mw.set_shutter_state(state)
         if state == ShutterState.OPEN:
@@ -484,7 +483,7 @@ class LaserGui(GuiBase):
             if self.control_dock_widget.shutter_button.isVisible():
                 self.control_dock_widget.shutter_button.setVisible(False)
 
-    @qudi_slot(dict)
+    @QtCore.Slot(dict)
     def _data_updated(self, data):
         try:
             x = data.pop('time')

@@ -25,7 +25,6 @@ import numpy as np
 from PySide2 import QtCore, QtGui, QtWidgets
 
 import qudi.core.gui.uic as uic
-from qudi.core import qudi_slot
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
@@ -317,7 +316,7 @@ class ScannerGui(GuiBase):
             self._mw.action_view_toolbar.setChecked)
         self._mw.action_view_toolbar.triggered[bool].connect(self._mw.util_toolBar.setVisible)
 
-    @qudi_slot()
+    @QtCore.Slot()
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to default """
         self._mw.setDockNestingEnabled(True)
@@ -720,14 +719,14 @@ class ScannerGui(GuiBase):
                 self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
 
-    @qudi_slot()
+    @QtCore.Slot()
     def change_optimizer_settings(self):
         # FIXME: sequence needs to be properly implemented
         self.sigOptimizerSettingsChanged.emit(self._osd.settings)
         return
 
-    @qudi_slot()
-    @qudi_slot(dict)
+    @QtCore.Slot()
+    @QtCore.Slot(dict)
     def update_optimizer_settings(self, settings=None):
         if not isinstance(settings, dict):
             settings = self._optimize_logic().optimize_settings
