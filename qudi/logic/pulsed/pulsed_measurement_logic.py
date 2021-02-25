@@ -48,7 +48,7 @@ class PulsedMeasurementLogic(LogicBase):
     # declare connectors
     _fastcounter = Connector(name='fastcounter', interface='FastCounterInterface')
     _pulsegenerator = Connector(name='pulsegenerator', interface='PulserInterface')
-    _microwave = Connector(name='microwave', interface='MicrowaveInterface', optional=True)
+    _microwave = Connector(name='microwave', interface='ProcessSetpointInterface', optional=True)
 
     # Config options
     # Optional additional paths to import from
@@ -445,10 +445,9 @@ class PulsedMeasurementLogic(LogicBase):
     ############################################################################
     @property
     def ext_microwave_settings(self):
-        settings_dict = dict()
-        settings_dict['power'] = float(self.__microwave_power)
-        settings_dict['frequency'] = float(self.__microwave_freq)
-        settings_dict['use_ext_microwave'] = bool(self.__use_ext_microwave)
+        settings_dict = {'power': float(self.__microwave_power),
+                         'frequency': float(self.__microwave_freq),
+                         'use_ext_microwave': bool(self.__use_ext_microwave)}
         return settings_dict
 
     @ext_microwave_settings.setter
@@ -469,13 +468,15 @@ class PulsedMeasurementLogic(LogicBase):
 
         :return int: error code (0:OK, -1:error)
         """
+        err = 0
         if self._microwave.is_connected:
-            err = self._microwave().cw_on()
-            if err < 0:
+            mw = self._microwave()
+            mw.is_active = True
+            running = mw.is_active
+            if not running:
                 self.log.error('Failed to turn on external CW microwave output.')
-            self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_status()[1])
+            self.sigExtMicrowaveRunningUpdated.emit(running)
         else:
-            err = 0
             self.sigExtMicrowaveRunningUpdated.emit(False)
         return err
 
@@ -485,13 +486,15 @@ class PulsedMeasurementLogic(LogicBase):
 
         :return int: error code (0:OK, -1:error)
         """
+        err = 0
         if self._microwave.is_connected:
-            err = self.microwave().off()
-            if err < 0:
+            mw = self._microwave()
+            mw.is_active = False
+            running = mw.is_active
+            if running:
                 self.log.error('Failed to turn off external CW microwave output.')
-            self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_status()[1])
+            self.sigExtMicrowaveRunningUpdated.emit(running)
         else:
-            err = 0
             self.sigExtMicrowaveRunningUpdated.emit(False)
         return err
 
@@ -526,7 +529,8 @@ class PulsedMeasurementLogic(LogicBase):
         @return:
         """
         # Check if microwave is running and do nothing if that is the case
-        if self._microwave.is_connected and self.microwave().output_state[1]:
+        microwave = self._microwave()
+        if microwave is not None and microwave.is_active:
             self.log.warning('Microwave device is running.\nUnable to apply new settings.')
         else:
             # Determine complete settings dictionary
@@ -543,11 +547,13 @@ class PulsedMeasurementLogic(LogicBase):
             if 'use_ext_microwave' in settings_dict:
                 self.__use_ext_microwave = bool(settings_dict['use_ext_microwave']) and self._microwave.is_connected
 
-            if self.__use_ext_microwave:
+            if self.__use_ext_microwave and microwave is not None:
                 # Apply the settings to hardware
-                self.microwave().set_cw(frequency=self.__microwave_freq,
-                                        power=self.__microwave_power)
-                self.__microwave_freq, self.__microwave_power = self.microwave().cw_parameters
+                microwave.setpoints = {'Frequency': self.__microwave_freq,
+                                       'Power': self.__microwave_power}
+                new_setpoints = microwave.setpoints
+                self.__microwave_freq = new_setpoints['Frequency']
+                self.__microwave_power = new_setpoints['Power']
 
         # emit update signal for master (GUI or other logic module)
         self.sigExtMicrowaveSettingsUpdated.emit({'power': self.__microwave_power,
@@ -1165,6 +1171,7 @@ class PulsedMeasurementLogic(LogicBase):
                                                                         self.__fast_counter_gates))
         return
 
+    @qudi_slot()
     def _pulsed_analysis_loop(self):
         """ Acquires laser pulses from fast counter,
             calculates fluorescence signal and creates plots.
