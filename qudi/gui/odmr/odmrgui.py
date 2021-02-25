@@ -52,6 +52,7 @@ class OdmrGui(GuiBase):
     sigToggleScan = QtCore.Signal(bool, bool)
     sigToggleCw = QtCore.Signal(bool)
     sigDoFit = QtCore.Signal(str, str, int)  # fit_config, channel, range_index
+    sigSaveData = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -162,6 +163,7 @@ class OdmrGui(GuiBase):
         self.sigToggleScan.connect(logic.toggle_odmr_scan, QtCore.Qt.QueuedConnection)
         self.sigToggleCw.connect(logic.toggle_cw_output, QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(logic.do_fit, QtCore.Qt.QueuedConnection)
+        self.sigSaveData.connect(logic.save_odmr_data, QtCore.Qt.QueuedConnection)
 
     def __connect_logic_signals(self):
         logic = self._odmr_logic()
@@ -350,7 +352,7 @@ class OdmrGui(GuiBase):
         self._update_fit_result(fit_cfg_result, channel, range_index)
 
     def _update_fit_result(self, fit_cfg_result, channel, range_index):
-        print('_update_fit_result',fit_cfg_result, channel, range_index)
+        print('_update_fit_result', fit_cfg_result, channel, range_index)
         current_channel = self._scan_control_dockwidget.selected_channel
         current_range_index = self._scan_control_dockwidget.selected_range
         if current_channel == channel and current_range_index == range_index:
@@ -369,6 +371,4 @@ class OdmrGui(GuiBase):
 
     def save_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
-        filetag = self._mw.save_nametag_lineedit.text()
-        print(f'save measurement with tag "{filetag}"')
-        # ToDo: Implement saving
+        self.sigSaveData.emit(self._mw.save_nametag_lineedit.text())

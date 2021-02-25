@@ -635,7 +635,7 @@ class OdmrLogic(LogicBase):
             self._fit_results[channel][range_index] = None
         self.sigFitUpdated.emit(self._fit_results[channel][range_index], channel, range_index)
 
-    def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
+    def save_odmr_data(self, tag=None):
         """ Saves the current ODMR data to a file."""
         with self._threadlock:
             timestamp = datetime.datetime.now()
@@ -701,93 +701,21 @@ class OdmrLogic(LogicBase):
             if self._save_thumbnails:
                 for channel, range_data in self._signal_data.items():
                     for range_index, _ in enumerate(range_data):
-                        fig = self._draw_figure(channel,
-                                                range_index,
-                                                colorscale_range,
-                                                percentile_range)
+                        fig = self._draw_figure(channel, range_index)
                         # ToDo: Better cleaning of filename (slugify)
                         channel_file_tag = channel.replace(' ', '-')
                         filelabel_fig = f'{tag_str}ODMR_{channel_file_tag}_range{range_index:d}'
                         self._data_storage.save_thumbnail(fig,
                                                           timestamp=timestamp,
                                                           nametag=filelabel_fig)
-            # 
-            #     # Create save file with header
-            #     self._data_storage.new_data_file(parameters=parameters,
-            #                                      nametag=tag,
-            #                                      timestamp=timestamp)
-            # 
-            # 
-            # 
-            #     self._data_storage.new_data_file()
-            #     self._save_logic.save_data(data_raw,
-            #                                filepath=filepath,
-            #                                parameters=parameters,
-            #                                filelabel=filelabel_raw,
-            #                                fmt='%.6e',
-            #                                delimiter='\t',
-            #                                timestamp=timestamp)
-            # 
-            #     # now create a plot for each scan range
-            #     data_start_ind = 0
-            #     for ii, frequency_arr in enumerate(self.frequency_lists):
-            #         if len(tag) > 0:
-            #             filelabel = '{0}_ODMR_data_ch{1}_range{2}'.format(tag, nch, ii)
-            #         else:
-            #             filelabel = 'ODMR_data_ch{0}_range{1}'.format(nch, ii)
-            # 
-            #         # prepare the data in a dict:
-            #         data = dict()
-            #         data['frequency (Hz)'] = frequency_arr
-            # 
-            #         num_points = len(frequency_arr)
-            #         data_end_ind = data_start_ind + num_points
-            #         data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
-            #         data_start_ind += num_points
-            # 
-            #         parameters = dict()
-            #         parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
-            #         parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
-            #         parameters['Run Time (s)'] = self.run_time
-            #         parameters['Number of frequency sweeps (#)'] = self._elapsed_sweeps
-            #         parameters['Start Frequency (Hz)'] = frequency_arr[0]
-            #         parameters['Stop Frequency (Hz)'] = frequency_arr[-1]
-            #         parameters['Step size (Hz)'] = frequency_arr[1] - frequency_arr[0]
-            #         parameters['Clock Frequencies (Hz)'] = self.clock_frequency
-            #         parameters['Channel'] = '{0}: {1}'.format(nch, channel)
-            #         parameters['frequency range'] = str(ii)
-            # 
-            #         key = 'channel: {0}, range: {1}'.format(nch, ii)
-            #         if key in self.fits_performed.keys():
-            #             parameters['Fit function'] = self.fits_performed[key][3]
-            #             for name, param in self.fits_performed[key][2].params.items():
-            #                 parameters[name] = str(param)
-            #         # add all fit parameter to the saved data:
-            # 
-            #         fig = self.draw_figure(nch, ii,
-            #                                cbar_range=colorscale_range,
-            #                                percentile_range=percentile_range)
-            # 
-            #         self._save_logic.save_data(data,
-            #                                    filepath=filepath,
-            #                                    parameters=parameters,
-            #                                    filelabel=filelabel,
-            #                                    fmt='%.6e',
-            #                                    delimiter='\t',
-            #                                    timestamp=timestamp,
-            #                                    plotfig=fig)
-            # 
-            # self.log.info('ODMR data saved to:\n{0}'.format(filepath))
-            # return
 
-    def _draw_figure(self, channel, range_index, colorscale_range=None, percentile_range=None):
+    def _draw_figure(self, channel, range_index):
         """ Draw the summary figure to save with the data.
 
-        @param list colorscale_range: (optional) [color_scale_min, color_scale_max]. If not supplied
-                                      then a default of data_min to data_max will be used.
-        @param list percentile_range: (optional) Percentile range of the chosen cbar_range.
+        @param str channel: The data channel name to plot data for.
+        @param int range_index: The index for chosen channel data scan range
 
-        @return: fig fig: a matplotlib figure object to be saved to file.
+        @return matplotlib.figure.Figure: a matplotlib figure object to be saved to file.
         """
         freq_data = self._frequency_data[range_index]
         signal_data = self._signal_data[channel][range_index]
@@ -797,34 +725,27 @@ class OdmrLogic(LogicBase):
             fit_x, fit_y = fit_result[1].high_res_best_fit
         unit = self.scanner_constraints.channel_units[channel]
 
-        # If no colorbar range was given, take full range of data
-        if colorscale_range is None:
-            colorscale_range = np.array([np.min(raw_data), np.max(raw_data)])
-        else:
-            colorscale_range = np.array(colorscale_range)
-
         # Determine SI unit scaling for signal
         scaled = ScaledFloat(np.max(signal_data))
         signal_unit_prefix = scaled.scale
         if signal_unit_prefix:
-            signal_data /= scaled.scale_val
+            signal_data = signal_data / scaled.scale_val
             if fit_result is not None:
-                fit_y /= scaled.scale_val
+                fit_y = fit_y / scaled.scale_val
 
         # Determine SI unit scaling for frequency axis
         scaled = ScaledFloat(np.max(freq_data))
         freq_unit_prefix = scaled.scale
         if freq_unit_prefix:
-            freq_data /= scaled.scale_val
+            freq_data = freq_data / scaled.scale_val
             if fit_result is not None:
-                fit_x /= scaled.scale_val
+                fit_x = fit_x / scaled.scale_val
 
         # Determine SI unit scaling for raw data
         scaled = ScaledFloat(np.max(raw_data))
         raw_unit_prefix = scaled.scale
         if raw_unit_prefix:
-            raw_data /= scaled.scale_val
-            colorscale_range /= scaled.scale_val
+            raw_data = raw_data / scaled.scale_val
 
         # Use qudi style
         plt.style.use(_mpl_qd_style)
@@ -833,7 +754,7 @@ class OdmrLogic(LogicBase):
         fig, (ax_signal, ax_raw) = plt.subplots(nrows=2, ncols=1)
 
         # plot signal data
-        ax_signal.plot(freq_data, signal_data, linestyle=':', linewidth=0.5)
+        ax_signal.plot(freq_data, signal_data, linestyle=':', linewidth=0.5, marker='o')
         # Include fit curve if there is one
         if fit_result is not None:
             ax_signal.plot(fit_x, fit_y, marker='None')
@@ -844,16 +765,16 @@ class OdmrLogic(LogicBase):
         raw_data_plot = ax_raw.imshow(raw_data.transpose(),
                                       cmap=plt.get_cmap('inferno'),
                                       origin='lower',
-                                      vmin=colorscale_range[0],
-                                      vmax=colorscale_range[1],
+                                      vmin=np.min(raw_data),
+                                      vmax=np.max(raw_data),
                                       extent=[min(freq_data),
                                               max(freq_data),
-                                              0,
-                                              raw_data.shape[1]],
+                                              -0.5,
+                                              raw_data.shape[1] - 0.5],
                                       aspect='auto',
                                       interpolation='nearest')
         ax_raw.set_xlabel(f'Frequency ({freq_unit_prefix}Hz)')
-        ax_raw.set_ylabel('Scan #')
+        ax_raw.set_ylabel('Scan Index')
 
         # Adjust subplots to make room for colorbar
         fig.subplots_adjust(right=0.8)
@@ -865,23 +786,23 @@ class OdmrLogic(LogicBase):
         # remove ticks from colorbar for cleaner image
         colorbar.ax.tick_params(which=u'both', length=0)
         # If we have percentile information, draw that to the figure
-        if percentile_range is not None:
-            colorbar.ax.annotate(str(percentile_range[0]),
-                                 xy=(-0.3, 0.0),
-                                 xycoords='axes fraction',
-                                 horizontalalignment='right',
-                                 verticalalignment='center',
-                                 rotation=90)
-            colorbar.ax.annotate(str(percentile_range[1]),
-                                 xy=(-0.3, 1.0),
-                                 xycoords='axes fraction',
-                                 horizontalalignment='right',
-                                 verticalalignment='center',
-                                 rotation=90)
-            colorbar.ax.annotate('(percentile)',
-                                 xy=(-0.3, 0.5),
-                                 xycoords='axes fraction',
-                                 horizontalalignment='right',
-                                 verticalalignment='center',
-                                 rotation=90)
+        # if percentile_range is not None:
+        #     colorbar.ax.annotate(str(percentile_range[0]),
+        #                          xy=(-0.3, 0.0),
+        #                          xycoords='axes fraction',
+        #                          horizontalalignment='right',
+        #                          verticalalignment='center',
+        #                          rotation=90)
+        #     colorbar.ax.annotate(str(percentile_range[1]),
+        #                          xy=(-0.3, 1.0),
+        #                          xycoords='axes fraction',
+        #                          horizontalalignment='right',
+        #                          verticalalignment='center',
+        #                          rotation=90)
+        #     colorbar.ax.annotate('(percentile)',
+        #                          xy=(-0.3, 0.5),
+        #                          xycoords='axes fraction',
+        #                          horizontalalignment='right',
+        #                          verticalalignment='center',
+        #                          rotation=90)
         return fig
