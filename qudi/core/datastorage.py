@@ -36,8 +36,8 @@ try:
 except ImportError:
     __qudi_installed = False
 
-__all__ = ('get_default_data_dir', 'get_daily_data_directory', 'CsvDataStorage', 'DataFormat',
-           'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+__all__ = ('get_default_data_dir', 'get_daily_data_directory', 'CsvDataStorage', 'DataStorageBase',
+           'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 
 def get_default_data_dir(create_missing=False):
@@ -102,16 +102,6 @@ class ImageFormat(Enum):
     """
     PNG = '.png'
     PDF = '.pdf'
-
-
-class DataFormat(Enum):
-    """ File format for saving data to disk.
-    """
-    TEXT = 0
-    CSV = 1
-    NPY = 2
-    # XML = 3
-    # HDF5 = 4
 
 
 class DataStorageBase(metaclass=ABCMeta):
