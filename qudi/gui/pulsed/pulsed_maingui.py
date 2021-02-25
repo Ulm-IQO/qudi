@@ -243,10 +243,9 @@ class PulsedMeasurementGui(GuiBase):
 
     def show(self):
         """Make main window visible and put it above all other windows. """
-        QtWidgets.QMainWindow.show(self._mw)
+        self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
-        return
 
     ###########################################################################
     #                          Signal (dis-)connections                       #
@@ -2293,10 +2292,13 @@ class PulsedMeasurementGui(GuiBase):
         self._pa.ext_control_mw_power_DoubleSpinBox.blockSignals(True)
         self._pa.ana_param_fc_bins_ComboBox.blockSignals(True)
         # apply constraints
-        self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(mw_constraints.min_frequency,
-                                                            mw_constraints.max_frequency)
-        self._pa.ext_control_mw_power_DoubleSpinBox.setRange(mw_constraints.min_power,
-                                                             mw_constraints.max_power)
+        if mw_constraints is None:
+            self._pa.extrnal_control_groupbox.hide()
+        else:
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(mw_constraints.min_frequency,
+                                                                mw_constraints.max_frequency)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(mw_constraints.min_power,
+                                                                 mw_constraints.max_power)
         self._pa.ana_param_fc_bins_ComboBox.clear()
         for binwidth in fc_constraints['hardware_binwidth_list']:
             self._pa.ana_param_fc_bins_ComboBox.addItem(str(binwidth))
