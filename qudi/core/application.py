@@ -43,6 +43,14 @@ try:
 except ImportError:
     pass
 
+# Use Agg backend for matplotlib by default since it is thread-safe. Otherwise you can only safely
+# plot from main thread and not e.g. in a logic module.
+try:
+    import matplotlib as _mpl
+    _mpl.use('Agg')
+except ImportError:
+    pass
+
 
 class Qudi(QtCore.QObject):
     """
