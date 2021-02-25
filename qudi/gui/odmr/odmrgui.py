@@ -27,6 +27,7 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.util import units
+from qudi.core import qudi_slot
 from qudi.core.module import GuiBase
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
@@ -109,7 +110,17 @@ class OdmrGui(GuiBase):
         self.show()
 
     def on_deactivate(self):
-        pass
+        # Disconnect signals
+        self.__disconnect_main_window_actions()
+        self.__disconnect_fit_control_signals()
+        self.__disconnect_cw_control_signals()
+        self.__disconnect_scan_control_signals()
+        self.__disconnect_logic_signals()
+        self.__disconnect_gui_signals()
+        # Close dialogs and windows
+        self._odmr_settings_dialog.close()
+        self._fit_config_dialog.close()
+        self._mw.close()
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -177,6 +188,47 @@ class OdmrGui(GuiBase):
         logic.sigScanDataUpdated.connect(self._update_scan_data, QtCore.Qt.QueuedConnection)
         logic.sigFitUpdated.connect(self._update_fit_result, QtCore.Qt.QueuedConnection)
 
+    def __disconnect_main_window_actions(self):
+        self._mw.action_toggle_measurement.triggered[bool].disconnect()
+        self._mw.action_resume_measurement.triggered.disconnect()
+        self._mw.action_save_measurement.triggered.disconnect()
+        self._mw.action_toggle_cw.triggered[bool].disconnect()
+        self._mw.action_show_cw_controls.triggered[bool].disconnect()
+        self._mw.action_restore_default_view.triggered.disconnect()
+        self._mw.action_show_odmr_settings.triggered.disconnect()
+        self._mw.action_show_fit_configuration.triggered.disconnect()
+
+    def __disconnect_cw_control_signals(self):
+        self._cw_control_dockwidget.sigCwParametersChanged.disconnect()
+        self._cw_control_dockwidget.sigClosed.disconnect()
+
+    def __disconnect_fit_control_signals(self):
+        self._fit_dockwidget.fit_widget.sigDoFit.disconnect()
+
+    def __disconnect_scan_control_signals(self):
+        self._scan_control_dockwidget.sigRangeCountChanged.disconnect()
+        self._scan_control_dockwidget.sigRangeChanged.disconnect()
+        self._scan_control_dockwidget.sigRuntimeChanged.disconnect()
+        self._scan_control_dockwidget.sigAveragedScansChanged.disconnect()
+        self._scan_control_dockwidget.sigDataSelectionChanged.disconnect()
+
+    def __disconnect_gui_signals(self):
+        self.sigToggleScan.disconnect()
+        self.sigToggleCw.disconnect()
+        self.sigDoFit.disconnect()
+        self.sigSaveData.disconnect()
+
+    def __disconnect_logic_signals(self):
+        logic = self._odmr_logic()
+        logic.sigScanStateUpdated.disconnect(self._update_scan_state)
+        logic.sigCwStateUpdated.disconnect(self._update_cw_state)
+        logic.sigElapsedUpdated.disconnect(self._mw.set_elapsed)
+        logic.sigScanParametersUpdated.disconnect(self._update_scan_parameters)
+        logic.sigCwParametersUpdated.disconnect(self._update_cw_parameters)
+        logic.sigScanDataUpdated.disconnect(self._update_scan_data)
+        logic.sigFitUpdated.disconnect(self._update_fit_result)
+
+    @qudi_slot()
     def restore_default_view(self):
         self._scan_control_dockwidget.setFloating(False)
         self._fit_dockwidget.setFloating(False)
@@ -190,6 +242,7 @@ class OdmrGui(GuiBase):
                                  QtCore.Qt.Vertical)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
 
+    @qudi_slot(bool)
     def run_stop_odmr(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
         # Disable controls until logic feedback is activating them again
@@ -202,6 +255,7 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleScan.emit(is_checked, False)  # start measurement, resume flag
 
+    @qudi_slot()
     def resume_odmr(self):
         # Disable controls until logic feedback is activating them again
         self._mw.action_toggle_measurement.setEnabled(False)
@@ -213,6 +267,7 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleScan.emit(True, True)  # start measurement, resume flag
 
+    @qudi_slot(bool)
     def toggle_cw_mode(self, is_checked):
         """ Starts or stops CW microwave output if no measurement is running. """
         # Disable controls until logic feedback is activating them again
@@ -223,7 +278,7 @@ class OdmrGui(GuiBase):
         # Notify logic
         self.sigToggleCw.emit(is_checked)
 
-    @QtCore.Slot()
+    @qudi_slot()
     def _apply_odmr_settings(self):
         self._odmr_logic().set_sample_rate(
             data_rate=self._odmr_settings_dialog.data_rate_spinbox.value(),
@@ -231,13 +286,14 @@ class OdmrGui(GuiBase):
         )
         self._max_shown_scans = self._odmr_settings_dialog.max_scans_shown_spinbox.value()
 
-    @QtCore.Slot()
+    @qudi_slot()
     def _restore_odmr_settings(self):
         logic = self._odmr_logic()
         self._odmr_settings_dialog.oversampling_spinbox.setValue(logic.oversampling)
         self._odmr_settings_dialog.data_rate_spinbox.setValue(logic.data_rate)
         self._odmr_settings_dialog.max_scans_shown_spinbox.setValue(self._max_shown_scans)
 
+    @qudi_slot(bool)
     def _update_scan_state(self, running=None):
         """ Update the display for a change in the microwave status (mode and output).
 
@@ -263,7 +319,6 @@ class OdmrGui(GuiBase):
         # ToDo: Get running state if running is None
         if running is None:
             return
-        print('_update_cw_state:', running)
         # set controls state
         self._mw.action_toggle_measurement.setEnabled(not running)
         self._mw.action_resume_measurement.setEnabled(not running)
@@ -305,36 +360,28 @@ class OdmrGui(GuiBase):
             logic = self._odmr_logic()
             param_dict = logic.scan_parameters
 
-        print('_update_scan_parameters:', param_dict)
-
         param = param_dict.get('data_rate')
         if param is not None:
-            print('data_rate updated from logic:', param)
             self._odmr_settings_dialog.data_rate_spinbox.setValue(param)
 
         param = param_dict.get('oversampling')
         if param is not None:
-            print('oversampling updated from logic:', param)
             self._odmr_settings_dialog.oversampling_spinbox.setValue(param)
 
         param = param_dict.get('run_time')
         if param is not None:
-            print('run_time updated from logic:', param)
             self._scan_control_dockwidget.set_runtime(param)
 
         param = param_dict.get('averaged_scans')
         if param is not None:
-            print('average_length updated from logic:', param)
             self._scan_control_dockwidget.set_averaged_scans(param)
 
         param = param_dict.get('power')
         if param is not None:
-            print('scan power updated from logic:', param)
             self._scan_control_dockwidget.set_scan_power(param)
 
         param = param_dict.get('frequency_ranges')
         if param is not None:
-            print('frequency_ranges updated from logic:', param)
             self._scan_control_dockwidget.set_range_count(len(param))
             for ii, range_tuple in enumerate(param):
                 self._scan_control_dockwidget.set_frequency_range(range_tuple, ii)
@@ -352,7 +399,6 @@ class OdmrGui(GuiBase):
         self._update_fit_result(fit_cfg_result, channel, range_index)
 
     def _update_fit_result(self, fit_cfg_result, channel, range_index):
-        print('_update_fit_result', fit_cfg_result, channel, range_index)
         current_channel = self._scan_control_dockwidget.selected_channel
         current_range_index = self._scan_control_dockwidget.selected_range
         if current_channel == channel and current_range_index == range_index:
@@ -366,7 +412,6 @@ class OdmrGui(GuiBase):
     def _fit_clicked(self, fit_config):
         channel = self._scan_control_dockwidget.selected_channel
         range_index = self._scan_control_dockwidget.selected_range
-        print('fit clicked:', fit_config, channel, range_index)
         self.sigDoFit.emit(fit_config, channel, range_index)
 
     def save_data(self):
