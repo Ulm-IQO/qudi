@@ -66,11 +66,14 @@ class OdmrGui(GuiBase):
         self._fit_config_dialog = None
         self._odmr_settings_dialog = None
 
+        self.__cw_control_available = False  # Flag indicating if CW control is available
+
     def on_activate(self):
         # Create main window
         logic = self._odmr_logic()
         scanner_constraints = logic.scanner_constraints
         cw_constraints = logic.cw_constraints
+        self.__cw_control_available = cw_constraints is not None
         self._mw = OdmrMainWindow()
         self._plot_widget = self._mw.centralWidget()
         # ToDo: Get constraints from scanner
@@ -81,11 +84,14 @@ class OdmrGui(GuiBase):
             data_channels=scanner_constraints.channel_names,
             points_range=scanner_constraints.frame_size_limits
         )
-        self._cw_control_dockwidget = OdmrCwControlDockWidget(
-            parent=self._mw,
-            power_range=cw_constraints.channel_limits['Power'],
-            frequency_range=cw_constraints.channel_limits['Frequency']
-        )
+        if self.__cw_control_available:
+            self._cw_control_dockwidget = OdmrCwControlDockWidget(
+                parent=self._mw,
+                power_range=cw_constraints.channel_limits['Power'],
+                frequency_range=cw_constraints.channel_limits['Frequency']
+            )
+        else:
+            self._cw_control_dockwidget = OdmrCwControlDockWidget(parent=self._mw)
         self._fit_dockwidget = OdmrFitDockWidget(parent=self._mw, fit_container=logic.fit_container)
         self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
                                                          fit_config_model=logic.fit_config_model)
@@ -105,6 +111,11 @@ class OdmrGui(GuiBase):
         self.__connect_scan_control_signals()
         self.__connect_logic_signals()
         self.__connect_gui_signals()
+
+        # Hide CW controls if no CW source is connected to logic
+        if not self.__cw_control_available:
+            self._mw.action_toggle_cw.setVisible(False)
+            self._mw.action_show_cw_controls.setEnabled(False)
 
         self.restore_default_view()
         self.show()
@@ -234,7 +245,7 @@ class OdmrGui(GuiBase):
         self._fit_dockwidget.setFloating(False)
         self._mw.action_show_cw_controls.setChecked(True)
         self._cw_control_dockwidget.setFloating(False)
-        self._cw_control_dockwidget.show()
+        self._cw_control_dockwidget.setVisible(self.__cw_control_available)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._cw_control_dockwidget)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._scan_control_dockwidget)
         self._mw.splitDockWidget(self._cw_control_dockwidget,

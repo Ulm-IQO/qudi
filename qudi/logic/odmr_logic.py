@@ -43,8 +43,10 @@ class OdmrLogic(LogicBase):
     """ This is the Logic class for CW ODMR measurements """
 
     # declare connectors
-    _cw_microwave = Connector(name='cw_microwave', interface='ProcessSetpointInterface')
     _odmr_scanner = Connector(name='odmr_scanner', interface='OdmrScannerInterface')
+    _cw_microwave = Connector(name='cw_microwave',
+                              interface='ProcessSetpointInterface',
+                              optional=True)
 
     # declare config options
     _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
@@ -219,7 +221,9 @@ class OdmrLogic(LogicBase):
 
     @property
     def cw_constraints(self):
-        return self._cw_microwave().constraints
+        if self._cw_microwave.is_connected:
+            return self._cw_microwave().constraints
+        return None
 
     @property
     def signal_data(self):
@@ -405,6 +409,10 @@ class OdmrLogic(LogicBase):
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
         """
+        if not self._cw_microwave.is_connected:
+            self.sigCwParametersUpdated.emit(self.cw_parameters)
+            return
+
         with self._threadlock:
             try:
                 constraints = self.cw_constraints
@@ -416,6 +424,9 @@ class OdmrLogic(LogicBase):
 
     @qudi_slot(bool)
     def toggle_cw_output(self, enable):
+        if not self._cw_microwave.is_connected:
+            self.sigCwStateUpdated.emit(False)
+            return
         with self._threadlock:
             microwave = self._cw_microwave()
             # Return early if CW output is already in desired state
