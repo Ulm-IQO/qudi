@@ -20,19 +20,22 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from PySide2 import QtCore
 import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
+from PySide2 import QtCore
 
 from qudi.core import qudi_slot
 from qudi.core.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.module import LogicBase
 from qudi.core.util.mutex import RecursiveMutex
+from qudi.core.util.units import ScaledFloat
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+from qudi.core.datastorage import TextDataStorage
+from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style as _mpl_qd_style
 from qudi.interface.finite_sampling_io_interface import SamplingOutputMode
 
 
@@ -43,6 +46,10 @@ class OdmrLogic(LogicBase):
     _cw_microwave = Connector(name='cw_microwave', interface='ProcessSetpointInterface')
     _odmr_scanner = Connector(name='odmr_scanner', interface='OdmrScannerInterface')
 
+    # declare config options
+    _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
+
+    # declare status variables
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
     _cw_power = StatusVar(name='cw_power', default=-30)
     _scan_power = StatusVar(name='scan_power', default=-30)
@@ -104,6 +111,7 @@ class OdmrLogic(LogicBase):
         self._signal_data = None
         self._frequency_data = None
         self._fit_results = None
+        self._data_storage = None
 
     def on_activate(self):
         """
@@ -111,10 +119,6 @@ class OdmrLogic(LogicBase):
         """
         # Set/recall microwave parameters and check against constraints
         # ToDo: check all StatusVars
-        # limits = self.cw_constraints
-        # self._cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
-        # self._cw_mw_power = limits.power_in_range(self.cw_mw_power)
-        # self._scan_mw_power = limits.power_in_range(self.sweep_mw_power)
 
         self._fit_config_model = FitConfigurationsModel(parent=self)
         self._fit_config_model.load_configs(self._fit_configs)
@@ -128,6 +132,9 @@ class OdmrLogic(LogicBase):
 
         # Initialize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_data()
+
+        # Prepare data storage helper
+        self._data_storage = TextDataStorage(sub_directory='ODMR')
 
         # Connect signals
         self._sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
@@ -630,238 +637,251 @@ class OdmrLogic(LogicBase):
 
     def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
-        timestamp = datetime.datetime.now()
-        filepath = self._save_logic.get_path_for_module(module_name='ODMR')
+        with self._threadlock:
+            timestamp = datetime.datetime.now()
+            parameters = {
+                'Microwave CW Power (dBm)': self._cw_power,
+                'Microwave Scan Power (dBm)': self._scan_power,
+                'Approx. Run Time (s)': self._elapsed_time,
+                'Number of Frequency Sweeps (#)': self._elapsed_sweeps,
+                'Start Frequencies (Hz)': tuple(rng[0] for rng in self._scan_frequency_ranges),
+                'Stop Frequencies (Hz)': tuple(rng[1] for rng in self._scan_frequency_ranges),
+                'Step sizes (Hz)': tuple(rng[2] for rng in self._scan_frequency_ranges),
+                'Data Rate (Hz)': self._data_rate,
+                'Oversampling factor (Hz)': self._oversampling_factor,
+                'Channel Name': ''
+            }
+            channel_units = self.scanner_constraints.channel_units
+            tag_str = tag + '_' if tag else ''
+            # Join frequency data from all scan ranges
+            freq_data = np.concatenate(self._frequency_data)
 
-        if tag is None:
-            tag = ''
+            # Save raw data in a separate file per data channel
+            for channel, range_data in self._raw_data.items():
+                parameters['Channel Name'] = channel
+                ch_unit = channel_units[channel]
+                self._data_storage.column_headers = f'Frequency (Hz), Scan Data ({ch_unit})'
 
-        for nch, channel in enumerate(self.get_odmr_channels()):
-            # first save raw data for each channel
-            if len(tag) > 0:
-                filelabel_raw = '{0}_ODMR_data_ch{1}_raw'.format(tag, nch)
-            else:
-                filelabel_raw = 'ODMR_data_ch{0}_raw'.format(nch)
+                # ToDo: Better cleaning of filename (slugify)
+                channel_file_tag = channel.replace(' ', '-')
+                filelabel_raw = f'{tag_str}ODMR_{channel_file_tag}_raw'
 
-            data_raw = dict()
-            data_raw['count data (counts/s)'] = self.odmr_raw_data[:self._elapsed_sweeps, nch, :]
-            parameters = dict()
-            parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
-            parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
-            parameters['Run Time (s)'] = self.run_time
-            parameters['Number of frequency sweeps (#)'] = self._elapsed_sweeps
-            parameters['Start Frequencies (Hz)'] = self.mw_starts
-            parameters['Stop Frequencies (Hz)'] = self.mw_stops
-            parameters['Step sizes (Hz)'] = self.mw_steps
-            parameters['Clock Frequencies (Hz)'] = self.clock_frequency
-            parameters['Channel'] = '{0}: {1}'.format(nch, channel)
-            self._save_logic.save_data(data_raw,
-                                       filepath=filepath,
-                                       parameters=parameters,
-                                       filelabel=filelabel_raw,
-                                       fmt='%.6e',
-                                       delimiter='\t',
-                                       timestamp=timestamp)
+                # Filter raw data to get rid of invalid values (nan or inf)
+                joined_data = np.concatenate([raw[:, :self._elapsed_sweeps] for raw in range_data],
+                                             axis=0)
+                # add frequency data as first column
+                joined_data = np.column_stack((freq_data, joined_data))
 
-            # now create a plot for each scan range
-            data_start_ind = 0
-            for ii, frequency_arr in enumerate(self.frequency_lists):
-                if len(tag) > 0:
-                    filelabel = '{0}_ODMR_data_ch{1}_range{2}'.format(tag, nch, ii)
-                else:
-                    filelabel = 'ODMR_data_ch{0}_range{1}'.format(nch, ii)
+                # Save raw data
+                self._data_storage.save_data(joined_data,
+                                             parameters=parameters,
+                                             nametag=filelabel_raw,
+                                             timestamp=timestamp)
 
-                # prepare the data in a dict:
-                data = dict()
-                data['frequency (Hz)'] = frequency_arr
+            # Save signal data in a single file for all data channels
+            del parameters['Channel Name']
+            parameters['Averaged Scans (#)'] = self._scans_to_average
+            column_headers = ['Frequency (Hz)']
+            column_headers.extend(f'{ch} ({channel_units[ch]})' for ch in self._signal_data)
+            self._data_storage.column_headers = tuple(column_headers)
+            filelabel_signal = f'{tag_str}ODMR_signal'
+            # Join signal data from all scan ranges
+            joined_data = [np.concatenate(signal) for signal in self._signal_data.values()]
+            # add frequency data
+            joined_data.insert(0, freq_data)
+            # Join everything in one big array
+            joined_data = np.column_stack(joined_data)
+            # Save signal data
+            self._data_storage.save_data(joined_data,
+                                         parameters=parameters,
+                                         nametag=filelabel_signal,
+                                         timestamp=timestamp)
 
-                num_points = len(frequency_arr)
-                data_end_ind = data_start_ind + num_points
-                data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
-                data_start_ind += num_points
+            # Save plot images if required. This takes by far the most time to complete.
+            if self._save_thumbnails:
+                for channel, range_data in self._signal_data.items():
+                    for range_index, _ in enumerate(range_data):
+                        fig = self._draw_figure(channel,
+                                                range_index,
+                                                colorscale_range,
+                                                percentile_range)
+                        # ToDo: Better cleaning of filename (slugify)
+                        channel_file_tag = channel.replace(' ', '-')
+                        filelabel_fig = f'{tag_str}ODMR_{channel_file_tag}_range{range_index:d}'
+                        self._data_storage.save_thumbnail(fig,
+                                                          timestamp=timestamp,
+                                                          nametag=filelabel_fig)
+            # 
+            #     # Create save file with header
+            #     self._data_storage.new_data_file(parameters=parameters,
+            #                                      nametag=tag,
+            #                                      timestamp=timestamp)
+            # 
+            # 
+            # 
+            #     self._data_storage.new_data_file()
+            #     self._save_logic.save_data(data_raw,
+            #                                filepath=filepath,
+            #                                parameters=parameters,
+            #                                filelabel=filelabel_raw,
+            #                                fmt='%.6e',
+            #                                delimiter='\t',
+            #                                timestamp=timestamp)
+            # 
+            #     # now create a plot for each scan range
+            #     data_start_ind = 0
+            #     for ii, frequency_arr in enumerate(self.frequency_lists):
+            #         if len(tag) > 0:
+            #             filelabel = '{0}_ODMR_data_ch{1}_range{2}'.format(tag, nch, ii)
+            #         else:
+            #             filelabel = 'ODMR_data_ch{0}_range{1}'.format(nch, ii)
+            # 
+            #         # prepare the data in a dict:
+            #         data = dict()
+            #         data['frequency (Hz)'] = frequency_arr
+            # 
+            #         num_points = len(frequency_arr)
+            #         data_end_ind = data_start_ind + num_points
+            #         data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
+            #         data_start_ind += num_points
+            # 
+            #         parameters = dict()
+            #         parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
+            #         parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
+            #         parameters['Run Time (s)'] = self.run_time
+            #         parameters['Number of frequency sweeps (#)'] = self._elapsed_sweeps
+            #         parameters['Start Frequency (Hz)'] = frequency_arr[0]
+            #         parameters['Stop Frequency (Hz)'] = frequency_arr[-1]
+            #         parameters['Step size (Hz)'] = frequency_arr[1] - frequency_arr[0]
+            #         parameters['Clock Frequencies (Hz)'] = self.clock_frequency
+            #         parameters['Channel'] = '{0}: {1}'.format(nch, channel)
+            #         parameters['frequency range'] = str(ii)
+            # 
+            #         key = 'channel: {0}, range: {1}'.format(nch, ii)
+            #         if key in self.fits_performed.keys():
+            #             parameters['Fit function'] = self.fits_performed[key][3]
+            #             for name, param in self.fits_performed[key][2].params.items():
+            #                 parameters[name] = str(param)
+            #         # add all fit parameter to the saved data:
+            # 
+            #         fig = self.draw_figure(nch, ii,
+            #                                cbar_range=colorscale_range,
+            #                                percentile_range=percentile_range)
+            # 
+            #         self._save_logic.save_data(data,
+            #                                    filepath=filepath,
+            #                                    parameters=parameters,
+            #                                    filelabel=filelabel,
+            #                                    fmt='%.6e',
+            #                                    delimiter='\t',
+            #                                    timestamp=timestamp,
+            #                                    plotfig=fig)
+            # 
+            # self.log.info('ODMR data saved to:\n{0}'.format(filepath))
+            # return
 
-                parameters = dict()
-                parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
-                parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
-                parameters['Run Time (s)'] = self.run_time
-                parameters['Number of frequency sweeps (#)'] = self._elapsed_sweeps
-                parameters['Start Frequency (Hz)'] = frequency_arr[0]
-                parameters['Stop Frequency (Hz)'] = frequency_arr[-1]
-                parameters['Step size (Hz)'] = frequency_arr[1] - frequency_arr[0]
-                parameters['Clock Frequencies (Hz)'] = self.clock_frequency
-                parameters['Channel'] = '{0}: {1}'.format(nch, channel)
-                parameters['frequency range'] = str(ii)
-
-                key = 'channel: {0}, range: {1}'.format(nch, ii)
-                if key in self.fits_performed.keys():
-                    parameters['Fit function'] = self.fits_performed[key][3]
-                    for name, param in self.fits_performed[key][2].params.items():
-                        parameters[name] = str(param)
-                # add all fit parameter to the saved data:
-
-                fig = self.draw_figure(nch, ii,
-                                       cbar_range=colorscale_range,
-                                       percentile_range=percentile_range)
-
-                self._save_logic.save_data(data,
-                                           filepath=filepath,
-                                           parameters=parameters,
-                                           filelabel=filelabel,
-                                           fmt='%.6e',
-                                           delimiter='\t',
-                                           timestamp=timestamp,
-                                           plotfig=fig)
-
-        self.log.info('ODMR data saved to:\n{0}'.format(filepath))
-        return
-
-    def draw_figure(self, channel_number, freq_range, cbar_range=None, percentile_range=None):
+    def _draw_figure(self, channel, range_index, colorscale_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
 
-        @param: list cbar_range: (optional) [color_scale_min, color_scale_max].
-                                 If not supplied then a default of data_min to data_max
-                                 will be used.
-
-        @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
+        @param list colorscale_range: (optional) [color_scale_min, color_scale_max]. If not supplied
+                                      then a default of data_min to data_max will be used.
+        @param list percentile_range: (optional) Percentile range of the chosen cbar_range.
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        key = 'channel: {0}, range: {1}'.format(channel_number, freq_range)
-        freq_data = self.frequency_lists[freq_range]
-        lengths = [len(freq_range) for freq_range in self.frequency_lists]
-        cumulative_sum = list()
-        tmp_val = 0
-        cumulative_sum.append(tmp_val)
-        for length in lengths:
-            tmp_val += length
-            cumulative_sum.append(tmp_val)
-
-        ind_start = cumulative_sum[freq_range]
-        ind_end = cumulative_sum[freq_range + 1]
-        count_data = self.odmr_plot_y[channel_number][ind_start:ind_end]
-        fit_freq_vals = self.frequency_lists[freq_range]
-        if key in self.fits_performed:
-            fit_count_vals = self.fits_performed[key][2].eval()
-        else:
-            fit_count_vals = 0.0
-        matrix_data = self.select_odmr_matrix_data(self.odmr_plot_xy, channel_number, freq_range)
+        freq_data = self._frequency_data[range_index]
+        signal_data = self._signal_data[channel][range_index]
+        raw_data = self._raw_data[channel][range_index][:, :self._elapsed_sweeps]
+        fit_result = self._fit_results[channel][range_index]
+        if fit_result is not None:
+            fit_x, fit_y = fit_result[1].high_res_best_fit
+        unit = self.scanner_constraints.channel_units[channel]
 
         # If no colorbar range was given, take full range of data
-        if cbar_range is None:
-            cbar_range = np.array([np.min(matrix_data), np.max(matrix_data)])
+        if colorscale_range is None:
+            colorscale_range = np.array([np.min(raw_data), np.max(raw_data)])
         else:
-            cbar_range = np.array(cbar_range)
+            colorscale_range = np.array(colorscale_range)
 
-        prefix = ['', 'k', 'M', 'G', 'T']
-        prefix_index = 0
+        # Determine SI unit scaling for signal
+        scaled = ScaledFloat(np.max(signal_data))
+        signal_unit_prefix = scaled.scale
+        if signal_unit_prefix:
+            signal_data /= scaled.scale_val
+            if fit_result is not None:
+                fit_y /= scaled.scale_val
 
-        # Rescale counts data with SI prefix
-        while np.max(count_data) > 1000:
-            count_data = count_data / 1000
-            fit_count_vals = fit_count_vals / 1000
-            prefix_index = prefix_index + 1
+        # Determine SI unit scaling for frequency axis
+        scaled = ScaledFloat(np.max(freq_data))
+        freq_unit_prefix = scaled.scale
+        if freq_unit_prefix:
+            freq_data /= scaled.scale_val
+            if fit_result is not None:
+                fit_x /= scaled.scale_val
 
-        counts_prefix = prefix[prefix_index]
-
-        # Rescale frequency data with SI prefix
-        prefix_index = 0
-
-        while np.max(freq_data) > 1000:
-            freq_data = freq_data / 1000
-            fit_freq_vals = fit_freq_vals / 1000
-            prefix_index = prefix_index + 1
-
-        mw_prefix = prefix[prefix_index]
-
-        # Rescale matrix counts data with SI prefix
-        prefix_index = 0
-
-        while np.max(matrix_data) > 1000:
-            matrix_data = matrix_data / 1000
-            cbar_range = cbar_range / 1000
-            prefix_index = prefix_index + 1
-
-        cbar_prefix = prefix[prefix_index]
+        # Determine SI unit scaling for raw data
+        scaled = ScaledFloat(np.max(raw_data))
+        raw_unit_prefix = scaled.scale
+        if raw_unit_prefix:
+            raw_data /= scaled.scale_val
+            colorscale_range /= scaled.scale_val
 
         # Use qudi style
-        plt.style.use(self._save_logic.mpl_qd_style)
+        plt.style.use(_mpl_qd_style)
 
         # Create figure
-        fig, (ax_mean, ax_matrix) = plt.subplots(nrows=2, ncols=1)
+        fig, (ax_signal, ax_raw) = plt.subplots(nrows=2, ncols=1)
 
-        ax_mean.plot(freq_data, count_data, linestyle=':', linewidth=0.5)
+        # plot signal data
+        ax_signal.plot(freq_data, signal_data, linestyle=':', linewidth=0.5)
+        # Include fit curve if there is one
+        if fit_result is not None:
+            ax_signal.plot(fit_x, fit_y, marker='None')
+        ax_signal.set_ylabel(f'{channel} ({signal_unit_prefix}{unit})')
+        ax_signal.set_xlim(min(freq_data), max(freq_data))
 
-        # Do not include fit curve if there is no fit calculated.
-        if hasattr(fit_count_vals, '__len__'):
-            ax_mean.plot(fit_freq_vals, fit_count_vals, marker='None')
-
-        ax_mean.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
-        ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
-
-        matrixplot = ax_matrix.imshow(
-            matrix_data,
-            cmap=plt.get_cmap('inferno'),  # reference the right place in qd
-            origin='lower',
-            vmin=cbar_range[0],
-            vmax=cbar_range[1],
-            extent=[np.min(freq_data),
-                    np.max(freq_data),
-                    0,
-                    self.number_of_lines
-                    ],
-            aspect='auto',
-            interpolation='nearest')
-
-        ax_matrix.set_xlabel('Frequency (' + mw_prefix + 'Hz)')
-        ax_matrix.set_ylabel('Scan #')
+        # plot raw data
+        raw_data_plot = ax_raw.imshow(raw_data.transpose(),
+                                      cmap=plt.get_cmap('inferno'),
+                                      origin='lower',
+                                      vmin=colorscale_range[0],
+                                      vmax=colorscale_range[1],
+                                      extent=[min(freq_data),
+                                              max(freq_data),
+                                              0,
+                                              raw_data.shape[1]],
+                                      aspect='auto',
+                                      interpolation='nearest')
+        ax_raw.set_xlabel(f'Frequency ({freq_unit_prefix}Hz)')
+        ax_raw.set_ylabel('Scan #')
 
         # Adjust subplots to make room for colorbar
         fig.subplots_adjust(right=0.8)
-
         # Add colorbar axis to figure
-        cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-
+        colorbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
         # Draw colorbar
-        cbar = fig.colorbar(matrixplot, cax=cbar_ax)
-        cbar.set_label('Fluorescence (' + cbar_prefix + 'c/s)')
-
+        colorbar = fig.colorbar(raw_data_plot, cax=colorbar_ax)
+        colorbar.set_label(f'{channel} ({signal_unit_prefix}{unit})')
         # remove ticks from colorbar for cleaner image
-        cbar.ax.tick_params(which=u'both', length=0)
-
+        colorbar.ax.tick_params(which=u'both', length=0)
         # If we have percentile information, draw that to the figure
         if percentile_range is not None:
-            cbar.ax.annotate(str(percentile_range[0]),
-                             xy=(-0.3, 0.0),
-                             xycoords='axes fraction',
-                             horizontalalignment='right',
-                             verticalalignment='center',
-                             rotation=90
-                             )
-            cbar.ax.annotate(str(percentile_range[1]),
-                             xy=(-0.3, 1.0),
-                             xycoords='axes fraction',
-                             horizontalalignment='right',
-                             verticalalignment='center',
-                             rotation=90
-                             )
-            cbar.ax.annotate('(percentile)',
-                             xy=(-0.3, 0.5),
-                             xycoords='axes fraction',
-                             horizontalalignment='right',
-                             verticalalignment='center',
-                             rotation=90
-                             )
-
+            colorbar.ax.annotate(str(percentile_range[0]),
+                                 xy=(-0.3, 0.0),
+                                 xycoords='axes fraction',
+                                 horizontalalignment='right',
+                                 verticalalignment='center',
+                                 rotation=90)
+            colorbar.ax.annotate(str(percentile_range[1]),
+                                 xy=(-0.3, 1.0),
+                                 xycoords='axes fraction',
+                                 horizontalalignment='right',
+                                 verticalalignment='center',
+                                 rotation=90)
+            colorbar.ax.annotate('(percentile)',
+                                 xy=(-0.3, 0.5),
+                                 xycoords='axes fraction',
+                                 horizontalalignment='right',
+                                 verticalalignment='center',
+                                 rotation=90)
         return fig
-
-    def select_odmr_matrix_data(self, odmr_matrix, nch, freq_range):
-        odmr_matrix_dp = odmr_matrix[:, nch]
-        x_data = self.frequency_lists[freq_range]
-        x_data_full_length = np.zeros(len(self.final_freq_list))
-        mw_starts = [freq_arr[0] for freq_arr in self.frequency_lists]
-        start_pos = np.where(np.isclose(self.final_freq_list,
-                                        mw_starts[freq_range]))[0][0]
-        x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
-        y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
-        odmr_matrix_range = odmr_matrix_dp[:, y_args]
-        return odmr_matrix_range
