@@ -19,38 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import functools as __functools
-from PySide2.QtCore import Slot
-
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.connector import Connector
 from qudi.core.module import Base, LogicBase, GuiBase
 from qudi.core.logger import get_logger
-
-
-def qudi_slot(*args, **kwargs):
-    """ Decorator to be used as drop-in replacement for PySide2.QtCore.Slot().
-    Wraps decorated function with a try/except statement to pass any exceptions to the qudi logging
-    facility.
-    This is necessary because PySide2 Slots silently ignore Python exceptions raised in non-main
-    threads by default if they get invoked by Qt Signals (with QueuedConnection).
-    The "common" approach to install a custom sys.excepthook does not work in this case.
-
-    See PySide2.QtCore.Slot for decorator documentation.
-    """
-    if len(args) == 0 or callable(args[0]):
-        args = []
-    qt_decorator = Slot(*args, **kwargs)  # default decorator
-
-    def slot_decorator(func):
-        log = get_logger('{0}.{1}'.format(func.__module__, func.__qualname__.split('.', 1)[0]))
-
-        @__functools.wraps(func)
-        def wrapper(*_args, **_kwargs):
-            try:
-                return func(*_args, **_kwargs)
-            except:
-                log.exception('Error while invoking Qt Slot. This must never happen.')
-        return qt_decorator(wrapper)
-    return slot_decorator

@@ -26,7 +26,6 @@ import numpy as np
 from PySide2 import QtCore, QtWidgets
 from qudi.core.util.mutex import Mutex
 from qudi.core.util.units import create_formatted_output
-from qudi.core import qudi_slot
 from qudi.core import fit_models as __models
 
 
@@ -146,7 +145,7 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
     def configurations(self):
         return self._fit_configurations.copy()
 
-    @qudi_slot(str, str)
+    @QtCore.Slot(str, str)
     def add_configuration(self, name, model):
         assert name not in self.configuration_names, f'Fit config "{name}" already defined.'
         assert name != 'No Fit', '"No Fit" is a reserved name for fit configs. Choose another.'
@@ -157,7 +156,7 @@ class FitConfigurationsModel(QtCore.QAbstractListModel):
         self.endInsertRows()
         self.sigFitConfigurationsChanged.emit(self.configuration_names)
 
-    @qudi_slot(str)
+    @QtCore.Slot(str)
     def remove_configuration(self, name):
         try:
             row_index = self.configuration_names.index(name)
@@ -278,7 +277,7 @@ class FitContainer(QtCore.QObject):
         with self._access_lock:
             return self._last_fit_config, self._last_fit_result
 
-    @qudi_slot(str, object, object)
+    @QtCore.Slot(str, object, object)
     def fit_data(self, fit_config, x, data):
         with self._access_lock:
             if fit_config:

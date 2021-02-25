@@ -26,7 +26,6 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.datafitting import FitContainer, FitConfigurationsModel, FitConfiguration
 from qudi.core.util.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core import qudi_slot
 
 __all__ = ('FitWidget', 'FitConfigurationWidget', 'FitConfigurationDialog')
 
@@ -84,7 +83,7 @@ class FitWidget(QtWidgets.QWidget):
                 self.update_fit_result, QtCore.Qt.QueuedConnection
             )
 
-    @qudi_slot(tuple)
+    @QtCore.Slot(tuple)
     def update_fit_configurations(self, config_names):
         old_text = self.selection_combobox.currentText()
         self.selection_combobox.clear()
@@ -93,7 +92,7 @@ class FitWidget(QtWidgets.QWidget):
         if old_text in config_names:
             self.selection_combobox.setCurrentText(old_text)
 
-    @qudi_slot(str, object)
+    @QtCore.Slot(str, object)
     def update_fit_result(self, fit_config, fit_result):
         if fit_config:
             if self.selection_combobox.currentText() != fit_config:
@@ -104,7 +103,7 @@ class FitWidget(QtWidgets.QWidget):
             else:
                 self.result_label.setText('')
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _fit_clicked(self):
         config = self.selection_combobox.currentText()
         self.sigDoFit.emit(config)
@@ -155,7 +154,7 @@ class FitConfigurationWidget(QtWidgets.QWidget):
             fit_config_model.add_configuration, QtCore.Qt.QueuedConnection
         )
 
-    @qudi_slot()
+    @QtCore.Slot()
     def _add_config_clicked(self):
         model = self.model_combobox.currentText()
         name = self.name_lineedit.text()
@@ -221,7 +220,7 @@ class FitConfigurationListView(QtWidgets.QListView):
                 return True
         return False
 
-    @qudi_slot(str)
+    @QtCore.Slot(str)
     def remove_config_clicked(self, config_name):
         if self.__previous_index.isValid():
             self.closePersistentEditor(self.__previous_index)

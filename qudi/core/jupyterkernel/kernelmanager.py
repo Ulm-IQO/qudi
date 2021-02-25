@@ -25,7 +25,7 @@ import logging
 import numpy as np
 
 from PySide2 import QtCore
-from qudi.core import qudi_slot
+
 from qudi.core.util.mutex import RecursiveMutex
 from qudi.core.util.network import netobtain
 
@@ -167,8 +167,8 @@ class JupyterKernelManager(QtCore.QObject):
             except:
                 self.log.warning('External qudikernel starter did not exit')
 
-    @qudi_slot()
-    @qudi_slot(dict)
+    @QtCore.Slot()
+    @QtCore.Slot(dict)
     def update_module_namespace(self, managed_modules=None):
         """ Remove non-existing modules from namespace, add new modules to namespace, update
         reloaded modules
@@ -209,7 +209,7 @@ class JupyterKernelManager(QtCore.QObject):
             kernel.user_global_ns.pop(name, None)
         return
 
-    @qudi_slot(str, str, str)
+    @QtCore.Slot(str, str, str)
     def update_namespace_on_module_state_change(self, base, name, state):
         with self._lock:
             if state in ('deactivated', 'BROKEN'):
