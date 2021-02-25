@@ -241,6 +241,7 @@ class OdmrLogic(LogicBase):
     def scans_to_average(self, number_of_scans):
         self.set_scans_to_average(number_of_scans)
 
+    @qudi_slot(int)
     def set_scans_to_average(self, number_of_scans):
         """ Sets the number of scans to average for the sum of the data
 
@@ -262,6 +263,7 @@ class OdmrLogic(LogicBase):
     def runtime(self, new_runtime):
         self.set_runtime(new_runtime)
 
+    @qudi_slot(object)
     def set_runtime(self, runtime):
         """ Sets the runtime for ODMR measurement
 
@@ -278,9 +280,9 @@ class OdmrLogic(LogicBase):
     def frequency_ranges(self):
         return self._scan_frequency_ranges.copy()
 
+    @qudi_slot(object, object, object, int)
     def set_frequency_range(self, start, stop, points, index):
         with self._threadlock:
-            print('set_frequency_range:', index, start, stop, points)
             if self.module_state() != 'idle':
                 self.log.error('Unable to set frequency range. ODMR scan in progress.')
             else:
@@ -300,6 +302,7 @@ class OdmrLogic(LogicBase):
     def frequency_range_count(self):
         return len(self._scan_frequency_ranges)
 
+    @qudi_slot(int)
     def set_frequency_range_count(self, number_of_ranges):
         if number_of_ranges < 1:
             self.log.error('Number of frequency ranges can not be smaller than 1.')
@@ -336,6 +339,7 @@ class OdmrLogic(LogicBase):
     def data_rate(self, rate):
         self.set_data_rate(rate)
 
+    @qudi_slot(object)
     def set_data_rate(self, rate):
         """
         @param float rate: desired data rate in Hz
@@ -350,9 +354,11 @@ class OdmrLogic(LogicBase):
     def oversampling(self, factor):
         self.set_oversampling(factor)
 
+    @qudi_slot(int)
     def set_oversampling(self, factor):
         self.set_sample_rate(oversampling=factor)
 
+    @qudi_slot(object, int)
     def set_sample_rate(self, data_rate=None, oversampling=None):
         """ Helper method to set data rate and oversampling factor simultaneously. This method
         should be used whenever possible in order to avoid out-of-range errors when setting these
@@ -392,6 +398,7 @@ class OdmrLogic(LogicBase):
     def cw_parameters(self):
         return {'frequency': self._cw_frequency, 'power': self._cw_power}
 
+    @qudi_slot(object, object)
     def set_cw_parameters(self, frequency, power):
         """ Set the desired new cw mode parameters.
 
@@ -407,6 +414,7 @@ class OdmrLogic(LogicBase):
                 self.log.exception('Error while trying to set CW parameters:')
             self.sigCwParametersUpdated.emit(self.cw_parameters)
 
+    @qudi_slot(bool)
     def toggle_cw_output(self, enable):
         with self._threadlock:
             microwave = self._cw_microwave()
@@ -426,6 +434,7 @@ class OdmrLogic(LogicBase):
                 self.log.exception('Error while trying to toggle microwave CW output:')
             self.sigCwStateUpdated.emit(microwave.is_active)
 
+    @qudi_slot(bool, bool)
     def toggle_odmr_scan(self, start, resume):
         """
         """
@@ -437,6 +446,7 @@ class OdmrLogic(LogicBase):
         else:
             self.stop_odmr_scan()
 
+    @qudi_slot()
     def start_odmr_scan(self):
         """ Starting an ODMR scan.
 
@@ -505,6 +515,7 @@ class OdmrLogic(LogicBase):
             self._sigNextLine.emit()
             return 0
 
+    @qudi_slot()
     def continue_odmr_scan(self):
         """ Continue ODMR scan.
 
@@ -525,6 +536,7 @@ class OdmrLogic(LogicBase):
             self._sigNextLine.emit()
             return 0
 
+    @qudi_slot()
     def stop_odmr_scan(self):
         """ Stop the ODMR scan.
 
@@ -536,6 +548,7 @@ class OdmrLogic(LogicBase):
             self.sigScanStateUpdated.emit(False)
             return 0
 
+    @qudi_slot()
     def clear_odmr_data(self):
         """ Clear the current ODMR data and reset elapsed time/sweeps """
         with self._threadlock:
@@ -547,6 +560,7 @@ class OdmrLogic(LogicBase):
                 self.sigScanDataUpdated.emit()
                 self._start_time = time.time()
 
+    @qudi_slot()
     def _scan_odmr_line(self):
         """ Scans one line in ODMR
 
@@ -615,7 +629,6 @@ class OdmrLogic(LogicBase):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
-        print('do_fit:', fit_config, channel, range_index)
         if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
             self.log.error(f'Unknown fit configuration "{fit_config}" encountered.')
             return
@@ -635,6 +648,7 @@ class OdmrLogic(LogicBase):
             self._fit_results[channel][range_index] = None
         self.sigFitUpdated.emit(self._fit_results[channel][range_index], channel, range_index)
 
+    @qudi_slot(str)
     def save_odmr_data(self, tag=None):
         """ Saves the current ODMR data to a file."""
         with self._threadlock:
