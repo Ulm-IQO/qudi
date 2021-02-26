@@ -35,8 +35,9 @@ class DictTableModel(QtCore.QAbstractTableModel):
         if isinstance(headers, str):
             self._headers = [headers]
         elif len(headers) > 2:
-            raise Exception(
-                'DictTableModel can only support up to 2 columns and associated headers.')
+            raise ValueError(
+                'DictTableModel can only support up to 2 columns and associated headers.'
+            )
         elif not all(isinstance(h, str) for h in headers):
             raise TypeError('DictTableModel header entries must be str type.')
         else:

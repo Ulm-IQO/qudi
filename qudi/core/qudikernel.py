@@ -45,11 +45,13 @@ class QudiInterface:
         config.load_config(set_default=False)
         server_config = config.module_server
         if not server_config:
-            raise Exception('No module_server config found in configuration file {0}'
-                            ''.format(config.config_file))
+            raise ValueError(
+                f'No module_server config found in configuration file {config.config_file}'
+            )
         if 'address' not in server_config or 'port' not in server_config:
-            raise Exception(
-                'module_server configuration must contain mandatory entries "address" and "port".')
+            raise ValueError(
+                'module_server configuration must contain mandatory entries "address" and "port".'
+            )
         self.host = server_config['address']
         self.port = server_config['port']
         self.certfile = server_config.get('certfile', None)
@@ -72,7 +74,7 @@ class QudiInterface:
     def start_kernel(self, connfile):
         kernel_manager = self.get_kernel_manager()
         if kernel_manager is None:
-            raise Exception('Unable to retrieve kernel manager from Qudi remote server')
+            raise RuntimeError('Unable to retrieve kernel manager from Qudi remote server')
         cfg = json.loads(''.join(open(connfile).readlines()))
         self.kernel_id = kernel_manager.start_kernel(cfg, self)
 
@@ -81,7 +83,7 @@ class QudiInterface:
         sys.stdout.flush()
         kernel_manager = self.get_kernel_manager()
         if kernel_manager is None:
-            raise Exception('Unable to retrieve kernel manager from Qudi remote server')
+            raise RuntimeError('Unable to retrieve kernel manager from Qudi remote server')
         if self.kernel_id is not None:
             kernel_manager.stop_kernel(self.kernel_id, blocking=True)
             sys.stdout.flush()
