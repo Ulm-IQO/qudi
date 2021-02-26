@@ -24,9 +24,7 @@ Copyright:
         Luke Campagnola    <luke.campagnola@gmail.com>
 """
 
-import os
 import re
-import sys
 import importlib
 import logging
 import numpy as np

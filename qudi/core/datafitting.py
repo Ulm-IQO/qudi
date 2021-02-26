@@ -23,10 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import inspect
 import lmfit
 import numpy as np
-from PySide2 import QtCore, QtWidgets
-from qudi.core.util.mutex import Mutex
-from qudi.core.util.units import create_formatted_output
-from qudi.core import fit_models as __models
+from PySide2 import QtCore
+from qudi.util.mutex import Mutex
+from qudi.util.units import create_formatted_output
+from qudi.tools import fit_models as __models
 
 
 def __is_fit_model(cls):

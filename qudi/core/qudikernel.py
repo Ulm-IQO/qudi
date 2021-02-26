@@ -31,7 +31,7 @@ import tempfile
 import errno
 
 from qudi.core.config import Configuration
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True

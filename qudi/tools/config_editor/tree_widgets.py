@@ -4,7 +4,7 @@
 """
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.util.mutex import Mutex
+from qudi.util.mutex import Mutex
 
 
 class AvailableModulesTreeWidget(QtWidgets.QTreeWidget):

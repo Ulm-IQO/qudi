@@ -31,7 +31,7 @@ def get_main_dir():
 
     @return string: path to the main tree of the software
     """
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
 def get_artwork_dir():

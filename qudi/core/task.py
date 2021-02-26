@@ -28,7 +28,7 @@ from enum import Enum
 from PySide2 import QtCore
 
 from qudi.core.meta import TaskMetaclass
-from qudi.core.util.mutex import Mutex, RecursiveMutex
+from qudi.util.mutex import Mutex, RecursiveMutex
 from qudi.core.connector import Connector
 from fysom import Fysom
 

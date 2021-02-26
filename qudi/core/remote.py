@@ -31,8 +31,8 @@ from rpyc.utils.authenticators import SSLAuthenticator
 from urllib.parse import urlparse
 from PySide2 import QtCore
 
-from qudi.core.util.mutex import Mutex
-from qudi.core.util.models import DictTableModel
+from qudi.util.mutex import Mutex
+from qudi.util.models import DictTableModel
 
 logger = logging.getLogger(__name__)
 

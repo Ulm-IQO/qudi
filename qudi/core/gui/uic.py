@@ -27,7 +27,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 import os
 import re
 from importlib.util import spec_from_loader, module_from_spec
-from qudi.core.util.paths import get_artwork_dir, get_appdata_dir
+from qudi.core.paths import get_artwork_dir, get_appdata_dir
 
 __all__ = ('loadUi',)
 

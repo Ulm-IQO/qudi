@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from PySide2 import QtCore
 from collections import OrderedDict
-from qudi.core.util.mutex import RecursiveMutex
+from .mutex import RecursiveMutex
 
 __all__ = ('DictTableModel', 'ListTableModel')
 
