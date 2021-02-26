@@ -188,8 +188,10 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
                 cfg_val = copy.deepcopy(config[cfg_opt.name])
             else:
                 if cfg_opt.missing == MissingOption.error:
-                    raise Exception(f'Required ConfigOption >>{cfg_opt.name}<< not given in '
-                                    f'configuration.\nConfiguration is: {config}')
+                    raise ValueError(
+                        f'Required ConfigOption "{cfg_opt.name}" not given in configuration.\n'
+                        f'Configuration is: {config}'
+                    )
                 msg = f'No ConfigOption >>{cfg_opt.name}<< configured, using default value ' \
                       f'"{cfg_opt.default}" instead.'
                 cfg_val = copy.deepcopy(cfg_opt.default)
@@ -240,8 +242,10 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
     def _qudi_main(self):
         qudi_main = self.__qudi_main_weakref()
         if qudi_main is None:
-            raise Exception('Unexpected missing qudi main instance. It has either been deleted or '
-                            'garbage collected.')
+            raise RuntimeError(
+                'Unexpected missing qudi main instance. It has either been deleted or garbage '
+                'collected.'
+            )
         return qudi_main
 
     def __activation_callback(self, event=None):

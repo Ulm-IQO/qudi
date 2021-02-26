@@ -52,8 +52,10 @@ class ModuleManager(QtCore.QObject):
                 obj = super().__new__(cls, *args, **kwargs)
                 cls._instance = weakref.ref(obj)
                 return obj
-            raise Exception('ModuleManager is a singleton. An instance has already been created in '
-                            'this process. Please use ModuleManager.instance() instead.')
+            raise RuntimeError(
+                'ModuleManager is a singleton. An instance has already been created in this '
+                'process. Please use ModuleManager.instance() instead.'
+            )
 
     def __init__(self, *args, qudi_main, **kwargs):
         super().__init__(*args, **kwargs)
@@ -286,7 +288,7 @@ class ManagedModule(QtCore.QObject):
 
         super().__init__()
         if self.thread() is not QtCore.QCoreApplication.instance().thread():
-            raise Exception('ManagedModules can only be owned by the application main thread.')
+            raise RuntimeError('ManagedModules can only be owned by the application main thread.')
 
         self._qudi_main_ref = qudi_main_ref  # Weak reference to qudi main instance
         self._name = name  # Each qudi module needs a unique string identifier

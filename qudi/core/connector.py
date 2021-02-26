@@ -56,7 +56,7 @@ class Connector:
             return self._obj_proxy
         if self.optional:
             return None
-        raise Exception(f'Connector {self.name} (interface {self.interface}) is not connected.')
+        raise RuntimeError(f'Connector {self.name} (interface {self.interface}) is not connected.')
 
     def __copy__(self):
         return self.copy()
@@ -73,16 +73,20 @@ class Connector:
         if isinstance(self.interface, str):
             bases = [cls.__name__ for cls in target.__class__.mro()]
             if self.interface not in bases:
-                raise Exception(f'Module {target} connected to connector {self.name} does not '
-                                f'implement interface {self.interface}.')
+                raise RuntimeError(
+                    f'Module {target} connected to connector {self.name} does not implement '
+                    f'interface {self.interface}.'
+                )
             self._obj_proxy = _ConnectedInterfaceProxy(target, self.interface)
         elif isinstance(self.interface, type):
             if not isinstance(target, self.interface):
-                raise Exception(f'Module {target} connected to connector {self.name} does not '
-                                f'implement interface {self.interface.__name__}.')
+                raise RuntimeError(
+                    f'Module {target} connected to connector {self.name} does not implement '
+                    f'interface {self.interface.__name__}.'
+                )
             self._obj_proxy = _ConnectedInterfaceProxy(target, self.interface.__class__.__name__)
         else:
-            raise Exception(f'Unknown type for <Connector>.interface: "{type(self.interface)}"')
+            raise RuntimeError(f'Unknown type for <Connector>.interface: "{type(self.interface)}"')
         self._obj_ref = weakref.ref(target, self.__module_died_callback)
         return
 

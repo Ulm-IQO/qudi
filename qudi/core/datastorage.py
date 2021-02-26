@@ -217,7 +217,7 @@ class DataStorageBase(metaclass=ABCMeta):
             # save the image as PNG
             mpl_figure.savefig(file_path, bbox_inches='tight', pad_inches=0.05)
         else:
-            raise Exception('Unknown image format selected: "{0}"'.format(self.image_format))
+            raise RuntimeError(f'Unknown image format selected: "{self.image_format}"')
 
         # close matplotlib figure and return
         plt.close(mpl_figure)
@@ -439,7 +439,7 @@ class TextDataStorage(DataStorageBase):
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
         """
-        raise Exception('Not yet implemented!')
+        raise RuntimeError('Not yet implemented!')
         # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
         # parameters = dict()
         # column_header = ''
@@ -517,7 +517,7 @@ class CsvDataStorage(TextDataStorage):
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
         """
-        raise Exception('Not yet implemented!')
+        raise RuntimeError('Not yet implemented!')
 
 
 class NpyDataStorage(DataStorageBase):
@@ -603,4 +603,4 @@ class NpyDataStorage(DataStorageBase):
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
         """
-        raise Exception('Not yet implemented!')
+        raise RuntimeError('Not yet implemented!')

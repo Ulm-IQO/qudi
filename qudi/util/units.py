@@ -177,7 +177,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
 
     """
     if fn is None:
-        raise Exception('This function requires pyqtgraph.')
+        raise RuntimeError('Function "create_formatted_output" requires pyqtgraph.')
 
     output_str = ''
     atol = 1e-18    # absolute tolerance for the detection of zero.

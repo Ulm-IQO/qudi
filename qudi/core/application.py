@@ -59,7 +59,7 @@ class Qudi(QtCore.QObject):
 
     """
     _instance = None
-    _run_lock = RecursiveMutex()
+    _run_lock = Mutex()
     _quit_lock = Mutex()
 
     def __new__(cls, *args, **kwargs):
@@ -67,9 +67,10 @@ class Qudi(QtCore.QObject):
             obj = super().__new__(cls, *args, **kwargs)
             cls._instance = weakref.ref(obj)
             return obj
-        raise Exception(
+        raise RuntimeError(
             'Only one Qudi instance per process possible (Singleton). Please use '
-            'Qudi.instance() to get a reference to the already created instance.')
+            'Qudi.instance() to get a reference to the already created instance.'
+        )
 
     def __init__(self, no_gui=False, log_dir='', config_file=None):
         super().__init__()
@@ -80,7 +81,7 @@ class Qudi(QtCore.QObject):
 
         # Check vital packages for qudi, otherwise qudi will not even start.
         if import_check() != 0:
-            raise Exception('Vital python packages missing. Unable to use qudi.')
+            raise RuntimeError('Vital python packages missing. Unable to use qudi.')
 
         self.log = get_logger(f'{__name__}.{__class__.__name__}')
         sys.excepthook = self._qudi_excepthook
@@ -149,51 +150,48 @@ class Qudi(QtCore.QObject):
         return self._is_running
 
     def _remove_extensions_from_path(self):
-        with self._run_lock:
-            # Clean up previously configured expansion paths
-            for ext_path in self._configured_extension_paths:
-                if ext_path in sys.path:
-                    sys.path.remove(ext_path)
+        # Clean up previously configured expansion paths
+        for ext_path in self._configured_extension_paths:
+            if ext_path in sys.path:
+                sys.path.remove(ext_path)
 
     def _add_extensions_to_path(self):
-        with self._run_lock:
-            extensions = self.configuration.extension_paths
-            # Add qudi extension paths to sys.path
-            for ext_path in reversed(extensions):
-                sys.path.insert(1, ext_path)
-            self._configured_extension_paths = extensions
+        extensions = self.configuration.extension_paths
+        # Add qudi extension paths to sys.path
+        for ext_path in reversed(extensions):
+            sys.path.insert(1, ext_path)
+        self._configured_extension_paths = extensions
 
     @QtCore.Slot()
     def _configure_qudi(self):
         """
         """
-        with self._run_lock:
-            print('> Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
-            self.log.info(
-                'Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
+        print('> Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
+        self.log.info(
+            'Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
 
-            # Clear all qudi modules
-            self.module_manager.clear()
+        # Clear all qudi modules
+        self.module_manager.clear()
 
-            # Configure extension paths
-            self._remove_extensions_from_path()
-            self._add_extensions_to_path()
+        # Configure extension paths
+        self._remove_extensions_from_path()
+        self._add_extensions_to_path()
 
-            # Configure Qudi modules
-            for base in ('gui', 'logic', 'hardware'):
-                # Create ManagedModule instance by adding each module to ModuleManager
-                for module_name, module_cfg in self.configuration.module_config[base].items():
-                    try:
-                        self.module_manager.add_module(name=module_name,
-                                                       base=base,
-                                                       configuration=module_cfg)
-                    except:
-                        self.module_manager.remove_module(module_name, ignore_missing=True)
-                        self.log.exception('Unable to create ManagedModule instance for module '
-                                           '"{0}.{1}"'.format(base, module_name))
+        # Configure Qudi modules
+        for base in ('gui', 'logic', 'hardware'):
+            # Create ManagedModule instance by adding each module to ModuleManager
+            for module_name, module_cfg in self.configuration.module_config[base].items():
+                try:
+                    self.module_manager.add_module(name=module_name,
+                                                   base=base,
+                                                   configuration=module_cfg)
+                except:
+                    self.module_manager.remove_module(module_name, ignore_missing=True)
+                    self.log.exception('Unable to create ManagedModule instance for module '
+                                       '"{0}.{1}"'.format(base, module_name))
 
-            print('> Qudi configuration complete')
-            self.log.info('Qudi configuration complete.')
+        print('> Qudi configuration complete')
+        self.log.info('Qudi configuration complete.')
 
     def _start_gui(self):
         if self.no_gui:
@@ -235,7 +233,7 @@ class Qudi(QtCore.QObject):
         """
         with self._run_lock:
             if self._is_running:
-                raise Exception('Qudi is already running!')
+                raise RuntimeError('Qudi is already running!')
 
             # add qudi main directory to PATH
             qudi_path = get_main_dir()

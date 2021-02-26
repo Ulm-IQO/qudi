@@ -42,9 +42,10 @@ class ThreadManager(QtCore.QAbstractListModel):
                 obj = super().__new__(cls, *args, **kwargs)
                 cls._instance = weakref.ref(obj)
                 return obj
-            raise Exception('Only one ThreadManager instance per process possible (Singleton). '
-                            'Please use ThreadManager.instance() to get a reference to the already '
-                            'created instance.')
+            raise RuntimeError(
+                'Only one ThreadManager instance per process possible (Singleton). Please use '
+                'ThreadManager.instance() to get a reference to the already created instance.'
+            )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -90,8 +91,9 @@ class ThreadManager(QtCore.QAbstractListModel):
             if name in self._thread_names:
                 if self.get_thread_by_name(name) is thread:
                     return None
-                raise Exception('Different thread with name "{0}" already registered in '
-                                'ThreadManager'.format(name))
+                raise RuntimeError(
+                    f'Different thread with name "{name}" already registered in ThreadManager'
+                )
 
             row = len(self._threads)
             self.beginInsertRows(QtCore.QModelIndex(), row, row)

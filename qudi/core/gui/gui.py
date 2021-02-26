@@ -83,8 +83,10 @@ class Gui(QtCore.QObject):
             obj = super().__new__(cls, *args, **kwargs)
             cls._instance = weakref.ref(obj)
             return obj
-        raise Exception('Gui is a singleton. Please use Gui.instance() to get a reference to the '
-                        'already created instance.')
+        raise RuntimeError(
+            'Gui is a singleton. Please use Gui.instance() to get a reference to the already '
+            'created instance.'
+        )
 
     def __init__(self, qudi_instance, stylesheet_path=None, theme=None, use_opengl=False):
         if stylesheet_path is not None and not os.path.isfile(stylesheet_path):
@@ -96,7 +98,7 @@ class Gui(QtCore.QObject):
 
         app = QtWidgets.QApplication.instance()
         if app is None:
-            raise Exception('No Qt GUI app running (no QApplication instance).')
+            raise RuntimeError('No Qt GUI app running (no QApplication instance).')
 
         app.setQuitOnLastWindowClosed(False)
 

@@ -50,8 +50,9 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
         for attr, conn in self.module_connectors().items():
             name = attr if conn.name is None else conn.name
             if name not in conn_modules and not conn.optional:
-                raise Exception(
-                    'Module connection "{0}" not configured for QudiScript.'.format(name))
+                raise RuntimeError(
+                    f'Module connection "{name}" not configured for QudiScript.'
+                )
             new_conn = conn.copy(name=name)
             setattr(self, attr, new_conn)
             new_conn.connect(conn_modules[name])
@@ -124,8 +125,10 @@ class ScriptRunner(QtCore.QObject):
                 obj = super().__new__(cls, *args, **kwargs)
                 cls._instance = weakref.ref(obj)
                 return obj
-            raise Exception('ScriptRunner is a singleton. An instance has already been created in '
-                            'this process. Please use ScriptRunner.instance() instead.')
+            raise RuntimeError(
+                'ScriptRunner is a singleton. An instance has already been created in this process.'
+                ' Please use ScriptRunner.instance() instead.'
+            )
 
     def __init__(self, *args, qudi_main, **kwargs):
         super().__init__(*args, **kwargs)
@@ -188,8 +191,9 @@ class ScriptRunner(QtCore.QObject):
             elif callable(script_cls):
                 script = ModuleScript(conn_modules=modules, fn=fn)
             else:
-                raise Exception(
-                    'Imported object is neither a ModuleScript subclass nor a callable.')
+                raise TypeError(
+                    'Imported object is neither a ModuleScript subclass nor a callable.'
+                )
 
             script.sigFinished.connect(
                 lambda result, success: self._script_finished_callback(name, result, success))

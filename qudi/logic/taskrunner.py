@@ -155,7 +155,7 @@ class TaskRunner(LogicBase):
                 for mod_def, mod in t['needsmodules'].items():
                     if self._manager.is_module_configured(mod) and not self._manager.is_module_active(mod):
                         if not self._manager.activate_module(mod):
-                            raise Exception('Loading module {0} failed.'.format(mod))
+                            raise RuntimeError(f'Loading module {mod} failed.')
                     ref[mod_def] = self._manager.get_module_instance(mod)
                 mod = importlib.__import__('logic.tasks.{0}'.format(t['module']), fromlist=['*'])
                 t['object'] = mod.Task(name=t['name'],

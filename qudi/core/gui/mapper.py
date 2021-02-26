@@ -138,8 +138,7 @@ class Mapper:
         elif isinstance(widget, QPlainTextEdit):
             return 'plainText'
         else:
-            raise Exception('Property of widget {0} could not be '
-                            'determined.'.format(repr(widget)))
+            raise TypeError(f'Property of widget {repr(widget)} could not be determined.')
 
     def add_mapping(self,
                     widget,
@@ -201,15 +200,17 @@ class Mapper:
 
         # check if already exists
         if key in self._mappings:
-            raise Exception('Property {0} of widget {1} already mapped.'
-                            ''.format(widget_property_name, repr(widget)))
+            raise RuntimeError(
+                f'Property {widget_property_name} of widget {repr(widget)} already mapped.'
+            )
 
         # check if widget property is available
         index = widget.metaObject().indexOfProperty(widget_property_name)
         if index == -1:
-            raise Exception('Property ''{0}'' of widget ''{1}'' not '
-                            'available.'.format(widget_property_name,
-                                                widget.__class__.__name__))
+            raise RuntimeError(
+                f'Property "{widget_property_name}" of widget "{widget.__class__.__name__}" not '
+                f'available.'
+            )
 
         meta_property = widget.metaObject().property(index)
 
@@ -217,33 +218,35 @@ class Mapper:
         if widget_property_notifier is None:
             # check that widget property as a notify signal
             if not meta_property.hasNotifySignal():
-                raise Exception('Property ''{0}'' of widget ''{1}'' has '
-                                'no notify signal.'.format(
-                                    widget_property_name,
-                                    widget.__class__.__name__))
+                raise RuntimeError(
+                    f'Property "{widget_property_name}" of widget "{widget.__class__.__name__}" '
+                    f'has no notify signal.'
+                )
+
             widget_property_notifier = getattr(
                 widget,
                 meta_property.notifySignal().name().data().decode('utf8'))
 
         # check that widget property is readable
         if not meta_property.isReadable():
-            raise Exception('Property ''{0}'' of widget ''{1}'' is not '
-                            'readable.'.format(widget_property_name,
-                                               widget.__class__.__name__))
+            raise RuntimeError(
+                f'Property "{widget_property_name}" of widget "{widget.__class__.__name__}" is not '
+                f'readable.'
+            )
         widget_property_getter = meta_property.read
         # check that widget property is writable if requested
         if not meta_property.isWritable():
-            raise Exception('Property ''{0}'' of widget ''{1}'' is not '
-                            'writable.'.format(widget_property_name,
-                                               widget.__class__.__name__))
+            raise RuntimeError(
+                f'Property "{widget_property_name}" of widget "{widget.__class__.__name__}" is not '
+                f'writable.'
+            )
         widget_property_setter = meta_property.write
 
         if isinstance(model_getter, str):
             # check if it is a property
             attr = getattr(model.__class__, model_getter, None)
             if attr is None:
-                raise Exception('Model has no attribute {0}'.format(
-                    model_getter))
+                raise AttributeError(f'Model has no attribute "{model_getter}"')
             if isinstance(attr, property):
                 # retrieve getter from property
                 model_property_name = model_getter
@@ -252,21 +255,22 @@ class Mapper:
                 if model_setter is None:
                     model_setter = functools.partial(attr.fset, model)
                     if model_getter is None:
-                        raise Exception('Attribute {0} of model is readonly.'
-                                        ''.format(model_property_name))
+                        raise AttributeError(
+                            f'Attribute "{model_property_name}" of model is readonly.'
+                        )
             else:
                 # getter is not a property. Check if it is a callable.
                 model_getter_name = model_getter
                 model_getter = getattr(model, model_getter)
                 if not callable(model_getter):
-                    raise Exception('Attribute {0} of model is not callable.'.format(
-                        model_getter_name))
+                    raise AttributeError(
+                        f'Attribute "{model_getter_name}" of model is not callable.'
+                    )
         if isinstance(model_setter, str):
             model_setter_name = model_setter
             model_setter = getattr(model, model_setter)
             if not callable(model_setter):
-                raise Exception('Attribute {0} of model is not callable'.format(
-                    model_setter_name))
+                raise AttributeError(f'Attribute "{model_setter_name}" of model is not callable')
         if isinstance(model_property_notifier, str):
             model_property_notifier = getattr(model, model_property_notifier)
 
@@ -406,7 +410,7 @@ class Mapper:
         key = (widget, widget_property_name)
         # check that key has a mapping
         if not key in self._mappings:
-            raise Exception('Widget {0} is not mapped.'.format(repr(widget)))
+            raise RuntimeError(f'Widget "{repr(widget)}" is not mapped.')
         # disconnect signals
         self._mappings[key]['widget_property_notifier'].disconnect(
             self._mappings[key]['widget_property_notifier_slot'])
@@ -438,7 +442,7 @@ class Mapper:
         policy: enum submit policy
         """
         if policy not in [SUBMIT_POLICY_AUTO, SUBMIT_POLICY_MANUAL]:
-            raise Exception('Unknown submit policy ''{0}'''.format(policy))
+            raise ValueError(f'Unknown submit policy "{policy}"')
         self._submit_policy = policy
 
     def submit(self):
