@@ -2199,7 +2199,7 @@ class SequenceGeneratorLogic(GenericLogic):
             # assumes that analog channels are heavier than digital channels
             configs = self.pulsegenerator().get_constraints().activation_config
             if 'all' in configs:
-                largest_config = configs['all']
+                largest_config = 'all'
             else:
                 lens_config = []
                 for config in configs.values():
