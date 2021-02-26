@@ -19,15 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import time
 import weakref
 import logging
 import numpy as np
 
 from PySide2 import QtCore
 
-from qudi.core.util.mutex import RecursiveMutex
-from qudi.core.util.network import netobtain
+from qudi.util.mutex import RecursiveMutex
+from qudi.util.network import netobtain
 
 from qudi.core.jupyterkernel.qzmqkernel import QZMQKernel
 

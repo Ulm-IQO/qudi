@@ -25,14 +25,14 @@ import numpy as np
 from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
-from qudi.core.util.paths import get_main_dir, get_default_config_dir
-from qudi.core.util.helpers import has_pyqtgraph
+from qudi.core.paths import get_main_dir, get_default_config_dir
+from qudi.util.helpers import has_pyqtgraph
 from qudi.core.remote import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
 from qudi.core.logger import signal_handler
-from PySide2 import QtCore, QtWidgets, QtGui
+from PySide2 import QtCore, QtWidgets
 
 try:
     from qtconsole.inprocess import QtInProcessKernelManager

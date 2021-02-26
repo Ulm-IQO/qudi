@@ -24,7 +24,7 @@ import os
 import weakref
 from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.datafitting import FitContainer, FitConfigurationsModel, FitConfiguration
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 
 __all__ = ('FitWidget', 'FitConfigurationWidget', 'FitConfigurationDialog')

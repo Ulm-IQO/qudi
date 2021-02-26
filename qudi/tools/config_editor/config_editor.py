@@ -10,10 +10,10 @@ import inspect
 from collections import OrderedDict
 from functools import partial
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.util.mutex import RecursiveMutex
+from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption, MissingOption
-from qudi.core.util.paths import get_main_dir, get_default_config_dir
+from qudi.core.paths import get_main_dir, get_default_config_dir
 from qudi.core.logger import get_logger
 from qudi.core.module import Base
 from qudi.core.meta import InterfaceMetaclass

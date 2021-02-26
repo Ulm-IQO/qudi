@@ -19,8 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import rpyc.core.netref
-import rpyc.utils.classic
+import rpyc.core.netref as _netref
+import rpyc.utils.classic as _classic
 
 __all__ = ('netobtain',)
 
@@ -28,7 +28,6 @@ __all__ = ('netobtain',)
 def netobtain(obj):
     """
     """
-    if isinstance(obj, rpyc.core.netref.BaseNetref):
-        return rpyc.utils.classic.obtain(obj)
-    else:
-        return obj
+    if isinstance(obj, _netref.BaseNetref):
+        return _classic.obtain(obj)
+    return obj

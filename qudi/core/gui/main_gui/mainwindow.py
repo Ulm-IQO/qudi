@@ -26,7 +26,7 @@ from qudi.core.gui.main_gui.remotewidget import RemoteWidget
 from qudi.core.gui.main_gui.aboutqudidialog import AboutQudiDialog
 from qudi.core.gui.main_gui.consolesettingsdialog import ConsoleSettingsDialog
 from qudi.core.gui.main_gui.modulewidget import ModuleWidget
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
