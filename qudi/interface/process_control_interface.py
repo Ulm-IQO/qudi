@@ -24,7 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from abc import abstractmethod
 from qudi.core.module import Base
-from qudi.core.util.helpers import in_range
+from qudi.util.helpers import in_range
 
 __all__ = ('ProcessSetpointInterface', 'ProcessValueInterface', 'ProcessControlInterface',
            'ProcessControlConstraints')

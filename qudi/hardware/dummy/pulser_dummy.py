@@ -24,7 +24,7 @@ import time
 
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.helpers import natural_sort
+from qudi.util.helpers import natural_sort
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 

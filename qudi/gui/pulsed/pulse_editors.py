@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import copy
 
-from qudi.core.util.helpers import natural_sort
+from qudi.util.helpers import natural_sort
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
 from qudi.gui.pulsed.pulsed_item_delegates import MultipleCheckboxItemDelegate, CheckBoxItemDelegate

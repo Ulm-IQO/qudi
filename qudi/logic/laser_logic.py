@@ -24,7 +24,7 @@ import time
 import numpy as np
 from PySide2 import QtCore
 
-from qudi.core.util.mutex import RecursiveMutex
+from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.module import LogicBase

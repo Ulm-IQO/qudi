@@ -24,7 +24,7 @@ import numpy as np
 from qudi.logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from qudi.logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
-from qudi.core.util.helpers import csv_2_list
+from qudi.util.helpers import csv_2_list
 
 """
 General Pulse Creation Procedure:

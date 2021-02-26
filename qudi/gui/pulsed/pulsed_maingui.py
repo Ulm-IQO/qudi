@@ -28,7 +28,7 @@ from enum import Enum
 
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
-from qudi.core.util.helpers import natural_sort
+from qudi.util.helpers import natural_sort
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.module import GuiBase
@@ -49,7 +49,6 @@ class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
         super(PulsedMeasurementMainWindow, self).__init__()
 
         uic.loadUi(ui_file, self)
-        self.show()
 
 
 class PulseAnalysisTab(QtWidgets.QWidget):

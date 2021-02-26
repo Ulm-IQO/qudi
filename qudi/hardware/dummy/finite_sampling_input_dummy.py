@@ -26,7 +26,7 @@ import numpy as np
 from enum import Enum
 from qudi.interface.finite_sampling_input_interface import FiniteSamplingInputInterface
 from qudi.interface.finite_sampling_input_interface import FiniteSamplingInputConstraints
-from qudi.core.util.mutex import RecursiveMutex
+from qudi.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
 
 

@@ -27,7 +27,7 @@ from qudi.core.connector import Connector
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.module import GuiBase
 from qudi.interface.simple_laser_interface import ControlMode, ShutterState, LaserState
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 
 from .laser_control_dockwidget import LaserControlDockWidget
 from .laser_plot_dockwidgets import LaserOutputDockWidget, LaserTemperatureDockWidget

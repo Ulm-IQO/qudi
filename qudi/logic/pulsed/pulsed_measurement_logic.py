@@ -29,11 +29,11 @@ import matplotlib.pyplot as plt
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.util.mutex import Mutex
-from qudi.core.util.network import netobtain
+from qudi.util.mutex import Mutex
+from qudi.util.network import netobtain
 from qudi.core.datafitting import FitConfigurationsModel, FitContainer
-from qudi.core.util import units
-from qudi.core.util.math import compute_ft
+from qudi.util import units
+from qudi.util.math import compute_ft
 from qudi.core.module import LogicBase
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer

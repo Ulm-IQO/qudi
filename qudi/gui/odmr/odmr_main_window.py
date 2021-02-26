@@ -24,7 +24,7 @@ import datetime
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 
 from .odmr_plot_widget import OdmrPlotWidget
 
