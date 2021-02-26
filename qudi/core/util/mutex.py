@@ -83,6 +83,9 @@ if all(hasattr(_QRecursiveMutex, attr) for attr in ('lock', 'unlock', 'tryLock')
         This class provides:
         * Drop-in replacement for threading.Lock
         * Context management (enter/exit)
+
+        NOTE: A recursive mutex is much more expensive than using a regular mutex. So consider
+        refactoring your code to use a simple mutex before using this object.
         """
 
         def acquire(self, blocking=True, timeout=-1):
@@ -126,6 +129,9 @@ else:
         This class provides:
         * Drop-in replacement for threading.Lock
         * Context management (enter/exit)
+
+        NOTE: A recursive mutex is much more expensive than using a regular mutex. So consider
+        refactoring your code to use a simple mutex before using this object.
         """
         def __init__(self):
             super().__init__(_QMutex.Recursive)
