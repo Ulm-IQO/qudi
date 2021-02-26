@@ -120,9 +120,10 @@ class NIXSeriesInStreamer(DataInStreamInterface):
         # Check if device is connected and set device to use
         dev_names = ni.system.System().devices.device_names
         if self._device_name.lower() not in set(dev.lower() for dev in dev_names):
-            raise Exception('Device name "{0}" not found in list of connected devices: {1}\n'
-                            'Activation of NIXSeriesInStreamer failed!'
-                            ''.format(self._device_name, dev_names))
+            raise ValueError(
+                f'Device name "{self._device_name}" not found in list of connected devices: '
+                f'{dev_names}\nActivation of NIXSeriesInStreamer failed!'
+            )
         for dev in dev_names:
             if dev.lower() == self._device_name.lower():
                 self._device_name = dev
@@ -162,16 +163,20 @@ class NIXSeriesInStreamer(DataInStreamInterface):
 
         # Check if all input channels fit in the device
         if len(self._digital_sources) > 3:
-            raise Exception(
-                'Too many digital channels specified. Maximum number of digital channels is 3.')
+            raise ValueError(
+                'Too many digital channels specified. Maximum number of digital channels is 3.'
+            )
         if len(self._analog_sources) > 16:
-            raise Exception(
-                'Too many analog channels specified. Maximum number of analog channels is 16.')
+            raise ValueError(
+                'Too many analog channels specified. Maximum number of analog channels is 16.'
+            )
 
         # Check if there are any valid input channels left
         if not self._analog_sources and not self._digital_sources:
-            raise Exception('No valid analog or digital sources defined in config. '
-                            'Activation of NIXSeriesInStreamer failed!')
+            raise ValueError(
+                'No valid analog or digital sources defined in config. Activation of '
+                'NIXSeriesInStreamer failed!'
+            )
 
         # Create constraints
         self._constraints = DataInStreamConstraints()

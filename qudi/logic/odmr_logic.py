@@ -486,10 +486,12 @@ class OdmrLogic(LogicBase):
                                              'to output mode "{SamplingOutputMode.JUMP_LIST}"')
                             scanner.set_output_mode(SamplingOutputMode.JUMP_LIST)
                         else:
-                            raise Exception(f'Unable to start ODMR scanner. Output mode '
-                                            f'"{SamplingOutputMode.EQUIDISTANT_SWEEP}" is not '
-                                            f'supported but necessary for multiple scan ranges. '
-                                            f'Stick to a single scan range and try again.')
+                            raise ValueError(
+                                f'Unable to start ODMR scanner. Output mode '
+                                f'"{SamplingOutputMode.EQUIDISTANT_SWEEP}" is not supported but '
+                                f'necessary for multiple scan ranges. Stick to a single scan range '
+                                f'and try again.'
+                            )
                 if scanner.output_mode == SamplingOutputMode.JUMP_LIST:
                     frame_data = np.concatenate(self._frequency_data)
                     if self._oversampling_factor > 1:
@@ -497,8 +499,9 @@ class OdmrLogic(LogicBase):
                 elif scanner.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
                     frame_data = self._scan_frequency_ranges
                 else:
-                    raise Exception(f'Unhandled/Unknown scanner output mode encountered: '
-                                    f'"{scanner.output_mode}"')
+                    raise RuntimeError(
+                        f'Unknown scanner output mode encountered: "{scanner.output_mode}"'
+                    )
                 scanner.set_frequency_data(frame_data)
 
                 # Set scan power

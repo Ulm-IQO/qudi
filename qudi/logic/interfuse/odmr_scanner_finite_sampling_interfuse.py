@@ -72,12 +72,14 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         if self._frequency_channel is None:
             candidates = [ch for ch in output_channels if 'frequency' in ch.lower()]
             if not candidates:
-                raise Exception('Choosing a suitable frequency channel failed. Please specify '
-                                '"frequency_channel" option in config.')
+                raise RuntimeError(
+                    'Choosing a suitable frequency channel failed. Please specify '
+                    '"frequency_channel" option in config.'
+                )
             self._frequency_channel = candidates[0]
         else:
             if self._frequency_channel not in output_channels:
-                raise Exception(
+                raise ValueError(
                     f'Frequency channel "{self._frequency_channel}" specified in config does not '
                     f'match any channel available in hardware {output_channels}.'
                 )
@@ -87,14 +89,16 @@ class OdmrScannerFiniteSamplingInterfuse(OdmrScannerInterface):
         if self._power_channel is None:
             candidates = [ch for ch in setpoint_channels if 'power' in ch.lower()]
             if not candidates:
-                raise Exception('Choosing a suitable power setpoint channel failed. Please specify '
-                                '"power_channel" option in config.')
+                raise RuntimeError(
+                    'Choosing a suitable power setpoint channel failed. Please specify '
+                    '"power_channel" option in config.'
+                )
             self._power_channel = candidates[0]
         else:
             if self._power_channel not in setpoint_channels:
-                raise Exception(
-                    f'Power channel "{self._power_channel}" specified in config does not '
-                    f'match any channel available in hardware {setpoint_channels}.'
+                raise ValueError(
+                    f'Power channel "{self._power_channel}" specified in config does not match any '
+                    f'channel available in hardware {setpoint_channels}.'
                 )
 
         # merge all component hardware constraints

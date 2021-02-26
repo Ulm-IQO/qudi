@@ -51,7 +51,7 @@ class OBISLaser(SimpleLaserInterface):
         self.obis = serial.Serial(self._com_port, timeout=1)
 
         if not self.connect_laser():
-            raise Exception('Laser does not seem to be connected.')
+            raise RuntimeError('Laser does not seem to be connected.')
 
         self._model_name = self._communicate('SYST:INF:MOD?')
         self._current_setpoint = self.get_current()
