@@ -30,7 +30,7 @@ from PySide2 import QtCore, QtWidgets
 from qudi.core.logger import init_rotating_file_handler, get_logger
 from qudi.core.paths import get_main_dir, get_default_log_dir
 from qudi.util.helpers import import_check
-from qudi.util.mutex import RecursiveMutex, Mutex
+from qudi.util.mutex import Mutex
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
@@ -255,15 +255,10 @@ class Qudi(QtCore.QObject):
             print('> Used Qt API: PySide2')
 
             # Get QApplication instance
-            if self.no_gui:
-                app = QtCore.QCoreApplication.instance()
-            else:
-                app = QtWidgets.QApplication.instance()
+            app_cls = QtCore.QCoreApplication if self.no_gui else QtWidgets.QApplication
+            app = app_cls.instance()
             if app is None:
-                if self.no_gui:
-                    app = QtCore.QCoreApplication(sys.argv)
-                else:
-                    app = QtWidgets.QApplication(sys.argv)
+                app = app_cls(sys.argv)
 
             # Install the pyzmq ioloop.
             # This has to be done before anything else from tornado is imported.
@@ -296,27 +291,9 @@ class Qudi(QtCore.QObject):
             self.log.info('Startup complete! Starting Qt event loop...')
             print('> Startup complete! Starting Qt event loop...\n>')
             exit_code = app.exec_()
+
             self._shutting_down = False
             self._is_running = False
-
-            # ToDo: Is the following issue still a thing with qudi?
-            # in this subprocess we redefine the stdout, therefore on Unix systems we need to handle
-            # the opened file descriptors, see PEP 446: https://www.python.org/dev/peps/pep-0446/
-            #if sys.platform in ('linux', 'darwin'):
-            #    fd_min, fd_max = 3, 4096
-            #    fd_set = set(range(fd_min, fd_max))
-
-            #    if sys.platform == 'darwin':
-            #        # trying to close 7 produces an illegal instruction on the Mac.
-            #        fd_set.remove(7)
-
-                # remove specified file descriptor
-            #    for fd in fd_set:
-            #        try:
-            #            os.close(fd)
-            #        except OSError:
-            #            pass
-
             self.log.info('Shutdown complete! Ciao')
             print('>\n>   Shutdown complete! Ciao.\n>')
 
