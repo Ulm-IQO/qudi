@@ -26,8 +26,9 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import re
+import tempfile
 from importlib.util import spec_from_loader, module_from_spec
-from qudi.core.paths import get_artwork_dir, get_appdata_dir
+from qudi.core.paths import get_artwork_dir
 
 __all__ = ('loadUi',)
 
@@ -38,6 +39,8 @@ __artwork_path_pattern = re.compile(r'>(.*?/artwork/.*?)</')
 def loadUi(file_path, base_widget):
     """ Compiles a given .ui-file at <file_path> into python code. This code will be executed and
     the generated class will be used to initialize the widget given in <base_widget>.
+    Creates a temporary file in the systems tmp directory using the tempfile module.
+    The original .ui file will remain untouched.
 
     WARNING: base_widget must be of the same class as the top-level widget in the .ui file.
              Compatible subclasses of the top-level widget in the .ui file will also work.
@@ -47,10 +50,21 @@ def loadUi(file_path, base_widget):
     """
     # This step is a workaround because Qt Designer will only specify relative paths which is very
     # error prone if the user changes the cwd (e.g. os.chdir)
-    file_path = _convert_ui_to_absolute_paths(file_path)
+    converted = _convert_ui_to_absolute_paths(file_path)
 
-    # Compile .ui-file into python code
-    compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
+    # Compile (converted) .ui-file into python code
+    # If file needed conversion, write temporary file to be used in subprocess
+    if converted is not None:
+        fd, file_path = tempfile.mkstemp()
+        try:
+            os.write(fd, converted)
+            os.close(fd)
+            compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
+        finally:
+            os.remove(file_path)
+    else:
+        compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
+
     # Find class name
     match = __ui_class_pattern.search(compiled)
     if match is None:
@@ -81,11 +95,9 @@ def loadUi(file_path, base_widget):
 def _convert_ui_to_absolute_paths(file_path):
     """ Converts the .ui file in order to change all relative path declarations containing the
     keyword "/artwork/" into absolute paths pointing to the qudi artwork data directory.
-    Creates a temporary file "converted.ui" in the qudi appdata directory.
-    The original .ui file will remain untouched.
 
-    @param str file_path: The path to the .ui file to change
-    @return str: The file path of the (converted) .ui file to use
+    @param str file_path: The path to the .ui file to convert
+    @return str|NoneType: Converted file content of the .ui file, None if conversion is not needed
     """
     path_prefix = get_artwork_dir()
     with open(file_path, 'r') as file:
@@ -97,10 +109,7 @@ def _convert_ui_to_absolute_paths(file_path):
         path_suffix = chunks[ii].split('/artwork/', 1)[-1]
         chunks[ii] = '>{0}</'.format(os.path.join(path_prefix, path_suffix).replace('\\', '/'))
         has_changed = True
-    # Join into single string and write as new .ui file if something has changed
+    # Join into single string and return if something has changed
     if has_changed:
-        ui_content = ''.join(chunks)
-        file_path = os.path.join(get_appdata_dir(), 'converted.ui')
-        with open(file_path, 'w') as file:
-            file.write(ui_content)
-    return file_path
+        return ''.join(chunks)
+    return None
