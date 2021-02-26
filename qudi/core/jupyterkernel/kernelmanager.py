@@ -45,9 +45,11 @@ class JupyterKernelManager(QtCore.QObject):
                 obj = super().__new__(cls, *args, **kwargs)
                 cls._instance = weakref.ref(obj)
                 return obj
-            raise Exception('Only one JupyterKernelManager instance per process possible '
-                            '(Singleton). Please use JupyterKernelManager.instance() to get a '
-                            'reference to the already created instance.')
+            raise RuntimeError(
+                'Only one JupyterKernelManager instance per process possible (Singleton). Please '
+                'use JupyterKernelManager.instance() to get a reference to the already created '
+                'instance.'
+            )
 
     def __init__(self, *args, qudi_main, **kwargs):
         """ Create logic object

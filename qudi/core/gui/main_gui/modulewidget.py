@@ -172,8 +172,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def append_module(self, name, state, app_data):
         with self._lock:
             if name in self._module_states:
-                raise Exception(
-                    'Module with name "{0}" already present in ModuleListModel.'.format(name))
+                raise RuntimeError(f'Module with name "{name}" already present in ModuleListModel.')
             self.beginInsertRows(len(self._module_names))
             self._module_names.append(name)
             self._module_states[name] = state
@@ -193,7 +192,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     def reset_modules(self, state_dict, app_data_dict):
         if set(state_dict) != set(app_data_dict):
-            raise Exception('state_dict and app_data_dict must contain exactly the same keys.')
+            raise RuntimeError('state_dict and app_data_dict must contain exactly the same keys.')
         with self._lock:
             self.beginResetModel()
             self._module_states = state_dict.copy()
@@ -204,8 +203,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def change_module_state(self, name, state):
         with self._lock:
             if name not in self._module_states:
-                raise Exception('Can not change module state in ModuleListModel. No module by the '
-                                'name "{0}" found.'.format(name))
+                raise RuntimeError(
+                    f'Can not change module state in ModuleListModel. No module by the name '
+                    f'"{name}" found.'
+                )
             self._module_states[name] = state
             row = self._module_names.index(name)
             self.dataChanged.emit(self.createIndex(row, 0),
@@ -215,8 +216,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def change_app_data(self, name, exists):
         with self._lock:
             if name not in self._module_app_data:
-                raise Exception('Can not change module app status in ModuleListModel. No module by '
-                                'the name "{0}" found.'.format(name))
+                raise RuntimeError(
+                    f'Can not change module app status in ModuleListModel. No module by the name '
+                    f'"{name}" found.'
+                )
             self._module_app_data[name] = exists
             row = self._module_names.index(name)
             self.dataChanged.emit(self.createIndex(row, 0),

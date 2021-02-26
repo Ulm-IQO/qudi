@@ -54,7 +54,7 @@ def loadUi(file_path, base_widget):
     # Find class name
     match = __ui_class_pattern.search(compiled)
     if match is None:
-        raise Exception('Failed to match regexp for finding class name in generated python code.')
+        raise RuntimeError('Failed to match regex for finding class name in generated python code.')
     class_name = match.groups()[0]
     # Workaround (again) because pyside2-uic forgot to include objects from PySide2 that can be
     # used by Qt Designer. So we inject import statements here just before the class declaration.
@@ -68,7 +68,7 @@ def loadUi(file_path, base_widget):
 
     loader = getattr(ui_module, class_name, None)()
     if loader is None:
-        raise Exception('Unable to locate generated Ui_... class')
+        raise RuntimeError('Unable to locate generated Ui_... class')
     loader.setupUi(base_widget)
     # Merge namespaces manually since this is not done by setupUi.
     to_merge = vars(loader)
