@@ -26,4 +26,4 @@ from .linear import *
 from .gaussian import *
 from .exp_decay import *
 from .lorentzian import *
-from ._general import FitModelBase
+from ._general import FitModelBase, FitCompositeModelBase, estimator
