@@ -92,7 +92,7 @@ class InStreamDummy(DataInStreamInterface):
         """
         # Sanity check ConfigOptions
         if not self._digital_channels and not self._analog_channels:
-            raise Exception('Not a single analog or digital channel provided in ConfigOptions.')
+            raise ValueError('Not a single analog or digital channel provided in ConfigOptions.')
         self._digital_channels = natural_sort(str(chnl) for chnl in self._digital_channels)
         self._analog_channels = natural_sort(str(chnl) for chnl in self._analog_channels)
 
@@ -104,8 +104,10 @@ class InStreamDummy(DataInStreamInterface):
                         self._digital_event_rates = [i * tmp for i, _ in
                                                      enumerate(self._digital_channels, 1)]
                     else:
-                        raise Exception('ConfigOption "digital_event_rates" must have same length '
-                                        'as "digital_channels" or just be a single value.')
+                        raise ValueError(
+                            'ConfigOption "digital_event_rates" must have same length as '
+                            '"digital_channels" or just be a single value.'
+                        )
             except TypeError:
                 self._digital_event_rates = [i * self._digital_event_rates for i, _ in
                                              enumerate(self._digital_channels, 1)]
@@ -117,8 +119,10 @@ class InStreamDummy(DataInStreamInterface):
                         self._analog_amplitudes = [i * tmp for i, _ in
                                                    enumerate(self._analog_channels, 1)]
                     else:
-                        raise Exception('ConfigOption "analog_amplitudes" must have same length '
-                                        'as "analog_channels" or just be a single value.')
+                        raise ValueError(
+                            'ConfigOption "analog_amplitudes" must have same length as '
+                            '"analog_channels" or just be a single value.'
+                        )
             except TypeError:
                 self._analog_amplitudes = [i * self._analog_amplitudes for i, _ in
                                            enumerate(self._analog_channels, 1)]
