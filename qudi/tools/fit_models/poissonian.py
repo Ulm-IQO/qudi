@@ -22,9 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from scipy.special import gammaln, xlogy
-from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
-from ._general import FitModelBase, estimator, correct_offset_histogram, smooth_data
-from ._general import sort_check_data
+from ._general import FitModelBase, estimator, smooth_data, sort_check_data
 from ._peak_helpers import estimate_double_peaks
 from .gaussian import multiple_gaussian
 
