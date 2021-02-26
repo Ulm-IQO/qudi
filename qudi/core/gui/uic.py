@@ -55,10 +55,10 @@ def loadUi(file_path, base_widget):
     # Compile (converted) .ui-file into python code
     # If file needed conversion, write temporary file to be used in subprocess
     if converted is not None:
-        fd, file_path = tempfile.mkstemp()
+        fd, file_path = tempfile.mkstemp(text=True)
         try:
-            os.write(fd, converted)
-            os.close(fd)
+            with open(fd, mode='w', closefd=True) as tmp_file:
+                tmp_file.write(converted)
             compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
         finally:
             os.remove(file_path)
