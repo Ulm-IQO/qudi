@@ -28,9 +28,9 @@ import faulthandler
 from PySide2 import QtCore, QtWidgets
 
 from qudi.core.logger import init_rotating_file_handler, get_logger
-from qudi.core.util.paths import get_main_dir, get_default_log_dir
-from qudi.core.util.helpers import import_check
-from qudi.core.util.mutex import RecursiveMutex, Mutex
+from qudi.core.paths import get_main_dir, get_default_log_dir
+from qudi.util.helpers import import_check
+from qudi.util.mutex import RecursiveMutex, Mutex
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager

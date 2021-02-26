@@ -29,7 +29,7 @@ from PySide2 import QtCore
 
 from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.util.paths import get_appdata_dir
+from qudi.core.paths import get_appdata_dir
 from qudi.core.config import load, save
 from qudi.core.meta import ModuleMeta
 

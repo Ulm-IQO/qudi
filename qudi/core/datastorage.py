@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import re
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,7 +29,7 @@ from enum import Enum
 from datetime import datetime
 from matplotlib.backends.backend_pdf import PdfPages
 try:
-    from qudi.core.util.paths import get_userdata_dir
+    from qudi.core.paths import get_userdata_dir
     from qudi.core.application import Qudi
     __qudi_installed = True
 except ImportError:
