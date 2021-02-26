@@ -24,7 +24,7 @@ import numpy as np
 from PySide2 import QtCore
 from fysom import FysomError
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.mutex import RecursiveMutex
+from qudi.util.mutex import RecursiveMutex
 from qudi.interface.scanning_probe_interface import ScanningProbeInterface, ScanData
 from qudi.interface.scanning_probe_interface import ScanConstraints, ScannerAxis, ScannerChannel
 

@@ -31,9 +31,9 @@ from PySide2 import QtCore
 from qudi.core.statusvariable import StatusVar
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.paths import get_main_dir, get_home_dir
-from qudi.core.util.helpers import natural_sort
-from qudi.core.util.network import netobtain
+from qudi.core.paths import get_main_dir, get_home_dir
+from qudi.util.helpers import natural_sort
+from qudi.util.network import netobtain
 from qudi.core.module import LogicBase
 from qudi.logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from qudi.logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement

@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.mutex import RecursiveMutex
+from qudi.util.mutex import RecursiveMutex
 from qudi.interface.finite_sampling_output_interface import SamplingOutputMode
 from qudi.interface.odmr_scanner_interface import OdmrScannerInterface, OdmrScannerConstraints
 

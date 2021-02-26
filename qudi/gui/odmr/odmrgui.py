@@ -26,11 +26,11 @@ from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
-from qudi.core.util import units
+from qudi.util import units
 from qudi.core.module import GuiBase
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 
 from .odmr_control_dockwidget import OdmrScanControlDockWidget, OdmrCwControlDockWidget
 from .odmr_fit_dockwidget import OdmrFitDockWidget

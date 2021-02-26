@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from PySide2 import QtCore, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core.util.units import ScaledFloat
+from qudi.util.units import ScaledFloat
 
 __all__ = ('OdmrSettingsDialog',)
 

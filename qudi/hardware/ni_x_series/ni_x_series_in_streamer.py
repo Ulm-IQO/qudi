@@ -28,7 +28,7 @@ from nidaqmx._lib import lib_importer  # Due to NIDAQmx C-API bug needed to bypa
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.helpers import natural_sort
+from qudi.util.helpers import natural_sort
 from qudi.interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
 from qudi.interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 

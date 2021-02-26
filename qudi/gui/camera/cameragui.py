@@ -24,7 +24,7 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.core.module import GuiBase
 from qudi.core.connector import Connector
 from qudi.core.gui.qtwidgets.scan_2d_widget import ImageWidget
-from qudi.core.util.paths import get_artwork_dir
+from qudi.core.paths import get_artwork_dir
 from .camera_settings_dialog import CameraSettingsDialog
 
 

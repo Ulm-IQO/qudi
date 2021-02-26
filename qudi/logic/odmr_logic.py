@@ -28,8 +28,8 @@ from PySide2 import QtCore
 
 from qudi.core.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.module import LogicBase
-from qudi.core.util.mutex import RecursiveMutex
-from qudi.core.util.units import ScaledFloat
+from qudi.util.mutex import RecursiveMutex
+from qudi.util.units import ScaledFloat
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar

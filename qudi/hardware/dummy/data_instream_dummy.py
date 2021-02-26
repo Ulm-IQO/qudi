@@ -25,7 +25,7 @@ import time
 import numpy as np
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.helpers import natural_sort
+from qudi.util.helpers import natural_sort
 from qudi.interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
 from qudi.interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 

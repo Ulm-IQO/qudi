@@ -24,8 +24,8 @@ import sys
 import inspect
 import importlib
 
-from qudi.core.util.paths import get_main_dir
-from qudi.core.util.helpers import natural_sort
+from qudi.core.paths import get_main_dir
+from qudi.util.helpers import natural_sort
 
 
 class PulseAnalyzerBase:

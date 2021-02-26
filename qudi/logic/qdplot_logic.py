@@ -29,9 +29,9 @@ import matplotlib.pyplot as plt
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
-from qudi.core.util.mutex import RecursiveMutex
+from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
-from qudi.core.util import units
+from qudi.util import units
 from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
 

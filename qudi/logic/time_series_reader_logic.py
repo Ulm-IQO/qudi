@@ -28,7 +28,7 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.core.module import LogicBase
-from qudi.core.util.mutex import Mutex
+from qudi.util.mutex import Mutex
 from qudi.interface.data_instream_interface import StreamChannelType, StreamingMode
 
 

@@ -29,8 +29,8 @@ import numpy as np
 from collections import OrderedDict
 
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
-from qudi.core.util.paths import get_main_dir
-from qudi.core.util.helpers import natural_sort
+from qudi.core.paths import get_main_dir
+from qudi.util.helpers import natural_sort
 
 
 class PulseBlockElement(object):
