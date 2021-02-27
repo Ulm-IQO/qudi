@@ -216,11 +216,15 @@ class PulsedMeasurementGui(GUIBase):
         self.sigPulseGeneratorRunBenchmark.connect(
             self.pulsedmasterlogic().sequencegeneratorlogic().run_pg_benchmark,
             QtCore.Qt.QueuedConnection)
+        self.sigPulseGeneratorRunBenchmark.connect(
+            self.benchmark_busy,
+            QtCore.Qt.QueuedConnection)
+        self.pulsedmasterlogic().sequencegeneratorlogic().sigBenchmarkComplete.connect(
+            self.sampling_or_loading_finished, QtCore.Qt.QueuedConnection)
 
         self.show()
 
         if np.isnan(self.pulsedmasterlogic().sequencegeneratorlogic().get_speed_write_load()):
-
             dialog = QtWidgets.QMessageBox()
             dialog.setWindowTitle("Benchmark missing")
             dialog.setText("<center><h2>Benchmark missing:</h2></center>")
@@ -1947,10 +1951,20 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.loading_indicator_action.setVisible(True)
 
     @QtCore.Slot()
+    def benchmark_busy(self):
+        if self.pulsedmasterlogic().status_dict['benchmark_busy']:
+            self._mw.action_run_stop.setEnabled(False)
+
+            label = self._mw.current_loaded_asset_Label
+            label.setText('  benchmarking...')
+            self._mw.loading_indicator_action.setVisible(True)
+
+    @QtCore.Slot()
     def sampling_or_loading_finished(self):
         if not self.pulsedmasterlogic().status_dict['sampload_busy']:
             self._mw.action_run_stop.setEnabled(True)
             self._mw.loading_indicator_action.setVisible(False)
+
 
 
     @QtCore.Slot(bool)
@@ -3176,5 +3190,6 @@ class PulsedMeasurementGui(GUIBase):
     @QtCore.Slot()
     def run_pg_benchmark(self):
 
+        self.pulsedmasterlogic().status_dict['benchmark_busy'] = True
         self.sigPulseGeneratorRunBenchmark.emit()
         self.sigPulseGeneratorSettingsUpdated.emit()
