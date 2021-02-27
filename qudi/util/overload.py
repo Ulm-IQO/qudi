@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Decorators and objects used for overloading attributes.
+Decorators and objects used for overloading attributes and interfacing them.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ top-level directory of this distribution and at
 
 import weakref
 
-__all__ = ('OverloadedAttribute', 'OverloadedAttributeMapper')
+__all__ = ('OverloadedAttribute', 'OverloadedAttributeMapper', 'OverloadProxy')
 
 
 class OverloadedAttributeMapper:
@@ -119,3 +119,103 @@ class OverloadedAttribute:
             return self
 
         return decorator
+
+
+class OverloadProxy:
+    """ Instances of this class serve as proxies for objects containing attributes of type
+    OverloadedAttribute. It can be used to hide the overloading mechanism by fixing the overloaded
+    attribute access key in a OverloadProxy instance. This allows for interfacing an overloaded
+    attribute in the object represented by this proxy by normal "pythonic" means without the
+    additional key-mapping lookup usually required by OverloadedAttribute.
+
+    Heavily inspired by this python recipe under PSF License:
+    https://code.activestate.com/recipes/496741-object-proxying/
+    """
+
+    __slots__ = ['_obj_ref', '_overload_key', '__weakref__']
+
+    def __init__(self, obj, overload_key):
+        object.__setattr__(self, '_obj_ref', weakref.ref(obj))
+        object.__setattr__(self, '_overload_key', overload_key)
+
+    # proxying (special cases)
+    def __getattribute__(self, name):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        attr = getattr(obj, name)
+        if isinstance(attr, OverloadedAttributeMapper):
+            return attr[object.__getattribute__(self, '_overload_key')]
+        return attr
+
+    def __delattr__(self, name):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        attr = getattr(obj, name)
+        if isinstance(attr, OverloadedAttributeMapper):
+            del attr[object.__getattribute__(self, '_overload_key')]
+        else:
+            delattr(obj, name)
+
+    def __setattr__(self, name, value):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        attr = getattr(obj, name)
+        if isinstance(attr, OverloadedAttributeMapper):
+            attr[object.__getattribute__(self, '_overload_key')] = value
+        else:
+            setattr(obj, name, value)
+
+    def __nonzero__(self):
+        return bool(object.__getattribute__(self, '_obj_ref')())
+
+    def __str__(self):
+        return str(object.__getattribute__(self, '_obj_ref')())
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, '_obj_ref')())
+
+    # factories
+    _special_names = (
+        '__abs__', '__add__', '__and__', '__call__', '__cmp__', '__coerce__', '__contains__',
+        '__delitem__', '__delslice__', '__div__', '__divmod__', '__eq__', '__float__',
+        '__floordiv__', '__ge__', '__getitem__', '__getslice__', '__gt__', '__hash__', '__hex__',
+        '__iadd__', '__iand__', '__idiv__', '__idivmod__', '__ifloordiv__', '__ilshift__',
+        '__imod__', '__imul__', '__int__', '__invert__', '__ior__', '__ipow__', '__irshift__',
+        '__isub__', '__iter__', '__itruediv__', '__ixor__', '__le__', '__len__', '__long__',
+        '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__', '__neg__', '__oct__', '__or__',
+        '__pos__', '__pow__', '__radd__', '__rand__', '__rdiv__', '__rdivmod__', '__reduce__',
+        '__reduce_ex__', '__repr__', '__reversed__', '__rfloorfiv__', '__rlshift__', '__rmod__',
+        '__rmul__', '__ror__', '__rpow__', '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
+        '__rxor__', '__setitem__', '__setslice__', '__sub__', '__truediv__', '__xor__', 'next',
+    )
+
+    @classmethod
+    def _create_class_proxy(cls, theclass):
+        """ creates a proxy for the given class
+        """
+
+        def make_method(name):
+            def method(self, *args, **kw):
+                return getattr(object.__getattribute__(self, '_obj_ref')(), name)(*args, **kw)
+
+            return method
+
+        namespace = {}
+        for name in cls._special_names:
+            if hasattr(theclass, name) and not hasattr(cls, name):
+                namespace[name] = make_method(name)
+        return type(f'{cls.__name__}({theclass.__name__})', (cls,), namespace)
+
+    def __new__(cls, obj, overload_key, *args, **kwargs):
+        """ creates an proxy instance referencing `obj`. (obj, *args, **kwargs) are passed to this
+        class' __init__, so deriving classes can define an __init__ method of their own.
+
+        note: _class_proxy_cache is unique per class (each deriving class must hold its own cache)
+        """
+        try:
+            cache = cls.__dict__['_class_proxy_cache']
+        except KeyError:
+            cls._class_proxy_cache = cache = {}
+        try:
+            theclass = cache[obj.__class__]
+        except KeyError:
+            cache[obj.__class__] = theclass = cls._create_class_proxy(obj.__class__)
+        ins = object.__new__(theclass)
+        return ins
