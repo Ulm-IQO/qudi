@@ -114,6 +114,7 @@ class SequenceGeneratorLogic(GenericLogic):
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
     sigAvailableWaveformsUpdated = QtCore.Signal(list)
     sigAvailableSequencesUpdated = QtCore.Signal(list)
+    sigBenchmarkComplete = QtCore.Signal()
 
     sigPredefinedSequenceGenerated = QtCore.Signal(object, bool)
 
@@ -2183,6 +2184,9 @@ class SequenceGeneratorLogic(GenericLogic):
             time_fraction = time_fraction / 2. if time_fraction > 2 else 2
             i += 1
 
+        self.sigSampleEnsembleComplete.emit(None)
+        self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
+
         self.log.info("Pulse generator benchmark finished after {} chunks.".format(i))
 
     def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk',
@@ -2292,9 +2296,6 @@ class SequenceGeneratorLogic(GenericLogic):
         #    self.pulsegenerator().load_waveform(loaded_waves_old)
         self.pulsegenerator().delete_waveform(waveform_name)
         self.pulsegenerator().set_active_channels(active_channels_saved)
-
-        self.sigSampleEnsembleComplete.emit(None)
-        self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
 
         return 0, list(), dict()
 
