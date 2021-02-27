@@ -86,7 +86,7 @@ setup(name='qudi',
                 'qudi.tools.fit_models',
                 'qudi.tools.config_editor'
                 ],
-      package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt'],
+      package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt', 'docs/*'],
                     'qudi.core': ['VERSION.txt', 
                                   'default.cfg',
                                   'artwork/logo/*',
