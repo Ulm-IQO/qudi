@@ -21,7 +21,7 @@ top-level directory of this distribution and at
 """
 
 import weakref
-from qudi.core.interface import OverloadedAttributeMapper
+from qudi.util.overload import OverloadedAttributeMapper
 
 
 class Connector:
