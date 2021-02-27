@@ -101,7 +101,7 @@ presented in the previous section:
 ```python
 from qudi.interface.data_reader import DataReaderInterface
 from qudi.interface.data_output import DataOutputInterface
-from qudi.core.interface import OverloadedAttribute
+from qudi.util.overload import OverloadedAttribute
 
 class MyHardwareModule(DataReaderInterface, DataOutputInterface):
     """ This will become my new fancy hardware module to combine DataReaderInterface and 
