@@ -89,7 +89,7 @@ The method `start` and the property `constraints` however are an entirely differ
 traditional way you can only define one attribute with that name in your hardware module, thus 
 preventing to start each task separately and getting the constraints selectively.
 
-And this is where the ominous meta object `qudi.core.interface.OverloadedAttribute` comes into play.
+And this is where the ominous meta object `qudi.util.overload.OverloadedAttribute` comes into play.
 
 ## How to overload an interface attribute
 The meta object `OverloadedAttribute` enables you to flag any attribute 
@@ -192,6 +192,7 @@ In order to work around this issue the `qudi.core.connector.Connector` object is
 During instantiation of a `Connector` object the logic module passes the interface type or class 
 name as parameter. As such the `Connector` instance can provide a hardware module proxy object when 
 called to hide the overload mechanics of interface methods from the calling logic module. 
+This is enabled by `qudi.util.overload.OverloadProxy`.
 
 To illustrate this further, let's assume you have a logic module `MyLogicModule` which is 
 interfacing `DataReaderInterface` and `DataOutputInterface` through our new hardware module 
@@ -225,9 +226,10 @@ As you can see through the use of the `Connector` object, the logic does not nee
 separate devices are connected or a single device with overloaded interface methods.
 
 ## Generalization
-The qudi meta object `OverloadedAttribute` can in fact be used in a very general way and not only 
-with qudi hardware interfaces.
+The qudi meta object `OverloadedAttribute` as well as `OverloadProxy` can in fact be used in a very 
+general way and not only with qudi hardware interfaces.
 
 It can overload any attribute type (descriptor objects, callables, staticmethods, classmethods, 
 etc.) in the class body with any non-empty `str` keywords. You do not need qudi module base/meta 
 classes for the overload mechanism to work, which allows you to use it with any Python3 class.
+The same is true for hiding the overloading semantics using `OverloadProxy`.

@@ -22,10 +22,10 @@ top-level directory of this distribution and at
 
 import weakref
 
-__all__ = ('OverloadedAttribute', 'OverloadedAttributeMapper', 'OverloadProxy')
+__all__ = ('OverloadedAttribute', 'OverloadProxy')
 
 
-class OverloadedAttributeMapper:
+class _OverloadedAttributeMapper:
     def __init__(self):
         self._map_dict = dict()
         self._parent = lambda: None
@@ -73,7 +73,7 @@ class OverloadedAttributeMapper:
 
 class OverloadedAttribute:
     def __init__(self):
-        self._attr_mapper = OverloadedAttributeMapper()
+        self._attr_mapper = _OverloadedAttributeMapper()
 
     def overload(self, key):
         def decorator(attr):
@@ -142,14 +142,14 @@ class OverloadProxy:
     def __getattribute__(self, name):
         obj = object.__getattribute__(self, '_obj_ref')()
         attr = getattr(obj, name)
-        if isinstance(attr, OverloadedAttributeMapper):
+        if isinstance(attr, _OverloadedAttributeMapper):
             return attr[object.__getattribute__(self, '_overload_key')]
         return attr
 
     def __delattr__(self, name):
         obj = object.__getattribute__(self, '_obj_ref')()
         attr = getattr(obj, name)
-        if isinstance(attr, OverloadedAttributeMapper):
+        if isinstance(attr, _OverloadedAttributeMapper):
             del attr[object.__getattribute__(self, '_overload_key')]
         else:
             delattr(obj, name)
@@ -157,7 +157,7 @@ class OverloadProxy:
     def __setattr__(self, name, value):
         obj = object.__getattribute__(self, '_obj_ref')()
         attr = getattr(obj, name)
-        if isinstance(attr, OverloadedAttributeMapper):
+        if isinstance(attr, _OverloadedAttributeMapper):
             attr[object.__getattribute__(self, '_overload_key')] = value
         else:
             setattr(obj, name, value)
