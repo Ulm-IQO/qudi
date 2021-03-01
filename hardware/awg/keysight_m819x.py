@@ -29,12 +29,13 @@ import scipy.interpolate
 from fnmatch import fnmatch
 from collections import OrderedDict
 from abc import abstractmethod
+import re
 
 from core.module import Base
 from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption#, SequenceOrderOption
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 from core.util.modules import get_home_dir
-from core.util.helpers import natural_sort
+
 
 class AWGM819X(Base, PulserInterface):
     """
@@ -53,6 +54,9 @@ class AWGM819X(Base, PulserInterface):
     _wave_mem_mode = None
     _wave_file_extension = '.bin'
     _wave_transfer_datatype = 'h'
+
+    # explicitly set low/high levels for [[d_ch1_low, d_ch1_high], [d_ch2_low, d_ch2_high], ...]
+    _d_ch_level_low_high = ConfigOption(name='d_ch_level_low_high', default=[], missing='nothing')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -274,6 +278,7 @@ class AWGM819X(Base, PulserInterface):
         self._load_wave_from_memory(load_dict, to_nextfree_segment=to_nextfree_segment)
 
         self.set_trigger_mode('cont')
+        self.check_dev_error()
 
         return self.get_loaded_assets()
 
@@ -325,7 +330,7 @@ class AWGM819X(Base, PulserInterface):
 
         # Get all active channels
         active_analog = self._get_active_d_or_a_channels(only_analog=True)
-        channel_numbers = self.chstr_2_chnum(active_analog)
+        channel_numbers = self.chstr_2_chnum(active_analog, return_list=True)
 
         # Get assets per channel
         loaded_assets = dict()
@@ -853,7 +858,7 @@ class AWGM819X(Base, PulserInterface):
         num_steps = len(sequence_parameters)
 
         if self._wave_mem_mode == 'pc_hdd':
-            # todo: will skip already loaded waveforms
+            # todo: check whether skips on already loaded waveforms that should be updated
             # check whether this works as intended with <generate_new> mechanism
             # generate new needs to invalidate loaded assets
             loaded_segments_ch1 = self.get_loaded_assets_name(1, mode='segment')
@@ -862,7 +867,7 @@ class AWGM819X(Base, PulserInterface):
             waves_loaded_here = []
             # transfer waveforms in sequence from local pc to segments in awg mem
             for waveform_tuple, param_dict in sequence_parameters:
-                # todo: handle other than 2 channels
+                # todo: need to handle other than 2 channels?
                 waveform_list = []
                 waveform_list.append(waveform_tuple[0])
                 waveform_list.append(waveform_tuple[1])
@@ -983,7 +988,7 @@ class AWGM819X(Base, PulserInterface):
         elif self._wave_mem_mode == 'awg_segments':
 
             active_analog = self._get_active_d_or_a_channels(only_analog=True)
-            channel_numbers = self.chstr_2_chnum(active_analog)
+            channel_numbers = self.chstr_2_chnum(active_analog, return_list=True)
 
             for chnl_num in channel_numbers:
                 names.extend(self.get_loaded_assets_name(chnl_num, 'segment'))
@@ -1059,6 +1064,10 @@ class AWGM819X(Base, PulserInterface):
                         except ValueError:  # got already deleted
                             continue
                         self.write('TRAC{}:DEL {:d}'.format(ch_num, id))
+                        # set to available segment
+                        ids_avail = self.get_loaded_assets_id(ch_num)
+                        if ids_avail:
+                            self.write('TRAC{}:SEL {:d}'.format(ch_num, ids_avail[0]))
                     deleted_waveforms.append(waveform)
 
             for loaded_waveform in self.get_loaded_assets()[0].values():
@@ -1125,9 +1134,10 @@ class AWGM819X(Base, PulserInterface):
 
         Unused for pulse generator hardware other than an AWG.
         """
-        self.log.warning('Interleave mode not available for the AWG M8195A '
-                         'Series!\n'
-                         'Method call will be ignored.')
+        if state:
+            self.log.warning('Interleave mode not available for the AWG M819xA '
+                             'Series!\n'
+                             'Method call will be ignored.')
         return self.get_interleave()
 
     def reset(self):
@@ -1166,7 +1176,7 @@ class AWGM819X(Base, PulserInterface):
         pass
 
     @abstractmethod
-    def _get_digital_ch_cmd(self):
+    def _get_digital_ch_cmd(self, d_ch_name):
         pass
 
     @abstractmethod
@@ -1243,7 +1253,8 @@ class AWGM819X(Base, PulserInterface):
             has_ch_ext = True
 
             for waveform in load_dict:
-                has_ch_ext = '_ch' in waveform
+                pattern = ".*_ch[0-9]+?"
+                has_ch_ext = True if re.match(pattern, waveform) is not None else False
                 if has_ch_ext:
                     channel = int(waveform.rsplit('_ch', 1)[1][0])
                     new_dict[channel] = waveform
@@ -1274,16 +1285,19 @@ class AWGM819X(Base, PulserInterface):
                 data = self.query_bin(':MMEM:DATA? "{0}"'.format(filepath))
                 n_samples = len(data)
                 if self.interleaved_wavefile:
-                    n_samples = n_samples / 2
+                    n_samples = int(n_samples / 2)
                 segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(chnl_num, n_samples)) \
                              + '_ch{:d}'.format(chnl_num)
                 segment_id_per_ch = segment_id.rsplit("_ch", 1)[0]
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id_per_ch, offset), data)
                 self.write(':TRAC{0}:NAME {1}, "{2}"'.format(chnl_num, segment_id_per_ch, name))
 
+                self._check_uploaded_wave_name(chnl_num, name, segment_id_per_ch)
+
                 self._flag_segment_table_req_update = True
                 self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
                     name, n_samples, chnl_num, segment_id_per_ch))
+
         elif self._wave_mem_mode == 'awg_segments':
 
             if to_nextfree_segment:
@@ -1298,7 +1312,6 @@ class AWGM819X(Base, PulserInterface):
                     segment_id = self.asset_name_2_id(name, chnl_num, mode='segment')
                 else:
                     segment_id = np.int(name.split(',')[0])
-                    self.log.warning("Loading segments via name will deprecate.")
                 self.write(':TRAC{0}:SEL {1}'.format(chnl_num, segment_id))
 
 
@@ -1467,6 +1480,17 @@ class AWGM819X(Base, PulserInterface):
         else:
             return fname.split("_ch")[0].split(".")[0]
 
+    def _check_uploaded_wave_name(self, ch_num, wave_name, segment_id):
+
+        wave_name_on_dev = self.get_loaded_asset_name_by_id(ch_num, segment_id)
+        if wave_name_on_dev != wave_name:
+            self.log.warning("Name of waveform altered during upload: {} -> {} Unsupported characters?".format(
+                wave_name, wave_name_on_dev
+            ))
+            return 1
+
+        return 0
+
     def _write_wave_to_memory(self, name, analog_samples, digital_samples, active_analog, to_segment_id=1):
         """
         :param name:
@@ -1482,9 +1506,10 @@ class AWGM819X(Base, PulserInterface):
 
             ch_num = self.chstr_2_chnum(ch_str)
             wave_name = self._name_with_ch(name, ch_num)
-            self.log.debug('Max ampl, ch={0}: {1}'.format(ch_str, analog_samples[ch_str].max()))
 
             comb_samples = self._compile_bin_samples(analog_samples, digital_samples, ch_str)
+
+            t_start = time.time()
 
             if self._wave_mem_mode == 'pc_hdd':
                 # todo: check if working for awg8195a
@@ -1511,16 +1536,17 @@ class AWGM819X(Base, PulserInterface):
 
                 segment_id = to_segment_id
                 if name.split(',')[0] != name:
+                    # todo: this breaks if there is a , in the name without number
                     segment_id = np.int(name.split(',')[0])
-                    self.log.warning("Loading wave to specified segment via name will deprecate.")
-                if to_segment_id == -1:
+                    self.log.warning("Loading wave to specified segment ({}) via name will deprecate.".format(segment_id))
+                if segment_id == -1:
                     # to next free segment
                     segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(analog_samples[ch_str])))
                     # only need the next free id, definition and writing is performed below again
                     # so delete defined segment again
                     self.write("TRAC{:d}:DEL {}".format(ch_num, segment_id))
 
-                segment_id_ch = segment_id + '_ch{:d}'.format(ch_num)
+                segment_id_ch = str(segment_id) + '_ch{:d}'.format(ch_num)
                 self.log.debug("Writing wave {} to ch {} segment_id {}".format(wave_name, ch_str, segment_id_ch))
 
                 # delete if the segment is already existing
@@ -1539,11 +1565,18 @@ class AWGM819X(Base, PulserInterface):
                 # upload
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(int(ch_num), segment_id, 0), comb_samples)
 
+                self._check_uploaded_wave_name(ch_num, wave_name, segment_id)
+
                 waveforms.append(wave_name)
                 self._flag_segment_table_req_update = True
 
             else:
                 raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
+
+            transfer_speed_mbs = (comb_samples.nbytes/(1024*1024))/(time.time() - t_start)
+            self.log.debug('Written ({2:.1f} MB/s) to ch={0}: max ampl: {1}'.format(ch_str,
+                                                                                analog_samples[ch_str].max(),
+                                                                                transfer_speed_mbs))
 
         return waveforms
 
@@ -1748,7 +1781,6 @@ class AWGM819X(Base, PulserInterface):
 
         return active_ch
 
-
     def _get_all_digital_channels(self):
         """
         Helper method to return a sorted list of all technically available digital channel
@@ -1757,6 +1789,25 @@ class AWGM819X(Base, PulserInterface):
         @return list: Sorted list of digital channels
         """
         return [chnl for chnl in self._get_all_channels() if chnl.startswith('d')]
+
+    def _output_levels_by_config(self, d_ampl_low, d_ampl_high):
+        if self._d_ch_level_low_high:
+            for i in range(len(self._d_ch_level_low_high)):
+                ch_idx = i + 1
+                low = self._d_ch_level_low_high[i][0]
+                high = self._d_ch_level_low_high[i][1]
+                ch_str = 'd_ch{:d}'.format(ch_idx)
+
+                if ch_str in d_ampl_low.keys() and ch_str in d_ampl_high.keys():
+                    d_ampl_low['d_ch{:d}'.format(ch_idx)] = low
+                    d_ampl_high['d_ch{:d}'.format(ch_idx)] = high
+        else:
+            pass  # use passed (default) values
+
+        self.log.debug("Overriding output levels from config: d_ampl_low: {}, d_ampl_high: {}".format(
+                    d_ampl_low, d_ampl_high))
+
+        return d_ampl_low, d_ampl_high
 
     def update_segment_table(self):
         segment_table_1 = self.read_segment_table(1)
@@ -1919,7 +1970,7 @@ class AWGM819X(Base, PulserInterface):
         asset_ids = self.get_loaded_assets_id(ch_num, mode)
 
         try:
-            idx = asset_ids.index(id)
+            idx = asset_ids.index(int(id))
         except ValueError:
             self.log.warning("Couldn't find {} id {} in loaded assetes".format(mode, id))
             return ""
@@ -1931,8 +1982,6 @@ class AWGM819X(Base, PulserInterface):
         idx = names.index(name)
 
         return self.get_loaded_assets_id(ch_num, mode)[idx]
-
-
 
     def get_sequencer_state(self, ch_num):
         """
@@ -1994,7 +2043,7 @@ class AWGM819X(Base, PulserInterface):
         # todo: need to implement? alernatively shuffle sequuence while generating
         raise NotImplementedError
 
-    def chstr_2_chnum(self, chstr):
+    def chstr_2_chnum(self, chstr, return_list=False):
         """
         Converts a channel name like 'a_ch1' to channel number internally used to address
         this channel in VISA commands. Eg. 'd_ch1' -> 3 on M8195A.
@@ -2020,7 +2069,7 @@ class AWGM819X(Base, PulserInterface):
 
         num_list = [single_str_2_num(s) for s in chstr]
 
-        if len(num_list) == 1:
+        if len(num_list) == 1 and not return_list:
             return num_list[0]
 
         return num_list
@@ -2032,14 +2081,15 @@ class AWGM8195A(AWGM819X):
 
       Example config for copy-paste:
 
-          myawg:
+          awg8195:
               module.Class: 'awg.keysight_M819x.AWGM8195A'
               awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
               awg_timeout: 20
-              pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
-              assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
+              pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directories should be equal
+              assets_storage_path: 'C:/Software/saved_pulsed_assets'    # to the ones in sequencegeneratorlogic
+              sample_rate_div: 1
+              awg_mode: 'MARK'
       """
-
 
     awg_mode_cfg = ConfigOption(name='awg_mode', default='MARK', missing='warn')
 
@@ -2075,6 +2125,11 @@ class AWGM8195A(AWGM819X):
 
     @property
     def interleaved_wavefile(self):
+        """
+        Whether wavefroms need to be uploaded in a interleaved intermediate format.
+        Not to confuse with interleave mode from get_interleave().
+        :return: True/False: need interleaved wavefile?
+        """
         return self.marker_on
 
     def get_constraints(self):
@@ -2123,18 +2178,12 @@ class AWGM8195A(AWGM819X):
         # manual 1.5.4: Depending on the Sample Rate Divider, the 256 sample wide output of the sequencer
         # is divided by 1, 2 or 4.
         constraints.waveform_length.step = 256 / self._sample_rate_div
-        constraints.waveform_length.min = 1
+        constraints.waveform_length.min = 1280  # != p 108 manual, but tested manually ('MARK')
         constraints.waveform_length.max = int(16e9)
         constraints.waveform_length.default = 1280
 
-        # constraints.waveform_length.step = 1    #TODO step is 256 but the import function repeats the waveform until
-        #                                         # granularity is fullfilled, may lead to memory issues, set to 256 if
-        #                                         # longer waveforms have to be uploaded.
-        # constraints.waveform_length.default = 1 # min length is 1280 but this is also handled by the import
-
-
         # analog channel
-        constraints.a_ch_amplitude.min = 0.075 #TODO Why?
+        constraints.a_ch_amplitude.min = 0.075   # from soft frontpanel
         constraints.a_ch_amplitude.max = 2
         constraints.a_ch_amplitude.step = 0.0002 # not used anymore
         constraints.a_ch_amplitude.default = 1
@@ -2163,13 +2212,11 @@ class AWGM8195A(AWGM819X):
         # constraints.sampled_file_length.default = 256
 
         constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16777215 #16M - 1, not quite clear from the manual
+        constraints.waveform_num.max = 16777215
         constraints.waveform_num.default = 1
-        # The sample memory can be split into a maximum of 16 M waveform segments
 
-        # FIXME: Check the proper number for your device
         constraints.sequence_num.min = 1
-        constraints.sequence_num.max = 4000
+        constraints.sequence_num.max = 16777215
         constraints.sequence_num.step = 1
         constraints.sequence_num.default = 1
 
@@ -2178,12 +2225,6 @@ class AWGM8195A(AWGM819X):
         constraints.repetitions.max = 65536
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
-
-        # ToDo: Check how many external triggers are available
-        # constraints.trigger_in.min = 0
-        # constraints.trigger_in.max = 1
-        # constraints.trigger_in.step = 1
-        # constraints.trigger_in.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
@@ -2219,7 +2260,7 @@ class AWGM8195A(AWGM819X):
         elif self.awg_mode == 'FOUR':
 
             a_ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default,
-                    'a_ch3': constr.a_ch_amplitude.default, 'a_ch4': constr.a_ch_amplitude.default}
+                      'a_ch3': constr.a_ch_amplitude.default, 'a_ch4': constr.a_ch_amplitude.default}
             a_offs = {'a_ch1': constr.a_ch_offset.default, 'a_ch2': constr.a_ch_offset.default_marker,
                       'a_ch3': constr.a_ch_offset.default_marker, 'a_ch4': constr.a_ch_offset.default_marker}
             d_ampl_low = {}
@@ -2228,6 +2269,7 @@ class AWGM8195A(AWGM819X):
         else:
             self.log.error('The chosen AWG ({0}) mode is not implemented yet!'.format(self.awg_mode))
 
+        d_ampl_low, d_ampl_high = self._output_levels_by_config(d_ampl_low, d_ampl_high)
 
         return {'a_ampl': a_ampl, 'a_offs': a_offs,
                 'd_ampl_low': d_ampl_low, 'd_ampl_high': d_ampl_high}
@@ -2244,6 +2286,10 @@ class AWGM8195A(AWGM819X):
         else:
             raise ValueError("Unknown mode: {}".format(awg_mode))
 
+        if awg_mode != 'MARK':
+            self.log.error("Setting awg mode {} that is currently not supported! "
+                           "Be careful and please report bugs and bug fixes back on github.".format(awg_mode))
+
         if self.awg_mode != awg_mode:
             self.log.error("Setting awg mode failed, is still: {}".format(self.awg_mode))
 
@@ -2256,7 +2302,7 @@ class AWGM8195A(AWGM819X):
     def _compile_bin_samples(self, analog_samples, digital_samples, ch_str):
 
         interleaved = self.interleaved_wavefile
-        self.log.debug("Compiling samples for {} with marker on : {}".format(ch_str, interleaved))
+        self.log.debug("Compiling samples for {}, interleaved: {}".format(ch_str, interleaved))
 
         a_samples = self.float_to_sample(analog_samples[ch_str])
 
@@ -2270,10 +2316,6 @@ class AWGM8195A(AWGM819X):
 
         else:
             comb_samples = a_samples
-
-        self.log.debug("Comb samples (max={} @ {}) [:100] {}".format(np.max(comb_samples),
-                                                                     np.argmax(comb_samples),
-                                                                     comb_samples[:100]))
 
         return comb_samples
 
@@ -2423,12 +2465,14 @@ class AWGM8190A(AWGM819X):
 
     Example config for copy-paste:
 
-        myawg:
+        awg8190:
             module.Class: 'awg.keysight_M819x.AWGM8190A'
             awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
             awg_timeout: 20
-            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directiories should be equal
+            pulsed_file_dir: 'C:/Software/pulsed_files'               # asset directories should be equal
             assets_storage_path: 'C:/Software/aved_pulsed_assets'     # to the ones in sequencegeneratorlogic
+            sample_rate_div: 1
+            dac_resolution_bits: 14
     """
 
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
@@ -2519,10 +2563,13 @@ class AWGM8190A(AWGM819X):
             constraints.waveform_length.min = 240
             constraints.waveform_length.default = 240
 
-        constraints.a_ch_amplitude.min = 0.100  # Channels amplitude control single ended min
-        constraints.a_ch_amplitude.max = 0.700  # Channels amplitude control single ended max
+        constraints.waveform_length.max = 2147483648  # assumes option -02G
+
+        constraints.a_ch_amplitude.min = 0.1    # from soft frontpanel, single ended min
+        constraints.a_ch_amplitude.max = 0.700  # single ended max
         if self._dac_resolution == 12:
-            constraints.a_ch_amplitude.step = 1.7090e-4  # for AWG8190: actually 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
+            # 0.7Vpp/2^12=0.0019; for DAC resolution of 12 bits (data sheet p. 17)
+            constraints.a_ch_amplitude.step = 1.7090e-4
         elif self._dac_resolution == 14:
             constraints.a_ch_amplitude.step = 4.2725e-5
         constraints.a_ch_amplitude.default = 0.500
@@ -2532,19 +2579,17 @@ class AWGM8190A(AWGM819X):
         constraints.d_ch_low.step = 0.0002
         constraints.d_ch_low.default = 0.0
 
-        constraints.d_ch_high.min = -0.5
+        constraints.d_ch_high.min = 0.5  # manual p. 245
         constraints.d_ch_high.max = 1.75
         constraints.d_ch_high.step = 0.0002
         constraints.d_ch_high.default = 1.5
 
         constraints.waveform_num.min = 1
-        constraints.waveform_num.max = 16_000_000
+        constraints.waveform_num.max = 524287 # manual p. 261
         constraints.waveform_num.default = 1
-        # The sample memory can be split into a maximum of 16 M waveform segments
 
-        # FIXME: Check the proper number for your device
         constraints.sequence_num.min = 1
-        constraints.sequence_num.max = 4000
+        constraints.sequence_num.max = 524288 - 1   # manual p. 251
         constraints.sequence_num.step = 1
         constraints.sequence_num.default = 1
 
@@ -2556,12 +2601,6 @@ class AWGM8190A(AWGM819X):
         constraints.repetitions.max = 65536
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
-
-        # ToDo: Check how many external triggers are available
-        # constraints.trigger_in.min = 0
-        # constraints.trigger_in.max = 1
-        # constraints.trigger_in.step = 1
-        # constraints.trigger_in.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
@@ -2590,10 +2629,13 @@ class AWGM8190A(AWGM819X):
         constr = self.get_constraints()
 
         a_ampl = {'a_ch1': constr.a_ch_amplitude.default, 'a_ch2': constr.a_ch_amplitude.default}
+
         d_ampl_low = {'d_ch1': constr.d_ch_low.default, 'd_ch2': constr.d_ch_low.default,
                       'd_ch3': constr.d_ch_low.default, 'd_ch4': constr.d_ch_low.default}
         d_ampl_high = {'d_ch1': constr.d_ch_high.default, 'd_ch2': constr.d_ch_high.default,
                        'd_ch3': constr.d_ch_high.default, 'd_ch4': constr.d_ch_high.default}
+        d_ampl_low, d_ampl_high = self._output_levels_by_config(d_ampl_low, d_ampl_high)
+
         a_offs = {}
 
         return {'a_ampl': a_ampl, 'a_offs': a_offs,
@@ -2769,6 +2811,4 @@ class AWGM8190A(AWGM819X):
         control += 0x1 << 24  # always enable markers
 
         return control
-
-
 
