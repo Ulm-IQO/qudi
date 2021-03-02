@@ -60,6 +60,8 @@ class DigitalSwitchNI(Base, SwitchInterface):
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+    # if inverted is True, first entry in switches is "high" and second is "low"
+    _inverted_states = ConfigOption(name='inverted_states', default=False, missing='nothing')
 
     _states = StatusVar(name='states', default=None)
 
@@ -165,7 +167,10 @@ class DigitalSwitchNI(Base, SwitchInterface):
                     binary = list()
                     for channel_index, (switch, state) in enumerate(new_states.items()):
                         switch_task.do_channels.add_do_chan(self._channels[channel_index])
-                        binary.append(avail_states[switch][0] != state)
+                        if self._inverted_states:
+                            binary.append(avail_states[switch][0] == state)
+                        else:
+                            binary.append(avail_states[switch][0] != state)
                     switch_task.write(binary, auto_start=True)
                     time.sleep(self._switch_time)
                     self._states = new_states
