@@ -3,6 +3,7 @@
 
 """
 
+import pprint
 import os
 import sys
 import importlib
@@ -15,8 +16,7 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption, MissingOption
 from qudi.core.paths import get_main_dir, get_default_config_dir
 from qudi.core.logger import get_logger
-from qudi.core.module import Base
-from qudi.core.meta import InterfaceMetaclass
+from qudi.core.module import Base, LogicBase, GuiBase
 from qudi.core.config import save, load
 
 from module_selector import ModuleSelector
@@ -218,14 +218,15 @@ class ModuleFinder:
     def is_config_option(obj):
         return isinstance(obj, ConfigOption)
 
-    @staticmethod
-    def is_qudi_interface(obj):
-        return inspect.isclass(obj) and type(obj) == InterfaceMetaclass
+    @classmethod
+    def is_qudi_interface(cls, obj):
+        return cls.is_qudi_class(obj) and inspect.isabstract(obj) and \
+               not issubclass(obj, (LogicBase, GuiBase))
 
     @staticmethod
     def is_qudi_class(obj):
-        base_classes = ('Base', 'LogicBase', 'GuiBase')
-        return inspect.isclass(obj) and issubclass(obj, Base) and obj.__name__ not in base_classes
+        base_classes = (Base, LogicBase, GuiBase)
+        return inspect.isclass(obj) and issubclass(obj, Base) and obj not in base_classes
 
 
 class QudiConfiguration:
@@ -841,12 +842,12 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
+    app = QtWidgets.QApplication(sys.argv)
     qudi_env = QudiEnvironment()
     qudi_config = QudiConfiguration(qudi_env.available_module_config_options,
                                     qudi_env.available_module_connectors)
     # qudi_config.load_config_from_file('C:\\Users\\neverhorst\\qudi\\config\\test.cfg')
     # qudi_config.save_config_to_file('C:\\Users\\neverhorst\\qudi\\config\\test2.cfg')
-    app = QtWidgets.QApplication(sys.argv)
     mw = ConfigurationEditor(qudi_env, qudi_config)
     mw.show()
     sys.exit(app.exec_())
