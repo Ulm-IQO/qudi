@@ -159,7 +159,7 @@ class Qudi(QtCore.QObject):
         extensions = self.configuration.extension_paths
         # Add qudi extension paths to sys.path
         for ext_path in reversed(extensions):
-            sys.path.insert(1, ext_path)
+            sys.path.insert(0, ext_path)
         self._configured_extension_paths = extensions
 
     @QtCore.Slot()
