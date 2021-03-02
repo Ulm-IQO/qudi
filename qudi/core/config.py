@@ -3,15 +3,12 @@
 """
 This file contains the Qudi configuration file module.
 
-A configuration file is saved in YAML format. This module provides a loader
-and a dumper using an OrderedDict instead of the regular dict used by PyYAML.
+A configuration file is saved in YAML format. This module provides a loader and a dumper using
+PyYAML.
 Additionally, it fixes a bug in PyYAML with scientific notation and allows
 to dump numpy dtypes and numpy ndarrays.
 
 The fix of the scientific notation is applied globally at module import.
-
-The idea of the implementation of the OrderedDict was taken from
-http://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
 
 
 Qudi is free software: you can redistribute it and/or modify
@@ -31,7 +28,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from collections import OrderedDict
 import numpy
 import os
 import copy
@@ -43,27 +39,18 @@ from qudi.core.paths import get_artwork_dir
 from warnings import warn
 
 
-def ordered_load(stream, loader_base=yaml.Loader):
-    """
-    Loads a YAML formatted data from stream and puts it into an OrderedDict
+def qudi_load(stream, loader_base=yaml.Loader):
+    """ Loads a YAML formatted data from stream and puts it into a dict
 
     @param Stream stream: stream the data is read from
     @param yaml.Loader loader_base: YAML Loader base class
 
-    @return OrderedDict: Dict containing data. If stream is empty then an empty dict is returned
+    @return dict: Dict containing data. If stream is empty then an empty dict is returned
     """
     class OrderedLoader(loader_base):
-        """
-        Loader using an OrderedDict
+        """ Custom loader.
         """
         pass
-
-    def construct_mapping(loader, node):
-        """
-        The OrderedDict constructor.
-        """
-        loader.flatten_mapping(node)
-        return OrderedDict(loader.construct_pairs(node))
 
     def construct_ndarray(loader, node):
         """
@@ -112,7 +99,6 @@ def ordered_load(stream, loader_base=yaml.Loader):
             return value
 
     # add constructors
-    OrderedLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
     OrderedLoader.add_constructor('!ndarray', construct_ndarray)
     OrderedLoader.add_constructor('!extndarray', construct_external_ndarray)
     OrderedLoader.add_constructor('!frozenset', construct_frozenset)
@@ -121,59 +107,45 @@ def ordered_load(stream, loader_base=yaml.Loader):
     # load config file
     config = yaml.load(stream, OrderedLoader)
     # yaml returns None if the config file was empty
-    return OrderedDict() if config is None else config
+    return dict() if config is None else config
 
 
-def ordered_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
-    """
-    Dumps OrderedDict data into a YAML format stream
+def qudi_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
+    """ Dumps dict data into a YAML format stream
 
-    @param OrderedDict data: the data to dump
+    @param dict data: the data to dump
     @param Stream stream: stream to dump the data into (in YAML)
     @param yaml.Dumper dumper_base: The dumper that is used as a base class
     """
     class OrderedDumper(dumper_base):
-        """
-        A Dumper using an OrderedDict
+        """ A custom Dumper
         """
         external_ndarray_counter = 0
 
         def ignore_aliases(self, ignore_data):
-            """
-            ignore aliases and anchors
+            """ Ignore aliases and anchors
             """
             return True
 
-    def represent_ordereddict(dumper, data):
-        """
-        Representer for OrderedDict
-        """
-        return dumper.represent_mapping(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-                                        data.items())
-
     def represent_int(dumper, data):
-        """
-        Representer for numpy int dtypes
+        """ Representer for numpy int dtypes
         """
         return dumper.represent_int(numpy.asscalar(data))
 
     def represent_float(dumper, data):
-        """
-        Representer for numpy float dtypes
+        """ Representer for numpy float dtypes
         """
         return dumper.represent_float(numpy.asscalar(data))
 
     def represent_frozenset(dumper, data):
-        """
-        Representer for frozenset
+        """ Representer for frozenset
         """
         node = dumper.represent_set(set(data))
         node.tag = '!frozenset'
         return node
 
     def represent_ndarray(dumper, data):
-        """
-        Representer for numpy ndarrays
+        """ Representer for numpy.ndarrays
         """
         try:
             filename = os.path.splitext(os.path.basename(stream.name))[0]
@@ -193,7 +165,6 @@ def ordered_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
         return node
 
     # add representers
-    OrderedDumper.add_representer(OrderedDict, represent_ordereddict)
     OrderedDumper.add_representer(numpy.uint8, represent_int)
     OrderedDumper.add_representer(numpy.uint16, represent_int)
     OrderedDumper.add_representer(numpy.uint32, represent_int)
@@ -220,13 +191,13 @@ def load(file_path, ignore_missing=False):
     @param str file_path: path to config file
     @param bool ignore_missing: Optional flag to suppress FileNotFoundError
 
-    @return OrderedDict: The data as python/numpy objects in an OrderedDict
+    @return dict: The data as python/numpy objects in a dict
     """
     if os.path.isfile(file_path):
         with open(file_path, 'r') as f:
-            return ordered_load(f, yaml.SafeLoader)
+            return qudi_load(f, yaml.SafeLoader)
     elif ignore_missing:
-        return OrderedDict()
+        return dict()
     raise FileNotFoundError('Could not load config file "{0}". File not found'.format(file_path))
 
 
@@ -235,13 +206,13 @@ def save(file_path, data):
     Saves data to file_path in yaml format. Creates subdirectories if not already present.
 
     @param str file_path: path to config file to save
-    @param OrderedDict data: config values
+    @param dict data: config values
     """
     file_dir = os.path.dirname(file_path)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     with open(file_path, 'w') as f:
-        ordered_dump(data, stream=f, dumper_base=yaml.SafeDumper, default_flow_style=False)
+        qudi_dump(data, stream=f, dumper_base=yaml.SafeDumper, default_flow_style=False)
 
 
 class Configuration(QtCore.QObject):
