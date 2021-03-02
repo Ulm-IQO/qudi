@@ -23,15 +23,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import okfrontpanel as ok
-from core.module import Base
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
-from core.util.modules import get_main_dir
-from core.util.mutex import RecursiveMutex
-from interface.switch_interface import SwitchInterface
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
+from qudi.core.paths import get_main_dir
+from qudi.util.mutex import RecursiveMutex
+from qudi.interface.switch_interface import SwitchInterface
 
 
-class HardwareSwitchFpga(Base, SwitchInterface):
+class HardwareSwitchFpga(SwitchInterface):
     """
     This is the hardware class for the Spartan-6 (Opal Kelly XEM6310) FPGA based hardware switch.
     The command reference for communicating via the OpalKelly Frontend can be looked up here:

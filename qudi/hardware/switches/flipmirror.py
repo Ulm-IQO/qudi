@@ -20,15 +20,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import visa
-import time
-from core.module import Base
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
-from core.util.mutex import RecursiveMutex
-from interface.switch_interface import SwitchInterface
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
+from qudi.util.mutex import RecursiveMutex
+from qudi.interface.switch_interface import SwitchInterface
 
 
-class FlipMirror(Base, SwitchInterface):
+class FlipMirror(SwitchInterface):
     """ This class is implements communication with the Radiant Dyes flip mirror driver using pyVISA
 
     Example config for copy-paste:
