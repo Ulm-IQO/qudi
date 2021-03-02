@@ -21,13 +21,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.mutex import Mutex
-from interface.switch_interface import SwitchInterface
+from qudi.core.configoption import ConfigOption
+from qudi.util.mutex import Mutex
+from qudi.interface.switch_interface import SwitchInterface
 
 
-class OSW12(Base, SwitchInterface):
+class OSW12(SwitchInterface):
     """ This class is implements communication with Thorlabs OSW12(22) fibered switch.
 
     Description of the hardware provided by Thorlabs:

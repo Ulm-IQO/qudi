@@ -23,9 +23,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from PySide2 import QtCore
 import importlib
 
-from core.util.models import ListTableModel
-from core.module import LogicBase
-import core.task as gt
+from qudi.util.models import ListTableModel
+from qudi.core.module import LogicBase
+import qudi.core.task as gt
 
 
 class TaskListTableModel(ListTableModel):

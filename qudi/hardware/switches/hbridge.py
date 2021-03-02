@@ -21,14 +21,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
-from core.module import Base
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
-from core.util.mutex import RecursiveMutex
-from interface.switch_interface import SwitchInterface
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
+from qudi.util.mutex import RecursiveMutex
+from qudi.interface.switch_interface import SwitchInterface
 
 
-class HBridge(Base, SwitchInterface):
+class HBridge(SwitchInterface):
     """ Methods to control slow laser switching devices.
 
     Example config for copy-paste:
