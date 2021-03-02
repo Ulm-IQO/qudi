@@ -27,6 +27,12 @@ from PySide2 import QtCore
 from qudi.util.mutex import Mutex
 from qudi.util.units import create_formatted_output
 from qudi.tools import fit_models as __models
+try:
+    from tools import fit_models as __ext_models
+    if __ext_models == __models:
+        __ext_models = None
+except ImportError:
+    __ext_models = None
 
 
 def __is_fit_model(cls):
@@ -35,6 +41,11 @@ def __is_fit_model(cls):
 
 
 _fit_models = {name: cls for name, cls in inspect.getmembers(__models, __is_fit_model)}
+# Import fit models from extension modules
+if __ext_models is not None:
+    _fit_models.update(
+        {name: cls for name, cls in inspect.getmembers(__ext_models, __is_fit_model)}
+    )
 
 
 class FitConfiguration:
