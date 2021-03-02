@@ -26,4 +26,5 @@ from .linear import *
 from .gaussian import *
 from .exp_decay import *
 from .lorentzian import *
+from .poissonian import *
 from ._general import FitModelBase
