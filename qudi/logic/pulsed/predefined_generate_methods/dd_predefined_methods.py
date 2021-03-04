@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi Predefined Methods for sequence generator
+This file contains the Qudi Predefined Methods for dynamical decoupling sequences
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,23 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble,
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
-from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
-from core.util.helpers import csv_2_list
+from logic.pulsed.sampling_functions import DDMethods
 
-"""
-General Pulse Creation Procedure:
-=================================
-- Create at first each PulseBlockElement object
-- add all PulseBlockElement object to a list and combine them to a
-  PulseBlock object.
-- Create all needed PulseBlock object with that idea, that means
-  PulseBlockElement objects which are grouped to PulseBlock objects.
-- Create from the PulseBlock objects a PulseBlockEnsemble object.
-- If needed and if possible, combine the created PulseBlockEnsemble objects
-  to the highest instance together in a PulseSequence object.
-"""
 
 
 class DDPredefinedGenerator(PredefinedGeneratorBase):
@@ -425,7 +412,7 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
         freq_array = freq_start + np.arange(num_of_points) * freq_step
         # get tau array from freq array
         tau_array = 1 / (2 * freq_array)
-        tau_phys_array = self.tau_2_phys_spacing(tau_array)
+        tau_phys_array = self.tau_2_pulse_spacing(tau_array)
 
         # old tansformation to "real tau"
         real_tau_array = tau_array - self.rabi_period / 2
@@ -433,7 +420,7 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
 
         # Convert back to frequency in order to account for clipped values
         freq_array_old = 1 / (2 * (real_tau_array + self.rabi_period / 2))
-        freq_array = 1 / (2 * (self.tau_2_phys_spacing(tau_phys_array, inverse=True)))
+        freq_array = 1 / (2 * (self.tau_2_pulse_spacing(tau_phys_array, inverse=True)))
 
         self.log.debug("So far tau: {}, \nnew: {}".format(real_tau_array, tau_phys_array))
         self.log.debug("So far freq: {}, \nnew: {}".format(freq_array_old, freq_array))
