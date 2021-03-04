@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
-from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
 from core.util.helpers import csv_2_list
 
 """
