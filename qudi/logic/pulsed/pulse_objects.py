@@ -1101,7 +1101,7 @@ class PredefinedGeneratorBase:
     #                                   Helper methods                                          ####
     ################################################################################################
 
-    def tau_2_phys_spacing(self, t, inverse=False,
+    def tau_2_pulse_spacing(self, t, inverse=False,
                            custom_func=[None, None], **custom_kwwargs):
         """
         Converts tau to the physical pulse spacing between (microwave) pulses.
