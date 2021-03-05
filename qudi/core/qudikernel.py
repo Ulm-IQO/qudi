@@ -42,7 +42,10 @@ class QudiInterface:
     """
     def __init__(self):
         config = Configuration()
-        config.load_config(set_default=False)
+        config_path = Configuration.get_saved_config()
+        if config_path is None:
+            config_path = Configuration.get_default_config()
+        config.load_config(file_path=config_path, set_default=False)
         server_config = config.module_server
         if not server_config:
             raise ValueError(
