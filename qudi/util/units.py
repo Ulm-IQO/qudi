@@ -159,9 +159,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
 
     @return str: a string, which is nicely formatted.
 
-    Note:  If you want that the values are displayed in a certain order, then
-           use OrderedDict from the collections package.
-    Note2: The absolute tolerance to a zero is set to 1e-18.
+    Note: The absolute tolerance to a zero is set to 1e-18.
 
     Example of a param dict:
         param_dict = {'Rabi frequency': {'value':123.43,   'error': 0.321,  'unit': 'Hz'},
