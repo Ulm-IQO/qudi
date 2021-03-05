@@ -33,10 +33,12 @@ import os
 import copy
 import ruamel.yaml as yaml
 from io import BytesIO
+from warnings import warn
+from collections import OrderedDict
 from PySide2 import QtCore
+
 from qudi.core.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
 from qudi.core.paths import get_artwork_dir
-from warnings import warn
 
 
 def qudi_load(stream, loader_base=yaml.Loader):
@@ -184,6 +186,8 @@ def qudi_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
     # QudiDumper.add_representer(numpy.float128, represent_float)
     QudiDumper.add_representer(numpy.ndarray, represent_ndarray)
     QudiDumper.add_representer(frozenset, represent_frozenset)
+    # Treat OrderedDict as native dict
+    QudiDumper.add_representer(OrderedDict, yaml.Representer.represent_dict)
 
     # dump data
     return yaml.dump(data, stream, QudiDumper, **kwargs)
