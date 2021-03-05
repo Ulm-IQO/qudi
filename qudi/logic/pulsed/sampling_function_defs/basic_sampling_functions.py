@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from collections import OrderedDict
 from qudi.logic.pulsed.sampling_functions import SamplingBase
 
 
@@ -42,7 +41,7 @@ class DC(SamplingBase):
     """
     Object representing an DC element (constant voltage)
     """
-    params = OrderedDict()
+    params = dict()
     params['voltage'] = {'unit': 'V', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
 
     def __init__(self, voltage=None):
@@ -66,7 +65,7 @@ class Sin(SamplingBase):
     """
     Object representing a sine wave element
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase'] = {'unit': '°', 'init': 0.0, 'min': -np.inf, 'max': np.inf, 'type': float}
@@ -101,7 +100,7 @@ class DoubleSinSum(SamplingBase):
     """
     Object representing a double sine wave element (Superposition of two sine waves; NOT normalized)
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
@@ -159,7 +158,7 @@ class DoubleSinProduct(SamplingBase):
     """
     Object representing a double sine wave element (Product of two sine waves; NOT normalized)
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
@@ -218,7 +217,7 @@ class TripleSinSum(SamplingBase):
     Object representing a linear combination of three sines
     (Superposition of three sine waves; NOT normalized)
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
@@ -298,7 +297,7 @@ class TripleSinProduct(SamplingBase):
     Object representing a wave element composed of the product of three sines
     (Product of three sine waves; NOT normalized)
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
@@ -378,7 +377,7 @@ class Chirp(SamplingBase):
     Object representing a chirp element
     Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
     params['start_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
@@ -424,7 +423,7 @@ class AllenEberlyChirp(SamplingBase):
     L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
     Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
     """
-    params = OrderedDict()
+    params = dict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
     params['start_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
@@ -496,7 +495,7 @@ class AllenEberlyChirp(SamplingBase):
 #     """
 #     Object representing an element of a pre-sampled waveform from file (as for optimal control).
 #     """
-#     params = OrderedDict()
+#     params = dict()
 #     params['import_path'] = {'unit': '', 'init': '', 'min': '', 'max': '', 'type': str}
 #
 #     def __init__(self, importpath):

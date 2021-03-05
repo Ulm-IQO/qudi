@@ -91,9 +91,9 @@ class SequenceGeneratorLogic(LogicBase):
 
     # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
     # these dictionaries. The keys are the names.
-    # _saved_pulse_blocks = StatusVar(default=OrderedDict())
-    # _saved_pulse_block_ensembles = StatusVar(default=OrderedDict())
-    # _saved_pulse_sequences = StatusVar(default=OrderedDict())
+    # _saved_pulse_blocks = StatusVar(default=dict())
+    # _saved_pulse_block_ensembles = StatusVar(default=dict())
+    # _saved_pulse_sequences = StatusVar(default=dict())
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
