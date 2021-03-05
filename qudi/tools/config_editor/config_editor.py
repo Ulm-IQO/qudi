@@ -5,6 +5,7 @@
 
 import os
 import sys
+import copy
 import importlib
 import inspect
 from functools import partial
@@ -406,6 +407,12 @@ class ModuleConfiguration:
         self.connections = dict()
         self.config_options = dict()
 
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self.copy()
+
     def set_connection(self, connector, module_name):
         if module_name:
             self.connections[connector] = module_name
@@ -414,14 +421,14 @@ class ModuleConfiguration:
 
     def set_config_option(self, cfg_option, option_value):
         if option_value:
-            self.config_options[cfg_option] = option_value
+            self.config_options[cfg_option] = copy.deepcopy(option_value)
         else:
             self.config_options.pop(cfg_option, None)
 
     def copy(self):
         obj = ModuleConfiguration(self.module_name, self.module)
-        obj.connections = self.connections.copy()
-        obj.config_options = self.config_options.copy()
+        obj.connections = copy.deepcopy(self.connections)
+        obj.config_options = copy.deepcopy(self.config_options)
         return obj
 
 
