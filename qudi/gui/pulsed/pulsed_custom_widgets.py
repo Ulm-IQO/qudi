@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from enum import Enum
 from PySide2 import QtCore, QtGui
-from collections import OrderedDict
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
@@ -36,7 +35,7 @@ class MultipleCheckboxWidget(QtGui.QWidget):
 
         checkbox_labels = list() if checkbox_labels is None else list(checkbox_labels)
 
-        self._checkboxes = OrderedDict()
+        self._checkboxes = dict()
         self._checkbox_width = 30
         self._width_hint = self._checkbox_width * len(checkbox_labels)
 
@@ -67,7 +66,7 @@ class MultipleCheckboxWidget(QtGui.QWidget):
         self.setLayout(main_layout)
 
     def data(self):
-        checkbox_states = OrderedDict()
+        checkbox_states = dict()
         for box_label, box_dict in self._checkboxes.items():
             checkbox_states[box_label] = box_dict['widget'].isChecked()
         return checkbox_states
@@ -90,12 +89,12 @@ class AnalogParametersWidget(QtGui.QWidget):
     def __init__(self, parent=None, parameters_dict=None):
         super().__init__(parent)
         if parameters_dict is None:
-            self._parameters = OrderedDict()
+            self._parameters = dict()
         else:
             self._parameters = parameters_dict
 
         self._width_hint = 90 * len(self._parameters)
-        self._ach_widgets = OrderedDict()
+        self._ach_widgets = dict()
 
         main_layout = QtGui.QHBoxLayout()
         for param in self._parameters:
@@ -178,7 +177,7 @@ class AnalogParametersWidget(QtGui.QWidget):
 
     def data(self):
         # Get all analog parameters from widgets
-        analog_params = OrderedDict()
+        analog_params = dict()
         for param in self._parameters:
             widget = self._ach_widgets[param]['widget']
             if self._parameters[param]['type'] in [int, float]:

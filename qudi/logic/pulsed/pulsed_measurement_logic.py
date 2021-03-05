@@ -1349,13 +1349,13 @@ class PulsedMeasurementLogic(LogicBase):
         #     else:
         #         filelabel = 'laser_pulses'
         #
-        #     # prepare the data in a dict or in an OrderedDict:
-        #     data = OrderedDict()
+        #     # prepare the data in a dict:
+        #     data = dict()
         #     laser_trace = self.laser_data
         #     data['Signal (counts)'] = laser_trace.transpose()
         #
         #     # write the parameters:
-        #     parameters = OrderedDict()
+        #     parameters = dict()
         #     parameters['bin width (s)'] = self.__fast_counter_binwidth
         #     parameters['record length (s)'] = self.__fast_counter_record_length
         #     parameters['gated counting'] = self.fast_counter_settings['is_gated']
@@ -1379,7 +1379,7 @@ class PulsedMeasurementLogic(LogicBase):
         #     else:
         #         filelabel = 'pulsed_measurement'
         #
-        #     # prepare the data in a dict or in an OrderedDict:
+        #     # prepare the data in a dict:
         #     header_str = 'Controlled variable'
         #     if self._data_units[0]:
         #         header_str += '({0})'.format(self._data_units[0])
@@ -1398,14 +1398,14 @@ class PulsedMeasurementLogic(LogicBase):
         #             header_str += '\tError2'
         #             if self._data_units[1]:
         #                 header_str += '({0})'.format(self._data_units[1])
-        #     data = OrderedDict()
+        #     data = dict()
         #     if with_error:
         #         data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
         #     else:
         #         data[header_str] = self.signal_data.transpose()
         #
         #     # write the parameters:
-        #     parameters = OrderedDict()
+        #     parameters = dict()
         #     parameters['Approx. measurement time (s)'] = self.__elapsed_time
         #     parameters['Measurement sweeps'] = self.__elapsed_sweeps
         #     parameters['Number of laser pulses'] = self._number_of_lasers
@@ -1644,12 +1644,12 @@ class PulsedMeasurementLogic(LogicBase):
         # #####################################################################
         # filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
         #
-        # # prepare the data in a dict or in an OrderedDict:
-        # data = OrderedDict()
+        # # prepare the data in a dict:
+        # data = dict()
         # raw_trace = self.raw_data.astype('int64')
         # data['Signal(counts)'] = raw_trace.transpose()
         # # write the parameters:
-        # parameters = OrderedDict()
+        # parameters = dict()
         # parameters['bin width (s)'] = self.__fast_counter_binwidth
         # parameters['record length (s)'] = self.__fast_counter_record_length
         # parameters['gated counting'] = self.fast_counter_settings['is_gated']

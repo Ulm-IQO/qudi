@@ -22,7 +22,6 @@ Completely reworked by Kay Jahnke, May 2020
 """
 
 from qtpy import QtCore
-from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -393,7 +392,7 @@ class QDPlotLogic(LogicBase):
                     'Plot index {0:d} out of bounds. Unable to save data.'.format(plot_index))
 
             # Set the parameters:
-            parameters = OrderedDict()
+            parameters = dict()
             parameters['user-selected x-limits'] = self._x_limits[plot_index]
             parameters['user-selected y-limits'] = self._y_limits[plot_index]
             parameters['user-selected x-label'] = self._x_label[plot_index]
@@ -486,7 +485,7 @@ class QDPlotLogic(LogicBase):
 
             fig.tight_layout()
 
-            # prepare the data in a dict or in an OrderedDict:
+            # prepare the data in a dict:
             data = list()
             header = list()
             for data_set in range(len(self._x_data[plot_index])):
