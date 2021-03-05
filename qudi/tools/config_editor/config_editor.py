@@ -7,7 +7,6 @@ import os
 import sys
 import importlib
 import inspect
-from collections import OrderedDict
 from functools import partial
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.util.mutex import RecursiveMutex
@@ -18,8 +17,8 @@ from qudi.core.logger import get_logger
 from qudi.core.module import Base, LogicBase, GuiBase
 from qudi.core.config import save, load
 
-from module_selector import ModuleSelector
-from tree_widgets import ConfigModulesTreeWidget
+from qudi.tools.config_editor.module_selector import ModuleSelector
+from qudi.tools.config_editor.tree_widgets import ConfigModulesTreeWidget
 
 import matplotlib
 matplotlib.use('agg')
@@ -58,15 +57,11 @@ class QudiEnvironment:
         compatible_modules = list()
         if isinstance(connector.interface, str):
             interface_name = connector.interface
-            interface_class = self.get_interface_class_by_name(interface_name)
         else:
-            interface_class = connector.interface
-            interface_name = interface_class.__name__
+            interface_name = connector.interface.__name__
 
         for module, cls in self.module_finder.module_classes.items():
-            if interface_class is None and cls.__name__ == interface_name:
-                compatible_modules.append(module)
-            elif interface_class is not None and issubclass(cls, interface_class):
+            if interface_name in {c.__name__ for c in cls.mro()}:
                 compatible_modules.append(module)
         return compatible_modules
 
@@ -283,6 +278,7 @@ class QudiConfiguration:
 
     def set_module_config_option(self, module_name, cfg_option, option_value):
         with self._lock:
+            print('set_module_config_option:', module_name, cfg_option, option_value)
             module_config = self.included_module_configs.get(module_name, None)
             if module_config is None:
                 raise ConfigError(
@@ -346,9 +342,7 @@ class QudiConfiguration:
         with self._lock:
             # ToDo: Global section missing
             # Piece together config dict
-            config_dict = OrderedDict(
-                (('gui', OrderedDict()), ('logic', OrderedDict()), ('hardware', OrderedDict()),)
-            )
+            config_dict = {'gui': dict(), 'logic': dict(), 'hardware': dict()}
             for module_name, mod_config in self.included_module_configs.items():
                 if not ignore_incomplete:
                     missing_conn = self.get_missing_module_connectors(module_name)
@@ -361,16 +355,18 @@ class QudiConfiguration:
                             msg += '\nMissing mandatory ConfigOptions: {0}'.format(missing_opt)
                         raise ConfigError(msg)
                 base, module_class = mod_config.module.split('.', 1)
-                module_dict = OrderedDict((('module.Class', module_class),))
+                module_dict = {'module.Class': module_class}
                 for opt_name, opt_value in mod_config.config_options.items():
                     try:
                         module_dict[opt_name] = eval(opt_value)
                     except:
                         module_dict[opt_name] = opt_value
                 if mod_config.connections:
-                    module_dict['connect'] = OrderedDict(mod_config.connections)
+                    module_dict['connect'] = mod_config.connections.copy()
                 config_dict[base][module_name] = module_dict
             # write config to file
+            import pprint
+            pprint.pprint(config_dict)
             save(file_path, config_dict)
 
     def load_config_from_file(self, file_path):
@@ -544,7 +540,11 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
 
         if module_cfg is not None:
             for cfg_opt, opt_value in module_cfg.config_options.items():
-                self.cfg_opt_widgets[cfg_opt][1].setText(opt_value)
+                if opt_value is None:
+                    opt_value_str = 'null'
+                else:
+                    opt_value_str = str(opt_value)
+                self.cfg_opt_widgets[cfg_opt][1].setText(opt_value_str)
             for conn, target in module_cfg.connections.items():
                 self.conn_widgets[conn][1].setCurrentText(target)
 
@@ -758,6 +758,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         module_name = item.text(1)
         if self.module_config_widget.currently_edited_module != module_name:
             compatible_conn = self.qudi_environment.compatible_module_connector_targets[module]
+            print(module_name, 'compatible_conn:', compatible_conn)
             avail_conn = dict()
             for conn, compatible_modules in compatible_conn.items():
                 avail_conn[conn] = [name for name, module in

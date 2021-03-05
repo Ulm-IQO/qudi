@@ -5,7 +5,8 @@
 
 import os
 from PySide2 import QtWidgets
-from tree_widgets import AvailableModulesTreeWidget, SelectedModulesTreeWidget
+from qudi.tools.config_editor.tree_widgets import AvailableModulesTreeWidget
+from qudi.tools.config_editor.tree_widgets import SelectedModulesTreeWidget
 
 
 class ModuleSelector(QtWidgets.QDialog):
@@ -105,9 +106,9 @@ if __name__ == '__main__':
             super().show()
 
             qudi_env = QudiEnvironment()
-            mod_sel = ModuleSelector(self,
+            mod_sel = ModuleSelector(parent=self,
                                      available_modules=tuple(qudi_env.module_finder.module_classes))
-            print(mod_sel.exec())
+            print(mod_sel.exec_())
             print(mod_sel.selected_modules)
 
 
