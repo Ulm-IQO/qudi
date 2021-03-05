@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from PySide2 import QtCore
-from collections import OrderedDict
 from .mutex import RecursiveMutex
 
 __all__ = ('DictTableModel', 'ListTableModel')
@@ -42,7 +41,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
             raise TypeError('DictTableModel header entries must be str type.')
         else:
             self._headers = list(headers)
-        self._storage = OrderedDict()
+        self._storage = dict()
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         """ Gives the number of stored items.
