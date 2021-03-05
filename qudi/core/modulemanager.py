@@ -168,11 +168,12 @@ class ModuleManager(QtCore.QObject):
             # Register module in remote module service if module should be shared
             if module.allow_remote_access:
                 if self._qudi_main_ref().remote_server is None:
-                    logger.error('Unable to share qudi module "{0}" as remote module. No remote'
-                                 ' server running in this qudi process.'.format(module.name))
+                    logger.error(f'Unable to share qudi module "{module.name}" as remote module. '
+                                 f'No remote server running in this qudi process.')
                 else:
-                    logger.info('Start sharing qudi module "{0}" on remote module server.'
-                                ''.format(module.name))
+                    logger.info(
+                        f'Start sharing qudi module "{module.name}" on remote module server.'
+                    )
                     start_sharing_module(module)
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
@@ -274,8 +275,8 @@ class ManagedModule(QtCore.QObject):
         if 'module.Class' not in configuration:
             raise KeyError('Mandatory config entry "module.Class" not found in config for module '
                            '"{0}".'.format(name))
-        if not isinstance(configuration.get('remotemodules', ''), str):
-            raise TypeError('remotemodules URL of module "{0}" must be of str type.'.format(name))
+        if not isinstance(configuration.get('remote_url', ''), str):
+            raise TypeError('remote URL of module "{0}" must be of str type.'.format(name))
         if not isinstance(configuration.get('certfile', ''), str):
             raise TypeError('certfile config option of remotemodules module "{0}" must be of str '
                             'type.'.format(name))
@@ -298,13 +299,13 @@ class ManagedModule(QtCore.QObject):
         # Sort out configuration dict
         cfg = copy.deepcopy(configuration)
         # Extract module and class name
-        self._module, self._class = cfg.pop('module.Class').rsplit('.', 1)
+        self._module, self._class = cfg.pop('module.Class', 'REMOTE.REMOTE').rsplit('.', 1)
         # Remember connections by name
         self._connect_cfg = cfg.pop('connect', dict())
         # See if remotemodules access to this module is allowed (allowed by default)
         self._allow_remote_access = cfg.pop('remoteaccess', True)
         # Extract remote modules URL and certificate if this module is run on a remote machine
-        self._remote_url = cfg.pop('remote', None)
+        self._remote_url = cfg.pop('remote_url', None)
         self._remote_certfile = cfg.pop('certfile', None)
         self._remote_keyfile = cfg.pop('keyfile', None)
         # Do not propagate remotemodules access
@@ -493,15 +494,17 @@ class ManagedModule(QtCore.QObject):
                     self._instance.show()
                 return True
 
-            logger.info(
-                'Activating module {0}.{1}.{2}'.format(self._base, self._module, self._class))
+            if self.is_remote:
+                logger.info(f'Activating remote {self._base} module "{self._remote_url}"')
+            else:
+                logger.info(f'Activating {self._base} module "{self._module}.{self._class}"')
 
             # Recursive activation of required modules
             for module_ref in self._required_modules:
                 module = module_ref()
                 if module is None:
-                    logger.error('Dead required module weakref encountered in ManagedModule "{0}".'
-                                 ''.format(self._name))
+                    logger.error(f'Dead required module weakref encountered in ManagedModule '
+                                 f'"{self._name}".')
                     return False
                 if not module.is_active:
                     if not module.activate():
@@ -575,8 +578,10 @@ class ManagedModule(QtCore.QObject):
             if not self.is_active:
                 return True
 
-            logger.info(
-                'Deactivating module {0}.{1}.{2}'.format(self._base, self._module, self._class))
+            if self.is_remote:
+                logger.info(f'Deactivating remote {self._base} module "{self._remote_url}"')
+            else:
+                logger.info(f'Deactivating {self._base} module "{self._module}.{self._class}"')
 
             success = True  # error flag to return
 
@@ -672,8 +677,10 @@ class ManagedModule(QtCore.QObject):
                                                                 certfile=self._remote_certfile,
                                                                 keyfile=self._remote_keyfile)
                 except:
-                    logger.exception('Error during initialization of remote qudi module '
-                                     '"{0}.{1}.{2}"'.format(self._class, self._base, self._module))
+                    logger.exception(
+                        f'Error during initialization of remote {self._base} module '
+                        f'{self._remote_url}'
+                    )
                     self._instance = None
                     return False
             else:

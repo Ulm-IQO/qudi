@@ -37,8 +37,7 @@ from warnings import warn
 from collections import OrderedDict
 from PySide2 import QtCore
 
-from qudi.core.paths import get_main_dir, get_default_config_dir, get_appdata_dir, get_home_dir
-from qudi.core.paths import get_artwork_dir
+import qudi.core.paths as qudi_paths
 
 
 def qudi_load(stream, loader_base=yaml.Loader):
@@ -249,7 +248,7 @@ class Configuration(QtCore.QObject):
         # extracted fields from config file
         self._global_config = dict()
         self._module_config = {'hardware': dict(), 'logic': dict(), 'gui': dict()}
-        self.unknown_config = dict()
+        self._unknown_config = dict()
 
     @property
     def config_file(self):
@@ -264,6 +263,10 @@ class Configuration(QtCore.QObject):
         return copy.deepcopy(self._module_config)
 
     @property
+    def unknown_config(self):
+        return copy.deepcopy(self._unknown_config)
+
+    @property
     def config_dict(self):
         conf_dict = dict()
         if self._global_config:
@@ -275,27 +278,118 @@ class Configuration(QtCore.QObject):
     def startup_modules(self):
         return self._global_config.get('startup', list()).copy()
 
+    @startup_modules.setter
+    def startup_modules(self, modules):
+        if not modules:
+            self._global_config.pop('startup', None)
+            return
+
+        if isinstance(modules, str):
+            modules = [modules]
+
+        assert all(isinstance(mod, str) for mod in modules), 'Startup modules must be strings'
+        self._global_config['startup'] = list(modules)
+
     @property
     def module_server(self):
         if 'module_server' not in self._global_config:
             return None
         return copy.deepcopy(self._global_config['module_server'])
 
+    @module_server.setter
+    def module_server(self, server_settings):
+        # ToDo: Sanity checks
+        if not server_settings:
+            self._global_config.pop('module_server', None)
+            return
+        self._global_config['module_server'] = copy.deepcopy(server_settings)
+
     @property
     def stylesheet(self):
         return self._global_config.get('stylesheet', None)
+
+    @stylesheet.setter
+    def stylesheet(self, stylesheet_file):
+        # FIXME: How should stylesheets be declared in config?
+        if not stylesheet_file:
+            self._global_config.pop('stylesheet', None)
+            return
+        self._global_config['stylesheet'] = stylesheet_file
 
     @property
     def default_data_dir(self):
         return self._global_config.get('default_data_dir', None)
 
+    @default_data_dir.setter
+    def default_data_dir(self, path):
+        if not path:
+            self._global_config.pop('default_data_dir', None)
+            return
+
+        # Convert relative path into absolute path and raise exception if non-existent
+        self._global_config['default_data_dir'] = self.relative_to_absolute_path(path)
+
     @property
     def extension_paths(self):
         return self._global_config.get('extensions', list()).copy()
 
+    @extension_paths.setter
+    def extension_paths(self, paths):
+        if not paths:
+            self._global_config.pop('extensions', None)
+            return
+
+        if isinstance(paths, str):
+            paths = [paths]
+
+        # Convert all relative paths into absolute paths and raise exception if non-existent
+        abs_paths = [self.relative_to_absolute_path(p) for p in paths]
+        self._global_config['extensions'] = abs_paths
+
+    def set_local_module(self, name, base, module_class, connect=None, options=None, remoteaccess=True):
+        assert isinstance(name, str) and name, 'name must be non-empty str'
+        assert base in ('hardware', 'logic', 'gui'), \
+            'base must be one of "hardware", "logic" or "gui"'
+        assert isinstance(module_class, str) and module_class, 'module_class must be non-empty str'
+        assert connect is None or isinstance(connect, dict), 'connect must be dict type or None'
+        assert options is None or isinstance(options, dict), 'options must be dict type or None'
+        assert isinstance(remoteaccess, bool), 'remoteaccess must be bool'
+
+        module_dict = {'module.Class': module_class, 'remoteaccess': remoteaccess}
+        if options:
+            invalid_options = {'module.Class', 'connect', 'remoteaccess'}
+            assert not any(key in invalid_options for key in options), \
+                f'Invalid module options to set. Avoid using {invalid_options}.'
+            module_dict.update(options)
+        if connect:
+            module_dict['connect'] = connect
+
+        # Attach module_dict to config
+        self._module_config[base][name] = module_dict
+
+    def set_remote_module(self, name, base, remote_url, keyfile=None, certfile=None):
+        assert isinstance(name, str) and name, 'name must be non-empty str'
+        assert base in ('hardware', 'logic', 'gui'), \
+            'base must be one of "hardware", "logic" or "gui"'
+        assert isinstance(remote_url, str) and remote_url, 'remote_url must be non-empty str'
+        assert keyfile is None or isinstance(keyfile, str), 'keyfile must be str or None'
+        assert certfile is None or isinstance(certfile, dict), 'certfile must be dict type or None'
+
+        module_dict = {'remote_url': remote_url}
+        if keyfile:
+            module_dict['keyfile'] = keyfile
+        if certfile:
+            module_dict['certfile'] = certfile
+
+        # Attach module_dict to config
+        self._module_config[base][name] = module_dict
+
     def load_config(self, file_path=None, set_default=True):
         if file_path is None:
             file_path = self._file_path
+            if file_path is None:
+                raise ValueError('Not file path defined for config to load')
+
         config = load(file_path)
         self._global_config = config.pop('global', dict())
         self._module_config = dict()
@@ -307,9 +401,9 @@ class Configuration(QtCore.QObject):
                     del self._module_config[base][mod_name]
         if config:
             warn('Unknown config file section(s) encountered:\n{0}'.format(config))
-            self.unknown_config = config
+            self._unknown_config = config
         else:
-            self.unknown_config = dict()
+            self._unknown_config = dict()
 
         # Clean up global config
         for key in tuple(self._global_config):
@@ -321,7 +415,7 @@ class Configuration(QtCore.QObject):
                     self._global_config[key] = [self._global_config[key]]
             elif key == 'stylesheet':
                 # FIXME: How should stylesheets be declared in config?
-                self._global_config[key] = os.path.join(get_artwork_dir(),
+                self._global_config[key] = os.path.join(qudi_paths.get_artwork_dir(),
                                                         'styles',
                                                         'application',
                                                         self._global_config[key])
@@ -336,42 +430,49 @@ class Configuration(QtCore.QObject):
                 # Convert all relative paths into absolute paths and ignore if path is non-existent
                 abs_paths = list()
                 for path in self._global_config[key]:
-                    # absolute or relative path? Existing?
-                    if os.path.isabs(path) and os.path.isdir(path):
-                        abs_paths.append(path)
-                    else:
-                        # relative path? Try relative to user home dir and relative to main dir
-                        new_path = os.path.abspath(os.path.join(get_home_dir(), path))
-                        if not os.path.isdir(new_path):
-                            new_path = os.path.abspath(os.path.join(get_main_dir(), path))
-                            if not os.path.isdir(new_path):
-                                warn('Qudi extension path "{0}" does not exist.'.format(path))
-                                continue
-                        abs_paths.append(new_path)
+                    try:
+                        abs_paths.append(self.relative_to_absolute_path(path))
+                    except FileNotFoundError as err:
+                        warn(str(err) + ' Extension path ignored.')
                 if abs_paths:
                     self._global_config[key] = abs_paths
                 else:
                     del self._global_config[key]
+            elif key == 'default_data_dir':
+                # Convert relative path into absolute path and ignore if path is non-existent
+                path = self._global_config[key]
+                try:
+                    self._global_config[key] = self.relative_to_absolute_path(path)
+                except FileNotFoundError as err:
+                    del self._global_config[key]
+                    warn(str(err) + ' Default data directory path ignored.')
 
         self._file_path = file_path
         if set_default:
             self.set_default_config_path(file_path)  # Write current config file path to load.cfg
         self.sigConfigChanged.emit(self)
 
-    def save_config(self, file_path):
+    def save_config(self, file_path=None):
+        if file_path is None:
+            file_path = self._file_path
+            if file_path is None:
+                raise ValueError('Not file path defined for config to save into')
+
         save(file_path, self.config_dict)
+        self._file_path = file_path
 
     @staticmethod
     def set_default_config_path(path):
         # Write current config file path to load.cfg
-        save(file_path=os.path.join(get_appdata_dir(create_missing=True), 'load.cfg'),
+        save(file_path=os.path.join(qudi_paths.get_appdata_dir(create_missing=True), 'load.cfg'),
              data={'load_config_path': path})
 
     @staticmethod
     def get_saved_config():
         # Try loading config file path from last session
         try:
-            load_cfg = load(os.path.join(get_appdata_dir(), 'load.cfg'), ignore_missing=True)
+            load_cfg = load(os.path.join(qudi_paths.get_appdata_dir(), 'load.cfg'),
+                            ignore_missing=True)
         except:
             load_cfg = dict()
         file_path = load_cfg.get('load_config_path', '')
@@ -382,14 +483,34 @@ class Configuration(QtCore.QObject):
     @staticmethod
     def get_default_config():
         # Try default.cfg in user home directory
-        file_path = os.path.join(get_default_config_dir(), 'default.cfg')
+        file_path = os.path.join(qudi_paths.get_default_config_dir(), 'default.cfg')
         if os.path.isfile(file_path):
             return file_path
 
         # Fall back to default.cfg in qudi core directory
-        file_path = os.path.join(get_main_dir(), 'core', 'default.cfg')
+        file_path = os.path.join(qudi_paths.get_main_dir(), 'core', 'default.cfg')
         if os.path.isfile(file_path):
             return file_path
 
         # Raise error if no config file could be found
         raise FileNotFoundError('No config file could be found in default directories.')
+
+    @staticmethod
+    def relative_to_absolute_path(path):
+        # absolute or relative path? Existing?
+        if os.path.isabs(path) and os.path.isdir(path):
+            return path
+
+        # relative path? Try relative to userdata dir, user home dir and relative to main dir
+        search_dirs = (qudi_paths.get_userdata_dir(),
+                       qudi_paths.get_home_dir(),
+                       qudi_paths.get_main_dir())
+        for search_dir in search_dirs:
+            new_path = os.path.abspath(os.path.join(search_dir, path))
+            if os.path.isdir(new_path):
+                return new_path
+
+        # Raise exception if no existing path can be determined
+        raise FileNotFoundError(
+            f'Qudi relative path "{path}" can not be resolved or does not exist.'
+        )
