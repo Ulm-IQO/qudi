@@ -229,21 +229,17 @@ class Configuration(QtCore.QObject):
 
     sigConfigChanged = QtCore.Signal(object)
 
-    def __init__(self, file_path=None):
-        super().__init__()
-        # determine and check path for config file
+    def __init__(self, *args, file_path=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # determine and check path for config file if given
         if file_path is None:
-            self._file_path = self.get_saved_config()
+            self._file_path = None
+        elif file_path.endswith('.cfg'):
+            self._file_path = file_path
         else:
-            if os.path.isfile(file_path) and file_path.endswith('.cfg'):
-                self._file_path = file_path
-            else:
-                self._file_path = None
-        # Fall back to default config if no valid config file could be found
-        if self._file_path is None:
-            self._file_path = self.get_default_config()
-            warn('No valid config file path given. Using default config file path: {0}'
-                 ''.format(self._file_path))
+            warn('Config file path given is invalid.')
+            self._file_path = None
 
         # extracted fields from config file
         self._global_config = dict()
@@ -384,7 +380,7 @@ class Configuration(QtCore.QObject):
         # Attach module_dict to config
         self._module_config[base][name] = module_dict
 
-    def load_config(self, file_path=None, set_default=True):
+    def load_config(self, file_path=None, set_default=False):
         if file_path is None:
             file_path = self._file_path
             if file_path is None:

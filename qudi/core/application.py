@@ -85,11 +85,15 @@ class Qudi(QtCore.QObject):
 
         self.log = get_logger(f'{__name__}.{__class__.__name__}')
         sys.excepthook = self._qudi_excepthook
-        self.thread_manager = ThreadManager()
-        self.module_manager = ModuleManager(qudi_main=self)
+        self.thread_manager = ThreadManager(parent=self)
+        self.module_manager = ModuleManager(qudi_main=self, parent=self)
         self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
-        self.configuration = Configuration(config_file)
-        self.configuration.load_config()
+        self.configuration = Configuration(parent=self)
+        if config_file is None:
+            config_file = Configuration.get_saved_config()
+            if config_file is None:
+                config_file = Configuration.get_default_config()
+        self.configuration.load_config(file_path=config_file, set_default=True)
         server_config = self.configuration.module_server
         if server_config:
             self.remote_server = RemoteModuleServer(
