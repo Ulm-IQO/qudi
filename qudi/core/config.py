@@ -170,6 +170,9 @@ def qudi_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
             node.tag = '!ndarray'
         return node
 
+    def represent_dict_order_preserved(dumper, data):
+        return dumper.represent_dict(data.items())
+
     # add representers
     QudiDumper.add_representer(numpy.uint8, represent_int)
     QudiDumper.add_representer(numpy.uint16, represent_int)
@@ -186,7 +189,8 @@ def qudi_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
     QudiDumper.add_representer(numpy.ndarray, represent_ndarray)
     QudiDumper.add_representer(frozenset, represent_frozenset)
     # Treat OrderedDict as native dict
-    QudiDumper.add_representer(OrderedDict, yaml.Representer.represent_dict)
+    QudiDumper.add_representer(OrderedDict, represent_dict_order_preserved)
+    QudiDumper.add_representer(dict, represent_dict_order_preserved)
 
     # dump data
     return yaml.dump(data, stream, QudiDumper, **kwargs)
