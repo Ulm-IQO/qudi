@@ -350,6 +350,8 @@ class Configuration(QtCore.QObject):
         assert connect is None or isinstance(connect, dict), 'connect must be dict type or None'
         assert options is None or isinstance(options, dict), 'options must be dict type or None'
         assert isinstance(remoteaccess, bool), 'remoteaccess must be bool'
+        assert not self._module_in_other_base(name, base), \
+            f'Module by name "{name}" already present different module base config'
 
         module_dict = {'module.Class': module_class, 'remoteaccess': remoteaccess}
         if options:
@@ -370,6 +372,8 @@ class Configuration(QtCore.QObject):
         assert isinstance(remote_url, str) and remote_url, 'remote_url must be non-empty str'
         assert keyfile is None or isinstance(keyfile, str), 'keyfile must be str or None'
         assert certfile is None or isinstance(certfile, dict), 'certfile must be dict type or None'
+        assert not self._module_in_other_base(name, base), \
+            f'Module by name "{name}" already present different module base config'
 
         module_dict = {'remote_url': remote_url}
         if keyfile:
@@ -379,6 +383,20 @@ class Configuration(QtCore.QObject):
 
         # Attach module_dict to config
         self._module_config[base][name] = module_dict
+
+    def remove_module(self, name):
+        assert isinstance(name, str), 'name must be str type'
+        for base in ('hardware', 'logic', 'gui'):
+            self._module_config[base].pop(name, None)
+
+    def get_module_config(self, name):
+        assert isinstance(name, str) and name, 'name must be non-empty str'
+        for base in ('hardware', 'logic', 'gui'):
+            try:
+                return self._module_config[base][name]
+            except KeyError:
+                pass
+        raise KeyError(f'No module configuration found for module name "{name}"')
 
     def load_config(self, file_path=None, set_default=False):
         if file_path is None:
@@ -456,6 +474,17 @@ class Configuration(QtCore.QObject):
 
         save(file_path, self.config_dict)
         self._file_path = file_path
+
+    def _module_in_other_base(self, name, exclude_base):
+        """ Checks if a module by the name <name> is already present in another base than
+        <exclude_base>.
+        """
+        assert isinstance(name, str), 'name must be str type'
+        assert exclude_base in ('hardware', 'logic', 'gui'), \
+            'exclude_base must be one of "hardware", "logic" or "gui"'
+        check_bases = {'hardware', 'logic', 'gui'}
+        check_bases.discard(exclude_base)
+        return any(name in self.module_config[base] for base in check_bases)
 
     @staticmethod
     def set_default_config_path(path):

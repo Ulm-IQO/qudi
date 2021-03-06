@@ -242,7 +242,7 @@ class Qudi(QtCore.QObject):
             # add qudi main directory to PATH
             qudi_path = get_main_dir()
             if qudi_path not in sys.path:
-                sys.path.insert(1, qudi_path)
+                sys.path.insert(0, qudi_path)
 
             # Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
             # -> e.g. for segmentation faults

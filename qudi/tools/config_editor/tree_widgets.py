@@ -36,10 +36,9 @@ class AvailableModulesTreeWidget(QtWidgets.QTreeWidget):
             self.resizeColumnToContents(i)
 
     def mimeData(self, items):
-        """ Add text to mime data. This is the quick and dirty (but not necessarily bad) way
+        """ Add text to mime data. This is the quick (but not necessarily dirty) way.
         """
-        texts = tuple(
-            '{0}.{1}.{2}'.format(i.parent().text(0).lower(), i.text(1), i.text(2))for i in items)
+        texts = tuple(f'{it.parent().text(0).lower()}.{it.text(1)}.{it.text(2)}' for it in items)
         mime = super().mimeData(items)
         mime.setText(';'.join(texts))
         return mime
@@ -109,6 +108,7 @@ class SelectedModulesTreeWidget(QtWidgets.QTreeWidget):
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Delete:
             for item in self.selectedItems():
+                self.used_names.discard(item.text(1).strip())
                 item.parent().removeChild(item)
         else:
             return super().keyPressEvent(event)
@@ -138,7 +138,6 @@ class SelectedModulesTreeWidget(QtWidgets.QTreeWidget):
             if text:
                 self.blockSignals(True)
                 if text in self.used_names:
-                    print(text)
                     item.setForeground(1, self._error_foreground)
                 else:
                     self.used_names.add(text)

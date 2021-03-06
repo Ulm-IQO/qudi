@@ -89,6 +89,7 @@ class ModuleSelector(QtWidgets.QDialog):
             self.accept()
 
     def return_empty(self):
+        print('return empty')
         self.selected_modules = dict()
         self.reject()
 
