@@ -791,7 +791,20 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
                 name for name, mod in old_modules.items() if new_selection.get(name, None) != mod
             }
             for name in remove_modules:
+                del old_modules[name]
                 self.configuration.remove_module(name)
+            # Add new modules to config (without connections and options of course)
+            for name, module in new_selection.items():
+                if name not in old_modules:
+                    base, module_class = module.split('.', 1)
+                    cfg_opt = self.qudi_environment.module_config_options(module)
+                    default_opt = {
+                        op.name: op.default for op in cfg_opt if op.missing != MissingOption.error
+                    }
+                    self.configuration.set_local_module(name,
+                                                        base,
+                                                        module_class,
+                                                        options=default_opt)
 
     def write_module_config(self, name, connections, config_options):
         module = self.module_tree_widget.get_modules()[name]
@@ -818,9 +831,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
 
     def clear_config(self):
         self.module_config_widget.close_module_editor()
-        for cfg_dict in self.configuration.module_config.values():
-            for name in cfg_dict:
-                self.configuration.remove_module(name)
+        self.configuration = Configuration()
         self.module_tree_widget.set_modules(dict())
         self.selector_dialog.setParent(None)
         self.selector_dialog.deleteLater()
