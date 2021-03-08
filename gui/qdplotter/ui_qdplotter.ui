@@ -24,305 +24,102 @@
      <x>0</x>
      <y>0</y>
      <width>948</width>
-     <height>18</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <widget class="QMenu" name="menuToolbars">
-     <property name="title">
-      <string>&amp;Toolbars</string>
-     </property>
-     <addaction name="counting_controls_view_Action"/>
-    </widget>
-    <addaction name="slow_counter_view_Action"/>
-    <addaction name="slow_counter_parameters_view_Action"/>
+    <addaction name="fit_settings_Action"/>
     <addaction name="separator"/>
-    <addaction name="menuToolbars"/>
+    <addaction name="restore_tabbed_view_Action"/>
+    <addaction name="restore_side_by_side_view_Action"/>
+    <addaction name="restore_arc_view_Action"/>
+   </widget>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="new_plot_Action"/>
     <addaction name="separator"/>
-    <addaction name="restore_default_view_Action"/>
+    <addaction name="save_all_Action"/>
+    <addaction name="separator"/>
     <addaction name="actionClose"/>
    </widget>
+   <addaction name="menuFile"/>
    <addaction name="menuView"/>
-  </widget>
-  <widget class="QDockWidget" name="qdplot_DockWidget">
-   <property name="windowTitle">
-    <string>Plot</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>4</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="PlotWidget" name="qdplot_PlotWidget"/>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QToolBar" name="counting_control_ToolBar">
-   <property name="windowTitle">
-    <string>Counting Controls</string>
-   </property>
-   <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonTextUnderIcon</enum>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="save_Action"/>
-  </widget>
-  <widget class="QDockWidget" name="plot_parameters_DockWidget">
-   <property name="minimumSize">
-    <size>
-     <width>813</width>
-     <height>100</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>524287</width>
-     <height>190</height>
-    </size>
-   </property>
-   <property name="windowTitle">
-    <string>Plot parameters</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>8</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_2">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_5">
-       <item>
-        <widget class="QLabel" name="label_9">
-         <property name="text">
-          <string>Vertical axis </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_10">
-         <property name="text">
-          <string>Label: </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="vertical_label_lineEdit"/>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_11">
-         <property name="text">
-          <string>units: </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="vertical_units_lineEdit">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Range:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="ScienDSpinBox" name="range_min_DoubleSpinBox">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-         <property name="minimum">
-          <double>-1000000.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>1000000.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="ScienDSpinBox" name="range_max_DoubleSpinBox">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-         <property name="minimum">
-          <double>-1000000.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>1000000.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="fit_range_to_data_PushButton">
-         <property name="text">
-          <string>Fit to data</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Horizontal axis</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Label: </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="horizontal_label_lineEdit"/>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>units:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="horizontal_units_lineEdit">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Domain:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="ScienDSpinBox" name="domain_min_DoubleSpinBox">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-         <property name="minimum">
-          <double>-1000000.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>1000000.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="ScienDSpinBox" name="domain_max_DoubleSpinBox">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-         <property name="minimum">
-          <double>-1000000.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>1000000.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="fit_domain_to_data_PushButton">
-         <property name="text">
-          <string>Fit to data</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
-   </widget>
   </widget>
   <action name="actionClose">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../../../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>Close</string>
    </property>
-  </action>
-  <action name="counting_controls_view_Action">
-   <property name="text">
-    <string>&amp;Counting controls</string>
-   </property>
-  </action>
-  <action name="restore_default_view_Action">
-   <property name="text">
-    <string>&amp;Restore default</string>
-   </property>
-  </action>
-  <action name="slow_counter_parameters_view_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Slow &amp;counter parameters</string>
-   </property>
    <property name="toolTip">
-    <string>Show Slow counter parameters</string>
+    <string>Close</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="slow_counter_view_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
+  <action name="restore_tabbed_view_Action">
    <property name="text">
-    <string>&amp;Slow counter</string>
-   </property>
-   <property name="toolTip">
-    <string>Show the Slow counter</string>
+    <string>Restore &amp;tabbed view</string>
    </property>
   </action>
-  <action name="save_Action">
+  <action name="save_all_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
-    <string>Save</string>
+    <string>Save All</string>
    </property>
    <property name="toolTip">
-    <string>Save data to file</string>
+    <string>Save all plots to file</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="fit_settings_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Fit Settings</string>
+   </property>
+  </action>
+  <action name="restore_side_by_side_view_Action">
+   <property name="text">
+    <string>Restore &amp;side by side view</string>
+   </property>
+  </action>
+  <action name="restore_arc_view_Action">
+   <property name="text">
+    <string>Restore &amp;arc view</string>
+   </property>
+  </action>
+  <action name="new_plot_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-new.png</normaloff>../../artwork/icons/oxygen/22x22/document-new.png</iconset>
+   </property>
+   <property name="text">
+    <string>New Plot</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a new plot. Set data via logic interface.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
-  <customwidget>
-   <class>ScienDSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections>
   <connection>
@@ -338,102 +135,6 @@
     <hint type="destinationlabel">
      <x>399</x>
      <y>299</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>counting_control_ToolBar</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>counting_controls_view_Action</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>399</x>
-     <y>41</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>counting_controls_view_Action</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>counting_control_ToolBar</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>399</x>
-     <y>41</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>slow_counter_view_Action</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>qdplot_DockWidget</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>399</x>
-     <y>136</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>qdplot_DockWidget</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>slow_counter_view_Action</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>399</x>
-     <y>136</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>plot_parameters_DockWidget</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>slow_counter_parameters_view_Action</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>399</x>
-     <y>551</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>slow_counter_parameters_view_Action</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>plot_parameters_DockWidget</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>399</x>
-     <y>551</y>
     </hint>
    </hints>
   </connection>

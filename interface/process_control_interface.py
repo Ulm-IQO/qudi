@@ -25,28 +25,67 @@ from core.meta import InterfaceMetaclass
 
 
 class ProcessControlInterface(metaclass=InterfaceMetaclass):
-    """ A very simple interface to control a single value.
-        Used for PID control.
+    """ A simple interface to control one or multiple process value.
+
+    This interface is in fact a very general/universal interface that can be used for a lot of things.
+    It can be used to interface any hardware where one to control one or multiple control value, like a temperature
+    or how much a PhD student get paid.
     """
 
     @abstract_interface_method
-    def set_control_value(self, value):
-        """ Set the value of the controlled process variable """
-        pass
+    def set_control_value(self, value, channel=None):
+        """ Set the value of the controlled process variable
 
-    @abstract_interface_method
-    def get_control_value(self):
-        """ Get the value of the controlled process variable """
-        pass
+        @param (float) value: The value to set
+        @param (int) channel: (Optional) The number of the channel
 
-    @abstract_interface_method
-    def get_control_unit(self):
-        """ Return the unit that the value is set in as a tuple of ('abreviation', 'full unit name') """
-        pass
-
-    @abstract_interface_method
-    def get_control_limit(self):
-        """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
         """
         pass
 
+    @abstract_interface_method
+    def get_control_value(self, channel=None):
+        """ Get the value of the controlled process variable
+
+        @param (int) channel: (Optional) The number of the channel
+
+        @return (float): The current control value
+        """
+        pass
+
+    @abstract_interface_method
+    def get_control_unit(self, channel=None):
+        """ Return the unit that the value is set in as a tuple of ('abbreviation', 'full unit name')
+
+        @param (int) channel: (Optional) The number of the channel
+
+        @return: The unit as a tuple of ('abbreviation', 'full unit name')
+        """
+        pass
+
+    @abstract_interface_method
+    def get_control_limit(self, channel=None):
+        """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
+
+        @param (int) channel: (Optional) The number of the channel
+
+        @return (tuple): The limits as (low limit, high limit)
+        """
+        pass
+
+    def process_control_supports_multiple_channels(self):
+        """ Function to test if hardware support multiple channels
+
+        @return (bool): Whether the hardware supports multiple channels
+
+        This function is not abstract - Thus it is optional and if a hardware do not implement it, the answer is False.
+        """
+        return False
+
+    def process_control_get_number_channels(self):
+        """ Function to get the number of channels available for control
+
+        @return (int): The number of controllable channel(s)
+
+        This function is not abstract - Thus it is optional and if a hardware do not implement it, the answer is 1.
+        """
+        return 1

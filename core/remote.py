@@ -29,8 +29,33 @@ import ssl
 from .util.models import DictTableModel, ListTableModel
 import rpyc
 from rpyc.utils.server import ThreadedServer
-from rpyc.utils.authenticators import SSLAuthenticator
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
+import os
+import sys
+
+
+class SSLAuthenticator:
+    """
+    An SSL authenticator using an SSLContext as preferred since python 3.4
+    """
+    def __init__(self, server_key_file, server_cert_file, ca_certs=None):
+        self.server_key_file = str(server_key_file)
+        self.server_cert_file = str(server_cert_file)
+        self.ca_certs = str(ca_certs) if ca_certs else None
+
+    def __call__(self, sock):
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_cert_chain(certfile=self.server_cert_file, keyfile=self.server_key_file)
+        if self.ca_certs is not None:
+            context.load_verify_locations(cafile=self.ca_certs)
+
+        try:
+            conn = context.wrap_socket(sock, server_side=True)
+        except ssl.SSLError:
+            ex = sys.exc_info()[1]
+            raise Exception(str(ex))
+        return conn, conn.getpeercert()
 
 
 class RemoteObjectManager(QObject):
@@ -43,6 +68,7 @@ class RemoteObjectManager(QObject):
         super().__init__(**kwargs)
         self.tm = manager.tm
         self.manager = manager
+        self.server = None
         self.remoteModules = ListTableModel()
         self.remoteModules.headers[0] = 'Remote Modules'
         self.sharedModules = DictTableModel()
@@ -57,8 +83,8 @@ class RemoteObjectManager(QObject):
             modules = self.sharedModules
             _manager = self.manager
 
-            @staticmethod
-            def get_service_name():
+            @classmethod
+            def get_service_name(cls):
                 return 'RemoteModule'
 
             def on_connect(self, conn):
@@ -86,18 +112,18 @@ class RemoteObjectManager(QObject):
                 else:
                     for base in ['hardware', 'logic', 'gui']:
                         logger.info('remotesearch: {0}'.format(name))
-                        if name in self._manager.tree['defined'][base] and 'remoteaccess' in self._manager.tree['defined'][base][name]:
+                        if name in self._manager.tree['defined'][base] and \
+                                'remoteaccess' in self._manager.tree['defined'][base][name]:
                             self._manager.startModule(base, name)
                             logger.info('remoteload: {0}{1}'.format(base, name))
                     if name in self.modules.storage:
                         return self.modules.storage[name]
                     else:
-                        logger.error('Client requested a module that is not '
-                                'shared.')
+                        logger.error('Client requested a module that is not shared.')
                         return None
         return RemoteModuleService
 
-    def createServer(self, hostname, port, certfile=None, keyfile=None):
+    def createServer(self, hostname, port, certfile=None, keyfile=None, cacertfile=None):
         """ Start the rpyc modules server on a given port.
 
           @param int port: port where the server should be running
@@ -109,7 +135,8 @@ class RemoteObjectManager(QObject):
                 hostname,
                 port,
                 keyfile=keyfile,
-                certfile=certfile)
+                certfile=certfile,
+                cacertsfile=cacertfile)
         else:
             if hostname != 'localhost':
                 logger.warning('Remote connection not secured! Use a certificate!')
@@ -123,8 +150,9 @@ class RemoteObjectManager(QObject):
     def stopServer(self):
         """ Stop the remote module server.
         """
-        if hasattr(self, 'server'):
+        if self.server is not None:
             self.server.close()
+            self.server = None
 
     def shareModule(self, name, obj):
         """ Add a module to the list of modules that can be accessed remotely.
@@ -146,20 +174,22 @@ class RemoteObjectManager(QObject):
             logger.error('Module {0} was not shared.'.format(name))
         self.sharedModules.pop(name)
 
-    def getRemoteModuleUrl(self, url, certfile=None, keyfile=None):
+    def getRemoteModuleUrl(self, url, certfile=None, keyfile=None, cacertsfile=None):
         """ Get a remote module via its URL.
 
           @param str url: URL pointing to a module hosted b a remote server
           @param str certfile: filename of certificate or None if SSL is not used
           @param str keyfile: filename of key or None if SSL is not used
+          @param str cacertsfile: filename of cacerts of None if SSL is not used
 
           @return object: remote module
         """
         parsed = urlparse(url)
         name = parsed.path.replace('/', '')
-        return self.getRemoteModule(parsed.hostname, parsed.port, name)
+        return self.getRemoteModule(parsed.hostname, parsed.port, name, certfile, keyfile,
+                                    cacertsfile)
 
-    def getRemoteModule(self, host, port, name, certfile=None, keyfile=None):
+    def getRemoteModule(self, host, port, name, certfile=None, keyfile=None, cacertsfile=None):
         """ Get a remote module via its host, port and name.
 
           @param str host: host that the remote module server is running on
@@ -167,10 +197,12 @@ class RemoteObjectManager(QObject):
           @param str name: unique name of the remote module
           @param str certfile: filename of certificate or None if SSL is not used
           @param str keyfile: filename of key or None if SSL is not used
+          @param str cacertsfile: filename of cacerts of None if SSL is not used
 
           @return object: remote module
         """
-        module = RemoteModule(host, port, name, certfile=certfile, keyfile=keyfile)
+        module = RemoteModule(host, port, name, certfile=certfile, keyfile=keyfile,
+                              cacertsfile=cacertsfile)
         self.remoteModules.append(module)
         return module.module
 
@@ -178,7 +210,7 @@ class RemoteObjectManager(QObject):
 class RPyCServer(QObject):
     """ Contains a RPyC server that serves modules to remote computers. Runs in a QThread.
     """
-    def __init__(self, serviceClass, host, port, certfile=None, keyfile=None):
+    def __init__(self, serviceClass, host, port, certfile=None, keyfile=None, cacertsfile=None):
         """
           @param class serviceClass: class that represents an RPyC service
           @param int port: port that hte RPyC server should listen on
@@ -189,21 +221,28 @@ class RPyCServer(QObject):
         self.port = port
         self.certfile = certfile
         self.keyfile = keyfile
+        self.cacertsfile = cacertsfile
 
     def run(self):
         """ Start the RPyC server
         """
         if self.certfile is not None and self.keyfile is not None:
-            authenticator = SSLAuthenticator(self.certfile, self.keyfile)
+            if not os.path.exists(self.certfile):
+                raise Exception('SSL certificate {0} does not exist.'.format(self.certfile))
+            if not os.path.exists(self.keyfile):
+                raise Exception('SSL private key file {0} does not exist.'.format(self.keyfile))
+            if (self.cacertsfile is not None) and (not os.path.exists(self.cacertsfile)):
+                logger.warning('SSL CA certificates file {0} does not exist.'.format(
+                    self.cacertsfile))
+            authenticator = SSLAuthenticator(server_key_file=self.keyfile,
+                                             server_cert_file=self.certfile,
+                                             ca_certs=self.cacertsfile)
             self.server = ThreadedServer(
                 self.serviceClass,
                 hostname=self.host,
                 port=self.port,
                 protocol_config={'allow_all_attrs': True},
-                authenticator=authenticator,
-                cert_reqs=ssl.CERT_REQUIRED,
-                ciphers='EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH',
-                ssl_version=ssl.PROTOCOL_TLSv1_2)
+                authenticator=authenticator)
         else:
             self.server = ThreadedServer(
                 self.serviceClass,
@@ -216,14 +255,22 @@ class RPyCServer(QObject):
 class RemoteModule:
     """ This class represents a module on a remote computer and holds a reference to it.
     """
-    def __init__(self, host, port, name, certfile=None, keyfile=None):
+    def __init__(self, host, port, name, certfile=None, keyfile=None, cacertsfile=None):
         if certfile is not None and keyfile is not None:
+            if not os.path.exists(certfile):
+                raise Exception('SSL certificate {0} does not exist.'.format(certfile))
+            if not os.path.exists(keyfile):
+                raise Exception('SSL private key file {0} does not exist.'.format(keyfile))
+            if (cacertsfile is not None) and (not os.path.exists(cacertsfile)):
+                logger.warning('SSL CA certificates file {0} does not exist.'.format(cacertsfile))
             self.connection = rpyc.ssl_connect(
                 host,
                 port=port,
                 config={'allow_all_attrs': True},
                 certfile=certfile,
-                keyfile=keyfile)
+                keyfile=keyfile,
+                ca_certs=cacertsfile,
+                cert_reqs=ssl.CERT_REQUIRED)
         else:
             self.connection = rpyc.connect(host, port, config={'allow_all_attrs': True})
         self.module = self.connection.root.getModule(name)
