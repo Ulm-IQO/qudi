@@ -2125,69 +2125,85 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @QtCore.Slot()
     def run_pg_benchmark(self, t_goal=10):
+        # lock module if it's not already locked (sequence sampling in progress)
+        if self.module_state() == 'idle':
+            self.module_state.lock()
+        else:
+            self.log.error("Module is locked, can't sample benchmark chunk")
+            self.sigSampleEnsembleComplete.emit(None)
+            self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
+            return
 
-        def round_to_granularity(n_samples):
-            granularity = self.pulsegenerator().get_constraints().waveform_length.step
-            return np.ceil(n_samples / granularity) * granularity
+        try:
+            constraints = self.pulsegenerator().get_constraints()
 
-        self._benchmark_write.reset()
-        self._benchmark_load.reset()
+            def round_to_granularity(n_samples):
+                granularity = constraints.waveform_length.step
+                return np.ceil(n_samples / granularity) * granularity
 
-        waveform_name = 'qudi_benchmark_chunk'
-        n_init_guess = [1e4, 1e6]
-        n_max_fix = 10e6
+            self._benchmark_write.reset()
+            self._benchmark_load.reset()
 
-        self.log.info(
-            "Pulse generator benchmark started, expect finish in {:.0f} s."
-            " Will unload current asset!".format(t_goal))
+            n_samples_min = constraints.waveform_length.min
+            n_max_fix = max(10e6, n_samples_min)
+            n_samples_max = min(constraints.waveform_length.max, n_max_fix)
 
-        n_samples_min = self.pulsegenerator().get_constraints().waveform_length.min
-        n_samples_max = self.pulsegenerator().get_constraints().waveform_length.max
-        n_samples_max = n_max_fix if n_samples_max > n_max_fix else n_samples_max
+            waveform_name = 'qudi_benchmark_chunk'
+            # n_init_guess = [1e4, 1e6]
+            # n_init_guess = n_samples_max/2e5 * np.asarray([1, 100])
+            n_init_guess = (n_samples_min, n_samples_max)
 
-        rescode, _, _, = self._sample_load_benchmark_chunk(n_samples_min, waveform_name,
-                                                           persistent_datapoint=True)
+            self.log.info(
+                "Pulse generator benchmark started, expect finish in {:.0f} s."
+                " Will unload current asset!".format(t_goal))
 
-        t_start = time.perf_counter()
-        time_fraction = 32.
-        i = 0
-        while time.perf_counter() - t_start < t_goal and rescode == 0:
-
-            speed = self.get_speed_write_load()
-            t_left = t_goal - (time.perf_counter() - t_start)
-            if self._benchmark_write.sanity and self._benchmark_load.sanity:
-                n_samples = speed * t_left / time_fraction
-                n_samples = round_to_granularity(n_samples)
-            else:  # poor speed estimate so far
-                n_samples = round_to_granularity(np.random.uniform(n_init_guess[0], n_init_guess[1]))
-
-            if n_samples < n_samples_min:
-                # don't repeat uninformatively at same n_samples
-                n_samples = round_to_granularity(np.random.uniform(1, 10) * n_samples_min)
-            if n_samples > n_samples_max:
-                n_samples = round_to_granularity(np.random.uniform(0.9, 1.0) * n_samples_max)
-
-            t_est = n_samples / speed
-            self.log.debug(
-                "Running benchmark. Current speed (write/load/tot): "
-                "{:.3f} / {:.3f} / {:.3f} MSa/s): {} samples for"
-                " estimated {:.5f} s, {:.5f} s left".format(
-                    self._benchmark_write.estimate_speed() / 1e6,
-                    self._benchmark_load.estimate_speed() / 1e6, speed / 1e6,
-                    n_samples, t_est, t_left))
-            if t_est > t_left:
-                self.log.debug("Skipped benchmark while trying to exceed time limit.")
-                continue
-            rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name,
+            rescode, _, _, = self._sample_load_benchmark_chunk(n_samples_min, waveform_name,
                                                                persistent_datapoint=True)
 
-            time_fraction = time_fraction / 2. if time_fraction > 2 else 2
-            i += 1
+            t_start = time.perf_counter()
+            time_fraction = 32.
+            i = 0
+            while time.perf_counter() - t_start < t_goal and rescode == 0:
 
-        self.sigSampleEnsembleComplete.emit(None)
-        self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
+                speed = self.get_speed_write_load()
+                t_left = t_goal - (time.perf_counter() - t_start)
+                if self._benchmark_write.sanity and self._benchmark_load.sanity:
+                    n_samples = speed * t_left / time_fraction
+                    n_samples = round_to_granularity(n_samples)
+                else:  # poor speed estimate so far
+                    n_samples = round_to_granularity(np.random.uniform(*n_init_guess))
 
-        self.log.info("Pulse generator benchmark finished after {} chunks.".format(i))
+                if n_samples < n_samples_min:
+                    # don't repeat uninformatively at same n_samples
+                    n_samples = round_to_granularity(np.random.uniform(1, 10) * n_samples_min)
+                if n_samples > n_samples_max:
+                    n_samples = round_to_granularity(np.random.uniform(0.9, 1.0) * n_samples_max)
+
+                t_est = n_samples / speed
+                self.log.debug(
+                    "Running benchmark. Current speed (write/load/tot): "
+                    "{:.3f} / {:.3f} / {:.3f} MSa/s): {} samples for"
+                    " estimated {:.5f} s, {:.5f} s left".format(
+                        self._benchmark_write.estimate_speed() / 1e6,
+                        self._benchmark_load.estimate_speed() / 1e6, speed / 1e6,
+                        n_samples, t_est, t_left))
+                if t_est > t_left:
+                    self.log.debug("Skipped benchmark while trying to exceed time limit.")
+                    continue
+                rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name,
+                                                                   persistent_datapoint=True)
+
+                time_fraction = time_fraction / 2. if time_fraction > 2 else 2
+                i += 1
+        except:
+            self.log.exception('Something went wrong while running upload benchmark:')
+        else:
+            self.log.info(f"Pulse generator benchmark finished after {i:d} chunks.")
+        finally:
+            if self.module_state() == 'locked':
+                self.module_state.unlock()
+            self.sigSampleEnsembleComplete.emit(None)
+            self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
 
     def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk',
                                      persistent_datapoint=False):
@@ -2241,13 +2257,6 @@ class SequenceGeneratorLogic(GenericLogic):
         # benchmark the pg with all channels
         self.pulsegenerator().set_active_channels({ch: True for ch in(pg_chs_a + pg_chs_d)})
 
-        # lock module if it's not already locked (sequence sampling in progress)
-        if self.module_state() == 'idle':
-            self.module_state.lock()
-        else:
-            self.log.error("Module is locked, can't sample benchmark chunk")
-            return -1, list(), dict()
-
         analog_samples, digital_samples = {},{}
 
         for chnl in pg_chs_a:
@@ -2259,7 +2268,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         start_time = time.perf_counter()
 
-        self.pulsegenerator().delete_waveform(waveform_name)
+        self._delete_waveform_by_nametag(waveform_name)
         written_samples, wfm_list = self.pulsegenerator().write_waveform(
             name=waveform_name,
             analog_samples=analog_samples,
@@ -2286,17 +2295,13 @@ class SequenceGeneratorLogic(GenericLogic):
         self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
 
-        self.module_state.unlock()
-
         if not _check_loaded(loaded_dict, wfm_list):
-            self.log.warning("Loading of waves {} failed, still: {}".format(wfm_list,
-                                                                            loaded_dict))
+            self.log.warning("Loading of waves {} failed, still: {}".format(wfm_list, loaded_dict))
 
         #if len(loaded_waves_old) > 0:
         #    self.pulsegenerator().load_waveform(loaded_waves_old)
-        self.pulsegenerator().delete_waveform(waveform_name)
+        self._delete_waveform_by_nametag(waveform_name)
         self.pulsegenerator().set_active_channels(active_channels_saved)
-
         return 0, list(), dict()
 
     def get_speed_write_load(self):
