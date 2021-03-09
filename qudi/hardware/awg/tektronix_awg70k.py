@@ -680,7 +680,7 @@ class AWG70K(PulserInterface):
             # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will
             # look like '"waveformname"\n' and for a sequence '"sequencename,1"\n'
             # (where the number is the current track)
-            asset_name = self.query('SOUR1:CASS?')
+            asset_name = self.query(f'SOUR{chnl_num:d}:CASS?')
             # Figure out if a sequence or just a waveform is loaded by splitting after the comma
             splitted = asset_name.rsplit(',', 1)
             # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
