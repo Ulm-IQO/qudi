@@ -292,6 +292,7 @@ class Configuration(QtCore.QObject):
         assert all(key not in cfg_dict for key in ('global', *self._module_config)), \
             'Reserved top-level config key(s) encountered in unhandled_config dict'
         self._unhandled_config = copy.deepcopy(cfg_dict)
+        self.sigConfigChanged.emit(self)
 
     @property
     def config_dict(self):
@@ -332,6 +333,7 @@ class Configuration(QtCore.QObject):
         assert all(isinstance(mod, str) and mod for mod in modules), \
             'Startup modules must be non-empty strings'
         self._global_config['startup'] = list(modules)
+        self.sigConfigChanged.emit(self)
 
     @property
     def module_server(self):
@@ -346,6 +348,7 @@ class Configuration(QtCore.QObject):
             self._global_config.pop('module_server', None)
             return
         self._global_config['module_server'] = copy.deepcopy(server_settings)
+        self.sigConfigChanged.emit(self)
 
     @property
     def stylesheet(self):
@@ -376,6 +379,7 @@ class Configuration(QtCore.QObject):
         if not os.path.isabs(file_path):
             file_path = os.path.join(_paths.get_artwork_dir(), 'styles', 'application', file_path)
         self._global_config['stylesheet'] = os.path.abspath(file_path)
+        self.sigConfigChanged.emit(self)
 
     @property
     def default_data_dir(self):
@@ -403,6 +407,7 @@ class Configuration(QtCore.QObject):
         assert os.path.isabs(dir_path), 'default_data_dir must be absolute path to directory'
 
         self._global_config['default_data_dir'] = os.path.abspath(dir_path)
+        self.sigConfigChanged.emit(self)
 
     @property
     def extension_paths(self):
@@ -431,6 +436,7 @@ class Configuration(QtCore.QObject):
         assert all(os.path.isabs(path) for path in paths), 'extension_paths must be absolute paths'
 
         self._global_config['extensions'] = list(paths)
+        self.sigConfigChanged.emit(self)
 
     def add_local_module(self, name, base, module, cls):
         assert isinstance(name, str) and name, 'qudi module config name must be non-empty str'
@@ -439,6 +445,7 @@ class Configuration(QtCore.QObject):
         assert base in self._module_config, f'module base must be in {tuple(self._module_config)}'
         assert name not in self.module_names, f'Module by name "{name}" already defined in config'
         self._module_config[base][name] = {'module.Class': f'{module}.{cls}', 'allow_remote': False}
+        self.sigConfigChanged.emit(self)
 
     def add_remote_module(self, name, base, remote_url):
         assert isinstance(name, str) and name, 'qudi module config name must be non-empty str'
@@ -451,6 +458,7 @@ class Configuration(QtCore.QObject):
         self._module_config[base][name] = {'remote_url': remote_url,
                                            'keyfile': None,
                                            'certfile': None}
+        self.sigConfigChanged.emit(self)
 
     def set_module_connections(self, name, connections):
         if connections is None:
@@ -468,6 +476,7 @@ class Configuration(QtCore.QObject):
             module_cfg['connect'] = connections.copy()
         else:
             module_cfg.pop('connect', None)
+        self.sigConfigChanged.emit(self)
 
     def set_module_options(self, name, options):
         if options is None:
@@ -492,6 +501,7 @@ class Configuration(QtCore.QObject):
                     {key: val for key, val in module_cfg.items() if key in keep_last}
                 )
                 break
+        self.sigConfigChanged.emit(self)
 
     def set_module_allow_remote(self, name, allow_remote):
         assert isinstance(allow_remote, bool), 'Module allow_remote flag must be bool'
@@ -500,6 +510,7 @@ class Configuration(QtCore.QObject):
 
         module_cfg = self.get_module_config(name)
         module_cfg['allow_remote'] = allow_remote
+        self.sigConfigChanged.emit(self)
 
     def set_module_remote_url(self, name, url):
         assert isinstance(url, str) and url, 'Module remote_url must be non-empty str'
@@ -508,6 +519,7 @@ class Configuration(QtCore.QObject):
 
         module_cfg = self.get_module_config(name)
         module_cfg['remote_url'] = url
+        self.sigConfigChanged.emit(self)
 
     def set_module_remote_certificate(self, name, keyfile, certfile):
         assert keyfile is None or isinstance(keyfile, str), 'Module keyfile must be str or None'
@@ -518,12 +530,14 @@ class Configuration(QtCore.QObject):
         module_cfg = self.get_module_config(name)
         module_cfg['keyfile'] = keyfile
         module_cfg['certfile'] = certfile
+        self.sigConfigChanged.emit(self)
 
     def remove_module(self, name):
         assert isinstance(name, str), 'name of module to remove must be str type'
         for cfg_dict in self._module_config.values():
             if cfg_dict.pop(name, None) is not None:
                 break
+        self.sigConfigChanged.emit(self)
 
     def get_module_config(self, name):
         assert isinstance(name, str) and name, 'qudi module config name must be non-empty str'
@@ -541,6 +555,7 @@ class Configuration(QtCore.QObject):
         self._global_config = dict()
         self._module_config = {'hardware': dict(), 'logic': dict(), 'gui': dict()}
         self._unhandled_config = dict()
+        self.sigConfigChanged.emit(self)
 
     def load_config(self, file_path=None, set_default=False):
         if file_path is None:
