@@ -336,14 +336,14 @@ class QudiMainGui(GuiBase):
         self.mw.console_widget.reset_font()
 
     @QtCore.Slot()
-    @QtCore.Slot(dict)
+    @QtCore.Slot(object)
     def update_config_widget(self, config=None):
         """ Clear and refill the tree widget showing the configuration.
         """
         if config is None:
-            config = self._qudi_main.configuration.config_dict
+            config = self._qudi_main.configuration
         self.mw.config_widget.clear()
-        self.fill_tree_item(self.mw.config_widget.invisibleRootItem(), config)
+        self.fill_tree_item(self.mw.config_widget.invisibleRootItem(), config.config_dict)
 
     def fill_tree_item(self, item, value):
         """

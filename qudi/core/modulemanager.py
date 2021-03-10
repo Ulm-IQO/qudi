@@ -269,12 +269,14 @@ class ManagedModule(QtCore.QObject):
         if not isinstance(qudi_main_ref, weakref.ref):
             raise TypeError('qudi_main_ref must be weakref to qudi main instance.')
         if not name or not isinstance(name, str):
-            raise NameError('Module name must be a non-empty string.')
+            raise ValueError('Module name must be a non-empty string.')
         if base not in ('gui', 'logic', 'hardware'):
-            raise NameError('Module base must be one of ("gui", "logic", "hardware").')
-        if 'module.Class' not in configuration:
-            raise KeyError('Mandatory config entry "module.Class" not found in config for module '
-                           '"{0}".'.format(name))
+            raise ValueError('Module base must be one of ("gui", "logic", "hardware").')
+        if 'module.Class' not in configuration and 'remote_url' not in configuration:
+            raise ValueError(f'Module config entry must contain either "module.Class" or '
+                             f'"remote_url". None of them was found in config for module "{name}".')
+        if not isinstance(configuration.get('module.Class', ''), str):
+            raise TypeError(f'module.Class config entry of module "{name}" must be str type.')
         if not isinstance(configuration.get('remote_url', ''), str):
             raise TypeError('remote URL of module "{0}" must be of str type.'.format(name))
         if not isinstance(configuration.get('certfile', ''), str):
@@ -303,7 +305,7 @@ class ManagedModule(QtCore.QObject):
         # Remember connections by name
         self._connect_cfg = cfg.pop('connect', dict())
         # See if remotemodules access to this module is allowed (allowed by default)
-        self._allow_remote_access = cfg.pop('remoteaccess', True)
+        self._allow_remote_access = cfg.pop('allow_remote', False)
         # Extract remote modules URL and certificate if this module is run on a remote machine
         self._remote_url = cfg.pop('remote_url', None)
         self._remote_certfile = cfg.pop('certfile', None)
