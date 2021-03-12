@@ -1515,7 +1515,7 @@ class AWGM819X(PulserInterface):
 
             comb_samples = self._compile_bin_samples(analog_samples, digital_samples, ch_str)
 
-            t_start = time.time()
+            t_start = time.perf_counter()
 
             if self._wave_mem_mode == 'pc_hdd':
                 # todo: check if working for awg8195a
@@ -1578,12 +1578,14 @@ class AWGM819X(PulserInterface):
 
             else:
                 raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
-
-            transfer_speed_mbs = (comb_samples.nbytes/(1024*1024))/(time.time() - t_start)
-            self.log.debug('Written ({2:.1f} MB/s) to ch={0}: max ampl: {1}'.format(ch_str,
+            try:
+                transfer_speed_mbs = (comb_samples.nbytes/(1024*1024))/(time.perf_counter() - t_start)
+                self.log.debug('Written ({2:.1f} MB/s) to ch={0}: max ampl: {1}'.format(ch_str,
                                                                                 analog_samples[ch_str].max(),
                                                                                 transfer_speed_mbs))
-
+            except ZeroDivisionError:
+                pass
+            
         return waveforms
 
 
