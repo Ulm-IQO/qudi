@@ -1484,7 +1484,7 @@ class AWGM819X(PulserInterface):
         if incl_ch_postfix:
             return fname.split(".")[0]
         else:
-            return fname.split("_ch")[0].split(".")[0]
+            return re.split("(_ch[0-9])", fname)[0]
 
     def _check_uploaded_wave_name(self, ch_num, wave_name, segment_id):
 
