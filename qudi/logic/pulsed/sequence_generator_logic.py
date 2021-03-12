@@ -98,6 +98,11 @@ class SequenceGeneratorLogic(GenericLogic):
     # _saved_pulse_block_ensembles = StatusVar(default=OrderedDict())
     # _saved_pulse_sequences = StatusVar(default=OrderedDict())
 
+    _benchmark_write = BenchmarkTool()
+    _benchmark_write_state = StatusVar(representer=_benchmark_write.save, constructor=_benchmark_write.load_from_dict)
+    _benchmark_load = BenchmarkTool()
+    _benchmark_load_state = StatusVar(representer=_benchmark_load.save, constructor=_benchmark_load.load_from_dict)
+
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
@@ -145,8 +150,6 @@ class SequenceGeneratorLogic(GenericLogic):
         self._saved_pulse_blocks = OrderedDict()
         self._saved_pulse_block_ensembles = OrderedDict()
         self._saved_pulse_sequences = OrderedDict()
-
-        self.pg_benchmark = PulseGeneratorBenchmark(seqgen_logic=self)
         return
 
     def on_activate(self):
@@ -433,7 +436,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.__interleave = self.pulsegenerator().set_interleave(
                     bool(settings_dict['interleave']))
 
-            self.__upload_speed = self.pg_benchmark.get_speed_write_load()
+            self.__upload_speed = self.get_speed_write_load()
 
         elif len(kwargs) != 0 or isinstance(settings_dict, dict):
             # Only throw warning when arguments have been passed to this method
@@ -2122,35 +2125,17 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @QtCore.Slot()
     def run_pg_benchmark(self, t_goal=10):
-        self.pg_benchmark.run(t_goal=t_goal)
-
-from core.module import Base
-
-class PulseGeneratorBenchmark(Base):
-    # not to be loaded as logic module, but instatiated by the sequence generator logic
-
-    _benchmark_write = BenchmarkTool()
-    _benchmark_write_state = StatusVar(representer=_benchmark_write.save,
-                                       constructor=_benchmark_write.load_from_dict)
-    _benchmark_load = BenchmarkTool()
-    _benchmark_load_state = StatusVar(representer=_benchmark_load.save,
-                                      constructor=_benchmark_load.load_from_dict)
-
-    def __init__(self, seqgen_logic):
-        self.sg_logic = seqgen_logic
-
-    def run(self, t_goal=10):
         # lock module if it's not already locked (sequence sampling in progress)
-        if self.sg_logic.module_state() == 'idle':
-            self.sg_logic.module_state.lock()
+        if self.module_state() == 'idle':
+            self.module_state.lock()
         else:
-            self.sg_logic.log.error("Module is locked, can't sample benchmark chunk")
-            self.sg_logic.sigSampleEnsembleComplete.emit(None)
-            self.sg_logic.sigLoadedAssetUpdated.emit(*self.sg_logic.loaded_asset)
+            self.log.error("Module is locked, can't sample benchmark chunk")
+            self.sigSampleEnsembleComplete.emit(None)
+            self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
             return
 
         try:
-            constraints = self.sg_logic.pulsegenerator().get_constraints()
+            constraints = self.pulsegenerator().get_constraints()
 
             def round_to_granularity(n_samples):
                 granularity = constraints.waveform_length.step
@@ -2166,7 +2151,7 @@ class PulseGeneratorBenchmark(Base):
             waveform_name = 'qudi_benchmark_chunk'
             # n_init_guess = [1e4, 1e6]
             # n_init_guess = n_samples_max/2e5 * np.asarray([1, 100])
-            n_init_guess = (n_samples_min, n_samples_max / 10)
+            n_init_guess = (n_samples_min, n_samples_max/10)
 
             self.log.info(
                 "Pulse generator benchmark started, expect finish in {:.0f} s."
@@ -2220,10 +2205,10 @@ class PulseGeneratorBenchmark(Base):
         else:
             self.log.info(f"Pulse generator benchmark finished after {i:d} chunks.")
         finally:
-            if self.sg_logic.module_state() == 'locked':
-                self.sg_logic.module_state.unlock()
-            self.sg_logic.sigSampleEnsembleComplete.emit(None)
-            self.sg_logic.sigLoadedAssetUpdated.emit(*self.sg_logic.loaded_asset)
+            if self.module_state() == 'locked':
+                self.module_state.unlock()
+            self.sigSampleEnsembleComplete.emit(None)
+            self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
 
     def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk',
                                      persistent_datapoint=False):
@@ -2237,7 +2222,7 @@ class PulseGeneratorBenchmark(Base):
         def _get_largest_channel_config():
             # find the config that transfers the most data
             # assumes that analog channels are heavier than digital channels
-            configs = self.sg_logic.pulsegenerator().get_constraints().activation_config
+            configs = self.pulsegenerator().get_constraints().activation_config
             if 'all' in configs:
                 largest_config = 'all'
             else:
@@ -2248,10 +2233,10 @@ class PulseGeneratorBenchmark(Base):
                 lens_config = np.asarray(lens_config)
 
                 # biggest config of configs with max analog channel size
-                idxs_a = list(np.argwhere(lens_config[:, 0] == np.amax(lens_config[:, 0])))
+                idxs_a = list(np.argwhere(lens_config[:,0] == np.amax(lens_config[:,0])))
                 idxs_a = [i[0] for i in idxs_a]
                 idxs_a_and_len_d = np.asarray([(i, lens_config[i][1]) for i in idxs_a])
-                idx_d = np.argmax(idxs_a_and_len_d[:, 1])
+                idx_d = np.argmax(idxs_a_and_len_d[:,1])
                 idx_tot = idxs_a_and_len_d[idx_d][0]
 
                 largest_config = list(configs)[idx_tot]
@@ -2263,8 +2248,7 @@ class PulseGeneratorBenchmark(Base):
 
         def _check_loaded(loaded_dict, should_load_list):
             try:
-                is_substr = all(
-                    [wavename in should_load_list[i] for i, (key, wavename) in enumerate(loaded_dict.items())])
+                is_substr = all([wavename in should_load_list[i] for i, (key, wavename) in enumerate(loaded_dict.items())])
                 is_empty = all([wavename == '' for (key, wavename) in loaded_dict.items()])
             except Exception as e:
                 self.log.warning("{}".format(e))
@@ -2274,23 +2258,23 @@ class PulseGeneratorBenchmark(Base):
 
         n_samples = int(n_samples)
         pg_chs_a, pg_chs_d = _get_largest_channel_config()
-        active_channels_saved = self.sg_logic.pulsegenerator().get_active_channels()
+        active_channels_saved = self.pulsegenerator().get_active_channels()
         # benchmark the pg with all channels
-        self.sg_logic.pulsegenerator().set_active_channels({ch: True for ch in (pg_chs_a + pg_chs_d)})
+        self.pulsegenerator().set_active_channels({ch: True for ch in(pg_chs_a + pg_chs_d)})
 
-        analog_samples, digital_samples = {}, {}
+        analog_samples, digital_samples = {},{}
 
         for chnl in pg_chs_a:
             analog_samples[chnl] = np.random.random_sample(n_samples).astype('float32')
         for chnl in pg_chs_d:
             digital_samples[chnl] = np.random.randint(0, 2, n_samples, bool)
 
-        # loaded_waves_old = {key: val for key, val in self.pulsegenerator().get_loaded_assets()[0].items() if val != ''}
+        #loaded_waves_old = {key: val for key, val in self.pulsegenerator().get_loaded_assets()[0].items() if val != ''}
 
         start_time = time.perf_counter()
 
-        self.sg_logic._delete_waveform_by_nametag(waveform_name)
-        written_samples, wfm_list = self.sg_logic.pulsegenerator().write_waveform(
+        self._delete_waveform_by_nametag(waveform_name)
+        written_samples, wfm_list = self.pulsegenerator().write_waveform(
             name=waveform_name,
             analog_samples=analog_samples,
             digital_samples=digital_samples,
@@ -2306,22 +2290,23 @@ class PulseGeneratorBenchmark(Base):
                            ''.format(written_samples,
                                      n_samples))
 
+
         self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
                                             is_persistent=persistent_datapoint)
 
         start_time = time.perf_counter()
 
-        loaded_dict = self.sg_logic.pulsegenerator().load_waveform(wfm_list)[0]
+        loaded_dict = self.pulsegenerator().load_waveform(wfm_list)[0]
         self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
-                                           is_persistent=persistent_datapoint)
+                                            is_persistent=persistent_datapoint)
 
         if not _check_loaded(loaded_dict, wfm_list):
             self.log.warning("Loading of waves {} failed, still: {}".format(wfm_list, loaded_dict))
 
-        # if len(loaded_waves_old) > 0:
+        #if len(loaded_waves_old) > 0:
         #    self.pulsegenerator().load_waveform(loaded_waves_old)
-        self.sg_logic._delete_waveform_by_nametag(waveform_name)
-        self.sg_logic.pulsegenerator().set_active_channels(active_channels_saved)
+        self._delete_waveform_by_nametag(waveform_name)
+        self.pulsegenerator().set_active_channels(active_channels_saved)
         return 0, list(), dict()
 
     def get_speed_write_load(self):
@@ -2331,7 +2316,7 @@ class PulseGeneratorBenchmark(Base):
         """
 
         if self._benchmark_write.sanity or self._benchmark_load.sanity:
-            return 1 / (1 / self._benchmark_write.estimate_speed(check_sanity=False) +
-                        1 / self._benchmark_load.estimate_speed(check_sanity=False))
+            return 1/(1/self._benchmark_write.estimate_speed(check_sanity=False) +
+                      1/self._benchmark_load.estimate_speed(check_sanity=False))
 
         return np.nan
