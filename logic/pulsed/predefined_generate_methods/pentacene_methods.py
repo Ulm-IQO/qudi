@@ -216,7 +216,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_rabi_NV_red_read(self, name='rabi_red', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
-                                 t_laser_init=10e-6, t_wait_between=10e-9, add_gate_channel=None):
+                                 t_laser_init=10e-6, t_wait_between=10e-9, laser_read_ch='', add_gate_ch=''):
         """
 
         """
@@ -237,11 +237,15 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                  increment=0)
         laser_red_element = self._get_laser_gate_element(length=self.laser_length,
                                                      increment=0)
-        # additional gate channel, independent on the one from pulsed gui
-        if add_gate_channel:
-            laser_red_element.digital_high[add_gate_channel] = True
+        if laser_read_ch:
+            laser_red_element.digital_high[self.laser_channel] = False
+            laser_red_element.digital_high[laser_read_ch] = True
 
-        idle_between_lasers_element  = self._get_idle_element(length=t_wait_between,
+        # additional gate channel, independent on the one from pulsed gui
+        if add_gate_ch:
+            laser_red_element.digital_high[add_gate_ch] = True
+
+        idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
                                                  increment=0)
         laser_init_element = self._get_laser_gate_element(length=t_laser_init,
                                                      increment=0)
