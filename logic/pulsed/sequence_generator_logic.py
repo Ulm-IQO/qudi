@@ -2190,15 +2190,13 @@ class SequenceGeneratorLogic(GenericLogic):
                 if t_est > t_left:
                     self.log.debug("Skipped benchmark while trying to exceed time limit.")
                     continue
+                # ignore datapoint on first run to warm up caches, etc.
                 rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name,
-                                                                   persistent_datapoint=True)
+                                                                   persistent_datapoint=True,
+                                                                   ignore_datapoint=(i is 0))
 
                 time_fraction = time_fraction / 2. if time_fraction > 2 else 2
                 i += 1
-
-        # todo: catch negative speeds
-        # this is not as easy as it might look, because either load/write can be bad (eg. very fast)
-        # while total results still good
 
         except:
             self.log.exception('Something went wrong while running upload benchmark:')
@@ -2211,7 +2209,7 @@ class SequenceGeneratorLogic(GenericLogic):
             self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
 
     def _sample_load_benchmark_chunk(self, n_samples, waveform_name='qudi_benchmark_chunk',
-                                     persistent_datapoint=False):
+                                     persistent_datapoint=False, ignore_datapoint=False):
 
         def _count_chs(config):
 
@@ -2290,15 +2288,16 @@ class SequenceGeneratorLogic(GenericLogic):
                            ''.format(written_samples,
                                      n_samples))
 
-
-        self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
-                                            is_persistent=persistent_datapoint)
+        if not ignore_datapoint:
+            self._benchmark_write.add_benchmark(time.perf_counter() - start_time, n_samples,
+                                                is_persistent=persistent_datapoint)
 
         start_time = time.perf_counter()
 
         loaded_dict = self.pulsegenerator().load_waveform(wfm_list)[0]
-        self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
-                                            is_persistent=persistent_datapoint)
+        if not ignore_datapoint:
+            self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
+                                                is_persistent=persistent_datapoint)
 
         if not _check_loaded(loaded_dict, wfm_list):
             self.log.warning("Loading of waves {} failed, still: {}".format(wfm_list, loaded_dict))
@@ -2316,7 +2315,12 @@ class SequenceGeneratorLogic(GenericLogic):
         """
 
         if self._benchmark_write.sanity or self._benchmark_load.sanity:
-            return 1/(1/self._benchmark_write.estimate_speed(check_sanity=False) +
+            # any single speed may be negative and sane, if independent on time (Sa/upload time slope close to zero)
+            # both at the same time is unlikely
+            speed_combined = 1/(1/self._benchmark_write.estimate_speed(check_sanity=False) +
                       1/self._benchmark_load.estimate_speed(check_sanity=False))
+            if speed_combined < 0:
+                return np.nan
+            return speed_combined
 
         return np.nan
