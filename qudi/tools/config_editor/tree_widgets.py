@@ -4,214 +4,237 @@
 """
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.util.mutex import Mutex
 
 
 class AvailableModulesTreeWidget(QtWidgets.QTreeWidget):
     """
     """
-    def __init__(self, *args, available_modules, **kwargs):
+    def __init__(self, *args, modules=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setColumnCount(3)
-        self.setHeaderLabels(('Base', 'Module', 'Class'))
+
+        self.setColumnCount(2)
+        self.setHeaderLabels(('Base', 'module.Class'))
+        self.setSelectionMode(self.ExtendedSelection)
+        self.setEditTriggers(self.EditTrigger.NoEditTriggers)
         self.setDragEnabled(True)
-        top_level_items = dict()
+
+        self.top_level_items = dict()
+        self.clear_modules()
+        if modules is not None:
+            self.set_modules(modules)
+
+    def set_modules(self, modules):
+        # Clear all modules
+        self.clear_modules()
+        # Add new modules
+        for module in modules:
+            self.add_module(module, False)
+        # Resize columns
+        self.resize_columns_to_content()
+
+    def add_module(self, module, resize=True):
+        base, module_class = module.split('.', 1)
+        item = QtWidgets.QTreeWidgetItem()
+        item.setText(1, module_class)
+        item.setFlags(
+            QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsDragEnabled
+        )
+        self.top_level_items[base].addChild(item)
+        if resize:
+            self.resize_columns_to_content()
+
+    def remove_module(self, module, resize=True):
+        base, module_class = module.split('.', 1)
+        top_level_item = self.top_level_items[base]
+        for index in range(top_level_item.childCount()):
+            child = top_level_item.child(index)
+            if child.text(1) == module_class:
+                top_level_item.removeChild(child)
+                break
+        if resize:
+            self.resize_columns_to_content()
+
+    def clear_modules(self):
+        self.clear()
         for disp_base in ('GUI', 'Logic', 'Hardware'):
             item = QtWidgets.QTreeWidgetItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setText(0, disp_base)
             self.addTopLevelItem(item)
             item.setExpanded(True)
-            top_level_items[disp_base.lower()] = item
-        for module_class_name in available_modules:
-            module_name, class_name = module_class_name.rsplit('.', 1)
-            base, module_name = module_name.split('.', 1)
-            item = QtWidgets.QTreeWidgetItem()
-            item.setText(1, module_name)
-            item.setText(2, class_name)
-            item.setFlags(
-                QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsSelectable)
-            top_level_items[base].addChild(item)
+            self.top_level_items[disp_base.lower()] = item
+
+    def get_modules(self):
+        modules = list()
+        for base, top_item in self.top_level_items.items():
+            modules.extend(f'{base}.{child.text(1)}' for child in
+                           (top_item.child(index) for index in range(top_item.childCount())))
+        return modules
+
+    def resize_columns_to_content(self):
         for i in range(self.columnCount()):
             self.resizeColumnToContents(i)
 
     def mimeData(self, items):
         """ Add text to mime data. This is the quick (but not necessarily dirty) way.
         """
-        texts = tuple(f'{it.parent().text(0).lower()}.{it.text(1)}.{it.text(2)}' for it in items)
+        texts = tuple(f'{it.parent().text(0).lower()}.{it.text(1)}' for it in items)
         mime = super().mimeData(items)
         mime.setText(';'.join(texts))
         return mime
 
 
-class SelectedModulesTreeWidget(QtWidgets.QTreeWidget):
+class SelectedModulesTreeWidget(AvailableModulesTreeWidget):
     """
     """
-    sigSetValidState = QtCore.Signal(bool)
-
-    def __init__(self, *args, selected_modules=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setColumnCount(3)
-        self.setHeaderLabels(('Base', 'Name', 'Module'))
-        self.setAcceptDrops(True)
-        self.setSelectionMode(self.ExtendedSelection)
+
+        self.setDragEnabled(False)
         self.setDropIndicatorShown(False)
-
-        self.top_level_items = dict()
-        self.used_names = set()
-        self.__currently_edited_name = ''
-        for disp_base in ('GUI', 'Logic', 'Hardware', 'Remote'):
-            item = QtWidgets.QTreeWidgetItem()
-            item.setFlags(QtCore.Qt.ItemIsEnabled)
-            item.setText(0, disp_base)
-            self.addTopLevelItem(item)
-            item.setExpanded(True)
-            self.top_level_items[disp_base.lower()] = item
-        self._standard_foreground = item.foreground(0)
-        self._error_foreground = QtGui.QBrush(QtCore.Qt.red)
-        self.setEditTriggers(self.EditTrigger.NoEditTriggers)
-
-        if selected_modules is not None:
-            for name, module in selected_modules.items():
-                base, module = module.split('.', 1)
-                item = QtWidgets.QTreeWidgetItem()
-                item.setText(1, name)
-                item.setText(2, module)
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
-                self.top_level_items[base].addChild(item)
-                self.used_names.add(name)
-
-        self.itemDoubleClicked.connect(self.edit_column)
-        self.itemChanged.connect(self.check_custom_name)
+        self.setAcceptDrops(True)
 
     def dropEvent(self, event):
         if isinstance(event.source(), AvailableModulesTreeWidget):
             full_text = event.mimeData().text()
-            for text in full_text.split(';'):
-                base, module = text.split('.', 1)
-                item = QtWidgets.QTreeWidgetItem()
-                item.setText(1, 'unique name')
-                item.setForeground(1, self._error_foreground)
-                item.setText(2, module)
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
-                self.top_level_items[base].addChild(item)
-                event.accept()
-            if text:
-                for i in range(self.columnCount()):
-                    self.resizeColumnToContents(i)
-                self.sigSetValidState.emit(False)
+            for module in full_text.split(';'):
+                self.add_module(module, False)
+            self.resize_columns_to_content()
+            event.accept()
         else:
             event.ignore()
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Delete:
             for item in self.selectedItems():
-                self.used_names.discard(item.text(1).strip())
-                item.parent().removeChild(item)
+                if item.parent() is not None:
+                    item.parent().removeChild(item)
+            event.accept()
         else:
-            return super().keyPressEvent(event)
-
-    def edit_column(self, item, column):
-        if item and column == 1 and item.parent() is not None:
-            self.__currently_edited_name = item.text(1).strip()
-            self.editItem(item, column)
-
-    def add_remote_module(self):
-        item = QtWidgets.QTreeWidgetItem()
-        item.setText(1, 'unique name')
-        item.setForeground(1, self._error_foreground)
-        item.setText(2, 'REMOTE')
-        item.setFlags(
-            QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
-        self.top_level_items['remote'].addChild(item)
-
-    def check_custom_name(self, item, column):
-        if column == 1 and item.parent() is not None:
-            if self.__currently_edited_name:
-                if item.foreground(1).color() != QtCore.Qt.red:
-                    self.used_names.remove(self.__currently_edited_name)
-                self.__currently_edited_name = ''
-            text = item.text(1).strip()
-            is_valid = False
-            if text:
-                self.blockSignals(True)
-                if text in self.used_names:
-                    item.setForeground(1, self._error_foreground)
-                else:
-                    self.used_names.add(text)
-                    item.setForeground(1, self._standard_foreground)
-                    is_valid = True
-                self.blockSignals(False)
-            self.sigSetValidState.emit(is_valid)
-            self.resizeColumnToContents(1)
-
-    def get_selected_modules(self):
-        selected_modules = dict()
-        for disp_base, top_item in self.top_level_items.items():
-            base = disp_base.lower()
-            for child_index in range(top_item.childCount()):
-                child = top_item.child(child_index)
-                name = child.text(1)
-                module = '{0}.{1}'.format(base, child.text(2))
-                selected_modules[name] = module
-        return selected_modules
-
-    @property
-    def has_invalid_module_names(self):
-        number_of_modules = 0
-        for top_item in self.top_level_items.values():
-            number_of_modules += top_item.childCount()
-        return len(self.used_names) != number_of_modules
+            super().keyPressEvent(event)
 
 
 class ConfigModulesTreeWidget(QtWidgets.QTreeWidget):
     """
     """
-    def __init__(self, *args, selected_modules=None, **kwargs):
+
+    _error_foreground = QtGui.QBrush(QtCore.Qt.red)
+
+    def __init__(self, *args, named_modules=None, unnamed_modules=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self._lock = Mutex()
+
         self.setColumnCount(3)
-        self.setHeaderLabels(('Base', 'Name', 'Module'))
+        self.setHeaderLabels(('Base', 'Name', 'module.Class'))
         self.setSelectionMode(self.SingleSelection)
+        self.setEditTriggers(self.EditTrigger.NoEditTriggers)
         self.top_level_items = dict()
+        self._valid_foreground = next(iter(self.top_level_items.values())).foreground(0)
+
+        self.set_modules(named_modules, unnamed_modules)
+
+        self.itemClicked.connect(self.edit_item_column)
+
+    def set_modules(self, named_modules=None, unnamed_modules=None):
+        # Clear all modules
+        self.clear_modules()
+        # Add new modules
+        if named_modules is not None:
+            for name, module in named_modules.items():
+                self.add_module(module, name, resize=False)
+        if unnamed_modules is not None:
+            for module in unnamed_modules.items():
+                self.add_module(module, resize=False)
+        # Resize columns
+        self.resize_columns_to_content()
+
+    def add_module(self, module, name=None, resize=True):
+        base, module_class = module.split('.', 1)
+        item = QtWidgets.QTreeWidgetItem()
+        item.setText(1, '<enter unique name>' if name is None else name)
+        item.setText(2, module_class)
+        item.setFlags(
+            QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+        )
+        self.top_level_items[base].addChild(item)
+        if resize:
+            self.resize_columns_to_content()
+
+    # def add_remote_module(self):
+    #     item = QtWidgets.QTreeWidgetItem()
+    #     item.setText(1, 'unique name')
+    #     item.setForeground(1, self._error_foreground)
+    #     item.setText(2, 'REMOTE')
+    #     item.setFlags(
+    #         QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
+    #     self.top_level_items['remote'].addChild(item)
+
+    def remove_module(self, name, resize=True):
+        found = False
+        for base, top_item in self.top_level_items.items():
+            for index in range(top_item.childCount()):
+                child = top_item.child(index)
+                if child.text(1) == name:
+                    top_item.removeChild(child)
+                    found = True
+                    break
+            if found:
+                break
+        if found and resize:
+            self.resize_columns_to_content()
+
+    def clear_modules(self):
+        self.clear()
         for disp_base in ('GUI', 'Logic', 'Hardware'):
             item = QtWidgets.QTreeWidgetItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setText(0, disp_base)
             self.addTopLevelItem(item)
+            item.setExpanded(True)
             self.top_level_items[disp_base.lower()] = item
-        if selected_modules is not None:
-            self.set_modules(selected_modules)
 
-    def set_modules(self, modules):
-        with self._lock:
-            # Clear all modules
-            for top_item in self.top_level_items.values():
-                for index in range(top_item.childCount()):
-                    top_item.removeChild(top_item.child(0))
-                top_item.setExpanded(True)
-            # Add new modules
-            for cfg_name, module in modules.items():
-                base, module_name = module.split('.', 1)
-                item = QtWidgets.QTreeWidgetItem()
-                item.setText(1, cfg_name)
-                item.setText(2, module_name)
-                item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
-                self.top_level_items[base].addChild(item)
-            # Resize columns
-            for i in range(self.columnCount()):
-                self.resizeColumnToContents(i)
+    def resize_columns_to_content(self):
+        for i in range(self.columnCount()):
+            self.resizeColumnToContents(i)
 
     def get_modules(self):
-        with self._lock:
-            modules = dict()
-            for disp_base, top_item in self.top_level_items.items():
-                base = disp_base.lower()
-                for child_index in range(top_item.childCount()):
-                    child = top_item.child(child_index)
-                    name = child.text(1)
-                    module_name = '{0}.{1}'.format(base, child.text(2))
-                    modules[name] = module_name
-            return modules
+        modules = dict()
+        for base, top_item in self.top_level_items.items():
+            modules.update(
+                {child.text(1): f'{base}.{child.text(2)}' for child in (top_item.child(index) for
+                 index in range(top_item.childCount()))}
+            )
+        return modules
+
+    @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
+    def edit_item_column(self, item, column):
+        if item and column == 1 and item.parent() is not None:
+            self.editItem(item, column)
+
+
+if __name__ == '__main__':
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    mw = ConfigModulesTreeWidget()
+    mw.resize(800, 450)
+    mw.add_module('gui.derpington.McClass', 'derp')
+    mw.add_module('logic.herpington.McClass', 'herp')
+    mw.add_module('hardware.dingeling.McClass')
+
+    mw2 = QtWidgets.QMainWindow()
+    mw2.resize(800, 450)
+    widget = QtWidgets.QWidget()
+    mw2.setCentralWidget(widget)
+    layout = QtWidgets.QHBoxLayout()
+    widget.setLayout(layout)
+    a = AvailableModulesTreeWidget()
+    a.add_module('gui.derpington.McClass')
+    a.add_module('logic.herpington.McClass')
+    a.add_module('hardware.dingeling.McClass')
+    b = SelectedModulesTreeWidget()
+    b.add_module('hardware.<REMOTE MODULE>')
+    layout.addWidget(a)
+    layout.addWidget(b)
+
+    mw.show()
+    mw2.show()
+    sys.exit(app.exec_())
