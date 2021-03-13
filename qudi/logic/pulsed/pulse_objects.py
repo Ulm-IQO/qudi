@@ -1117,10 +1117,10 @@ class PredefinedGeneratorBase:
         """
 
         def subtract_pi(t, **kwargs):
-            return t - self.rabi_period / 2
+            return t - np.asarray(self.rabi_period) / 2
 
         def add_pi(t, **kwargs):
-            return t + self.rabi_period / 2
+            return t + np.asarray(self.rabi_period) / 2
 
         def check_sanity(tau, t_phys):
             t_phys = np.asarray(t_phys)
