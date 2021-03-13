@@ -199,7 +199,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('Tau<sub>pulse spacing</sub>', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -273,7 +273,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
-        tau_phys_start = self.tau_2_phys_spacing(tau_start)
+        tau_pspacing_start = self.tau_2_pulse_spacing(tau_start)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -299,7 +299,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_phys_start, increment=tau_step)
+        tau_element = self._get_idle_element(length=tau_pspacing_start, increment=tau_step)
 
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
@@ -352,7 +352,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             tau_array = csv_2_list(tau_list)
         except TypeError:
             tau_array = tau_list
-        tau_phys_array = self.tau_2_phys_spacing(tau_array)
+        tau_pspacing_array = self.tau_2_pulse_spacing(tau_array)
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
@@ -382,8 +382,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
-        for tau_phys in tau_phys_array:
-            tau_element = self._get_idle_element(length=tau_phys, increment=0)
+        for tau_pspacing in tau_pspacing_array:
+            tau_element = self._get_idle_element(length=tau_pspacing, increment=0)
             ramsey_block.append(pihalf_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(tau_element)
@@ -434,7 +434,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
-        tau_phys_start = self.tau_2_phys_spacing(tau_start)
+        tau_pspacing_start = self.tau_2_pulse_spacing(tau_start)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -465,7 +465,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_phys_start, increment=tau_step)
+        tau_element = self._get_idle_element(length=tau_pspacing_start, increment=tau_step)
 
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
@@ -526,7 +526,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         else:
             tau_array = np.geomspace(tau_start, tau_end, num_of_points)
 
-        tau_phys_array = self.tau_2_phys_spacing(tau_array)
+        tau_pspacing_array = self.tau_2_pulse_spacing(tau_array)
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -560,8 +560,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
-        for tau_phys in tau_phys_array:
-            tau_element = self._get_idle_element(length=tau_phys, increment=0.0)
+        for tau_pspacing in tau_pspacing_array:
+            tau_element = self._get_idle_element(length=tau_pspacing, increment=0.0)
             hahn_block.append(pihalf_element)
             hahn_block.append(tau_element)
             hahn_block.append(pi_element)
@@ -654,7 +654,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('Tau<sub>pulse spacing</sub>', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -718,7 +718,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('Tau<sub>pulse spacing</sub>', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
