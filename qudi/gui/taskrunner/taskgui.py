@@ -19,8 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.connector import Connector
-from core.module import GuiBase
+from qudi.core.connector import Connector
+from qudi.core.module import GuiBase
 from PySide2 import QtCore
 from .taskwindow import TaskMainWindow
 
