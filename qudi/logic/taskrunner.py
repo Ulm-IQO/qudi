@@ -25,7 +25,7 @@ import importlib
 
 from qudi.util.models import ListTableModel
 from qudi.core.module import LogicBase
-import qudi.core.task as gt
+# import core.task as gt
 
 
 class TaskListTableModel(ListTableModel):
