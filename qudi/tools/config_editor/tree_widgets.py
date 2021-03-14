@@ -67,8 +67,8 @@ class AvailableModulesTreeWidget(QtWidgets.QTreeWidget):
     def get_modules(self):
         modules = list()
         for base, top_item in self.top_level_items.items():
-            modules.extend(f'{base}.{child.text(1)}' for child in
-                           (top_item.child(index) for index in range(top_item.childCount())))
+            items = [top_item.child(index) for index in range(top_item.childCount())]
+            modules.extend(f'{base}.{it.text(1)}' for it in items)
         return modules
 
     def resize_columns_to_content(self):
@@ -128,10 +128,8 @@ class ConfigModulesTreeWidget(QtWidgets.QTreeWidget):
         self.setSelectionMode(self.SingleSelection)
         self.setEditTriggers(self.EditTrigger.NoEditTriggers)
         self.top_level_items = dict()
-        self._valid_foreground = next(iter(self.top_level_items.values())).foreground(0)
-
         self.set_modules(named_modules, unnamed_modules)
-
+        self._valid_foreground = next(iter(self.top_level_items.values())).foreground(0)
         self.itemClicked.connect(self.edit_item_column)
 
     def set_modules(self, named_modules=None, unnamed_modules=None):
@@ -142,7 +140,7 @@ class ConfigModulesTreeWidget(QtWidgets.QTreeWidget):
             for name, module in named_modules.items():
                 self.add_module(module, name, resize=False)
         if unnamed_modules is not None:
-            for module in unnamed_modules.items():
+            for module in unnamed_modules:
                 self.add_module(module, resize=False)
         # Resize columns
         self.resize_columns_to_content()
@@ -197,13 +195,18 @@ class ConfigModulesTreeWidget(QtWidgets.QTreeWidget):
             self.resizeColumnToContents(i)
 
     def get_modules(self):
-        modules = dict()
+        named_modules = dict()
+        unnamed_modules = list()
         for base, top_item in self.top_level_items.items():
-            modules.update(
-                {child.text(1): f'{base}.{child.text(2)}' for child in (top_item.child(index) for
-                 index in range(top_item.childCount()))}
-            )
-        return modules
+            items = [top_item.child(index) for index in range(top_item.childCount())]
+            for it in items:
+                name = it.text(1)
+                module = f'{base}.{it.text(2)}'
+                if not name or name == '<enter unique name>' or name in named_modules:
+                    unnamed_modules.append(module)
+                else:
+                    named_modules[name] = module
+        return named_modules, unnamed_modules
 
     @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
     def edit_item_column(self, item, column):

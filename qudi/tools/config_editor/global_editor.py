@@ -18,6 +18,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
 
         # Create main layout
         main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(main_layout)
 
         # Create header
@@ -27,11 +28,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         font.setBold(True)
         font.setPointSize(10)
         header.setFont(font)
-        hline = QtWidgets.QFrame()
-        hline.setFrameShape(QtWidgets.QFrame.HLine)
-        hline.setFrameShadow(QtWidgets.QFrame.Sunken)
         main_layout.addWidget(header)
-        main_layout.addWidget(hline)
 
         # Create module server groupbox
         server_groupbox = QtWidgets.QGroupBox('Module Server')

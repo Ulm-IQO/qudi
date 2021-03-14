@@ -15,6 +15,8 @@ from qudi.core.module import Base, LogicBase, GuiBase
 from qudi.core.config import Configuration
 
 from qudi.tools.config_editor.module_selector import ModuleSelector
+from qudi.tools.config_editor.module_editor import ModuleConfigurationWidget
+from qudi.tools.config_editor.global_editor import GlobalConfigurationWidget
 from qudi.tools.config_editor.tree_widgets import ConfigModulesTreeWidget
 
 import matplotlib
@@ -101,18 +103,20 @@ class QudiModules:
             module_search_paths.extend(module_search_paths)
 
         # import all qudi module classes from search paths
-        self._qudi_modules = ModuleFinder.get_qudi_modules(module_search_paths)
+        self._qudi_module_classes = ModuleFinder.get_qudi_modules(module_search_paths)
         # Collect all connectors for all modules
         self._module_connectors = {
-            mod: tuple(cls._module_meta['connectors'].values()) for mod, cls in self._qudi_modules.items()
+            mod: tuple(cls._module_meta['connectors'].values()) for mod, cls in
+            self._qudi_module_classes.items()
         }
         # Get for each connector in each module compatible modules to connect to
         self._module_connectors_compatible_modules = {
-            mod: self._modules_for_connectors(mod) for mod in self._qudi_modules
+            mod: self._modules_for_connectors(mod) for mod in self._qudi_module_classes
         }
         # Get all ConfigOptions for all modules
         self._module_config_options = {
-            mod: tuple(cls._module_meta['config_options'].values()) for mod, cls in self._qudi_modules.items()
+            mod: tuple(cls._module_meta['config_options'].values()) for mod, cls in
+            self._qudi_module_classes.items()
         }
 
     def _modules_for_connectors(self, module):
@@ -122,12 +126,14 @@ class QudiModules:
 
     def _modules_for_connector(self, connector):
         interface = connector.interface
-        bases = {mod: {c.__name__ for c in cls.mro()} for mod, cls in self._qudi_modules.items()}
+        bases = {
+            mod: {c.__name__ for c in cls.mro()} for mod, cls in self._qudi_module_classes.items()
+        }
         return tuple(mod for mod, base_names in bases.items() if interface in base_names)
 
     @property
     def available_modules(self):
-        return tuple(self._qudi_modules)
+        return tuple(self._qudi_module_classes)
 
     def module_connectors(self, module):
         return self._module_connectors[module]
@@ -152,15 +158,10 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
 
         self.qudi_environment = qudi_environment
         self.configuration = Configuration()
-        self.selector_dialog = ModuleSelector(
-            self,
+        self.module_tree_widget = ConfigModulesTreeWidget()
+        self.module_config_widget = ModuleConfigurationWidget(
             available_modules=self.qudi_environment.available_modules
         )
-
-        self.module_tree_widget = ConfigModulesTreeWidget()
-        self.module_config_widget = ModuleConfigurationWidget()
-        self.module_config_widget.sigModuleConfigFinished.connect(self.write_module_config)
-        self.module_config_widget.sigRemoteConfigFinished.connect(self.write_remote_module_config)
         self.global_config_widget = GlobalConfigurationWidget()
 
         label = QtWidgets.QLabel('Included Modules')
@@ -169,14 +170,9 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         font.setBold(True)
         font.setPointSize(10)
         label.setFont(font)
-        hline = QtWidgets.QFrame()
-        hline.setFrameShape(QtWidgets.QFrame.HLine)
-        hline.setFrameShadow(QtWidgets.QFrame.Sunken)
         layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(label)
         layout.addWidget(self.module_tree_widget)
-        layout.addWidget(hline)
         layout.addWidget(self.global_config_widget)
         layout.setStretch(1, 1)
         widget = QtWidgets.QWidget()
@@ -198,17 +194,24 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         self.quit_action = QtWidgets.QAction(quit_icon, 'Quit')
         self.quit_action.setShortcut(QtGui.QKeySequence('Ctrl+Q'))
         load_icon = QtGui.QIcon(os.path.join(icon_dir, 'document-open.png'))
-        self.load_action = QtWidgets.QAction(load_icon, 'Load configuration')
+        self.load_action = QtWidgets.QAction(load_icon, 'Load')
         self.load_action.setShortcut(QtGui.QKeySequence('Ctrl+L'))
+        self.load_action.setToolTip('Load a qudi configuration to edit from file.')
         save_icon = QtGui.QIcon(os.path.join(icon_dir, 'document-save.png'))
-        self.save_action = QtWidgets.QAction(save_icon, 'Save configuration')
+        self.save_action = QtWidgets.QAction(save_icon, 'Save')
         self.save_action.setShortcut(QtGui.QKeySequence('Ctrl+S'))
-        self.save_as_action = QtWidgets.QAction(save_icon, 'Save configuration as ...')
+        self.save_action.setToolTip('Save the current qudi configuration to file.')
+        self.save_as_action = QtWidgets.QAction('Save as ...')
         new_icon = QtGui.QIcon(os.path.join(icon_dir, 'document-new.png'))
-        self.new_action = QtWidgets.QAction(new_icon, 'New configuration')
+        self.new_action = QtWidgets.QAction(new_icon, 'New')
         self.new_action.setShortcut(QtGui.QKeySequence('Ctrl+N'))
+        self.new_action.setToolTip('Create a new qudi configuration from scratch.')
         select_icon = QtGui.QIcon(os.path.join(icon_dir, 'configure.png'))
         self.select_modules_action = QtWidgets.QAction(select_icon, 'Select Modules')
+        self.select_modules_action.setShortcut(QtGui.QKeySequence('Ctrl+M'))
+        self.select_modules_action.setToolTip(
+            'Open an editor to select the modules to include in config.'
+        )
         # Connect actions
         self.quit_action.triggered.connect(self.close)
         self.new_action.triggered.connect(self.clear_config)
@@ -220,6 +223,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         # Create menu bar
         menu_bar = QtWidgets.QMenuBar()
         file_menu = QtWidgets.QMenu('File')
+        menu_bar.addMenu(file_menu)
         file_menu.addAction(self.new_action)
         file_menu.addSeparator()
         file_menu.addAction(self.load_action)
@@ -227,12 +231,14 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         file_menu.addAction(self.save_as_action)
         file_menu.addSeparator()
         file_menu.addAction(self.quit_action)
-        file_menu.addAction(self.select_modules_action)
+        file_menu = QtWidgets.QMenu('Edit')
         menu_bar.addMenu(file_menu)
+        file_menu.addAction(self.select_modules_action)
         self.setMenuBar(menu_bar)
 
         # Create toolbar
         toolbar = QtWidgets.QToolBar()
+        toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
         toolbar.addAction(self.new_action)
         toolbar.addAction(self.load_action)
         toolbar.addAction(self.save_action)
@@ -241,117 +247,106 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         toolbar.setFloatable(False)
         self.addToolBar(toolbar)
 
+        # Connect module editor signals
+        self.module_config_widget.sigModuleConfigFinished.connect(self.update_module_config)
+
     def module_clicked(self, item, column):
-        if item is None or item.parent() is None or not 0 <= column <= 2:
+        if item is None or item.parent() is None:
             return
         base = item.parent().text(0).lower()
         module = f'{base}.{item.text(2)}'
         module_name = item.text(1)
-        if self.module_config_widget.currently_edited_module != module_name:
-            # Sort out available connectors and targets
+
+        # Get current module config dict from Configuration object
+        try:
+            config_dict = self.configuration.get_module_config(module_name)
+        except KeyError:
+            config_dict = None
+
+        # Sort out available connectors and targets as well as module config options
+        if module in self.qudi_environment.available_modules:
+            # Connectors
             compatible_targets = self.qudi_environment.module_connector_targets(module)
-            selected_modules = self.selector_dialog.selected_modules
+            available_targets = self.module_tree_widget.get_modules()
             mandatory_connectors = dict()
             optional_connectors = dict()
             for conn in self.qudi_environment.module_connectors(module):
                 targets = compatible_targets[conn.name]
-                avail_mods = (name for name, mod in selected_modules.items() if mod in targets)
+                targets = (name for name, mod in available_targets.items() if mod in targets)
                 if conn.optional:
-                    optional_connectors[conn.name] = tuple(avail_mods)
+                    optional_connectors[conn.name] = tuple(targets)
                 else:
-                    mandatory_connectors[conn.name] = tuple(avail_mods)
-            # Sort out config options
+                    mandatory_connectors[conn.name] = tuple(targets)
+
+            # Config Options
             options = self.qudi_environment.module_config_options(module)
             mandatory_options = {
-                opt.name: '' for opt in options if opt.missing == MissingOption.error
+                opt.name: opt.default for opt in options if opt.missing == MissingOption.error
             }
             optional_options = {
                 opt.name: opt.default for opt in options if opt.name not in mandatory_options
             }
-            # Recall already set config options and connections
-            try:
-                module_cfg = self.configuration.get_module_config(module_name)
-                for opt_name, value in module_cfg.items():
-                    if opt_name in mandatory_options:
-                        mandatory_options[opt_name] = value
-                    elif opt_name in optional_options:
-                        optional_options[opt_name] = value
-                connections = module_cfg.get('connect', dict())
-                connections = {
-                    conn: mod for conn, mod in connections.items() if mod in selected_modules
-                }
-            except KeyError:
-                connections = dict()
-            self.module_config_widget.open_module_editor(module_name=module_name,
-                                                         mandatory_connectors=mandatory_connectors,
-                                                         optional_connectors=optional_connectors,
-                                                         connections=connections,
-                                                         mandatory_cfg_options=mandatory_options,
-                                                         optional_cfg_options=optional_options)
+        else:
+            mandatory_connectors = None
+            optional_connectors = None
+            mandatory_options = None
+            optional_options = None
+        self.module_config_widget.open_module_editor(module_name,
+                                                     config_dict=config_dict,
+                                                     mandatory_conn_targets=mandatory_connectors,
+                                                     optional_conn_targets=optional_connectors,
+                                                     mandatory_options=mandatory_options,
+                                                     optional_options=optional_options)
 
     def select_modules(self):
-        self.module_config_widget.commit_module_config()
-        if self.selector_dialog.exec_():
-            if self.module_config_widget.currently_edited_module is not None:
-                self.module_config_widget.close_module_editor()
-            new_selection = self.selector_dialog.selected_modules
+        self.module_config_widget.close_module_editor()
+        available = self.qudi_environment.available_modules
+        named_selected, unnamed_selected = self.module_tree_widget.get_modules()
+        selected = list(named_selected.values())
+        selected.extend(unnamed_selected)
+        selector_dialog = ModuleSelector(available_modules=available, selected_modules=selected)
+        if selector_dialog.exec_():
+            new_selection = selector_dialog.get_selected_modules()
+            new_named_selected = dict()
+            remove_modules = list()
+            # Recycle old module names if identical modules are selected
+            for name, module in named_selected.items():
+                try:
+                    new_selection.remove(module)
+                    new_named_selected[name] = module
+                except ValueError:
+                    remove_modules.append(name)
+
             # Set modules in main window
-            self.module_tree_widget.set_modules(new_selection)
-            # Throw out all modules that are no longer present or have changed module <-> name
-            # correspondence
-            old_modules = self.get_modules_from_config()
-            remove_modules = {
-                name for name, mod in old_modules.items() if new_selection.get(name, None) != mod
-            }
+            self.module_tree_widget.set_modules(named_modules=new_named_selected,
+                                                unnamed_modules=new_selection)
+            # Throw out all modules that are no longer present
             for name in remove_modules:
-                del old_modules[name]
                 self.configuration.remove_module(name)
-            # Add new modules to config (without connections and options of course)
-            for name, module in new_selection.items():
-                if name not in old_modules:
-                    base, module_class = module.split('.', 1)
-                    cfg_opt = self.qudi_environment.module_config_options(module)
-                    default_opt = {
-                        op.name: op.default for op in cfg_opt if op.missing != MissingOption.error
-                    }
-                    self.configuration.set_local_module(name,
-                                                        base,
-                                                        module_class,
-                                                        options=default_opt)
 
-    def write_module_config(self, name, connections, config_options):
-        module = self.module_tree_widget.get_modules()[name]
-        base, module_class = module.split('.', 1)
-        remoteaccess = config_options.pop('remoteaccess', True)
-        self.configuration.set_local_module(name,
-                                            base,
-                                            module_class,
-                                            connections,
-                                            config_options,
-                                            remoteaccess)
-
-    def write_remote_module_config(self, name, config_options):
-        # ToDo: implement
-        raise NotImplementedError
-        # module = self.module_tree_widget.get_modules()[name]
-        # base, module_class = module.split('.', 1)
-        # self.configuration.set_remote_module(name,
-        #                                     base,
-        #                                     module_class,
-        #                                     connections,
-        #                                     config_options,
-        #                                     remoteaccess)
+    def update_module_config(self, name, connections=None, options=None, meta=None):
+        if self.configuration.is_remote_module(name):
+            if meta:
+                remote_url = meta.get('remote_url', None)
+                certfile = meta.get('certfile', None)
+                keyfile = meta.get('keyfile', None)
+                if remote_url:
+                    self.configuration.set_module_remote_url(name, remote_url)
+                if certfile or keyfile:
+                    self.configuration.set_module_remote_certificate(name, keyfile, certfile)
+        else:
+            self.configuration.set_module_connections(name, connections)
+            self.configuration.set_module_options(name, options)
+            self.configuration.set_module_allow_remote(
+                name,
+                meta.get('allow_remote', False) if meta else False
+            )
 
     def clear_config(self):
         self.module_config_widget.close_module_editor()
-        self.configuration = Configuration()
+        self.configuration.clear_config()
         self.module_tree_widget.set_modules(dict())
-        self.selector_dialog.setParent(None)
-        self.selector_dialog.deleteLater()
-        self.selector_dialog = ModuleSelector(
-            self,
-            available_modules=self.qudi_environment.available_modules
-        )
+        self.global_config_widget.set_config(self.configuration.global_config)
 
     def prompt_load_config(self):
         file_path = QtWidgets.QFileDialog.getOpenFileName(
@@ -362,14 +357,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         if file_path:
             self.configuration.load_config(file_path, set_default=False)
             modules = self.get_modules_from_config()
-            self.module_tree_widget.set_modules(modules)
-            self.selector_dialog.setParent(None)
-            self.selector_dialog.deleteLater()
-            self.selector_dialog = ModuleSelector(
-                self,
-                available_modules=self.qudi_environment.available_modules,
-                selected_modules=modules
-            )
+            self.module_tree_widget.set_modules(named_modules=modules)
 
     def prompt_save_config(self):
         self.module_config_widget.commit_module_config()
@@ -424,11 +412,11 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         modules = dict()
         # ToDo: Handle remote modules
         module_config = self.configuration.module_config
-        if module_config is not None:
+        if module_config:
             for base, cfg_dict in module_config.items():
                 modules.update(
-                    {name: '.'.join((base, cfg['module.Class'])) for name, cfg in cfg_dict.items()
-                     if 'module.Class' in cfg}
+                    {name: f'{base}.{cfg.get("module.Class", "<REMOTE MODULE>")}' for name, cfg in
+                     cfg_dict.items()}
                 )
         return modules
 

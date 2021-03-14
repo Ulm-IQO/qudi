@@ -103,6 +103,9 @@ class ModuleSelector(QtWidgets.QDialog):
         if module:
             self.selected_treewidget.add_module(f'{base}.{module}')
 
+    def get_selected_modules(self):
+        return self.selected_treewidget.get_modules()
+
 
 if __name__ == '__main__':
     import sys

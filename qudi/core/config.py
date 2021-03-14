@@ -464,7 +464,7 @@ class Configuration(QtCore.QObject):
         if connections is None:
             connections = dict()
         assert isinstance(connections, dict), 'Connections must be dict type or None'
-        assert self._is_local_module(name), \
+        assert self.is_local_module(name), \
             'Module connections can only be set for local (non-remote) modules.'
         assert all(isinstance(conn, str) and conn for conn in connections), \
             'Connectors must be non-empty strings'
@@ -482,7 +482,7 @@ class Configuration(QtCore.QObject):
         if options is None:
             options = dict()
         assert isinstance(options, dict), 'Options must be dict type or None'
-        assert self._is_local_module(name), \
+        assert self.is_local_module(name), \
             'Module options can only be set for local (non-remote) modules.'
         assert all(isinstance(opt, str) and opt for opt in options), \
             'Options must be non-empty strings'
@@ -505,7 +505,7 @@ class Configuration(QtCore.QObject):
 
     def set_module_allow_remote(self, name, allow_remote):
         assert isinstance(allow_remote, bool), 'Module allow_remote flag must be bool'
-        assert self._is_local_module(name), \
+        assert self.is_local_module(name), \
             'Module allow_remote flag can only be set for local (non-remote) modules.'
 
         module_cfg = self.get_module_config(name)
@@ -514,7 +514,7 @@ class Configuration(QtCore.QObject):
 
     def set_module_remote_url(self, name, url):
         assert isinstance(url, str) and url, 'Module remote_url must be non-empty str'
-        assert self._is_remote_module(name), \
+        assert self.is_remote_module(name), \
             'Module remote_url can only be set for remote (non-local) modules.'
 
         module_cfg = self.get_module_config(name)
@@ -524,7 +524,7 @@ class Configuration(QtCore.QObject):
     def set_module_remote_certificate(self, name, keyfile, certfile):
         assert keyfile is None or isinstance(keyfile, str), 'Module keyfile must be str or None'
         assert certfile is None or isinstance(certfile, str), 'Module certfile must be str or None'
-        assert self._is_remote_module(name), \
+        assert self.is_remote_module(name), \
             'Module certificate can only be set for remote (non-local) modules.'
 
         module_cfg = self.get_module_config(name)
@@ -626,11 +626,11 @@ class Configuration(QtCore.QObject):
         save(file_path, self.config_dict)
         self._file_path = file_path
 
-    def _is_remote_module(self, name):
+    def is_remote_module(self, name):
         module_cfg = self.get_module_config(name)
         return 'remote_url' in module_cfg and 'module.Class' not in module_cfg
 
-    def _is_local_module(self, name):
+    def is_local_module(self, name):
         module_cfg = self.get_module_config(name)
         return 'module.Class' in module_cfg and 'remote_url' not in module_cfg
 
