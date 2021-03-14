@@ -176,10 +176,6 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
     def meta_options(self):
         return {'allow_remote': self.allow_remote_checkbox.isChecked()}
 
-    def set_available_module_names(self, available_modules):
-        self.close_module_editor()
-        self._available_modules = list() if available_modules is None else list(available_modules)
-
     @QtCore.Slot()
     def add_custom_connector(self, name='', target=None):
         # Create editor widgets for new connector
