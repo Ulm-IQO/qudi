@@ -12,13 +12,12 @@ from qudi.core.paths import get_artwork_dir
 class ModuleConfigurationWidget(QtWidgets.QWidget):
     """
     """
-    sigModuleConfigFinished = QtCore.Signal(str, dict, dict)
-    sigRemoteConfigFinished = QtCore.Signal(str, dict)
+    sigModuleConfigFinished = QtCore.Signal(str, dict, dict, dict)
 
     _add_icon_path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '64x64', 'add-icon.png')
     _remove_icon_path = os.path.join(os.path.dirname(_add_icon_path), 'remove-icon.png')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, available_modules=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.header_label = QtWidgets.QLabel()
@@ -37,6 +36,7 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         self.placeholder_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                              QtWidgets.QSizePolicy.Expanding)
         self.footnote_label = QtWidgets.QLabel('* Mandatory Connector/ConfigOption')
+        self.footnote_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.header_label)
@@ -141,10 +141,10 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         self.currently_edited_module = None
 
         # Remember available modules
-        self._available_modules = ['test_module_1', 'test_module_2']
+        self._available_modules = list() if available_modules is None else tuple(available_modules)
 
         # toggle closed editor
-        self.placeholder_label.setVisible(False)
+        self.splitter.setVisible(False)
 
     @property
     def not_connected_str(self):
@@ -175,6 +175,10 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
     @property
     def meta_options(self):
         return {'allow_remote': self.allow_remote_checkbox.isChecked()}
+
+    def set_available_module_names(self, available_modules):
+        self.close_module_editor()
+        self._available_modules = list() if available_modules is None else list(available_modules)
 
     @QtCore.Slot()
     def add_custom_connector(self, name='', target=None):
