@@ -267,7 +267,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         if module in self.qudi_environment.available_modules:
             # Connectors
             compatible_targets = self.qudi_environment.module_connector_targets(module)
-            available_targets = self.module_tree_widget.get_modules()
+            available_targets, _ = self.module_tree_widget.get_modules()
             mandatory_connectors = dict()
             optional_connectors = dict()
             for conn in self.qudi_environment.module_connectors(module):
@@ -320,6 +320,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
             # Set modules in main window
             self.module_tree_widget.set_modules(named_modules=new_named_selected,
                                                 unnamed_modules=new_selection)
+            self.module_config_widget.set_available_modules(new_named_selected)
             # Throw out all modules that are no longer present
             for name in remove_modules:
                 self.configuration.remove_module(name)
@@ -358,6 +359,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
             self.configuration.load_config(file_path, set_default=False)
             modules = self.get_modules_from_config()
             self.module_tree_widget.set_modules(named_modules=modules)
+            self.module_config_widget.set_available_modules(modules)
 
     def prompt_save_config(self):
         self.module_config_widget.commit_module_config()
