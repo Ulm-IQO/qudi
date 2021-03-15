@@ -179,7 +179,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         # Create a copy of the _module_meta class dict and attach it to the created instance
         self._module_meta = copy.deepcopy(self._module_meta)
         # Add additional meta info to _module_meta dict
-        self._module_meta['name'] = name,
+        self._module_meta['name'] = name
         self._module_meta['configuration'] = copy.deepcopy(config)
 
         # set instance attributes according to config_option meta objects
