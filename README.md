@@ -1,6 +1,6 @@
 # qudi
 Qudi is a suite of tools for operating multi-instrument and multi-computer laboratory experiments.
-Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicable framework for controlling experiments.
+Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicaple framework for controlling experiments.
 
 ## Installation of new core
 First create a new environment with python 3.7 you want you core to live in and change into this environment. This can be done with the help of conda:
@@ -26,7 +26,7 @@ qudi
 ```
 
 ## Citation
-If you are publishing scientific results, mentioning Qudi in your methods description is the least you can do as good scientific practice.
+If you are publishing scientific results, mentioning Qudi in your methods decscription is the least you can do as good scientific practice.
 You should cite our paper [Qudi: A modular python suite for experiment control and data processing](http://doi.org/10.1016/j.softx.2017.02.001) for this purpose.
 
 ## Documentation
