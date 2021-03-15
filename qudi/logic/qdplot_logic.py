@@ -33,6 +33,7 @@ from qudi.core.module import LogicBase
 from qudi.util import units
 from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
+from qudi.core.datafitting import FitContainer, FitConfigurationsModel
 
 
 class QDPlotLogic(LogicBase):
@@ -61,7 +62,7 @@ class QDPlotLogic(LogicBase):
 
     _default_plot_number = ConfigOption(name='default_plot_number', default=3)
 
-    fit_container = StatusVar(name='fit_container', default=None)
+    _fit_configs = StatusVar(name='fit_configs', default=None)
 
     def __init__(self, *args, **kwargs):
         """ Create QDPlotLogic object with connectors.
@@ -85,9 +86,12 @@ class QDPlotLogic(LogicBase):
         self._y_unit = list()
         self._x_data = list()
         self._y_data = list()
+
         self._fit_data = list()
         self._fit_results = list()
         self._fit_method = list()
+        self._fit_container = None
+        self._fit_config_model = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -95,6 +99,10 @@ class QDPlotLogic(LogicBase):
         if not isinstance(self._default_plot_number, int) or self._default_plot_number < 1:
             self.log.warning('Invalid number of plots encountered in config. Falling back to 1.')
             self._default_plot_number = 1
+
+        self._fit_config_model = FitConfigurationsModel(parent=self)
+        self._fit_config_model.load_configs(self._fit_configs)
+        self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
 
         #self._fit_logic = self.fit_logic()
 
@@ -119,25 +127,26 @@ class QDPlotLogic(LogicBase):
             self.remove_plot(i)
         #self._fit_logic = None
 
-    @fit_container.constructor
-    def sv_set_fit(self, val):
-        """ Set up fit container """
-        return None
-        fc = self.fit_logic().make_fit_container('Plot QDPlotterLogic', '1d')
-        fc.set_units(['', 'a.u.'])
-        if not (isinstance(val, dict) and len(val) > 0):
-            val = dict()
-        fc.load_from_dict(val)
-        return fc
+    @_fit_configs.representer
+    def __repr_fit_configs(self, value):
+        configs = self.fit_config_model.dump_configs()
+        if len(configs) < 1:
+            configs = None
+        return configs
 
-    @fit_container.representer
-    def sv_get_fit(self, val):
-        """ Save configured fits """
-        return None
-        if len(val.fit_list) > 0:
-            return val.save_to_dict()
-        else:
-            return None
+    @_fit_configs.constructor
+    def __constr_fit_configs(self, value):
+        if not value:
+            return dict()
+        return value
+
+    @property
+    def fit_config_model(self):
+        return self._fit_config_model
+
+    @property
+    def fit_container(self):
+        return self._fit_container
 
     @property
     def number_of_plots(self):
