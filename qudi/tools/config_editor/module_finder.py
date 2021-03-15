@@ -7,10 +7,14 @@ import os
 import sys
 import importlib
 import inspect
+import logging
 from qudi.core.paths import get_main_dir
 from qudi.core.module import Base, LogicBase, GuiBase
 
 __all__ = ('ModuleFinder', 'QudiModules')
+
+
+log = logging.getLogger(__package__)
 
 
 class ModuleFinder:
