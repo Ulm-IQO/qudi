@@ -508,7 +508,7 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         self.custom_conn_widgets = dict()
 
         # Remove "normal" connectors and options
-        for label, lineedit in reversed(self.opt_widgets.values()):
+        for label, lineedit in reversed(list(self.opt_widgets.values())):
             self.options_layout.removeWidget(label)
             self.options_layout.removeWidget(lineedit)
             label.setParent(None)
@@ -516,7 +516,7 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
             label.deleteLater()
             lineedit.deleteLater()
         self.opt_widgets = dict()
-        for label, combobox in reversed(self.conn_widgets.values()):
+        for label, combobox in reversed(list(self.conn_widgets.values())):
             self.connector_layout.removeWidget(label)
             self.connector_layout.removeWidget(combobox)
             label.setParent(None)
