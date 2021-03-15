@@ -17,12 +17,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import sys
-from .config_editor import ConfigurationEditor, ConfigurationEditorMainWindow
+from .config_editor import main
 
-app = ConfigurationEditor(sys.argv)
-# Init and open main window
-mw = ConfigurationEditorMainWindow()
-mw.show()
-# Start event loop
-sys.exit(app.exec_())
+main()

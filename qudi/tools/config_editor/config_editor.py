@@ -359,10 +359,14 @@ class ConfigurationEditor(QtWidgets.QApplication):
         self.setWindowIcon(app_icon)
 
 
-if __name__ == '__main__':
+def main():
     app = ConfigurationEditor(sys.argv)
     # Init and open main window
     mw = ConfigurationEditorMainWindow()
     mw.show()
     # Start event loop
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()
