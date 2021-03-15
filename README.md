@@ -2,18 +2,28 @@
 Qudi is a suite of tools for operating multi-instrument and multi-computer laboratory experiments.
 Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicable framework for controlling experiments.
 
-## Features
-  * A modular and extendable architecture
-  * Access to devices on other computers over network
-  * XYZ piezo or galvo control for confocal fluorescence microscopy via National Instruments X-Series devices
-  * Position optimization for fluorescent spots
-  * Tracking of fluorescent spots
-  * Tektronix AWG 5000 7000 and 70000 support for pulsed microwave experiments
-  * Anritsu MG37022A, MG3696B and MG3961C, R&S SMIQ and SMR support for ODMR measurements
-  * Getting spectra from the WinSpec32 spectroscopy software
-  * Thorlabs APT motor control
-  * Magnetic field alignment for NV- in diamond via fluorescence, ODMR and nuclear spin
-  * etc.
+## Installation of new core
+First create a new environment with python 3.7 you want you core to live in and change into this environment. This can be done with the help of conda:
+```bash
+conda create -n qudicore python=3.7
+conda activate qudicore
+```
+
+Create a new folder for the code to live in and change into it.
+```bash
+mkdir "C:\Software\qudicore"
+cd "C:\Software\qudicore"
+```
+
+Install the qudi package in the right environment and folder (see above) using pip. This also installs a qudi-kernel for jupyter notebooks (be careful, this might overright an already existing qudi-kernel).
+```bash
+python -m pip install -e git+https://github.com/Ulm-IQO/qudi@core_pyside2_with_modules#egg=qudi
+```
+
+Run your new qudi by just calling:
+```bash
+qudi
+```
 
 ## Citation
 If you are publishing scientific results, mentioning Qudi in your methods description is the least you can do as good scientific practice.
