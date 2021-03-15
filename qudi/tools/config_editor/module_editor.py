@@ -4,9 +4,10 @@
 """
 
 import os
-import sys
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.paths import get_artwork_dir
+
+__all__ = ('ModuleConfigurationWidget',)
 
 
 class ModuleConfigurationWidget(QtWidgets.QWidget):
@@ -523,38 +524,3 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
             label.deleteLater()
             combobox.deleteLater()
         self.conn_widgets = dict()
-
-
-if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    mw = ModuleConfigurationWidget()
-    mw.resize(1600, 900)
-
-    test_cfg = {'module.Class': 'test_gui.TestGUI',
-                'allow_remote': True,
-                'mandatory_option': [1, 2, 3, 'derp'],
-                'optional_option': ' abcäöü "hallo"  ',
-                'custom_option': None,
-                'connect': {'mandatory_connector': 'my_cool_module_name1',
-                            'optional_connector': 'my_cool_module_name2',
-                            'custom_connector': 'my_cool_module_name3'}
-                }
-    mandatory_connectors = {'mandatory_connector': ('my_cool_module_name1', 'my_cool_module_name3')}
-    optional_connectors = {'optional_connector': ('my_cool_module_name2', 'my_cool_module_name3')}
-    mandatory_options = ('mandatory_option',)
-    optional_options = ('optional_option',)
-    available_modules = ('my_cool_module_name1',
-                         'my_cool_module_name2',
-                         'my_cool_module_name3',
-                         'shameful_module')
-
-    mw.set_available_modules(available_modules)
-    mw.open_module_editor('my_test_module',
-                          test_cfg,
-                          mandatory_connectors,
-                          optional_connectors,
-                          mandatory_options,
-                          optional_options)
-
-    mw.show()
-    sys.exit(app.exec_())

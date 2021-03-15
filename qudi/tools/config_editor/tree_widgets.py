@@ -5,6 +5,8 @@
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
+__all__ = ('AvailableModulesTreeWidget', 'SelectedModulesTreeWidget', 'ConfigModulesTreeWidget')
+
 
 class AvailableModulesTreeWidget(QtWidgets.QTreeWidget):
     """
@@ -212,32 +214,3 @@ class ConfigModulesTreeWidget(QtWidgets.QTreeWidget):
     def edit_item_column(self, item, column):
         if item and column == 1 and item.parent() is not None:
             self.editItem(item, column)
-
-
-if __name__ == '__main__':
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    mw = ConfigModulesTreeWidget()
-    mw.resize(800, 450)
-    mw.add_module('gui.derpington.McClass', 'derp')
-    mw.add_module('logic.herpington.McClass', 'herp')
-    mw.add_module('hardware.dingeling.McClass')
-
-    mw2 = QtWidgets.QMainWindow()
-    mw2.resize(800, 450)
-    widget = QtWidgets.QWidget()
-    mw2.setCentralWidget(widget)
-    layout = QtWidgets.QHBoxLayout()
-    widget.setLayout(layout)
-    a = AvailableModulesTreeWidget()
-    a.add_module('gui.derpington.McClass')
-    a.add_module('logic.herpington.McClass')
-    a.add_module('hardware.dingeling.McClass')
-    b = SelectedModulesTreeWidget()
-    b.add_module('hardware.<REMOTE MODULE>')
-    layout.addWidget(a)
-    layout.addWidget(b)
-
-    mw.show()
-    mw2.show()
-    sys.exit(app.exec_())

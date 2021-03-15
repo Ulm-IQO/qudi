@@ -4,8 +4,9 @@
 """
 
 from PySide2 import QtWidgets, QtCore
-from qudi.tools.config_editor.tree_widgets import AvailableModulesTreeWidget
-from qudi.tools.config_editor.tree_widgets import SelectedModulesTreeWidget
+from qudi.tools.config_editor.tree_widgets import AvailableModulesTreeWidget, SelectedModulesTreeWidget
+
+__all__ = ('ModuleSelector',)
 
 
 class ModuleSelector(QtWidgets.QDialog):
@@ -107,17 +108,3 @@ class ModuleSelector(QtWidgets.QDialog):
 
     def get_selected_modules(self):
         return self.selected_treewidget.get_modules()
-
-
-if __name__ == '__main__':
-    import sys
-    # sys.path.append(os.path.dirname(__file__))
-    # from config_editor import QudiEnvironment
-
-    app = QtWidgets.QApplication(sys.argv)
-    mw = ModuleSelector(
-        available_modules=('gui.my_module.MyClass', 'logic.stuff.MyClass2', 'hardware.derp.CLASS'),
-        selected_modules=('logic.derp.herp',)
-    )
-    mw.show()
-    sys.exit(app.exec_())

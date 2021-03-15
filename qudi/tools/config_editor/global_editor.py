@@ -4,9 +4,10 @@
 """
 
 import os
-import sys
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.paths import get_artwork_dir
+
+__all__ = ('GlobalConfigurationWidget',)
 
 
 class GlobalConfigurationWidget(QtWidgets.QWidget):
@@ -261,25 +262,3 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
             label.deleteLater()
             value_edit.deleteLater()
         self.custom_opt_widgets = dict()
-
-
-if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    mw = GlobalConfigurationWidget()
-    mw.resize(800, 450)
-
-    test_cfg = {
-        'default_data_dir': '/home/username/qudi/data/',
-        'extensions': ['/home/username/qudi/extension1/', '/home/username/qudi/extension2/'],
-        'stylesheet': 'qdark.qss',
-        'startup': ['my_module1', 'my_module2'],
-        'module_server': {'address': '192.168.1.42',
-                          'port': 5800,
-                          'certfile': None,
-                          'keyfile': None},
-        'custom_global': 'I am a custom global config option containing a string'
-    }
-
-    mw.set_config(test_cfg)
-    mw.show()
-    sys.exit(app.exec_())

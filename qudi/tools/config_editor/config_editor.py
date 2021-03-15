@@ -5,158 +5,36 @@
 
 import os
 import sys
-import importlib
-import inspect
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.configoption import MissingOption
-from qudi.core.paths import get_main_dir, get_default_config_dir
-from qudi.core.logger import get_logger
-from qudi.core.module import Base, LogicBase, GuiBase
+from qudi.core.paths import get_main_dir, get_default_config_dir, get_artwork_dir
 from qudi.core.config import Configuration
 
 from qudi.tools.config_editor.module_selector import ModuleSelector
 from qudi.tools.config_editor.module_editor import ModuleConfigurationWidget
 from qudi.tools.config_editor.global_editor import GlobalConfigurationWidget
 from qudi.tools.config_editor.tree_widgets import ConfigModulesTreeWidget
+from qudi.tools.config_editor.module_finder import QudiModules
 
-import matplotlib
-matplotlib.use('agg')
-
-log = get_logger(__name__)
-
-
-class ConfigError(Exception):
+try:
+    import matplotlib
+    matplotlib.use('agg')
+except ImportError:
     pass
 
+__all__ = ('ConfigurationEditorMainWindow', 'ConfigurationEditor')
 
-class ModuleFinder:
+
+class ConfigurationEditorMainWindow(QtWidgets.QMainWindow):
     """
     """
-    @staticmethod
-    def _remove_search_paths_from_path(module_search_paths):
-        for path in module_search_paths:
-            if path in sys.path:
-                sys.path.remove(path)
-
-    @staticmethod
-    def _add_search_paths_to_path(module_search_paths):
-        for path in reversed(module_search_paths):
-            if path in sys.path:
-                sys.path.remove(path)
-            sys.path.insert(0, path)
-
-    @staticmethod
-    def is_qudi_module(obj):
-        base_classes = (Base, LogicBase, GuiBase)
-        return inspect.isclass(obj) and not inspect.isabstract(obj) and issubclass(obj, Base) and \
-            obj not in base_classes
-
-    @classmethod
-    def get_qudi_classes_in_module(cls, module):
-        return dict(m for m in inspect.getmembers(module, cls.is_qudi_module) if
-                    m[1].__module__ == module.__name__)
-
-    @classmethod
-    def get_qudi_modules(cls, search_paths):
-        if isinstance(search_paths, str):
-            search_paths = [search_paths]
-
-        invalid_paths = {path for path in search_paths if not os.path.isdir(path)}
-        if invalid_paths:
-            log.error(f'Non-existent paths found to search in. Ignoring: {invalid_paths}.')
-        search_paths = [path for path in search_paths if path not in invalid_paths]
-
-        cls._add_search_paths_to_path(search_paths)
-        try:
-            found_modules = dict()
-            for path in search_paths:
-                # Find qudi modules
-                for base in ('gui', 'logic', 'hardware'):
-                    for root, _, files in os.walk(os.path.join(path, base)):
-                        for file in (f for f in files if f.endswith('.py')):
-                            module_name_comp = os.path.normpath(root).split(os.sep)
-                            index = module_name_comp.index(base)
-                            module_name_comp.append(file[:-3])
-                            module_name = '.'.join(module_name_comp[index:])
-                            try:
-                                module = importlib.import_module(module_name)
-                            except:
-                                log.exception(f'Error during import of module "{module_name}".')
-                                continue
-                            classes = cls.get_qudi_classes_in_module(module)
-                            found_modules.update(
-                                {f'{module_name}.{c_name}': c for c_name, c in classes.items()}
-                            )
-        finally:
-            cls._remove_search_paths_from_path(search_paths)
-        return found_modules
-
-
-class QudiModules:
-    """
-    """
-
-    def __init__(self, additional_search_paths=None):
-        # Import all modules available in qudi installation directory and additional search paths
-        module_search_paths = [get_main_dir()]
-        if additional_search_paths:
-            module_search_paths.extend(module_search_paths)
-
-        # import all qudi module classes from search paths
-        self._qudi_module_classes = ModuleFinder.get_qudi_modules(module_search_paths)
-        # Collect all connectors for all modules
-        self._module_connectors = {
-            mod: tuple(cls._module_meta['connectors'].values()) for mod, cls in
-            self._qudi_module_classes.items()
-        }
-        # Get for each connector in each module compatible modules to connect to
-        self._module_connectors_compatible_modules = {
-            mod: self._modules_for_connectors(mod) for mod in self._qudi_module_classes
-        }
-        # Get all ConfigOptions for all modules
-        self._module_config_options = {
-            mod: tuple(cls._module_meta['config_options'].values()) for mod, cls in
-            self._qudi_module_classes.items()
-        }
-
-    def _modules_for_connectors(self, module):
-        return {
-            conn.name: self._modules_for_connector(conn) for conn in self._module_connectors[module]
-        }
-
-    def _modules_for_connector(self, connector):
-        interface = connector.interface
-        bases = {
-            mod: {c.__name__ for c in cls.mro()} for mod, cls in self._qudi_module_classes.items()
-        }
-        return tuple(mod for mod, base_names in bases.items() if interface in base_names)
-
-    @property
-    def available_modules(self):
-        return tuple(self._qudi_module_classes)
-
-    def module_connectors(self, module):
-        return self._module_connectors[module]
-
-    def module_connector_targets(self, module):
-        return self._module_connectors_compatible_modules[module].copy()
-
-    def module_config_options(self, module):
-        return self._module_config_options[module]
-
-
-class ConfigurationEditor(QtWidgets.QMainWindow):
-    """
-    """
-    def __init__(self, qudi_environment, **kwargs):
-        assert isinstance(qudi_environment, QudiModules)
-
-        super().__init__(**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.setWindowTitle('Qudi Config Editor')
         screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
         self.resize((screen_size.width() * 3) // 4, (screen_size.height() * 3) // 4)
 
-        self.qudi_environment = qudi_environment
+        self.qudi_environment = QudiModules()
         self.configuration = Configuration()
         self.module_tree_widget = ConfigModulesTreeWidget()
         self.module_config_widget = ModuleConfigurationWidget(
@@ -215,7 +93,7 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         )
         # Connect actions
         self.quit_action.triggered.connect(self.close)
-        self.new_action.triggered.connect(self.clear_config)
+        self.new_action.triggered.connect(self.new_config)
         self.load_action.triggered.connect(self.prompt_load_config)
         self.save_action.triggered.connect(self.save_config)
         self.save_as_action.triggered.connect(self.prompt_save_config)
@@ -383,11 +261,12 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
                 raise
         self.module_selection_changed()
 
-    def clear_config(self):
+    def new_config(self):
         self.module_config_widget.close_module_editor()
         self.configuration.clear_config()
         self.module_tree_widget.set_modules(dict())
         self.global_config_widget.set_config(self.configuration.global_config)
+        self.select_modules()
 
     def prompt_load_config(self):
         file_path = QtWidgets.QFileDialog.getOpenFileName(
@@ -455,7 +334,6 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
 
     def get_modules_from_config(self):
         modules = dict()
-        # ToDo: Handle remote modules
         module_config = self.configuration.module_config
         if module_config:
             for base, cfg_dict in module_config.items():
@@ -466,13 +344,25 @@ class ConfigurationEditor(QtWidgets.QMainWindow):
         return modules
 
 
+class ConfigurationEditor(QtWidgets.QApplication):
+    """
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        icon_dir = os.path.join(get_artwork_dir(), 'logo')
+        app_icon = QtGui.QIcon()
+        app_icon.addFile(os.path.join(icon_dir, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
+        app_icon.addFile(os.path.join(icon_dir, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
+        app_icon.addFile(os.path.join(icon_dir, 'logo-qudi-32x32.png'), QtCore.QSize(32, 32))
+        app_icon.addFile(os.path.join(icon_dir, 'logo-qudi-48x48.png'), QtCore.QSize(48, 48))
+        app_icon.addFile(os.path.join(icon_dir, 'logo-qudi-256x256.png'), QtCore.QSize(256, 256))
+        self.setWindowIcon(app_icon)
+
+
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    qudi_env = QudiModules()
-    # qudi_config = QudiConfiguration(qudi_env.available_module_config_options,
-    #                                 qudi_env.available_module_connectors)
-    # qudi_config.load_config_from_file('C:\\Users\\neverhorst\\qudi\\config\\test.cfg')
-    # qudi_config.save_config_to_file('C:\\Users\\neverhorst\\qudi\\config\\test2.cfg')
-    mw = ConfigurationEditor(qudi_env)
+    app = ConfigurationEditor(sys.argv)
+    # Init and open main window
+    mw = ConfigurationEditorMainWindow()
     mw.show()
+    # Start event loop
     sys.exit(app.exec_())
