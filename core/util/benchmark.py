@@ -79,7 +79,7 @@ class BenchmarkTool(object):
 
         if len(self._datapoints) > len(self._datapoints_fixed):
             # ensure rolling data has max 50:50 weight
-            weighted_data = np.asarray(self._datapoints_fixed + list(self._datapoints[-len(self._datapoints_fixed):]))
+            weighted_data = np.asarray(self._datapoints_fixed + list(self._datapoints)[-len(self._datapoints_fixed):])
         else:
             weighted_data = all_data
 
