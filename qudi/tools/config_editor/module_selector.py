@@ -94,6 +94,8 @@ class ModuleSelector(QtWidgets.QDialog):
     @QtCore.Slot()
     def add_remote_module(self):
         base = self.base_selection_combobox.currentText().lower()
+        if base == 'gui':
+            raise ValueError('Unable to add remote module.\nGUI modules can not be remote modules.')
         self.selected_treewidget.add_module(f'{base}.<REMOTE MODULE>')
 
     @QtCore.Slot()

@@ -130,7 +130,7 @@ class ConfigModulesTreeWidget(QtWidgets.QTreeWidget):
         self.top_level_items = dict()
         self.set_modules(named_modules, unnamed_modules)
         self._valid_foreground = next(iter(self.top_level_items.values())).foreground(0)
-        self.itemClicked.connect(self.edit_item_column)
+        self.itemDoubleClicked.connect(self.edit_item_column)
 
     def set_modules(self, named_modules=None, unnamed_modules=None):
         # Clear all modules
