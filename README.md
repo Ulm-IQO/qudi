@@ -17,7 +17,7 @@ cd "C:\Software\qudicore"
 
 Install the qudi package in the right environment and folder (see above) using pip. This also installs a qudi-kernel for jupyter notebooks (be careful, this might overright an already existing qudi-kernel).
 ```bash
-python -m pip install -e git+https://github.com/Ulm-IQO/qudi@core_pyside2_with_modules#egg=qudi
+python -m pip install -e git+https://github.com/Ulm-IQO/qudi@core_pyside2#egg=qudi
 ```
 
 Run your new qudi by just calling:
