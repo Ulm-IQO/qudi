@@ -16,6 +16,7 @@ unix_dep = ['entrypoints',
             'fysom',
             'GitPython',
             'jupyter',
+            'jupytext',
             'lmfit',
             'matplotlib',
             'numpy',
@@ -32,6 +33,7 @@ windows_dep = ['entrypoints',
                'fysom',
                'GitPython',
                'jupyter',
+               'jupytext',
                'lmfit',
                'matplotlib',
                'numpy',
@@ -48,6 +50,7 @@ windows_dep = ['entrypoints',
 class PrePostDevelopCommands(develop):
     """ Pre- and Post-installation script for development mode.
     """
+
     def run(self):
         # PUT YOUR PRE-INSTALL SCRIPT HERE or CALL A FUNCTION
         develop.run(self)
@@ -62,6 +65,7 @@ class PrePostDevelopCommands(develop):
 class PrePostInstallCommands(install):
     """ Pre- and Post-installation for installation mode.
     """
+
     def run(self):
         # PUT YOUR PRE-INSTALL SCRIPT HERE or CALL A FUNCTION
         install.run(self)
@@ -89,7 +93,7 @@ setup(name='qudi',
                 'qudi.tools.config_editor'
                 ],
       package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt', 'docs/*'],
-                    'qudi.core': ['VERSION.txt', 
+                    'qudi.core': ['VERSION.txt',
                                   'default.cfg',
                                   'artwork/logo/*',
                                   'artwork/icons/oxygen/*',
