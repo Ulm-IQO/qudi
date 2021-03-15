@@ -22,13 +22,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 Completely reworked by Kay Jahnke, May 2020
 """
 
-import os
 import functools
 import numpy as np
 from itertools import cycle
-from qtpy import QtWidgets
 from qtpy import QtCore
-from qtpy import uic
 from pyqtgraph import SignalProxy, mkColor
 
 from qudi.core.connector import Connector
@@ -36,51 +33,9 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.module import GuiBase
 
-from .fit_dockwidget_placeholder import FitDockWidget
-
-
-class QDPlotMainWindow(QtWidgets.QMainWindow):
-    """ Create the Main Window based on the *.ui file. """
-
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_qdplotter.ui')
-
-        # Load it
-        super().__init__()
-        uic.loadUi(ui_file, self)
-        self.setTabPosition(QtCore.Qt.TopDockWidgetArea, QtWidgets.QTabWidget.North)
-        self.setTabPosition(QtCore.Qt.BottomDockWidgetArea, QtWidgets.QTabWidget.North)
-        self.setTabPosition(QtCore.Qt.LeftDockWidgetArea, QtWidgets.QTabWidget.North)
-        self.setTabPosition(QtCore.Qt.RightDockWidgetArea, QtWidgets.QTabWidget.North)
-
-
-class PlotDockWidget(QtWidgets.QDockWidget):
-    """ Create a DockWidget for plots including fits based on the *.ui file. """
-    def __init__(self, title=None, parent=None):
-        if isinstance(title, str):
-            super().__init__(title, parent)
-        else:
-            super().__init__(parent)
-
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_plot_widget.ui')
-        # Load it
-        widget = QtWidgets.QWidget()
-        uic.loadUi(ui_file, widget)
-        widget.setObjectName('plot_widget')
-        widget.fit_groupBox.setVisible(False)
-        widget.controls_groupBox.setVisible(False)
-
-        # widget.plot_PlotWidget.setMouseEnabled(x=False, y=False)  # forbid mouse panning/zooming
-        # widget.plot_PlotWidget.disableAutoRange()  # disable any axis scale changes by pyqtgraph
-        # widget.plot_PlotWidget.hideButtons()  # do not show the "A" autoscale button of pyqtgraph
-        # widget.plot_PlotWidget.setMenuEnabled(False)  # Disable pyqtgraph right click context menu
-
-        self.setWidget(widget)
-        self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
+from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
+from .qdplot_main_window import QDPlotMainWindow
+from .qdplot_plot_dockwidget import PlotDockWidget
 
 
 class QDPlotterGui(GuiBase):
@@ -115,7 +70,7 @@ class QDPlotterGui(GuiBase):
         super().__init__(*args, **kwargs)
         self._plot_logic = None
         self._mw = None
-        self._fsd = None
+        self._fit_config_dialog = None
 
         self._plot_dockwidgets = list()
         self._pen_colors = list()
@@ -150,16 +105,32 @@ class QDPlotterGui(GuiBase):
         # Use the inherited class 'QDPlotMainWindow' to create the GUI window
         self._mw = QDPlotMainWindow()
 
-        # Fit settings dialogs
-        self._fsd = FitDockWidget(self._plot_logic.fit_container)
-        self._fsd.applySettings()
-        self._mw.fit_settings_Action.triggered.connect(self._fsd.show)
+        # # debugging
+        # self._pw = QDPlotPlotDockWidget()
+        # self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._pw)
+        #
+        # # Fit settings dialogs
+        # self._pw.fit_widget = FitWidget(parent=self._pw, fit_container=self.qdplot_logic().fit_container)
+        # self._pw.main_layout.addWidget(self._pw.fit_widget, 0, 1)
+        # self._pw.show_fit(False)
+        # self._pw.fit_widget.sigDoFit.connect(self.fit_clicked)
+
+        self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
+                                                         fit_config_model=self.qdplot_logic().fit_config_model)
 
         # Connect the main window restore view actions
-        self._mw.restore_tabbed_view_Action.triggered.connect(self.restore_tabbed_view)
-        self._mw.restore_side_by_side_view_Action.triggered.connect(self.restore_side_by_side_view)
-        self._mw.restore_arc_view_Action.triggered.connect(self.restore_arc_view)
-        self._mw.save_all_Action.triggered.connect(self.save_all_clicked)
+        self._mw.action_show_fit_configuration.triggered.connect(self._fit_config_dialog.show)
+        self._mw.action_new_plot.triggered.connect(self._plot_logic.add_plot,
+                                                   QtCore.Qt.QueuedConnection)
+        self._mw.action_restore_tabbed_view.triggered.connect(self.restore_tabbed_view,
+                                                              QtCore.Qt.QueuedConnection)
+        self._mw.action_restore_side_by_side_view.triggered.connect(self.restore_side_by_side_view,
+                                                                    QtCore.Qt.QueuedConnection)
+        self._mw.action_restore_arced_view.triggered.connect(self.restore_arc_view,
+                                                             QtCore.Qt.QueuedConnection)
+        self._mw.action_save_all.triggered.connect(self.save_all_clicked,
+                                                   QtCore.Qt.QueuedConnection)
+        self.show()
 
         # Initialize dock widgets
         self._plot_dockwidgets = list()
@@ -168,6 +139,7 @@ class QDPlotterGui(GuiBase):
         self._fit_curves = list()
         self._pg_signal_proxys = list()
         self.update_number_of_plots(self._plot_logic.number_of_plots)
+
         # Update all plot parameters and data from logic
         for index, _ in enumerate(self._plot_dockwidgets):
             self.update_data(index)
@@ -182,8 +154,7 @@ class QDPlotterGui(GuiBase):
             self._plot_logic.update_auto_range, QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(self._plot_logic.do_fit, QtCore.Qt.QueuedConnection)
         self.sigRemovePlotClicked.connect(self._plot_logic.remove_plot, QtCore.Qt.QueuedConnection)
-        self._mw.new_plot_Action.triggered.connect(
-            self._plot_logic.add_plot, QtCore.Qt.QueuedConnection)
+
         # Connect signals from logic
         self._plot_logic.sigPlotDataUpdated.connect(self.update_data, QtCore.Qt.QueuedConnection)
         self._plot_logic.sigPlotParamsUpdated.connect(
@@ -203,19 +174,21 @@ class QDPlotterGui(GuiBase):
     def on_deactivate(self):
         """ Deactivate the module """
         # disconnect fit
-        self._mw.fit_settings_Action.triggered.disconnect()
+        self._mw.action_show_fit_configuration.triggered.disconnect()
 
-        self._mw.restore_tabbed_view_Action.triggered.disconnect()
-        self._mw.restore_side_by_side_view_Action.triggered.disconnect()
-        self._mw.restore_arc_view_Action.triggered.disconnect()
-        self._mw.save_all_Action.triggered.disconnect()
+        # Connect the main window restore view actions
+        self._mw.action_new_plot.triggered.disconnect()
+        self._mw.action_restore_tabbed_view.triggered.disconnect()
+        self._mw.action_restore_side_by_side_view.triggered.disconnect()
+        self._mw.action_restore_arced_view.triggered.disconnect()
+        self._mw.action_save_all.triggered.disconnect()
 
         # Disconnect signal to logic
         self.sigPlotParametersChanged.disconnect()
         self.sigAutoRangeClicked.disconnect()
         self.sigDoFit.disconnect()
         self.sigRemovePlotClicked.disconnect()
-        self._mw.new_plot_Action.triggered.disconnect()
+
         # Disconnect signals from logic
         self._plot_logic.sigPlotDataUpdated.disconnect(self.update_data)
         self._plot_logic.sigPlotParamsUpdated.disconnect(self.update_plot_parameters)
@@ -226,6 +199,7 @@ class QDPlotterGui(GuiBase):
         self.update_number_of_plots(0)
 
         #self._fsd.sigFitsUpdated.disconnect()
+        self._fit_config_dialog.close()
         self._mw.close()
 
     @QtCore.Slot(int)
@@ -249,12 +223,7 @@ class QDPlotterGui(GuiBase):
         # Add dock widgets if plot count increased
         while count > len(self._plot_dockwidgets):
             index = len(self._plot_dockwidgets)
-            dockwidget = PlotDockWidget('Plot {0:d}'.format(index + 1), self._mw)
-            #dockwidget.widget().fit_comboBox.setFitFunctions(self._fsd.currentFits)
-            dockwidget.widget().show_fit_checkBox.setChecked(False)
-            dockwidget.widget().show_controls_checkBox.setChecked(False)
-            dockwidget.widget().fit_groupBox.setVisible(False)
-            dockwidget.widget().controls_groupBox.setVisible(False)
+            dockwidget = PlotDockWidget(fit_container=self.qdplot_logic().fit_container, plot_number=index + 1)
             self._plot_dockwidgets.append(dockwidget)
             self._pen_colors.append(cycle(self._pen_color_list))
             self._plot_curves.append(list())
@@ -264,16 +233,16 @@ class QDPlotterGui(GuiBase):
             self.restore_view()
 
     def _connect_plot_signals(self, index):
-        dockwidget = self._plot_dockwidgets[index].widget()
+        dockwidget = self._plot_dockwidgets[index]
+        dockwidget.fit_widget.sigDoFit.connect(functools.partial(self.fit_clicked, index))
         #self._fsd.sigFitsUpdated.connect(dockwidget.fit_comboBox.setFitFunctions)
-        dockwidget.fit_pushButton.clicked.connect(functools.partial(self.fit_clicked, index))
 
         x_lim_callback = functools.partial(self.x_limits_changed, index)
-        dockwidget.x_lower_limit_DoubleSpinBox.valueChanged.connect(x_lim_callback)
-        dockwidget.x_upper_limit_DoubleSpinBox.valueChanged.connect(x_lim_callback)
+        dockwidget.x_lower_limit_spinBox.valueChanged.connect(x_lim_callback)
+        dockwidget.x_upper_limit_spinBox.valueChanged.connect(x_lim_callback)
         y_lim_callback = functools.partial(self.y_limits_changed, index)
-        dockwidget.y_lower_limit_DoubleSpinBox.valueChanged.connect(y_lim_callback)
-        dockwidget.y_upper_limit_DoubleSpinBox.valueChanged.connect(y_lim_callback)
+        dockwidget.y_lower_limit_spinBox.valueChanged.connect(y_lim_callback)
+        dockwidget.y_upper_limit_spinBox.valueChanged.connect(y_lim_callback)
 
         dockwidget.x_label_lineEdit.editingFinished.connect(
             functools.partial(self.x_label_changed, index))
@@ -284,40 +253,40 @@ class QDPlotterGui(GuiBase):
         dockwidget.y_unit_lineEdit.editingFinished.connect(
             functools.partial(self.y_unit_changed, index))
 
-        dockwidget.x_auto_PushButton.clicked.connect(
+        dockwidget.x_auto_button.clicked.connect(
             functools.partial(self.x_auto_range_clicked, index))
-        dockwidget.y_auto_PushButton.clicked.connect(
+        dockwidget.y_auto_button.clicked.connect(
             functools.partial(self.y_auto_range_clicked, index))
-        dockwidget.save_pushButton.clicked.connect(functools.partial(self.save_clicked, index))
-        dockwidget.remove_pushButton.clicked.connect(functools.partial(self.remove_clicked, index))
+        dockwidget.save_button.clicked.connect(functools.partial(self.save_clicked, index))
+        dockwidget.remove_button.clicked.connect(functools.partial(self.remove_clicked, index))
         self._pg_signal_proxys[index][0] = SignalProxy(
-            dockwidget.plot_PlotWidget.sigXRangeChanged,
+            dockwidget.plot_widget.sigXRangeChanged,
             delay=0.2,
             slot=lambda args: self._pyqtgraph_x_limits_changed(index, args[1]))
         self._pg_signal_proxys[index][1] = SignalProxy(
-            dockwidget.plot_PlotWidget.sigYRangeChanged,
+            dockwidget.plot_widget.sigYRangeChanged,
             delay=0.2,
             slot=lambda args: self._pyqtgraph_y_limits_changed(index, args[1]))
 
     def _disconnect_plot_signals(self, index):
-        dockwidget = self._plot_dockwidgets[index].widget()
+        dockwidget = self._plot_dockwidgets[index]
         #self._fsd.sigFitsUpdated.disconnect(dockwidget.fit_comboBox.setFitFunctions)
-        dockwidget.fit_pushButton.clicked.disconnect()
+        dockwidget.fit_widget.sigDoFit.disconnect()
 
-        dockwidget.x_lower_limit_DoubleSpinBox.valueChanged.disconnect()
-        dockwidget.x_upper_limit_DoubleSpinBox.valueChanged.disconnect()
-        dockwidget.y_lower_limit_DoubleSpinBox.valueChanged.disconnect()
-        dockwidget.y_upper_limit_DoubleSpinBox.valueChanged.disconnect()
+        dockwidget.x_lower_limit_spinBox.valueChanged.disconnect()
+        dockwidget.x_upper_limit_spinBox.valueChanged.disconnect()
+        dockwidget.y_lower_limit_spinBox.valueChanged.disconnect()
+        dockwidget.y_upper_limit_spinBox.valueChanged.disconnect()
 
         dockwidget.x_label_lineEdit.editingFinished.disconnect()
         dockwidget.x_unit_lineEdit.editingFinished.disconnect()
         dockwidget.y_label_lineEdit.editingFinished.disconnect()
         dockwidget.y_unit_lineEdit.editingFinished.disconnect()
 
-        dockwidget.x_auto_PushButton.clicked.disconnect()
-        dockwidget.y_auto_PushButton.clicked.disconnect()
-        dockwidget.save_pushButton.clicked.disconnect()
-        dockwidget.remove_pushButton.clicked.disconnect()
+        dockwidget.x_auto_button.clicked.disconnect()
+        dockwidget.y_auto_button.clicked.disconnect()
+        dockwidget.save_button.clicked.disconnect()
+        dockwidget.remove_button.clicked.disconnect()
         for sig_proxy in self._pg_signal_proxys[index]:
             sig_proxy.disconnect()
 
@@ -368,13 +337,13 @@ class QDPlotterGui(GuiBase):
         self.widget_alignment = alignment
 
         self._mw.setDockNestingEnabled(True)
-        self._mw.centralwidget.setVisible(False)
+        #self._mw.centralwidget.setVisible(False)
 
         for i, dockwidget in enumerate(self._plot_dockwidgets):
             dockwidget.show()
             dockwidget.setFloating(False)
-            dockwidget.widget().show_fit_checkBox.setChecked(False)
-            dockwidget.widget().show_controls_checkBox.setChecked(False)
+            dockwidget.show_fit(False)
+            dockwidget.show_controls(False)
             if alignment == 'tabbed':
                 self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockwidget)
                 if i > 0:
@@ -418,9 +387,9 @@ class QDPlotterGui(GuiBase):
         if clear_old is None:
             clear_old = self._plot_logic.clear_old_data(plot_index)
 
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         if clear_old:
-            dockwidget.plot_PlotWidget.clear()
+            dockwidget.plot_widget.clear()
             self._pen_colors[plot_index] = cycle(self._pen_color_list)
 
         self._plot_curves[plot_index] = list()
@@ -429,13 +398,13 @@ class QDPlotterGui(GuiBase):
         for line, xd in enumerate(x_data):
             yd = y_data[line]
             pen_color = next(self._pen_colors[plot_index])
-            self._plot_curves[plot_index].append(dockwidget.plot_PlotWidget.plot(
+            self._plot_curves[plot_index].append(dockwidget.plot_widget.plot(
                 pen=mkColor(pen_color),
                 symbol='d',
                 symbolSize=6,
                 symbolBrush=mkColor(pen_color)))
             self._plot_curves[plot_index][-1].setData(x=xd, y=yd)
-            self._fit_curves[plot_index].append(dockwidget.plot_PlotWidget.plot())
+            self._fit_curves[plot_index].append(dockwidget.plot_widget.plot())
             self._fit_curves[plot_index][-1].setPen('r')
 
     @QtCore.Slot(int)
@@ -446,7 +415,7 @@ class QDPlotterGui(GuiBase):
             self.log.warning('Tried to update plot with invalid index {0:d}'.format(plot_index))
             return
 
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         if params is None:
             params = dict()
             params['x_label'] = self._plot_logic.get_x_label(plot_index)
@@ -463,7 +432,7 @@ class QDPlotterGui(GuiBase):
                 label = self._plot_logic.get_x_label(plot_index)
             if unit is None:
                 unit = self._plot_logic.get_x_unit(plot_index)
-            dockwidget.plot_PlotWidget.setLabel('bottom', label, units=unit)
+            dockwidget.plot_widget.setLabel('bottom', label, units=unit)
             dockwidget.x_label_lineEdit.blockSignals(True)
             dockwidget.x_unit_lineEdit.blockSignals(True)
             dockwidget.x_label_lineEdit.setText(label)
@@ -477,7 +446,7 @@ class QDPlotterGui(GuiBase):
                 label = self._plot_logic.get_y_label(plot_index)
             if unit is None:
                 unit = self._plot_logic.get_y_unit(plot_index)
-            dockwidget.plot_PlotWidget.setLabel('left', label, units=unit)
+            dockwidget.plot_widget.setLabel('left', label, units=unit)
             dockwidget.y_label_lineEdit.blockSignals(True)
             dockwidget.y_unit_lineEdit.blockSignals(True)
             dockwidget.y_label_lineEdit.setText(label)
@@ -487,25 +456,25 @@ class QDPlotterGui(GuiBase):
         if 'x_limits' in params:
             limits = params['x_limits']
             self._pg_signal_proxys[plot_index][0].block = True
-            dockwidget.plot_PlotWidget.setXRange(*limits, padding=0)
+            dockwidget.plot_widget.setXRange(*limits, padding=0)
             self._pg_signal_proxys[plot_index][0].block = False
-            dockwidget.x_lower_limit_DoubleSpinBox.blockSignals(True)
-            dockwidget.x_upper_limit_DoubleSpinBox.blockSignals(True)
-            dockwidget.x_lower_limit_DoubleSpinBox.setValue(limits[0])
-            dockwidget.x_upper_limit_DoubleSpinBox.setValue(limits[1])
-            dockwidget.x_lower_limit_DoubleSpinBox.blockSignals(False)
-            dockwidget.x_upper_limit_DoubleSpinBox.blockSignals(False)
+            dockwidget.x_lower_limit_spinBox.blockSignals(True)
+            dockwidget.x_upper_limit_spinBox.blockSignals(True)
+            dockwidget.x_lower_limit_spinBox.setValue(limits[0])
+            dockwidget.x_upper_limit_spinBox.setValue(limits[1])
+            dockwidget.x_lower_limit_spinBox.blockSignals(False)
+            dockwidget.x_upper_limit_spinBox.blockSignals(False)
         if 'y_limits' in params:
             limits = params['y_limits']
             self._pg_signal_proxys[plot_index][1].block = True
-            dockwidget.plot_PlotWidget.setYRange(*limits, padding=0)
+            dockwidget.plot_widget.setYRange(*limits, padding=0)
             self._pg_signal_proxys[plot_index][1].block = False
-            dockwidget.y_lower_limit_DoubleSpinBox.blockSignals(True)
-            dockwidget.y_upper_limit_DoubleSpinBox.blockSignals(True)
-            dockwidget.y_lower_limit_DoubleSpinBox.setValue(limits[0])
-            dockwidget.y_upper_limit_DoubleSpinBox.setValue(limits[1])
-            dockwidget.y_lower_limit_DoubleSpinBox.blockSignals(False)
-            dockwidget.y_upper_limit_DoubleSpinBox.blockSignals(False)
+            dockwidget.y_lower_limit_spinBox.blockSignals(True)
+            dockwidget.y_upper_limit_spinBox.blockSignals(True)
+            dockwidget.y_lower_limit_spinBox.setValue(limits[0])
+            dockwidget.y_upper_limit_spinBox.setValue(limits[1])
+            dockwidget.y_lower_limit_spinBox.blockSignals(False)
+            dockwidget.y_upper_limit_spinBox.blockSignals(False)
 
     def save_clicked(self, plot_index):
         """ Handling the save button to save the data into a file. """
@@ -531,46 +500,47 @@ class QDPlotterGui(GuiBase):
 
     def x_limits_changed(self, plot_index):
         """ Handling the change of the parameter_1_x_limits. """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         self.sigPlotParametersChanged.emit(
             plot_index,
-            {'x_limits': [dockwidget.x_lower_limit_DoubleSpinBox.value(),
-                          dockwidget.x_upper_limit_DoubleSpinBox.value()]})
+            {'x_limits': [dockwidget.x_lower_limit_spinBox.value(),
+                          dockwidget.x_upper_limit_spinBox.value()]})
 
     def y_limits_changed(self, plot_index):
         """ Handling the change of the parameter_1_y_limits. """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         self.sigPlotParametersChanged.emit(
             plot_index,
-            {'y_limits': [dockwidget.y_lower_limit_DoubleSpinBox.value(),
-                          dockwidget.y_upper_limit_DoubleSpinBox.value()]})
+            {'y_limits': [dockwidget.y_lower_limit_spinBox.value(),
+                          dockwidget.y_upper_limit_spinBox.value()]})
 
     def x_label_changed(self, plot_index):
         """ Set the x-label """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         self.sigPlotParametersChanged.emit(plot_index,
                                            {'x_label': dockwidget.x_label_lineEdit.text()})
 
     def y_label_changed(self, plot_index):
         """ Set the y-label and the uni of plot 1 """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         self.sigPlotParametersChanged.emit(plot_index,
                                            {'y_label': dockwidget.y_label_lineEdit.text()})
 
     def x_unit_changed(self, plot_index):
         """ Set the x-label """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         self.sigPlotParametersChanged.emit(plot_index,
                                            {'x_unit': dockwidget.x_unit_lineEdit.text()})
 
     def y_unit_changed(self, plot_index):
         """ Set the y-label and the uni of plot 1 """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
         self.sigPlotParametersChanged.emit(plot_index,
                                            {'y_unit': dockwidget.y_unit_lineEdit.text()})
 
-    def fit_clicked(self, plot_index=0):
+    def fit_clicked(self, plot_index=0, fit_function='No Fit'):
         """ Triggers the fit to be done. Attention, this runs in the GUI thread. """
+        print('fit_clicked', plot_index, fit_function)
         #current_fit_method = self._plot_dockwidgets[plot_index].widget().fit_comboBox.getCurrentFit()[0]
         #self.sigDoFit.emit(current_fit_method, plot_index)
 
@@ -583,7 +553,7 @@ class QDPlotterGui(GuiBase):
         @param str formatted_fitresult: string containing the parameters already formatted
         @param str fit_method: the fit_method used
         """
-        dockwidget = self._plot_dockwidgets[plot_index].widget()
+        dockwidget = self._plot_dockwidgets[plot_index]
 
         if fit_data is None or formatted_fitresult is None or fit_method is None:
             fit_data, formatted_fitresult, fit_method = self._plot_logic.get_fit_data(plot_index)
@@ -593,30 +563,31 @@ class QDPlotterGui(GuiBase):
 
         #dockwidget.fit_comboBox.blockSignals(True)
 
-        dockwidget.show_fit_checkBox.setChecked(True)
-        dockwidget.fit_textBrowser.clear()
+        dockwidget.show_fit(True)
+        #dockwidget.fit_textBrowser.clear()
         #dockwidget.fit_comboBox.setCurrentFit(fit_method)
+
         if fit_method == 'No Fit':
             for index, curve in enumerate(self._fit_curves[plot_index]):
-                if curve in dockwidget.plot_PlotWidget.items():
-                    dockwidget.plot_PlotWidget.removeItem(curve)
+                if curve in dockwidget.plot_widget.items():
+                    dockwidget.plot_widget.removeItem(curve)
         else:
-            dockwidget.fit_textBrowser.setPlainText(formatted_fitresult)
+            #dockwidget.fit_textBrowser.setPlainText(formatted_fitresult)
             for index, curve in enumerate(self._fit_curves[plot_index]):
-                if curve not in dockwidget.plot_PlotWidget.items():
-                    dockwidget.plot_PlotWidget.addItem(curve)
+                if curve not in dockwidget.plot_widget.items():
+                    dockwidget.plot_widget.addItem(curve)
                 curve.setData(x=fit_data[index][0], y=fit_data[index][1])
 
         #dockwidget.fit_comboBox.blockSignals(False)
 
     def _pyqtgraph_x_limits_changed(self, plot_index, limits):
-        plot_item = self._plot_dockwidgets[plot_index].widget().plot_PlotWidget.getPlotItem()
+        plot_item = self._plot_dockwidgets[plot_index].plot_widget.getPlotItem()
         if plot_item.ctrl.logXCheck.isChecked() or plot_item.ctrl.fftCheck.isChecked():
             return
         self.sigPlotParametersChanged.emit(plot_index, {'x_limits': limits})
 
     def _pyqtgraph_y_limits_changed(self, plot_index, limits):
-        plot_item = self._plot_dockwidgets[plot_index].widget().plot_PlotWidget.getPlotItem()
+        plot_item = self._plot_dockwidgets[plot_index].plot_widget.getPlotItem()
         if plot_item.ctrl.logYCheck.isChecked() or plot_item.ctrl.fftCheck.isChecked():
             return
         self.sigPlotParametersChanged.emit(plot_index, {'y_limits': limits})
