@@ -22,7 +22,7 @@ try:
 except ImportError:
     pass
 
-__all__ = ('ConfigurationEditorMainWindow', 'ConfigurationEditor')
+__all__ = ('main', 'ConfigurationEditorMainWindow', 'ConfigurationEditor')
 
 
 class ConfigurationEditorMainWindow(QtWidgets.QMainWindow):
