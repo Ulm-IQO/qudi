@@ -148,6 +148,8 @@ class SwitchGui(GuiBase):
             self._switches_updated, QtCore.Qt.QueuedConnection
         )
 
+        self._restore_window_geometry(self._mw)
+
         self._watchdog_updated(self.switchlogic().watchdog_active)
         self._switches_updated(self.switchlogic().states)
         self._update_state_colorscheme()
@@ -164,7 +166,7 @@ class SwitchGui(GuiBase):
         self._mw.action_periodic_state_check.toggled.disconnect()
         self.sigSwitchChanged.disconnect()
 
-        self.saveWindowPos(self._mw)
+        self._save_window_geometry(self._mw)
         self._delete_switches()
         self._mw.close()
 
