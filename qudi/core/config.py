@@ -29,6 +29,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import re
 import copy
 import numpy as np
 import ruamel.yaml as _yaml
@@ -254,7 +255,9 @@ class Configuration(QtCore.QObject):
     _forbidden_options = {
         'module.Class', 'allow_remote', 'connect', 'remote_url', 'keyfile', 'certfile'
     }
-    _allowed_remote_bases = {'gui', 'logic'}  # ToDo: Should logic modules be excluded here?
+    _allowed_remote_bases = {'logic', 'hardware'}  # ToDo: Should logic modules be excluded here?
+
+    _module_name_regex = re.compile(r'^\w+(\s\w+)*$')
 
     def __init__(self, *args, file_path=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -354,9 +357,12 @@ class Configuration(QtCore.QObject):
     def stylesheet(self):
         """ Absolute .qss file path used as stylesheet for qudi Qt application.
 
-        @return str|None: Absolute file path to stylesheet, None if not configured
+        @return str|None: Absolute file path to stylesheet file, None if not configured
         """
-        return self._global_config.get('stylesheet', None)
+        stylesheet = self._global_config.get('stylesheet', None)
+        if not os.path.dirname(stylesheet):
+            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', 'application', stylesheet)
+        return os.path.abspath(stylesheet)
 
     @stylesheet.setter
     def stylesheet(self, file_path):
@@ -366,7 +372,7 @@ class Configuration(QtCore.QObject):
         If stylesheet path is set to None, it will be removed from config. This will cause the
         application to fall back to platform dependent Qt defaults.
 
-        @param str|None file_path: absolute or relative path to qss stylesheet
+        @param str|None file_path: Absolute file path to stylesheet or file name
         """
         assert file_path is None or isinstance(file_path, str), 'stylesheet must be None or str'
 
@@ -375,10 +381,11 @@ class Configuration(QtCore.QObject):
             return
 
         assert file_path.endswith('.qss'), 'stylesheet file must have ".qss" extension'
-
         if not os.path.isabs(file_path):
-            file_path = os.path.join(_paths.get_artwork_dir(), 'styles', 'application', file_path)
-        self._global_config['stylesheet'] = os.path.abspath(file_path)
+            assert not os.path.dirname(file_path), \
+                'stylesheet must either be file name or absolute path'
+
+        self._global_config['stylesheet'] = file_path
         self.sigConfigChanged.emit(self)
 
     @property
@@ -439,7 +446,7 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     def add_local_module(self, name, base, module, cls):
-        assert isinstance(name, str) and name, 'qudi module config name must be non-empty str'
+        self.check_module_name(name)
         assert isinstance(module, str) and module, 'qudi module config module must be non-empty str'
         assert isinstance(cls, str) and cls, 'qudi module config cls must be non-empty str'
         assert base in self._module_config, f'module base must be in {tuple(self._module_config)}'
@@ -448,7 +455,7 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     def add_remote_module(self, name, base, remote_url):
-        assert isinstance(name, str) and name, 'qudi module config name must be non-empty str'
+        self.check_module_name(name)
         assert isinstance(remote_url, str) and remote_url, \
             'qudi module config remote_url must be non-empty str'
         assert base in self._allowed_remote_bases, \
@@ -459,6 +466,19 @@ class Configuration(QtCore.QObject):
                                            'keyfile': None,
                                            'certfile': None}
         self.sigConfigChanged.emit(self)
+
+    def rename_module(self, old_name, new_name):
+        if old_name == new_name:
+            return
+        self.check_module_name(new_name)
+        assert new_name not in self.module_names, \
+            f'Module by name "{new_name}" already defined in config'
+        cfg_dict = self.get_module_config(old_name)
+        for module_cfg in self._module_config.values():
+            if old_name in module_cfg:
+                del module_cfg[old_name]
+                module_cfg[new_name] = cfg_dict
+                break
 
     def set_module_connections(self, name, connections):
         if connections is None:
@@ -533,14 +553,13 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     def remove_module(self, name):
-        assert isinstance(name, str), 'name of module to remove must be str type'
         for cfg_dict in self._module_config.values():
             if cfg_dict.pop(name, None) is not None:
+                self.sigConfigChanged.emit(self)
                 break
-        self.sigConfigChanged.emit(self)
 
     def get_module_config(self, name):
-        assert isinstance(name, str) and name, 'qudi module config name must be non-empty str'
+        self.check_module_name(name)
         for module_cfg in self._module_config.values():
             try:
                 return module_cfg[name]
@@ -633,6 +652,11 @@ class Configuration(QtCore.QObject):
     def is_local_module(self, name):
         module_cfg = self.get_module_config(name)
         return 'module.Class' in module_cfg and 'remote_url' not in module_cfg
+
+    def check_module_name(self, name):
+        if self._module_name_regex.match(name) is None:
+            raise ValueError('qudi module config name must be non-empty str containing only '
+                             'unicode word characters and spaces.')
 
     @staticmethod
     def set_default_config_path(path):

@@ -17,6 +17,10 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
     _add_icon_path = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '64x64', 'add-icon.png')
     _remove_icon_path = os.path.join(os.path.dirname(_add_icon_path), 'remove-icon.png')
 
+    _non_config_options = frozenset(
+        {'connect', 'allow_remote', 'module.Class', 'remote_url', 'certfile', 'keyfile'}
+    )
+
     def __init__(self, *args, available_modules=None, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -35,16 +39,25 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         self.placeholder_label.setAlignment(QtCore.Qt.AlignCenter)
         self.placeholder_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                              QtWidgets.QSizePolicy.Expanding)
+        self.specify_name_label = QtWidgets.QLabel(
+            'Please enter a unique module name before editing module config.'
+        )
+        self.specify_name_label.setFont(font2)
+        self.specify_name_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.specify_name_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                              QtWidgets.QSizePolicy.Expanding)
         self.footnote_label = QtWidgets.QLabel('* Mandatory Connector/ConfigOption')
         self.footnote_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.header_label)
         layout.addWidget(self.placeholder_label)
+        layout.addWidget(self.specify_name_label)
         layout.addWidget(self.splitter)
         layout.addWidget(self.footnote_label)
         layout.setStretch(1, 1)
         layout.setStretch(2, 1)
+        layout.setStretch(3, 1)
         self.setLayout(layout)
 
         # connector layout
@@ -56,15 +69,19 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         hline = QtWidgets.QFrame()
         hline.setFrameShape(QtWidgets.QFrame.HLine)
         hline.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.add_connector_button = QtWidgets.QToolButton()
-        self.add_connector_button.setIcon(QtGui.QIcon(self._add_icon_path))
-        self.add_connector_button.clicked.connect(self.add_custom_connector)
         self.connector_layout.addWidget(name_header, 0, 1)
         self.connector_layout.addWidget(value_header, 0, 2)
         self.connector_layout.addWidget(hline, 1, 0, 1, 3)
-        self.connector_layout.addWidget(self.add_connector_button, 2, 0)
-        self.connector_layout.setColumnStretch(1, 1)
         self.connector_layout.setColumnStretch(2, 1)
+        add_connector_layout = QtWidgets.QHBoxLayout()
+        add_connector_layout.setStretch(1, 1)
+        self.add_connector_button = QtWidgets.QToolButton()
+        self.add_connector_button.setIcon(QtGui.QIcon(self._add_icon_path))
+        self.add_connector_button.clicked.connect(self.add_custom_connector)
+        self.add_connector_lineedit = QtWidgets.QLineEdit()
+        self.add_connector_lineedit.setPlaceholderText('Enter custom connector name')
+        add_connector_layout.addWidget(self.add_connector_button)
+        add_connector_layout.addWidget(self.add_connector_lineedit)
 
         # options layout
         self.options_layout = QtWidgets.QGridLayout()
@@ -75,37 +92,75 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         hline = QtWidgets.QFrame()
         hline.setFrameShape(QtWidgets.QFrame.HLine)
         hline.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.add_option_button = QtWidgets.QToolButton()
-        self.add_option_button.setIcon(QtGui.QIcon(self._add_icon_path))
-        self.add_option_button.clicked.connect(self.add_custom_option)
         self.options_layout.addWidget(name_header, 0, 1)
         self.options_layout.addWidget(value_header, 0, 2)
         self.options_layout.addWidget(hline, 1, 0, 1, 3)
-        self.options_layout.addWidget(self.add_option_button, 2, 0)
-        self.options_layout.setColumnStretch(1, 1)
         self.options_layout.setColumnStretch(2, 1)
+        add_option_layout = QtWidgets.QHBoxLayout()
+        add_option_layout.setStretch(1, 1)
+        self.add_option_button = QtWidgets.QToolButton()
+        self.add_option_button.setIcon(QtGui.QIcon(self._add_icon_path))
+        self.add_option_button.clicked.connect(self.add_custom_option)
+        self.add_option_lineedit = QtWidgets.QLineEdit()
+        self.add_option_lineedit.setPlaceholderText('Enter custom option name')
+        add_option_layout.addWidget(self.add_option_button)
+        add_option_layout.addWidget(self.add_option_lineedit)
 
         # meta layout
-        meta_layout = QtWidgets.QGridLayout()
+        meta_layout = QtWidgets.QVBoxLayout()
         name_header = QtWidgets.QLabel('Module Meta')
         name_header.setFont(font2)
-        self.allow_remote_checkbox = QtWidgets.QCheckBox()
-        label = QtWidgets.QLabel('Allow Remote Access:')
-        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         hline = QtWidgets.QFrame()
         hline.setFrameShape(QtWidgets.QFrame.HLine)
         hline.setFrameShadow(QtWidgets.QFrame.Sunken)
-        meta_layout.addWidget(name_header, 0, 0, 1, 2)
-        meta_layout.addWidget(hline, 1, 0, 1, 2)
-        meta_layout.addWidget(label, 2, 0)
-        meta_layout.addWidget(self.allow_remote_checkbox, 2, 1)
-        meta_layout.setColumnStretch(1, 1)
+        meta_layout.addWidget(name_header)
+        meta_layout.addWidget(hline)
+
+        self.module_meta_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout()
+        layout.setStretch(1, 1)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.module_meta_widget.setLayout(layout)
+        self.allow_remote_checkbox = QtWidgets.QCheckBox()
+        self.allow_remote_checkbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Preferred)
+        label = QtWidgets.QLabel('Allow Remote Access:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label)
+        layout.addWidget(self.allow_remote_checkbox)
+        meta_layout.addWidget(self.module_meta_widget)
+
+        self.remote_meta_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.remote_meta_widget.setLayout(layout)
+        self.remote_url_lineedit = QtWidgets.QLineEdit()
+        label = QtWidgets.QLabel('* Remote URL:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 0, 0)
+        layout.addWidget(self.remote_url_lineedit, 0, 1)
+        self.remote_certfile_lineedit = QtWidgets.QLineEdit()
+        label = QtWidgets.QLabel('Remote certfile:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 1, 0)
+        layout.addWidget(self.remote_certfile_lineedit, 1, 1)
+        self.remote_keyfile_lineedit = QtWidgets.QLineEdit()
+        label = QtWidgets.QLabel('Remote keyfile:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 2, 0)
+        layout.addWidget(self.remote_keyfile_lineedit, 2, 1)
+        meta_layout.addWidget(self.remote_meta_widget)
 
         # Stack layouts and add them to splitter
         left_layout = QtWidgets.QVBoxLayout()
         left_layout.addLayout(meta_layout)
         left_layout.addSpacing(2 * name_header.sizeHint().height())
         left_layout.addLayout(self.options_layout)
+        hline = QtWidgets.QFrame()
+        hline.setFrameShape(QtWidgets.QFrame.HLine)
+        hline.setFrameShadow(QtWidgets.QFrame.Sunken)
+        left_layout.addWidget(hline)
+        left_layout.addLayout(add_option_layout)
         left_layout.addStretch(1)
         left_widget = QtWidgets.QWidget()
         left_widget.setLayout(left_layout)
@@ -118,6 +173,11 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
 
         right_layout = QtWidgets.QVBoxLayout()
         right_layout.addLayout(self.connector_layout)
+        hline = QtWidgets.QFrame()
+        hline.setFrameShape(QtWidgets.QFrame.HLine)
+        hline.setFrameShadow(QtWidgets.QFrame.Sunken)
+        right_layout.addWidget(hline)
+        right_layout.addLayout(add_connector_layout)
         right_layout.addStretch(1)
         right_widget = QtWidgets.QWidget()
         right_widget.setLayout(right_layout)
@@ -136,8 +196,8 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         # Containers to keep track of editor widgets
         self.opt_widgets = dict()
         self.conn_widgets = dict()
-        self.custom_opt_widgets = list()
-        self.custom_conn_widgets = list()
+        self.custom_opt_widgets = dict()
+        self.custom_conn_widgets = dict()
         self.currently_edited_module = None
 
         # Remember available modules
@@ -145,6 +205,7 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
 
         # toggle closed editor
         self.splitter.setVisible(False)
+        self.specify_name_label.setVisible(False)
 
     @property
     def not_connected_str(self):
@@ -156,8 +217,8 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         connections = {c: w.currentText() for c, (_, w) in self.conn_widgets.items() if
                        w.currentText() != self.not_connected_str}
         connections.update(
-            {w[1].text().strip(): w[2].currentText() for w in self.custom_conn_widgets if
-             w[2].currentText() != self.not_connected_str}
+            {c: w.currentText() for c, (_, _, w) in self.custom_conn_widgets.items() if
+             w.currentText() != self.not_connected_str}
         )
         return connections
 
@@ -167,8 +228,8 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
             opt: eval(w.text()) for opt, (_, w) in self.opt_widgets.items() if w.text().strip()
         }
         options.update(
-            {w[1].text().strip(): eval(w[2].text()) for w in self.custom_opt_widgets if
-             w[2].text().strip()}
+            {opt: eval(w.text()) for opt, (_, _, w) in self.custom_opt_widgets.items() if
+             w.text().strip()}
         )
         return options
 
@@ -177,126 +238,100 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         return {'allow_remote': self.allow_remote_checkbox.isChecked()}
 
     @QtCore.Slot()
-    def add_custom_connector(self, name='', target=None):
-        # Create editor widgets for new connector
-        name_editor = QtWidgets.QLineEdit(name)
-        name_editor.setPlaceholderText('<Enter name for connector>')
-        name_editor.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        target_editor = QtWidgets.QComboBox()
-        target_editor.addItem(self.not_connected_str)
-        target_editor.addItems(self._available_modules)
-        if target in self._available_modules:
-            target_editor.setCurrentText(target)
-        remove_button = QtWidgets.QToolButton()
-        remove_button.setIcon(QtGui.QIcon(self._remove_icon_path))
-        remove_button.clicked.connect(lambda: self.remove_custom_connector(id(remove_button)))
-        row = 2 + len(self.conn_widgets) + len(self.custom_conn_widgets)
-        self.connector_layout.removeWidget(self.add_connector_button)
-        self.connector_layout.addWidget(remove_button, row, 0)
-        self.connector_layout.addWidget(name_editor, row, 1)
-        self.connector_layout.addWidget(target_editor, row, 2)
-        self.connector_layout.addWidget(self.add_connector_button, row+1, 0)
-        self.custom_conn_widgets.append((remove_button, name_editor, target_editor))
+    def add_custom_connector(self, target=None):
+        name = self.add_connector_lineedit.text().strip()
+        if name and (name not in self.conn_widgets) and (name not in self.custom_conn_widgets):
+            self.add_connector_lineedit.clear()
+            # Create editor widgets for new connector
+            label = QtWidgets.QLabel(f'{name}:')
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            editor = QtWidgets.QComboBox()
+            editor.addItem(self.not_connected_str)
+            editor.addItems(self._available_modules)
+            if target in self._available_modules:
+                editor.setCurrentText(target)
+            remove_button = QtWidgets.QToolButton()
+            remove_button.setIcon(QtGui.QIcon(self._remove_icon_path))
+            remove_button.clicked.connect(lambda: self.remove_custom_connector(name))
+            row = 2 + len(self.conn_widgets) + len(self.custom_conn_widgets)
+            self.connector_layout.addWidget(remove_button, row, 0)
+            self.connector_layout.addWidget(label, row, 1)
+            self.connector_layout.addWidget(editor, row, 2)
+            self.custom_conn_widgets[name] = (remove_button, label, editor)
 
     @QtCore.Slot()
-    def remove_custom_connector(self, button_id=None):
-        if not self.custom_conn_widgets:
+    def remove_custom_connector(self, name):
+        if name not in self.custom_conn_widgets:
             return
 
-        if button_id is None:
-            index = len(self.custom_conn_widgets) - 1
-        else:
-            current_ids = [id(button) for button, _, _ in self.custom_conn_widgets]
-            try:
-                index = current_ids.index(button_id)
-            except ValueError:
-                return
-
         # Remove all widgets from layout
-        self.connector_layout.removeWidget(self.add_connector_button)
-        for button, lineedit, combobox in reversed(self.custom_conn_widgets):
+        for button, label, editor in reversed(list(self.custom_conn_widgets.values())):
             self.connector_layout.removeWidget(button)
-            self.connector_layout.removeWidget(lineedit)
-            self.connector_layout.removeWidget(combobox)
+            self.connector_layout.removeWidget(label)
+            self.connector_layout.removeWidget(editor)
 
         # Delete widgets for row to remove
-        button, lineedit, combobox = self.custom_conn_widgets.pop(index)
+        button, label, editor = self.custom_conn_widgets.pop(name)
         button.clicked.disconnect()
         button.setParent(None)
-        lineedit.setParent(None)
-        combobox.setParent(None)
+        label.setParent(None)
+        editor.setParent(None)
         button.deleteLater()
-        lineedit.deleteLater()
-        combobox.deleteLater()
+        label.deleteLater()
+        editor.deleteLater()
 
         # Add all remaining widgets to layout
         row_offset = 2 + len(self.conn_widgets)
-        for row, (button, lineedit, combobox) in enumerate(self.custom_conn_widgets, row_offset):
+        for row, (button, label, editor) in enumerate(self.custom_conn_widgets.values(), row_offset):
             self.connector_layout.addWidget(button, row, 0)
-            self.connector_layout.addWidget(lineedit, row, 1)
-            self.connector_layout.addWidget(combobox, row, 2)
-        self.connector_layout.addWidget(self.add_connector_button,
-                                        row_offset + len(self.custom_conn_widgets),
-                                        0)
+            self.connector_layout.addWidget(label, row, 1)
+            self.connector_layout.addWidget(editor, row, 2)
 
     @QtCore.Slot()
-    def add_custom_option(self, name='', value_str=''):
+    def add_custom_option(self, value_str=''):
         # Create editor widgets for new config option
-        name_editor = QtWidgets.QLineEdit(name)
-        name_editor.setPlaceholderText('<Enter name for option>')
-        name_editor.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        value_editor = QtWidgets.QLineEdit(value_str)
-        remove_button = QtWidgets.QToolButton()
-        remove_button.setIcon(QtGui.QIcon(self._remove_icon_path))
-        remove_button.clicked.connect(lambda: self.remove_custom_option(id(remove_button)))
-        row = 2 + len(self.opt_widgets) + len(self.custom_opt_widgets)
-        self.options_layout.removeWidget(self.add_option_button)
-        self.options_layout.addWidget(remove_button, row, 0)
-        self.options_layout.addWidget(name_editor, row, 1)
-        self.options_layout.addWidget(value_editor, row, 2)
-        self.options_layout.addWidget(self.add_option_button, row + 1, 0)
-        self.custom_opt_widgets.append((remove_button, name_editor, value_editor))
+        name = self.add_option_lineedit.text().strip()
+        if name and (name not in self.opt_widgets) and (name not in self.custom_opt_widgets):
+            self.add_option_lineedit.clear()
+            label = QtWidgets.QLabel(f'{name}:')
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            value_editor = QtWidgets.QLineEdit(value_str if isinstance(value_str, str) else '')
+            remove_button = QtWidgets.QToolButton()
+            remove_button.setIcon(QtGui.QIcon(self._remove_icon_path))
+            remove_button.clicked.connect(lambda: self.remove_custom_option(name))
+            row = 2 + len(self.opt_widgets) + len(self.custom_opt_widgets)
+            self.options_layout.addWidget(remove_button, row, 0)
+            self.options_layout.addWidget(label, row, 1)
+            self.options_layout.addWidget(value_editor, row, 2)
+            self.custom_opt_widgets[name] = (remove_button, label, value_editor)
 
-    @QtCore.Slot()
-    def remove_custom_option(self, button_id=None):
-        if not self.custom_opt_widgets:
+    @QtCore.Slot(str)
+    def remove_custom_option(self, name):
+        if name not in self.custom_opt_widgets:
             return
 
-        if button_id is None:
-            index = len(self.custom_opt_widgets) - 1
-        else:
-            current_ids = [id(button) for button, _, _ in self.custom_opt_widgets]
-            try:
-                index = current_ids.index(button_id)
-            except ValueError:
-                return
-
         # Remove all widgets from layout
-        self.options_layout.removeWidget(self.add_connector_button)
-        for button, name_edit, value_edit in reversed(self.custom_opt_widgets):
+        for button, label, editor in reversed(list(self.custom_opt_widgets.values())):
             self.options_layout.removeWidget(button)
-            self.options_layout.removeWidget(name_edit)
-            self.options_layout.removeWidget(value_edit)
+            self.options_layout.removeWidget(label)
+            self.options_layout.removeWidget(editor)
 
         # Delete widgets for row to remove
-        button, name_edit, value_edit = self.custom_opt_widgets.pop(index)
+        button, label, editor = self.custom_opt_widgets.pop(name)
         button.clicked.disconnect()
         button.setParent(None)
-        name_edit.setParent(None)
-        value_edit.setParent(None)
+        label.setParent(None)
+        editor.setParent(None)
         button.deleteLater()
-        name_edit.deleteLater()
-        value_edit.deleteLater()
+        label.deleteLater()
+        editor.deleteLater()
 
         # Add all remaining widgets to layout
         row_offset = 2 + len(self.opt_widgets)
-        for row, (button, name_edit, value_edit) in enumerate(self.custom_opt_widgets, row_offset):
+        for row, (button, label, editor) in enumerate(self.custom_opt_widgets.values(), row_offset):
             self.options_layout.addWidget(button, row, 0)
-            self.options_layout.addWidget(name_edit, row, 1)
-            self.options_layout.addWidget(value_edit, row, 2)
-        self.options_layout.addWidget(self.add_option_button,
-                                      row_offset + len(self.custom_opt_widgets),
-                                      0)
+            self.options_layout.addWidget(label, row, 1)
+            self.options_layout.addWidget(editor, row, 2)
 
     def set_available_modules(self, module_names):
         for combobox in self.conn_widgets.values():
@@ -307,7 +342,7 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
 
     def open_module_editor(self, name, config_dict=None, mandatory_conn_targets=None,
                            optional_conn_targets=None, mandatory_options=None,
-                           optional_options=None):
+                           optional_options=None, is_remote_module=False):
         """
         """
         if name == self.currently_edited_module:
@@ -334,8 +369,13 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
         # Extract current config info
         connections = config_dict.get('connect', dict())
         allow_remote_access = config_dict.get('allow_remote', False)
-        options = {key: value for key, value in config_dict.items() if
-                   key not in ('connect', 'allow_remote', 'module.Class')}
+        remote_url = config_dict.get('remote_url', '')
+        remote_certfile = config_dict.get('certfile', '')
+        remote_keyfile = config_dict.get('keyfile', '')
+
+        options = {
+            key: value for key, value in config_dict.items() if key not in self._non_config_options
+        }
         custom_connectors = [
             c for c in connections if c not in {*mandatory_conn_targets, *optional_conn_targets}
         ]
@@ -345,9 +385,11 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
 
         # Update module meta data editors
         self.allow_remote_checkbox.setChecked(allow_remote_access)
+        self.remote_url_lineedit.setText(remote_url)
+        self.remote_certfile_lineedit.setText(remote_certfile)
+        self.remote_keyfile_lineedit.setText(remote_keyfile)
 
         # add all connectors
-        self.connector_layout.removeWidget(self.add_connector_button)
         row = 2
         for conn, valid_targets in mandatory_conn_targets.items():
             label = QtWidgets.QLabel(f'* {conn}:')
@@ -375,12 +417,10 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
             self.connector_layout.addWidget(combobox, row, 2)
             self.conn_widgets[conn] = (label, combobox)
             row += 1
-        self.connector_layout.addWidget(self.add_connector_button, row, 0)
         for conn in custom_connectors:
             self.add_custom_connector(conn, connections.get(conn, None))
 
         # add all options
-        self.options_layout.removeWidget(self.add_option_button)
         row = 2
         for opt in mandatory_options:
             label = QtWidgets.QLabel(f'* {opt}:')
@@ -398,12 +438,16 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
             self.options_layout.addWidget(lineedit, row, 2)
             self.opt_widgets[opt] = (label, lineedit)
             row += 1
-        self.options_layout.addWidget(self.add_option_button, row, 0)
         for opt in custom_options:
             self.add_custom_option(opt, repr(options.get(opt, None)))
 
+        # Show different meta option editors for remote modules
+        self.module_meta_widget.setVisible(not is_remote_module)
+        self.remote_meta_widget.setVisible(is_remote_module)
+
         # Show editor
         self.placeholder_label.setVisible(False)
+        self.specify_name_label.setVisible(False)
         self.splitter.setVisible(True)
 
     def commit_module_config(self):
@@ -414,44 +458,53 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
                                               self.meta_options)
 
     def close_module_editor(self):
+        self.placeholder_label.setVisible(True)
+        self.specify_name_label.setVisible(False)
+        self.splitter.setVisible(False)
         if self.currently_edited_module is not None:
             self.commit_module_config()
-            self.placeholder_label.setVisible(True)
-            self.splitter.setVisible(False)
             self._clear_editor_widgets()
             self.header_label.setText('')
             self.currently_edited_module = None
 
-    def _clear_editor_widgets(self):
-        # First remove "add custom ..." buttons
-        self.connector_layout.removeWidget(self.add_connector_button)
-        self.options_layout.removeWidget(self.add_option_button)
+    def show_invalid_module_label(self):
+        self.close_module_editor()
+        self.specify_name_label.setVisible(True)
+        self.placeholder_label.setVisible(False)
+        self.splitter.setVisible(False)
 
+    def hide_invalid_module_label(self):
+        if self.currently_edited_module is None:
+            self.placeholder_label.setVisible(True)
+            self.specify_name_label.setVisible(False)
+            self.splitter.setVisible(False)
+
+    def _clear_editor_widgets(self):
         # Remove custom connectors and options
-        for button, name_edit, value_edit in reversed(self.custom_opt_widgets):
+        for button, label, editor in reversed(list(self.custom_opt_widgets.values())):
             self.options_layout.removeWidget(button)
-            self.options_layout.removeWidget(name_edit)
-            self.options_layout.removeWidget(value_edit)
+            self.options_layout.removeWidget(label)
+            self.options_layout.removeWidget(editor)
             button.clicked.disconnect()
             button.setParent(None)
-            name_edit.setParent(None)
-            value_edit.setParent(None)
+            label.setParent(None)
+            editor.setParent(None)
             button.deleteLater()
-            name_edit.deleteLater()
-            value_edit.deleteLater()
-        self.custom_opt_widgets = list()
-        for button, lineedit, combobox in reversed(self.custom_conn_widgets):
+            label.deleteLater()
+            editor.deleteLater()
+        self.custom_opt_widgets = dict()
+        for button, label, editor in reversed(list(self.custom_conn_widgets.values())):
             self.connector_layout.removeWidget(button)
-            self.connector_layout.removeWidget(lineedit)
-            self.connector_layout.removeWidget(combobox)
+            self.connector_layout.removeWidget(label)
+            self.connector_layout.removeWidget(editor)
             button.clicked.disconnect()
             button.setParent(None)
-            lineedit.setParent(None)
-            combobox.setParent(None)
+            label.setParent(None)
+            editor.setParent(None)
             button.deleteLater()
-            lineedit.deleteLater()
-            combobox.deleteLater()
-        self.custom_conn_widgets = list()
+            label.deleteLater()
+            editor.deleteLater()
+        self.custom_conn_widgets = dict()
 
         # Remove "normal" connectors and options
         for label, lineedit in reversed(self.opt_widgets.values()):
@@ -470,10 +523,6 @@ class ModuleConfigurationWidget(QtWidgets.QWidget):
             label.deleteLater()
             combobox.deleteLater()
         self.conn_widgets = dict()
-
-        # Add "add custom ..." buttons again
-        self.connector_layout.addWidget(self.add_connector_button, 2, 0)
-        self.options_layout.addWidget(self.add_option_button, 2, 0)
 
 
 if __name__ == '__main__':
