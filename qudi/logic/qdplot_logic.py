@@ -24,8 +24,8 @@ Completely reworked by Kay Jahnke, May 2020
 from qtpy import QtCore
 import numpy as np
 import matplotlib.pyplot as plt
+import traceback
 
-from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import RecursiveMutex
@@ -57,9 +57,6 @@ class QDPlotLogic(LogicBase):
     sigPlotNumberChanged = QtCore.Signal(int)
     sigFitUpdated = QtCore.Signal(int, np.ndarray, str, str)
 
-    # declare connectors
-    #fit_logic = Connector(interface='FitLogic')
-
     _default_plot_number = ConfigOption(name='default_plot_number', default=3)
 
     _fit_configs = StatusVar(name='fit_configs', default=None)
@@ -72,7 +69,7 @@ class QDPlotLogic(LogicBase):
         """
         super().__init__(*args, **kwargs)
 
-        #self._fit_logic = None
+        # self._fit_logic = None
 
         # locking for thread safety
         self.threadlock = RecursiveMutex()
@@ -104,7 +101,7 @@ class QDPlotLogic(LogicBase):
         self._fit_config_model.load_configs(self._fit_configs)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
 
-        #self._fit_logic = self.fit_logic()
+        # self._fit_logic = self.fit_logic()
 
         self._clear_old = list()
         self._x_limits = list()
@@ -125,7 +122,7 @@ class QDPlotLogic(LogicBase):
         """ De-initialisation performed during deactivation of the module. """
         for i in reversed(range(self.number_of_plots)):
             self.remove_plot(i)
-        #self._fit_logic = None
+        # self._fit_logic = None
 
     @_fit_configs.representer
     def __repr_fit_configs(self, value):
@@ -180,10 +177,10 @@ class QDPlotLogic(LogicBase):
                                         self._fit_data[plot_index],
                                         self._fit_results[plot_index],
                                         self._fit_method[plot_index])
-            params = {'x_label' : self._x_label[plot_index],
-                      'y_label' : self._y_label[plot_index],
-                      'x_unit'  : self._x_unit[plot_index],
-                      'y_unit'  : self._y_unit[plot_index],
+            params = {'x_label': self._x_label[plot_index],
+                      'y_label': self._y_label[plot_index],
+                      'x_unit': self._x_unit[plot_index],
+                      'y_unit': self._y_unit[plot_index],
                       'x_limits': self._x_limits[plot_index],
                       'y_limits': self._y_limits[plot_index]}
             self.sigPlotParamsUpdated.emit(plot_index, params)
@@ -234,7 +231,7 @@ class QDPlotLogic(LogicBase):
                 self.add_plot()
             while self.number_of_plots > plt_count:
                 self.remove_plot()
-    
+
     def get_x_data(self, plot_index=0):
         """ Get the data of the x-axis being plotted.
         
@@ -247,7 +244,7 @@ class QDPlotLogic(LogicBase):
             self.log.error('Error while retrieving plot x_data. Plot index {0:d} out of bounds.'
                            ''.format(plot_index))
             return [np.zeros(0)]
-    
+
     def get_y_data(self, plot_index=0):
         """ Get the data of the y-axis being plotted.
         
@@ -313,10 +310,10 @@ class QDPlotLogic(LogicBase):
             return 0
 
     @QtCore.Slot(str, int)
-    def do_fit(self, fit_method, plot_index=0):
+    def do_fit(self, fit_config, plot_index=0):
         """ Get the data of the x-axis being plotted.
         
-        @param str fit_method: name of the fit_method, this needs to match the methods in
+        @param str fit_config: name of the fit_method, this needs to match the methods in
                                fit_container.
         @param int plot_index: index of the plot in the range from 0 to 2
         @return int plot_index, 3D np.ndarray fit_data, str result, str fit_method: result of fit
@@ -326,14 +323,11 @@ class QDPlotLogic(LogicBase):
                 raise IndexError(
                     'Plot index {0:d} out of bounds. Unable to perform data fit.'.format(plot_index))
             # check that the fit_method is correct
-            if fit_method is None or isinstance(fit_method, str):
-                if fit_method not in self.fit_container.fit_list:
-                    if fit_method is not None and fit_method != 'No Fit':
-                        self.log.warning('Fit function "{0}" not available in fit container. Configure '
-                                         'available fits first.'.format(fit_method))
-                    fit_method = 'No Fit'
-            else:
-                raise TypeError('Parameter fit_method must be str or None type.')
+
+            if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
+                self.log.error(f'Unknown fit configuration "{fit_config}" encountered. '
+                               f'Options are {self._fit_config_model.configuration_names}')
+                return
 
             result = ''
             fit_data = list()
@@ -342,8 +336,6 @@ class QDPlotLogic(LogicBase):
             for data_set in range(len(self._x_data[plot_index])):
                 x_data = self._x_data[plot_index][data_set]
                 y_data = self._y_data[plot_index][data_set]
-
-                self.fit_container.set_current_fit(fit_method)
 
                 # only fit if the is enough data to actually do the fit
                 if len(x_data) < 2 or len(y_data) < 2 or min(x_data) == max(x_data):
@@ -355,19 +347,21 @@ class QDPlotLogic(LogicBase):
                             self.fit_container.current_fit)
 
                 # actually do the fit
-                fit_x, fit_y, result_set = self.fit_container.do_fit(np.array(x_data), np.array(y_data))
-                fit_data_set = np.array([fit_x, fit_y])
+
+                try:
+                    fit_config, fit_result = self._fit_container.fit_data(fit_config, x_data, y_data)
+                except:
+                    self.log.exception(f'Data fitting failed:\n{traceback.format_exc()}')
+                    return
+
+                fit_data_set = np.array(fit_result.high_res_best_fit)
                 fit_data.append(fit_data_set)
 
                 # Get formatted result string and concatenate the results of the data sets
-                if fit_method == 'No Fit':
-                    formatted_fitresult = 'No Fit'
+                if fit_config == 'No Fit':
+                    tabbed_result = '\n  No Fit'
                 else:
-                    try:
-                        formatted_fitresult = units.create_formatted_output(result_set.result_str_dict)
-                    except:
-                        formatted_fitresult = 'This fit does not return formatted results'
-                tabbed_result = '\n  '.join(formatted_fitresult.split('\n')[:-1])
+                    tabbed_result = '\n  '.join(self._fit_container.formatted_result(fit_result).split('\n')[:-1])
                 result += 'data_set {0}:\n  {1}\n'.format(data_set, tabbed_result)
 
             # convert list to np.ndarray to make handling it much more efficient
@@ -376,10 +370,10 @@ class QDPlotLogic(LogicBase):
             # save the fit results internally
             self._fit_data[plot_index] = fit_data
             self._fit_results[plot_index] = result
-            self._fit_method[plot_index] = fit_method
+            self._fit_method[plot_index] = fit_config
 
-            self.sigFitUpdated.emit(plot_index, fit_data, result, self.fit_container.current_fit)
-            return plot_index, fit_data, result, self.fit_container.current_fit
+            self.sigFitUpdated.emit(plot_index, fit_data, result, fit_config)
+            return plot_index, fit_data, result, fit_config
 
     def get_fit_data(self, plot_index):
         with self.threadlock:
@@ -624,7 +618,7 @@ class QDPlotLogic(LogicBase):
             if not (0 <= plot_index < self.number_of_plots):
                 raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
             return self._x_label[plot_index]
-    
+
     def set_x_label(self, value, plot_index=0):
         """ Set the label of the x-axis being plotted.
 
@@ -647,7 +641,7 @@ class QDPlotLogic(LogicBase):
             if not (0 <= plot_index < self.number_of_plots):
                 raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
             return self._y_label[plot_index]
-    
+
     def set_y_label(self, value, plot_index=0):
         """ Set the label of the y-axis being plotted.
 
@@ -679,7 +673,7 @@ class QDPlotLogic(LogicBase):
             if not (0 <= plot_index < self.number_of_plots):
                 raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
             return self._x_unit[plot_index]
-    
+
     def set_x_unit(self, value, plot_index=0):
         """ Set the unit of the x-axis being plotted.
 
@@ -702,7 +696,7 @@ class QDPlotLogic(LogicBase):
             if not (0 <= plot_index < self.number_of_plots):
                 raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
             return self._y_unit[plot_index]
-    
+
     def set_y_unit(self, value, plot_index=0):
         """ Set the unit of the y-axis being plotted.
 

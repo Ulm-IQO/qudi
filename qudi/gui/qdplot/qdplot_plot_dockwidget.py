@@ -111,7 +111,13 @@ class PlotDockWidget(AdvancedDockWidget):
         plot_display_layout.setSpacing(0)
         plot_display_widget = QtWidgets.QWidget()
         plot_display_widget.setLayout(plot_display_layout)
-        plot_display_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        plot_display_widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                                          QtWidgets.QSizePolicy.MinimumExpanding)
+
+        # add stretch to separate the buttons
+        # stretch = QtWidgets.QLabel('')
+        # stretch.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        # plot_display_layout.addWidget(stretch, 0, 1)
 
         self.save_button = QtWidgets.QPushButton('Save')
         self.remove_button = QtWidgets.QPushButton('Remove')
@@ -127,8 +133,8 @@ class PlotDockWidget(AdvancedDockWidget):
         self.plot_widget.getAxis('bottom').nudge = 0
         self.plot_widget.getAxis('left').nudge = 0
 
-        self.plot_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        plot_display_layout.addWidget(self.plot_widget, 1, 0, 15, 0, QtCore.Qt.AlignHCenter)
+        plot_display_layout.addWidget(self.plot_widget, 1, 0, 1, -1, QtCore.Qt.AlignHCenter)
+        self.plot_widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
 
         return plot_display_widget
 
@@ -148,7 +154,8 @@ class PlotDockWidget(AdvancedDockWidget):
         plot_control_widget = QtWidgets.QGroupBox('Plot Control')
         plot_control_widget.setAlignment(QtCore.Qt.AlignLeft)
         plot_control_widget.setLayout(plot_control_layout)
-        plot_control_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.MinimumExpanding)
+        plot_control_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                          QtWidgets.QSizePolicy.MinimumExpanding)
 
         x_label = QtWidgets.QLabel('Horizontal Axis')
         y_label = QtWidgets.QLabel('Vertical Axis')
@@ -165,19 +172,21 @@ class PlotDockWidget(AdvancedDockWidget):
         plot_control_layout.addWidget(range_label, 0, 3, 1, 5, QtCore.Qt.AlignHCenter)
 
         self.x_label_lineEdit = QtWidgets.QLineEdit()
+        self.x_label_lineEdit.setMinimumWidth(90)
         self.x_unit_lineEdit = QtWidgets.QLineEdit()
+        self.x_unit_lineEdit.setMinimumWidth(90)
         self.x_lower_limit_spinBox = ScienDSpinBox()
-        self.x_lower_limit_spinBox.setMinimumWidth(70)
+        self.x_lower_limit_spinBox.setMinimumWidth(90)
         self.x_upper_limit_spinBox = ScienDSpinBox()
-        self.x_upper_limit_spinBox.setMinimumWidth(70)
+        self.x_upper_limit_spinBox.setMinimumWidth(90)
         self.x_auto_button = QtWidgets.QPushButton('Auto Range')
 
         self.y_label_lineEdit = QtWidgets.QLineEdit()
         self.y_unit_lineEdit = QtWidgets.QLineEdit()
         self.y_lower_limit_spinBox = ScienDSpinBox()
-        self.y_lower_limit_spinBox.setMinimumWidth(70)
+        self.y_lower_limit_spinBox.setMinimumWidth(90)
         self.y_upper_limit_spinBox = ScienDSpinBox()
-        self.y_upper_limit_spinBox.setMinimumWidth(70)
+        self.y_upper_limit_spinBox.setMinimumWidth(90)
         self.y_auto_button = QtWidgets.QPushButton('Auto Range')
 
         plot_control_layout.addWidget(self.x_label_lineEdit, 1, 1)

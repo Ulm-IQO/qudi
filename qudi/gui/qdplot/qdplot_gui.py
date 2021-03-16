@@ -105,16 +105,6 @@ class QDPlotterGui(GuiBase):
         # Use the inherited class 'QDPlotMainWindow' to create the GUI window
         self._mw = QDPlotMainWindow()
 
-        # # debugging
-        # self._pw = QDPlotPlotDockWidget()
-        # self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._pw)
-        #
-        # # Fit settings dialogs
-        # self._pw.fit_widget = FitWidget(parent=self._pw, fit_container=self.qdplot_logic().fit_container)
-        # self._pw.main_layout.addWidget(self._pw.fit_widget, 0, 1)
-        # self._pw.show_fit(False)
-        # self._pw.fit_widget.sigDoFit.connect(self.fit_clicked)
-
         self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
                                                          fit_config_model=self.qdplot_logic().fit_config_model)
 
@@ -198,7 +188,6 @@ class QDPlotterGui(GuiBase):
         # disconnect GUI elements
         self.update_number_of_plots(0)
 
-        #self._fsd.sigFitsUpdated.disconnect()
         self._fit_config_dialog.close()
         self._mw.close()
 
@@ -235,7 +224,6 @@ class QDPlotterGui(GuiBase):
     def _connect_plot_signals(self, index):
         dockwidget = self._plot_dockwidgets[index]
         dockwidget.fit_widget.sigDoFit.connect(functools.partial(self.fit_clicked, index))
-        #self._fsd.sigFitsUpdated.connect(dockwidget.fit_comboBox.setFitFunctions)
 
         x_lim_callback = functools.partial(self.x_limits_changed, index)
         dockwidget.x_lower_limit_spinBox.valueChanged.connect(x_lim_callback)
@@ -270,7 +258,6 @@ class QDPlotterGui(GuiBase):
 
     def _disconnect_plot_signals(self, index):
         dockwidget = self._plot_dockwidgets[index]
-        #self._fsd.sigFitsUpdated.disconnect(dockwidget.fit_comboBox.setFitFunctions)
         dockwidget.fit_widget.sigDoFit.disconnect()
 
         dockwidget.x_lower_limit_spinBox.valueChanged.disconnect()
@@ -337,7 +324,6 @@ class QDPlotterGui(GuiBase):
         self.widget_alignment = alignment
 
         self._mw.setDockNestingEnabled(True)
-        #self._mw.centralwidget.setVisible(False)
 
         for i, dockwidget in enumerate(self._plot_dockwidgets):
             dockwidget.show()
@@ -371,7 +357,7 @@ class QDPlotterGui(GuiBase):
                                      QtCore.Qt.Horizontal)
         elif alignment == 'side_by_side':
             self._mw.resizeDocks(
-                self._plot_dockwidgets, [1]*len(self._plot_dockwidgets), QtCore.Qt.Horizontal)
+                self._plot_dockwidgets, [1] * len(self._plot_dockwidgets), QtCore.Qt.Horizontal)
 
     @QtCore.Slot(int, list, list, bool)
     def update_data(self, plot_index, x_data=None, y_data=None, clear_old=None):
@@ -540,9 +526,7 @@ class QDPlotterGui(GuiBase):
 
     def fit_clicked(self, plot_index=0, fit_function='No Fit'):
         """ Triggers the fit to be done. Attention, this runs in the GUI thread. """
-        print('fit_clicked', plot_index, fit_function)
-        #current_fit_method = self._plot_dockwidgets[plot_index].widget().fit_comboBox.getCurrentFit()[0]
-        #self.sigDoFit.emit(current_fit_method, plot_index)
+        self.sigDoFit.emit(fit_function, plot_index)
 
     @QtCore.Slot(int, np.ndarray, str, str)
     def update_fit_data(self, plot_index, fit_data=None, formatted_fitresult=None, fit_method=None):
@@ -561,24 +545,18 @@ class QDPlotterGui(GuiBase):
         if not fit_method:
             fit_method = 'No Fit'
 
-        #dockwidget.fit_comboBox.blockSignals(True)
-
         dockwidget.show_fit(True)
-        #dockwidget.fit_textBrowser.clear()
-        #dockwidget.fit_comboBox.setCurrentFit(fit_method)
 
         if fit_method == 'No Fit':
             for index, curve in enumerate(self._fit_curves[plot_index]):
                 if curve in dockwidget.plot_widget.items():
                     dockwidget.plot_widget.removeItem(curve)
         else:
-            #dockwidget.fit_textBrowser.setPlainText(formatted_fitresult)
+            dockwidget.fit_widget.result_label.setText(formatted_fitresult)
             for index, curve in enumerate(self._fit_curves[plot_index]):
                 if curve not in dockwidget.plot_widget.items():
                     dockwidget.plot_widget.addItem(curve)
                 curve.setData(x=fit_data[index][0], y=fit_data[index][1])
-
-        #dockwidget.fit_comboBox.blockSignals(False)
 
     def _pyqtgraph_x_limits_changed(self, plot_index, limits):
         plot_item = self._plot_dockwidgets[plot_index].plot_widget.getPlotItem()
