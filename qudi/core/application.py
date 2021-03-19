@@ -25,9 +25,10 @@ import weakref
 import inspect
 import traceback
 import faulthandler
+from logging import DEBUG
 from PySide2 import QtCore, QtWidgets
 
-from qudi.core.logger import init_rotating_file_handler, get_logger
+from qudi.core.logger import init_rotating_file_handler, get_logger, set_log_level
 from qudi.core.paths import get_main_dir, get_default_log_dir
 from qudi.util.helpers import import_check
 from qudi.util.mutex import Mutex
@@ -72,16 +73,21 @@ class Qudi(QtCore.QObject):
             'Qudi.instance() to get a reference to the already created instance.'
         )
 
-    def __init__(self, no_gui=False, log_dir='', config_file=None):
+    def __init__(self, no_gui=False, debug=False, log_dir='', config_file=None):
         super().__init__()
         # CLI arguments
         self.no_gui = bool(no_gui)
+        self.debug_mode = bool(debug)
         self.log_dir = str(log_dir) if os.path.isdir(log_dir) else get_default_log_dir(
             create_missing=True)
 
         # Check vital packages for qudi, otherwise qudi will not even start.
         if import_check() != 0:
             raise RuntimeError('Vital python packages missing. Unable to use qudi.')
+
+        # Set debug logging level if required
+        if self.debug_mode:
+            set_log_level(DEBUG)
 
         self.log = get_logger(f'{__name__}.{__class__.__name__}')
         sys.excepthook = self._qudi_excepthook
@@ -170,9 +176,8 @@ class Qudi(QtCore.QObject):
     def _configure_qudi(self):
         """
         """
-        print('> Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
-        self.log.info(
-            'Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
+        print(f'> Starting Qudi configuration from "{self.configuration.config_file}"')
+        self.log.info(f'Starting Qudi configuration from "{self.configuration.config_file}"')
 
         # Clear all qudi modules
         self.module_manager.clear()
@@ -191,8 +196,9 @@ class Qudi(QtCore.QObject):
                                                    configuration=module_cfg)
                 except:
                     self.module_manager.remove_module(module_name, ignore_missing=True)
-                    self.log.exception('Unable to create ManagedModule instance for module '
-                                       '"{0}.{1}"'.format(base, module_name))
+                    self.log.exception(
+                        f'Unable to create ManagedModule instance for module "{base}.{module_name}"'
+                    )
 
         print('> Qudi configuration complete')
         self.log.info('Qudi configuration complete.')

@@ -24,12 +24,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('cleanup_handlers',
+__all__ = ('clear_handlers',
            'file_handler',
            'get_handler',
            'get_logger',
            'init_rotating_file_handler',
            'register_handler',
+           'record_table_model',
            'signal_handler',
            'unregister_handler',
            )
@@ -37,14 +38,29 @@ __all__ = ('cleanup_handlers',
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from PySide2 import QtCore
-from qudi.core.logger.qt_handler import LogSignalHandler, qt_message_handler
+from PySide2.QtCore import qInstallMessageHandler
+
+from .handlers import LogSignalHandler, LogTableModelHandler, qt_message_handler
+
 
 # global variables
+# Keep track of all handlers that have been registered to the qudi
 _handlers = dict()
+# default handlers for qudi root logger
+signal_handler = None
+file_handler = None
+stream_handler = None
+table_model_handler = None
+# instance of a QAsbtractTableModel providing all log entries as text data
+record_table_model = None
+# The qudi root logger for all loggers created with this module API
+_qudi_root_logger = None
+
+# Register Qt message handler
+qInstallMessageHandler(qt_message_handler)
 
 # initialize logging module
-logging.basicConfig(format="%(message)s", level=logging.INFO)
+logging.basicConfig(format="%(message)s", level=logging.WARNING)
 logging.addLevelName(logging.CRITICAL, 'critical')
 logging.addLevelName(logging.ERROR, 'error')
 logging.addLevelName(logging.WARNING, 'warning')
@@ -53,25 +69,27 @@ logging.addLevelName(logging.DEBUG, 'debug')
 logging.addLevelName(logging.NOTSET, 'not set')
 logging.captureWarnings(True)
 
-# Get root logger and set default level to INFO
-_root_logger = logging.getLogger()
-if len(_root_logger.handlers) > 1:
-    for handler in _root_logger.handlers[1:]:
-        _root_logger.removeHandler(handler)
-_root_logger.setLevel(logging.INFO)
-
 # set level of stream handler which logs to stderr
-_root_logger.handlers[0].setLevel(logging.WARNING)
+if len(logging.getLogger().handlers) < 1:
+    stream_handler = logging.StreamHandler()
+    logging.getLogger().addHandler(stream_handler)
+else:
+    stream_handler = logging.getLogger().handlers[0]
+stream_handler.setLevel(logging.WARNING)
 
-# Instantiate Qt signal log handler and register it to logger
-signal_handler = LogSignalHandler(level=logging.DEBUG)
-_root_logger.addHandler(signal_handler)
+# Create qudi root logger
+_qudi_root_logger = logging.getLogger('qudi')
+_qudi_root_logger.setLevel(logging.INFO)
+# _qudi_root_logger.propagate = False
 
-# Instantiate rotating file handler
-file_handler = None
+# Create and register signal handler in root logger
+signal_handler = LogSignalHandler()
+logging.getLogger().addHandler(signal_handler)
 
-# Register Qt5 message handler
-QtCore.qInstallMessageHandler(qt_message_handler)
+# Create and register table model handler in root logger
+table_model_handler = LogTableModelHandler()
+record_table_model = table_model_handler.table_model
+logging.getLogger().addHandler(table_model_handler)
 
 
 def register_handler(name, handler, silent=False):
@@ -80,61 +98,61 @@ def register_handler(name, handler, silent=False):
         if silent:
             unregister_handler(name)
         else:
-            raise KeyError('Unable to register new logging handler. Handler by name "{0}" '
-                           'already registered.'.format(name))
+            raise KeyError(f'Unable to register new logging handler. Handler by name "{name}" '
+                           f'already registered.')
     logging.getLogger().addHandler(handler)
     _handlers[name] = handler
-    return
 
 
-def unregister_handler(handler_name, silent=False):
+def unregister_handler(name, silent=False):
     global _handlers
-    if handler_name in _handlers:
-        logging.getLogger().removeHandler(_handlers[handler_name])
-        del _handlers[handler_name]
-    elif not silent:
-        raise KeyError('Unable to unregister logging handler. No handler by name "{0}" '
-                       'registered.'.format(handler_name))
-    return
+    handler = _handlers.pop(name, None)
+    if handler is None:
+        if not silent:
+            raise KeyError(
+                f'Unable to unregister logging handler. No handler registered by name "{name}".'
+            )
+    else:
+        logging.getLogger().removeHandler(handler)
 
 
-def cleanup_handlers():
+def clear_handlers():
     global _handlers
-    if len(_root_logger.handlers) > 1:
-        for handler in _root_logger.handlers[1:]:
-            if handler is qt_handler or handler is signal_handler:
-                continue
-            _root_logger.removeHandler(handler)
+    root_logger = logging.getLogger()
+    for name in tuple(_handlers):
+        root_logger.removeHandler(_handlers.pop(name))
 
 
 def get_handler(name):
     return _handlers.get(name, None)
 
 
-def get_logger(name=None):
-    return logging.getLogger(name) if name is not None else logging.getLogger()
+def get_logger(name):
+    return _qudi_root_logger.getChild(name.split('qudi.', 1)[-1])
 
 
-def init_rotating_file_handler(path='', filename='qudi.log', level=None, max_bytes=10485760,
-                               backup_count=5):
+def set_log_level(level):
+    signal_handler.setLevel(level)
+    if file_handler is not None:
+        file_handler.setLevel(level)
+
+
+def init_rotating_file_handler(path='', filename='qudi.log', max_bytes=1024**3, backup_count=5):
     global file_handler
+
     # Remove file handler if it has already been registered
     if file_handler is not None:
         file_handler.doRollover()
-        _root_logger.removeHandler(file_handler)
+        logging.getLogger().removeHandler(file_handler)
         file_handler = None
 
-    if level is None:
-        level = logging.DEBUG
     filepath = os.path.join(path, filename)
-    # Start new file if
+    # Start new file if old logfiles exist
     do_rollover = os.path.exists(filepath) and os.stat(filepath).st_size > 0
-    file_handler = RotatingFileHandler(filepath,
-                                       maxBytes=max_bytes,
-                                       backupCount=backup_count)
+    file_handler = RotatingFileHandler(filepath, maxBytes=max_bytes, backupCount=backup_count)
     file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s',
                                                 datefmt="%Y-%m-%d %H:%M:%S"))
-    file_handler.setLevel(level)
+    file_handler.setLevel(signal_handler.level)
     if do_rollover:
         file_handler.doRollover()
-    _root_logger.addHandler(file_handler)
+    logging.getLogger().addHandler(file_handler)

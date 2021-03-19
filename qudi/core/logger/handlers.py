@@ -19,37 +19,50 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('LogSignalHandler', 'qt_message_handler')
+__all__ = ('LogSignalHandler', 'LogTableModelHandler', 'qt_message_handler')
 
 import logging
 from PySide2 import QtCore
 
+from .records_model import LogRecordsTableModel
+
 
 class QtSignaller(QtCore.QObject):
-    """Just a bare Qt QObject handling a signal
+    """ Just a bare Qt QObject containing a signal
     """
     sigSignal = QtCore.Signal(object)
 
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-
 
 class LogSignalHandler(logging.Handler):
-    """Logging handler that emits a Qt signal when a log entry is registered
+    """ Logging handler that emits a Qt signal when a log entry is registered
     """
-
-    def __init__(self, level=0):
+    def __init__(self, level=logging.NOTSET):
         super().__init__(level=level)
         self.__qt_signaller = QtSignaller()
 
     @property
-    def sigMessageLogged(self):
+    def sigRecordLogged(self):
         return self.__qt_signaller.sigSignal
 
     def emit(self, record):
-        """
+        """ Emit a signal when logging.Handler emits a new log record
         """
         self.__qt_signaller.sigSignal.emit(record)
+
+
+class LogTableModelHandler(logging.Handler):
+    """ Logging handler that stores each log record in a QAbstractTableModel.
+    """
+    def __init__(self, level=logging.DEBUG):
+        if level < logging.DEBUG:
+            level = logging.DEBUG
+        super().__init__(level=level)
+        self.table_model = LogRecordsTableModel()
+
+    def emit(self, record):
+        """ Store the log record information in the table model
+        """
+        self.table_model.add_entry(record)
 
 
 def qt_message_handler(msg_type, context, msg):
@@ -67,5 +80,5 @@ def qt_message_handler(msg_type, context, msg):
         logger.critical(msg)
     else:
         import traceback
-        logger.critical('Fatal error occurred: {0}\nTraceback:\n{1}'
-                        ''.format(msg, ''.join(traceback.format_stack())))
+        traceback_str = ''.join(traceback.format_stack())
+        logger.critical(f'Fatal error occurred: {msg}\nTraceback:\n{traceback_str}')
