@@ -178,8 +178,9 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         self.config_dockwidget = AdvancedDockWidget('Configuration')
         self.config_dockwidget.setWidget(self.config_widget)
         self.config_dockwidget.setAllowedAreas(
-            QtCore.Qt.BottomDockWidgetArea | QtCore.Qt.LeftDockWidgetArea)
-        self.log_widget = LogWidget(max_entries=10000)
+            QtCore.Qt.BottomDockWidgetArea | QtCore.Qt.LeftDockWidgetArea
+        )
+        self.log_widget = LogWidget()
         self.log_dockwidget = AdvancedDockWidget('Log')
         self.log_dockwidget.setWidget(self.log_widget)
         self.log_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)

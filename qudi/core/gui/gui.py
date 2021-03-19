@@ -21,17 +21,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import weakref
-import logging
 import platform
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.util.helpers import has_pyqtgraph
 from qudi.core.gui.main_gui.main_gui import QudiMainGui
 from qudi.core.paths import get_artwork_dir
+from qudi.core.logger import get_logger
 
 if has_pyqtgraph:
     import pyqtgraph as pg
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):

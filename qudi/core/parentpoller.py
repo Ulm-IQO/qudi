@@ -30,22 +30,8 @@ import time
 # from _thread import interrupt_main
 from threading import Thread
 import logging
+
 logger = logging.getLogger(__name__)
-
-
-# def waitForClose():
-#     """ Wait for program to close on its own and print some old school meme in the meantime.
-#     """
-#     time.sleep(1)
-#     print('> Mechanic: Somebody set us up the bomb.')
-#     time.sleep(2)
-#     print('> CATS: All your base are belong to us.')
-#     time.sleep(2)
-#     print('> CATS: You have no chance to survive make your time.')
-#     time.sleep(2)
-#     print('> Captain: Take off every \'ZIG\'.')
-#     time.sleep(2)
-#     print('> Captain: For great justice.')
 
 
 class ParentPollerUnix(Thread):

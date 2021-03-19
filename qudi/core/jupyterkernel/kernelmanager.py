@@ -20,14 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import weakref
-import logging
 import numpy as np
-
 from PySide2 import QtCore
 
 from qudi.util.mutex import RecursiveMutex
 from qudi.util.network import netobtain
-
+from qudi.core.logger import get_logger
 from qudi.core.jupyterkernel.qzmqkernel import QZMQKernel
 
 
@@ -55,7 +53,7 @@ class JupyterKernelManager(QtCore.QObject):
         """ Create logic object
         """
         super().__init__(*args, **kwargs)
-        self.log = logging.getLogger('jupyter-kernel-manager')
+        self.log = get_logger('jupyter-kernel-manager')
         self.kernels = dict()
         self.namespace_modules = set()
         self._qudi_main = weakref.ref(qudi_main, self.terminate)

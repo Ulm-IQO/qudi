@@ -25,16 +25,15 @@ __all__ = ('get_remote_module_instance', 'get_remote_modules_model', 'start_shar
 import ssl
 import rpyc
 import weakref
-import logging
-
 from rpyc.utils.authenticators import SSLAuthenticator
 from urllib.parse import urlparse
 from PySide2 import QtCore
 
 from qudi.util.mutex import Mutex
 from qudi.util.models import DictTableModel
+from qudi.core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def start_sharing_module(module):

@@ -124,7 +124,7 @@ class QudiMainGui(GuiBase):
         self.mw.close()
 
     def _connect_signals(self):
-        signal_handler.sigMessageLogged.connect(self.handle_log_entry, QtCore.Qt.QueuedConnection)
+        signal_handler.sigRecordLogged.connect(self.handle_log_record, QtCore.Qt.QueuedConnection)
         qudi_main = self._qudi_main
         # Connect up the main windows actions
         self.mw.action_quit.triggered.connect(qudi_main.prompt_quit, QtCore.Qt.QueuedConnection)
@@ -174,7 +174,7 @@ class QudiMainGui(GuiBase):
         self.mw.module_widget.sigDeactivateModule.disconnect()
         self.mw.module_widget.sigCleanupModule.disconnect()
 
-        signal_handler.sigMessageLogged.disconnect(self.handle_log_entry)
+        signal_handler.sigRecordLogged.disconnect(self.handle_log_record)
 
     def _init_remote_modules_widget(self):
         remote_server = self._qudi_main.remote_server
@@ -219,7 +219,7 @@ class QudiMainGui(GuiBase):
         self.mw.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.mw.console_dockwidget)
         return
 
-    def handle_log_entry(self, entry):
+    def handle_log_record(self, entry):
         """
         Show an error popup if the log entry is error level and above.
 
@@ -233,15 +233,17 @@ class QudiMainGui(GuiBase):
         """ Create an IPython kernel manager and kernel.
             Add modules to its namespace.
         """
-        # make sure we only log errors and above from ipython
-        logging.getLogger('ipykernel').setLevel(logging.WARNING)
+        # make sure we only log errors and above from ipython.
+        # FIXME: Should be inherited by root logger
+        # logging.getLogger('ipykernel').setLevel(logging.WARNING)
         self.log.debug('IPython activation in thread {0}'.format(QtCore.QThread.currentThread()))
         self._kernel_manager = QtInProcessKernelManager()
         self._kernel_manager.start_kernel()
         self._kernel_manager.kernel.shell.user_ns.update(
             {'np': np,
              'config': self._qudi_main.configuration.config_dict,
-             'qudi': self._qudi_main})
+             'qudi': self._qudi_main}
+        )
         if has_pyqtgraph:
             self._kernel_manager.kernel.shell.user_ns['pg'] = pg
         self.update_ipython_all_modules()

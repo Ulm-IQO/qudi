@@ -22,10 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 import weakref
 from functools import partial
-from qudi.util.mutex import RecursiveMutex
 from PySide2 import QtCore
 
-logger = logging.getLogger(__name__)
+from qudi.util.mutex import RecursiveMutex
+from qudi.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ThreadManager(QtCore.QAbstractListModel):
