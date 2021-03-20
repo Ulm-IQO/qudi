@@ -47,5 +47,5 @@ parser.add_argument('-c', '--config', default=None, help='configuration file')
 parser.add_argument('-l', '--logdir', default='', help='log directory')
 args = parser.parse_args()
 
-app = Qudi(no_gui=args.no_gui, log_dir=args.logdir, config_file=args.config)
+app = Qudi(no_gui=args.no_gui, debug=args.debug, log_dir=args.logdir, config_file=args.config)
 app.run()

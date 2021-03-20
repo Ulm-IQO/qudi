@@ -35,7 +35,7 @@ class QudiMainWindow(QtWidgets.QMainWindow):
     """
     Main Window definition for the manager GUI.
     """
-    def __init__(self, parent=None, **kwargs):
+    def __init__(self, parent=None, debug_mode=False, **kwargs):
         super().__init__(parent, **kwargs)
         self.setWindowTitle('qudi: Manager')
         screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
@@ -180,7 +180,7 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         self.config_dockwidget.setAllowedAreas(
             QtCore.Qt.BottomDockWidgetArea | QtCore.Qt.LeftDockWidgetArea
         )
-        self.log_widget = LogWidget()
+        self.log_widget = LogWidget(debug_mode=debug_mode)
         self.log_dockwidget = AdvancedDockWidget('Log')
         self.log_dockwidget.setWidget(self.log_widget)
         self.log_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)

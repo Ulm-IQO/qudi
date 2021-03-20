@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.logger import record_table_model
+from qudi.core.logger import get_record_table_model
 
 
 class LogFilterProxy(QtCore.QSortFilterProxyModel):
@@ -36,7 +36,7 @@ class LogFilterProxy(QtCore.QSortFilterProxyModel):
         @param QObject parent: parent object of filter
         """
         super().__init__(parent)
-        self._show_levels = frozenset({'info', 'warning', 'error', 'critical'})
+        self._show_levels = frozenset({'debug', 'info', 'warning', 'error', 'critical'})
 
     def filterAcceptsRow(self, source_row, source_parent):
         """
@@ -98,8 +98,11 @@ class LogTableWidget(QtWidgets.QTableView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        record_model = get_record_table_model()
+        if record_model is None:
+            raise RuntimeError('No record table model set up in qudi.core.logger')
         self.filter_model = LogFilterProxy()
-        self.filter_model.setSourceModel(record_table_model)
+        self.filter_model.setSourceModel(record_model)
         self.setModel(self.filter_model)
 
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -122,7 +125,7 @@ class LogTableWidget(QtWidgets.QTableView):
         self.setColumnWidth(0, metrics.horizontalAdvance(' 5555-55-55 55:55:55 '))
         self.setColumnWidth(1, metrics.horizontalAdvance(' warning '))
         # Estimate starting width of "Source" column
-        self.setColumnWidth(2, metrics.horizontalAdvance(__name__ + __name__))
+        self.setColumnWidth(2, metrics.horizontalAdvance(__name__ * 2))
 
         self.filter_model.rowsInserted.connect(self._entry_added)
 
@@ -142,7 +145,7 @@ class LogWidget(QtWidgets.QSplitter):
     """A widget to show log entries and filter them.
     """
 
-    def __init__(self, parent=None, **kwargs):
+    def __init__(self, parent=None, debug_mode=False, **kwargs):
         """
         Creates the log widget.
 
@@ -171,15 +174,16 @@ class LogWidget(QtWidgets.QSplitter):
         self.filter_treewidget.setHeaderLabels(('Display:',))
         item = QtWidgets.QTreeWidgetItem()
         item.setText(0, 'All message types:')
-        item.setCheckState(0, QtCore.Qt.Unchecked)
-        for text in ('debug', 'info', 'warning', 'error', 'critical'):
+        item.setCheckState(0, QtCore.Qt.Checked)
+        log_levels = ('debug', 'info', 'warning', 'error', 'critical')[int(not debug_mode):]
+        for text in log_levels:
             child_item = QtWidgets.QTreeWidgetItem()
             child_item.setText(0, text)
-            check_state = QtCore.Qt.Unchecked if text == 'debug' else QtCore.Qt.Checked
-            child_item.setCheckState(0, check_state)
+            child_item.setCheckState(0, QtCore.Qt.Checked)
             item.addChild(child_item)
         self.filter_treewidget.addTopLevelItem(item)
         self.filter_treewidget.expandItem(item)
+        self.log_tablewidget.set_level_filter(log_levels)
 
         # embed log view and filter tree into QSplitter widget
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
