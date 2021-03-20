@@ -62,7 +62,7 @@ class LogTableModelHandler(logging.Handler):
     def emit(self, record):
         """ Store the log record information in the table model
         """
-        self.table_model.add_entry(record)
+        self.table_model.add_record(record)
 
 
 def qt_message_handler(msg_type, context, msg):
