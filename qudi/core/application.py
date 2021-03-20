@@ -255,7 +255,7 @@ class Qudi(QtCore.QObject):
             faulthandler.enable(all_threads=True)
 
             # install logging facility and set logging level
-            init_record_model_handler(max_records=10)
+            init_record_model_handler(max_records=10000)
             init_rotating_file_handler(path=self.log_dir)
             set_log_level(DEBUG if self.debug_mode else INFO)
 
