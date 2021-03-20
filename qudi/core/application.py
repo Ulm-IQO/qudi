@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi Manager class.
+This file contains the qudi Manager class.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -13,9 +13,9 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Qudi. If not, see <http://www.gnu.org/licenses/>.
+along with qudi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+Copyright (c) the qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
@@ -70,7 +70,7 @@ class Qudi(QtCore.QObject):
             cls._instance = weakref.ref(obj)
             return obj
         raise RuntimeError(
-            'Only one Qudi instance per process possible (Singleton). Please use '
+            'Only one qudi instance per process possible (Singleton). Please use '
             'Qudi.instance() to get a reference to the already created instance.'
         )
 
@@ -175,8 +175,8 @@ class Qudi(QtCore.QObject):
     def _configure_qudi(self):
         """
         """
-        print(f'> Starting Qudi configuration from "{self.configuration.config_file}"')
-        self.log.info(f'Starting Qudi configuration from "{self.configuration.config_file}"')
+        print(f'> Applying configuration from "{self.configuration.config_file}"...')
+        self.log.info(f'Applying configuration from "{self.configuration.config_file}"...')
 
         # Clear all qudi modules
         self.module_manager.clear()
@@ -185,7 +185,7 @@ class Qudi(QtCore.QObject):
         self._remove_extensions_from_path()
         self._add_extensions_to_path()
 
-        # Configure Qudi modules
+        # Configure qudi modules
         for base in ('gui', 'logic', 'hardware'):
             # Create ManagedModule instance by adding each module to ModuleManager
             for module_name, module_cfg in self.configuration.module_config[base].items():
@@ -199,8 +199,8 @@ class Qudi(QtCore.QObject):
                         f'Unable to create ManagedModule instance for module "{base}.{module_name}"'
                     )
 
-        print('> Qudi configuration complete')
-        self.log.info('Qudi configuration complete.')
+        print('> Qudi configuration complete!')
+        self.log.info('Qudi configuration complete!')
 
     def _start_gui(self):
         if self.no_gui:
@@ -255,19 +255,14 @@ class Qudi(QtCore.QObject):
             faulthandler.enable(all_threads=True)
 
             # install logging facility and set logging level
-            init_record_model_handler(max_records=10000)
+            init_record_model_handler(max_records=10)
             init_rotating_file_handler(path=self.log_dir)
-            if self.debug_mode:
-                set_log_level(DEBUG)
-                self.log.warning('Qudi is starting in "debug" mode')
-            else:
-                set_log_level(INFO)
+            set_log_level(DEBUG if self.debug_mode else INFO)
 
-            # Check Qt API and notify startup
-            self.log.info('Starting Qudi...')
-            print('> Starting Qudi...')
-            self.log.info('Used Qt API: PySide2')
-            print('> Used Qt API: PySide2')
+            # Notify startup
+            startup_info = f'Starting qudi{" in debug mode..." if self.debug_mode else "..."}'
+            self.log.info(startup_info)
+            print(f'> {startup_info}')
 
             # Get QApplication instance
             app_cls = QtCore.QCoreApplication if self.no_gui else QtWidgets.QApplication
@@ -281,11 +276,6 @@ class Qudi(QtCore.QObject):
                 ioloop.install()
             except:
                 self.log.error('Preparing ZMQ failed, probably no IPython possible!')
-
-            # manhole for debugging stuff inside the app from outside
-            # if args.manhole:
-            #     import manhole
-            #     manhole.install()
 
             # Install app watchdog
             self.watchdog = AppWatchdog(self.interrupt_quit)
@@ -303,8 +293,8 @@ class Qudi(QtCore.QObject):
 
             # Start Qt event loop unless running in interactive mode
             self._is_running = True
-            self.log.info('Startup complete! Starting Qt event loop...')
-            print('> Startup complete! Starting Qt event loop...\n>')
+            self.log.info('Initialization complete! Starting Qt event loop...')
+            print('> Initialization complete! Starting Qt event loop...\n>')
             exit_code = app.exec_()
 
             self._shutting_down = False
@@ -316,7 +306,7 @@ class Qudi(QtCore.QObject):
             sys.exit(exit_code)
 
     def _exit(self, prompt=True, restart=False):
-        """ Shutdown Qudi. Nicely request that all modules shut down if prompt is True.
+        """ Shutdown qudi. Nicely request that all modules shut down if prompt is True.
         Signal restart to parent process (if present) via exitcode 42 if restart is True.
         """
         with self._quit_lock:
@@ -338,9 +328,9 @@ class Qudi(QtCore.QObject):
                     # command line prompt
                     question = '\nSome modules are still locked. ' if locked_modules else '\n'
                     if restart:
-                        question += 'Do you really want to restart Qudi (y/N)?: '
+                        question += 'Do you really want to restart qudi (y/N)?: '
                     else:
-                        question += 'Do you really want to quit Qudi (y/N)?: '
+                        question += 'Do you really want to quit qudi (y/N)?: '
                     while True:
                         response = input(question).lower()
                         if response in ('y', 'yes'):
