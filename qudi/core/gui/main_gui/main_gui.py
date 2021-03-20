@@ -31,7 +31,7 @@ from qudi.core.remote import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
-from qudi.core.logger import signal_handler
+from qudi.core.logger import get_signal_handler
 from PySide2 import QtCore, QtWidgets
 
 try:
@@ -74,7 +74,7 @@ class QudiMainGui(GuiBase):
         This method creates the Manager main window.
         """
         # Create main window and restore position
-        self.mw = QudiMainWindow()
+        self.mw = QudiMainWindow(debug_mode=self._qudi_main.debug_mode)
         self._restore_window_geometry(self.mw)
         # Create error dialog for error message popups
         self.error_dialog = ErrorDialog()
@@ -124,7 +124,7 @@ class QudiMainGui(GuiBase):
         self.mw.close()
 
     def _connect_signals(self):
-        signal_handler.sigRecordLogged.connect(self.handle_log_record, QtCore.Qt.QueuedConnection)
+        get_signal_handler().sigRecordLogged.connect(self.handle_log_record, QtCore.Qt.QueuedConnection)
         qudi_main = self._qudi_main
         # Connect up the main windows actions
         self.mw.action_quit.triggered.connect(qudi_main.prompt_quit, QtCore.Qt.QueuedConnection)
@@ -174,7 +174,7 @@ class QudiMainGui(GuiBase):
         self.mw.module_widget.sigDeactivateModule.disconnect()
         self.mw.module_widget.sigCleanupModule.disconnect()
 
-        signal_handler.sigRecordLogged.disconnect(self.handle_log_record)
+        get_signal_handler().sigRecordLogged.disconnect(self.handle_log_record)
 
     def _init_remote_modules_widget(self):
         remote_server = self._qudi_main.remote_server
