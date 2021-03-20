@@ -32,6 +32,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.paths import get_appdata_dir
 from qudi.core.config import load, save
 from qudi.core.meta import ModuleMeta
+from qudi.core.logger import get_logger
 
 
 def get_module_app_data_path(cls_name, module_base, module_name):
@@ -174,7 +175,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         self.__qudi_main_weakref = qudi_main_weakref
 
         # Create logger instance for module
-        self.__logger = logging.getLogger(f'{self.__module__}.{self.__class__.__name__}')
+        self.__logger = get_logger(f'{self.__module__}.{self.__class__.__name__}')
 
         # Create a copy of the _module_meta class dict and attach it to the created instance
         self._module_meta = copy.deepcopy(self._module_meta)
@@ -349,7 +350,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         if qudi_main is None:
             return
         if qudi_main.gui is None:
-            log = logging.getLogger('balloon-message')
+            log = get_logger('balloon-message')
             log.warning('{0}:\n{1}'.format(title, message))
             return
         qudi_main.gui.balloon_message(title, message, time, icon)
@@ -359,7 +360,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         if qudi_main is None:
             return
         if qudi_main.gui is None:
-            log = logging.getLogger('pop-up-message')
+            log = get_logger('pop-up-message')
             log.warning('{0}:\n{1}'.format(title, message))
             return
         qudi_main.gui.pop_up_message(title, message)

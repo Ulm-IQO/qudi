@@ -25,9 +25,11 @@ import weakref
 import inspect
 import traceback
 import faulthandler
+from logging import DEBUG, INFO
 from PySide2 import QtCore, QtWidgets
 
-from qudi.core.logger import init_rotating_file_handler, get_logger
+from qudi.core.logger import init_rotating_file_handler, init_record_model_handler
+from qudi.core.logger import get_logger, set_log_level
 from qudi.core.paths import get_main_dir, get_default_log_dir
 from qudi.util.helpers import import_check
 from qudi.util.mutex import Mutex
@@ -72,19 +74,22 @@ class Qudi(QtCore.QObject):
             'Qudi.instance() to get a reference to the already created instance.'
         )
 
-    def __init__(self, no_gui=False, log_dir='', config_file=None):
+    def __init__(self, no_gui=False, debug=False, log_dir='', config_file=None):
         super().__init__()
         # CLI arguments
         self.no_gui = bool(no_gui)
+        self.debug_mode = bool(debug)
         self.log_dir = str(log_dir) if os.path.isdir(log_dir) else get_default_log_dir(
             create_missing=True)
+
+        # Set up logger for qudi main instance
+        self.log = get_logger(__class__.__name__)  # will be "qudi.Qudi" in custom logger
+        sys.excepthook = self._qudi_excepthook
 
         # Check vital packages for qudi, otherwise qudi will not even start.
         if import_check() != 0:
             raise RuntimeError('Vital python packages missing. Unable to use qudi.')
 
-        self.log = get_logger(f'{__name__}.{__class__.__name__}')
-        sys.excepthook = self._qudi_excepthook
         self.thread_manager = ThreadManager(parent=self)
         self.module_manager = ModuleManager(qudi_main=self, parent=self)
         self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
@@ -170,9 +175,8 @@ class Qudi(QtCore.QObject):
     def _configure_qudi(self):
         """
         """
-        print('> Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
-        self.log.info(
-            'Starting Qudi configuration from "{0}"'.format(self.configuration.config_file))
+        print(f'> Starting Qudi configuration from "{self.configuration.config_file}"')
+        self.log.info(f'Starting Qudi configuration from "{self.configuration.config_file}"')
 
         # Clear all qudi modules
         self.module_manager.clear()
@@ -191,8 +195,9 @@ class Qudi(QtCore.QObject):
                                                    configuration=module_cfg)
                 except:
                     self.module_manager.remove_module(module_name, ignore_missing=True)
-                    self.log.exception('Unable to create ManagedModule instance for module '
-                                       '"{0}.{1}"'.format(base, module_name))
+                    self.log.exception(
+                        f'Unable to create ManagedModule instance for module "{base}.{module_name}"'
+                    )
 
         print('> Qudi configuration complete')
         self.log.info('Qudi configuration complete.')
@@ -249,12 +254,18 @@ class Qudi(QtCore.QObject):
             faulthandler.disable()
             faulthandler.enable(all_threads=True)
 
-            # install logging facility
+            # install logging facility and set logging level
+            init_record_model_handler()
             init_rotating_file_handler(path=self.log_dir)
-            self.log.info('Loading Qudi...')
-            print('> Loading Qudi...')
+            if self.debug_mode:
+                set_log_level(DEBUG)
+                self.log.warning('Qudi is starting in "debug" mode')
+            else:
+                set_log_level(INFO)
 
-            # Check Qt API
+            # Check Qt API and notify startup
+            self.log.info('Starting Qudi...')
+            print('> Starting Qudi...')
             self.log.info('Used Qt API: PySide2')
             print('> Used Qt API: PySide2')
 
