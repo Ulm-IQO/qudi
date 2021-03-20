@@ -41,30 +41,30 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
     _fallback_color = QtGui.QColor('#FFF')
     _header = ('Time', 'Level', 'Source', 'Message')
 
-    def __init__(self, *args, max_entries=1000, **kwargs):
+    def __init__(self, *args, max_records=10000, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.max_entries = max(int(max_entries), 1)
-        self._entries = list()
+        self._max_records = max(int(max_records), 1)
+        self._records = list()
 
     def rowCount(self, parent=None):
-        """ Returns the number of log entries stored in the model.
+        """ Returns the number of log records stored in the model.
 
-        @return int: number of log entries stored
+        @return int: number of log records stored
         """
-        return len(self._entries)
+        return len(self._records)
 
     def columnCount(self, parent=None):
-        """ Returns the number of columns each log entry has.
+        """ Returns the number of columns each log record has.
 
-        @return int: number of log entry columns
+        @return int: number of log record columns
         """
         return len(self._header)
 
     def flags(self, index):
-        """ Determines what can be done with log entry cells in the table view.
+        """ Determines what can be done with log record cells in the table view.
 
-        @param QModelIndex index: cell fo which the flags are requested
+        @param QModelIndex index: cell for which the flags are requested
 
         @return Qt.ItemFlags: actions allowed for this cell
         """
@@ -80,9 +80,9 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
         """
         if index.isValid():
             if role == QtCore.Qt.TextColorRole:
-                return self._color_map.get(self._entries[index.row()][1], self._fallback_color)
+                return self._color_map.get(self._records[index.row()][1], self._fallback_color)
             if role in (QtCore.Qt.DisplayRole, QtCore.Qt.ToolTipRole, QtCore.Qt.EditRole):
-                return self._entries[index.row()][index.column()]
+                return self._records[index.row()][index.column()]
         return
 
     def headerData(self, section, orientation, role=None):
@@ -118,7 +118,7 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
         return timestamp, record.levelname, record.name, message
 
     @QtCore.Slot(object)
-    def add_entry(self, data):
+    def add_record(self, data):
         """ Add a single log entry to the end of the table model.
 
         @param logging.LogRecord data: log record as returned from logging module
@@ -126,19 +126,23 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
         """
         if self.free_slots < 1:
             self.beginRemoveRows(QtCore.QModelIndex(), 0, 0)
-            self._entries.pop(0)
+            self._records.pop(0)
             self.endRemoveRows()
 
-        row = len(self._entries)
+        row = len(self._records)
         self.beginInsertRows(QtCore.QModelIndex(), row, row)
-        self._entries.append(self._format_log_record(data))
+        self._records.append(self._format_log_record(data))
         self.endInsertRows()
 
     @property
-    def free_slots(self):
-        """ Read-Only property representing the number of free log entry slots that can be filled
-        before entries are discarded from the top of the table.
+    def max_size(self):
+        return self._max_records
 
-        @return int: Number of free entry slots
+    @property
+    def free_slots(self):
+        """ Read-Only property representing the number of free item slots in the ring buffer that
+        can be filled before the earliest entries are being discarded.
+
+        @return int: Number of free item slots in the ring buffer
         """
-        return self.max_entries - len(self._entries)
+        return self._max_records - len(self._records)
