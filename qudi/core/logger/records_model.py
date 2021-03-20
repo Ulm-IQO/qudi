@@ -25,6 +25,7 @@ import traceback
 from datetime import datetime
 from collections import deque
 from PySide2 import QtCore, QtGui
+from qudi.util.mutex import Mutex
 
 
 class LogRecordsTableModel(QtCore.QAbstractTableModel):
@@ -44,6 +45,7 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
     def __init__(self, *args, max_records=10000, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._thread_lock = Mutex()
         self._max_records = max(int(max_records), 1)
         self._records = list()
         self._begin = 0
@@ -111,33 +113,35 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
         @param logging.LogRecord data: log record as returned from logging module
         @return bool: True if adding entry succeeded, False otherwise
         """
-        if self._fill_count < self._max_records:
-            self.beginInsertRows(QtCore.QModelIndex(), self._end, self._end)
-            self._records.append(self._format_log_record(data))
-            self._fill_count += 1
-            self._end = (self._end + 1) % self._max_records
-            self.endInsertRows()
-        else:
-            row = self._max_records - 1
-            self.beginRemoveRows(QtCore.QModelIndex(), 0, 0)
-            self._begin = (self._begin + 1) % self._max_records
-            self._fill_count -= 1
-            self.endRemoveRows()
+        with self._thread_lock:
+            if self._fill_count < self._max_records:
+                self.beginInsertRows(QtCore.QModelIndex(), self._end, self._end)
+                self._records.append(self._format_log_record(data))
+                self._fill_count += 1
+                self._end = (self._end + 1) % self._max_records
+                self.endInsertRows()
+            else:
+                row = self._max_records - 1
+                self.beginRemoveRows(QtCore.QModelIndex(), 0, 0)
+                self._begin = (self._begin + 1) % self._max_records
+                self._fill_count -= 1
+                self.endRemoveRows()
 
-            self.beginInsertRows(QtCore.QModelIndex(), row, row)
-            self._records[self._end] = self._format_log_record(data)
-            self._end = (self._end + 1) % self._max_records
-            self._fill_count += 1
-            self.endInsertRows()
+                self.beginInsertRows(QtCore.QModelIndex(), row, row)
+                self._records[self._end] = self._format_log_record(data)
+                self._end = (self._end + 1) % self._max_records
+                self._fill_count += 1
+                self.endInsertRows()
 
     @QtCore.Slot()
     def clear(self):
-        self.beginResetModel()
-        self._begin = 0
-        self._end = 0
-        self._fill_count = 0
-        self._records = list()
-        self.endResetModel()
+        with self._thread_lock:
+            self.beginResetModel()
+            self._begin = 0
+            self._end = 0
+            self._fill_count = 0
+            self._records = list()
+            self.endResetModel()
 
     @property
     def max_size(self):
