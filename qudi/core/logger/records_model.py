@@ -41,7 +41,7 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
     _fallback_color = QtGui.QColor('#FFF')
     _header = ('Time', 'Level', 'Source', 'Message')
 
-    def __init__(self, *args, max_records=1000, **kwargs):
+    def __init__(self, *args, max_records=10000, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._max_records = max(int(max_records), 1)
