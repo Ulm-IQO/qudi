@@ -57,12 +57,15 @@ class LogTableModelHandler(logging.Handler):
         if level < logging.DEBUG:
             level = logging.DEBUG
         super().__init__(level=level)
+        self.__qt_signaller = QtSignaller()
         self.table_model = LogRecordsTableModel(max_records=max_records)
+        self.__qt_signaller.sigSignal.connect(self.table_model.add_record,
+                                              QtCore.Qt.QueuedConnection)
 
     def emit(self, record):
         """ Store the log record information in the table model
         """
-        self.table_model.add_record(record)
+        self.__qt_signaller.sigSignal.emit(record)
 
 
 def qt_message_handler(msg_type, context, msg):
