@@ -53,11 +53,11 @@ class LogSignalHandler(logging.Handler):
 class LogTableModelHandler(logging.Handler):
     """ Logging handler that stores each log record in a QAbstractTableModel.
     """
-    def __init__(self, level=logging.INFO):
+    def __init__(self, level=logging.INFO, max_records=10000):
         if level < logging.DEBUG:
             level = logging.DEBUG
         super().__init__(level=level)
-        self.table_model = LogRecordsTableModel()
+        self.table_model = LogRecordsTableModel(max_records=max_records)
 
     def emit(self, record):
         """ Store the log record information in the table model

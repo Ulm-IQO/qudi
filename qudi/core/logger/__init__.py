@@ -152,15 +152,15 @@ def get_file_handler():
     return _file_handler
 
 
-def init_record_model_handler():
+def init_record_model_handler(max_records=10000):
     global _table_model_handler
 
     if _table_model_handler is not None:
         logging.getLogger().removeHandler(_table_model_handler)
         _table_model_handler = None
 
-    _table_model_handler = LogTableModelHandler()
-    _table_model_handler.setLevel(_qudi_root_logger.level)
+    _table_model_handler = LogTableModelHandler(level=_qudi_root_logger.level,
+                                                max_records=max_records)
     logging.getLogger().addHandler(_table_model_handler)
 
 
@@ -178,7 +178,7 @@ def init_rotating_file_handler(path='', filename='qudi.log', max_bytes=1024**3, 
     do_rollover = os.path.exists(filepath) and os.stat(filepath).st_size > 0
     _file_handler = RotatingFileHandler(filepath, maxBytes=max_bytes, backupCount=backup_count)
     _file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s',
-                                                datefmt="%Y-%m-%d %H:%M:%S"))
+                                                 datefmt="%Y-%m-%d %H:%M:%S"))
     _file_handler.setLevel(_qudi_root_logger.level)
     if do_rollover:
         _file_handler.doRollover()
