@@ -121,10 +121,13 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
             row = self._max_records - 1
             self.beginRemoveRows(QtCore.QModelIndex(), 0, 0)
             self._begin = (self._begin + 1) % self._max_records
+            self._fill_count -= 1
             self.endRemoveRows()
+
             self.beginInsertRows(QtCore.QModelIndex(), row, row)
             self._records[self._end] = self._format_log_record(data)
             self._end = (self._end + 1) % self._max_records
+            self._fill_count += 1
             self.endInsertRows()
 
     @QtCore.Slot()
@@ -139,15 +142,6 @@ class LogRecordsTableModel(QtCore.QAbstractTableModel):
     @property
     def max_size(self):
         return self._max_records
-
-    @property
-    def free_slots(self):
-        """ Read-Only property representing the number of free item slots in the ring buffer that
-        can be filled before the earliest entries are being discarded.
-
-        @return int: Number of free item slots in the ring buffer
-        """
-        return self._max_records - len(self._records)
 
     @staticmethod
     def _format_log_record(record):
