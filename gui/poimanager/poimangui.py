@@ -626,6 +626,8 @@ class PoiManagerGui(GUIBase):
         new_pos = self.poimanagerlogic().roi_origin
         new_pos[0] = pos.x()
         new_pos[1] = pos.y()
+        new_pos[2] = self.poimanagerlogic().scanner_position[2]  #Added by rmgonzal
+        
         self.sigAddPoiByClick.emit(new_pos)
         return
 
