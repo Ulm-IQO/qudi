@@ -24,17 +24,35 @@ from core.meta import InterfaceMetaclass
 
 
 class SpectrometerInterface(metaclass=InterfaceMetaclass):
-    """This is the Interface class to define the controls for the simple
-    optical spectrometer.
+    """ This is the interface class to define the controls for the simple optical spectrometer.
+
+    This is interface is very basic, a more advanced one is in progress.
+
+    Warning: This interface use CamelCase. This is should not be done in future versions. See more info here :
+    documentation/programming_style.md
+
     """
     @abstract_interface_method
     def recordSpectrum(self):
+        """ Launch an acquisition a wait for a response
+
+        @return (2, N) float array: The acquired array with the wavelength in meter in the first row and measured value
+                                    int the second
+        """
         pass
 
     @abstract_interface_method
     def setExposure(self, exposureTime):
+        """ Set the acquisition exposure time
+
+        @param (float) exposureTime: Exposure time to set in second
+        """
         pass
 
     @abstract_interface_method
     def getExposure(self):
+        """ Get the acquisition exposure time
+
+        @return (float): Exposure time in second
+        """
         pass

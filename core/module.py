@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import copy
 import logging
 import warnings
 from fysom import Fysom  # provides a final state machine
@@ -28,6 +29,7 @@ from qtpy import QtCore
 from .meta import ModuleMeta
 from .configoption import MissingOption
 from .connector import Connector
+from .statusvariable import StatusVar
 
 
 class ModuleStateMachine(QtCore.QObject, Fysom):
@@ -203,9 +205,14 @@ class BaseMixin(metaclass=ModuleMeta):
             @param e: Fysom event
         """
         # add status vars
+        sv = self._statusVariables
         for vname, var in self._stat_vars.items():
-            sv = self._statusVariables
-            svar = sv[var.name] if var.name in sv else var.default
+
+            if isinstance(var.default, dict) and var.name in sv:
+                svar = copy.deepcopy(var.default)
+                svar.update(sv[var.name])
+            else:
+                svar = sv[var.name] if var.name in sv else copy.deepcopy(var.default)
 
             if var.constructor_function is None:
                 setattr(self, var.var_name, svar)
@@ -228,12 +235,12 @@ class BaseMixin(metaclass=ModuleMeta):
             # save status vars even if deactivation failed
             for vname, var in self._stat_vars.items():
                 if hasattr(self, var.var_name):
-                    if var.representer_function is None:
-                        self._statusVariables[var.name] = getattr(self, var.var_name)
-                    else:
-                        self._statusVariables[var.name] = var.representer_function(
-                                                            self,
-                                                            getattr(self, var.var_name))
+                    value = getattr(self, var.var_name)
+                    if not isinstance(value, StatusVar):
+                        if var.representer_function is None:
+                            self._statusVariables[var.name] = value
+                        else:
+                            self._statusVariables[var.name] = var.representer_function(self, value)
 
     @property
     def log(self):
