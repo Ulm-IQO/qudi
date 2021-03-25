@@ -24,11 +24,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 from qudi.interface.finite_sampling_io_interface import FiniteSamplingIOInterface
-from qudi.interface.finite_sampling_io_interface import SamplingOutputMode
 from qudi.interface.finite_sampling_io_interface import FiniteSamplingIOConstraints
 from qudi.hardware.dummy.finite_sampling_input_dummy import SimulationMode
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
+from qudi.core.enums import SamplingOutputMode
 
 
 class FiniteSamplingIODummy(FiniteSamplingIOInterface):
