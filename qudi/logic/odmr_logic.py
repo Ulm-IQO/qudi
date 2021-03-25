@@ -35,25 +35,26 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.datastorage import TextDataStorage
 from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style as _mpl_qd_style
-from qudi.interface.finite_sampling_io_interface import SamplingOutputMode
+from qudi.core.enums import SamplingOutputMode
 
 
 class OdmrLogic(LogicBase):
     """ This is the Logic class for CW ODMR measurements """
 
     # declare connectors
-    _odmr_scanner = Connector(name='odmr_scanner', interface='OdmrScannerInterface')
-    _cw_microwave = Connector(name='cw_microwave',
-                              interface='ProcessSetpointInterface',
-                              optional=True)
+    _microwave = Connector(name='microwave', interface='MicrowaveInterface')
+    _data_scanner = Connector(name='data_scanner', interface='FiniteSamplingInputInterface')
 
     # declare config options
     _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
+    _default_scan_mode = ConfigOption(name='default_scan_mode',
+                                      default='JUMP_LIST',
+                                      constructor=lambda x: SamplingOutputMode[x.upper()])
 
     # declare status variables
     _cw_frequency = StatusVar(name='cw_frequency', default=2870e6)
-    _cw_power = StatusVar(name='cw_power', default=-30)
-    _scan_power = StatusVar(name='scan_power', default=-30)
+    _cw_power = StatusVar(name='cw_power', default=-np.inf)
+    _scan_power = StatusVar(name='scan_power', default=-np.inf)
     _scan_frequency_ranges = StatusVar(name='scan_frequency_ranges',
                                        default=[(2820e6, 2920e6, 101)])
     _run_time = StatusVar(name='run_time', default=60)
@@ -118,9 +119,26 @@ class OdmrLogic(LogicBase):
         """
         Initialisation performed during activation of the module.
         """
-        # Set/recall microwave parameters and check against constraints
-        # ToDo: check all StatusVars
+        # Recall status variables and check against constraints
+        mw_constraints = self._microwave().constraints
+        data_constraints = self._data_scanner().constraints
 
+        self._cw_frequency = mw_constraints.frequency_in_range(self._cw_frequency)[1]
+        self._cw_power = mw_constraints.power_in_range(self._cw_power)[1]
+        self._scan_power = mw_constraints.power_in_range(self._scan_power)[1]
+        self._run_time = max(1., self._run_time)
+        self._scans_to_average = max(0, int(self._scans_to_average))
+        self._oversampling_factor = max(1, int(self._oversampling_factor))
+        for ii, freq_range in enumerate(self._scan_frequency_ranges):
+            self._scan_frequency_ranges[ii] = (
+                mw_constraints.frequency_in_range(freq_range[0])[1],
+                mw_constraints.frequency_in_range(freq_range[1])[1],
+                mw_constraints.scan_size_in_range(int(freq_range[2]))[1]
+            )
+        # ToDo: Check against data sampler constraints
+        # self._data_rate =
+
+        # Set up fit model and container
         self._fit_config_model = FitConfigurationsModel(parent=self)
         self._fit_config_model.load_configs(self._fit_configs)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
@@ -128,8 +146,8 @@ class OdmrLogic(LogicBase):
         # Elapsed measurement time and number of sweeps
         self._elapsed_time = 0.0
         self._elapsed_sweeps = 0
-        self.__estimated_lines = 0
         self._start_time = 0.0
+        self.__estimated_lines = 0
 
         # Initialize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_data()
@@ -139,7 +157,8 @@ class OdmrLogic(LogicBase):
 
         # Connect signals
         self._sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
-        return
+
+        self._microwave().scan_mode = SamplingOutputMode.EQUIDISTANT_SWEEP
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -173,7 +192,7 @@ class OdmrLogic(LogicBase):
         samples_per_line = sum(freq_range[-1] for freq_range in self._scan_frequency_ranges)
         # Add 5% Safety; Minimum of 1 line
         self.__estimated_lines = max(1, int(1.05 * estimated_samples / samples_per_line))
-        for channel in self._odmr_scanner().constraints.channel_names:
+        for channel in self._data_scanner().constraints.channel_names:
             self._raw_data[channel] = [
                 np.full((freq_arr.size, self.__estimated_lines), np.nan) for freq_arr in
                 self._frequency_data
@@ -215,14 +234,12 @@ class OdmrLogic(LogicBase):
         return self._fit_results.copy()
 
     @property
-    def scanner_constraints(self):
-        return self._odmr_scanner().constraints
+    def data_constraints(self):
+        return self._data_scanner().constraints
 
     @property
-    def cw_constraints(self):
-        if self._cw_microwave.is_connected:
-            return self._cw_microwave().constraints
-        return None
+    def microwave_constraints(self):
+        return self._microwave().constraints
 
     @property
     def signal_data(self):
@@ -322,8 +339,8 @@ class OdmrLogic(LogicBase):
             if number_diff < 0:
                 del self._scan_frequency_ranges[number_of_ranges:]
             elif number_diff > 0:
-                constraints = self.scanner_constraints
-                if constraints.output_mode_supported(SamplingOutputMode.JUMP_LIST):
+                constraints = self.microwave_constraints
+                if constraints.mode_supported(SamplingOutputMode.JUMP_LIST):
                     new_range = self._scan_frequency_ranges[-1]
                     self._scan_frequency_ranges.extend([new_range] * number_diff)
                 else:
@@ -408,28 +425,22 @@ class OdmrLogic(LogicBase):
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
         """
-        if not self._cw_microwave.is_connected:
-            self.sigCwParametersUpdated.emit(self.cw_parameters)
-            return
-
         with self._threadlock:
             try:
-                constraints = self.cw_constraints
-                self._cw_frequency = constraints.channel_value_in_range(frequency, 'Frequency')[1]
-                self._cw_power = constraints.channel_value_in_range(power, 'Power')[1]
+                constraints = self.microwave_constraints
+                self._cw_frequency = constraints.frequency_in_range(frequency)[1]
+                self._cw_power = constraints.power_in_range(power)[1]
             except:
                 self.log.exception('Error while trying to set CW parameters:')
             self.sigCwParametersUpdated.emit(self.cw_parameters)
 
     @QtCore.Slot(bool)
     def toggle_cw_output(self, enable):
-        if not self._cw_microwave.is_connected:
-            self.sigCwStateUpdated.emit(False)
-            return
         with self._threadlock:
-            microwave = self._cw_microwave()
+            microwave = self._microwave()
             # Return early if CW output is already in desired state
-            if enable == microwave.is_active:
+            if enable == (microwave.module_state() != 'idle' and not microwave.is_scanning):
+                self.sigCwStateUpdated.emit(enable)
                 return
             # Throw error and return early if CW output can not be turned on
             if enable and self.module_state() != 'idle':
@@ -438,11 +449,17 @@ class OdmrLogic(LogicBase):
             # Toggle microwave output
             try:
                 if enable:
-                    microwave.setpoints = {'Frequency': self._cw_frequency, 'Power': self._cw_power}
-                microwave.is_active = enable
+                    microwave.cw_power = self._cw_power
+                    microwave.cw_frequency = self._cw_frequency
+                    microwave.cw_on()
+                else:
+                    microwave.off()
             except:
                 self.log.exception('Error while trying to toggle microwave CW output:')
-            self.sigCwStateUpdated.emit(microwave.is_active)
+            finally:
+                self.sigCwStateUpdated.emit(
+                    microwave.module_state() != 'idle' and not microwave.is_scanning
+                )
 
     @QtCore.Slot(bool, bool)
     def toggle_odmr_scan(self, start, resume):
@@ -459,60 +476,53 @@ class OdmrLogic(LogicBase):
     @QtCore.Slot()
     def start_odmr_scan(self):
         """ Starting an ODMR scan.
-
-        @return int: error code (0:OK, -1:error)
         """
         with self._threadlock:
             if self.module_state() != 'idle':
                 self.log.error('Can not start ODMR scan. Measurement is already running.')
                 self.sigScanStateUpdated.emit(True)
-                return -1
+                return
+
+            microwave = self._microwave()
+            sampler = self._data_scanner()
 
             self.toggle_cw_output(False)
-
             self.module_state.lock()
 
-            # Set up scanner hardware
-            scanner = self._odmr_scanner()
+            # Set up hardware
             try:
-                scanner.set_sample_rate(self._oversampling_factor * self._data_rate)
-                self._data_rate = scanner.sample_rate / self._oversampling_factor
+                # Set scan sample rate
+                sampler.set_sample_rate(self._oversampling_factor * self._data_rate)
+                self._data_rate = sampler.sample_rate / self._oversampling_factor
 
                 # switch scan mode if necessary
-                if scanner.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                if microwave.scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
                     if len(self._scan_frequency_ranges) != 1:
-                        if scanner.constraints.output_mode_supported(SamplingOutputMode.JUMP_LIST):
-                            self.log.warning('Multiple ODMR scan ranges set up. Switching scanner '
-                                             'to output mode "{SamplingOutputMode.JUMP_LIST}"')
-                            scanner.set_output_mode(SamplingOutputMode.JUMP_LIST)
-                        else:
-                            raise ValueError(
-                                f'Unable to start ODMR scanner. Output mode '
-                                f'"{SamplingOutputMode.EQUIDISTANT_SWEEP}" is not supported but '
-                                f'necessary for multiple scan ranges. Stick to a single scan range '
-                                f'and try again.'
-                            )
-                if scanner.output_mode == SamplingOutputMode.JUMP_LIST:
+                        if microwave.constraints.mode_supported(SamplingOutputMode.JUMP_LIST):
+                            self.log.warning('Multiple ODMR scan ranges set up. Trying to switch '
+                                             'scanner to output mode "JUMP_LIST".')
+                            microwave.scan_mode = SamplingOutputMode.JUMP_LIST
+
+                # Set frequency values to scan
+                if microwave.scan_mode == SamplingOutputMode.JUMP_LIST:
                     frame_data = np.concatenate(self._frequency_data)
                     if self._oversampling_factor > 1:
                         frame_data = np.repeat(frame_data, self._oversampling_factor)
-                elif scanner.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                    frame_data = self._scan_frequency_ranges
+                    sampler.set_frame_size(len(frame_data))
+                elif microwave.scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                    frame_data = self._scan_frequency_ranges[0]
+                    sampler.set_frame_size(frame_data[-1])
                 else:
-                    raise RuntimeError(
-                        f'Unknown scanner output mode encountered: "{scanner.output_mode}"'
-                    )
-                scanner.set_frequency_data(frame_data)
+                    raise RuntimeError(f'Unknown scanner mode encountered: "{microwave.scan_mode}"')
+                microwave.scan_frequencies = frame_data
 
                 # Set scan power
-                self._odmr_scanner().set_power(self._scan_power)
+                microwave.scan_power = self._scan_power
             except:
-                self.log.exception(
-                    'Unable to start ODMR scan. Error while setting up scanner hardware.'
-                )
+                self.log.exception('Unable to start ODMR scan. Error while setting up hardware.')
                 self.module_state.unlock()
                 self.sigScanStateUpdated.emit(False)
-                return -1
+                return
             finally:
                 # ToDo: Emit all new parameters
                 self.sigScanParametersUpdated.emit({'data_rate': self._data_rate})
@@ -526,7 +536,6 @@ class OdmrLogic(LogicBase):
             self.sigScanStateUpdated.emit(True)
             self._start_time = time.time()
             self._sigNextLine.emit()
-            return 0
 
     @QtCore.Slot()
     def continue_odmr_scan(self):
@@ -538,16 +547,14 @@ class OdmrLogic(LogicBase):
             if self.module_state() == 'locked':
                 self.log.error('Can not continue ODMR scan. Measurement is already running.')
                 self.sigScanStateUpdated.emit(True)
-                return -1
-
-            self.module_state.lock()
+                return
 
             # ToDo: see start_odmr_scan
+            self.module_state.lock()
 
             self.sigScanStateUpdated.emit(True)
             self._start_time = time.time() - self._elapsed_time
             self._sigNextLine.emit()
-            return 0
 
     @QtCore.Slot()
     def stop_odmr_scan(self):
@@ -559,7 +566,6 @@ class OdmrLogic(LogicBase):
             if self.module_state() == 'locked':
                 self.module_state.unlock()
             self.sigScanStateUpdated.emit(False)
-            return 0
 
     @QtCore.Slot()
     def clear_odmr_data(self):
@@ -575,9 +581,7 @@ class OdmrLogic(LogicBase):
 
     @QtCore.Slot()
     def _scan_odmr_line(self):
-        """ Scans one line in ODMR
-
-        (from mw_start to mw_stop in steps of mw_step)
+        """ Perform a single scan over the specified frequency range
         """
         with self._threadlock:
             # If the odmr measurement is not running do nothing
@@ -585,7 +589,8 @@ class OdmrLogic(LogicBase):
                 return
 
             try:
-                new_counts = self._odmr_scanner().scan_frame()
+                scanner = self._data_scanner()
+                new_counts = scanner.acquire_frame(scanner.frame_size)
                 if self._oversampling_factor > 1:
                     for ch in new_counts:
                         new_counts[ch] = np.mean(
@@ -618,7 +623,8 @@ class OdmrLogic(LogicBase):
                 start = 0
                 for range_index, range_params in enumerate(self._scan_frequency_ranges):
                     range_list[range_index] = np.roll(range_list[range_index], 1, axis=1)
-                    range_list[range_index][:, 0] = new_counts[ch][start:start + range_params[-1]]
+                    tmp = new_counts[ch][start:start + range_params[-1]]
+                    range_list[range_index][:, 0] = tmp
                     start += range_params[-1]
 
             # Calculate averaged signal
