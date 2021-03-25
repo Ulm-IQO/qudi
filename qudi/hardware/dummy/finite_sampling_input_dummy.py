@@ -203,7 +203,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
                 self.set_frame_size(frame_size)
 
             self.start_buffered_acquisition()
-            data = self.get_buffered_samples()
+            data = self.get_buffered_samples(self._frame_size)
             self.stop_buffered_acquisition()
 
             if buffered_frame_size is not None:

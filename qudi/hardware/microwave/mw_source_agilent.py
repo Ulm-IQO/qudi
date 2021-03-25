@@ -25,11 +25,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import visa
-import numpy as np
 import time
+import numpy as np
 
 from qudi.core.configoption import ConfigOption
-from qudi.interface.microwave_interface import MicrowaveInterface
+from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputInterface
+from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputConstraints, SamplingOutputMode
 from qudi.interface.microwave_interface import MicrowaveConstraints
 from qudi.interface.microwave_interface import MicrowaveMode
 from qudi.interface.microwave_interface import TriggerEdge

@@ -70,24 +70,24 @@ class OdmrGui(GuiBase):
     def on_activate(self):
         # Create main window
         logic = self._odmr_logic()
-        scanner_constraints = logic.scanner_constraints
-        cw_constraints = logic.cw_constraints
-        self.__cw_control_available = cw_constraints is not None
+        data_constraints = logic.data_constraints
+        mw_constraints = logic.microwave_constraints
+        self.__cw_control_available = True
         self._mw = OdmrMainWindow()
         self._plot_widget = self._mw.centralWidget()
         # ToDo: Get constraints from scanner
         self._scan_control_dockwidget = OdmrScanControlDockWidget(
             parent=self._mw,
-            power_range=scanner_constraints.power_limits,
-            frequency_range=scanner_constraints.frequency_limits,
-            data_channels=scanner_constraints.channel_names,
-            points_range=scanner_constraints.frame_size_limits
+            power_range=mw_constraints.power_limits,
+            frequency_range=mw_constraints.frequency_limits,
+            data_channels=data_constraints.channel_names,
+            points_range=mw_constraints.scan_size_limits
         )
         if self.__cw_control_available:
             self._cw_control_dockwidget = OdmrCwControlDockWidget(
                 parent=self._mw,
-                power_range=cw_constraints.channel_limits['Power'],
-                frequency_range=cw_constraints.channel_limits['Frequency']
+                power_range=mw_constraints.power_limits,
+                frequency_range=mw_constraints.frequency_limits
             )
         else:
             self._cw_control_dockwidget = OdmrCwControlDockWidget(parent=self._mw)
@@ -402,7 +402,7 @@ class OdmrGui(GuiBase):
         if range_index is None:
             range_index = self._scan_control_dockwidget.selected_range
         logic = self._odmr_logic()
-        channel_unit = logic.scanner_constraints.channel_units[channel]
+        channel_unit = logic.data_constraints.channel_units[channel]
         self._plot_widget.set_signal_label(channel, channel_unit)
         self._update_scan_data()
         fit_cfg_result = logic.fit_results[channel][range_index]
