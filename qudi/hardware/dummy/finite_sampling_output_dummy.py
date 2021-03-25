@@ -26,9 +26,9 @@ import numpy as np
 from PySide2.QtCore import QTimer
 from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputInterface
 from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputConstraints
-from qudi.interface.finite_sampling_output_interface import SamplingOutputMode
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
+from qudi.core.enums import SamplingOutputMode
 
 
 class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):
