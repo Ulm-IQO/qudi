@@ -293,15 +293,17 @@ class SpectrumLogic(GenericLogic):
 
     def _update_acquisition_params(self):
         self._acquisition_params['read_mode'] = self.read_mode
+        self._acquisition_params['acquisition_mode'] = self.acquisition_mode
         if self.read_mode == 'IMAGE_ADVANCED':
             self._acquisition_params['image_advanced'] = (self.image_advanced_binning, self.image_advanced_area)
         if self.read_mode == 'MULTIPLE_TRACKS':
-            self._acquisition_params['multiple_tracks'] = self.active_tracks
+            self._acquisition_params['tracks'] = self.active_tracks
+        if self.acquisition_mode == 'MULTI_SCAN':
+            self._acquisition_params['scan_delay (s)'] = self.scan_delay
+            self._acquisition_params['number_of_scan'] = self.number_of_scan
         self._acquisition_params['camera_gain'] = self.camera_gain
         self._acquisition_params['readout_speed (Hz)'] = self.readout_speed
         self._acquisition_params['exposure_time (s)'] = self.exposure_time
-        self._acquisition_params['scan_delay (s)'] = self.scan_delay
-        self._acquisition_params['number_of_scan'] = self.number_of_scan
         self._acquisition_params['center_wavelength  (m)'] = self.center_wavelength
         self._acquisition_params['grating'] = self.grating
         self._acquisition_params['spectro_ports'] = self.input_port, self.output_port
@@ -311,14 +313,13 @@ class SpectrumLogic(GenericLogic):
         """ Getter method returning the last acquisition parameters. """
     def save_acquired_data(self):
 
-        filepath = self.savelogic().get_path_for_module(module_name='spectrum_logic')
+        filepath = self.savelogic().get_path_for_module(module_name='spectrum')
         data = self._acquired_data.flatten()/self._acquisition_params['exposure_time (s)']
 
         if self.acquisition_params['read_mode'] == 'IMAGE_ADVANCED':
-            data = {'data' : np.array(self._acquired_data).flatten()/self._acquisition_params['exposure_time (s)']}
+            data = {'data': data}
         else:
-            data = {'wavelength (m)' : self.wavelength_spectrum,
-                    'data' : self._acquired_data.flatten()/self._acquisition_params['exposure_time (s)']}
+            data = {'wavelength (m)' : self.wavelength_spectrum, 'data': data}
 
         self.savelogic().save_data(data, filepath=filepath, parameters=self.acquisition_params)
 
@@ -373,6 +374,10 @@ class SpectrumLogic(GenericLogic):
         @return: (float) the spectrum center wavelength
 
         """
+        if self._center_wavelength == 0:
+            return self._center_wavelength
+        else:
+            return self._center_wavelength + self.wavelength_calibration
         return self._center_wavelength
 
     @center_wavelength.setter
@@ -398,10 +403,7 @@ class SpectrumLogic(GenericLogic):
                            .format(0, wavelength_max))
             return
         self.spectrometer().set_wavelength(wavelength)
-        if wavelength == 0:
-            self._center_wavelength = self.spectrometer().get_wavelength()
-        else:
-            self._center_wavelength = self.spectrometer().get_wavelength() + self.wavelength_calibration
+        self._center_wavelength = self.spectrometer().get_wavelength()
         self.sigUpdateSettings.emit()
 
     @property
@@ -440,7 +442,7 @@ class SpectrumLogic(GenericLogic):
             self.log.error("Acquisition process is currently running : you can't change this parameter"
                            " until the acquisition is completely stopped ")
             return
-        self._wavelength_calibration[self.grating] = wavelength_calibration
+        self._wavelength_calibration[self.grating] = float(wavelength_calibration)
         self.sigUpdateSettings.emit()
 
 
