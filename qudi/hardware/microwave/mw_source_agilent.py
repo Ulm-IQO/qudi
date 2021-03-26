@@ -29,11 +29,9 @@ import time
 import numpy as np
 
 from qudi.core.configoption import ConfigOption
-from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputInterface
-from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputConstraints, SamplingOutputMode
-from qudi.interface.microwave_interface import MicrowaveConstraints
-from qudi.interface.microwave_interface import MicrowaveMode
-from qudi.interface.microwave_interface import TriggerEdge
+from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
+from qudi.core.enums import SamplingOutputMode, TriggerEdge
+from qudi.util.mutex import Mutex
 
 
 class MicrowaveAgilent(MicrowaveInterface):
@@ -41,506 +39,416 @@ class MicrowaveAgilent(MicrowaveInterface):
 
     The hardware file was tested using the model N9310A.
 
+    ToDo: Check if all these extremely long wait times are actually needed.
+
     Example config for copy-paste:
 
     mw_source_agilent:
         module.Class: 'microwave.mw_source_agilent.MicrowaveAgilent'
-        usb_address: USB0::10::INSTR
-        usb_timeout: 100 # in seconds
-
+        visa_address: USB0::10::INSTR  # PyVisa compatible resource name
+        comm_timeout: 5  # in seconds
     """
 
-    _usb_address = ConfigOption('usb_address', missing='error')
-    _usb_timeout = ConfigOption('usb_timeout', 100, missing='warn')
+    _visa_address = ConfigOption('visa_address', missing='error')
+    _comm_timeout = ConfigOption('comm_timeout', default=5, missing='warn')
+
+    _FREQ_SWITCH_SPEED = 0.09  # Frequency switching speed in s (acc. to specs)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._thread_lock = Mutex()
+        self._rm = None
+        self._device = None
+        self._model = ''
+        self._constraints = None
+        self._is_scanning = False
+        self._scan_power = 0.0
+        self._scan_mode = None
+        self._scan_frequencies = None
+        self._trigger_edge = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        try:
-            self._usb_timeout = self._usb_timeout
-            # trying to load the visa connection to the module
-            self.rm = visa.ResourceManager()
-            self._usb_connection = self.rm.open_resource(
-                resource_name=self._usb_address,
-                timeout=self._usb_timeout)
+        # trying to open a communication channel to the device using PyVisa
+        self._rm = visa.ResourceManager()
+        self._device = self._rm.open_resource(resource_name=self._visa_address,
+                                              timeout=int(self._comm_timeout * 1000))
+        self._model = self._device.query('*IDN?').split(',')[1]
 
-            self.log.info('MWAGILENT initialised and connected to hardware.')
-            self.model = self._usb_connection.query('*IDN?').split(',')[1]
-            self._FREQ_SWITCH_SPEED = 0.09  # Frequency switching speed in s (acc. to specs)
-            #set trigger of Sweep and Point to be FALLING
-            self.set_ext_trigger()
-        except:
-            self.log.error('This is MWagilent: could not connect to the GPIB '
-                           'address >>{}<<.'.format(self._usb_address))
+        # Generate constraints
+        if self._model == 'N9310A':
+            freq_limits = (9e3, 3e9)
+            power_limits = (-127, 20)
+        else:
+            freq_limits = (9e3, 3e9)
+            power_limits = (-144, 10)
+            self.log.warning('Model string unknown, hardware constraints might be wrong.')
+        self._constraints = MicrowaveConstraints(
+            power_limits=power_limits,
+            frequency_limits=freq_limits,
+            scan_size_limits=(2, 4000),
+            scan_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP)
+        )
+
+        self._is_scanning = False
+        self._scan_power = float(self._device.query(':AMPL:CW?'))
+        self._scan_frequencies = None
+        self._scan_mode = SamplingOutputMode.JUMP_LIST
+        # ToDo: Set trigger
+        self._trigger_edge = TriggerEdge.RISING
+        self.trigger_edge = self._trigger_edge
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
+        """ Cleanup performed during deactivation of the module.
         """
+        self._device.close()
+        self._rm.close()
 
-        self._usb_connection.close()
-        self.rm.close()
-        return
+    @property
+    def constraints(self):
+        """The microwave constraints object for this device.
 
-    def off(self):
-        """ Switches off any microwave output.
-
-        @return int: error code (0:OK, -1:error)
+        @return MicrowaveConstraints:
         """
-        # turn of sweeping (both "list" or ”sweep“）
-        self._usb_connection.write(':SWEep:RF:STATe OFF')
-        while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 0:
-            time.sleep(0.2)
-        # check if running
-        mode, is_running = self.get_status()
-        if not is_running:
-            return 0
-        self._usb_connection.write(':RFO:STAT OFF')
-        while int(float(self._usb_connection.query(':RFO:STAT?'))) != 0:
-            time.sleep(0.2)
-        #self._mode ="cw"
-        return 0
+        return self._constraints
 
-    def get_status(self):
+    @property
+    def is_scanning(self):
+        """Read-Only boolean flag indicating if a scan is running at the moment. Can be used
+        together with module_state() to determine if the currently running microwave output is a
+        scan or CW. Should return False if module_state() is 'idle'.
+
+        @return bool: Flag indicating if a scan is running (True) or not (False)
         """
-        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
-        the output state (stopped, running)
+        with self._thread_lock:
+            return self._is_scanning()
 
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
+    @property
+    def cw_power(self):
+        """The CW microwave power in dBm.
+
+        @return float: The currently set CW microwave power in dBm.
         """
+        with self._thread_lock:
+            return float(self._device.query(':AMPL:CW?'))
 
-        is_running = bool(int(float(self._usb_connection.ask(":RFOutput:STATe?"))))
+    @cw_power.setter
+    def cw_power(self, value):
+        with self._thread_lock:
+            self._command_wait(f':AMPL:CW {value:f}')
 
-        if bool(int(float(self._usb_connection.ask(":SWEep:RF:STATe?")))):
-            if self._usb_connection.ask(":SWEep:TYPE?") == "STEP":
-                mode = "sweep"
-            else:
-                mode="list"
-        else:
-            mode="cw"
-        return mode, is_running
+    @property
+    def cw_frequency(self):
+        """The CW microwave frequency in Hz. Must implement setter as well.
 
-
-    def get_power(self):
-        """ Gets the microwave output power.
-
-        @return float: the power set at the device in dBm
+        @return float: The currently set CW microwave frequency in Hz.
         """
-        mode, is_running = self.get_status()
-        if mode == 'list':
-            #add the moment all powers in the list file should be the same
-            self._usb_connection.write(':LIST:ROW:GOTO {0:e}'.format(1))
-            return float(self._usb_connection.ask(':LIST:Amplitude?'))
-        else:
-            return float(self._usb_connection.query(':AMPL:CW?'))
+        with self._thread_lock:
+            return float(self._device.query(':FREQ:CW?'))
 
-    def get_frequency(self):
-        """ Gets the frequency of the microwave output.
+    @cw_frequency.setter
+    def cw_frequency(self, value):
+        with self._thread_lock:
+            self._command_wait(f':FREQ:CW {value:e} Hz')
 
-        @return float: frequency (in Hz), which is currently set for this device
+    @property
+    def scan_power(self):
+        """The microwave power in dBm used for scanning.
+
+        @return float: The currently set scanning microwave power in dBm
         """
-        mode, is_running = self.get_status()
-        if 'cw' in mode:
-            return_val = float(self._usb_connection.query(':FREQ:CW?'))
-        elif 'sweep' in mode:
-            start = float(self._usb_connection.ask(':SWE:RF:STAR?'))
-            stop = float(self._usb_connection.ask(':SWE:RF:STOP?'))
-            num_of_points = int(self._usb_connection.ask(':SWE:STEP:POIN?'))
-            freq_range = stop - start
-            step = freq_range / (num_of_points - 1)
-            return_val = [start, stop, step]
-        elif 'list' in mode:
-            # get the number of rows and initalize output arraz
-            current_rows = int(self._usb_connection.ask(':LIST:RF:POINts?'))
-            return_val = np.zeros((current_rows,1))
-            for ii in range(current_rows):
-                # go to respective row
-                self._usb_connection.write(':LIST:ROW:GOTO {0:e}'.format(ii + 1))
-                return_val[ii] = float(self._command_wait(':LIST:RF?'))
-        return return_val
+        with self._thread_lock:
+            return self._scan_power
 
-    def cw_on(self):
-        """ Switches on any preconfigured microwave output.
+    @scan_power.setter
+    def scan_power(self, value):
+        with self._thread_lock:
+            in_range, value = self._constraints.power_in_range(float(value))
+            assert in_range, f'scan_power to set ({value} dBm) is out of bounds for allowed ' \
+                             f'range {self._constraints.power_limits}'
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set scan_power. Microwave output is active.')
 
-        @return int: error code (0:OK, -1:error)
-        """
-        current_mode, is_running = self.get_status()
-        if is_running:
-            if current_mode == 'cw':
-                return 0
-            else:
-                self.off()
+            self._scan_power = value
 
-        self._usb_connection.write(':RFO:STAT ON')
-        while not is_running:
-            time.sleep(0.2)
-            dummy, is_running = self.get_status()
-
-        return 0
-
-    def set_cw(self, freq=None, power=None, useinterleave=None):
-        """ Sets the MW mode to cw and additionally frequency and power
-        #For agilent device there is no CW mode, so just do nothing
-
-        @param float freq: frequency to set in Hz
-        @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
-
-        @return int: error code (0:OK, -1:error)
-
-        Interleave option is used for arbitrary waveform generator devices.
-        """
-        mode, is_running = self.get_status()
-        if is_running:
-            self.off()
-
-        if freq is not None:
-            self.set_frequency(freq)
-        if power is not None:
-            self.set_power(power)
-        if useinterleave is not None:
-            self.log.warning("No interleave available at the moment!")
-
-        mode, is_running = self.get_status()
-        actual_freq = self.get_frequency()
-        actual_power = self.get_power()
-        return actual_freq, actual_power, mode
-
-    def list_on(self):
-        """ Switches on the list mode.
-
-        @return int: error code (1: ready, 0:not ready, -1:error)
-        """
-        current_mode, is_running = self.get_status()
-        if is_running:
-            if current_mode == 'list':
-                return 0
-            else:
-                self.off()
-        try:
-            self._usb_connection.write(":SWEep:TYPE LIST")
-            self._usb_connection.write(':SWE:RF:STAT ON')
-            while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 1:
-                time.sleep(0.2)
-            self._usb_connection.write(':RFO:STAT ON')
-            dummy, is_running = self.get_status()
-            while not is_running:
-                time.sleep(0.2)
-                dummy, is_running = self.get_status()
-            return 0
-        except:
-            self.log.warning("Turning on of List mode does not work")
-            return -1
-
-    def set_list(self, freq=None, power=None):
-        """ There is no list mode for agilent
-        # Also the list is created by giving 'start_freq, step, stop_freq'
-
-        @param list freq: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
-
-        """
-        mode, is_running = self.get_status()
-        if is_running:
-            self.off()
-
-        if freq is not None:
-            num_of_freq = len(freq)
-            current_rows = int(self._usb_connection.ask(':LIST:RF:POINts?'))
-            # adapt the length of the list
-            while current_rows != num_of_freq:
-                if current_rows > num_of_freq:
-                    for kk in range(int(current_rows-num_of_freq)):
-                        #always delete the second row (first might not work)
-                        self._usb_connection.write(':LIST:ROW:DELete {0:e}'.format(2))
-                        time.sleep(0.05)
-                elif current_rows < num_of_freq:
-                    for kk in range(int(num_of_freq-current_rows)):
-                        self._usb_connection.write(':LIST:ROW:INsert {0:e}'.format(2))
-                        time.sleep(0.05)
-                current_rows = int(self._usb_connection.ask(':LIST:RF:POINts?'))
-                self.log.info("adjusting list length again")
-
-            for ii in range(current_rows):
-                self._usb_connection.write(':LIST:ROW:GOTO {0:e}'.format(ii+1))
-                time.sleep(0.1)
-                self._usb_connection.write(':LIST:RF {0:e} Hz'.format(freq[ii]))
-                time.sleep(0.25)
-                if power is not None:
-                    self._usb_connection.write(':LIST:Amplitude {0:e} dBm'.format(power))
-                # seems to need some time
-                time.sleep(0.25)
-
-        else:
-            if power is not None:
-                current_rows = int(self._usb_connection.ask(':LIST:RF:POINts?'))
-                for ii in range(current_rows):
-                    self._usb_connection.write(':LIST:ROW:GOTO {0:e}'.format(ii + 1))
-                    self._usb_connection.write(':LIST:Amplitude {0:e} dBm'.format(power))
+            if self._scan_mode == SamplingOutputMode.JUMP_LIST:
+                current_rows = int(self._device.query(':LIST:RF:POINts?'))
+                for ii in range(1, current_rows + 1):
+                    self._device.write(f':LIST:ROW:GOTO {ii:d}')
+                    self._device.write(f':LIST:Amplitude {value:e} dBm')
                     # seems to need some time
                     time.sleep(0.5)
+            elif self._scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                self._command_wait(f':AMPL:CW {value:f}')
             else:
-                self.log.warning("Not changing freq or power!")
+                raise RuntimeError(
+                    f'Invalid scan mode encountered ({self._scan_mode}). Please set scan_mode '
+                    f'property before configuring or starting a frequency scan.'
+                )
 
-        self._usb_connection.write(':SWE:REP CONT')
-        self._usb_connection.write(':SWE:STRG EXT')
-        #self._usb_connection.write(':SWE:STRG:SLOP EXTP')
-        self._usb_connection.write(':SWE:PTRG EXT')
-        self._usb_connection.write(':SWE:PTRG:SLOP EXTP')
-        self._usb_connection.write(':SWE:DIR:UP')
-        self.set_ext_trigger()
+    @property
+    def scan_frequencies(self):
+        """The microwave frequencies used for scanning. Must implement setter as well.
 
-    #        self._usb_connection.write(':RFO:STAT ON')
-    #        self._usb_connection.write(':SWE:RF:STAT ON')
-        actual_power = self.get_power()
-        # dont take actual frequencz arraz at the moment since this is far too slow
-        #actual_freq = self.get_frequency()
-        actual_freq = freq
-        mode, dummy = self.get_status()
-        return actual_freq, actual_power, mode
+        In case of scan_mode == SamplingOutputMode.JUMP_LIST, this will be a 1D numpy array.
+        In case of scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP, this will be a tuple
+        containing 3 values (freq_begin, freq_end, number_of_samples).
+        If no frequency scan has been specified, return None.
 
-    def reset_listpos(self):
-        """ Reset of MW List Mode position to start from first given frequency
-
-        @return int: error code (0:OK, -1:error)
+        @return float[]: The currently set scanning frequencies. None if not set.
         """
-        try:
-            self._usb_connection.write(':RFO:STAT OFF')
-            self._usb_connection.write(':SWEep:RF:STATe OFF')
-            self._usb_connection.write(':LIST:ROW:GOTO 1')
-            self._usb_connection.write(':SWEep:RF:STATe ON')
-            self._usb_connection.write(':RFO:STAT ON')
-            return 0
-        except:
-            self.log.error("Reset of list position did not work")
-            return -1
+        with self._thread_lock:
+            return self._scan_frequencies
 
-    def sweep_on(self):
-        """ Switches on the list mode.
+    @scan_frequencies.setter
+    def scan_frequencies(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set scan_frequencies. Microwave output is active.')
 
-        @return int: error code (0:OK, -1:error)
-        """
-        mode, is_running = self.get_status()
-        if is_running:
-            if mode == 'sweep':
-                return 0
+            if self._scan_mode == SamplingOutputMode.JUMP_LIST:
+                num_of_freq = len(value)
+                assert self._constraints.scan_size_in_range(num_of_freq)[0], \
+                    f'Number of frequency steps to set ({num_of_freq:d}) out of bounds for ' \
+                    f'allowed range {self._constraints.scan_size_limits}'
+                in_range = self._constraints.frequency_in_range(min(value))[0] and \
+                           self._constraints.frequency_in_range(max(value))[0]
+                assert in_range, f'scan_frequencies to set are out of bounds for allowed ' \
+                                 f'range {self._constraints.frequency_limits}'
+
+                self._scan_frequencies = None
+
+                current_rows = int(self._device.query(':LIST:RF:POINts?'))
+                # adapt the length of the list
+                while current_rows != num_of_freq:
+                    if current_rows > num_of_freq:
+                        for ii in range(int(current_rows - num_of_freq)):
+                            # always delete the second row (first might not work)
+                            self._device.write(f':LIST:ROW:DELete 2')
+                            time.sleep(0.05)
+                    elif current_rows < num_of_freq:
+                        for ii in range(int(num_of_freq - current_rows)):
+                            self._device.write(':LIST:ROW:INsert 2')
+                            time.sleep(0.05)
+                    current_rows = int(self._device.query(':LIST:RF:POINts?'))
+
+                for ii in range(current_rows):
+                    self._device.write(f':LIST:ROW:GOTO {ii + 1:d}')
+                    time.sleep(0.1)
+                    self._device.write(f':LIST:RF {value[ii]:e} Hz')
+                    time.sleep(0.25)
+                    self._device.write(f':LIST:Amplitude {self._scan_power:e} dBm')
+                    time.sleep(0.25)
+
+                self._scan_frequencies = np.array(value, dtype=np.float64)
+
+            elif self._scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                assert len(value) == 3, 'EQUIDISTANT_SWEEP scan mode requires a len 3 iterable ' \
+                                        'of the form (start_freq, stop_freq, number_of_points)'
+                in_range = self._constraints.frequency_in_range(value[0])[0] and \
+                           self._constraints.frequency_in_range(value[1])[0]
+                assert in_range, f'scan_frequencies to set are out of bounds for allowed ' \
+                                 f'range {self._constraints.frequency_limits}'
+                assert self._constraints.scan_size_in_range(value[2])[0], \
+                    f'Number of frequency steps to set ({value[2]:d}) out of bounds for ' \
+                    f'allowed range {self._constraints.scan_size_limits}'
+
+                self._scan_frequencies = None
+
+                self._device.write(f':SWE:RF:STAR {value[0]:e} Hz')
+                self._device.write(f':SWE:RF:STOP {value[1]:e} Hz')
+                self._device.write(f':SWE:STEP:POIN {value[2]:d}')
+                # self._device.write(':SWE:STEP:DWEL 10 ms')
+                self._command_wait(f':AMPL:CW {self._scan_power:f}')
+
+                self._scan_frequencies = tuple(value)
+
             else:
-                self.off()
-        try:
-            self._usb_connection.write(":SWEep:TYPE STEP")
-            self._usb_connection.write(':SWE:RF:STAT ON')
-            while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 1:
-                time.sleep(0.5)
-            self._usb_connection.write(':RFO:STAT ON')
-            dummy, is_running = self.get_status()
-            while not is_running:
-                time.sleep(0.5)
-                dummy, is_running = self.get_status()
-            #self._usb_connection.write('*WAI')
-            return 0
-        except:
-            self.log.error("Turning on of sweep mode did not work!")
-            return -1
+                raise RuntimeError(
+                    f'Invalid scan mode encountered ({self._scan_mode}). Please set scan_mode '
+                    f'property before configuring or starting a frequency scan.'
+                )
 
-    def set_sweep(self, start, stop, step, power):
-        """
+            self._device.write(':SWE:REP CONT')
+            self._device.write(':SWE:STRG EXT')
+            self._device.write(':SWE:PTRG EXT')
+            trig_slope = 'EXTN' if self._trigger_edge == TriggerEdge.FALLING else 'EXTP'
+            self._device.write(f':SWE:PTRG:SLOP {trig_slope}')
+            self._device.write(':SWE:DIR:UP')
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
-        """
-        #self._usb_connection.write(':SOUR:POW ' + str(power))
-        #self._usb_connection.write('*WAI')
-
-        mode, is_running = self.get_status()
-
-        if is_running:
-            self.off()
-
-        n = int(stop-start)/step + 1
-
-        self._usb_connection.write(':SWE:RF:STAR {0:e} Hz'.format(start))
-        self._usb_connection.write(':SWE:RF:STOP {0:e} Hz'.format(stop))
-        self._usb_connection.write(':SWE:STEP:POIN {0}'.format(n))
-        #self._usb_connection.write(':SWE:STEP:DWEL 10 ms')
-
-        self.set_power(power)
-        self._usb_connection.write(':SWE:REP CONT')
-        self._usb_connection.write(':SWE:STRG EXT')
-        #        self._usb_connection.write(':SWE:STRG:SLOP EXTP')
-        self._usb_connection.write(':SWE:PTRG  EXT')
-        #        self._usb_connection.write(':SWE:PTRG:SLOP EXTP')
-        #self._usb_connection.write(':SWE:DIR:UP')
-        #self._usb_connection.write('*WAI')
-        self.set_ext_trigger()
-
-        # short waiting time to prevent crashes
-        time.sleep(0.2)
-
-        freq_start = float(self._usb_connection.ask(':SWE:RF:STAR?'))
-        freq_stop = float(self._usb_connection.ask(':SWE:RF:STOP?'))
-        num_of_points = int(self._usb_connection.ask(':SWE:STEP:POIN?'))
-        freq_range = freq_stop - freq_start
-        freq_step = freq_range / (num_of_points -1)
-        freq_power = self.get_power()
-        mode = 'sweep'
-        return freq_start, freq_stop, freq_step, freq_power, mode
-
-    def _turn_off_output(self,repetitions=10):
-        self._usb_connection.write(':RFO:STAT OFF')
-        dummy, is_running = self.get_status()
-        index = 0
-        while is_running and index < repetitions:
-            time.sleep(0.5)
-            dummy, is_running = self.get_status()
-            index += 1
-
-        index = 0
-        self._usb_connection.write(':SWE:RF:STAT OFF')
-        while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 0  and index < repetitions:
-            time.sleep(0.5)
-            index += 1
-
-    def _turn_on_output(self,repetitions=10):
-        self._usb_connection.write(':SWE:RF:STAT ON')
-        index = 0
-        while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 1 and index < repetitions:
-            time.sleep(0.5)
-            index += 1
-        self._usb_connection.write(':RFO:STAT ON')
-        dummy, is_running = self.get_status()
-        index = 0
-        while not is_running and index < repetitions:
-            time.sleep(0.5)
-            dummy, is_running = self.get_status()
-            index += 1
-
-    def reset_sweeppos(self):
-        """ Reset of MW List Mode position to start from first given frequency
-
-        @return int: error code (0:OK, -1:error)
-        """
-        # turn off the sweepmode and the rf output and turn it on again
-        # unfortunately sleep times seem to be neccessary
-        time.sleep(0.5)
-        self._turn_off_output()
-        time.sleep(0.2)
-        self._turn_on_output()
-
-        return 0
-
-    def set_ext_trigger(self, pol, timing):
-        """ Set the external trigger for this device with proper polarization.
-
-        @param str pol: polarisation of the trigger (basically rising edge or
-                        falling edge)
-        @param float timing: estimated time between triggers
-
-        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
-            trigger timing
-        """
-
-        if pol == TriggerEdge.RISING:
-            edge = 'EXTP'
-        elif pol == TriggerEdge.FALLING:
-            edge = 'EXTN'
-        else:
-            return pol, timing
-        try:
-            self._usb_connection.write(':SWE:PTRG:SLOP {0}'.format(edge))
-            time.sleep(0.5)
-            self._usb_connection.write(':SWE:STRG:SLOP {0}'.format(edge))
-        except:
-            self.log.error("Setting of trigger did not work!")
-            return pol, timing
-        return pol, timing
-
-    def trigger(self):
-        """ Trigger the next element in the list or sweep mode programmatically.
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        start_freq = self.get_frequency()
-        self._usb_connection.write(':TRIGger:IMMediate')
-        time.sleep(self._FREQ_SWITCH_SPEED)
-        curr_freq = self.get_frequency()
-        if start_freq == curr_freq:
-            self.log.error('Internal trigger for Agilent MW source did not work!')
-            return -1
-
-        return 0
-
-    def get_limits(self):
-        limits = MicrowaveLimits()
-        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
-
-        limits.min_frequency = 9.0e3
-        limits.max_frequency = 3.0e9
-
-        limits.min_power = -144
-        limits.max_power = 10
-
-        limits.list_minstep = 0.1
-        limits.list_maxstep = 3.0e9
-        limits.list_maxentries = 4000
-
-        limits.sweep_minstep = 0.1
-        limits.sweep_maxstep = 3.0e9
-        limits.sweep_maxentries = 10001
-
-        if self.model == 'N9310A':
-            limits.min_frequency = 9e3
-            limits.max_frequency = 3.0e9
-            limits.min_power = -127
-            limits.max_power = 20
-        else:
-            self.log.warning('Model string unknown, hardware limits may be wrong.')
-        #limits.list_maxstep = limits.max_frequency
-        #limits.sweep_maxstep = limits.max_frequency
-        return limits
-
-    def set_power(self, power=0.):
-        """ Sets the microwave output power.
-
-        @param float power: the power (in dBm) set for this device
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if power is not None:
-            self._command_wait(':AMPL:CW {0:f}'.format(power))
-            return 0
-        else:
-            return -1
-
-
-    def set_frequency(self, freq=None):
-        """ Sets the frequency of the microwave output.
-
-        @param float freq: the frequency (in Hz) set for this device
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if freq is not None:
-            self._command_wait(':FREQ:CW {0:e} Hz'.format(freq))
-            return 0
-        else:
-            return -1
-
-    def _command_wait(self, command_str):
-        """
-        Writes the command in command_str via USB and waits until the device has finished
-        processing it.
-
-        @param command_str: The command to be written
-        """
-        self._usb_connection.write(command_str)
-        self._usb_connection.write('*WAI')
-        while int(float(self._usb_connection.query('*OPC?'))) != 1:
+            # short waiting time to prevent crashes
             time.sleep(0.2)
 
-        return
+    @property
+    def scan_mode(self):
+        """Scan mode Enum. Must implement setter as well.
 
+        @return SamplingOutputMode: The currently set scan mode Enum
+        """
+        with self._thread_lock:
+            return self._scan_mode
 
+    @scan_mode.setter
+    def scan_mode(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set scan_mode. Microwave output is active.')
+            assert isinstance(value, SamplingOutputMode), \
+                'scan_mode must be Enum type qudi.core.enums.SamplingOutputMode'
+            assert self._constraints.mode_supported(value), \
+                f'Unsupported scan_mode "{value}" encountered'
+            self._scan_mode = value
+            self._scan_frequencies = None
 
+    @property
+    def trigger_edge(self):
+        """Input trigger polarity Enum for scanning. Must implement setter as well.
+
+        @return TriggerEdge: The currently set active input trigger edge
+        """
+        with self._thread_lock:
+            return self._trigger_edge
+
+    @trigger_edge.setter
+    def trigger_edge(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set trigger_edge. Microwave output is active.')
+            assert isinstance(value, TriggerEdge), \
+                'trigger_edge must be Enum type qudi.core.enums.TriggerEdge'
+
+            edge_str = 'EXTN' if value == TriggerEdge.FALLING else 'EXTP'
+            self._device.write(f':SWE:PTRG:SLOP {edge_str}')
+            time.sleep(0.5)
+            self._device.write(f':SWE:STRG:SLOP {edge_str}')
+            self._trigger_edge = value
+
+    def off(self):
+        """Switches off any microwave output (both scan and CW).
+        Must return AFTER the device has actually stopped.
+        """
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                # turn of scanning (both "list" and "sweep"）
+                self._device.write(':SWEep:RF:STATe OFF')
+                while int(float(self._device.query(':SWEep:RF:STATe?'))) != 0:
+                    time.sleep(0.2)
+                # check if running
+                if not self._is_running():
+                    return
+                self._device.write(':RFO:STAT OFF')
+                while int(float(self._device.query(':RFO:STAT?'))) != 0:
+                    time.sleep(0.2)
+                self._is_scanning = False
+                self.module_state.unlock()
+
+    def cw_on(self):
+        """ Switches on cw microwave output.
+
+        Must return AFTER the output is actually active.
+        """
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                if self._in_cw_mode():
+                    return
+                raise RuntimeError(
+                    'Unable to start CW microwave output. Frequency scanning in progress.'
+                )
+
+            self._is_scanning = False
+            self._device.write(':RFO:STAT ON')
+            while not self._is_running():
+                time.sleep(0.2)
+
+    def start_scan(self):
+        """Switches on the microwave scanning.
+
+        Must return AFTER the output is actually active (and can receive triggers for example).
+        """
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                if self._is_scanning:
+                    return
+                raise RuntimeError('Unable to start frequency scan. CW microwave output is active.')
+            assert self._scan_frequencies is not None, \
+                'No scan_frequencies set. Unable to start scan.'
+
+            sweep_type = 'LIST' if self._scan_mode == SamplingOutputMode.JUMP_LIST else 'STEP'
+            self._device.write(f':SWEep:TYPE {sweep_type}')
+            self._device.write(':SWE:RF:STAT ON')
+            while self._in_cw_mode():
+                time.sleep(0.2)
+            self._device.write(':RFO:STAT ON')
+            while not self._is_running():
+                time.sleep(0.2)
+            self._is_scanning = True
+
+    def reset_scan(self):
+        """Reset currently running scan and return to start frequency.
+        Does not need to stop and restart the microwave output if the device allows soft scan reset.
+        """
+        with self._thread_lock:
+            if not self._is_scanning:
+                return
+            if self._scan_mode == SamplingOutputMode.JUMP_LIST:
+                self._usb_connection.write(':RFO:STAT OFF')
+                self._usb_connection.write(':SWEep:RF:STATe OFF')
+                self._usb_connection.write(':LIST:ROW:GOTO 1')
+                self._usb_connection.write(':SWEep:RF:STATe ON')
+                self._usb_connection.write(':RFO:STAT ON')
+            else:
+                # No soft reset for sweep
+                # Turn off
+                self._device.write(':SWEep:RF:STATe OFF')
+                while int(float(self._device.query(':SWEep:RF:STATe?'))) != 0:
+                    time.sleep(0.2)
+                # check if running
+                if not self._is_running():
+                    return
+                self._device.write(':RFO:STAT OFF')
+                while int(float(self._device.query(':RFO:STAT?'))) != 0:
+                    time.sleep(0.2)
+                # Turn on
+                self._device.write(f':SWEep:TYPE STEP')
+                self._device.write(':SWE:RF:STAT ON')
+                while self._in_cw_mode():
+                    time.sleep(0.2)
+                self._device.write(':RFO:STAT ON')
+                while not self._is_running():
+                    time.sleep(0.2)
+
+    def _command_wait(self, command_str):
+        """ Writes the command in command_str via PyVisa and waits until the device has finished
+        processing it.
+
+        @param str command_str: The command to be written
+        """
+        self._device.write(command_str)
+        self._device.write('*WAI')
+        while int(float(self._device.query('*OPC?'))) != 1:
+            time.sleep(0.2)
+
+    def _in_list_mode(self):
+        if self._in_cw_mode:
+            return False
+        return self._device.ask(':SWEep:TYPE?') != 'STEP'
+
+    def _in_cw_mode(self):
+        return not bool(int(float(self._device.ask(':SWEep:RF:STATe?'))))
+
+    def _is_running(self):
+        return bool(int(float(self._device.ask(":RFOutput:STATe?"))))
+
+    # def trigger(self):
+    #     """ Trigger the next element in the list or sweep mode programmatically.
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #     """
+    #     start_freq = self.get_frequency()
+    #     self._device.write(':TRIGger:IMMediate')
+    #     time.sleep(self._FREQ_SWITCH_SPEED)
+    #     curr_freq = self.get_frequency()
+    #     if start_freq == curr_freq:
+    #         self.log.error('Internal trigger for Agilent MW source did not work!')
