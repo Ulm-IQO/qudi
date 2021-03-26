@@ -27,11 +27,10 @@ import visa
 import time
 import numpy as np
 
+from qudi.util.mutex import Mutex
 from qudi.core.configoption import ConfigOption
-from qudi.interface.microwave_interface import MicrowaveInterface
-from qudi.interface.microwave_interface import MicrowaveConstraints
-from qudi.interface.microwave_interface import MicrowaveMode
-from qudi.interface.microwave_interface import TriggerEdge
+from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
+from qudi.core.enums import TriggerEdge, SamplingOutputMode
 
 
 class MicrowaveSmbv(MicrowaveInterface):
@@ -41,355 +40,349 @@ class MicrowaveSmbv(MicrowaveInterface):
 
     mw_source_smbv:
         module.Class: 'microwave.mw_source_smbv.MicrowaveSmbv'
-        gpib_address: 'GPIB0::12::INSTR'
-        gpib_address: 'GPIB0::12::INSTR'
-        gpib_timeout: 10
-
+        visa_address: 'GPIB0::12::INSTR'
+        comm_timeout: 10  # in seconds
+        max_power: null
     """
 
-    # visa address of the hardware : this can be over ethernet, the name is here for
-    # backward compatibility
-    _address = ConfigOption('gpib_address', missing='error')
-    _timeout = ConfigOption('gpib_timeout', 10, missing='warn')
-
+    _visa_address = ConfigOption('visa_address', missing='error')
+    _comm_timeout = ConfigOption('comm_timeout', default=10, missing='warn')
     # to limit the power to a lower value that the hardware can provide
-    _max_power = ConfigOption('max_power', None)
+    _max_power = ConfigOption('max_power', default=None)
 
-    # Indicate how fast frequencies within a list or sweep mode can be changed:
-    _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._thread_lock = Mutex()
+        self._rm = None
+        self._device = None
+        self._model = ''
+        self._constraints = None
+        self._cw_power = -20
+        self._cw_frequency = 2.0e9
+        self._scan_power = -20
+        self._scan_frequencies = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
-        self._timeout = self._timeout * 1000
-        # trying to load the visa connection to the module
-        self.rm = visa.ResourceManager()
-        try:
-            self._connection = self.rm.open_resource(self._address,
-                                                          timeout=self._timeout)
-        except:
-            self.log.error('Could not connect to the address >>{}<<.'.format(self._address))
-            raise
+        # Establish the visa connection to the module
+        self._rm = visa.ResourceManager()
+        self._device = self._rm.open_resource(self._visa_address,
+                                              timeout=int(self._comm_timeout * 1000))
 
-        self.model = self._connection.query('*IDN?').split(',')[1]
-        self.log.info('MW {} initialised and connected.'.format(self.model))
+        self._model = self._device.query('*IDN?').split(',')[1]
+        # Reset device
         self._command_wait('*CLS')
         self._command_wait('*RST')
-        return
+
+        # Generate constraints
+        if self.model == 'SMB100A':
+            freq_limits = (9e3, 3.2e9)
+        else:
+            freq_limits = (9e3, 6e9)
+            self.log.warning('Model string unknown, hardware limits may be wrong.')
+        self._constraints = MicrowaveConstraints(
+            power_limits=(-145, 30 if self._max_power is None else max(-145, self._max_power)),
+            frequency_limits=freq_limits,
+            scan_size_limits=(2, 10001),
+            scan_modes=(SamplingOutputMode.EQUIDISTANT_SWEEP,)
+        )
+
+        self._scan_frequencies = None
+        self._scan_power = self._constraints.min_power
+        self._cw_power = self._constraints.min_power
+        self._cw_frequency = 2870.0e6
 
     def on_deactivate(self):
         """ Cleanup performed during deactivation of the module. """
-        self.rm.close()
-        return
+        self._device.close()
+        self._rm.close()
 
-    def _command_wait(self, command_str):
+    @property
+    def constraints(self):
+        return self._constraints
+
+    @property
+    def is_scanning(self):
+        """Read-Only boolean flag indicating if a scan is running at the moment. Can be used together with
+        module_state() to determine if the currently running microwave output is a scan or CW.
+        Should return False if module_state() is 'idle'.
+
+        @return bool: Flag indicating if a scan is running (True) or not (False)
         """
-        Writes the command in command_str via ressource manager and waits until the device has finished
-        processing it.
+        with self._thread_lock:
+            return (self.module_state() != 'idle') and not self._in_cw_mode()
 
-        @param command_str: The command to be written
+    @property
+    def cw_power(self):
+        """The CW microwave power in dBm. Must implement setter as well.
+
+        @return float: The currently set CW microwave power in dBm.
         """
-        self._connection.write(command_str)
-        self._connection.write('*WAI')
-        while int(float(self._connection.query('*OPC?'))) != 1:
-            time.sleep(0.2)
-        return
+        with self._thread_lock:
+            return self._cw_power
 
-    def get_limits(self):
-        """ Create an object containing parameter limits for this microwave source.
+    @cw_power.setter
+    def cw_power(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set cw_power. Microwave output is active.')
+            assert self._constraints.power_in_range(value)[0], \
+                f'cw_power to set ({value} dBm) out of bounds for allowed range ' \
+                f'{self._constraints.power_limits}'
 
-            @return MicrowaveLimits: device-specific parameter limits
+            # Activate CW mode
+            if not self._in_cw_mode():
+                self._command_wait(':FREQ:MODE CW')
+
+            self._command_wait(f':FREQ {self._cw_frequency:f}')
+            self._command_wait(f':POW {value:f}')
+
+            self._cw_power = float(self._device.query(':POW?'))
+            self._cw_frequency = float(self._device.query(':FREQ?'))
+
+    @property
+    def cw_frequency(self):
+        """The CW microwave frequency in Hz. Must implement setter as well.
+
+        @return float: The currently set CW microwave frequency in Hz.
         """
-        limits = MicrowaveLimits()
-        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.SWEEP)
+        with self._thread_lock:
+            return self._cw_frequency
 
-        # values for SMBV100A
-        limits.min_power = -145
-        limits.max_power = 30
+    @cw_frequency.setter
+    def cw_frequency(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set cw_frequency. Microwave output is active.')
+            assert self._constraints.frequency_in_range(value)[0], \
+                f'cw_frequency to set ({value:.9e} Hz) out of bounds for allowed range ' \
+                f'{self._constraints.frequency_limits}'
 
-        limits.min_frequency = 9e3
-        limits.max_frequency = 6e9
+            if not self._in_cw_mode():
+                self._command_wait(':FREQ:MODE CW')
 
-        if self.model == 'SMB100A':
-            limits.max_frequency = 3.2e9
+            self._command_wait(f':FREQ {value:f}')
+            self._command_wait(f':POW {self._cw_power:f}')
 
-        limits.list_minstep = 0.1
-        limits.list_maxstep = limits.max_frequency - limits.min_frequency
-        limits.list_maxentries = 1
+            self._cw_power = float(self._device.query(':POW?'))
+            self._cw_frequency = float(self._device.query(':FREQ?'))
 
-        limits.sweep_minstep = 0.1
-        limits.sweep_maxstep = limits.max_frequency - limits.min_frequency
-        limits.sweep_maxentries = 10001
+    @property
+    def scan_power(self):
+        """The microwave power in dBm used for scanning. Must implement setter as well.
 
-        # in case a lower maximum is set in config file
-        if self._max_power is not None and self._max_power < limits.max_power:
-            limits.max_power = self._max_power
+        @return float: The currently set scanning microwave power in dBm
+        """
+        with self._thread_lock:
+            return self._scan_power
 
-        return limits
+    @scan_power.setter
+    def scan_power(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set scan_power. Microwave output is active.')
+            assert self._constraints.power_in_range(value)[0], \
+                f'scan_power to set ({value} dBm) out of bounds for allowed range ' \
+                f'{self._constraints.power_limits}'
+
+            self._scan_power = value
+            if self._scan_frequencies is not None:
+                self._write_sweep()
+
+    @property
+    def scan_frequencies(self):
+        """The microwave frequencies used for scanning. Must implement setter as well.
+
+        In case of scan_mode == SamplingOutputMode.JUMP_LIST, this will be a 1D numpy array.
+        In case of scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP, this will be a tuple
+        containing 3 values (freq_begin, freq_end, number_of_samples).
+        If no frequency scan has been specified, return None.
+
+        @return float[]: The currently set scanning frequencies. None if not set.
+        """
+        with self._thread_lock:
+            return self._scan_frequencies
+
+    @scan_frequencies.setter
+    def scan_frequencies(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set scan_frequencies. Microwave output is active.')
+
+            assert self._constraints.frequency_in_range(min(value))[0] and \
+                   self._constraints.frequency_in_range(max(value))[0], \
+                f'scan_frequencies to set out of bounds for allowed range ' \
+                f'{self._constraints.frequency_limits}'
+            assert self._constraints.scan_size_in_range(len(value))[0], \
+                f'Number of frequency steps to set ({len(value):d}) out of bounds for ' \
+                f'allowed range {self._constraints.scan_size_limits}'
+
+            self._scan_frequencies = np.array(value, dtype=np.float64)
+            self._write_sweep()
+
+    @property
+    def scan_mode(self):
+        """Scan mode Enum. Must implement setter as well.
+
+        @return SamplingOutputMode: The currently set scan mode Enum
+        """
+        with self._thread_lock:
+            return SamplingOutputMode.EQUIDISTANT_SWEEP
+
+    @scan_mode.setter
+    def scan_mode(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set scan_mode. Microwave output is active.')
+            assert isinstance(value, SamplingOutputMode), \
+                'scan_mode must be Enum type qudi.core.enums.SamplingOutputMode'
+            assert self._constraints.mode_supported(value), \
+                f'Unsupported scan_mode "{value}" encountered'
+
+            self._scan_frequencies = None
+
+    @property
+    def trigger_edge(self):
+        """Input trigger polarity Enum for scanning. Must implement setter as well.
+
+        @return TriggerEdge: The currently set active input trigger edge
+        """
+        with self._thread_lock:
+            edge = self._device.query(':TRIG1:SLOP?')
+            return TriggerEdge.FALLING if 'NEG' in edge else TriggerEdge.RISING
+
+    @trigger_edge.setter
+    def trigger_edge(self, value):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to set trigger_edge. Microwave output is active.')
+            assert isinstance(value, TriggerEdge), \
+                'trigger_edge must be Enum type qudi.core.enums.TriggerEdge'
+
+            edge = 'NEG' if value == TriggerEdge.FALLING else 'POS'
+            self._command_wait(f':TRIG1:SLOP {edge}')
 
     def off(self):
+        """Switches off any microwave output (both scan and CW).
+        Must return AFTER the device has actually stopped.
         """
-        Switches off any microwave output.
-        Must return AFTER the device is actually stopped.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        mode, is_running = self.get_status()
-        if not is_running:
-            return 0
-
-        self._connection.write('OUTP:STAT OFF')
-        self._connection.write('*WAI')
-        while int(float(self._connection.query('OUTP:STAT?'))) != 0:
-            time.sleep(0.2)
-        return 0
-
-    def get_status(self):
-        """
-        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
-        the output state (stopped, running)
-
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
-        """
-        is_running = bool(int(float(self._connection.query('OUTP:STAT?'))))
-        mode = self._connection.query(':FREQ:MODE?').strip('\n').lower()
-        if mode == 'swe':
-            mode = 'sweep'
-        return mode, is_running
-
-    def get_power(self):
-        """
-        Gets the microwave output power.
-
-        @return float: the power set at the device in dBm
-        """
-        # This case works for cw AND sweep mode
-        return float(self._connection.query(':POW?'))
-
-    def get_frequency(self):
-        """
-        Gets the frequency of the microwave output.
-        Returns single float value if the device is in cw mode.
-        Returns list like [start, stop, step] if the device is in sweep mode.
-        Returns list of frequencies if the device is in list mode.
-
-        @return [float, list]: frequency(s) currently set for this device in Hz
-        """
-        mode, is_running = self.get_status()
-        if 'cw' in mode:
-            return_val = float(self._connection.query(':FREQ?'))
-        elif 'sweep' in mode:
-            start = float(self._connection.query(':FREQ:STAR?'))
-            stop = float(self._connection.query(':FREQ:STOP?'))
-            step = float(self._connection.query(':SWE:STEP?'))
-            return_val = [start+step, stop, step]
-        return return_val
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                self._device.write('OUTP:STAT OFF')
+                self._device.write('*WAI')
+                while int(float(self._device.query('OUTP:STAT?'))) != 0:
+                    time.sleep(0.2)
+                self.module_state.unlock()
 
     def cw_on(self):
+        """ Switches on cw microwave output.
+
+        Must return AFTER the output is actually active.
         """
-        Switches on cw microwave output.
-        Must return AFTER the device is actually running.
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                if self._in_cw_mode():
+                    return
+                raise RuntimeError(
+                    'Unable to start CW microwave output. Microwave output is currently active.'
+                )
 
-        @return int: error code (0:OK, -1:error)
+            if not self._in_cw_mode():
+                self._command_wait(':FREQ:MODE CW')
+                self._command_wait(f':FREQ {self._cw_frequency:f}')
+                self._command_wait(f':POW {self._cw_power:f}')
+
+            self._device.write(':OUTP:STAT ON')
+            self._device.write('*WAI')
+            while int(float(self._device.query(':OUTP:STAT?'))) == 0:
+                time.sleep(0.2)
+            self.module_state.lock()
+
+    def start_scan(self):
+        """Switches on the microwave scanning.
+
+        Must return AFTER the output is actually active (and can receive triggers for example).
         """
-        current_mode, is_running = self.get_status()
-        if is_running:
-            if current_mode == 'cw':
-                return 0
-            else:
-                self.off()
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                if not self._in_cw_mode:
+                    return
+                raise RuntimeError('Unable to start frequency scan. CW microwave output is active.')
+            assert self._scan_frequencies is not None, \
+                'No scan_frequencies set. Unable to start scan.'
 
-        if current_mode != 'cw':
-            self._command_wait(':FREQ:MODE CW')
+            if self._in_cw_mode():
+                self._command_wait(':FREQ:MODE SWEEP')
 
-        self._connection.write(':OUTP:STAT ON')
-        self._connection.write('*WAI')
-        dummy, is_running = self.get_status()
-        while not is_running:
+            self._device.write(':OUTP:STAT ON')
+            while int(float(self._device.query(':OUTP:STAT?'))) == 0:
+                time.sleep(0.2)
+            self.module_state.lock()
+
+    def reset_scan(self):
+        """Reset currently running scan and return to start frequency.
+        Does not need to stop and restart the microwave output if the device allows soft scan reset.
+        """
+        with self._thread_lock:
+            if self.module_state() == 'idle':
+                return
+            if self._in_cw_mode:
+                raise RuntimeError('Can not reset frequency scan. CW microwave output active.')
+
+            self._command_wait(':ABOR:SWE')
+
+    def _command_wait(self, command_str):
+        """ Writes the command in command_str via PyVisa and waits until the device has finished
+        processing it.
+
+        @param str command_str: The command to be written
+        """
+        self._device.write(command_str)
+        self._device.write('*WAI')
+        while int(float(self._device.query('*OPC?'))) != 1:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
-        return 0
 
-    def set_cw(self, frequency=None, power=None):
-        """
-        Configures the device for cw-mode and optionally sets frequency and/or power
+    def _in_cw_mode(self):
+        return self._device.query(':FREQ:MODE?').strip('\n').lower() == 'cw'
 
-        @param float frequency: frequency to set in Hz
-        @param float power: power to set in dBm
-
-        @return tuple(float, float, str): with the relation
-            current frequency in Hz,
-            current power in dBm,
-            current mode
-        """
-        mode, is_running = self.get_status()
-        if is_running:
-            self.off()
-
-        # Activate CW mode
-        if mode != 'cw':
-            self._command_wait(':FREQ:MODE CW')
-
-        # Set CW frequency
-        if frequency is not None:
-            self._command_wait(':FREQ {0:f}'.format(frequency))
-
-        # Set CW power
-        if power is not None:
-            self._command_wait(':POW {0:f}'.format(power))
-
-        # Return actually set values
-        mode, dummy = self.get_status()
-        actual_freq = self.get_frequency()
-        actual_power = self.get_power()
-        return actual_freq, actual_power, mode
-
-    def list_on(self):
-        """
-        Switches on the list mode microwave output.
-        Must return AFTER the device is actually running.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self.log.error('List mode not available for this microwave hardware!')
-        return -1
-
-    def set_list(self, frequency=None, power=None):
-        """
-        Configures the device for list-mode and optionally sets frequencies and/or power
-
-        @param list frequency: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
-
-        @return tuple(list, float, str):
-            current frequencies in Hz,
-            current power in dBm,
-            current mode
-        """
-        self.log.error('List mode not available for this microwave hardware!')
-        mode, dummy = self.get_status()
-        return self.get_frequency(), self.get_power(), mode
-
-    def reset_listpos(self):
-        """
-        Reset of MW list mode position to start (first frequency step)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self.log.error('List mode not available for this microwave hardware!')
-        return -1
-
-    def sweep_on(self):
-        """ Switches on the sweep mode.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        current_mode, is_running = self.get_status()
-        if is_running:
-            if current_mode == 'sweep':
-                return 0
-            else:
-                self.off()
-
-        if current_mode != 'sweep':
+    def _write_sweep(self):
+        if self._in_cw_mode():
             self._command_wait(':FREQ:MODE SWEEP')
 
-        self._connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
-        while not is_running:
-            time.sleep(0.2)
-            dummy, is_running = self.get_status()
-        return 0
+        start, stop, points = self._scan_frequencies
+        step = (stop - start) / (points - 1)
 
-    def set_sweep(self, start=None, stop=None, step=None, power=None):
-        """
-        Configures the device for sweep-mode and optionally sets frequency start/stop/step
-        and/or power
+        self._device.write(':SWE:MODE STEP')
+        self._device.write(':SWE:SPAC LIN')
+        self._device.write('*WAI')
+        self._device.write(f':FREQ:START {start - step:f}')
+        self._device.write(f':FREQ:STOP {stop:f}')
+        self._device.write(f':SWE:STEP:LIN {step:f}')
+        self._device.write('*WAI')
 
-        @return float, float, float, float, str: current start frequency in Hz,
-                                                 current stop frequency in Hz,
-                                                 current frequency step in Hz,
-                                                 current power in dBm,
-                                                 current mode
-        """
-        mode, is_running = self.get_status()
-        if is_running:
-            self.off()
-
-        if mode != 'sweep':
-            self._command_wait(':FREQ:MODE SWEEP')
-
-        if (start is not None) and (stop is not None) and (step is not None):
-            self._connection.write(':SWE:MODE STEP')
-            self._connection.write(':SWE:SPAC LIN')
-            self._connection.write('*WAI')
-            self._connection.write(':FREQ:START {0:f}'.format(start - step))
-            self._connection.write(':FREQ:STOP {0:f}'.format(stop))
-            self._connection.write(':SWE:STEP:LIN {0:f}'.format(step))
-            self._connection.write('*WAI')
-
-        if power is not None:
-            self._connection.write(':POW {0:f}'.format(power))
-            self._connection.write('*WAI')
+        self._device.write(f':POW {self._scan_power:f}')
+        self._device.write('*WAI')
 
         self._command_wait('TRIG:FSW:SOUR EXT')
 
-        actual_power = self.get_power()
-        freq_list = self.get_frequency()
-        mode, dummy = self.get_status()
-        return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
+    ###########################################################################################
 
-    def reset_sweeppos(self):
-        """
-        Reset of MW sweep mode position to start (start frequency)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self._command_wait(':ABOR:SWE')
-        return 0
-
-    def set_ext_trigger(self, pol, timing):
-        """ Set the external trigger for this device with proper polarization.
-
-        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
-        @param float timing: estimated time between triggers
-
-        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
-            trigger timing
-        """
-        mode, is_running = self.get_status()
-        if is_running:
-            self.off()
-
-        if pol == TriggerEdge.RISING:
-            edge = 'POS'
-        elif pol == TriggerEdge.FALLING:
-            edge = 'NEG'
-        else:
-            self.log.warning('No valid trigger polarity passed to microwave hardware module.')
-            edge = None
-
-        if edge is not None:
-            self._command_wait(':TRIG1:SLOP {0}'.format(edge))
-
-        polarity = self._connection.query(':TRIG1:SLOP?')
-        if 'NEG' in polarity:
-            return TriggerEdge.FALLING, timing
-        else:
-            return TriggerEdge.RISING, timing
-
-    def trigger(self):
-        """ Trigger the next element in the list or sweep mode programmatically.
-
-        @return int: error code (0:OK, -1:error)
-
-        Ensure that the Frequency was set AFTER the function returns, or give
-        the function at least a save waiting time.
-        """
-
-        # WARNING:
-        # The manual trigger functionality was not tested for this device!
-        # Might not work well! Please check that!
-
-        self._connection.write('*TRG')
-        time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
-        return 0
+    # def get_frequency(self):
+    #     """
+    #     Gets the frequency of the microwave output.
+    #     Returns single float value if the device is in cw mode.
+    #     Returns list like [start, stop, step] if the device is in sweep mode.
+    #     Returns list of frequencies if the device is in list mode.
+    #
+    #     @return [float, list]: frequency(s) currently set for this device in Hz
+    #     """
+    #     mode, is_running = self.get_status()
+    #     if 'cw' in mode:
+    #         return_val = float(self._device.query(':FREQ?'))
+    #     elif 'sweep' in mode:
+    #         start = float(self._device.query(':FREQ:STAR?'))
+    #         stop = float(self._device.query(':FREQ:STOP?'))
+    #         step = float(self._device.query(':SWE:STEP?'))
+    #         return_val = [start+step, stop, step]
+    #     return return_val
