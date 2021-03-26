@@ -49,9 +49,6 @@ class MicrowaveAnritsuMG369x(MicrowaveInterface):
     _visa_address = ConfigOption('visa_address', missing='error')
     _comm_timeout = ConfigOption('comm_timeout', default=10, missing='warn')
 
-    # Indicate how fast frequencies within a list or sweep mode can be changed:
-    _FREQ_SWITCH_SPEED = 0.009  # Frequency switching speed in s (acc. to specs)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
