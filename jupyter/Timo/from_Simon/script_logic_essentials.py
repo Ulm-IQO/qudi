@@ -1241,6 +1241,15 @@ def do_automized_measurements(qm_dict, autoexp):
                         fit_para = None
 
                     if 'update_parameters' in cur_exp_dict:
+                        """
+                              example how to update parameters in next experiment:
+                              qexp['update_parameters'] 
+                                    =   {'Rabi': 'microwave_frequency',
+                                         'pODMR_fine': {'target_name': 'freq_start',
+                                                    'func': f"_x_ - 0.5*({qexp['freq_step']}*{qexp['num_of_points']})"}
+                            }
+                                        
+                        """
                         try:
                             for key_nextexp in cur_exp_dict['update_parameters']:
                                 try:
@@ -1252,9 +1261,25 @@ def do_automized_measurements(qm_dict, autoexp):
                                 try:
                                     fit_para = (fact * fit_para) + offset
 
-                                    key_param = cur_exp_dict['update_parameters'][key_nextexp]
-                                    autoexp[key_nextexp][key_param] = fit_para
-                                    logger.info("Updating {}= {} for next exp {}".format(key_param, fit_para, key_nextexp))
+                                    update_rule = cur_exp_dict['update_parameters'][key_nextexp]
+                                    if type(update_rule) == str:
+                                        key_param = update_rule
+                                        val = fit_para
+
+                                    elif type(update_rule) == dict:
+                                        key_param = update_rule['target_name']
+                                        func_str = update_rule['func']
+                                        # replace "_x_" (the fit result) with str for eval()
+                                        func_str = func_str.replace("_x_", "fit_para")
+                                        try:
+                                            val = eval(func_str)
+                                        except:
+                                            logger.exception(f"Failed to evaluate update rule: {func_str}")
+                                    else:
+                                        logger.warning(f"Didn't understand update rule {update_rule} for exp {key_nextexp}")
+
+                                    autoexp[key_nextexp][key_param] = val
+                                    logger.info("Updating {}= {} for exp {}".format(key_param, val, key_nextexp))
                                 except Exception as e:
                                     logger.warning("Failed to update next parameter for {}: {}".format(key_nextexp, str(e)))
                         except Exception as e:
