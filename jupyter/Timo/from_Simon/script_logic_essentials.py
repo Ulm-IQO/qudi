@@ -75,7 +75,7 @@ setup['optimize_time'] = 300
 setup['freq_optimize_time'] = None
 setup['analysis_interval'] = 3
 
-logger.info("Logic essentials setup params: {}".format(setup))
+logger.info("Logic essentials imported, setup params: {}".format(setup))
 
 #####
 # Autoload often used modules
@@ -518,7 +518,7 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
 
     if save_tag is not None:
         logger.debug("Saving logic essential params to {}".format(save_tag))
-        save_parameters(save_tag=save_tag, save_dict=qm_dict)
+        save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir)
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment'] != 'No fit':
         fit_data, fit_result = pulsedmeasurementlogic.do_fit(qm_dict['fit_experiment'])
@@ -819,7 +819,7 @@ def external_mw_measurement(qm_dict):
 
 #########################################  Save methods ############################################
 
-def save_parameters(save_tag='', save_dict=None):
+def save_parameters(save_tag='', save_dict=None, subdir=None):
 
     global save_subdir
     timestamp = datetime.datetime.now()
@@ -829,6 +829,7 @@ def save_parameters(save_tag='', save_dict=None):
 
     if save_dict is None:
         save_dict = OrderedDict()
+
 
     if not save_dict['sequence_mode']:
         sequence = pulsedmasterlogic.saved_pulse_block_ensembles.get(save_dict['name'])
@@ -845,19 +846,25 @@ def save_parameters(save_tag='', save_dict=None):
     final_dict = {'parameters': save_dict, 'measurementinfo': meas_info,
                   'sampling_info': samp_info, 'fastcounter_settings': fc_dict}
 
-    # some empty data file
-    signal_dict = OrderedDict()
-    signal_dict['None'] = np.array([0])
+    signal_dict = {'dummyData': [-1]}
 
-    filepath = savelogic.get_path_for_module('PulsedMeasurement')
-    if save_subdir is not None:
-        filepath = filepath + '/' + save_subdir + '/'
+    try:
+        filepath = savelogic.get_path_for_module('PulsedMeasurement')
 
-    savelogic.save_data(signal_dict, timestamp=timestamp,
-                        parameters=final_dict, fmt='%.15e',
-                        filepath=filepath,
-                        filelabel=save_tag+ '_parameters',
-                        delimiter='\t', plotfig=None)
+        if save_subdir is not None:
+            filepath = filepath + '/' + save_subdir + '/'
+        if subdir is not None:
+            filepath = filepath + '/' + subdir + '/'
+            if save_subdir is not None:
+                logger.warning(f"Overwriting global save subdir {save_subdir} by function param: {subdir}")
+
+        savelogic.save_data(signal_dict, timestamp=timestamp,
+                            parameters=final_dict, fmt='%.15e',
+                            filepath=filepath,
+                            filelabel=save_tag + '_parameters',
+                            delimiter='\t', plotfig=None)
+    except Exception as e:
+        logger.exception("Error while saving logic essential parameters: {}")
     return
 
 
@@ -1194,13 +1201,15 @@ def do_automized_measurements(qm_dict, autoexp):
 
         # perform all experiments
         for experiment in autoexp:
+            logger.info("Starting experiment: {}".format(experiment))
+            logger.debug("Auto exp settings: {}".format(autoexp[experiment]))
             cur_exp_dict = autoexp[experiment]
             if handle_abort() is 1:
                 break
             if handle_abort() is 2:
                 continue
 
-            logger.info("Starting experiment: {}".format(autoexp[experiment]))
+
             # perform the measurement
             save_prefix_nv = cur_exp_dict['name'] + "_nv_" + poi
             save_subdir_nv = "nv_" + poi
@@ -1217,17 +1226,18 @@ def do_automized_measurements(qm_dict, autoexp):
             # fit and update parameters
             if 'fit_experiment' in cur_exp_dict:
                 if cur_exp_dict['fit_experiment'] != '':
-                    fit_data, fit_result = pulsedmeasurementlogic.do_fit(cur_exp_dict['fit_experiment'])
-                    #pulsedmasterlogic.do_fit(cur_exp_dict['fit_experiment'])
-                    # while pulsedmasterlogic.status_dict['fitting_busy']: time.sleep(0.2)
-                    #time.sleep(1)
-                    #fit_dict = pulsedmasterlogic.fit_container.current_fit_result.result_str_dict
-                    #fit_para = fit_dict[cur_exp_dict['fit_parameter']]['value']
-                    #fit_para = fit_result.best_values[cur_exp_dict['fit_parameter']]
                     try:
+                        fit_data, fit_result = pulsedmeasurementlogic.do_fit(cur_exp_dict['fit_experiment'])
+                        #pulsedmasterlogic.do_fit(cur_exp_dict['fit_experiment'])
+                        # while pulsedmasterlogic.status_dict['fitting_busy']: time.sleep(0.2)
+                        #time.sleep(1)
+                        #fit_dict = pulsedmasterlogic.fit_container.current_fit_result.result_str_dict
+                        #fit_para = fit_dict[cur_exp_dict['fit_parameter']]['value']
+                        #fit_para = fit_result.best_values[cur_exp_dict['fit_parameter']]
+
                         fit_para = fit_result.result_str_dict[cur_exp_dict['fit_parameter']]['value']
                     except Exception as e:
-                        logger.warning("Couldn't get fit_parameter: {}".format(str(e)))
+                        logger.warning("Couldn't perform fit: {}".format(str(e)))
                         fit_para = None
 
                     if 'update_parameters' in cur_exp_dict:
@@ -1239,10 +1249,9 @@ def do_automized_measurements(qm_dict, autoexp):
                                 try:
                                     fact = cur_exp_dict['fit_factor'][key_nextexp]
                                 except: fact = 1
-
-                                fit_para = (fact * fit_para) + offset
-
                                 try:
+                                    fit_para = (fact * fit_para) + offset
+
                                     key_param = cur_exp_dict['update_parameters'][key_nextexp]
                                     autoexp[key_nextexp][key_param] = fit_para
                                     logger.info("Updating {}= {} for next exp {}".format(key_param, fit_para, key_nextexp))
