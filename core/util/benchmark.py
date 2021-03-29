@@ -1,4 +1,4 @@
-from collections import deque, namedtuple
+from collections import deque
 import scipy
 import numpy as np
 import copy
@@ -7,6 +7,7 @@ import copy
 class BenchmarkTool(object):
 
     def __init__(self, n_save_datapoints=20):
+        self._n_save_datapoints = n_save_datapoints
         # datapoint: a tuple of (time [s], figure of merit)
         self._datapoints = deque(maxlen=n_save_datapoints)  # fifo-like
         self._datapoints_fixed = list()
@@ -68,7 +69,7 @@ class BenchmarkTool(object):
     def load_from_dict(self, obj=None, saved_dict=None):
 
         if saved_dict != None:
-            saved_dict['_datapoints'] = deque(saved_dict['_datapoints'])
+            saved_dict['_datapoints'] = deque(saved_dict['_datapoints'], maxlen=self._n_save_datapoints)
 
             self.__dict__.update(saved_dict)
 
@@ -79,7 +80,7 @@ class BenchmarkTool(object):
 
         if len(self._datapoints) > len(self._datapoints_fixed):
             # ensure rolling data has max 50:50 weight
-            weighted_data = np.asarray(self._datapoints_fixed + list(self._datapoints[-len(self._datapoints_fixed):]))
+            weighted_data = np.asarray(self._datapoints_fixed + list(self._datapoints)[-len(self._datapoints_fixed):])
         else:
             weighted_data = all_data
 
