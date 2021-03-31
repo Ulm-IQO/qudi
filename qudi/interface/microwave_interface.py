@@ -164,6 +164,53 @@ class MicrowaveInterface(Base):
     #  But I would argue the trigger config is something static and hard-wired for a specific setup,
     #  so it should be configurable via config and not handled by logic at runtime.
 
+    def _assert_cw_parameters_args(self, frequency, power):
+        """ Helper method to unify argument type and value checking against hardware constraints.
+        Useful in implementation of "set_cw()".
+        """
+        # Check power
+        assert self.constraints.power_in_range(power)[0], \
+            f'CW power to set ({power} dBm) is out of bounds for allowed range ' \
+            f'{self.constraints.power_limits}'
+        # Check frequency
+        assert self.constraints.frequency_in_range(frequency)[0], \
+            f'CW frequency to set ({frequency:.9e} Hz) is out of bounds for allowed range ' \
+            f'{self.constraints.frequency_limits}'
+
+    def _assert_scan_configuration_args(self, power, frequencies, mode, sample_rate):
+        """ Helper method to unify argument type and value checking against hardware constraints.
+        Useful in implementation of "configure_scan()".
+        """
+        # Check power
+        assert self.constraints.power_in_range(power)[0], \
+            f'Scan power to set ({power} dBm) is out of bounds for allowed range ' \
+            f'{self.constraints.power_limits}'
+        # Check mode
+        assert isinstance(mode, SamplingOutputMode), \
+            'Scan mode must be Enum type qudi.core.enums.SamplingOutputMode'
+        assert self.constraints.mode_supported(mode), \
+            f'Unsupported scan mode "{mode}" encountered'
+        # Check sample rate
+        assert self.constraints.sample_rate_in_range(sample_rate)[0], \
+            f'Sample rate to set ({sample_rate:.9e} Hz) is out of bounds for allowed range ' \
+            f'{self.constraints.sample_rate_limits}'
+        # Check frequencies
+        if mode == SamplingOutputMode.JUMP_LIST:
+            samples = len(frequencies)
+            min_freq, max_freq = min(frequencies), max(frequencies)
+        elif mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+            assert len(frequencies) == 3, \
+                'Setting scan frequencies for "EQUIDISTANT_SWEEP" mode requires iterable of 3 ' \
+                'values: (start, stop, number_of_points)'
+            samples = frequencies[-1]
+            min_freq, max_freq = frequencies[:2]
+        assert self.constraints.scan_size_in_range(samples)[0], \
+            f'Number of samples for frequency scan ({samples}) is out of bounds for ' \
+            f'allowed scan size limits {self.constraints.scan_size_limits}'
+        assert self.constraints.frequency_in_range(min_freq)[0] and \
+               self.constraints.frequency_in_range(max_freq)[0], \
+            f'Frequency samples to scan out of bounds.'
+
 
 class MicrowaveConstraints:
     """A container to hold all constraints for microwave sources.
