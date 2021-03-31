@@ -58,7 +58,7 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
-        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
@@ -275,7 +275,7 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
         tau_array = 1 / (2 * freq_array)
         tau_pspacing_array = self.tau_2_pulse_spacing(tau_array)
 
-        # old tansformation to "real tau"
+        # old transformation to "real tau"
         real_tau_array = tau_array - self.rabi_period / 2
         np.clip(real_tau_array, 0, None, real_tau_array)
 
@@ -295,7 +295,7 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
-        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
@@ -414,7 +414,7 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
         tau_array = 1 / (2 * freq_array)
         tau_phys_array = self.tau_2_pulse_spacing(tau_array)
 
-        # old tansformation to "real tau"
+        # old transformation to "real tau"
         real_tau_array = tau_array - self.rabi_period / 2
         np.clip(real_tau_array, 0, None, real_tau_array)
 
