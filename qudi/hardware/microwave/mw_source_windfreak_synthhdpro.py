@@ -56,6 +56,7 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         self._constraints = None
         self._scan_power = -20
         self._scan_frequencies = None
+        self._scan_sample_rate = 0.
         self._in_cw_mode = True
 
     def on_activate(self):
@@ -81,15 +82,17 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
             power_limits=(-60, 20),
             frequency_limits=(53e6, 14e9),
             scan_size_limits=(2, 100),
+            sample_rate_limits=(0.1, 100),  # FIXME: Look up the proper specs for sample rate
             scan_modes=(SamplingOutputMode.EQUIDISTANT_SWEEP,)
         )
 
         self._scan_power = -20
         self._scan_frequencies = None
+        self._scan_sample_rate = self._constraints.max_sample_rate
         self._in_cw_mode = True
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
+        """ Cleanup performed during deactivation of the module.
         """
         self.off()
         self._device.close()
@@ -121,24 +124,6 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         with self._thread_lock:
             return float(self._device.query('W?'))
 
-    @cw_power.setter
-    def cw_power(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set cw_power. Microwave output is active.')
-            assert self._constraints.power_in_range(value)[0], \
-                f'cw_power to set ({value} dBm) out of bounds for allowed range ' \
-                f'{self._constraints.power_limits}'
-
-            self._device.write('X0')
-            self._device.write('c1')
-            # trigger mode: software
-            self._device.write('w0')
-
-            self._device.write(f'W{value:2.3f}')
-            self._device.write(f'[{value:2.3f}')
-            self._device.write(f']{value:2.3f}')
-
     @property
     def cw_frequency(self):
         """The CW microwave frequency in Hz. Must implement setter as well.
@@ -148,25 +133,6 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         with self._thread_lock:
             return float(self._device.query('f?')) * 1e6
 
-    @cw_frequency.setter
-    def cw_frequency(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set cw_frequency. Microwave output is active.')
-            assert self._constraints.frequency_in_range(value)[0], \
-                f'cw_frequency to set ({value:.9e} Hz) out of bounds for allowed range ' \
-                f'{self._constraints.frequency_limits}'
-
-            self._device.write('X0')
-            self._device.write('c1')
-            # trigger mode: software
-            self._device.write('w0')
-
-            # sweep frequency and steps
-            self._device.write(f'f{value / 1e6:5.7f}')
-            self._device.write(f'l{value / 1e6:5.7f}')
-            self._device.write(f'u{value / 1e6:5.7f}')
-
     @property
     def scan_power(self):
         """The microwave power in dBm used for scanning. Must implement setter as well.
@@ -175,19 +141,6 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         """
         with self._thread_lock:
             return self._scan_power
-
-    @scan_power.setter
-    def scan_power(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_power. Microwave output is active.')
-            assert self._constraints.power_in_range(value)[0], \
-                f'scan_power to set ({value} dBm) out of bounds for allowed range ' \
-                f'{self._constraints.power_limits}'
-
-            self._scan_power = value
-            if self._scan_frequencies is not None:
-                self._write_sweep()
 
     @property
     def scan_frequencies(self):
@@ -203,22 +156,6 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         with self._thread_lock:
             return self._scan_frequencies
 
-    @scan_frequencies.setter
-    def scan_frequencies(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_frequencies. Microwave output is active.')
-            assert self._constraints.frequency_in_range(min(value))[0] and \
-                   self._constraints.frequency_in_range(max(value))[0], \
-                f'scan_frequencies to set out of bounds for allowed range ' \
-                f'{self._constraints.frequency_limits}'
-            assert self._constraints.scan_size_in_range(len(value))[0], \
-                f'Number of frequency steps to set ({len(value):d}) out of bounds for ' \
-                f'allowed range {self._constraints.scan_size_limits}'
-
-            self._scan_frequencies = np.array(value, dtype=np.float64)
-            self._write_sweep()
-
     @property
     def scan_mode(self):
         """Scan mode Enum. Must implement setter as well.
@@ -228,36 +165,52 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         with self._thread_lock:
             return SamplingOutputMode.EQUIDISTANT_SWEEP
 
-    @scan_mode.setter
-    def scan_mode(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_mode. Microwave output is active.')
-            assert isinstance(value, SamplingOutputMode), \
-                'scan_mode must be Enum type qudi.core.enums.SamplingOutputMode'
-            assert self._constraints.mode_supported(value), \
-                f'Unsupported scan_mode "{value}" encountered'
-
-            self._scan_frequencies = None
-
     @property
-    def trigger_edge(self):
-        """Input trigger polarity Enum for scanning. Must implement setter as well.
+    def scan_sample_rate(self):
+        """Read-only property returning the currently configured scan sample rate in Hz.
 
-        @return TriggerEdge: The currently set active input trigger edge
+        @return float: The currently set scan sample rate in Hz
         """
-        return TriggerEdge.RISING
+        with self._thread_lock:
+            return self._scan_sample_rate
 
-    @trigger_edge.setter
-    def trigger_edge(self, value):
+    def set_cw(self, frequency, power):
+        """Configure the CW microwave output. Does not start physical signal output, see also
+        "cw_on".
+
+        @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
+        """
         with self._thread_lock:
             if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set trigger_edge. Microwave output is active.')
-            assert isinstance(value, TriggerEdge), \
-                'trigger_edge must be Enum type qudi.core.enums.TriggerEdge'
+                raise RuntimeError('Unable to set CW parameters. Microwave output active.')
+            self._assert_cw_parameters_args(frequency, power)
 
-            self.log.warning('No external trigger channel can be set in this hardware. '
-                             'Method will be skipped.')
+            self._device.write('X0')
+            self._device.write('c1')
+            # trigger mode: software
+            self._device.write('w0')
+            self._device.write(f'W{power:2.3f}')
+            self._device.write(f'[{power:2.3f}')
+            self._device.write(f']{power:2.3f}')
+            self._device.write(f'f{frequency / 1e6:5.7f}')
+            self._device.write(f'l{frequency / 1e6:5.7f}')
+            self._device.write(f'u{frequency / 1e6:5.7f}')
+
+    def configure_scan(self, power, frequencies, mode, sample_rate):
+        """
+        """
+        with self._thread_lock:
+            # Sanity checks
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to configure frequency scan. Microwave output active.')
+            self._assert_scan_configuration_args(power, frequencies, mode, sample_rate)
+
+            # configure scan according to scan mode
+            self._scan_sample_rate = sample_rate
+            self._scan_power = power
+            self._scan_frequencies = tuple(frequencies)
+            self._write_sweep()
 
     def off(self):
         """Switches off any microwave output (both scan and CW).
