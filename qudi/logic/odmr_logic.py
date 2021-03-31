@@ -509,11 +509,12 @@ class OdmrLogic(LogicBase):
                 # Set up data acquisition device
                 sampler.set_sample_rate(sample_rate)
                 sampler.set_frame_size(samples)
-                # Set up microwave scan
+                # Set up microwave scan and start it
                 microwave.configure_scan(self._scan_power, frequencies, mode, sample_rate)
+                microwave.start_scan()
             except:
-                self.log.exception('Unable to start ODMR scan. Error while setting up hardware:')
                 self.module_state.unlock()
+                self.log.exception('Unable to start ODMR scan. Error while setting up hardware:')
                 self.sigScanStateUpdated.emit(False)
                 return
 
@@ -554,6 +555,7 @@ class OdmrLogic(LogicBase):
         """
         with self._threadlock:
             if self.module_state() == 'locked':
+                self._microwave().off()
                 self.module_state.unlock()
             self.sigScanStateUpdated.emit(False)
 
@@ -574,7 +576,7 @@ class OdmrLogic(LogicBase):
         """ Perform a single scan over the specified frequency range
         """
         with self._threadlock:
-            # If the odmr measurement is not running do nothing
+            # If the odmr measurement is not running do nothing and break the Qt signal loop
             if self.module_state() != 'locked':
                 return
 
@@ -587,6 +589,7 @@ class OdmrLogic(LogicBase):
                             new_counts[ch].reshape(-1, self._oversampling_factor),
                             axis=1
                         )
+                self._microwave().reset_scan()
             except:
                 self.log.exception('Error while trying to read ODMR scan data from hardware:')
                 self.stop_odmr_scan()
