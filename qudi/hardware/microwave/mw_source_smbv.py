@@ -30,7 +30,7 @@ import numpy as np
 from qudi.util.mutex import Mutex
 from qudi.core.configoption import ConfigOption
 from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
-from qudi.core.enums import TriggerEdge, SamplingOutputMode
+from qudi.core.enums import SamplingOutputMode
 
 
 class MicrowaveSmbv(MicrowaveInterface):
@@ -41,12 +41,14 @@ class MicrowaveSmbv(MicrowaveInterface):
     mw_source_smbv:
         module.Class: 'microwave.mw_source_smbv.MicrowaveSmbv'
         visa_address: 'GPIB0::12::INSTR'
-        comm_timeout: 10  # in seconds
-        max_power: null
+        comm_timeout: 10  # in seconds, optional
+        rising_edge_trigger: True  # optional
+        max_power: null  # optional
     """
 
     _visa_address = ConfigOption('visa_address', missing='error')
     _comm_timeout = ConfigOption('comm_timeout', default=10, missing='warn')
+    _rising_edge_trigger = ConfigOption('rising_edge_trigger', default=True, missing='info')
     # to limit the power to a lower value that the hardware can provide
     _max_power = ConfigOption('max_power', default=None)
 
@@ -62,6 +64,7 @@ class MicrowaveSmbv(MicrowaveInterface):
         self._cw_frequency = 2.0e9
         self._scan_power = -20
         self._scan_frequencies = None
+        self._scan_sample_rate = 0.
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -85,6 +88,7 @@ class MicrowaveSmbv(MicrowaveInterface):
             power_limits=(-145, 30 if self._max_power is None else max(-145, self._max_power)),
             frequency_limits=freq_limits,
             scan_size_limits=(2, 10001),
+            sample_rate_limits=(0.1, 100),  # FIXME: Look up the proper specs for sample rate
             scan_modes=(SamplingOutputMode.EQUIDISTANT_SWEEP,)
         )
 
@@ -92,11 +96,14 @@ class MicrowaveSmbv(MicrowaveInterface):
         self._scan_power = self._constraints.min_power
         self._cw_power = self._constraints.min_power
         self._cw_frequency = 2870.0e6
+        self._scan_sample_rate = self._constraints.max_sample_rate
 
     def on_deactivate(self):
         """ Cleanup performed during deactivation of the module. """
         self._device.close()
         self._rm.close()
+        self._device = None
+        self._rm = None
 
     @property
     def constraints(self):
@@ -122,25 +129,6 @@ class MicrowaveSmbv(MicrowaveInterface):
         with self._thread_lock:
             return self._cw_power
 
-    @cw_power.setter
-    def cw_power(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set cw_power. Microwave output is active.')
-            assert self._constraints.power_in_range(value)[0], \
-                f'cw_power to set ({value} dBm) out of bounds for allowed range ' \
-                f'{self._constraints.power_limits}'
-
-            # Activate CW mode
-            if not self._in_cw_mode():
-                self._command_wait(':FREQ:MODE CW')
-
-            self._command_wait(f':FREQ {self._cw_frequency:f}')
-            self._command_wait(f':POW {value:f}')
-
-            self._cw_power = float(self._device.query(':POW?'))
-            self._cw_frequency = float(self._device.query(':FREQ?'))
-
     @property
     def cw_frequency(self):
         """The CW microwave frequency in Hz. Must implement setter as well.
@@ -149,24 +137,6 @@ class MicrowaveSmbv(MicrowaveInterface):
         """
         with self._thread_lock:
             return self._cw_frequency
-
-    @cw_frequency.setter
-    def cw_frequency(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set cw_frequency. Microwave output is active.')
-            assert self._constraints.frequency_in_range(value)[0], \
-                f'cw_frequency to set ({value:.9e} Hz) out of bounds for allowed range ' \
-                f'{self._constraints.frequency_limits}'
-
-            if not self._in_cw_mode():
-                self._command_wait(':FREQ:MODE CW')
-
-            self._command_wait(f':FREQ {value:f}')
-            self._command_wait(f':POW {self._cw_power:f}')
-
-            self._cw_power = float(self._device.query(':POW?'))
-            self._cw_frequency = float(self._device.query(':FREQ?'))
 
     @property
     def scan_power(self):
@@ -230,38 +200,49 @@ class MicrowaveSmbv(MicrowaveInterface):
         with self._thread_lock:
             return SamplingOutputMode.EQUIDISTANT_SWEEP
 
-    @scan_mode.setter
-    def scan_mode(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_mode. Microwave output is active.')
-            assert isinstance(value, SamplingOutputMode), \
-                'scan_mode must be Enum type qudi.core.enums.SamplingOutputMode'
-            assert self._constraints.mode_supported(value), \
-                f'Unsupported scan_mode "{value}" encountered'
-
-            self._scan_frequencies = None
-
     @property
-    def trigger_edge(self):
-        """Input trigger polarity Enum for scanning. Must implement setter as well.
+    def scan_sample_rate(self):
+        """Read-only property returning the currently configured scan sample rate in Hz.
 
-        @return TriggerEdge: The currently set active input trigger edge
+        @return float: The currently set scan sample rate in Hz
         """
         with self._thread_lock:
-            edge = self._device.query(':TRIG1:SLOP?')
-            return TriggerEdge.FALLING if 'NEG' in edge else TriggerEdge.RISING
+            return self._scan_sample_rate
 
-    @trigger_edge.setter
-    def trigger_edge(self, value):
+    def set_cw(self, frequency, power):
+        """Configure the CW microwave output. Does not start physical signal output, see also
+        "cw_on".
+
+        @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
+        """
         with self._thread_lock:
             if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set trigger_edge. Microwave output is active.')
-            assert isinstance(value, TriggerEdge), \
-                'trigger_edge must be Enum type qudi.core.enums.TriggerEdge'
+                raise RuntimeError('Unable to set CW parameters. Microwave output active.')
+            self._assert_cw_parameters_args(frequency, power)
 
-            edge = 'NEG' if value == TriggerEdge.FALLING else 'POS'
-            self._command_wait(f':TRIG1:SLOP {edge}')
+            if not self._in_cw_mode():
+                self._command_wait(':FREQ:MODE CW')
+            self._command_wait(f':FREQ {frequency:f}')
+            self._command_wait(f':POW {power:f}')
+            self._cw_power = float(self._device.query(':POW?'))
+            self._cw_frequency = float(self._device.query(':FREQ?'))
+
+    def configure_scan(self, power, frequencies, mode, sample_rate):
+        """
+        """
+        with self._thread_lock:
+            # Sanity checks
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to configure frequency scan. Microwave output active.')
+            self._assert_scan_configuration_args(power, frequencies, mode, sample_rate)
+
+            # configure scan according to scan mode
+            self._scan_sample_rate = sample_rate
+            self._scan_power = power
+            self._scan_frequencies = np.asarray(frequencies, dtype=np.float64)
+            self._write_list()
+            self._set_trigger_edge()
 
     def off(self):
         """Switches off any microwave output (both scan and CW).
@@ -365,6 +346,10 @@ class MicrowaveSmbv(MicrowaveInterface):
         self._device.write('*WAI')
 
         self._command_wait('TRIG:FSW:SOUR EXT')
+
+    def _set_trigger_edge(self):
+        edge = 'POS' if self._rising_edge_trigger else 'NEG'
+        self._command_wait(f':TRIG1:SLOP {edge}')
 
     ###########################################################################################
 

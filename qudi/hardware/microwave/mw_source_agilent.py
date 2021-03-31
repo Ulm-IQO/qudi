@@ -46,13 +46,13 @@ class MicrowaveAgilent(MicrowaveInterface):
     mw_source_agilent:
         module.Class: 'microwave.mw_source_agilent.MicrowaveAgilent'
         visa_address: USB0::10::INSTR  # PyVisa compatible resource name
-        comm_timeout: 5  # in seconds
+        comm_timeout: 5  # in seconds, optional
+        rising_edge_trigger: True  # optional
     """
 
     _visa_address = ConfigOption('visa_address', missing='error')
     _comm_timeout = ConfigOption('comm_timeout', default=5, missing='warn')
-
-    _FREQ_SWITCH_SPEED = 0.09  # Frequency switching speed in s (acc. to specs)
+    _rising_edge_trigger = ConfigOption('rising_edge_trigger', default=True, missing='info')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -63,10 +63,10 @@ class MicrowaveAgilent(MicrowaveInterface):
         self._model = ''
         self._constraints = None
         self._is_scanning = False
-        self._scan_power = 0.0
+        self._scan_power = 0.
         self._scan_mode = None
         self._scan_frequencies = None
-        self._trigger_edge = None
+        self._scan_sample_rate = 0.
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -89,6 +89,7 @@ class MicrowaveAgilent(MicrowaveInterface):
             power_limits=power_limits,
             frequency_limits=freq_limits,
             scan_size_limits=(2, 4000),
+            sample_rate_limits=(0.1, 100),  # FIXME: Look up the proper specs for sample rate
             scan_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP)
         )
 
@@ -96,15 +97,15 @@ class MicrowaveAgilent(MicrowaveInterface):
         self._scan_power = float(self._device.query(':AMPL:CW?'))
         self._scan_frequencies = None
         self._scan_mode = SamplingOutputMode.JUMP_LIST
-        # ToDo: Set trigger
-        self._trigger_edge = TriggerEdge.RISING
-        self.trigger_edge = self._trigger_edge
+        self._scan_sample_rate = self._constraints.max_sample_rate
 
     def on_deactivate(self):
         """ Cleanup performed during deactivation of the module.
         """
         self._device.close()
         self._rm.close()
+        self._device = None
+        self._rm = None
 
     @property
     def constraints(self):
@@ -134,11 +135,6 @@ class MicrowaveAgilent(MicrowaveInterface):
         with self._thread_lock:
             return float(self._device.query(':AMPL:CW?'))
 
-    @cw_power.setter
-    def cw_power(self, value):
-        with self._thread_lock:
-            self._command_wait(f':AMPL:CW {value:f}')
-
     @property
     def cw_frequency(self):
         """The CW microwave frequency in Hz. Must implement setter as well.
@@ -148,11 +144,6 @@ class MicrowaveAgilent(MicrowaveInterface):
         with self._thread_lock:
             return float(self._device.query(':FREQ:CW?'))
 
-    @cw_frequency.setter
-    def cw_frequency(self, value):
-        with self._thread_lock:
-            self._command_wait(f':FREQ:CW {value:e} Hz')
-
     @property
     def scan_power(self):
         """The microwave power in dBm used for scanning.
@@ -161,32 +152,6 @@ class MicrowaveAgilent(MicrowaveInterface):
         """
         with self._thread_lock:
             return self._scan_power
-
-    @scan_power.setter
-    def scan_power(self, value):
-        with self._thread_lock:
-            in_range, value = self._constraints.power_in_range(float(value))
-            assert in_range, f'scan_power to set ({value} dBm) is out of bounds for allowed ' \
-                             f'range {self._constraints.power_limits}'
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_power. Microwave output is active.')
-
-            self._scan_power = value
-
-            if self._scan_mode == SamplingOutputMode.JUMP_LIST:
-                current_rows = int(self._device.query(':LIST:RF:POINts?'))
-                for ii in range(1, current_rows + 1):
-                    self._device.write(f':LIST:ROW:GOTO {ii:d}')
-                    self._device.write(f':LIST:Amplitude {value:e} dBm')
-                    # seems to need some time
-                    time.sleep(0.5)
-            elif self._scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                self._command_wait(f':AMPL:CW {value:f}')
-            else:
-                raise RuntimeError(
-                    f'Invalid scan mode encountered ({self._scan_mode}). Please set scan_mode '
-                    f'property before configuring or starting a frequency scan.'
-                )
 
     @property
     def scan_frequencies(self):
@@ -202,85 +167,6 @@ class MicrowaveAgilent(MicrowaveInterface):
         with self._thread_lock:
             return self._scan_frequencies
 
-    @scan_frequencies.setter
-    def scan_frequencies(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_frequencies. Microwave output is active.')
-
-            if self._scan_mode == SamplingOutputMode.JUMP_LIST:
-                num_of_freq = len(value)
-                assert self._constraints.scan_size_in_range(num_of_freq)[0], \
-                    f'Number of frequency steps to set ({num_of_freq:d}) out of bounds for ' \
-                    f'allowed range {self._constraints.scan_size_limits}'
-                in_range = self._constraints.frequency_in_range(min(value))[0] and \
-                           self._constraints.frequency_in_range(max(value))[0]
-                assert in_range, f'scan_frequencies to set are out of bounds for allowed ' \
-                                 f'range {self._constraints.frequency_limits}'
-
-                self._scan_frequencies = None
-
-                current_rows = int(self._device.query(':LIST:RF:POINts?'))
-                # adapt the length of the list
-                while current_rows != num_of_freq:
-                    if current_rows > num_of_freq:
-                        for ii in range(int(current_rows - num_of_freq)):
-                            # always delete the second row (first might not work)
-                            self._device.write(f':LIST:ROW:DELete 2')
-                            time.sleep(0.05)
-                    elif current_rows < num_of_freq:
-                        for ii in range(int(num_of_freq - current_rows)):
-                            self._device.write(':LIST:ROW:INsert 2')
-                            time.sleep(0.05)
-                    current_rows = int(self._device.query(':LIST:RF:POINts?'))
-
-                for ii in range(current_rows):
-                    self._device.write(f':LIST:ROW:GOTO {ii + 1:d}')
-                    time.sleep(0.1)
-                    self._device.write(f':LIST:RF {value[ii]:e} Hz')
-                    time.sleep(0.25)
-                    self._device.write(f':LIST:Amplitude {self._scan_power:e} dBm')
-                    time.sleep(0.25)
-
-                self._scan_frequencies = np.array(value, dtype=np.float64)
-
-            elif self._scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                assert len(value) == 3, 'EQUIDISTANT_SWEEP scan mode requires a len 3 iterable ' \
-                                        'of the form (start_freq, stop_freq, number_of_points)'
-                in_range = self._constraints.frequency_in_range(value[0])[0] and \
-                           self._constraints.frequency_in_range(value[1])[0]
-                assert in_range, f'scan_frequencies to set are out of bounds for allowed ' \
-                                 f'range {self._constraints.frequency_limits}'
-                assert self._constraints.scan_size_in_range(value[2])[0], \
-                    f'Number of frequency steps to set ({value[2]:d}) out of bounds for ' \
-                    f'allowed range {self._constraints.scan_size_limits}'
-
-                self._scan_frequencies = None
-
-                self._device.write(f':SWE:RF:STAR {value[0]:e} Hz')
-                self._device.write(f':SWE:RF:STOP {value[1]:e} Hz')
-                self._device.write(f':SWE:STEP:POIN {value[2]:d}')
-                # self._device.write(':SWE:STEP:DWEL 10 ms')
-                self._command_wait(f':AMPL:CW {self._scan_power:f}')
-
-                self._scan_frequencies = tuple(value)
-
-            else:
-                raise RuntimeError(
-                    f'Invalid scan mode encountered ({self._scan_mode}). Please set scan_mode '
-                    f'property before configuring or starting a frequency scan.'
-                )
-
-            self._device.write(':SWE:REP CONT')
-            self._device.write(':SWE:STRG EXT')
-            self._device.write(':SWE:PTRG EXT')
-            trig_slope = 'EXTN' if self._trigger_edge == TriggerEdge.FALLING else 'EXTP'
-            self._device.write(f':SWE:PTRG:SLOP {trig_slope}')
-            self._device.write(':SWE:DIR:UP')
-
-            # short waiting time to prevent crashes
-            time.sleep(0.2)
-
     @property
     def scan_mode(self):
         """Scan mode Enum. Must implement setter as well.
@@ -290,40 +176,85 @@ class MicrowaveAgilent(MicrowaveInterface):
         with self._thread_lock:
             return self._scan_mode
 
-    @scan_mode.setter
-    def scan_mode(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan_mode. Microwave output is active.')
-            assert isinstance(value, SamplingOutputMode), \
-                'scan_mode must be Enum type qudi.core.enums.SamplingOutputMode'
-            assert self._constraints.mode_supported(value), \
-                f'Unsupported scan_mode "{value}" encountered'
-            self._scan_mode = value
-            self._scan_frequencies = None
-
     @property
-    def trigger_edge(self):
-        """Input trigger polarity Enum for scanning. Must implement setter as well.
+    def scan_sample_rate(self):
+        """Read-only property returning the currently configured scan sample rate in Hz.
 
-        @return TriggerEdge: The currently set active input trigger edge
+        @return float: The currently set scan sample rate in Hz
         """
         with self._thread_lock:
-            return self._trigger_edge
+            return self._scan_sample_rate
 
-    @trigger_edge.setter
-    def trigger_edge(self, value):
+    def set_cw(self, frequency, power):
+        """Configure the CW microwave output. Does not start physical signal output, see also
+        "cw_on".
+
+        @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
+        """
         with self._thread_lock:
             if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set trigger_edge. Microwave output is active.')
-            assert isinstance(value, TriggerEdge), \
-                'trigger_edge must be Enum type qudi.core.enums.TriggerEdge'
+                raise RuntimeError('Unable to set CW parameters. Microwave output active.')
+            self._assert_cw_parameters_args(frequency, power)
+            self._command_wait(f':FREQ:CW {frequency:e} Hz')
+            self._command_wait(f':AMPL:CW {power:f}')
 
-            edge_str = 'EXTN' if value == TriggerEdge.FALLING else 'EXTP'
-            self._device.write(f':SWE:PTRG:SLOP {edge_str}')
-            time.sleep(0.5)
-            self._device.write(f':SWE:STRG:SLOP {edge_str}')
-            self._trigger_edge = value
+    def configure_scan(self, power, frequencies, mode, sample_rate):
+        """
+        """
+        with self._thread_lock:
+            # Sanity checks
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to configure frequency scan. Microwave output active.')
+            self._assert_scan_configuration_args(power, frequencies, mode, sample_rate)
+
+            # configure scan according to scan mode
+            self._scan_sample_rate = sample_rate
+            self._scan_power = power
+            self._scan_mode = mode
+            if mode == SamplingOutputMode.JUMP_LIST:
+                # Adjust number of scan list entries
+                num_of_freq = len(frequencies)
+                current_rows = int(self._device.query(':LIST:RF:POINts?'))
+                while current_rows != num_of_freq:
+                    if current_rows > num_of_freq:
+                        for ii in range(current_rows - num_of_freq):
+                            # always delete the second row (first might not work)
+                            self._device.write(f':LIST:ROW:DELete 2')
+                            time.sleep(0.05)
+                    else:
+                        for ii in range(num_of_freq - current_rows):
+                            self._device.write(':LIST:ROW:INsert 2')
+                            time.sleep(0.05)
+                    current_rows = int(self._device.query(':LIST:RF:POINts?'))
+                # Set list values
+                for ii, freq in enumerate(frequencies, 1):
+                    self._device.write(f':LIST:ROW:GOTO {ii:d}')
+                    time.sleep(0.1)
+                    self._device.write(f':LIST:RF {freq:e} Hz')
+                    time.sleep(0.25)
+                    self._device.write(f':LIST:Amplitude {power:e} dBm')
+                    time.sleep(0.25)
+
+                self._scan_frequencies = np.asarray(frequencies, dtype=np.float64)
+
+            elif mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                self._device.write(f':SWE:RF:STAR {frequencies[0]:e} Hz')
+                self._device.write(f':SWE:RF:STOP {frequencies[1]:e} Hz')
+                self._device.write(f':SWE:STEP:POIN {frequencies[2]:d}')
+                # self._device.write(':SWE:STEP:DWEL 10 ms')
+                self._command_wait(f':AMPL:CW {power:f}')
+
+                self._scan_frequencies = tuple(frequencies)
+
+            self._device.write(':SWE:REP CONT')
+            self._device.write(':SWE:STRG EXT')
+            self._device.write(':SWE:PTRG EXT')
+            trig_slope = 'EXTP' if self._rising_edge_trigger else 'EXTN'
+            self._device.write(f':SWE:PTRG:SLOP {trig_slope}')
+            self._device.write(':SWE:DIR:UP')
+            # short waiting time to prevent crashes
+            time.sleep(0.2)
 
     def off(self):
         """Switches off any microwave output (both scan and CW).

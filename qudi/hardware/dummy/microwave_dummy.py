@@ -183,9 +183,7 @@ class MicrowaveDummy(MicrowaveInterface):
                 raise RuntimeError(
                     'Unable to set CW power and frequency. Microwave output is active.'
                 )
-            assert self._constraints.power_in_range(power)[0], f'CW power to set out of bounds.'
-            assert self._constraints.frequency_in_range(frequency)[0], \
-                f'CW frequency to set out of bounds.'
+            self._assert_cw_parameters_args(frequency, power)
 
             # Set power and frequency
             self.log.debug(f'Setting CW power to {power} dBm and frequency to {frequency:.9e} Hz')
@@ -218,43 +216,20 @@ class MicrowaveDummy(MicrowaveInterface):
             # Sanity checking
             if self.module_state() != 'idle':
                 raise RuntimeError('Unable to configure scan. Microwave output is active.')
-            # Check mode
-            assert self._constraints.mode_supported(mode), f'Unsupported scan mode to set: "{mode}"'
-            # Check sample rate
-            assert self._constraints.sample_rate_in_range(sample_rate)[0], \
-                f'Scan sample rate to set out of bounds.'
-            # Check power
-            assert self._constraints.power_in_range(power), f'Scan power to set out of bounds.'
-            # Check frequencies
-            if mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                assert len(frequencies) == 3, \
-                    'Setting scan frequencies in "EQUIDISTANT_SWEEP" mode requires 3 values ' \
-                    '(start, stop, number_of_points)'
-                frequencies = tuple(frequencies)
-                samples = int(frequencies[2])
-                min_freq, max_freq = frequencies[:2]
-            elif mode == SamplingOutputMode.JUMP_LIST:
-                frequencies = np.asarray(frequencies, dtype=np.float64)
-                samples = len(frequencies)
-                min_freq, max_freq = frequencies.min(), frequencies.max()
-            else:
-                raise RuntimeError(f'Unhandled scan mode encountered: "{mode}"')
-            assert self._constraints.scan_size_in_range(samples)[0], \
-                f'Number of samples for frequency scan ({samples}) is out of bounds for ' \
-                f'allowed scan size limits {self._constraints.scan_size_limits}'
-            assert self._constraints.frequency_in_range(min_freq)[0] and \
-                   self._constraints.frequency_in_range(max_freq)[0], \
-                f'Frequency samples to scan out of bounds.'
+            self._assert_scan_configuration_args(power, frequencies, mode, sample_rate)
 
             # Actually change settings
             time.sleep(1)
+            if mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                self._scan_frequencies = tuple(frequencies)
+            else:
+                self._scan_frequencies = np.asarray(frequencies, dtype=np.float64)
             self._scan_power = power
-            self._scan_frequencies = frequencies
             self._scan_mode = mode
             self._scan_sample_rate = sample_rate
             self.log.debug(
                 f'Scan configured in mode "{mode.name}" with {sample_rate:.9e} Hz sample rate, '
-                f'{power} dBm power and frequencies:\n{frequencies}.'
+                f'{power} dBm power and frequencies:\n{self._scan_frequencies}.'
             )
 
     def start_scan(self):
