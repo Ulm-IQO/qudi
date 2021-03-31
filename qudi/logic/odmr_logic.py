@@ -158,8 +158,6 @@ class OdmrLogic(LogicBase):
         # Connect signals
         self._sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
 
-        self._microwave().scan_mode = SamplingOutputMode.EQUIDISTANT_SWEEP
-
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
@@ -449,8 +447,7 @@ class OdmrLogic(LogicBase):
             # Toggle microwave output
             try:
                 if enable:
-                    microwave.cw_power = self._cw_power
-                    microwave.cw_frequency = self._cw_frequency
+                    microwave.set_cw(power=self._cw_power, frequency=self._cw_frequency)
                     microwave.cw_on()
                 else:
                     microwave.off()
@@ -491,41 +488,37 @@ class OdmrLogic(LogicBase):
 
             # Set up hardware
             try:
-                # Set scan sample rate
-                sampler.set_sample_rate(self._oversampling_factor * self._data_rate)
-                self._data_rate = sampler.sample_rate / self._oversampling_factor
-
+                sample_rate = self._oversampling_factor * self._data_rate
                 # switch scan mode if necessary
-                if microwave.scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                    if len(self._scan_frequency_ranges) != 1:
-                        if microwave.constraints.mode_supported(SamplingOutputMode.JUMP_LIST):
-                            self.log.warning('Multiple ODMR scan ranges set up. Trying to switch '
-                                             'scanner to output mode "JUMP_LIST".')
-                            microwave.scan_mode = SamplingOutputMode.JUMP_LIST
-
-                # Set frequency values to scan
-                if microwave.scan_mode == SamplingOutputMode.JUMP_LIST:
-                    frame_data = np.concatenate(self._frequency_data)
-                    if self._oversampling_factor > 1:
-                        frame_data = np.repeat(frame_data, self._oversampling_factor)
-                    sampler.set_frame_size(len(frame_data))
-                elif microwave.scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                    frame_data = self._scan_frequency_ranges[0]
-                    sampler.set_frame_size(frame_data[-1])
+                if self._default_scan_mode != SamplingOutputMode.JUMP_LIST and len(
+                        self._scan_frequency_ranges) > 1:
+                    mode = SamplingOutputMode.JUMP_LIST
+                    self.log.info('Multiple ODMR scan ranges set up. Trying to switch scanner to '
+                                  'output mode "JUMP_LIST".')
                 else:
-                    raise RuntimeError(f'Unknown scanner mode encountered: "{microwave.scan_mode}"')
-                microwave.scan_frequencies = frame_data
+                    mode = self._default_scan_mode
+                if mode == SamplingOutputMode.JUMP_LIST:
+                    frequencies = np.concatenate(self._frequency_data)
+                    if self._oversampling_factor > 1:
+                        frequencies = np.repeat(frequencies, self._oversampling_factor)
+                    samples = len(frequencies)
+                elif mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                    frequencies = self._scan_frequency_ranges[0]
+                    samples = frequencies[-1]
 
-                # Set scan power
-                microwave.scan_power = self._scan_power
+                # Set up data acquisition device
+                sampler.set_sample_rate(sample_rate)
+                sampler.set_frame_size(samples)
+                # Set up microwave scan
+                microwave.configure_scan(self._scan_power, frequencies, mode, sample_rate)
             except:
-                self.log.exception('Unable to start ODMR scan. Error while setting up hardware.')
+                self.log.exception('Unable to start ODMR scan. Error while setting up hardware:')
                 self.module_state.unlock()
                 self.sigScanStateUpdated.emit(False)
                 return
             finally:
-                # ToDo: Emit all new parameters
-                self.sigScanParametersUpdated.emit({'data_rate': self._data_rate})
+                # ToDo: Emit all changed parameters
+                pass
 
             # ToDo: Clear old fit
             self._elapsed_sweeps = 0

@@ -44,8 +44,9 @@ class MicrowaveInterface(Base):
     @property
     @abstractmethod
     def is_scanning(self):
-        """Read-Only boolean flag indicating if a scan is running at the moment. Can be used together with
-        module_state() to determine if the currently running microwave output is a scan or CW.
+        """Read-Only boolean flag indicating if a scan is running at the moment. Can be used
+        together with module_state() to determine if the currently running microwave output is a
+        scan or CW.
         Should return False if module_state() is 'idle'.
 
         @return bool: Flag indicating if a scan is running (True) or not (False)
@@ -55,7 +56,7 @@ class MicrowaveInterface(Base):
     @property
     @abstractmethod
     def cw_power(self):
-        """The CW microwave power in dBm. Must implement setter as well.
+        """Read-only property returning the currently configured CW microwave power in dBm.
 
         @return float: The currently set CW microwave power in dBm.
         """
@@ -64,7 +65,7 @@ class MicrowaveInterface(Base):
     @property
     @abstractmethod
     def cw_frequency(self):
-        """The CW microwave frequency in Hz. Must implement setter as well.
+        """Read-only property returning the currently set CW microwave frequency in Hz.
 
         @return float: The currently set CW microwave frequency in Hz.
         """
@@ -73,7 +74,8 @@ class MicrowaveInterface(Base):
     @property
     @abstractmethod
     def scan_power(self):
-        """The microwave power in dBm used for scanning. Must implement setter as well.
+        """Read-only property returning the currently configured microwave power in dBm used for
+        scanning.
 
         @return float: The currently set scanning microwave power in dBm
         """
@@ -82,12 +84,13 @@ class MicrowaveInterface(Base):
     @property
     @abstractmethod
     def scan_frequencies(self):
-        """The microwave frequencies used for scanning. Must implement setter as well.
+        """Read-only property returning the currently configured microwave frequencies used for
+        scanning.
 
-        In case of scan_mode == SamplingOutputMode.JUMP_LIST, this will be a 1D numpy array.
-        In case of scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP, this will be a tuple
+        In case of self.scan_mode == SamplingOutputMode.JUMP_LIST, this will be a 1D numpy array.
+        In case of self.scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP, this will be a tuple
         containing 3 values (freq_begin, freq_end, number_of_samples).
-        If no frequency scan has been specified, return None.
+        If no frequency scan has been configured, return None.
 
         @return float[]: The currently set scanning frequencies. None if not set.
         """
@@ -96,7 +99,7 @@ class MicrowaveInterface(Base):
     @property
     @abstractmethod
     def scan_mode(self):
-        """Scan mode Enum. Must implement setter as well.
+        """Read-only property returning the currently configured scan mode Enum.
 
         @return SamplingOutputMode: The currently set scan mode Enum
         """
@@ -104,10 +107,10 @@ class MicrowaveInterface(Base):
 
     @property
     @abstractmethod
-    def trigger_edge(self):
-        """Input trigger polarity Enum for scanning. Must implement setter as well.
+    def scan_sample_rate(self):
+        """Read-only property returning the currently configured scan sample rate in Hz.
 
-        @return TriggerEdge: The currently set active input trigger edge
+        @return float: The currently set scan sample rate in Hz
         """
         raise NotImplementedError
 
@@ -119,16 +122,32 @@ class MicrowaveInterface(Base):
         raise NotImplementedError
 
     @abstractmethod
+    def set_cw(self, frequency, power):
+        """Configure the CW microwave output. Does not start physical signal output, see also
+        "cw_on".
+
+        @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def cw_on(self):
-        """ Switches on cw microwave output.
+        """Switches on preconfigured cw microwave output, see also "set_cw".
 
         Must return AFTER the output is actually active.
         """
         raise NotImplementedError
 
     @abstractmethod
+    def configure_scan(self, power, frequencies, mode, sample_rate):
+        """
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def start_scan(self):
-        """Switches on the microwave scanning.
+        """Switches on the preconfigured microwave scanning, see also "configure_scan".
 
         Must return AFTER the output is actually active (and can receive triggers for example).
         """
@@ -141,45 +160,21 @@ class MicrowaveInterface(Base):
         """
         raise NotImplementedError
 
-    # Non-abstract default implementations below. Overwriting is optional.
-
-    def set_scan_frequencies(self, frequencies):
-        """Classical setter for property scan_frequencies.
-        """
-        self.scan_frequencies = frequencies
-
-    def set_scan_power(self, power):
-        """Classical setter for property scan_power.
-        """
-        self.scan_power = power
-
-    def set_cw(self, frequency=None, power=None):
-        """Classical setter for properties cw_power and cw_frequency.
-
-        @param float frequency: frequency to set in Hz
-        @param float power: power to set in dBm
-        """
-        if frequency is not None:
-            self.cw_frequency = frequency
-        if power is not None:
-            self.cw_power = power
-
-    def set_trigger_edge(self, edge):
-        """Classical setter for property trigger_edge.
-
-        @param TriggerEdge edge: Trigger edge Enum to set
-        """
-        self.trigger_edge = edge
+    # ToDo: Think about if the logic should handle trigger settings and expand the interface if so.
+    #  But I would argue the trigger config is something static and hard-wired for a specific setup,
+    #  so it should be configurable via config and not handled by logic at runtime.
 
 
 class MicrowaveConstraints:
     """A container to hold all constraints for microwave sources.
     """
-    def __init__(self, power_limits, frequency_limits, scan_size_limits, scan_modes):
+    def __init__(self, power_limits, frequency_limits, scan_size_limits, sample_rate_limits,
+                 scan_modes):
         """
         @param float[2] power_limits: Allowed min and max power
         @param float[2] frequency_limits: Allowed min and max frequency
         @param int[2] scan_size_limits: Allowed min and max number of samples for scanning
+        @param float[2] sample_rate_limits: Allowed min and max scan sample rate (in Hz)
         @param SamplingOutputMode[] scan_modes: Allowed scan mode Enums
         """
         assert len(power_limits) == 2, 'power_limits must be iterable of length 2 (min, max)'
@@ -187,11 +182,14 @@ class MicrowaveConstraints:
             'frequency_limits must be iterable of length 2 (min, max)'
         assert len(scan_size_limits) == 2, \
             'scan_size_limits must be iterable of length 2 (min, max)'
+        assert len(sample_rate_limits) == 2, \
+            'sample_rate_limits must be iterable of length 2 (min, max)'
         assert all(isinstance(mode, SamplingOutputMode) for mode in scan_modes), \
             'scan_modes must be iterable containing only qudi.core.enums.SamplingOutputMode Enums'
 
         tmp = [int(lim) for lim in scan_size_limits]
         self._scan_size_limits = (min(tmp), max(tmp))
+        self._sample_rate_limits = (min(sample_rate_limits), max(sample_rate_limits))
         self._scan_modes = frozenset(scan_modes)
         self._power_limits = (min(power_limits), max(power_limits))
         self._frequency_limits = (min(frequency_limits), max(frequency_limits))
@@ -207,6 +205,18 @@ class MicrowaveConstraints:
     @property
     def max_scan_size(self):
         return self._scan_size_limits[1]
+
+    @property
+    def sample_rate_limits(self):
+        return self._sample_rate_limits
+
+    @property
+    def min_sample_rate(self):
+        return self._sample_rate_limits[0]
+
+    @property
+    def max_sample_rate(self):
+        return self._sample_rate_limits[1]
 
     @property
     def power_limits(self):
@@ -244,6 +254,9 @@ class MicrowaveConstraints:
 
     def scan_size_in_range(self, value):
         return in_range(value, *self._scan_size_limits)
+
+    def sample_rate_in_range(self, value):
+        return in_range(value, *self._sample_rate_limits)
 
     def mode_supported(self, mode):
         return mode in self._scan_modes
