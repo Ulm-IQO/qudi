@@ -24,7 +24,7 @@ import time
 import numpy as np
 
 from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
-from qudi.core.enums import TriggerEdge, SamplingOutputMode
+from qudi.core.enums import SamplingOutputMode
 from qudi.util.mutex import Mutex
 
 
@@ -45,12 +45,12 @@ class MicrowaveDummy(MicrowaveInterface):
         self._thread_lock = Mutex()
         self._constraints = None
 
-        self._cw_power = 0.0
+        self._cw_power = 0.
         self._cw_frequency = 2.87e9
-        self._scan_power = 0.0
+        self._scan_power = 0.
         self._scan_frequencies = None
+        self._scan_sample_rate = -1.
         self._scan_mode = SamplingOutputMode.JUMP_LIST
-        self._trigger_edge = TriggerEdge.RISING
         self._is_scanning = False
 
     def on_activate(self):
@@ -60,6 +60,7 @@ class MicrowaveDummy(MicrowaveInterface):
             power_limits=(-60.0, 30),
             frequency_limits=(100e3, 20e9),
             scan_size_limits=(2, 1001),
+            sample_rate_limits=(0.1, 200),
             scan_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP)
         )
 
@@ -69,11 +70,11 @@ class MicrowaveDummy(MicrowaveInterface):
         self._scan_power = self._cw_power
         self._scan_frequencies = None
         self._scan_mode = SamplingOutputMode.JUMP_LIST
-        self._trigger_edge = TriggerEdge.RISING
+        self._scan_sample_rate = 100
         self._is_scanning = False
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
+        """ Cleanup performed during deactivation of the module.
         """
         pass
 
@@ -99,157 +100,64 @@ class MicrowaveDummy(MicrowaveInterface):
 
     @property
     def cw_power(self):
-        """The CW microwave power in dBm.
+        """Read-only property returning the currently configured CW microwave power in dBm.
 
         @return float: The currently set CW microwave power in dBm.
         """
         with self._thread_lock:
             return self._cw_power
 
-    @cw_power.setter
-    def cw_power(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set CW power. Microwave output is active.')
-            is_in_range, new_val = self._constraints.power_in_range(value)
-            if not is_in_range:
-                self.log.warning(f'CW power to set out of bounds. Clipping value to {new_val} dBm')
-            self.log.debug(f'Setting CW power to {new_val} dBm')
-            self._cw_power = new_val
-
     @property
     def cw_frequency(self):
-        """The CW microwave frequency in Hz.
+        """Read-only property returning the currently set CW microwave frequency in Hz.
 
         @return float: The currently set CW microwave frequency in Hz.
         """
         with self._thread_lock:
             return self._cw_frequency
 
-    @cw_frequency.setter
-    def cw_frequency(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set CW frequency. Microwave output is active.')
-            is_in_range, new_val = self._constraints.frequency_in_range(value)
-            if not is_in_range:
-                self.log.warning(
-                    f'CW frequency to set out of bounds. Clipping value to {new_val:.9e} Hz'
-                )
-            self.log.debug(f'Setting CW frequency to {new_val:.9e} Hz')
-            self._cw_frequency = new_val
-
     @property
     def scan_power(self):
-        """The microwave power in dBm used for scanning.
+        """Read-only property returning the currently configured microwave power in dBm used for
+        scanning.
 
         @return float: The currently set scanning microwave power in dBm
         """
         with self._thread_lock:
             return self._scan_power
 
-    @scan_power.setter
-    def scan_power(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan power. Microwave output is active.')
-            is_in_range, new_val = self._constraints.power_in_range(value)
-            if not is_in_range:
-                self.log.warning(
-                    f'Scan power to set out of bounds. Clipping value to {new_val} dBm'
-                )
-            self.log.debug(f'Setting scan power to {new_val} dBm')
-            self._scan_power = new_val
-
     @property
     def scan_frequencies(self):
-        """The microwave frequencies used for scanning.
+        """Read-only property returning the currently configured microwave frequencies used for
+        scanning.
 
-        In case of scan_mode == SamplingOutputMode.JUMP_LIST, this will be a 1D numpy array.
-        In case of scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP, this will be a tuple
+        In case of self.scan_mode == SamplingOutputMode.JUMP_LIST, this will be a 1D numpy array.
+        In case of self.scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP, this will be a tuple
         containing 3 values (freq_begin, freq_end, number_of_samples).
-        If no frequency scan has been specified, return None.
+        If no frequency scan has been configured, return None.
 
         @return float[]: The currently set scanning frequencies. None if not set.
         """
         with self._thread_lock:
             return self._scan_frequencies
 
-    @scan_frequencies.setter
-    def scan_frequencies(self, value):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                raise RuntimeError('Unable to set scan frequencies. Microwave output is active.')
-
-            if self._scan_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                assert len(value) == 3, 'Setting scan_frequencies in "EQUIDISTANT_SWEEP" mode ' \
-                                        'requires 3 values (start, stop, number_of_points)'
-                points = int(value[2])
-                assert self._constraints.scan_size_in_range(points)[0], \
-                    f'Number of samples for frequency scan ({points}) is out of bounds for ' \
-                    f'allowed scan size limits {self._constraints.scan_size_limits}'
-                new_start = self._constraints.frequency_in_range(value[0])[1]
-                new_stop = self._constraints.frequency_in_range(value[1])[1]
-                if new_start != value[0] or new_stop != value[1]:
-                    self.log.warning(f'Frequency scan start/stop is out of bounds. Clipping '
-                                     f'frequencies to range {self._constraints.frequency_limits}')
-                self._scan_frequencies = (new_start, new_stop, points)
-            elif self._scan_mode == SamplingOutputMode.JUMP_LIST:
-                points = len(value)
-                min_freq = min(value)
-                max_freq = max(value)
-                assert self._constraints.scan_size_in_range(points)[0], \
-                    f'Number of samples for frequency scan ({points}) is out of bounds for ' \
-                    f'allowed scan size limits {self._constraints.scan_size_limits}'
-                clipped_min = self._constraints.frequency_in_range(min_freq)[1]
-                clipped_max = self._constraints.frequency_in_range(max_freq)[1]
-                if clipped_min != min_freq or clipped_max != max_freq:
-                    self.log.warning(f'Some frequency scan samples are out of bounds. Clipping '
-                                     f'frequencies to range {self._constraints.frequency_limits}')
-                self._scan_frequencies = np.clip(value,
-                                                 *self._constraints.frequency_limits,
-                                                 dtype=np.float64)
-            else:
-                self._scan_frequencies = None
-                raise RuntimeError(f'Invalid scan mode encountered: "{self._scan_mode}"')
-            self.log.debug(f'Setting scan_frequencies to: {self._scan_frequencies}')
-
     @property
     def scan_mode(self):
-        """Scan mode Enum. Must implement setter as well.
+        """Read-only property returning the currently configured scan mode Enum.
 
         @return SamplingOutputMode: The currently set scan mode Enum
         """
         with self._thread_lock:
             return self._scan_mode
 
-    @scan_mode.setter
-    def scan_mode(self, value):
-        assert self._constraints.mode_supported(value), f'Unsupported scan_mode to set: "{value}"'
-        with self._thread_lock:
-            if self._is_scanning:
-                raise RuntimeError('Unable to set scan_mode. Frequency scanning in progress.')
-            self.log.debug(f'Setting scan_mode to "{value.name}"')
-            self._scan_mode = value
-
     @property
-    def trigger_edge(self):
-        """Input trigger polarity Enum for scanning. Must implement setter as well.
+    def scan_sample_rate(self):
+        """Read-only property returning the currently configured scan sample rate in Hz.
 
-        @return TriggerEdge: The currently set active input trigger edge
+        @return float: The currently set scan sample rate in Hz
         """
         with self._thread_lock:
-            return self._trigger_edge
-
-    @trigger_edge.setter
-    def trigger_edge(self, value):
-        assert isinstance(value, TriggerEdge), \
-            'trigger_edge must be Enum type qudi.core.enums.TriggerEdge'
-        with self._thread_lock:
-            if self._is_scanning:
-                raise RuntimeError('Unable to set trigger_edge. Frequency scanning in progress.')
-            self.log.debug(f'Setting trigger_edge to "{value.name}"')
-            self._trigger_edge = value
+            return self._scan_sample_rate
 
     def off(self):
         """Switches off any microwave output (both scan and CW).
@@ -263,6 +171,37 @@ class MicrowaveDummy(MicrowaveInterface):
             time.sleep(1)
             self._is_scanning = False
             self.module_state.unlock()
+
+    def set_cw(self, frequency, power):
+        """Configure the CW microwave output. Does not start physical signal output, see also
+        "cw_on".
+
+        @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
+        """
+        with self._thread_lock:
+            # Check if CW parameters can be set.
+            if self.module_state() != 'idle':
+                raise RuntimeError(
+                    'Unable to set CW power and frequency. Microwave output is active.'
+                )
+            is_in_range, new_power = self._constraints.power_in_range(power)
+            if not is_in_range:
+                self.log.warning(
+                    f'CW power to set out of bounds. Clipping value to {new_power} dBm'
+                )
+            is_in_range, new_freq = self._constraints.frequency_in_range(frequency)
+            if not is_in_range:
+                self.log.warning(
+                    f'CW frequency to set out of bounds. Clipping value to {new_freq:.9e} Hz'
+                )
+
+            # Set power and frequency
+            self.log.debug(
+                f'Setting CW power to {new_power} dBm and frequency to {new_freq:.9e} Hz'
+            )
+            self._cw_power = new_power
+            self._cw_frequency = new_freq
 
     def cw_on(self):
         """ Switches on cw microwave output.
@@ -283,23 +222,81 @@ class MicrowaveDummy(MicrowaveInterface):
             else:
                 self.log.debug('CW microwave output already running')
 
+    def configure_scan(self, power, frequencies, mode, sample_rate):
+        """
+        """
+        with self._thread_lock:
+            # Sanity checking
+            if self.module_state() != 'idle':
+                raise RuntimeError('Unable to configure scan. Microwave output is active.')
+            # Check mode
+            assert self._constraints.mode_supported(mode), f'Unsupported scan mode to set: "{mode}"'
+            # Check sample rate
+            is_in_range, new_sample_rate = self._constraints.sample_rate_in_range(sample_rate)
+            if not is_in_range:
+                self.log.warning(
+                    f'Scan sample rate to set out of bounds. Clipping value to '
+                    f'{new_sample_rate:.9e} Hz'
+                )
+            # Check power
+            is_in_range, new_power = self._constraints.power_in_range(power)
+            if not is_in_range:
+                self.log.warning(
+                    f'Scan power to set out of bounds. Clipping value to {new_power} dBm'
+                )
+            # Check frequencies
+            if mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                assert len(frequencies) == 3, \
+                    'Setting scan frequencies in "EQUIDISTANT_SWEEP" mode requires 3 values ' \
+                    '(start, stop, number_of_points)'
+                samples = int(frequencies[2])
+                min_freq, max_freq = frequencies[:2]
+            elif mode == SamplingOutputMode.JUMP_LIST:
+                frequencies = np.asarray(frequencies, dtype=np.float64)
+                samples = len(frequencies)
+                min_freq, max_freq = frequencies.min(), frequencies.max()
+            else:
+                raise RuntimeError(f'Unhandled scan mode encountered: "{mode}"')
+            assert self._constraints.scan_size_in_range(samples)[0], \
+                f'Number of samples for frequency scan ({samples}) is out of bounds for ' \
+                f'allowed scan size limits {self._constraints.scan_size_limits}'
+            min_in_range, min_freq = self._constraints.frequency_in_range(min_freq)
+            max_in_range, max_freq = self._constraints.frequency_in_range(max_freq)
+            if not (min_in_range and max_in_range):
+                self.log.warning(
+                    f'Frequency samples to set out of bounds. Clipping sample values to allowed '
+                    f'range {self._constraints.frequency_limits}.'
+                )
+                if mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                    frequencies = (min_freq, max_freq, samples)
+                elif mode == SamplingOutputMode.JUMP_LIST:
+                    frequencies = np.clip(frequencies, min_freq, max_freq)
+
+            # Actually change settings
+            time.sleep(1)
+            self._scan_power = new_power
+            self._scan_frequencies = frequencies
+            self._scan_mode = mode
+            self._scan_sample_rate = new_sample_rate
+            self.log.debug(
+                f'Scan configured in mode "{mode.name}" with {new_sample_rate:.9e} Hz sample rate, '
+                f'{new_power} dBm power and frequencies:\n    {frequencies}.'
+            )
+
     def start_scan(self):
         """Switches on the microwave scanning.
 
         Must return AFTER the output is actually active (and can receive triggers for example).
         """
         with self._thread_lock:
-            if self.module_state() == 'idle':
-                self.log.debug(f'Starting frequency scan in "{self._scan_mode.name}" mode')
-                time.sleep(1)
-                self._is_scanning = True
-                self.module_state.lock()
-            elif not self._is_scanning:
+            if self.module_state() != 'idle':
                 raise RuntimeError(
-                    'Unable to start microwave frequency scan. CW microwave output is active.'
+                    'Unable to start microwave frequency scan. Microwave output is active.'
                 )
-            else:
-                self.log.debug('Frequency scan already in progress')
+            self.module_state.lock()
+            self._is_scanning = True
+            time.sleep(1)
+            self.log.debug(f'Starting frequency scan in "{self._scan_mode.name}" mode')
 
     def reset_scan(self):
         """Reset currently running scan and return to start frequency.
