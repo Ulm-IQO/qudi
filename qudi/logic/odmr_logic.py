@@ -516,9 +516,6 @@ class OdmrLogic(LogicBase):
                 self.module_state.unlock()
                 self.sigScanStateUpdated.emit(False)
                 return
-            finally:
-                # ToDo: Emit all changed parameters
-                pass
 
             # ToDo: Clear old fit
             self._elapsed_sweeps = 0
