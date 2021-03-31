@@ -207,10 +207,12 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
             self._assert_scan_configuration_args(power, frequencies, mode, sample_rate)
 
             # configure scan according to scan mode
-            self._scan_sample_rate = sample_rate
             self._scan_power = power
             self._scan_frequencies = tuple(frequencies)
             self._write_sweep()
+
+            self._device.write(f't{1000 * 0.75 / sample_rate:f}')
+            self._scan_sample_rate = float(self._device.query('t?')) / 1000
 
     def off(self):
         """Switches off any microwave output (both scan and CW).
@@ -338,18 +340,3 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
     def _is_running(self):
         status = self._stat()
         return (status[0] == 1) and (status[1] == 1) and (status[2] == 1)
-
-##########################################################
-
-    # def set_ext_trigger(self, pol, dwelltime):
-    #     """ Set the external trigger for this device with proper polarization.
-    #
-    #     @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
-    #     @param dwelltime: minimum dwell time
-    #
-    #     @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
-    #     """
-    #     self.log.debug('Trigger at {} dwell for {}'.format(pol, dwelltime))
-    #     self._device.write('t{0:f}'.format(1000 * 0.75 * dwelltime))
-    #     newtime = float(self._device.query('t?')) / 1000
-    #     return TriggerEdge.RISING, newtime
