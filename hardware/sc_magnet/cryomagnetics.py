@@ -32,6 +32,9 @@ class Cryomagnetics(Base):
     to lower limit, zero or upper limit.
     A security constraints can be set via panel but is independent of the limits set here.
 
+    Cryomagnetics hardware use only integers of Gauss as setpoint. To have the best possible resolution, it's best to
+    use ampere and set the field_to_current_ratio via this hardware.
+
     Example config for copy-paste:
 
     cryognatics_xy:
@@ -43,6 +46,7 @@ class Cryomagnetics(Base):
     _visa_address = ConfigOption('visa_address', missing='error')
     _dual_supply = ConfigOption('dual_supply', False)
     _limits = ConfigOption('limits', missing='error')  # limits of field in Tesla. Ex: [-0.5, 0.5]
+    _field_to_current_ratio = ConfigOption('field_to_current_ratio', [71.0, 71.0])  # in G/A
 
     def __init__(self, **kwargs):
         """Here the connections to the power supplies and to the counter are established"""
@@ -84,47 +88,60 @@ class Cryomagnetics(Base):
         if channel in [1, 2]:
             self._write('CHAN {}'.format(channel))
 
+    def _to_tesla(self, value_as_text, channel=None):
+        """ Convert a return field to tesla """
+        if 'kG' in value_as_text:
+            self.log.warning('Cryomagnetics hardware use only integers of Gauss. Use Amperes for best resolution.')
+            value = float(value_as_text[:-2])  # in kG
+            value *= 0.1  # in Tesla
+        elif 'A' in value_as_text:
+            value = float(value_as_text[:-1])  # in Ampere
+            value *= self.get_field_to_current_ratio(channel)  # in Gauss
+            value *= 1e-4  # in Tesla
+        else:
+            self.log.error('Can not read {} as field.'.format(value_as_text))
+            value = None
+        return value
+
+    def get_field_to_current_ratio(self, channel=None):
+        """ Return the field_to_current_ratio (G/A) for a given channel """
+        if channel in [1, 2]:
+            return float(self._field_to_current_ratio[int(channel)-1])
+        elif not self._dual_supply:
+            return float(self._field_to_current_ratio)
+        else:
+            self.log.error('Channel must be provided for dual supply.')
+
     def get_magnet_current(self, channel=None):
         """ Return the current magnet current in Tesla """
         response = self._query('IMAG?', channel=channel)
-        if 'kG' in response:
-            value = float(response[:-2]) * 0.1
-        else:
-            self.log.error('Can not read {} as field. Please use Gauss and not ampere.')
-            value = None
-        return value
+        return self._to_tesla(response, channel)
 
     def set_lower_limit(self, value, channel=None):
         """ Set the lower limit of the field (in Tesla) """
         if not(self._limits[0] <= value <= 0):
             return self.log.error('Value {} is not in the limit interval [{}, 0]'.format(value, self._limits[0]))
-        value_in_kG = value * 10
-        self._write('REMOTE;LLIM {}'.format(value_in_kG), channel=channel)
+        value_in_gauss = value * 1e4
+        value_in_ampere = value_in_gauss / self.get_field_to_current_ratio(channel)
+        self._write('REMOTE;UNITS A;LLIM {}'.format(value_in_ampere), channel=channel)
 
     def get_lower_limit(self, channel=None):
         """ Get the lower limit of the field (in Tesla) """
         response = self._query('LLIM?', channel=channel)
-        if 'kG' in response:
-            value = float(response[:-2]) * 0.1
-        else:
-            self.log.error('Response {} is not valid. Check unit.')
-        return value
+        return self._to_tesla(response, channel)
 
-    def set_upper_limit(self, value, channel=None):
+    def set_upper_limit(self, value, channel):
         """ Set the upper limit of the field (in Tesla) """
         if not (0 <= value <= self._limits[1]):
             return self.log.error('Value {} is not in the limit interval [0, {}]'.format(value, self._limits[1]))
-        value_in_kG = value * 10
-        self._write('REMOTE;ULIM {}'.format(value_in_kG), channel=channel)
+        value_in_gauss = value * 1e4
+        value_in_ampere = value_in_gauss / self.get_field_to_current_ratio(channel)
+        self._write('REMOTE;UNITS A;ULIM {}'.format(value_in_ampere), channel=channel)
 
     def get_upper_limit(self, channel=None):
         """ Get the upper limit of the field (in Tesla) """
         response = self._query('ULIM?', channel=channel)
-        if 'kG' in response:
-            value = float(response[:-2]) * 0.1
-        else:
-            self.log.error('Response {} is not valid. Check unit.')
-        return value
+        return self._to_tesla(response, channel)
 
     def get_limits(self, channel=None):
         """ Get the field limits as a tuple (lower_limit, higher_limit) in Tesla """
