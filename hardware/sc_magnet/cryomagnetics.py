@@ -130,7 +130,7 @@ class Cryomagnetics(Base):
         response = self._query('LLIM?', channel=channel)
         return self._to_tesla(response, channel)
 
-    def set_upper_limit(self, value, channel):
+    def set_upper_limit(self, value, channel=None):
         """ Set the upper limit of the field (in Tesla) """
         if not (0 <= value <= self._limits[1]):
             return self.log.error('Value {} is not in the limit interval [0, {}]'.format(value, self._limits[1]))
