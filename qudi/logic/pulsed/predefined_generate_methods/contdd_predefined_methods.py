@@ -35,20 +35,17 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def generate_HH_Phase(self, name='HH_Phase', amp_hh=0.5, freq_hahn=0.1e6, freq_step=0.01e6,
-                          num_of_points=50, xy8_order=4, alternating=True):
+    def generate_HHphase_tau(self, name='HH_Phase', amp_hh=0.5, tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                             xy8_order=4, alternating=True):
         """
-        Continuous dynamical decoupling with XY8 like phase changes, x-axis - frequency
-        freq_hahn and freq_step relate to the time between phase changes
-        amp_hh is the amplitude for the continuous drive, Rabi freq should be around the middle of the frequency range
-        xy8_order relates to the number of repetitions in the same manner to the standard xy8 sequence
+        Continuous dynamical decoupling with XY8 like phase changes.
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
-        # get amplitude array for measurement ticks
-        freq_array = freq_hahn + np.arange(num_of_points) * freq_step
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -72,56 +69,52 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-
+        pix_element = self._get_mw_element(length=tau_start,
+                                           increment=tau_step,
+                                           amp=amp_hh,
+                                           freq=self.microwave_frequency,
+                                           phase=0)
+        piy_element = self._get_mw_element(length=tau_start,
+                                           increment=tau_step,
+                                           amp=amp_hh,
+                                           freq=self.microwave_frequency,
+                                           phase=90)
         # Create block and append to created_blocks list
-        HH_Phase = PulseBlock(name=name)
-        for freq_hh in freq_array:
-            hahn_period = 1 / (2 * freq_hh)
-            pix_element = self._get_mw_element(length=hahn_period / 1,
-                                               increment=0,
-                                               amp=amp_hh,
-                                               freq=self.microwave_frequency,
-                                               phase=0)
-            piy_element = self._get_mw_element(length=hahn_period / 1,
-                                               increment=0,
-                                               amp=amp_hh,
-                                               freq=self.microwave_frequency,
-                                               phase=90)
-            HH_Phase.append(pihalf_element)
+        hhphase_block = PulseBlock(name=name)
+        hhphase_block.append(pihalf_element)
+        for n in range(xy8_order):
+            hhphase_block.append(pix_element)
+            hhphase_block.append(piy_element)
+            hhphase_block.append(pix_element)
+            hhphase_block.append(piy_element)
+            hhphase_block.append(piy_element)
+            hhphase_block.append(pix_element)
+            hhphase_block.append(piy_element)
+            hhphase_block.append(pix_element)
+        hhphase_block.append(pihalf_element)
+        hhphase_block.append(laser_element)
+        hhphase_block.append(delay_element)
+        hhphase_block.append(waiting_element)
+        if alternating:
+            hhphase_block.append(pihalf_element)
             for n in range(xy8_order):
-                HH_Phase.append(pix_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(pix_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(pix_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(pix_element)
-            HH_Phase.append(pihalf_element)
-            HH_Phase.append(laser_element)
-            HH_Phase.append(delay_element)
-            HH_Phase.append(waiting_element)
-
-            if alternating:
-                HH_Phase.append(pi3half_element)
-                for n in range(xy8_order):
-                    HH_Phase.append(pix_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(pix_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(pix_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(pix_element)
-                HH_Phase.append(pihalf_element)
-                HH_Phase.append(laser_element)
-                HH_Phase.append(delay_element)
-                HH_Phase.append(waiting_element)
-        created_blocks.append(HH_Phase)
+                hhphase_block.append(pix_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(pix_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(pix_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(pix_element)
+            hhphase_block.append(pi3half_element)
+            hhphase_block.append(laser_element)
+            hhphase_block.append(delay_element)
+            hhphase_block.append(waiting_element)
+        created_blocks.append(hhphase_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append((HH_Phase.name, 0))
+        block_ensemble.append((hhphase_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
@@ -130,8 +123,8 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = freq_array
-        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Frequency', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
@@ -141,18 +134,17 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_HH_Phase_N(self, name='HH_Phase_N', amp_hh=0.05, freq_hahn=0.1e6,
-                            num_of_points=50, xy8_order_start=4, order_step=1, alternating=True):
+    def generate_HHphase_N(self, name='HH_Phase_N', amp_hh=0.05, tau=0.5e-6, order_start=4, order_step=1,
+                           num_of_points=50, alternating=True):
         """
-        Continuous dynamical decoupling with XY8 like phase changes, x- axis XY8 - order
+        Continuous dynamical decoupling with XY8 like phase changes.
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
-        # get amplitude array for measurement ticks
-        order_array = xy8_order_start + np.arange(num_of_points) * order_step
-        hahn_period = 1 / (2 * freq_hahn)
+        # get order array
+        order_array = order_start + np.arange(num_of_points) * order_step
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -176,56 +168,54 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-
-        pix_element = self._get_mw_element(length=hahn_period / 1,
+        pix_element = self._get_mw_element(length=tau,
                                            increment=0,
                                            amp=amp_hh,
                                            freq=self.microwave_frequency,
                                            phase=0)
-        piy_element = self._get_mw_element(length=hahn_period / 1,
+        piy_element = self._get_mw_element(length=tau,
                                            increment=0,
                                            amp=amp_hh,
                                            freq=self.microwave_frequency,
                                            phase=90)
 
         # Create block and append to created_blocks list
-        HH_Phase = PulseBlock(name=name)
+        hhphase_block = PulseBlock(name=name)
         for xy8_order in order_array:
-            HH_Phase.append(pihalf_element)
+            hhphase_block.append(pihalf_element)
             for n in range(xy8_order):
-                HH_Phase.append(pix_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(pix_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(pix_element)
-                HH_Phase.append(piy_element)
-                HH_Phase.append(pix_element)
-            HH_Phase.append(pihalf_element)
-            HH_Phase.append(laser_element)
-            HH_Phase.append(delay_element)
-            HH_Phase.append(waiting_element)
-
-            HH_Phase.append(pi3half_element)
+                hhphase_block.append(pix_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(pix_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(pix_element)
+                hhphase_block.append(piy_element)
+                hhphase_block.append(pix_element)
+            hhphase_block.append(pihalf_element)
+            hhphase_block.append(laser_element)
+            hhphase_block.append(delay_element)
+            hhphase_block.append(waiting_element)
             if alternating:
+                hhphase_block.append(pihalf_element)
                 for n in range(xy8_order):
-                    HH_Phase.append(pix_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(pix_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(pix_element)
-                    HH_Phase.append(piy_element)
-                    HH_Phase.append(pix_element)
-                HH_Phase.append(pihalf_element)
-                HH_Phase.append(laser_element)
-                HH_Phase.append(delay_element)
-                HH_Phase.append(waiting_element)
-        created_blocks.append(HH_Phase)
+                    hhphase_block.append(pix_element)
+                    hhphase_block.append(piy_element)
+                    hhphase_block.append(pix_element)
+                    hhphase_block.append(piy_element)
+                    hhphase_block.append(piy_element)
+                    hhphase_block.append(pix_element)
+                    hhphase_block.append(piy_element)
+                    hhphase_block.append(pix_element)
+                hhphase_block.append(pi3half_element)
+                hhphase_block.append(laser_element)
+                hhphase_block.append(delay_element)
+                hhphase_block.append(waiting_element)
+        created_blocks.append(hhphase_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append((HH_Phase.name, 0))
+        block_ensemble.append((hhphase_block.name, 0))
 
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
@@ -245,17 +235,17 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_rot_echo(self, name='rot_echo', amp_hh=0.05, freq_hahn=0.1e6, freq_step=0.01e6,
-                          num_of_points=50, order=4, alternating=True):
+    def generate_rot_echo_tau(self, name='rot_echo', amp_hh=0.05, tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                              order=4, alternating=True):
         """
-        Rotary echo - continuous dynamical decoupling with 0/180 phase changes, x-axis is frequency
+        Rotary echo - continuous dynamical decoupling with 0/180 phase changes.
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
-        # get amplitude array for measurement ticks
-        freq_array = freq_hahn + np.arange(num_of_points) * freq_step
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -279,44 +269,41 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
+        pix_element = self._get_mw_element(length=tau_start,
+                                           increment=tau_step,
+                                           amp=amp_hh,
+                                           freq=self.microwave_frequency,
+                                           phase=0)
+        piy_element = self._get_mw_element(length=tau_start,
+                                           increment=tau_step,
+                                           amp=amp_hh,
+                                           freq=self.microwave_frequency,
+                                           phase=180)
 
         # Create block and append to created_blocks list
-        rot_echo = PulseBlock(name=name)
-        for freq_hh in freq_array:
-            hahn_period = 1 / (2 * freq_hh)
-            pix_element = self._get_mw_element(length=hahn_period / 1,
-                                               increment=0,
-                                               amp=amp_hh,
-                                               freq=self.microwave_frequency,
-                                               phase=0)
-            piy_element = self._get_mw_element(length=hahn_period / 1,
-                                               increment=0,
-                                               amp=amp_hh,
-                                               freq=self.microwave_frequency,
-                                               phase=180)
-            rot_echo.append(pihalf_element)
+        rotecho_block = PulseBlock(name=name)
+        rotecho_block.append(pihalf_element)
+        for n in range(order):
+            rotecho_block.append(pix_element)
+            rotecho_block.append(piy_element)
+        rotecho_block.append(pihalf_element)
+        rotecho_block.append(laser_element)
+        rotecho_block.append(delay_element)
+        rotecho_block.append(waiting_element)
+        if alternating:
+            rotecho_block.append(pihalf_element)
             for n in range(order):
-                rot_echo.append(pix_element)
-                rot_echo.append(piy_element)
-            rot_echo.append(pihalf_element)
-            rot_echo.append(laser_element)
-            rot_echo.append(delay_element)
-            rot_echo.append(waiting_element)
-
-            rot_echo.append(pi3half_element)
-            if alternating:
-                for n in range(order):
-                    rot_echo.append(pix_element)
-                    rot_echo.append(piy_element)
-                rot_echo.append(pihalf_element)
-                rot_echo.append(laser_element)
-                rot_echo.append(delay_element)
-                rot_echo.append(waiting_element)
-        created_blocks.append(rot_echo)
+                rotecho_block.append(pix_element)
+                rotecho_block.append(piy_element)
+            rotecho_block.append(pi3half_element)
+            rotecho_block.append(laser_element)
+            rotecho_block.append(delay_element)
+            rotecho_block.append(waiting_element)
+        created_blocks.append(rotecho_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append((rot_echo.name, 0))
+        block_ensemble.append((rotecho_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
@@ -325,8 +312,8 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = freq_array
-        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Frequency', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
@@ -336,17 +323,17 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_rot_echo_tau(self, name='rot_echo_tau', amp_hh=0.05, freq_hahn=0.1e6, order_step=1,
-                              num_of_points=50, order_start=4, alternating=True):
+    def generate_rot_echo_N(self, name='rot_echo_N', amp_hh=0.05, tau=0.5e-6, order_start=4, order_step=1,
+                            num_of_points=50, alternating=True):
         """
-        Rotary echo - continuous dynamical decoupling with 0/180 phase changes, x-axis is sequence length
+        Rotary echo - continuous dynamical decoupling with 0/180 phase changes.
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
-        # get amplitude array for measurement ticks
-        step_array = order_start + np.arange(num_of_points) * order_step
+        # get order array
+        order_array = order_start + np.arange(num_of_points) * order_step
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -370,36 +357,33 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-
+        pix_element = self._get_mw_element(length=tau,
+                                           increment=0,
+                                           amp=amp_hh,
+                                           freq=self.microwave_frequency,
+                                           phase=0)
+        piy_element = self._get_mw_element(length=tau,
+                                           increment=0,
+                                           amp=amp_hh,
+                                           freq=self.microwave_frequency,
+                                           phase=180)
         # Create block and append to created_blocks list
         rot_echo_tau = PulseBlock(name=name)
-        for step in step_array:
-            hahn_period = 1 / (2 * freq_hahn)
-            pix_element = self._get_mw_element(length=hahn_period / 1,
-                                               increment=0,
-                                               amp=amp_hh,
-                                               freq=self.microwave_frequency,
-                                               phase=0)
-            piy_element = self._get_mw_element(length=hahn_period / 1,
-                                               increment=0,
-                                               amp=amp_hh,
-                                               freq=self.microwave_frequency,
-                                               phase=180)
+        for order in order_array:
             rot_echo_tau.append(pihalf_element)
-            for n in range(step):
+            for n in range(order):
                 rot_echo_tau.append(pix_element)
                 rot_echo_tau.append(piy_element)
             rot_echo_tau.append(pihalf_element)
             rot_echo_tau.append(laser_element)
             rot_echo_tau.append(delay_element)
             rot_echo_tau.append(waiting_element)
-
-            rot_echo_tau.append(pi3half_element)
             if alternating:
-                for n in range(step):
+                rot_echo_tau.append(pihalf_element)
+                for n in range(order):
                     rot_echo_tau.append(pix_element)
                     rot_echo_tau.append(piy_element)
-                rot_echo_tau.append(pihalf_element)
+                rot_echo_tau.append(pi3half_element)
                 rot_echo_tau.append(laser_element)
                 rot_echo_tau.append(delay_element)
                 rot_echo_tau.append(waiting_element)
@@ -416,7 +400,7 @@ class ContDDPredefinedGenerator(PredefinedGeneratorBase):
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = step_array
+        block_ensemble.measurement_information['controlled_variable'] = order_array
         block_ensemble.measurement_information['units'] = ('', '')
         block_ensemble.measurement_information['labels'] = ('order', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
