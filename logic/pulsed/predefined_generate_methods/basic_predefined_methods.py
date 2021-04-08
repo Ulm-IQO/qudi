@@ -1053,7 +1053,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         t1_sequence.measurement_information['laser_ignore_list'] = list()
         t1_sequence.measurement_information['controlled_variable'] = tau_array
         t1_sequence.measurement_information['units'] = ('s', '')
-        t1_sequence.measurement_information['labels'] = ('Tau<sub>phys</sub>', 'Signal')
+        t1_sequence.measurement_information['labels'] = ('Tau<sub>pulse spacing</sub>', 'Signal')
         t1_sequence.measurement_information['number_of_lasers'] = len(tau_array)
         t1_sequence.measurement_information['counting_length'] = count_length
 
