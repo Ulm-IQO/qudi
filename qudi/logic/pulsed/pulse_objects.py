@@ -1110,8 +1110,8 @@ class PredefinedGeneratorBase:
         consecutive pi pulses.
         Thus, the default behavior is to subtract the duration of a pi pulse from tau.
 
-        :param t: tau (or tau_phys, if inverse==True) to be converted.
-        :param bool inverse: do the inverse transformation tau -> tau_phys
+        :param t: tau (or tau_pulse_spacing, if inverse==True) to be converted.
+        :param bool inverse: do the inverse transformation tau -> tau_pulse_spacing
         :param [func, inv_func] custom_func: provide function pointers for custom transformations
         :param custom_kwwargs: kwargs to the custom transformation functions
         :return:
