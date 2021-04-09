@@ -79,9 +79,9 @@ class LocalModuleServer(QtCore.QObject):
         """ Stop the RPyC server
         """
         if self.is_running:
+            logger.info(f'Stopping local module server on [127.0.0.1]:{self.port:d}')
             self.server.close()
             self.server = None
-            logger.info(f'Stopped local module server on [127.0.0.1]:{self.port:d}')
 
 
 class _LocalModulesService(rpyc.Service):
