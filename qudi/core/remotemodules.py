@@ -112,17 +112,15 @@ class RemoteModuleServer(QtCore.QObject):
     _host = 'localhost'
     _certfile = None
     _keyfile = None
-    _allow_pickle = True
 
-    def __init__(self, kernel_manager, host=None, port=None, certfile=None, keyfile=None,
-                 protocol_config=None, ssl_version=None, cert_reqs=None, ciphers=None,
-                 allow_pickle=None):
+    def __init__(self, host=None, port=None, certfile=None, keyfile=None, protocol_config=None,
+                 ssl_version=None, cert_reqs=None, ciphers=None):
         """
         @param object service_instance: class instance that represents an RPyC service
         @param dict config: port that hte RPyC server should listen on
         """
         super().__init__()
-        self.service_instance = _RemoteModulesService(kernel_manager=kernel_manager)
+        self.service_instance = _RemoteModulesService()
         self.host = self._host if host is None else str(host)
         self.port = self._port if port is None else int(port)
         self.certfile = self._certfile if certfile is None else certfile
@@ -131,19 +129,10 @@ class RemoteModuleServer(QtCore.QObject):
         self.ssl_version = self._ssl_version if ssl_version is None else ssl_version
         self.cert_reqs = self._cert_reqs if cert_reqs is None else cert_reqs
         self.ciphers = self._ciphers if ciphers is None else ciphers
-        self.allow_pickle = self._allow_pickle if allow_pickle is None else bool(allow_pickle)
         if self.certfile is None or self.keyfile is None:
             self.certfile = None
             self.keyfile = None
         self._server = None
-
-    @property
-    def allow_pickle(self):
-        return rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle']
-
-    @allow_pickle.setter
-    def allow_pickle(self, allow):
-        rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = bool(allow)
 
     @property
     def is_running(self):
@@ -173,8 +162,7 @@ class RemoteModuleServer(QtCore.QObject):
                                                port=self.port,
                                                protocol_config=self.protocol_config,
                                                authenticator=authenticator)
-            logger.info('Starting module server at "{0}" on port {1}'.format(self.host,
-                                                                             self.port))
+            logger.info(f'Starting remote module server on [{self.host}]:{self.port:d}')
             self._server.start()
         except:
             logger.exception('Error during start of RemoteServer:')
@@ -187,8 +175,7 @@ class RemoteModuleServer(QtCore.QObject):
         if self.is_running:
             self._server.close()
             self._server = None
-            logger.info('Stopped module server at "{0}" on port {1}'.format(self.host,
-                                                                                self.port))
+            logger.info(f'Stopped remote module server on [{self.host}]:{self.port:d}')
 
 
 class _RemoteModulesService(rpyc.Service):
@@ -198,10 +185,6 @@ class _RemoteModulesService(rpyc.Service):
 
     shared_modules = _SharedModulesModel()
     _lock = Mutex()
-
-    def __init__(self, *args, kernel_manager, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.kernel_manager = weakref.ref(kernel_manager)
 
     @classmethod
     def share_module(cls, module):
@@ -224,14 +207,16 @@ class _RemoteModulesService(rpyc.Service):
     def on_connect(self, conn):
         """ code that runs when a connection is created
         """
-        logger.info('Client connected!')
+        host, port = conn._config['endpoints'][1]
+        logger.info(f'Client connected to remote module service from [{host}]:{port:d}')
 
     def on_disconnect(self, conn):
-        """ code that runs when the connection has already closed
+        """ code that runs when the connection is closing
         """
-        logger.info('Client disconnected!')
+        host, port = conn._config['endpoints'][1]
+        logger.info(f'Client [{host}]:{port:d} disconnected from remote module service')
 
-    def exposed_get_module_instance(self, name):
+    def exposed_get_module_instance(self, name, activate=False):
         """ Return reference to a module in the shared module list.
 
         @param str name: unique module name
@@ -244,10 +229,11 @@ class _RemoteModulesService(rpyc.Service):
             except TypeError:
                 logger.error('Client requested a module ("{0}") that is not shared.'.format(name))
                 return None
-            if not module.activate():
-                logger.error('Unable to share requested module "{0}" with client. Module can not '
-                             'be activated.'.format(name))
-                return None
+            if activate:
+                if not module.activate():
+                    logger.error('Unable to share requested module "{0}" with client. Module can not '
+                                 'be activated.'.format(name))
+                    return None
             return module.instance
 
     def exposed_get_available_module_names(self):
@@ -258,5 +244,21 @@ class _RemoteModulesService(rpyc.Service):
         with self._lock:
             return tuple(name for name, ref in self.shared_modules.items() if ref() is not None)
 
-    def exposed_get_kernel_manager(self):
-        return self.kernel_manager()
+    def exposed_get_loaded_module_names(self):
+        """ Returns the currently shared module names for all modules that have been loaded
+        (instantiated).
+
+        @return tuple: Names of the currently shared loaded modules
+        """
+        with self._lock:
+            return tuple(name for name, ref in self.shared_modules.items() if
+                         ref() is not None and ref().instance is not None)
+
+    def exposed_get_active_module_names(self):
+        """ Returns the currently shared module names for all modules that are active.
+
+        @return tuple: Names of the currently shared active modules
+        """
+        with self._lock:
+            return tuple(name for name, ref in self.shared_modules.items() if
+                         ref() is not None and ref().is_active)

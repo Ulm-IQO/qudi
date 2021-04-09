@@ -27,7 +27,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.paths import get_main_dir, get_default_config_dir
 from qudi.util.helpers import has_pyqtgraph
-from qudi.core.remote import get_remote_modules_model
+from qudi.core.remotemodules import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
@@ -177,7 +177,7 @@ class QudiMainGui(GuiBase):
         get_signal_handler().sigRecordLogged.disconnect(self.handle_log_record)
 
     def _init_remote_modules_widget(self):
-        remote_server = self._qudi_main.remote_server
+        remote_server = self._qudi_main.remote_module_server
         # hide remote modules menu action if RemoteModuleServer is not available
         if remote_server is None:
             self.mw.remote_widget.setVisible(False)

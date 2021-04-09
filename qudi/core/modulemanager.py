@@ -31,7 +31,7 @@ from PySide2 import QtCore
 from qudi.util.mutex import RecursiveMutex   # provides access serialization between threads
 from qudi.core.logger import get_logger
 from qudi.core.threadmanager import ThreadManager
-from qudi.core.remote import start_sharing_module, stop_sharing_module, get_remote_module_instance
+from qudi.core.remotemodules import start_sharing_module, stop_sharing_module, get_remote_module_instance
 from qudi.core.module import Base, get_module_app_data_path
 
 logger = get_logger(__name__)
@@ -168,7 +168,7 @@ class ModuleManager(QtCore.QObject):
             self.refresh_module_links()
             # Register module in remote module service if module should be shared
             if module.allow_remote_access:
-                if self._qudi_main_ref().remote_server is None:
+                if self._qudi_main_ref().remote_module_server is None:
                     logger.error(f'Unable to share qudi module "{module.name}" as remote module. '
                                  f'No remote server running in this qudi process.')
                 else:
