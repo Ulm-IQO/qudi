@@ -36,7 +36,7 @@ from qudi.core.paths import get_artwork_dir
 from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 
 
-class QudiInterface:
+class QudiInterface(rpyc.Service):
     """
     """
     def __init__(self):
@@ -50,23 +50,25 @@ class QudiInterface:
 
     @property
     def active_module_names(self):
+        if self.connection is None or self.connection.closed:
+            return dict()
         try:
             return self.connection.root.get_active_module_names()
-        except:
+        except (ConnectionError, EOFError):
+            self.disconnect()
+            return tuple()
+        except AttributeError:
             return tuple()
 
     @property
     def active_modules(self):
+        if self.connection is None or self.connection.closed:
+            return dict()
         try:
             return self.connection.root.get_active_module_instances()
-        except:
+        except (ConnectionError, EOFError):
+            self.disconnect()
             return dict()
-
-    def get_module_instance(self, module_name):
-        try:
-            return self.connection.root.get_module_instance(module_name)
-        except:
-            return None
 
     def connect(self):
         logging.info(f'Connecting to local module service on [127.0.0.1]:{self.port:d}')
@@ -74,7 +76,10 @@ class QudiInterface:
 
     def disconnect(self):
         if self.connection is not None:
-            self.connection.close()
+            try:
+                self.connection.close()
+            except:
+                pass
             self.connection = None
 
 
@@ -124,9 +129,9 @@ class QudiIPythonKernel(IPythonKernel):
 
     """
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._qudi_remote = QudiInterface()
         self._qudi_remote.connect()
-        super().__init__(*args, **kwargs)
         self._namespace_qudi_modules = set()
         self._update_module_namespace()
 
