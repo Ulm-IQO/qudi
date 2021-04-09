@@ -29,12 +29,11 @@ import atexit
 import shutil
 import tempfile
 import errno
+from ipykernel.ipkernel import IPythonKernel
 
 from qudi.core.config import Configuration
 from qudi.core.paths import get_artwork_dir
 from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
-
-rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
 class QudiInterface:
@@ -46,101 +45,63 @@ class QudiInterface:
         if config_path is None:
             config_path = Configuration.get_default_config()
         config.load_config(file_path=config_path, set_default=False)
-        server_config = config.module_server
-        if not server_config:
-            raise ValueError(
-                f'No module_server config found in configuration file {config.config_file}'
-            )
-        if 'address' not in server_config or 'port' not in server_config:
-            raise ValueError(
-                'module_server configuration must contain mandatory entries "address" and "port".'
-            )
-        self.host = server_config['address']
-        self.port = server_config['port']
-        self.certfile = server_config.get('certfile', None)
-        self.keyfile = server_config.get('keyfile', None)
-        self.conn_config = {'allow_all_attrs': True}
-
-        self.parent_handle = int(os.environ.get('JPY_PARENT_PID', 0))
-        # self.interrupt = int(os.environ.get('JPY_INTERRUPT_EVENT', 0))
-        self.kernel_id = None
+        self.port = config.local_module_server_port
         self.connection = None
-        self.parent_poller = None
 
-    def connect(self, *args, **kwargs):
-        logging.info('Connecting to {}:{}'.format(self.host, self.port))
-        self.connection = rpyc.connect(self.host, self.port, config=self.conn_config)
+    @property
+    def active_module_names(self):
+        try:
+            return self.connection.root.get_active_module_names()
+        except:
+            return tuple()
 
-    def get_kernel_manager(self):
-        return self.connection.root.get_kernel_manager()
+    @property
+    def active_modules(self):
+        try:
+            return self.connection.root.get_active_module_instances()
+        except:
+            return dict()
 
-    def start_kernel(self, connfile):
-        kernel_manager = self.get_kernel_manager()
-        if kernel_manager is None:
-            raise RuntimeError('Unable to retrieve kernel manager from Qudi remote server')
-        cfg = json.loads(''.join(open(connfile).readlines()))
-        self.kernel_id = kernel_manager.start_kernel(cfg, self)
+    def get_module_instance(self, module_name):
+        try:
+            return self.connection.root.get_module_instance(module_name)
+        except:
+            return None
 
-    def stop_kernel(self):
-        logging.info('Shutting down: {}'.format(self.kernel_id))
-        sys.stdout.flush()
-        kernel_manager = self.get_kernel_manager()
-        if kernel_manager is None:
-            raise RuntimeError('Unable to retrieve kernel manager from Qudi remote server')
-        if self.kernel_id is not None:
-            kernel_manager.stop_kernel(self.kernel_id, blocking=True)
-            sys.stdout.flush()
+    def connect(self):
+        logging.info(f'Connecting to local module service on [127.0.0.1]:{self.port:d}')
+        self.connection = rpyc.connect('127.0.0.1', self.port, config={'allow_all_attrs': True})
 
-    def init_signal(self):
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    def init_poller(self):
-        if self.parent_handle:
-            if sys.platform == 'win32':
-                self.parent_poller = ParentPollerWindows(self.parent_handle)
-            else:
-                self.parent_poller = ParentPollerUnix()
-
-    def exit(self):
-        sys.exit()
+    def disconnect(self):
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
 
 
 def install_kernel():
     from jupyter_client.kernelspec import KernelSpecManager
-    print('Installing Qudi kernel...')
 
+    print('> Installing Qudi kernel...')
     try:
         # prepare temporary kernelspec folder
         tempdir = tempfile.mkdtemp(suffix='_kernels')
         path = os.path.join(tempdir, 'qudi')
-        resource_path = os.path.join(path, 'resources')
         kernel_path = os.path.abspath(__file__)
         os.mkdir(path)
-        os.mkdir(resource_path)
 
-        kernel_dict = {'argv': [sys.executable, kernel_path, '{connection_file}'],
-                       'display_name': 'Qudi',
-                       'language': 'python'
-                       }
+        kernel_dict = {
+            'argv'        : [sys.executable, kernel_path, '-f', '{connection_file}'],
+            'display_name': 'Qudi',
+            'language'    : 'python'
+        }
         # write the kernelspec file
         with open(os.path.join(path, 'kernel.json'), 'w') as f:
             json.dump(kernel_dict, f, indent=1)
 
-        # copy logo
-        logo_path = os.path.join(get_artwork_dir(), 'logo')
-        shutil.copy(os.path.join(logo_path, 'logo-qudi-32x32.png'),
-                    os.path.join(resource_path, 'logo-32x32.png'))
-        shutil.copy(os.path.join(logo_path, 'logo-qudi-32x32.png'),
-                    os.path.join(resource_path, 'logo-32x32.png'))
-
         # install kernelspec folder
         kernel_spec_manager = KernelSpecManager()
         dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
-        print('Successfully installed kernelspec "qudi" in {}'.format(dest))
-    except OSError as e:
-        if e.errno == errno.EACCES:
-            print(e, file=sys.stderr)
-            sys.exit(1)
+        print(f'> Successfully installed kernelspec "qudi" in {dest}')
     finally:
         if os.path.isdir(tempdir):
             shutil.rmtree(tempdir)
@@ -148,30 +109,51 @@ def install_kernel():
 
 def uninstall_kernel():
     from jupyter_client.kernelspec import KernelSpecManager
-    print('Uninstalling Qudi kernel...')
-    KernelSpecManager().remove_kernel_spec('qudi')
-    print('Successfully uninstalled kernelspec "qudi"')
+
+    print('> Uninstalling Qudi kernel...')
+    try:
+        KernelSpecManager().remove_kernel_spec('qudi')
+    except KeyError:
+        print('> No kernelspec "qudi" found')
+    else:
+        print('> Successfully uninstalled kernelspec "qudi"')
+
+
+class QudiIPythonKernel(IPythonKernel):
+    """
+
+    """
+    def __init__(self, *args, **kwargs):
+        self._qudi_remote = QudiInterface()
+        self._qudi_remote.connect()
+        super().__init__(*args, **kwargs)
+        self._namespace_qudi_modules = set()
+        self._update_module_namespace()
+
+    def _update_module_namespace(self):
+        modules = self._qudi_remote.active_modules
+        removed = self._namespace_qudi_modules.difference(modules)
+        for mod in removed:
+            self.shell.user_ns.pop(mod, None)
+        self.shell.push(modules)
+        self._namespace_qudi_modules = set(modules)
+
+    # Update module namespace each time right before a cell is excecuted
+    def do_execute(self, *args, **kwargs):
+        self._update_module_namespace()
+        return super().do_execute(*args, **kwargs)
+
+    # Disconnect qudi remote module service before shutting down
+    def do_shutdown(self, restart):
+        self._qudi_remote.disconnect()
+        return super().do_shutdown(restart)
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s')
-    if len(sys.argv) > 1:
-        if sys.argv[1] == 'install':
-            install_kernel()
-        elif sys.argv[1] == 'uninstall':
-            uninstall_kernel()
-        else:
-            q = QudiInterface()
-            q.init_signal()
-            q.init_poller()
-            q.connect()
-            q.start_kernel(sys.argv[1])
-            atexit.register(q.stop_kernel)
-            logging.info('Sleeping.')
-            q.parent_poller.run()
-            logging.info('Quitting.')
-            sys.stdout.flush()
+    if len(sys.argv) == 2 and sys.argv[1] == 'install':
+        install_kernel()
+    elif len(sys.argv) == 2 and sys.argv[1] == 'uninstall':
+        uninstall_kernel()
     else:
-        print('qudikernel usage is {0} <connectionfile> or {0} [un]install'.format(sys.argv[0]),
-              file=sys.stderr)
+        from ipykernel.kernelapp import IPKernelApp
+        IPKernelApp.launch_instance(kernel_class=QudiIPythonKernel)

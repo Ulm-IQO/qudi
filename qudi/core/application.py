@@ -38,8 +38,8 @@ from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.gui.gui import Gui
-from qudi.core.remote import RemoteModuleServer
-from qudi.core.jupyterkernel.kernelmanager import JupyterKernelManager
+from qudi.core.remotemodules import RemoteModuleServer
+from qudi.core.localmodules import LocalModuleServer
 
 try:
     from zmq.eventloop import ioloop
@@ -88,28 +88,28 @@ class Qudi(QtCore.QObject):
 
         self.thread_manager = ThreadManager(parent=self)
         self.module_manager = ModuleManager(qudi_main=self, parent=self)
-        self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
         self.configuration = Configuration(parent=self)
         if config_file is None:
             config_file = Configuration.get_saved_config()
             if config_file is None:
                 config_file = Configuration.get_default_config()
         self.configuration.load_config(file_path=config_file, set_default=True)
-        server_config = self.configuration.module_server
-        if server_config:
-            self.remote_server = RemoteModuleServer(
-                kernel_manager=self.jupyter_kernel_manager,
-                host=server_config.get('address', None),
-                port=server_config.get('port', None),
-                certfile=server_config.get('certfile', None),
-                keyfile=server_config.get('certfile', None),
-                protocol_config=server_config.get('protocol_config', None),
-                ssl_version=server_config.get('ssl_version', None),
-                cert_reqs=server_config.get('cert_reqs', None),
-                ciphers=server_config.get('ciphers', None),
-                allow_pickle=server_config.get('allow_pickle', None))
+        remote_server_config = self.configuration.remote_module_server
+        if remote_server_config:
+            self.remote_module_server = RemoteModuleServer(
+                host=remote_server_config.get('address', None),
+                port=remote_server_config.get('port', None),
+                certfile=remote_server_config.get('certfile', None),
+                keyfile=remote_server_config.get('certfile', None),
+                protocol_config=remote_server_config.get('protocol_config', None),
+                ssl_version=remote_server_config.get('ssl_version', None),
+                cert_reqs=remote_server_config.get('cert_reqs', None),
+                ciphers=remote_server_config.get('ciphers', None))
         else:
-            self.remote_server = None
+            self.remote_module_server = None
+        self.local_module_server = LocalModuleServer(
+            port=self.configuration.local_module_server_port
+        )
         self.watchdog = None
         self.gui = None
 
@@ -217,34 +217,41 @@ class Qudi(QtCore.QObject):
         self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
-    def _start_remote_server(self):
-        if self.remote_server is None or self.remote_server.is_running:
+    def _start_remote_module_server(self):
+        if self.remote_module_server is None or self.remote_module_server.is_running:
             return
-        server_thread = self.thread_manager.get_new_thread('remote-server')
-        self.remote_server.moveToThread(server_thread)
-        server_thread.started.connect(self.remote_server.run)
+        server_thread = self.thread_manager.get_new_thread('remote-module-server')
+        self.remote_module_server.moveToThread(server_thread)
+        server_thread.started.connect(self.remote_module_server.run)
         server_thread.start()
 
-    def _stop_remote_server(self):
-        if self.remote_server is None or not self.remote_server.is_running:
+    def _stop_remote_module_server(self):
+        if self.remote_module_server is None or not self.remote_module_server.is_running:
             return
         try:
-            self.remote_server.stop()
-            self.thread_manager.quit_thread('remote-server')
-            self.thread_manager.join_thread('remote-server', time=5)
+            self.remote_module_server.stop()
+            self.thread_manager.quit_thread('remote-module-server')
+            self.thread_manager.join_thread('remote-module-server', time=5)
         except:
             self.log.exception('Error during shutdown of remote module server:')
 
-    def _init_juypter_kernel_manager(self):
-        thread = self.thread_manager.get_new_thread('jupyter-kernel-manager')
-        self.jupyter_kernel_manager.moveToThread(thread)
-        thread.finished.connect(self.jupyter_kernel_manager.terminate)
-        thread.start()
+    def _start_local_module_server(self):
+        if self.local_module_server is None or self.local_module_server.is_running:
+            return
+        server_thread = self.thread_manager.get_new_thread('local-module-server')
+        self.local_module_server.moveToThread(server_thread)
+        server_thread.started.connect(self.local_module_server.run)
+        server_thread.start()
 
-    def _terminate_jupyter_kernel_manager(self):
-        self.thread_manager.quit_thread('jupyter-kernel-manager')
-        self.thread_manager.join_thread('jupyter-kernel-manager', time=5)
-        return
+    def _stop_local_module_server(self):
+        if self.local_module_server is None or not self.local_module_server.is_running:
+            return
+        try:
+            self.local_module_server.stop()
+            self.thread_manager.quit_thread('local-module-server')
+            self.thread_manager.join_thread('local-module-server', time=5)
+        except:
+            self.log.exception('Error during shutdown of local module server:')
 
     def run(self):
         """
@@ -289,10 +296,9 @@ class Qudi(QtCore.QObject):
             # Install app watchdog
             self.watchdog = AppWatchdog(self.interrupt_quit)
 
-            # Start remote server
-            self._start_remote_server()
-            # Init jupyter kernel manager
-            self._init_juypter_kernel_manager()
+            # Start module servers
+            self._start_remote_module_server()
+            self._start_local_module_server()
 
             # Apply configuration to qudi
             self._configure_qudi()
@@ -358,14 +364,11 @@ class Qudi(QtCore.QObject):
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Qudi shutting down...')
             print('> Qudi shutting down...')
-            if self.remote_server is not None:
-                self.log.info('Stopping remote server...')
-                print('> Stopping remote server...')
-                self._stop_remote_server()
-                QtCore.QCoreApplication.instance().processEvents()
-            self.log.info('Stopping Jupyter kernels...')
-            print('> Stopping Jupyter kernels...')
-            self._terminate_jupyter_kernel_manager()
+            self.log.info('Stopping module server(s)...')
+            print('> Stopping module server(s)...')
+            if self.remote_module_server is not None:
+                self._stop_remote_module_server()
+            self._stop_local_module_server()
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Deactivating modules...')
             print('> Deactivating modules...')
