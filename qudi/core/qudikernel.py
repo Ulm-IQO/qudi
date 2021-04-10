@@ -36,7 +36,7 @@ from qudi.core.paths import get_artwork_dir
 from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 
 
-class QudiInterface(rpyc.Service):
+class QudiInterface:
     """
     """
     def __init__(self):
@@ -71,8 +71,8 @@ class QudiInterface(rpyc.Service):
             return dict()
 
     def connect(self):
-        logging.info(f'Connecting to local module service on [127.0.0.1]:{self.port:d}')
-        self.connection = rpyc.connect('127.0.0.1', self.port, config={'allow_all_attrs': True})
+        logging.info(f'Connecting to local module service on [localhost]:{self.port:d}')
+        self.connection = rpyc.connect('localhost', self.port, config={'allow_all_attrs': True})
 
     def disconnect(self):
         if self.connection is not None:

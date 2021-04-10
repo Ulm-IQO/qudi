@@ -40,7 +40,7 @@ class LocalModuleServer(QtCore.QObject):
     Runs in a QThread.
     """
 
-    def __init__(self, *args, port=None, **kwargs):
+    def __init__(self, *args, port, **kwargs):
         """
         @param int port: port the RPyC server should listen to
         """
@@ -64,11 +64,10 @@ class LocalModuleServer(QtCore.QObject):
             return
         try:
             self.server = rpyc.ThreadedServer(self.service_instance,
-                                               hostname='127.0.0.1',
+                                               hostname='localhost',
                                                port=self.port,
-                                               protocol_config={'allow_all_attrs': True},
-                                               authenticator=None)
-            logger.info(f'Starting local module server on [127.0.0.1]:{self.port:d}')
+                                               protocol_config={'allow_all_attrs': True})
+            logger.info(f'Starting local module server on [localhost]:{self.port:d}')
             self.server.start()
         except:
             logger.exception('Error during start of LocalModuleServer:')
@@ -79,7 +78,7 @@ class LocalModuleServer(QtCore.QObject):
         """ Stop the RPyC server
         """
         if self.is_running:
-            logger.info(f'Stopping local module server on [127.0.0.1]:{self.port:d}')
+            logger.info(f'Stopping local module server on [localhost]:{self.port:d}')
             self.server.close()
             self.server = None
 
