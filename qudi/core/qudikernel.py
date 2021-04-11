@@ -36,53 +36,6 @@ from qudi.core.paths import get_artwork_dir
 from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
 
 
-class QudiInterface:
-    """
-    """
-    def __init__(self):
-        config = Configuration()
-        config_path = Configuration.get_saved_config()
-        if config_path is None:
-            config_path = Configuration.get_default_config()
-        config.load_config(file_path=config_path, set_default=False)
-        self.port = config.local_module_server_port
-        self.connection = None
-
-    @property
-    def active_module_names(self):
-        if self.connection is None or self.connection.closed:
-            return dict()
-        try:
-            return self.connection.root.get_active_module_names()
-        except (ConnectionError, EOFError):
-            self.disconnect()
-            return tuple()
-        except AttributeError:
-            return tuple()
-
-    @property
-    def active_modules(self):
-        if self.connection is None or self.connection.closed:
-            return dict()
-        try:
-            return self.connection.root.get_active_module_instances()
-        except (ConnectionError, EOFError):
-            self.disconnect()
-            return dict()
-
-    def connect(self):
-        logging.info(f'Connecting to local module service on [localhost]:{self.port:d}')
-        self.connection = rpyc.connect('localhost', self.port, config={'allow_all_attrs': True})
-
-    def disconnect(self):
-        if self.connection is not None:
-            try:
-                self.connection.close()
-            except:
-                pass
-            self.connection = None
-
-
 def install_kernel():
     from jupyter_client.kernelspec import KernelSpecManager
 
@@ -124,19 +77,77 @@ def uninstall_kernel():
         print('> Successfully uninstalled kernelspec "qudi"')
 
 
+class QudiKernelService(rpyc.Service):
+    """
+    """
+    def __init__(self, *args, module_update_callback, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._module_update_callback = module_update_callback
+
+    def on_connect(self, conn):
+        logging.info(f'Qudi IPython kernel connected to local module service.')
+
+    def on_disconnect(self, conn):
+        logging.info(f'Qudi IPython kernel disconnected from local module service.')
+
+    def exposed_test(self):
+        logging.error(f'test called on client side')
+        # self._module_update_callback()
+
+
+class QudiKernelClient:
+    """
+    """
+
+    def __init__(self, module_update_callback):
+        self._module_update_callback = module_update_callback
+        self.service_instance = QudiKernelService(module_update_callback=module_update_callback)
+        self.connection = None
+
+    @property
+    def active_modules(self):
+        if self.connection is None or self.connection.closed:
+            return dict()
+        try:
+            return self.connection.root.get_active_module_instances()
+        except (ConnectionError, EOFError):
+            self.disconnect()
+            return dict()
+
+    def connect(self):
+        config = Configuration()
+        config_path = Configuration.get_saved_config()
+        if config_path is None:
+            config_path = Configuration.get_default_config()
+        config.load_config(file_path=config_path, set_default=False)
+        port = config.local_module_server_port
+        self.connection = rpyc.connect(host='localhost',
+                                       port=port,
+                                       config={'allow_all_attrs': True},
+                                       service=self.service_instance)
+
+    def disconnect(self):
+        if self.connection is not None:
+            try:
+                self.connection.close()
+            except:
+                pass
+            self.connection = None
+
+
 class QudiIPythonKernel(IPythonKernel):
     """
 
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._qudi_remote = QudiInterface()
-        self._qudi_remote.connect()
+        self._qudi_client = QudiKernelClient(module_update_callback=self.update_module_namespace)
+        self._qudi_client.connect()
         self._namespace_qudi_modules = set()
-        self._update_module_namespace()
+        self.update_module_namespace()
 
-    def _update_module_namespace(self):
-        modules = self._qudi_remote.active_modules
+    def update_module_namespace(self):
+        modules = self._qudi_client.active_modules
         removed = self._namespace_qudi_modules.difference(modules)
         for mod in removed:
             self.shell.user_ns.pop(mod, None)
@@ -145,12 +156,12 @@ class QudiIPythonKernel(IPythonKernel):
 
     # Update module namespace each time right before a cell is excecuted
     def do_execute(self, *args, **kwargs):
-        self._update_module_namespace()
+        self.update_module_namespace()
         return super().do_execute(*args, **kwargs)
 
     # Disconnect qudi remote module service before shutting down
     def do_shutdown(self, restart):
-        self._qudi_remote.disconnect()
+        self._qudi_client.disconnect()
         return super().do_shutdown(restart)
 
 
