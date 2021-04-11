@@ -108,6 +108,7 @@ class Qudi(QtCore.QObject):
         else:
             self.remote_module_server = None
         self.local_module_server = LocalModuleServer(
+            module_manager=self.module_manager,
             port=self.configuration.local_module_server_port
         )
         self.watchdog = None

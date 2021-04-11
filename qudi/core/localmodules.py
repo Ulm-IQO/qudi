@@ -40,7 +40,7 @@ class LocalModuleServer(QtCore.QObject):
     Runs in a QThread.
     """
 
-    def __init__(self, *args, port, **kwargs):
+    def __init__(self, *args, module_manager, port, **kwargs):
         """
         @param int port: port the RPyC server should listen to
         """
@@ -48,6 +48,7 @@ class LocalModuleServer(QtCore.QObject):
         self.service_instance = _LocalModulesService()
         self.port = int(port)
         self.server = None
+        module_manager.sigModuleStateChanged.connect(self.service_instance.notify_module_change)
 
     @property
     def is_running(self):
@@ -91,18 +92,21 @@ class _LocalModulesService(rpyc.Service):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._thread_lock = Mutex()
+        self._client_connections = list()
 
     def on_connect(self, conn):
         """ code that runs when a connection is created
         """
         host, port = conn._config['endpoints'][1]
         logger.info(f'Client connected to local module service from [{host}]:{port:d}')
+        self._client_connections.append(conn)
 
     def on_disconnect(self, conn):
         """ code that runs when the connection is closing
         """
         host, port = conn._config['endpoints'][1]
         logger.info(f'Client [{host}]:{port:d} disconnected from local module service')
+        self._client_connections.remove(conn)
 
     def _get_module_manager(self):
         mod_manager = ModuleManager.instance()
@@ -111,6 +115,11 @@ class _LocalModulesService(rpyc.Service):
                 'ModuleManager instance is not available. Qudi is probably not running.'
             )
         return mod_manager
+
+    def notify_module_change(self):
+        print('Notify module change on server side')
+        # for conn in self._client_connections:
+        #     conn.root.test()
 
     def exposed_get_module_instance(self, name):
         """ Return reference to a qudi module.
