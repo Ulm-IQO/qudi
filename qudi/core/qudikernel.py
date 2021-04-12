@@ -23,17 +23,15 @@ import os
 import sys
 import rpyc
 import json
-import logging
-import signal
-import atexit
 import shutil
+import logging
 import tempfile
-import errno
 from ipykernel.ipkernel import IPythonKernel
 
 from qudi.core.config import Configuration
-from qudi.core.paths import get_artwork_dir
-from qudi.core.parentpoller import ParentPollerUnix, ParentPollerWindows
+
+__all__ = ('install_kernel', 'uninstall_kernel', 'QudiIPythonKernel', 'QudiKernelClient',
+           'QudiKernelService')
 
 
 def install_kernel():
@@ -80,28 +78,33 @@ def uninstall_kernel():
 class QudiKernelService(rpyc.Service):
     """
     """
-    def __init__(self, *args, module_update_callback, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._module_update_callback = module_update_callback
+        self._background_server = None
 
     def on_connect(self, conn):
-        logging.info(f'Qudi IPython kernel connected to local module service.')
+        logging.warning(f'Qudi IPython kernel connected to local module service.')
+        self._background_server = rpyc.BgServingThread(conn)
 
     def on_disconnect(self, conn):
-        logging.info(f'Qudi IPython kernel disconnected from local module service.')
+        logging.warning(f'Qudi IPython kernel disconnected from local module service.')
+        try:
+            self._background_server.stop()
+        except:
+            pass
+        finally:
+            self._background_server = None
 
     def exposed_test(self):
-        logging.error(f'test called on client side')
+        logging.warning(f'test called on client side')
         # self._module_update_callback()
 
 
 class QudiKernelClient:
     """
     """
-
-    def __init__(self, module_update_callback):
-        self._module_update_callback = module_update_callback
-        self.service_instance = QudiKernelService(module_update_callback=module_update_callback)
+    def __init__(self):
+        self.service_instance = QudiKernelService()
         self.connection = None
 
     @property
@@ -132,7 +135,8 @@ class QudiKernelClient:
                 self.connection.close()
             except:
                 pass
-            self.connection = None
+            finally:
+                self.connection = None
 
 
 class QudiIPythonKernel(IPythonKernel):
@@ -141,7 +145,7 @@ class QudiIPythonKernel(IPythonKernel):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._qudi_client = QudiKernelClient(module_update_callback=self.update_module_namespace)
+        self._qudi_client = QudiKernelClient()
         self._qudi_client.connect()
         self._namespace_qudi_modules = set()
         self.update_module_namespace()
