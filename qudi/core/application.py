@@ -112,7 +112,9 @@ class Qudi(QtCore.QObject):
         else:
             self.remote_module_server = None
         self.local_module_server = LocalModuleServer(
+            parent=self,
             module_manager=self.module_manager,
+            thread_manager=self.thread_manager,
             port=self.configuration.local_module_server_port
         )
         self.watchdog = None
@@ -227,21 +229,9 @@ class Qudi(QtCore.QObject):
         except:
             self.log.exception('Error during shutdown of remote module server:')
 
-    def _start_local_module_server(self):
-        if self.local_module_server is None or self.local_module_server.is_running:
-            return
-        server_thread = self.thread_manager.get_new_thread('local-module-server')
-        self.local_module_server.moveToThread(server_thread)
-        server_thread.started.connect(self.local_module_server.run)
-        server_thread.start()
-
     def _stop_local_module_server(self):
-        if self.local_module_server is None or not self.local_module_server.is_running:
-            return
         try:
             self.local_module_server.stop()
-            self.thread_manager.quit_thread('local-module-server')
-            self.thread_manager.join_thread('local-module-server', time=5)
         except:
             self.log.exception('Error during shutdown of local module server:')
 
@@ -295,7 +285,7 @@ class Qudi(QtCore.QObject):
 
             # Start module servers
             self._start_remote_module_server()
-            self._start_local_module_server()
+            self.local_module_server.start()
 
             # Apply configuration to qudi
             self._configure_qudi()
