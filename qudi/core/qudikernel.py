@@ -95,8 +95,8 @@ class QudiKernelService(rpyc.Service):
         finally:
             self._background_server = None
 
-    def exposed_test(self):
-        logging.warning(f'test called on client side')
+    def exposed_modules_changed(self):
+        logging.warning(f'modules_changed called on client')
         # self._module_update_callback()
 
 
@@ -107,8 +107,7 @@ class QudiKernelClient:
         self.service_instance = QudiKernelService()
         self.connection = None
 
-    @property
-    def active_modules(self):
+    def get_active_modules(self):
         if self.connection is None or self.connection.closed:
             return dict()
         try:
@@ -126,7 +125,7 @@ class QudiKernelClient:
         port = config.local_module_server_port
         self.connection = rpyc.connect(host='localhost',
                                        port=port,
-                                       config={'allow_all_attrs': True},
+                                       # config={'allow_all_attrs': True},
                                        service=self.service_instance)
 
     def disconnect(self):
@@ -141,7 +140,6 @@ class QudiKernelClient:
 
 class QudiIPythonKernel(IPythonKernel):
     """
-
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -151,7 +149,7 @@ class QudiIPythonKernel(IPythonKernel):
         self.update_module_namespace()
 
     def update_module_namespace(self):
-        modules = self._qudi_client.active_modules
+        modules = self._qudi_client.get_active_modules()
         removed = self._namespace_qudi_modules.difference(modules)
         for mod in removed:
             self.shell.user_ns.pop(mod, None)
