@@ -23,11 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ('LocalModuleServer',)
 
 import rpyc
+import weakref
 from PySide2 import QtCore
 
-from qudi.util.mutex import Mutex
 from qudi.core.logger import get_logger
-from qudi.core.modulemanager import ModuleManager
 
 logger = get_logger(__name__)
 
@@ -45,7 +44,8 @@ class LocalModuleServer(QtCore.QObject):
         @param int port: port the RPyC server should listen to
         """
         super().__init__(*args, **kwargs)
-        self.service_instance = _LocalModulesService()
+        self.service_instance = _LocalModulesService(module_manager=module_manager)
+        self._module_manager_ref = weakref.ref(module_manager)
         self.port = int(port)
         self.server = None
         module_manager.sigModuleStateChanged.connect(self.service_instance.notify_module_change)
@@ -65,9 +65,9 @@ class LocalModuleServer(QtCore.QObject):
             return
         try:
             self.server = rpyc.ThreadedServer(self.service_instance,
-                                               hostname='localhost',
-                                               port=self.port,
-                                               protocol_config={'allow_all_attrs': True})
+                                              hostname='localhost',
+                                              port=self.port,
+                                              protocol_config={'allow_all_attrs': True})
             logger.info(f'Starting local module server on [localhost]:{self.port:d}')
             self.server.start()
         except:
@@ -80,6 +80,11 @@ class LocalModuleServer(QtCore.QObject):
         """
         if self.is_running:
             logger.info(f'Stopping local module server on [localhost]:{self.port:d}')
+            module_manager = self._module_manager_ref()
+            if module_manager is not None:
+                module_manager.sigModuleStateChanged.disconnect(
+                    self.service_instance.notify_module_change
+                )
             self.server.close()
             self.server = None
 
@@ -89,27 +94,28 @@ class _LocalModulesService(rpyc.Service):
     """
     ALIASES = ['LocalModules', '_LocalModules']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, module_manager, **kwargs):
         super().__init__(*args, **kwargs)
-        self._thread_lock = Mutex()
-        self._client_connections = list()
+        self.__module_manager_ref = weakref.ref(module_manager)
+        self._notifier_callbacks = dict()
 
     def on_connect(self, conn):
         """ code that runs when a connection is created
         """
+        self._notifier_callbacks[conn] = rpyc.async_(conn.root.test)
         host, port = conn._config['endpoints'][1]
         logger.info(f'Client connected to local module service from [{host}]:{port:d}')
-        self._client_connections.append(conn)
 
     def on_disconnect(self, conn):
         """ code that runs when the connection is closing
         """
+        self._notifier_callbacks.pop(conn, None)
         host, port = conn._config['endpoints'][1]
         logger.info(f'Client [{host}]:{port:d} disconnected from local module service')
-        self._client_connections.remove(conn)
 
-    def _get_module_manager(self):
-        mod_manager = ModuleManager.instance()
+    @property
+    def _module_manager(self):
+        mod_manager = self.__module_manager_ref()
         if mod_manager is None:
             raise RuntimeError(
                 'ModuleManager instance is not available. Qudi is probably not running.'
@@ -117,9 +123,10 @@ class _LocalModulesService(rpyc.Service):
         return mod_manager
 
     def notify_module_change(self):
-        print('Notify module change on server side')
-        # for conn in self._client_connections:
-        #     conn.root.test()
+        logger.debug('Local module server has detected a module state change and sends async '
+                     'notifier signals to all clients')
+        for callback in self._notifier_callbacks.values():
+            callback()
 
     def exposed_get_module_instance(self, name):
         """ Return reference to a qudi module.
@@ -127,51 +134,26 @@ class _LocalModulesService(rpyc.Service):
         @param str name: unique module name
         @return object: reference to the module instance. None if module has not been loaded yet.
         """
-        with self._thread_lock:
-            mod_manager = self._get_module_manager()
-            module = mod_manager.get(name, None)
-            return module.instance if module is not None else None
+        module = self._module_manager.get(name, None)
+        return module.instance if module is not None else None
 
     def exposed_get_module_names(self):
         """ Returns the available module names.
 
         @return tuple: Names of the available modules
         """
-        with self._thread_lock:
-            mod_manager = self._get_module_manager()
-            return mod_manager.module_names
-
-    def exposed_get_loaded_module_names(self):
-        """ Returns the currently shared module names for all modules that have been loaded
-        (instantiated).
-
-        @return tuple: Names of the currently shared loaded modules
-        """
-        with self._thread_lock:
-            return tuple(self._get_module_manager().module_instances)
+        return self._module_manager.module_names
 
     def exposed_get_loaded_module_instances(self):
         """ Returns the currently loaded module instances.
 
         @return dict: Names (keys) and instances (values) of the currently loaded modules
         """
-        with self._thread_lock:
-            return self._get_module_manager().module_instances
-
-    def exposed_get_active_module_names(self):
-        """ Returns the names of the currently active modules.
-
-        @return tuple: Names of the currently active modules
-        """
-        with self._thread_lock:
-            mod_manager = self._get_module_manager()
-            return tuple(name for name, mod in mod_manager.items() if mod.is_active)
+        return self._module_manager.module_instances
 
     def exposed_get_active_module_instances(self):
         """ Returns the instances of the currently active modules.
 
         @return dict: Names (keys) and instances (values) of the currently active modules
         """
-        with self._thread_lock:
-            mod_manager = self._get_module_manager()
-            return {name: mod.instance for name, mod in mod_manager.items() if mod.is_active}
+        return {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}

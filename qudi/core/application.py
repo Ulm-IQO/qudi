@@ -31,7 +31,7 @@ from PySide2 import QtCore, QtWidgets
 from qudi.core.logger import init_rotating_file_handler, init_record_model_handler
 from qudi.core.logger import get_logger, set_log_level
 from qudi.core.paths import get_main_dir, get_default_log_dir
-from qudi.util.helpers import import_check
+from qudi.util.helpers import import_check, has_pyqtgraph
 from qudi.util.mutex import Mutex
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
@@ -251,6 +251,11 @@ class Qudi(QtCore.QObject):
         with self._run_lock:
             if self._is_running:
                 raise RuntimeError('Qudi is already running!')
+
+            # Disable pyqtgraph "application exit workarounds" because they cause errors on exit
+            if has_pyqtgraph:
+                import pyqtgraph
+                pyqtgraph.setConfigOption('exitCleanup', False)
 
             # add qudi main directory to PATH
             qudi_path = get_main_dir()
