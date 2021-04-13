@@ -2094,6 +2094,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         self.write('BWAV:OFFS 0')
         self.write('*WAI')
         self.query('*OPC?')
+        sampling_rate = self.get_sample_rate()
+        self.write('BWAV:SRAT {}'.format(sampling_rate))
+        self.query('*OPC?')
         for i in range(3):
             err_list = self.read_error_register()
             if len(err_list) > 1:
@@ -2180,6 +2183,12 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
     def _create_mw_sweep_sequence(self, frequencies, power):
         if len(frequencies) < 2:
             raise Exception('Number of frequencies for microwave sweep must be at least 2.')
+
+        sample_rate_awg = self.get_sample_rate()
+
+        highest_freq = max(frequencies)
+        if (sample_rate_awg / highest_freq) < (200 / 33):
+            self.log.error('Sampling rate is too low for the given frequencies.')
 
         self._init_waveform_compiler()
 
