@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Added support for Keysight M8195A and M8190A AWGs.
 * Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
 in case the hardware supports it.
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
@@ -240,6 +241,7 @@ This can be used to specify the axis labels for the measurement (excluding units
     * Introduced separate fit tools for each of the two plots in the pulsed analysis tab
     * Automatically clears fit data when changing the alternative plot type or starting a new 
       measurement.
+    * Adding in NI switches the possibility to invert the output and to use PFI channels.
 
 Config changes:
 * **All** pulsed related logic module paths need to be changed because they have been moved in the logic
