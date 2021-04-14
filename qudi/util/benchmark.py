@@ -5,10 +5,15 @@ import copy
 
 
 class BenchmarkTool(object):
-
+    """
+    Helper that allows to benchmark a (generic) task. To this end, data of type 'quantity' vs 'time needed'
+    can be supplied (by querying the task). Eg. created samples vs the time needed to generate them.
+    Based on the gathered data, a speed value [quantity/time] or a time prediction
+    for a given quantity is obtained.
+    """
     def __init__(self, n_save_datapoints=20):
         self._n_save_datapoints = n_save_datapoints
-        # datapoint: a tuple of (time [s], figure of merit)
+        # data point: a tuple of (time [s], 'quantity')
         self._datapoints = deque(maxlen=n_save_datapoints)  # fifo-like
         self._datapoints_fixed = list()
 
@@ -26,10 +31,21 @@ class BenchmarkTool(object):
         return True
 
     def reset(self):
+        """
+        Reset all gathered data.
+        :return:
+        """
         self._datapoints_fixed = []
         self._datapoints.clear()
 
     def add_benchmark(self, time_s, y, is_persistent=False):
+        """
+        Add a single data point to the benchmark.
+        :param time_s: time needed (s)
+        :param y: quantity
+        :param is_persistent: will not be cleared. If 'False' data is stored in a rolling buffer.
+        :return:
+        """
 
         if time_s <= 0.:
             return
@@ -40,6 +56,12 @@ class BenchmarkTool(object):
             self._datapoints_fixed.append((time_s, y))
 
     def estimate_time(self, y, check_sanity=True):
+        """
+        Estimate the time needed to perform a task of given 'quantity'.
+        :param y: quantity
+        :param check_sanity: if 'True' will check sanity of the estimation
+        :return: time (s) to perform task, -1 if sanity check fails
+        """
 
         a, t0, _ = self._get_speed_fit()
 
@@ -49,7 +71,11 @@ class BenchmarkTool(object):
         return -1
 
     def estimate_speed(self, check_sanity=True):
-        # units: [y] per s
+        """
+        Estimate the speed value from the gathered data.
+        :param check_sanity: if 'True' will check sanity of the estimation
+        :return: speed ([quantity] / s), np.nan if sanity check fails
+        """
         a, t0, _ = self._get_speed_fit()
 
         if self.sanity or not check_sanity:
