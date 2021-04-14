@@ -77,14 +77,17 @@ class NVCalculatorGui(GUIBase):
         self._mw.nmr_manual_PushButton.clicked.connect(self.manual_calculate_nmr, QtCore.Qt.QueuedConnection)
         self._mw.odmr1nmr_manual_PushButton.clicked.connect(self.use_single_freq, QtCore.Qt.QueuedConnection)
 
+        # send signals to logic
         self.sigCalParamsChanged.connect(self.calculator.set_field_params, QtCore.Qt.QueuedConnection)
         self.sigManualDipsChanged.connect(self.calculator.set_manual_dip_values, QtCore.Qt.QueuedConnection)
         self.sigMaualFieldChanged.connect(self.calculator.set_manual_field, QtCore.Qt.QueuedConnection)
+
         # Update signals coming from logic
         self.calculator.sigFieldaCalUpdated.connect(self.a_update_field, QtCore.Qt.QueuedConnection)
         self.calculator.sigFieldmCalUpdated.connect(self.m_update_field, QtCore.Qt.QueuedConnection)
         self.calculator.sigFieldParamsUpdated.connect(self.update_field_params, QtCore.Qt.QueuedConnection)
         self.calculator.sigDataSourceUpdated.connect(self.update_source, QtCore.Qt.QueuedConnection)
+        self.calculator.sigManualFieldUpdated.connect(self.update_manual_field, QtCore.Qt.QueuedConnection)
         self.calculator.sigNMRUpdated.connect(self.update_nmr, QtCore.Qt.QueuedConnection)
 
         self.restoreWindowPos(self._mw)
@@ -100,7 +103,7 @@ class NVCalculatorGui(GUIBase):
         """
         self.saveWindowPos(self._mw)
         self.sigCalParamsChanged.disconnect()
-        self.sigManualDipsChanged = QtCore.Signal(float, float)
+        self.sigManualDipsChanged.disconnect()
         self._mw.a_field_PushButton.clicked.disconnect()
         self._mw.m_field_PushButton.clicked.disconnect()
         self._mw.zfs_DoubleSpinBox.editingFinished.disconnect()
@@ -150,6 +153,10 @@ class NVCalculatorGui(GUIBase):
             self._mw.freq2_DoubleSpinBox.blockSignals(True)
             self._mw.freq2_DoubleSpinBox.setValue(param)
             self._mw.freq2_DoubleSpinBox.blockSignals(False)
+        return
+
+    def update_manual_field(self, field):
+        self._mw.manual_field_DoubleSpinBox.setValue(field)
         return
 
     def update_nmr(self, freqs, xy8):
