@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>888</width>
-     <height>26</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -111,6 +111,9 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
     <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QGraphicsView" name="graphicsView_2"/>
+     </item>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
@@ -381,17 +384,17 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
-  <customwidget>
-   <class>FitSettingsComboBox</class>
-   <extends>QComboBox</extends>
-   <header>gui/fitsettings</header>
+   <header location="global">pyqtgraph</header>
   </customwidget>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>FitSettingsComboBox</class>
+   <extends>QComboBox</extends>
+   <header>gui/fitsettings</header>
   </customwidget>
  </customwidgets>
  <resources/>
