@@ -91,29 +91,6 @@ class SwitchDummy(Base, SwitchInterface):
         """
         return self._switches.copy()
 
-    @property
-    def states(self):
-        """ The current states the hardware is in as state dictionary with switch names as keys and
-        state names as values.
-
-        @return dict: All the current states of the switches in the form {"switch": "state"}
-        """
-        return self._states.copy()
-
-    @states.setter
-    def states(self, state_dict):
-        """ The setter for the states of the hardware.
-
-        The states of the system can be set by specifying a dict that has the switch names as keys
-        and the names of the states as values.
-
-        @param dict state_dict: state dict of the form {"switch": "state"}
-        """
-        assert isinstance(state_dict, dict), \
-            f'Property "state" must be dict type. Received: {type(state_dict)}'
-        for switch, state in state_dict.items():
-            self.set_state(switch, state)
-
     def get_state(self, switch):
         """ Query state of single switch by name
 
