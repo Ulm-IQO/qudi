@@ -105,7 +105,6 @@ class SwitchLogic(GenericLogic):
         with self._thread_lock:
             try:
                 states = self.switch().states
-                self._old_states = states
             except:
                 self.log.exception(f'Error during query of all switch states.')
                 states = dict()
@@ -139,7 +138,6 @@ class SwitchLogic(GenericLogic):
         with self._thread_lock:
             try:
                 state = self.switch().get_state(switch)
-                self._old_states[switch] = state
             except:
                 self.log.exception(f'Error while trying to query state of switch "{switch}".')
                 state = None
