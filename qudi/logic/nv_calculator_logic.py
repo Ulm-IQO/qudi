@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 import numpy as np
 
-
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.connector import Connector
@@ -32,7 +31,6 @@ from scipy.constants import physical_constants
 
 
 class NVCalculatorLogic(GenericLogic):
-
     """This is the Logic class for Calculator."""
     _modclass = 'calculatorlogic'
     _modtype = 'logic'
@@ -111,46 +109,58 @@ class NVCalculatorLogic(GenericLogic):
 
         Attention: If the field is higher than 1000 Gauss the -1 transition frequency
         has to be inserted as a negative value'''
-        D_zerofield = self.zero_field_D/1e6
-        zeroField_E = self.diamond_strain/1e6
+        D_zerofield = self.zero_field_D / 1e6
+        zeroField_E = self.diamond_strain / 1e6
 
         if self.lac:
-            freq1 = -freq1   # In case of level anti-crossing, freq1 transforms to be negative value
+            freq1 = -freq1  # In case of level anti-crossing, freq1 transforms to be negative value
 
         delta = ((7 * D_zerofield ** 3 + 2 * (freq1 + freq2) * (
-                    2 * (freq1 ** 2 + freq2 ** 2) - 5 * freq1 * freq2 - 9 * zeroField_E ** 2) -
+                2 * (freq1 ** 2 + freq2 ** 2) - 5 * freq1 * freq2 - 9 * zeroField_E ** 2) -
                   3 * D_zerofield * (freq1 ** 2 + freq2 ** 2 - freq1 * freq2 + 9 * zeroField_E ** 2)) /
                  (9 * (freq1 ** 2 + freq2 ** 2 - freq1 * freq2 - D_zerofield ** 2 - 3 * zeroField_E ** 2)))
-
-        angle = np.arccos(delta / D_zerofield - 1e-9) / 2. / (np.pi) * 180.
-        beta = np.sqrt((freq1 ** 2 + freq2 ** 2 - freq1 * freq2 - D_zerofield ** 2) / 3. - zeroField_E ** 2.)
-
-        b_field = beta / physical_constants['Bohr magneton in Hz/T'][0] / (
-                    -1 * physical_constants['electron g factor'][0]) * 1e10
+        angle_factor = delta / D_zerofield - 1e-9
+        field_factor = (freq1 ** 2 + freq2 ** 2 - freq1 * freq2 - D_zerofield ** 2) / 3 - zeroField_E ** 2
+        if -1 < angle_factor < 1:
+            angle = np.arccos(angle_factor) / 2 / (np.pi) * 180
+        else:
+            angle = np.nan
+            self.log.error("Angle calculation failed, probably because of incorrect input ODMR frequencies or "
+                           "incorrect zero-field splitting, or strain value has to be considered!")
+        if field_factor >= 0:
+            beta = np.sqrt(field_factor)
+            b_field = beta / physical_constants['Bohr magneton in Hz/T'][0] / \
+                      (-1 * physical_constants['electron g factor'][0]) * 1e10
+        else:
+            b_field = np.nan
+            self.log.error("Field calculation failed, probably because of incorrect input ODMR frequencies or "
+                           "incorrect zero-field splitting, or strain value has to be considered!")
         return b_field, angle  # in Gauss and degrees
 
     def manual_dips(self):
-        b_field, angle = self.cal_alignment(self.freq1/1e6, self.freq2/1e6)
-        self.sigFieldmCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)
+        b_field, angle = self.cal_alignment(self.freq1 / 1e6, self.freq2 / 1e6)
+        self.sigFieldmCalUpdated.emit('%.3f' % b_field, '%.3f' % angle)
         self.auto_field = b_field
         return
 
     def auto_dips(self):
         if self.data_source == 0:
-            self.log.warn("You have not select data source. Select a data source, or try manual Freqs.")
+            self.log.error("You have not select data source. Select a data source, or try manual Freqs.")
             return
         try:
             if 'g0_center' in self.fit.fc.current_fit_param:
                 freq1 = self.fit.fc.current_fit_param['g0_center'].value / 1e6
                 freq2 = self.fit.fc.current_fit_param['g1_center'].value / 1e6
             else:
-                freq1 = self.fit.fc.current_fit_param['l0_center'].value/1e6
-                freq2 = self.fit.fc.current_fit_param['l1_center'].value/1e6
+                freq1 = self.fit.fc.current_fit_param['l0_center'].value / 1e6
+                freq2 = self.fit.fc.current_fit_param['l1_center'].value / 1e6
             b_field, angle = self.cal_alignment(freq1, freq2)
-            self.sigFieldaCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)
+            self.sigFieldaCalUpdated.emit('%.3f' % b_field, '%.3f' % angle)
             self.auto_field = b_field
         except:
-            self.log.warn("The NV calculator seems unable to get ODMR dips. Please inspect your fitting method.")
+            self.log.error("The NV calculator seems unable to get ODMR dips!"
+                           " Only double dip Lorentzian or double dip Gaussian fitting can be recognized by the "
+                           "program. Please inspect your fitting method.")
 
         return
 
@@ -172,17 +182,17 @@ class NVCalculatorLogic(GenericLogic):
         else:
             field = self.auto_field
 
-        h1_freq = 42.58*field*1e2
-        c13_freq = 10.705*field*1e2
-        n14_freq = 3.077*field*1e2
-        n15_freq = -4.316*field*1e2
+        h1_freq = 42.58 * field * 1e2
+        c13_freq = 10.705 * field * 1e2
+        n14_freq = 3.077 * field * 1e2
+        n15_freq = -4.316 * field * 1e2
 
         freqs = [h1_freq, c13_freq, n14_freq, n15_freq]
 
-        h1_xy8 = 1/2/h1_freq
-        c13_xy8 = 1/2/c13_freq
-        n14_xy8 = 1/2/n14_freq
-        n15_xy8 = 0.5/n15_freq
+        h1_xy8 = 1 / 2 / h1_freq
+        c13_xy8 = 1 / 2 / c13_freq
+        n14_xy8 = 1 / 2 / n14_freq
+        n15_xy8 = 0.5 / n15_freq
 
         xy8 = [h1_xy8, c13_xy8, n14_xy8, n15_xy8]
         self.sigNMRUpdated.emit(freqs, xy8)
@@ -190,7 +200,7 @@ class NVCalculatorLogic(GenericLogic):
 
     def single_freq(self, freq):
         if self.lac:
-            b_field = np.abs(freq/1e6 + self.zero_field_D/1e6)/2.8
+            b_field = np.abs(freq / 1e6 + self.zero_field_D / 1e6) / 2.8
         else:
             b_field = np.abs(freq / 1e6 - self.zero_field_D / 1e6) / 2.8
         return b_field
