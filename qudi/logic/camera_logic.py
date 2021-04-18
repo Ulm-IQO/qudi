@@ -20,10 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import datetime
+import time
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 from PySide2 import QtCore
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
@@ -58,9 +56,14 @@ class CameraLogic(LogicBase):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        camera = self._camera()
-        self._exposure = camera.get_exposure()
-        self._gain = camera.get_gain()
+        # delay timer for querying camera
+        self.__timer = QtCore.QTimer()
+        self.__timer.setInterval(1000 * self._query_interval)
+        self.__timer.setSingleShot(True)
+        self.__timer.timeout.connect(self._query_loop_body, QtCore.Qt.QueuedConnection)
+
+        self.camera = self._camera()
+        self._settings = self.get_settings()
 
         self.__timer = QtCore.QTimer()
         self.__timer.setSingleShot(True)
@@ -72,304 +75,462 @@ class CameraLogic(LogicBase):
         self.__timer.timeout.disconnect()
         self.__timer = None
 
+    # functions for configuration of the camera
     @property
-    def last_frame(self):
-        return self._last_frame
-
-    def set_exposure(self, time):
-        """ Set exposure time of camera """
-        with self._thread_lock:
-            if self.module_state() == 'idle':
-                camera = self._camera()
-                camera.set_exposure(time)
-                self._exposure = camera.get_exposure()
-            else:
-                self.log.error('Unable to set exposure time. Acquisition still in progress.')
-
-    def get_exposure(self):
-        """ Get exposure of hardware """
-        with self._thread_lock:
-            self._exposure = self._camera().get_exposure()
-            return self._exposure
-
-    def set_gain(self, gain):
-        with self._thread_lock:
-            if self.module_state() == 'idle':
-                camera = self._camera()
-                camera.set_gain(gain)
-                self._gain = camera.get_gain()
-            else:
-                self.log.error('Unable to set gain. Acquisition still in progress.')
-
-    def get_gain(self):
-        with self._thread_lock:
-            self._gain = self._camera().get_gain()
-            return self._gain
-
-    def capture_frame(self):
+    def get_settings(self):
         """
+        Bundle all the information about the camera into a dictionary.
+        This dictionary later on serves as meta data for the image
+        acquisition and initialisation and updating of the settings GUI.
+        @return:
         """
-        with self._thread_lock:
-            if self.module_state() == 'idle':
-                self.module_state.lock()
-                camera = self._camera()
-                camera.start_single_acquisition()
-                self._last_frame = camera.get_acquired_data()
-                self.module_state.unlock()
-                self.sigFrameChanged.emit(self._last_frame)
-                self.sigAcquisitionFinished.emit()
-            else:
-                self.log.error('Unable to capture single frame. Acquisition still in progress.')
+        initial_settings = dict()
 
-    def toggle_video(self, start):
-        if start:
-            self._start_video()
-        else:
-            self._stop_video()
+        return initial_settings
 
-    def _start_video(self):
-        """ Start the data recording loop.
+    @property
+    def name(self):
+        """ Retrieve an identifier of the camera that the GUI can print
+
+        @return string: name for the camera
         """
-        with self._thread_lock:
-            if self.module_state() == 'idle':
-                self.module_state.lock()
-                exposure = max(self._exposure, self._minimum_exposure_time)
-                camera = self._camera()
-                if camera.support_live_acquisition():
-                    camera.start_live_acquisition()
-                else:
-                    camera.start_single_acquisition()
-                self.__timer.start(1000 * exposure)
-            else:
-                self.log.error('Unable to start video acquisition. Acquisition still in progress.')
+        try:
+            camera_name = self._camera.name
+        except:
+            self.log.error('Could not retrieve the name of the camera.')
+        return camera_name
 
-    def _stop_video(self):
-        """ Stop the data recording loop.
+    @property
+    def size(self):
+        """ Retrieve size of the image in pixel
+
+        @return tuple: Size (width, height)
         """
-        with self._thread_lock:
-            if self.module_state() == 'locked':
-                self.__timer.stop()
-                self._camera().stop_acquisition()
-                self.module_state.unlock()
-                self.sigAcquisitionFinished.emit()
+        try:
+            sensor_area = self._camera.size
+        except:
+            self.log.error('Could not retrieve the sensor area of the camera.')
+        return sensor_area
 
-    def __acquire_video_frame(self):
-        """ Execute step in the data recording loop: save one of each control and process values
+    @property
+    def state(self):
+        """ Is the camera ready for an acquisition ?
+        @return bool: ready ?
         """
-        with self._thread_lock:
-            camera = self._camera()
-            self._last_frame = camera.get_acquired_data()
-            self.sigFrameChanged.emit(self._last_frame)
-            if self.module_state() == 'locked':
-                exposure = max(self._exposure, self._minimum_exposure_time)
-                self.__timer.start(1000 * exposure)
-                if not camera.support_live_acquisition():
-                    camera.start_single_acquisition()  # the hardware has to check it's not busy
+        try:
+            state = self._camera.state
+        except:
+            self.log.error('Could not retrieve the state of the camera.')
+        return state
 
-    def save_xy_data(self, colorscale_range=None, percentile_range=None):
-        """ Save the current confocal xy data to file.
-
-        Two files are created.  The first is the imagedata, which has a text-matrix of count values
-        corresponding to the pixel matrix of the image.  Only count-values are saved here.
-
-        The second file saves the full raw data with x, y, z, and counts at every pixel.
-
-        A figure is also saved.
-
-        @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
-
-        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+    @property
+    def binning_available(self):
         """
-        with self._thread_lock:
-            pass
-        # filepath = self._save_logic.get_path_for_module('Camera')
-        # timestamp = datetime.datetime.now()
-        # # Prepare the metadata parameters (common to both saved files):
-        # parameters = dict()
-        #
-        # parameters['Gain'] = self._gain
-        # parameters['Exposure time (s)'] = self._exposure
-        # # Prepare a figure to be saved
-        #
-        # axes = ['X', 'Y']
-        # xy_pixels = self._hardware.get_size()
-        # image_extent = [0,
-        #                 xy_pixels[0],
-        #                 0,
-        #                 xy_pixels[1]]
-        #
-        # fig = self.draw_figure(data=self._last_image,
-        #                        image_extent=image_extent,
-        #                        scan_axis=axes,
-        #                        cbar_range=colorscale_range,
-        #                        percentile_range=percentile_range)
-        #
-        #
-        # # data for the text-array "image":
-        # image_data = dict()
-        # image_data['XY image data.'] = self._last_image
-        # filelabel = 'xy_image'
-        # self._save_logic.save_data(image_data,
-        #                            filepath=filepath,
-        #                            timestamp=timestamp,
-        #                            parameters=parameters,
-        #                            filelabel=filelabel,
-        #                            fmt='%.6e',
-        #                            delimiter='\t',
-        #                            plotfig=fig)
-        #
-        # # prepare the full raw data in a dict:
-        # # data = dict()
-        # # data['x position (m)'] = self.xy_image[:, :, 0].flatten()
-        # # data['y position (m)'] = self.xy_image[:, :, 1].flatten()
-        # # data['z position (m)'] = self.xy_image[:, :, 2].flatten()
-        # #
-        # #
-        # # # Save the raw data to file
-        # # filelabel = 'xy_image_data'
-        # # self._save_logic.save_data(data,
-        # #                            filepath=filepath,
-        # #                            timestamp=timestamp,
-        # #                            parameters=parameters,
-        # #                            filelabel=filelabel,
-        # #                            fmt='%.6e',cc
-        # #                            delimiter='\t')
-        #
-        # self.log.debug('Image saved.')
-        # return
+        Does the camera support binning?
+        @return:
+        """
+        try:
+            binning = self._camera.binning_available
+        except:
+            self.log.error('Could not find out if binning is available for camera {}'.format(self.name))
+        return binning
 
-    # def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
-    #     """ Create a 2-D color map figure of the scan image.
-    #
-    #     @param: array data: The NxM array of count values from a scan with NxM pixels.
-    #
-    #     @param: list image_extent: The scan range in the form [hor_min, hor_max, ver_min, ver_max]
-    #
-    #     @param: list axes: Names of the horizontal and vertical axes in the image
-    #
-    #     @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  If not supplied then a default of
-    #                              data_min to data_max will be used.
-    #
-    #     @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
-    #
-    #     @param: list crosshair_pos: (optional) crosshair position as [hor, vert] in the chosen image axes.
-    #
-    #     @return: fig fig: a matplotlib figure object to be saved to file.
-    #     """
-    #     if scan_axis is None:
-    #         scan_axis = ['X', 'Y']
-    #
-    #     # If no colorbar range was given, take full range of data
-    #     if cbar_range is None:
-    #         cbar_range = [np.min(data), np.max(data)]
-    #
-    #     # Scale color values using SI prefix
-    #     prefix = ['', 'k', 'M', 'G']
-    #     prefix_count = 0
-    #     image_data = data
-    #     draw_cb_range = np.array(cbar_range)
-    #     image_dimension = image_extent.copy()
-    #
-    #     while draw_cb_range[1] > 1000:
-    #         image_data = image_data/1000
-    #         draw_cb_range = draw_cb_range/1000
-    #         prefix_count = prefix_count + 1
-    #
-    #     c_prefix = prefix[prefix_count]
-    #
-    #
-    #     # Scale axes values using SI prefix
-    #     axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
-    #     x_prefix_count = 0
-    #     y_prefix_count = 0
-    #
-    #     while np.abs(image_dimension[1]-image_dimension[0]) < 1:
-    #         image_dimension[0] = image_dimension[0] * 1000.
-    #         image_dimension[1] = image_dimension[1] * 1000.
-    #         x_prefix_count = x_prefix_count + 1
-    #
-    #     while np.abs(image_dimension[3] - image_dimension[2]) < 1:
-    #         image_dimension[2] = image_dimension[2] * 1000.
-    #         image_dimension[3] = image_dimension[3] * 1000.
-    #         y_prefix_count = y_prefix_count + 1
-    #
-    #     x_prefix = axes_prefix[x_prefix_count]
-    #     y_prefix = axes_prefix[y_prefix_count]
-    #
-    #     # Use qudi style
-    #     plt.style.use(self._save_logic.mpl_qd_style)
-    #
-    #     # Create figure
-    #     fig, ax = plt.subplots()
-    #
-    #     # Create image plot
-    #     cfimage = ax.imshow(image_data,
-    #                         cmap=plt.get_cmap('inferno'), # reference the right place in qd
-    #                         origin="lower",
-    #                         vmin=draw_cb_range[0],
-    #                         vmax=draw_cb_range[1],
-    #                         interpolation='none',
-    #                         extent=image_dimension
-    #                         )
-    #
-    #     ax.set_aspect(1)
-    #     ax.set_xlabel(scan_axis[0] + ' position (' + x_prefix + 'm)')
-    #     ax.set_ylabel(scan_axis[1] + ' position (' + y_prefix + 'm)')
-    #     ax.spines['bottom'].set_position(('outward', 10))
-    #     ax.spines['left'].set_position(('outward', 10))
-    #     ax.spines['top'].set_visible(False)
-    #     ax.spines['right'].set_visible(False)
-    #     ax.get_xaxis().tick_bottom()
-    #     ax.get_yaxis().tick_left()
-    #
-    #     # draw the crosshair position if defined
-    #     if crosshair_pos is not None:
-    #         trans_xmark = mpl.transforms.blended_transform_factory(
-    #             ax.transData,
-    #             ax.transAxes)
-    #
-    #         trans_ymark = mpl.transforms.blended_transform_factory(
-    #             ax.transAxes,
-    #             ax.transData)
-    #
-    #         ax.annotate('', xy=(crosshair_pos[0]*np.power(1000,x_prefix_count), 0),
-    #                     xytext=(crosshair_pos[0]*np.power(1000,x_prefix_count), -0.01), xycoords=trans_xmark,
-    #                     arrowprops=dict(facecolor='#17becf', shrink=0.05),
-    #                     )
-    #
-    #         ax.annotate('', xy=(0, crosshair_pos[1]*np.power(1000,y_prefix_count)),
-    #                     xytext=(-0.01, crosshair_pos[1]*np.power(1000,y_prefix_count)), xycoords=trans_ymark,
-    #                     arrowprops=dict(facecolor='#17becf', shrink=0.05),
-    #                     )
-    #
-    #     # Draw the colorbar
-    #     cbar = plt.colorbar(cfimage, shrink=0.8)#, fraction=0.046, pad=0.08, shrink=0.75)
-    #     cbar.set_label('Fluorescence (' + c_prefix + 'c/s)')
-    #
-    #     # remove ticks from colorbar for cleaner image
-    #     cbar.ax.tick_params(which=u'both', length=0)
-    #
-    #     # If we have percentile information, draw that to the figure
-    #     if percentile_range is not None:
-    #         cbar.ax.annotate(str(percentile_range[0]),
-    #                          xy=(-0.3, 0.0),
-    #                          xycoords='axes fraction',
-    #                          horizontalalignment='right',
-    #                          verticalalignment='center',
-    #                          rotation=90
-    #                          )
-    #         cbar.ax.annotate(str(percentile_range[1]),
-    #                          xy=(-0.3, 1.0),
-    #                          xycoords='axes fraction',
-    #                          horizontalalignment='right',
-    #                          verticalalignment='center',
-    #                          rotation=90
-    #                          )
-    #         cbar.ax.annotate('(percentile)',
-    #                          xy=(-0.3, 0.5),
-    #                          xycoords='axes fraction',
-    #                          horizontalalignment='right',
-    #                          verticalalignment='center',
-    #                          rotation=90
-    #                          )
-    #     return fig
+    @property
+    def crop_available(self):
+        """
+        Does the camera support image cropping.
+        @return:
+        """
+        try:
+            cropping = self._camera.crop_available
+        except:
+            self.log.error('Could not find out if cropping is available for camera {}'.format(self.name))
+        return cropping
+
+    @property
+    def exposure(self):
+        """ Get the exposure time in seconds
+
+            @return float exposure time
+        """
+        try:
+            exposure = self._camera.crop_available
+        except:
+            self.log.error('Could not get the exposure time from the camera {}'.format(self.name))
+        return exposure
+
+    @exposure.setter
+    def exposure(self, exposure):
+        """ Set the exposure time in seconds
+
+        @param float exposure: desired new exposure time
+        """
+        try:
+            self._camera.exposure(exposure)
+        except:
+            self.log.error('Could not set the exposure time for the camera {}'.format(self.name))
+        return
+
+    @property
+    def available_amplifiers(self):
+        """
+        Return a list of amplifiers the camera has
+        @return list amplifiers: list of amplifiers
+        """
+        try:
+            available_amplifers = self._camera.available_amplifiers
+        except:
+            self.log.error('Could not read the available amplifiers from the camera {}'.format(self.name))
+        return available_amplifers
+
+    @property
+    def amplifiers(self):
+        """
+        Return the list of currently used amplifiers and their gains
+        @return:
+        """
+        try:
+            available_amplifers = self._camera.available_amplifiers
+        except:
+            self.log.error('Could not read the used amplifiers from the camera {}'.format(self.name))
+        return available_amplifers
+
+    @amplifiers.setter
+    def amplifiers(self, amp_gain_dict):
+        """
+        Set up the chain of amplifiers with their gains
+        @param list amp_gain_dict: List of the amplifiers to be set
+        @return float: boolean success?
+        """
+        try:
+            self._camera.amplifiers(amp_gain_dict)
+        except:
+            self.log.error('Could not set the amplifiers for the camera {}'.format(self.name))
+        return
+
+    @property
+    def available_readout_speeds(self):
+        """
+        Readout speeds on the device
+        @return: list of available readout speeds on the device
+        """
+        try:
+            available_readout_speeds = self._camera.available_readout_speeds
+        except:
+            self.log.error('Could not read the available readout speeds from the camera {}'.format(self.name))
+        return available_readout_speeds
+
+    @property
+    def readout_speeds(self):
+        """
+        Get the current readout speed e.g. {'horizontal': 1e6, 'vertical':3e6} in Hz
+        @return dict readout_speeds: Dictionary with horizontal
+                                     and vertical readout speed
+        """
+        try:
+            readout_speeds = self._camera.readout_speeds
+        except:
+            self.log.error('Could not read the readout speeds used from the camera {}'.format(self.name))
+        return readout_speeds
+
+    @readout_speeds.setter
+    def readout_speeds(self, speed_dict):
+        """
+        Set the readout speed e.g. {'horizontal': 10e6, 'vertical':1e6} in Hz
+        @param speed_dict:
+        """
+        try:
+            self._camera.readout_speeds(speed_dict)
+        except:
+            self.log.error('Could not set the readout speeds for the camera {}'.format(self.name))
+        return
+
+    @property
+    def readout_time(self):
+        """
+        Return how long the readout of a single image will take
+        @return float time: Time it takes to read out an image from the sensor
+        """
+        try:
+            readout_time = self._camera.readout_time
+        except:
+            self.log.error('Could not get the readout time from the camera {}'.format(self.name))
+        return readout_time
+
+    @property
+    def sensor_area_settings(self):
+        """
+        Return the current binning and crop settings of the sensor e.g. {'binning': (2,2), 'crop' (128, 256)}
+        @return: dict of the sensor area settings
+        """
+        try:
+            sensor_area_settings = self._camera.sensor_area_settings
+        except:
+            self.log.error('Could not get the sensor area settings for the camera {}'.format(self.name))
+        return sensor_area_settings
+
+    @sensor_area_settings.setter
+    def sensor_area_settings(self, settings):
+        """
+        Binning and extracting a certain part of the sensor e.g. {'binning': (2,2), 'crop' (128, 256)} takes 4 pixels
+        together to 1 and takes from all the pixels and area of 128 by 256
+        """
+        try:
+            self._camera.sensor_area_settings(settings)
+        except:
+            self.log.error('Could not set the sensor area settings for the camera {}'.format(self.name))
+        return
+
+    @property
+    def bit_depth(self):
+        """
+        Return the bit depth of the camera
+        @return:
+        """
+        try:
+            bit_depth = self._camera.bit_depth
+        except:
+            self.log.error('Could not get the bit depth of the camera {}'.format(self.name))
+        return bit_depth
+
+    @property
+    def num_ad_channels(self):
+        """
+        Get the number of ad channels
+        @return: int num_ad_channels: number of ad channels
+        """
+        try:
+            num_ad_channels = self._camera.num_ad_channels
+        except:
+            self.log.error('Could not get the number of ad channels {}'.format(self.name))
+        return num_ad_channels
+
+    @property
+    def ad_channel(self):
+        """
+        Return the currently used ad channel
+        @return int ad_channel: Number used to identify channel
+        """
+        try:
+            ad_channel = self._camera.ad_channel
+        except:
+            self.log.error('Could not get the current ad channel of the camera {}'.format(self.name))
+        return ad_channel
+
+    @ad_channel.setter
+    def ad_channel(self, channel):
+        """
+        Depending if the camera has different ad converters select one.
+        @param int channel: New channel to be used
+        """
+        try:
+            self._camera.ad_channel(channel)
+        except:
+            self.log.error('Could not set the ad channel for the camera {}'.format(self.name))
+        return
+
+    @property
+    def quantum_efficiency(self):
+        """
+        Return the quantum efficiency at a given wavelength.
+        @param float wavelength: Wavelength of light falling on the sensor.
+        @return: float quantum efficiency between 0 and 1
+        """
+        try:
+            quantum_efficiency = self._camera.quantum_efficiency
+        except:
+            self.log.error('Could not get the quantum efficiency of the camera {}'.format(self.name))
+        return quantum_efficiency
+
+    @quantum_efficiency.setter
+    def quantum_efficiency(self, wavelength):
+        """
+        Let the camera know which wavelength you are operating at.
+        @param float wavelength: Wavelength of light falling on the sensor.
+        """
+        try:
+            self._camera.quantum_efficiency(wavelength)
+        except:
+            self.log.error('Could not set the wavelength for the camera {}'.format(self.name))
+        return
+
+    @property
+    def count_convert_mode(self):
+        """
+        Get the currently set count convert mode.
+        The GUI will make use of this to display what is recorded.
+        @return string mode: i.e. 'Counts', 'Electrons' or 'Photons'
+        """
+        try:
+            count_convert_mode = self._camera.count_convert_mode
+        except:
+            self.log.error('Could not get the count mode of the camera {}'.format(self.name))
+        return count_convert_mode
+
+    @count_convert_mode.setter
+    def count_convert_mode(self, mode):
+        """
+        Return signal in 'Counts', 'Electrons' or 'Photons'
+        @param string mode: i.e. 'Counts', 'Electrons' or 'Photons'
+        """
+        try:
+            self._camera.count_convert_mode(mode)
+        except:
+            self.log.error('Could not set the count convert mode for the camera {}'.format(self.name))
+        return
+
+    @property
+    def available_readout_modes(self):
+        """
+        Readout modes on the device
+        @return: list of available readout modes
+        """
+        try:
+            available_readout_modes = self._camera.available_readout_modes
+        except:
+            self.log.error('Could not get the available readout modes of the camera {}'.format(self.name))
+        return available_readout_modes
+
+    @property
+    def read_mode(self):
+        """
+        Get the read mode of the device (i.e. Image, Full Vertical Binning, Single-Track)
+        @return string read_mode: string containing the current read_mode
+        """
+        try:
+            read_mode = self._camera.read_mode
+        except:
+            self.log.error('Could not get the read mode of the camera {}'.format(self.name))
+        return read_mode
+
+    @read_mode.setter
+    def read_mode(self, read_mode):
+        """
+        Set the read mode of the device (i.e. Image, Full Vertical Binning, Single-Track)
+        @param str read_mode: Read mode to be set
+        """
+        try:
+            self._camera.read_mode(read_mode)
+        except:
+            self.log.error('Could not set the read mode for the camera {}'.format(self.name))
+        return
+
+    @property
+    def available_acquisition_modes(self):
+        """
+        Get the available acuqisitions modes of the camera
+        @return: dict containing lists.
+        The keys tell if they fall into 'Single Scan' or 'Series' category.
+        """
+        try:
+             available_acquisition_modes = self._camera.available_acquisition_modes
+        except:
+            self.log.error('Could not get the available acquisition modes of the camera {}'.format(self.name))
+        return available_acquisition_modes
+
+    @property
+    def acquisition_mode(self):
+        """
+        Get the acquisition mode of the camera
+        @return: string acquisition mode of the camera
+        """
+        try:
+            acquisition_mode = self._camera.acquisition_mode
+        except:
+            self.log.error('Could not get the acquisition mode of the camera {}'.format(self.name))
+        return acquisition_mode
+
+    @acquisition_mode.setter
+    def acquisition_mode(self, acquisition_mode):
+        """
+        Set the readout mode of the camera (i.e. 'Single scan', 'Series' and 'Continuous')
+        @param str acquisition_mode: readout mode to be set
+        """
+        try:
+            self._camera.read_mode(acquisition_mode)
+        except:
+            self.log.error('Could not set the acquisition mode for the camera {}'.format(self.name))
+        return
+
+    @property
+    def available_trigger_modes(self):
+        """
+        Trigger modes on the device
+        @return: list of available trigger modes
+        """
+        try:
+            available_trigger_modes = self._camera.available_trigger_modes
+        except:
+            self.log.error('Could not get the available trigger modes of the camera {}'.format(self.name))
+        return available_trigger_modes
+
+    @property
+    def trigger_mode(self):
+        """
+        Get the currently used trigger mode
+        @return: String of the set trigger mode
+        """
+        try:
+            trigger_mode = self._camera.trigger_mode
+        except:
+            self.log.error('Could not get the trigger mode of the camera {}'.format(self.name))
+        return trigger_mode
+
+    @trigger_mode.setter
+    def trigger_mode(self, trigger_mode):
+        """
+        Set the trigger mode ('Internal', 'External' ... )
+        @param str trigger_mode: Target trigger mode
+        """
+        try:
+            self._camera.trigger_mode(trigger_mode)
+        except:
+            self.log.error('Could not set the trigger mode for the camera {}'.format(self.name))
+        return
+
+    @property
+    def shutter_state(self):
+        """
+        Query the camera if a shutter exists.
+        @return boolean: True if yes, False if not
+        """
+        try:
+            shutter_state = self._camera.shutter_state
+        except:
+            self.log.error('Could not get the shutter state of the camera {}'.format(self.name))
+        return shutter_state
+
+    @shutter_state.setter
+    def shutter_state(self, state):
+        """
+        Open the shutter
+        """
+        try:
+            self._camera.shutter_state(state)
+        except:
+            self.log.error('Could not set the shutter state for the camera {}'.format(self.name))
+        return
+
+    @property
+    def temperature(self):
+        """
+        Query the camera if it has temperature control
+        @return boolen: True if yes, False if not
+        """
+        try:
+            temperature = self._camera.temperature
+        except:
+            self.log.error('Could not get the temperature of the camera {}'.format(self.name))
+        return temperature
+
+    @temperature.setter
+    def temperature(self, temperature):
+        """
+        Sets the temperature of the camera
+        @param float temperature: Target temperature of the camera
+        """
+        try:
+            self._camera.shutter_state(temperature)
+        except:
+            self.log.error('Could not set the temperature for the camera {}'.format(self.name))
+        return
