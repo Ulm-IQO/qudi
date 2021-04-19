@@ -32,8 +32,8 @@ from core.statusvariable import StatusVar
 
 class NIDigitalTrigerLogic(GenericLogic):
 
-    """This logic module controls scans of DC voltage on the fourth analog
-    output channel of the NI Card.  It collects countrate as a function of voltage.
+    """This logic module controls digital output channels of NIcard to generate simple
+    triggers and co
     """
 
     _device = Connector(interface='TriggerInterface')

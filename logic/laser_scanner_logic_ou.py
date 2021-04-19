@@ -121,7 +121,7 @@ class LaserScannerLogic(GenericLogic):
         # voltage to change.
 
         self.goto_voltage(self._static_v)
-
+        self._re_pump='off'
         # setup timer for pid refresh
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(True)
@@ -233,6 +233,7 @@ class LaserScannerLogic(GenericLogic):
         if abs(self.pid_setpoint-self._wavemeter_device.get_current_frequency())*1000 > 10:
             #self.log.info('goto_freq first')
             self.set_scan_speed(0.5)
+            self._re_pump='off'
             self.goto_frequency(self.pid_setpoint, 0.05, 10)
         self.set_scan_speed(0.1)
         # start PID loop
@@ -610,7 +611,7 @@ class LaserScannerLogic(GenericLogic):
         # stops scanning
         if self.stopRequested or self._scan_counter_down >= self.number_of_repeats:
             print(self.current_position)
-            self._goto_during_scan(self._static_v)
+            self._goto_during_scan(self.scan_range[0])
             self._close_scanner()
             self._scanning_device.scanner_set_position(
                 self._scanning_device.get_scanner_position()[0],
@@ -742,11 +743,11 @@ class LaserScannerLogic(GenericLogic):
             #    self._scanning_device.get_scanner_position()[2],
             #    self.get_current_voltage()
             #)
-
-            time.sleep(0.05)
-            self._do.simple_on()
-            time.sleep(self._do_width)
-            self._do.simple_off()
+            if self._re_pump=='on' and self._do_width!=0:
+                time.sleep(0.05)
+                self._do.simple_on('/Dev1/Port0/Line5')
+                time.sleep(self._do_width)
+                self._do.simple_off('/Dev1/Port0/Line5')
             return counts_on_scan_line.transpose()[0]
 
         except Exception as e:
