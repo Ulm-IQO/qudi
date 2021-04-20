@@ -31,7 +31,7 @@ from PySide2 import QtCore
 from qudi.util.mutex import RecursiveMutex   # provides access serialization between threads
 from qudi.core.logger import get_logger
 from qudi.core.threadmanager import ThreadManager
-from qudi.core.remotemodules import start_sharing_module, stop_sharing_module, get_remote_module_instance
+from qudi.core.servers import get_remote_module_instance
 from qudi.core.module import Base, get_module_app_data_path
 
 logger = get_logger(__name__)
@@ -142,7 +142,9 @@ class ModuleManager(QtCore.QObject):
             self._modules[module_name].sigAppDataChanged.disconnect(self.sigModuleAppDataChanged)
             self.refresh_module_links()
             if self._modules[module_name].allow_remote_access:
-                stop_sharing_module(module_name)
+                remote_module_server = self._qudi_main_ref().remote_modules_server
+                if remote_module_server is not None:
+                    remote_module_server.remove_shared_module(module_name)
             del self._modules[module_name]
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
@@ -168,14 +170,15 @@ class ModuleManager(QtCore.QObject):
             self.refresh_module_links()
             # Register module in remote module service if module should be shared
             if module.allow_remote_access:
-                if self._qudi_main_ref().remote_module_server is None:
+                remote_module_server = self._qudi_main_ref().remote_modules_server
+                if remote_module_server is None:
                     logger.error(f'Unable to share qudi module "{module.name}" as remote module. '
-                                 f'No remote server running in this qudi process.')
+                                 f'No remote module server running in this qudi process.')
                 else:
                     logger.info(
-                        f'Start sharing qudi module "{module.name}" on remote module server.'
+                        f'Start sharing qudi module "{module.name}" via remote module server.'
                     )
-                    start_sharing_module(module)
+                    remote_module_server.share_module(module)
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
 
