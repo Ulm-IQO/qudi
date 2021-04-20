@@ -161,14 +161,20 @@ class Qudi(QtCore.QObject):
     def _remove_extensions_from_path(self):
         # Clean up previously configured expansion paths
         for ext_path in self._configured_extension_paths:
-            if ext_path in sys.path:
+            try:
                 sys.path.remove(ext_path)
+            except ValueError:
+                pass
 
     def _add_extensions_to_path(self):
         extensions = self.configuration.extension_paths
         # Add qudi extension paths to sys.path
+        try:
+            insert_index = sys.path.index(get_main_dir())
+        except ValueError:
+            insert_index = 0
         for ext_path in reversed(extensions):
-            sys.path.insert(0, ext_path)
+            sys.path.insert(insert_index, ext_path)
         self._configured_extension_paths = extensions
 
     @QtCore.Slot()
