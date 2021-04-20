@@ -97,7 +97,6 @@ class QudiKernelService(rpyc.Service):
 
     def exposed_modules_changed(self):
         logging.warning(f'modules_changed called on client')
-        # self._module_update_callback()
 
 
 class QudiKernelClient:
@@ -111,7 +110,7 @@ class QudiKernelClient:
         if self.connection is None or self.connection.closed:
             return dict()
         try:
-            return self.connection.root.get_active_module_instances()
+            return self.connection.root.get_namespace_dict()
         except (ConnectionError, EOFError):
             self.disconnect()
             return dict()
