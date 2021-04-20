@@ -162,7 +162,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
                                 'port': port,
                                 'certfile': certfile if certfile else None,
                                 'keyfile': keyfile if keyfile else None}
-        local_module_server_port = self.local_port_spinbox.value()
+        namespace_server_port = self.local_port_spinbox.value()
 
         # Other options
         default_data_dir = self.data_directory_lineedit.text().strip()
@@ -175,7 +175,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
                     'extensions': extensions if extensions else None,
                     'stylesheet': stylesheet if stylesheet else None,
                     'remote_module_server': remote_module_server,
-                    'local_module_server_port': local_module_server_port,
+                    'namespace_server_port': namespace_server_port,
                     'startup': startup if startup else None}
 
         # Add custom config options
@@ -198,7 +198,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         port = remote_module_server.get('port', None)
         certfile = remote_module_server.get('certfile', None)
         keyfile = remote_module_server.get('keyfile', None)
-        local_module_server_port = cfg_dict.pop('local_module_server_port', None)
+        namespace_server_port = cfg_dict.pop('namespace_server_port', None)
 
         self.data_directory_lineedit.setText('' if default_data_dir is None else default_data_dir)
         self.stylesheet_lineedit.setText('' if stylesheet is None else stylesheet)
@@ -209,7 +209,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.certfile_lineedit.setText('' if certfile is None else certfile)
         self.keyfile_lineedit.setText('' if keyfile is None else keyfile)
         self.local_port_spinbox.setValue(
-            0 if local_module_server_port is None else int(local_module_server_port)
+            0 if namespace_server_port is None else int(namespace_server_port)
         )
 
         # Handle custom options (all remaining items in cfg_dict)

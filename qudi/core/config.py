@@ -354,14 +354,14 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
-    def local_module_server_port(self):
-        return self._global_config.get('local_module_server_port', 18861)
+    def namespace_server_port(self):
+        return self._global_config.get('namespace_server_port', 18861)
 
-    @local_module_server_port.setter
-    def local_module_server_port(self, port):
+    @namespace_server_port.setter
+    def namespace_server_port(self, port):
         port = int(port)
         assert 0 <= port <= 65535
-        self._global_config['local_module_server_port'] = port
+        self._global_config['namespace_server_port'] = port
         self.sigConfigChanged.emit(self)
 
     @property
@@ -605,7 +605,7 @@ class Configuration(QtCore.QObject):
         new_config.extension_paths = global_cfg.pop('extensions', None)
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
-        new_config.local_module_server_port = global_cfg.pop('local_module_server_port', 18861)
+        new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
         new_config.remote_module_server = global_cfg.pop('remote_module_server', None)
         if global_cfg:
             warn(f'Found additional entries in global config. The following entries will be '

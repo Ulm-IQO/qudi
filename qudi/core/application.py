@@ -38,8 +38,7 @@ from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.gui.gui import Gui
-from qudi.core.remotemodules import RemoteModuleServer
-from qudi.core.localmodules import LocalModuleServer
+from qudi.core.servers import RemoteModulesServer, QudiNamespaceServer
 
 try:
     from zmq.eventloop import ioloop
@@ -100,7 +99,10 @@ class Qudi(QtCore.QObject):
         self.configuration.load_config(file_path=config_file, set_default=True)
         remote_server_config = self.configuration.remote_module_server
         if remote_server_config:
-            self.remote_module_server = RemoteModuleServer(
+            self.remote_modules_server = RemoteModulesServer(
+                parent=self,
+                qudi=self,
+                name='remote-modules-server',
                 host=remote_server_config.get('address', None),
                 port=remote_server_config.get('port', None),
                 certfile=remote_server_config.get('certfile', None),
@@ -108,14 +110,15 @@ class Qudi(QtCore.QObject):
                 protocol_config=remote_server_config.get('protocol_config', None),
                 ssl_version=remote_server_config.get('ssl_version', None),
                 cert_reqs=remote_server_config.get('cert_reqs', None),
-                ciphers=remote_server_config.get('ciphers', None))
+                ciphers=remote_server_config.get('ciphers', None)
+            )
         else:
-            self.remote_module_server = None
-        self.local_module_server = LocalModuleServer(
+            self.remote_modules_server = None
+        self.local_namespace_server = QudiNamespaceServer(
             parent=self,
-            module_manager=self.module_manager,
-            thread_manager=self.thread_manager,
-            port=self.configuration.local_module_server_port
+            qudi=self,
+            name='local-namespace-server',
+            port=self.configuration.namespace_server_port
         )
         self.watchdog = None
         self.gui = None
@@ -211,30 +214,6 @@ class Qudi(QtCore.QObject):
         self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
-    def _start_remote_module_server(self):
-        if self.remote_module_server is None or self.remote_module_server.is_running:
-            return
-        server_thread = self.thread_manager.get_new_thread('remote-module-server')
-        self.remote_module_server.moveToThread(server_thread)
-        server_thread.started.connect(self.remote_module_server.run)
-        server_thread.start()
-
-    def _stop_remote_module_server(self):
-        if self.remote_module_server is None or not self.remote_module_server.is_running:
-            return
-        try:
-            self.remote_module_server.stop()
-            self.thread_manager.quit_thread('remote-module-server')
-            self.thread_manager.join_thread('remote-module-server', time=5)
-        except:
-            self.log.exception('Error during shutdown of remote module server:')
-
-    def _stop_local_module_server(self):
-        try:
-            self.local_module_server.stop()
-        except:
-            self.log.exception('Error during shutdown of local module server:')
-
     def run(self):
         """
         """
@@ -284,8 +263,9 @@ class Qudi(QtCore.QObject):
             self.watchdog = AppWatchdog(self.interrupt_quit)
 
             # Start module servers
-            self._start_remote_module_server()
-            self.local_module_server.start()
+            if self.remote_modules_server is not None:
+                self.remote_modules_server.start()
+            self.local_namespace_server.start()
 
             # Apply configuration to qudi
             self._configure_qudi()
@@ -353,9 +333,15 @@ class Qudi(QtCore.QObject):
             print('> Qudi shutting down...')
             self.log.info('Stopping module server(s)...')
             print('> Stopping module server(s)...')
-            if self.remote_module_server is not None:
-                self._stop_remote_module_server()
-            self._stop_local_module_server()
+            if self.remote_modules_server is not None:
+                try:
+                    self.remote_modules_server.stop()
+                except:
+                    self.log.exception('Exception during shutdown of remote modules server:')
+            try:
+                self.local_namespace_server.stop()
+            except:
+                self.log.exception('Error during shutdown of local namespace server:')
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Deactivating modules...')
             print('> Deactivating modules...')

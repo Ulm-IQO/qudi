@@ -27,7 +27,6 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.paths import get_main_dir, get_default_config_dir
 from qudi.util.helpers import has_pyqtgraph
-from qudi.core.remotemodules import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
@@ -177,20 +176,24 @@ class QudiMainGui(GuiBase):
         get_signal_handler().sigRecordLogged.disconnect(self.handle_log_record)
 
     def _init_remote_modules_widget(self):
-        remote_server = self._qudi_main.remote_module_server
+        remote_server = self._qudi_main.remote_modules_server
         # hide remote modules menu action if RemoteModuleServer is not available
         if remote_server is None:
             self.mw.remote_widget.setVisible(False)
             self.mw.remote_dockwidget.setVisible(False)
             self.mw.action_view_remote.setVisible(False)
         else:
+            server_config = self._qudi_main.configuration.remote_module_server
+            host = server_config['address']
+            port = server_config['port']
             self.mw.remote_widget.setVisible(True)
-            self.mw.remote_widget.server_label.setText(
-                'Server URL: rpyc://{0}:{1}/'.format(remote_server.host, remote_server.port))
-            self.mw.remote_widget.shared_module_listview.setModel(get_remote_modules_model())
+            self.mw.remote_widget.server_label.setText(f'Server URL: rpyc://{host}:{port}/')
+            self.mw.remote_widget.shared_module_listview.setModel(
+                remote_server.service.shared_modules
+            )
 
     def show(self):
-        """Show the window and bring it t the top.
+        """Show the window and bring it to the top.
         """
         self.mw.show()
         self.mw.activateWindow()

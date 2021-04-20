@@ -96,9 +96,6 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
             noun = 'activation' if event == 'activate' else 'deactivation'
 
             def wrap_event(*args, **kwargs):
-                self.parent().log.debug(
-                    '{0} in thread "{1}"'.format(noun.capitalize(),
-                                                 QtCore.QThread.currentThread().objectName()))
                 try:
                     base_event(*args, **kwargs)
                 except:

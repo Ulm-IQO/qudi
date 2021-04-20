@@ -122,7 +122,7 @@ class QudiKernelClient:
         if config_path is None:
             config_path = Configuration.get_default_config()
         config.load_config(file_path=config_path, set_default=False)
-        port = config.local_module_server_port
+        port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
                                        port=port,
                                        # config={'allow_all_attrs': True},
