@@ -1600,13 +1600,13 @@ class AWGM819X(PulserInterface):
 
             @return int: error code (0:OK, -1:error)
         """
-        bytes_written, enum_status_code = self.awg.write(command)
+        bytes_written = self.awg.write(command)
 
         if self._debug_check_all_commands:
             if 0 != self.check_dev_error():
                 self.log.warn("Check failed after command: {}".format(command))
 
-        return int(enum_status_code)
+        return 0
 
     def write_bin(self, command, values):
         """ Sends a command string to the device.
@@ -1616,10 +1616,11 @@ class AWGM819X(PulserInterface):
                     @return int: error code (0:OK, -1:error)
         """
         self.awg.timeout = None
-        bytes_written, enum_status_code = self.awg.write_binary_values(command, datatype=self._wave_transfer_datatype, is_big_endian=False,
+        bytes_written = self.awg.write_binary_values(command, datatype=self._wave_transfer_datatype, is_big_endian=False,
                                                                        values=values)
         self.awg.timeout = self._awg_timeout * 1000
-        return int(enum_status_code)
+
+        return 0
 
     def write_all_ch(self, command, *args, all_by_one=None):
         """
