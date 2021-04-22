@@ -461,7 +461,7 @@ class QudiMainGui(GuiBase):
                 QtWidgets.QMessageBox.Yes
         )
         if reply == QtWidgets.QMessageBox.Yes:
-            process = subprocess.Popen(args='qudi-config-editor',
+            process = subprocess.Popen(args=[sys.executable, '-m', 'tools.config_editor'],
                                        close_fds=False,
                                        env=os.environ.copy(),
                                        stdin=sys.stdin,
