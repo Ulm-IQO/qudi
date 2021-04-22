@@ -20,31 +20,21 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import logging
-import numpy as np
+from PySide2 import QtCore, QtWidgets
+from qtconsole.manager import QtKernelManager
 
-from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.paths import get_main_dir, get_default_config_dir
-from qudi.util.helpers import has_pyqtgraph
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
 from qudi.core.logger import get_signal_handler
-from PySide2 import QtCore, QtWidgets
-
-try:
-    from qtconsole.inprocess import QtInProcessKernelManager
-except ImportError:
-    from IPython.qt.inprocess import QtInProcessKernelManager
 
 try:
     from git import Repo, InvalidGitRepositoryError
 except ImportError:
     Repo = None
-
-if has_pyqtgraph:
-    import pyqtgraph as pg
 
 
 class QudiMainGui(GuiBase):
@@ -101,8 +91,7 @@ class QudiMainGui(GuiBase):
         self.update_config_widget()
 
         # IPython console widget
-        self.start_ipython()
-        self.start_ipython_widget()
+        self.start_jupyter_widget()
 
         # Configure thread widget
         self.mw.threads_widget.setModel(ThreadManager.instance())
@@ -117,8 +106,7 @@ class QudiMainGui(GuiBase):
         """Close window and remove connections.
         """
         self._disconnect_signals()
-        self.stop_ipython_widget()
-        self.stop_ipython()
+        self.stop_jupyter_widget()
         self._save_window_geometry(self.mw)
         self.mw.close()
 
@@ -232,100 +220,41 @@ class QudiMainGui(GuiBase):
             self.error_dialog.new_error(entry)
         return
 
-    def start_ipython(self):
-        """ Create an IPython kernel manager and kernel.
-            Add modules to its namespace.
+    def start_jupyter_widget(self):
+        """ Starts a qudi IPython kernel in a separate process and connects it to the console widget
         """
-        # make sure we only log errors and above from ipython.
-        # FIXME: Should be inherited by root logger
-        # logging.getLogger('ipykernel').setLevel(logging.WARNING)
-        self.log.debug('IPython activation in thread {0}'.format(QtCore.QThread.currentThread()))
-        self._kernel_manager = QtInProcessKernelManager()
-        self._kernel_manager.start_kernel()
-        self._kernel_manager.kernel.shell.user_ns.update(
-            {'np': np,
-             'config': self._qudi_main.configuration.config_dict,
-             'qudi': self._qudi_main}
-        )
-        if has_pyqtgraph:
-            self._kernel_manager.kernel.shell.user_ns['pg'] = pg
-        self.update_ipython_all_modules()
-        self._kernel_manager.kernel.gui = 'qt4'
-        self.log.info('IPython has kernel {0}'.format(self._kernel_manager.has_kernel))
-        self.log.info('IPython kernel alive {0}'.format(self._kernel_manager.is_alive()))
-        self._qudi_main.module_manager.sigModuleStateChanged.connect(
-            self.update_ipython_single_module, QtCore.Qt.QueuedConnection)
-        self._qudi_main.module_manager.sigManagedModulesChanged.connect(
-            self.update_ipython_all_modules, QtCore.Qt.QueuedConnection)
+        self.log.info('Starting IPython kernel process for qudi main GUI...')
+        # Create and start kernel process
+        kernel_manager = QtKernelManager(kernel_name='Qudi')
+        # kernel_manager.kernel.gui = 'qt4'
+        kernel_manager.start_kernel()
 
-    def start_ipython_widget(self):
-        """
-        Create an IPython console widget and connect it to an IPython kernel.
-        """
-        if has_pyqtgraph:
-            banner_modules = 'The numpy and pyqtgraph modules have already been imported as "np" ' \
-                             'and "pg".'
-        else:
-            banner_modules = 'The numpy module has already been imported as "np".'
-        banner = 'This is an interactive IPython console. {0} Configuration is in "config", the ' \
-                 'manager is "manager" and all loaded modules are in this namespace with their ' \
-                 'configured name. View the current namespace with dir(). Go, play.\n' \
-                 ''.format(banner_modules)
+        # create kernel client and connect to console widget
+        banner = 'This is an interactive IPython console. A reference to the running qudi ' \
+                 'instance can be accessed via "qudi". View the current namespace with dir().\n' \
+                 'Go, play.\n'
         self.mw.console_widget.banner = banner
-        # font size
         self.console_apply_settings()
-
-        self.mw.console_widget.kernel_manager = self._kernel_manager
-        self.mw.console_widget.kernel_client = self.mw.console_widget.kernel_manager.client()
-        self.mw.console_widget.kernel_client.start_channels()
-        # use the linux style theme which is basically the monokai theme
         self.mw.console_widget.set_default_style(colors='linux')
-        return
+        kernel_client = kernel_manager.client()
+        kernel_client.start_channels()
+        self.mw.console_widget.kernel_manager = kernel_manager
+        self.mw.console_widget.kernel_client = kernel_client
+        self.log.info('IPython kernel for qudi main GUI successfully started.')
 
-    def stop_ipython(self):
-        """ Stop the IPython kernel.
+    def stop_jupyter_widget(self):
+        """ Stops the qudi IPython kernel process and detaches it from the console widget
         """
-        self.log.debug('IPython deactivation: {0}'.format(QtCore.QThread.currentThread()))
-        self._kernel_manager.shutdown_kernel()
-        self._qudi_main.module_manager.sigModuleStateChanged.disconnect(
-            self.update_ipython_single_module)
-        self._qudi_main.module_manager.sigManagedModulesChanged.disconnect(
-            self.update_ipython_all_modules)
-
-    def stop_ipython_widget(self):
-        """ Disconnect the IPython widget from the kernel.
-        """
-        self.mw.console_widget.kernel_client.stop_channels()
-
-    @QtCore.Slot(str, str, str)
-    def update_ipython_single_module(self, base, name, state):
-        """Remove deactivated module from namespace or add it if activated.
-        """
-        if state != 'deactivated':
-            self._kernel_manager.kernel.shell.user_ns[name] = self._qudi_main.module_manager[
-                name].instance
-        else:
-            self._kernel_manager.kernel.shell.user_ns.pop(name, None)
-        return
-
-    @QtCore.Slot()
-    @QtCore.Slot(dict)
-    def update_ipython_all_modules(self, modules_dict=None):
-        """
-        Remove non-existing modules from namespace, add new modules to namespace.
-
-        @param dict modules_dict: Dictionary containing all configured ManagedModule instances
-        """
-        if modules_dict is None:
-            modules_dict = self._qudi_main.module_manager
-        new_namespace = {name: mod.instance for name, mod in modules_dict.items() if
-                         mod.is_active and mod.instance is not None}
-        new_namespace_set = set(new_namespace)
-        discard = self._ipython_module_names - new_namespace_set
-        self._kernel_manager.kernel.shell.user_ns.update(new_namespace)
-        for name in discard:
-            self._kernel_manager.kernel.shell.user_ns.pop(name, None)
-        self._ipython_module_names = new_namespace_set
+        self.log.info('Shutting down IPython kernel process for qudi main GUI...')
+        try:
+            self.mw.console_widget.kernel_client.stop_channels()
+        except:
+            self.log.exception('Exception while trying to shutdown qudi IPython client:')
+        try:
+            self.mw.console_widget.kernel_manager.shutdown_kernel()
+        except:
+            self.log.exception('Exception while trying to shutdown qudi IPython kernel:')
+        self.log.info('IPython kernel process for qudi main GUI has shut down.')
 
     def console_keep_settings(self):
         """ Write old values into config dialog.
@@ -368,11 +297,8 @@ class QudiMainGui(GuiBase):
             for val in value:
                 child = QtWidgets.QTreeWidgetItem()
                 item.addChild(child)
-                if type(val) is dict:
+                if isinstance(val, dict):
                     child.setText(0, '[dict]')
-                    self.fill_tree_item(child, val)
-                elif type(val) is OrderedDict:
-                    child.setText(0, '[odict]')
                     self.fill_tree_item(child, val)
                 elif isinstance(val, list):
                     child.setText(0, '[list]')
