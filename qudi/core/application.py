@@ -86,10 +86,6 @@ class Qudi(QtCore.QObject):
         self.log = get_logger(__class__.__name__)  # will be "qudi.Qudi" in custom logger
         sys.excepthook = self._qudi_excepthook
 
-        # Check vital packages for qudi, otherwise qudi will not even start.
-        if import_check() != 0:
-            raise RuntimeError('Vital python packages missing. Unable to use qudi.')
-
         self.thread_manager = ThreadManager(parent=self)
         self.module_manager = ModuleManager(qudi_main=self, parent=self)
         self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
