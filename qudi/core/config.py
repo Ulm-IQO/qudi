@@ -339,18 +339,18 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
-    def remote_module_server(self):
-        if 'remote_module_server' not in self._global_config:
+    def remote_modules_server(self):
+        if 'remote_modules_server' not in self._global_config:
             return None
-        return copy.deepcopy(self._global_config['remote_module_server'])
+        return copy.deepcopy(self._global_config['remote_modules_server'])
 
-    @remote_module_server.setter
-    def remote_module_server(self, server_settings):
+    @remote_modules_server.setter
+    def remote_modules_server(self, server_settings):
         # ToDo: Sanity checks
         if not server_settings:
-            self._global_config.pop('remote_module_server', None)
+            self._global_config.pop('remote_modules_server', None)
             return
-        self._global_config['remote_module_server'] = copy.deepcopy(server_settings)
+        self._global_config['remote_modules_server'] = copy.deepcopy(server_settings)
         self.sigConfigChanged.emit(self)
 
     @property
@@ -606,7 +606,7 @@ class Configuration(QtCore.QObject):
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
         new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
-        new_config.remote_module_server = global_cfg.pop('remote_module_server', None)
+        new_config.remote_modules_server = global_cfg.pop('remote_modules_server', None)
         if global_cfg:
             warn(f'Found additional entries in global config. The following entries will be '
                  f'ignored:\n{global_cfg}')
