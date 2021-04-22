@@ -20,18 +20,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base
-from core.configoption import ConfigOption
-from core.statusvariable import  StatusVar
-from core.util.modules import get_home_dir
-from interface.pulser_interface import PulserInterface, PulserConstraints
-from collections import OrderedDict
 import numpy as np
-
 import pulsestreamer as ps
 
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
+from qudi.interface.pulser_interface import PulserInterface, PulserConstraints
 
-class PulseStreamer(Base, PulserInterface):
+
+class PulseStreamer(PulserInterface):
     """ Methods to control the Swabian Instruments Pulse Streamer 8/2
 
     Example config for copy-paste:
@@ -56,7 +53,6 @@ class PulseStreamer(Base, PulserInterface):
     __current_waveform = StatusVar(name='current_waveform', default={})
     __current_waveform_name = StatusVar(name='current_waveform_name', default='')
     __sample_rate = StatusVar(name='sample_rate', default=1e9)
-
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -87,7 +83,6 @@ class PulseStreamer(Base, PulserInterface):
         self.reset()
         del self.pulse_streamer
 
-    
     def get_constraints(self):
         """
         Retrieve the hardware constrains from the Pulsing device.
@@ -206,8 +201,9 @@ class PulseStreamer(Base, PulserInterface):
         constraints.d_ch_high.step = 0.0
         constraints.d_ch_high.default = 3.3
 
-        # sample file length max is not well-defined for PulseStreamer, which collates sequential identical pulses into
-        # one. Total number of not-sequentially-identical pulses which can be stored: 1 M.
+        # sample file length max is not well-defined for PulseStreamer, which collates sequential
+        # identical pulses into one.
+        # Total number of not-sequentially-identical pulses which can be stored: 1 M.
         constraints.waveform_length.min = 1
         constraints.waveform_length.max = 134217728
         constraints.waveform_length.step = 1
@@ -216,13 +212,14 @@ class PulseStreamer(Base, PulserInterface):
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
-        activation_config = OrderedDict()
-        activation_config['all'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
+        activation_config = dict()
+        activation_config['all'] = frozenset(
+            {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'}
+        )
         constraints.activation_config = activation_config
 
         return constraints
 
-    
     def pulser_on(self):
         """ Switches the pulsing device on.
 
@@ -239,7 +236,6 @@ class PulseStreamer(Base, PulserInterface):
             self.__current_status = -1
             return -1
 
-    
     def pulser_off(self):
         """ Switches the pulsing device off.
 
@@ -250,7 +246,6 @@ class PulseStreamer(Base, PulserInterface):
         self.pulse_streamer.constant(self._laser_mw_on_state)
         return 0
 
-    
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
 
@@ -314,7 +309,6 @@ class PulseStreamer(Base, PulserInterface):
         self.__currently_loaded_waveform = self.__current_waveform_name
         return self.get_loaded_assets()[0]
 
-
     def get_loaded_assets(self):
         """
         Retrieve the currently loaded asset names for each active channel of the device.
@@ -331,8 +325,6 @@ class PulseStreamer(Base, PulserInterface):
         asset_dict = {chnl_num: self.__currently_loaded_waveform for chnl_num in range(1, 9)}
         return asset_dict, asset_type
 
-
-    
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
         For devices that have a workspace (i.e. AWG) this will load the sequence from the device
@@ -354,8 +346,6 @@ class PulseStreamer(Base, PulserInterface):
         self.log.debug('sequencing not implemented for pulsestreamer')
         return dict()
 
-
-    
     def clear_all(self):
         """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
@@ -367,8 +357,6 @@ class PulseStreamer(Base, PulserInterface):
         self._seq = dict()
         self.__current_waveform = dict()
 
-
-    
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
@@ -383,7 +371,6 @@ class PulseStreamer(Base, PulserInterface):
 
         return self.__current_status, status_dic
 
-    
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
 
@@ -408,7 +395,6 @@ class PulseStreamer(Base, PulserInterface):
         self.log.debug('PulseStreamer sample rate cannot be configured')
         return self.__sample_rate
 
-    
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
@@ -434,7 +420,6 @@ class PulseStreamer(Base, PulserInterface):
         """
         return {},{}
 
-    
     def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel(s).
 
@@ -456,7 +441,6 @@ class PulseStreamer(Base, PulserInterface):
         """
         return {},{}
 
-    
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
@@ -543,7 +527,6 @@ class PulseStreamer(Base, PulserInterface):
         self.log.warning('PulseStreamer logic level cannot be adjusted!')
         return self.get_digital_level()
 
-    
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
@@ -570,7 +553,6 @@ class PulseStreamer(Base, PulserInterface):
             for channel in ch:
                 d_ch_dict[channel] = True
         return d_ch_dict
-
     
     def set_active_channels(self, ch=None):
         """
@@ -613,7 +595,6 @@ class PulseStreamer(Base, PulserInterface):
             'd_ch8': True}
         return d_ch_dict
 
-    
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
         """
@@ -671,8 +652,6 @@ class PulseStreamer(Base, PulserInterface):
 
         return len(samples), [self.__current_waveform_name]
 
-
-    
     def write_sequence(self, name, sequence_parameters):
         """
         Write a new sequence on the device memory.
@@ -753,7 +732,6 @@ class PulseStreamer(Base, PulserInterface):
                            'Interleave state is always False.')
         return False
 
-    
     def reset(self):
         """ Reset the device.
 
@@ -763,7 +741,6 @@ class PulseStreamer(Base, PulserInterface):
         self.pulse_streamer.reset()
         self.__currently_loaded_waveform = ''
 
-    
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 

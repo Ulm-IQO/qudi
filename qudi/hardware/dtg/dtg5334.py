@@ -20,20 +20,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import ctypes
-from collections import OrderedDict
-import numpy as np
-import os
 import time
 import visa
-from core.util.helpers import natural_sort
+import numpy as np
 
-from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
-from core.module import Base
-from core.configoption import ConfigOption
+from qudi.util.helpers import natural_sort
+from qudi.core.configoption import ConfigOption
+from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
-class DTG5334(Base, PulserInterface):
+class DTG5334(PulserInterface):
     """ Tektronix DTG 5334
 
     Example config for copy-paste:
@@ -202,7 +198,7 @@ class DTG5334(Base, PulserInterface):
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
-        activation_conf = OrderedDict()
+        activation_conf = dict()
         activation_conf['A'] = frozenset({'d_ch1', 'd_ch2'})
         activation_conf['B'] = frozenset({'d_ch3', 'd_ch4'})
         activation_conf['C'] = frozenset({'d_ch5', 'd_ch6'})
