@@ -52,10 +52,9 @@ class QudiMainGui(GuiBase):
           @param dict config:
         """
         super().__init__(*args, **kwargs)
-        self._ipython_module_names = set()
         self.error_dialog = None
-        self._kernel_manager = None
         self.mw = None
+        self._has_console = False  # Flag indicating if an IPython console is available
 
     def on_activate(self):
         """ Activation method called on change to active state.
@@ -192,7 +191,7 @@ class QudiMainGui(GuiBase):
         Return the dockwidget layout and visibility to its default state
         """
         self.mw.config_dockwidget.setVisible(False)
-        self.mw.console_dockwidget.setVisible(True)
+        self.mw.console_dockwidget.setVisible(self._has_console)
         self.mw.remote_dockwidget.setVisible(False)
         self.mw.threads_dockwidget.setVisible(False)
         self.mw.log_dockwidget.setVisible(True)
@@ -208,6 +207,9 @@ class QudiMainGui(GuiBase):
         self.mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.mw.remote_dockwidget)
         self.mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.mw.threads_dockwidget)
         self.mw.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.mw.console_dockwidget)
+
+        self.mw.action_view_console.setChecked(self._has_console)
+        self.mw.action_view_console.setVisible(self._has_console)
         return
 
     def handle_log_record(self, entry):
@@ -223,29 +225,33 @@ class QudiMainGui(GuiBase):
     def start_jupyter_widget(self):
         """ Starts a qudi IPython kernel in a separate process and connects it to the console widget
         """
-        self.log.info('Starting IPython kernel process for qudi main GUI...')
-        # Create and start kernel process
-        kernel_manager = QtKernelManager(kernel_name='Qudi')
-        # kernel_manager.kernel.gui = 'qt4'
-        kernel_manager.start_kernel()
+        try:
+            # Create and start kernel process
+            kernel_manager = QtKernelManager(kernel_name='Qudi')
+            # kernel_manager.kernel.gui = 'qt4'
+            kernel_manager.start_kernel()
 
-        # create kernel client and connect to console widget
-        banner = 'This is an interactive IPython console. A reference to the running qudi ' \
-                 'instance can be accessed via "qudi". View the current namespace with dir().\n' \
-                 'Go, play.\n'
-        self.mw.console_widget.banner = banner
-        self.console_apply_settings()
-        self.mw.console_widget.set_default_style(colors='linux')
-        kernel_client = kernel_manager.client()
-        kernel_client.start_channels()
-        self.mw.console_widget.kernel_manager = kernel_manager
-        self.mw.console_widget.kernel_client = kernel_client
-        self.log.info('IPython kernel for qudi main GUI successfully started.')
+            # create kernel client and connect to console widget
+            banner = 'This is an interactive IPython console. A reference to the running qudi ' \
+                     'instance can be accessed via "qudi". View the current namespace with dir().\n' \
+                     'Go, play.\n'
+            self.mw.console_widget.banner = banner
+            self.console_apply_settings()
+            self.mw.console_widget.set_default_style(colors='linux')
+            kernel_client = kernel_manager.client()
+            kernel_client.start_channels()
+            self.mw.console_widget.kernel_manager = kernel_manager
+            self.mw.console_widget.kernel_client = kernel_client
+            self._has_console = True
+            self.log.info('IPython kernel for qudi main GUI successfully started.')
+        except:
+            self._has_console = False
+            self.log.exception('Exception while trying to start IPython kernel for qudi main GUI. '
+                               'Qudi IPython console not available.')
 
     def stop_jupyter_widget(self):
         """ Stops the qudi IPython kernel process and detaches it from the console widget
         """
-        self.log.info('Shutting down IPython kernel process for qudi main GUI...')
         try:
             self.mw.console_widget.kernel_client.stop_channels()
         except:
@@ -254,6 +260,7 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.kernel_manager.shutdown_kernel()
         except:
             self.log.exception('Exception while trying to shutdown qudi IPython kernel:')
+        self._has_console = False
         self.log.info('IPython kernel process for qudi main GUI has shut down.')
 
     def console_keep_settings(self):
