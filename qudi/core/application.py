@@ -97,7 +97,7 @@ class Qudi(QtCore.QObject):
             if config_file is None:
                 config_file = Configuration.get_default_config()
         self.configuration.load_config(file_path=config_file, set_default=True)
-        remote_server_config = self.configuration.remote_module_server
+        remote_server_config = self.configuration.remote_modules_server
         if remote_server_config:
             self.remote_modules_server = RemoteModulesServer(
                 parent=self,

@@ -170,7 +170,7 @@ class QudiMainGui(GuiBase):
             self.mw.remote_dockwidget.setVisible(False)
             self.mw.action_view_remote.setVisible(False)
         else:
-            server_config = self._qudi_main.configuration.remote_module_server
+            server_config = self._qudi_main.configuration.remote_modules_server
             host = server_config['address']
             port = server_config['port']
             self.mw.remote_widget.setVisible(True)

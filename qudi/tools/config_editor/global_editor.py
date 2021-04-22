@@ -158,10 +158,10 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         port = self.port_spinbox.value()
         certfile = self.certfile_lineedit.text().strip()
         keyfile = self.keyfile_lineedit.text().strip()
-        remote_module_server = {'address': host if host else None,
-                                'port': port,
-                                'certfile': certfile if certfile else None,
-                                'keyfile': keyfile if keyfile else None}
+        remote_modules_server = {'address': host if host else None,
+                                 'port': port,
+                                 'certfile': certfile if certfile else None,
+                                 'keyfile': keyfile if keyfile else None}
         namespace_server_port = self.local_port_spinbox.value()
 
         # Other options
@@ -174,7 +174,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         cfg_dict = {'default_data_dir': default_data_dir if default_data_dir else None,
                     'extensions': extensions if extensions else None,
                     'stylesheet': stylesheet if stylesheet else None,
-                    'remote_module_server': remote_module_server,
+                    'remote_modules_server': remote_modules_server,
                     'namespace_server_port': namespace_server_port,
                     'startup': startup if startup else None}
 
@@ -193,11 +193,11 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         extensions = cfg_dict.pop('extensions', None)
         stylesheet = cfg_dict.pop('stylesheet', None)
         startup = cfg_dict.pop('startup', None)
-        remote_module_server = cfg_dict.pop('remote_module_server', dict())
-        host = remote_module_server.get('address', None)
-        port = remote_module_server.get('port', None)
-        certfile = remote_module_server.get('certfile', None)
-        keyfile = remote_module_server.get('keyfile', None)
+        remote_modules_server = cfg_dict.pop('remote_modules_server', dict())
+        host = remote_modules_server.get('address', None)
+        port = remote_modules_server.get('port', None)
+        certfile = remote_modules_server.get('certfile', None)
+        keyfile = remote_modules_server.get('keyfile', None)
         namespace_server_port = cfg_dict.pop('namespace_server_port', None)
 
         self.data_directory_lineedit.setText('' if default_data_dir is None else default_data_dir)
@@ -219,7 +219,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def add_custom_option(self, name=None, value_str=''):
-        fixed_names = {'remote_module_server', 'default_data_dir', 'extensions', 'stylesheet',
+        fixed_names = {'remote_modules_server', 'default_data_dir', 'extensions', 'stylesheet',
                        'startup'}
         name = name if isinstance(name, str) else self.custom_opt_name_lineedit.text().strip()
         self.custom_opt_name_lineedit.clear()

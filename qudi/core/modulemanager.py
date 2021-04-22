@@ -142,9 +142,9 @@ class ModuleManager(QtCore.QObject):
             self._modules[module_name].sigAppDataChanged.disconnect(self.sigModuleAppDataChanged)
             self.refresh_module_links()
             if self._modules[module_name].allow_remote_access:
-                remote_module_server = self._qudi_main_ref().remote_modules_server
-                if remote_module_server is not None:
-                    remote_module_server.remove_shared_module(module_name)
+                remote_modules_server = self._qudi_main_ref().remote_modules_server
+                if remote_modules_server is not None:
+                    remote_modules_server.remove_shared_module(module_name)
             del self._modules[module_name]
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
@@ -170,15 +170,15 @@ class ModuleManager(QtCore.QObject):
             self.refresh_module_links()
             # Register module in remote module service if module should be shared
             if module.allow_remote_access:
-                remote_module_server = self._qudi_main_ref().remote_modules_server
-                if remote_module_server is None:
+                remote_modules_server = self._qudi_main_ref().remote_modules_server
+                if remote_modules_server is None:
                     logger.error(f'Unable to share qudi module "{module.name}" as remote module. '
                                  f'No remote module server running in this qudi process.')
                 else:
                     logger.info(
                         f'Start sharing qudi module "{module.name}" via remote module server.'
                     )
-                    remote_module_server.share_module(module)
+                    remote_modules_server.share_module(module)
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
 
