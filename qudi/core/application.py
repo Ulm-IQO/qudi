@@ -40,11 +40,6 @@ from qudi.core.threadmanager import ThreadManager
 from qudi.core.gui.gui import Gui
 from qudi.core.servers import RemoteModulesServer, QudiNamespaceServer
 
-try:
-    from zmq.eventloop import ioloop
-except ImportError:
-    pass
-
 # Use non-GUI "Agg" backend for matplotlib by default since it is reasonably thread-safe. Otherwise
 # you can only plot from main thread and not e.g. in a logic module.
 # This causes qudi to not be able to spawn matplotlib GUIs (by calling matplotlib.pyplot.show())
@@ -251,13 +246,6 @@ class Qudi(QtCore.QObject):
             app = app_cls.instance()
             if app is None:
                 app = app_cls(sys.argv)
-
-            # Install the pyzmq ioloop.
-            # This has to be done before anything else from tornado is imported.
-            try:
-                ioloop.install()
-            except:
-                self.log.error('Preparing ZMQ failed, probably no IPython possible!')
 
             # Install app watchdog
             self.watchdog = AppWatchdog(self.interrupt_quit)
