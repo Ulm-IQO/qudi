@@ -25,7 +25,6 @@ Copyright:
 """
 
 import re
-import importlib
 import logging
 import numpy as np
 
@@ -45,86 +44,8 @@ except ImportError:
 
 _logger = logging.getLogger(__name__)
 
-__all__ = ('csv_2_list', 'has_pyqtgraph', 'import_check', 'in_range', 'is_complex', 'is_float',
-           'is_integer', 'is_number', 'natural_sort')
-
-
-def import_check():
-    """ Checks whether all the necessary modules are present upon start of qudi.
-
-    @return: int, error code either 0 or 4.
-
-    Check also whether some recommended packages exists. Return err_code=0 if
-    all vital packages are installed and err_code=4 if vital packages are
-    missing. Make a warning about missing packages. Check versions.
-    """
-    # encode like: (python-package-name, repository-name, version)
-    vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
-                 ('fysom', 'fysom', '2.1.4')]
-    opt_pkg = [('rpyc', 'rpyc', None),
-               ('pyqtgraph', 'pyqtgraph', None),
-               ('git', 'gitpython', None)]
-
-    def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
-        """
-        Checks if a package is installed and if so whether it is new enough.
-
-        @param: pkg_name : str, package name
-        @param: repo_name : str, repository name
-        @param: version : str, required version number
-        @param: optional : bool, indicates whether a package is optional
-        @return: int, error code either 0 or 4.
-        """
-        try:
-            module = importlib.import_module(check_pkg_name)
-        except ImportError:
-            if optional:
-                additional_text = 'It is recommended to have this package installed. '
-            else:
-                additional_text = ''
-            _logger.error('No Package "{0}" installed! {2}Perform e.g.\n\n    pip install {1}\n\n'
-                          'in the console to install the missing package.'.format(check_pkg_name,
-                                                                                  check_repo_name,
-                                                                                  additional_text))
-            return 4
-        if check_version is not None:
-            # get package version number
-            try:
-                module_version = module.__version__
-            except AttributeError:
-                _logger.warning('Package "{0}" does not have a __version__ attribute. Ignoring '
-                                'version check!'.format(check_pkg_name))
-                return 0
-            # compare version number
-            if parse_version(module_version) < parse_version(check_version):
-                _logger.error('Installed package "{0}" has version {1}, but version {2} is '
-                              'required. Upgrade e.g. with \n\n    pip install --upgrade {3}\n\n'
-                              'in the console to upgrade to newest version.'
-                              ''.format(check_pkg_name,
-                                        module_version,
-                                        check_version,
-                                        check_repo_name))
-                return 4
-        return 0
-
-    err_code = 0
-    # check required packages
-    for pkg_name, repo_name, version in vital_pkg:
-        err_code = err_code | check_package(pkg_name, repo_name, version)
-
-    # check qt
-    try:
-        from PySide2.QtCore import Qt
-    except ImportError:
-        _logger.error('No Qt bindungs detected! Perform e.g.\n\n    pip install PyQt5\n\n'
-                      'in the console to install the missing package.')
-        err_code = err_code | 4
-
-    # check optional packages
-    for pkg_name, repo_name, version in opt_pkg:
-        check_package(pkg_name, repo_name, version, True)
-
-    return err_code
+__all__ = ('csv_2_list', 'has_pyqtgraph', 'in_range', 'is_complex', 'is_float', 'is_integer',
+           'is_number', 'natural_sort')
 
 
 def natural_sort(iterable):
