@@ -24,14 +24,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.modules import get_main_dir
-from interface.fast_counter_interface import FastCounterInterface
 import time
 import os
 import numpy as np
 import ctypes
+
+from qudi.core.configoption import ConfigOption
+from qudi.core.paths import get_main_dir
+from qudi.interface.fast_counter_interface import FastCounterInterface
+
 
 
 
@@ -146,7 +147,7 @@ class ACQDATA(ctypes.Structure):
                 ('hct', ctypes.c_int), ]
 
 
-class FastComtec(Base, FastCounterInterface):
+class FastComtec(FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
     This module is also compatible with model 7889 by specifying the model config option.
