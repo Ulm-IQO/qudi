@@ -361,13 +361,13 @@ class Configuration(QtCore.QObject):
         """
         stylesheet = self._global_config.get('stylesheet', None)
         if not os.path.dirname(stylesheet):
-            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', 'application', stylesheet)
+            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', stylesheet)
         return os.path.abspath(stylesheet)
 
     @stylesheet.setter
     def stylesheet(self, file_path):
         """ Setter for .qss file path used as stylesheet for qudi Qt application.
-        Can either be a relative path to <qudi>/artwork/styles/application/ or an absolute path.
+        Can either be a relative path to <qudi>/artwork/styles/ or an absolute path.
 
         If stylesheet path is set to None, it will be removed from config. This will cause the
         application to fall back to platform dependent Qt defaults.
