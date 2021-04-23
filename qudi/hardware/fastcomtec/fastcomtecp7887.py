@@ -24,14 +24,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-import os
 import time
-import ctypes
+import os
 import numpy as np
+import ctypes
 
-from qudi.util.paths import get_main_dir
 from qudi.core.configoption import ConfigOption
+from qudi.core.paths import get_main_dir
 from qudi.interface.fast_counter_interface import FastCounterInterface
+
+
+
 
 """
 Remark to the usage of ctypes:
@@ -72,7 +75,6 @@ c_void_p        void *                  int or None
 # Reconstruct the proper structure of the variables, which can be extracted
 # from the header file 'struct.h'.
 
-
 class AcqStatus(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.
 
@@ -98,7 +100,6 @@ class AcqStatus(ctypes.Structure):
                 ('sweeps', ctypes.c_double),
                 ('stevents', ctypes.c_double),
                 ('maxval', ctypes.c_ulong), ]
-
 
 class AcqSettings(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.
@@ -130,7 +131,6 @@ class AcqSettings(ctypes.Structure):
                 ('fstchan',     ctypes.c_double),
                 ('active',      ctypes.c_long),
                 ('calpoints',   ctypes.c_long), ]
-
 
 class ACQDATA(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.
@@ -193,6 +193,7 @@ class FastComtec(FastCounterInterface):
         else:
             self.change_sweep_mode(gated=False)
         return
+
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -275,6 +276,8 @@ class FastComtec(FastCounterInterface):
             self._change_filename(filename)
 
         return self.get_binwidth(), record_length_FastComTech_s, number_of_gates
+
+
 
     def get_status(self):
         """
@@ -374,6 +377,7 @@ class FastComtec(FastCounterInterface):
         """
         return self.minimal_binwidth*(2**int(self.get_bitshift()))
 
+
     def is_gated(self):
         """ Check the gated counting possibility.
 
@@ -417,11 +421,13 @@ class FastComtec(FastCounterInterface):
                      'elapsed_time': None} 
         return time_trace, info_dict
 
+
     def get_data_testfile(self):
         """ Load data test file """
         data = np.loadtxt(os.path.join(get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
+
 
     # =========================================================================
     #                           Non Interface methods
@@ -463,6 +469,7 @@ class FastComtec(FastCounterInterface):
         new_bitshift=self.set_bitshift(bitshift)
 
         return self.minimal_binwidth*(2**new_bitshift)
+
 
     #TODO: Check such that only possible lengths are set.
     def set_length(self, length_bins, preset=None, cycles=None, sequences=None):
@@ -539,6 +546,7 @@ class FastComtec(FastCounterInterface):
             self.gated = False
         return gated
 
+
     def change_save_mode(self, mode):
         """ Changes the save mode of p7887
 
@@ -595,6 +603,7 @@ class FastComtec(FastCounterInterface):
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return setting.fstchan * 6.4
 
+
     #former SaveData_fast
     def SaveData_locally(self, filename, laser_index):
         # os.chdir(r'D:\data\FastComTec')
@@ -634,6 +643,7 @@ class FastComtec(FastCounterInterface):
         status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
         return status
+
 
     def load_setup(self, configname):
         cmd = 'loadcnf={0}'.format(configname)
