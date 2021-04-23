@@ -23,15 +23,24 @@ class ModuleFinder:
     @staticmethod
     def _remove_search_paths_from_path(module_search_paths):
         for path in module_search_paths:
-            if path in sys.path:
+            try:
                 sys.path.remove(path)
+            except ValueError:
+                pass
 
     @staticmethod
     def _add_search_paths_to_path(module_search_paths):
-        for path in reversed(module_search_paths):
-            if path in sys.path:
+        for path in module_search_paths:
+            try:
                 sys.path.remove(path)
-            sys.path.insert(0, path)
+            except ValueError:
+                pass
+        try:
+            insert_index = sys.path.index(get_main_dir())
+        except ValueError:
+            insert_index = 0
+        for path in reversed(module_search_paths):
+            sys.path.insert(insert_index, path)
 
     @staticmethod
     def is_qudi_module(obj):
