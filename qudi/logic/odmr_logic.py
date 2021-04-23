@@ -34,7 +34,7 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.datastorage import TextDataStorage
-from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style as _mpl_qd_style
+from qudi.util.mpl_style import mpl_qd_style as _mpl_qd_style
 from qudi.core.enums import SamplingOutputMode
 
 

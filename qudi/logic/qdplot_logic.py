@@ -32,7 +32,7 @@ from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
 from qudi.util import units
 from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
-from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
+from qudi.util.mpl_style import mpl_qd_style
 from qudi.core.datafitting import FitContainer, FitConfigurationsModel
 
 
