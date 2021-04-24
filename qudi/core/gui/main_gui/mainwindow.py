@@ -55,11 +55,15 @@ class QudiMainWindow(QtWidgets.QMainWindow):
             QtGui.QIcon(os.path.join(icon_path, 'document-open.png')))
         self.action_load_configuration.setText('Load configuration')
         self.action_load_configuration.setToolTip('Load configuration')
-        self.action_save_configuration = QtWidgets.QAction()
-        self.action_save_configuration.setIcon(
-            QtGui.QIcon(os.path.join(icon_path, 'document-save.png')))
-        self.action_save_configuration.setText('Save configuration')
-        self.action_save_configuration.setToolTip('Save configuration')
+        self.action_open_configuration_editor = QtWidgets.QAction()
+        self.action_open_configuration_editor.setIcon(
+            QtGui.QIcon(os.path.join(icon_path, 'document-new.png'))
+        )
+        self.action_open_configuration_editor.setText('New configuration')
+        self.action_open_configuration_editor.setToolTip(
+            'Open the graphical configuration editor for editing or creating a new qudi '
+            'configuration'
+        )
         self.action_reload_qudi = QtWidgets.QAction()
         self.action_reload_qudi.setIcon(
             QtGui.QIcon(os.path.join(icon_path, 'view-refresh.png')))
@@ -125,8 +129,8 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         # Create toolbar
         self.toolbar = QtWidgets.QToolBar()
         self.toolbar.setOrientation(QtCore.Qt.Horizontal)
+        self.toolbar.addAction(self.action_open_configuration_editor)
         self.toolbar.addAction(self.action_load_configuration)
-        self.toolbar.addAction(self.action_save_configuration)
         self.toolbar.addAction(self.action_reload_qudi)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.action_load_all_modules)
@@ -135,8 +139,9 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         # Create menu bar
         self.menubar = QtWidgets.QMenuBar()
         menu = QtWidgets.QMenu('File')
+        menu.addAction(self.action_open_configuration_editor)
+        menu.addSeparator()
         menu.addAction(self.action_load_configuration)
-        menu.addAction(self.action_save_configuration)
         menu.addAction(self.action_reload_qudi)
         menu.addSeparator()
         menu.addAction(self.action_load_all_modules)
