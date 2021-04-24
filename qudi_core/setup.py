@@ -2,7 +2,7 @@
 
 import os
 import sys
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 from setuptools.command.develop import develop
 from setuptools.command.install import install
 
@@ -25,7 +25,6 @@ unix_dep = ['entrypoints',
             'pyzmq',
             'rpyc',
             'ruamel.yaml',
-            'scipy',
             ]
 
 windows_dep = ['entrypoints',
@@ -41,7 +40,6 @@ windows_dep = ['entrypoints',
                'pyzmq',
                'rpyc',
                'ruamel.yaml',
-               'scipy',
                ]
 
 
@@ -75,22 +73,10 @@ class PrePostInstallCommands(install):
             pass
 
 
-setup(name='qudi',
+setup(name='qudi_core',
       version=version,
-      packages=['qudi',
-                'qudi.core',
-                'qudi.core.gui',
-                'qudi.core.gui.main_gui',
-                'qudi.core.gui.qtwidgets',
-                'qudi.core.logger',
-                'qudi.core.jupyterkernel',
-                'qudi.core.jupyterkernel.mpl',
-                'qudi.util',
-                'qudi.tools',
-                'qudi.tools.fit_models',
-                'qudi.tools.config_editor'
-                ],
-      package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt', 'docs/*'],
+      packages=[pkg for pkg in find_namespace_packages() if not pkg.startswith('qudi.core.artwork')],
+      package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt', 'README.md'],
                     'qudi.core': ['VERSION.txt',
                                   'default.cfg',
                                   'artwork/logo/*',
