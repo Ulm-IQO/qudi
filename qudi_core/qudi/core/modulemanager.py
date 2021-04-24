@@ -689,11 +689,12 @@ class ManagedModule(QtCore.QObject):
             else:
                 # Try qudi module import
                 try:
-                    mod = importlib.import_module('{0}.{1}'.format(self._base, self._module))
+                    mod = importlib.import_module('qudi.{0}.{1}'.format(self._base, self._module))
                     importlib.reload(mod)
                 except ImportError:
                     logger.exception(
-                        'Error during import of module "{0}.{1}"'.format(self._base, self._module))
+                        f'Error during import of module "qudi.{self._base}.{self._module}"'
+                    )
                     return False
 
                 # Try getting qudi module class from imported module

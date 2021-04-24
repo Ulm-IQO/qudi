@@ -164,12 +164,9 @@ class Qudi(QtCore.QObject):
     def _add_extensions_to_path(self):
         extensions = self.configuration.extension_paths
         # Add qudi extension paths to sys.path
-        try:
-            insert_index = sys.path.index(get_main_dir())
-        except ValueError:
-            insert_index = 0
-        for ext_path in reversed(extensions):
-            sys.path.insert(insert_index, ext_path)
+        for ext_path in extensions:
+            if ext_path not in sys.path:
+                sys.path.append(ext_path)
         self._configured_extension_paths = extensions
 
     @QtCore.Slot()
@@ -244,11 +241,6 @@ class Qudi(QtCore.QObject):
         with self._run_lock:
             if self._is_running:
                 raise RuntimeError('Qudi is already running!')
-
-            # add qudi main directory to PATH
-            qudi_path = get_main_dir()
-            if qudi_path not in sys.path:
-                sys.path.insert(0, qudi_path)
 
             # Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
             # -> e.g. for segmentation faults

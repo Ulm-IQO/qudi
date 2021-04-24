@@ -9,8 +9,12 @@ from setuptools.command.install import install
 with open('README.md', 'r') as file:
     long_description = file.read()
 
-with open(os.path.join('.', 'qudi', 'core', 'VERSION.txt'), 'r') as file:
-    version = file.read().strip()
+version = '0.0.0'
+with open(os.path.join('.', 'qudi', 'core', '__init__.py'), 'r') as file:
+    for line in file.readlines():
+        if line.startswith('__version__'):
+            version = eval(line.split('=', 1)[-1].strip())
+            break
 
 unix_dep = ['entrypoints',
             'fysom',
@@ -77,8 +81,7 @@ setup(name='qudi_core',
       version=version,
       packages=[pkg for pkg in find_namespace_packages() if not pkg.startswith('qudi.core.artwork')],
       package_data={'': ['LICENSE.txt', 'COPYRIGHT.txt', 'README.md'],
-                    'qudi.core': ['VERSION.txt',
-                                  'default.cfg',
+                    'qudi.core': ['default.cfg',
                                   'artwork/logo/*',
                                   'artwork/icons/oxygen/*',
                                   'artwork/icons/oxygen/**/*.png',

@@ -25,6 +25,7 @@ import subprocess
 
 import numpy as np
 
+import qudi.core
 from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
@@ -418,10 +419,9 @@ class QudiMainGui(GuiBase):
             except:
                 self.log.exception('Unexpected error while trying to get git repo:')
 
-        # Get core version number from VERSION.txt
+        # Get core version string
         try:
-            with open(os.path.join(get_main_dir(), 'core', 'VERSION.txt'), 'r') as file:
-                return file.read().strip()
+            return qudi.core.__version__
         except:
             self.log.exception('Unexpected error while trying to get qudi version:')
         return 'unknown'

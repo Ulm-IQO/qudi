@@ -4,7 +4,13 @@ import os
 import sys
 from setuptools import setup, find_namespace_packages
 
-_core_dist = os.path.abspath(os.path.join(os.getcwd(), '..', 'qudi_core'))
+with open('README.md', 'r') as file:
+    long_description = file.read()
+
+with open('VERSION.txt', 'r') as file:
+    version = file.read().strip()
+
+_core_dist = os.path.abspath(os.path.join('C:\\Software\\dist_test\\qudi\\', 'qudi_core'))
 
 unix_dep = [f'qudi_core @ file://localhost/{_core_dist}#egg=qudi_core',
             'nidaqmx',
@@ -19,10 +25,12 @@ windows_dep = [f'qudi_core @ file://localhost/{_core_dist}#egg=qudi_core',
                ]
 
 setup(name='qudi_iqo_modules',
-      version='1.0.0',
+      version=version,
       packages=find_namespace_packages(),
       package_data={'qudi.gui': ['*.ui', '*/*.ui']},
       description='IQO measurement modules',
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       url='https://github.com/Ulm-IQO/qudi',
       keywords=['diamond',
                 'quantum',
