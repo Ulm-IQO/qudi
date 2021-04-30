@@ -29,7 +29,7 @@ from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.tools.fit_models.gaussian import Gaussian2D, Gaussian
+from qudi.util.fit_models.gaussian import Gaussian2D, Gaussian
 
 from qudi.interface.scanning_probe_interface import ScanData
 

@@ -24,7 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from abc import abstractmethod
 from qudi.core.module import Base
 from qudi.util.helpers import in_range
-from qudi.core.enums import SamplingOutputMode
+from qudi.util.enums import SamplingOutputMode
 
 
 class FiniteSamplingIOInterface(Base):

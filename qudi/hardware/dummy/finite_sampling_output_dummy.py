@@ -28,7 +28,7 @@ from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutput
 from qudi.interface.finite_sampling_output_interface import FiniteSamplingOutputConstraints
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
-from qudi.core.enums import SamplingOutputMode
+from qudi.util.enums import SamplingOutputMode
 
 
 class FiniteSamplingOutputDummy(FiniteSamplingOutputInterface):

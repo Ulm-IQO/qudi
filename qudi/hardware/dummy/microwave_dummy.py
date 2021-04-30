@@ -24,7 +24,7 @@ import time
 import numpy as np
 
 from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
-from qudi.core.enums import SamplingOutputMode
+from qudi.util.enums import SamplingOutputMode
 from qudi.util.mutex import Mutex
 
 

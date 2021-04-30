@@ -31,7 +31,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
-from qudi.core.datafitting import FitConfigurationsModel, FitContainer
+from qudi.util.datafitting import FitConfigurationsModel, FitContainer
 from qudi.util import units
 from qudi.util.math import compute_ft
 from qudi.core.module import LogicBase

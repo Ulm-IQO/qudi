@@ -34,7 +34,7 @@ from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.util.mpl_style import mpl_qd_style
 
 from qudi.interface.scanning_probe_interface import ScanData
