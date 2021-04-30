@@ -1238,8 +1238,8 @@ class AWG70K(PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        bytes_written, enum_status_code = self.awg.write(command)
-        return int(enum_status_code)
+        bytes_written = self.awg.write(command)
+        return 0
 
     def new_sequence(self, name, steps):
         """
