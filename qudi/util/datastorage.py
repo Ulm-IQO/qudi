@@ -20,23 +20,27 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('get_default_data_dir', 'get_daily_data_directory', 'CsvDataStorage', 'DataStorageBase',
+           'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+
 import os
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-from abc import ABCMeta, abstractmethod
+
 from enum import Enum
 from datetime import datetime
+from abc import ABCMeta, abstractmethod
 from matplotlib.backends.backend_pdf import PdfPages
+
+from .mutex import Mutex
+
 try:
     from qudi.core.paths import get_userdata_dir
     from qudi.core.application import Qudi
     __qudi_installed = True
 except ImportError:
     __qudi_installed = False
-
-__all__ = ('get_default_data_dir', 'get_daily_data_directory', 'CsvDataStorage', 'DataStorageBase',
-           'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 
 def get_default_data_dir(create_missing=False):
@@ -113,6 +117,7 @@ class DataStorageBase(metaclass=ABCMeta):
     across different kind of measurements.
     """
     _global_parameters = dict()
+    _global_parameters_lock = Mutex()
 
     def __init__(self, *, root_dir=None, sub_directory=None, file_extension='.dat',
                  use_daily_dir=True, include_global_parameters=True, image_format=ImageFormat.PNG):
@@ -257,7 +262,8 @@ class DataStorageBase(metaclass=ABCMeta):
     def get_global_parameters(cls):
         """ Return a copy of the global parameters dict.
         """
-        return cls._global_parameters.copy()
+        with cls._global_parameters_lock:
+            return cls._global_parameters.copy()
 
     @classmethod
     def set_global_parameter(cls, name, value, overwrite=False):
@@ -265,11 +271,12 @@ class DataStorageBase(metaclass=ABCMeta):
         """
         if not isinstance(name, str):
             raise TypeError('global parameter name must be str type.')
-        if not overwrite and name in cls._global_parameters:
-            raise KeyError('global parameter "{0}" already set while overwrite flag is False.'
-                           ''.format(name))
-        cls._global_parameters[name] = copy.deepcopy(value)
-        return
+        with cls._global_parameters_lock:
+            if not overwrite and name in cls._global_parameters:
+                raise KeyError(
+                    f'global parameter "{name}" already set while overwrite flag is False.'
+                )
+            cls._global_parameters[name] = copy.deepcopy(value)
 
     @classmethod
     def set_global_parameters(cls, params, overwrite=False):
@@ -278,18 +285,18 @@ class DataStorageBase(metaclass=ABCMeta):
         """
         if any(not isinstance(name, str) for name in params):
             raise TypeError('global parameter name must be str type.')
-        if not overwrite and any(name in cls._global_parameters for name in params):
-            raise KeyError('global parameter already set while overwrite flag is False.')
-        for name, value in params.items():
-            cls._global_parameters[name] = copy.deepcopy(value)
-        return
+        with cls._global_parameters_lock:
+            if not overwrite and any(name in cls._global_parameters for name in params):
+                raise KeyError('global parameter already set while overwrite flag is False.')
+            for name, value in params.items():
+                cls._global_parameters[name] = copy.deepcopy(value)
 
     @classmethod
     def remove_global_parameter(cls, name):
         """ Remove a global parameter. Does not raise an error.
         """
-        cls._global_parameters.pop(name, None)
-        return
+        with cls._global_parameters_lock:
+            cls._global_parameters.pop(name, None)
 
 
 class TextDataStorage(DataStorageBase):
@@ -339,10 +346,7 @@ class TextDataStorage(DataStorageBase):
         if timestamp is None:
             timestamp = datetime.now()
         # Gather all parameters (both global and provided) into a single dict if needed
-        if self.include_global_parameters:
-            all_parameters = self._global_parameters.copy()
-        else:
-            all_parameters = dict()
+        all_parameters = self.get_global_parameters() if self.include_global_parameters else dict()
         if parameters is not None:
             all_parameters.update(parameters)
 
@@ -354,11 +358,11 @@ class TextDataStorage(DataStorageBase):
             header_lines.append('===========')
             for param, value in all_parameters.items():
                 if isinstance(value, (float, np.floating)):
-                    header_lines.append('{0}: {1:.18e}'.format(param, value))
+                    header_lines.append(f'{param}: {value:.18e}')
                 elif isinstance(value, (int, np.integer)):
-                    header_lines.append('{0}: {1:d}'.format(param, value))
+                    header_lines.append(f'{param}: {value:d}')
                 else:
-                    header_lines.append('{0}: {1}'.format(param, value))
+                    header_lines.append(f'{param}: {value}')
             header_lines.append('')
         header_lines.append('Data:')
         header_lines.append('=====')
@@ -534,10 +538,7 @@ class NpyDataStorage(DataStorageBase):
         if timestamp is None:
             timestamp = datetime.now()
         # Gather all parameters (both global and provided) into a single dict if needed
-        if self.include_global_parameters:
-            all_parameters = self._global_parameters.copy()
-        else:
-            all_parameters = dict()
+        all_parameters = self.get_global_parameters() if self.include_global_parameters else dict()
         if parameters is not None:
             all_parameters.update(parameters)
 
