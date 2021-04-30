@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import unittest
 import numpy as np
 
-from qudi.core.fit_models.sine import Sine, DoubleSine
+from qudi.util.fit_models.sine import Sine, DoubleSine
 
 
 class TestSineMethods(unittest.TestCase):
