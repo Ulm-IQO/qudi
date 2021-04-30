@@ -115,6 +115,10 @@ class BenchmarkTool(object):
         if len(np.unique(all_data[:,1])) == 1:
             # fit needs at least 2 different datapoints in y
             return np.average(all_data[:,0])/all_data[0,1], 0, np.nan
-        a, t0, _, _, da = scipy.stats.linregress(weighted_data[:, 1], weighted_data[:, 0])
+        try:
+            a, t0, _, _, da = scipy.stats.linregress(weighted_data[:, 1], weighted_data[:, 0])
+        except Exception:
+            self.log.exception('Linear fit failed: ')
+            return np.nan, np.nan, np.nan
 
         return a, t0, da

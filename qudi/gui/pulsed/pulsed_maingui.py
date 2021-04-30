@@ -224,7 +224,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.show()
 
-        if np.isnan(self.pulsedmasterlogic().sequencegeneratorlogic().get_speed_write_load()):
+        if not self.pulsedmasterlogic().sequencegeneratorlogic().has_valid_pg_benchmark():
             dialog = QtWidgets.QMessageBox()
             dialog.setWindowTitle("Benchmark missing")
             dialog.setText("<center><h2>Benchmark missing:</h2></center>")
