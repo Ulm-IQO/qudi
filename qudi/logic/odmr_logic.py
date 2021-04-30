@@ -26,16 +26,16 @@ import datetime
 import matplotlib.pyplot as plt
 from PySide2 import QtCore
 
-from qudi.core.datafitting import FitContainer, FitConfigurationsModel
+from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
 from qudi.util.units import ScaledFloat
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.datastorage import TextDataStorage
+from qudi.util.datastorage import TextDataStorage
 from qudi.util.mpl_style import mpl_qd_style as _mpl_qd_style
-from qudi.core.enums import SamplingOutputMode
+from qudi.util.enums import SamplingOutputMode
 
 
 class OdmrLogic(LogicBase):

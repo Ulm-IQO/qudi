@@ -30,10 +30,9 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
-from qudi.util import units
-from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.util.mpl_style import mpl_qd_style
-from qudi.core.datafitting import FitContainer, FitConfigurationsModel
+from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
 
 class QDPlotLogic(LogicBase):
