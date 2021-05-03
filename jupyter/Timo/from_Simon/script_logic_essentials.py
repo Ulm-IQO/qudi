@@ -952,7 +952,7 @@ def optimize_position(optimize_ch=None):
 
     #pulsedmeasurementlogic.fast_counter_pause()
     if optimize_ch is None:
-        #logger.info(f"Optimization with laser ch: {setup['optimize_channel']}")
+        logger.info(f"Optimization with laser ch: {setup['optimize_channel']}")
         nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
     elif optimize_ch is '':
         logger.debug("No opt_ch optimization")
@@ -999,21 +999,23 @@ def optimize_poi(poi):
     time_start_optimize = time.time()
     #pulsedmeasurementlogic.fast_counter_pause()
     laser_on()
-    wait_for_cts()
-
+    time.sleep(0.1)
+    wait_for_cts(min_cts=30e3)
+    time.sleep(0.5)
     # perform refocus
     poimanagerlogic.optimise_poi_position(poi)
 
-    sleep_until_abort("optimizerlogic.module_state() == 'idle':")
+    sleep_until_abort("optimizerlogic.module_state() == 'idle'", timeout_s=3)
 
     scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
                               z=optimizerlogic.optim_pos_z, a=0.0)
-    time.sleep(0.5)
+
     # switch off laser
     nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
     # pulsedmeasurementlogic.fast_counter_continue()
     time_stop_optimize = time.time()
     additional_time = (time_stop_optimize - time_start_optimize)
+
 
     return additional_time
 
@@ -1201,7 +1203,7 @@ def do_automized_measurements(qm_dict, autoexp):
 
         # perform all experiments
         for experiment in autoexp:
-            logger.info("Starting experiment: {}".format(experiment))
+            logger.info("Starting experiment: {} on {}".format(experiment, poi_name))
             logger.debug("Auto exp settings: {}".format(autoexp[experiment]))
             cur_exp_dict = autoexp[experiment]
             if handle_abort() is 1:
@@ -1211,17 +1213,23 @@ def do_automized_measurements(qm_dict, autoexp):
 
 
             # perform the measurement
-            save_prefix_nv = cur_exp_dict['name'] + "_nv_" + poi
-            save_subdir_nv = "nv_" + poi
-            if first_poi:
-                do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
-                              meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
-                              generate_new=True, save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
-            else:
-                do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
-                              meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
-                              generate_new=cur_exp_dict['generate_new'],
-                              save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
+            try:
+                save_prefix_nv = cur_exp_dict['name'] + "_nv_" + poi
+                save_subdir_nv = "nv_" + poi
+                if first_poi:
+                    do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
+                                  meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
+                                  generate_new=True, save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
+                else:
+                    try:
+                        generate_new = cur_exp_dict['generate_new']
+                    except: generate_new = True
+                    do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
+                                  meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
+                                  generate_new=generate_new,
+                                  save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
+            except:
+                logger.exception("Error during measurement: ")
 
             # fit and update parameters
             if 'fit_experiment' in cur_exp_dict:

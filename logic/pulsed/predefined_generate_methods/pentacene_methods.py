@@ -11,6 +11,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    ############ pentacene methodes
 
     def generate_podmr_pentacene(self, name='podmr_pen', freq_start=1430.0e6, freq_step=2e6, wait_2_time=50e-6,
                             num_of_points=20, alternating_no_mw=False):
@@ -215,7 +216,84 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_rabi_NV_red_read(self, name='rabi_red', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
+
+
+    ############# NV methods
+
+    def generate_laser_strob(self, name='laser_strob', t_laser_read=3e-6,
+                                  t_laser_init=10e-6, t_wait_between=0e-9, laser_read_ch='', add_gate_ch='',
+                                  t_aom_safety=250e-9):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        laser_init_element = self._get_laser_gate_element(length=t_laser_init,
+                                                          increment=0)
+        laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
+                                                         increment=0)
+        # close gap between aom init laser pulse and instant red pulse
+        laser_red_balanceaom_element = self._get_laser_gate_element(length=t_aom_safety,
+                                                         increment=0)
+        if laser_read_ch:
+            laser_red_element.digital_high[self.laser_channel] = False
+            laser_red_element.digital_high[laser_read_ch] = True
+            if t_laser_init > t_aom_safety:
+                laser_red_balanceaom_element.digital_high[self.laser_channel] = True
+            else:
+                laser_red_balanceaom_element.digital_high[self.laser_channel] = False
+            laser_red_balanceaom_element.digital_high[laser_read_ch] = True
+
+        # additional gate channel, independent on the one from pulsed gui
+        if add_gate_ch:
+            laser_red_element.digital_high[add_gate_ch] = True
+            laser_red_balanceaom_element.digital_high[add_gate_ch] = True
+
+        idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
+                                                             increment=0)
+
+        delay_element = self._get_delay_gate_element()
+        safety_element = self._get_idle_element(length=t_aom_safety,
+                                                increment=0)
+
+        # Create block and append to created_blocks list
+        strob_block = PulseBlock(name=name)
+        strob_block.append(laser_red_element)
+        strob_block.append(laser_red_balanceaom_element)
+        strob_block.append(idle_between_lasers_element)
+        strob_block.append(laser_init_element)
+        # Is considerable fraction of time, not needed in confocal scanning as m_s state unchanged
+        #strob_block.append(delay_element)
+        # ~ aom delay, but more aggressive timing. Avoid overlapping of green (aom) and red (instant)
+        strob_block.append(safety_element)
+
+
+        created_blocks.append(strob_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((strob_block.name, 1 - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = [-1]
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 1
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_rabi_nv_red_read(self, name='rabi_red', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
                                  t_laser_init=10e-6, t_wait_between=10e-9, laser_read_ch='', add_gate_ch=''):
         """
 
@@ -281,6 +359,411 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def generate_hahn_nv_red_read(self, name='hahn_red', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
+                                 t_laser_init=10e-6, t_wait_between=10e-9, laser_read_ch='', add_gate_ch='',
+                                  alternating=False):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        pi_element = self._get_mw_element(length=self.rabi_period / 2,
+                                          increment=0,
+                                          amp=self.microwave_amplitude,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+
+        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_red_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        if laser_read_ch:
+            laser_red_element.digital_high[self.laser_channel] = False
+            laser_red_element.digital_high[laser_read_ch] = True
+
+        # additional gate channel, independent on the one from pulsed gui
+        if add_gate_ch:
+            laser_red_element.digital_high[add_gate_ch] = True
+
+        idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
+                                                 increment=0)
+        laser_init_element = self._get_laser_gate_element(length=t_laser_init,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        hahn_block = PulseBlock(name=name)
+        hahn_block.append(pihalf_element)
+        hahn_block.append(tau_element)
+        hahn_block.append(pi_element)
+        hahn_block.append(tau_element)
+        hahn_block.append(pihalf_element)
+        hahn_block.append(laser_red_element)
+        hahn_block.append(idle_between_lasers_element)
+        hahn_block.append(laser_init_element)
+        hahn_block.append(delay_element)
+        hahn_block.append(waiting_element)
+
+        if alternating:
+            hahn_block.append(pihalf_element)
+            hahn_block.append(tau_element)
+            hahn_block.append(pi_element)
+            hahn_block.append(tau_element)
+            hahn_block.append(pi3half_element)
+            hahn_block.append(laser_red_element)
+            hahn_block.append(idle_between_lasers_element)
+            hahn_block.append(laser_init_element)
+            hahn_block.append(delay_element)
+            hahn_block.append(waiting_element)
+
+        created_blocks.append(hahn_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((hahn_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_xy8_tau_nv_red(self, name='xy8_tau_red', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                                xy8_order=4,
+                                t_laser_init=10e-6, t_wait_between=10e-9, laser_read_ch='', add_gate_ch='',
+                                alternating=True):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        # calculate "real" start length of tau due to finite pi-pulse length
+        real_start_tau = max(0, tau_start - self.rabi_period / 2)
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        laser_red_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+        if laser_read_ch:
+            laser_red_element.digital_high[self.laser_channel] = False
+            laser_red_element.digital_high[laser_read_ch] = True
+
+        # additional gate channel, independent on the one from pulsed gui
+        if add_gate_ch:
+            laser_red_element.digital_high[add_gate_ch] = True
+
+        idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
+                                                 increment=0)
+        laser_init_element = self._get_laser_gate_element(length=t_laser_init,
+                                                     increment=0)
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+        pix_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=0)
+        piy_element = self._get_mw_element(length=self.rabi_period / 2,
+                                           increment=0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=90)
+        tauhalf_element = self._get_idle_element(length=real_start_tau / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=real_start_tau, increment=tau_step)
+
+        # Create block and append to created_blocks list
+        xy8_block = PulseBlock(name=name)
+        xy8_block.append(pihalf_element)
+        xy8_block.append(tauhalf_element)
+        for n in range(xy8_order):
+            xy8_block.append(pix_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(pix_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(pix_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(pix_element)
+            if n != xy8_order - 1:
+                xy8_block.append(tau_element)
+        xy8_block.append(tauhalf_element)
+        xy8_block.append(pihalf_element)
+        xy8_block.append(laser_red_element)
+        xy8_block.append(idle_between_lasers_element)
+        xy8_block.append(laser_init_element)
+        xy8_block.append(delay_element)
+        xy8_block.append(waiting_element)
+        if alternating:
+            xy8_block.append(pihalf_element)
+            xy8_block.append(tauhalf_element)
+            for n in range(xy8_order):
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                if n != xy8_order - 1:
+                    xy8_block.append(tau_element)
+            xy8_block.append(tauhalf_element)
+            xy8_block.append(pi3half_element)
+            xy8_block.append(laser_red_element)
+            xy8_block.append(idle_between_lasers_element)
+            xy8_block.append(laser_init_element)
+            xy8_block.append(delay_element)
+            xy8_block.append(waiting_element)
+        created_blocks.append(xy8_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((xy8_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_xy8_nsweep_nv_red(self, name='XY8_n_red', tau=1.0e-6, xy8_start=1, xy8_step=1,
+                                   t_laser_init=10e-6, t_wait_between=10e-9, laser_read_ch='', add_gate_ch='',
+                                num_of_points=50, alternating = True):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get pulse number array for measurement ticks
+        xy8_array = xy8_start + np.arange(num_of_points) * xy8_step
+        xy8_array.astype(int)
+        # change parameters in a way that they fit to the current sampling rate
+        rabi_period = self._adjust_to_samplingrate(self.rabi_period, 4)
+        tau = self._adjust_to_samplingrate(tau, 2)
+        real_tau = max(0, tau - rabi_period / 2)
+
+        # get readout element
+        readout_element = self._get_readout_element()
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        delay_element = self._get_delay_gate_element()
+        laser_red_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        if laser_read_ch:
+            laser_red_element.digital_high[self.laser_channel] = False
+            laser_red_element.digital_high[laser_read_ch] = True
+
+        # additional gate channel, independent on the one from pulsed gui
+        if add_gate_ch:
+            laser_red_element.digital_high[add_gate_ch] = True
+
+        idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
+                                                 increment=0)
+        laser_init_element = self._get_laser_gate_element(length=t_laser_init,
+                                                     increment=0)
+
+
+
+        # get pihalf element
+        pihalf_element = self._get_mw_element(length=rabi_period / 4,
+                                              increment=0.0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0.0)
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+        # get pi elements
+        pix_element = self._get_mw_element(length=rabi_period / 2,
+                                           increment=0.0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=0.0)
+
+        piy_element = self._get_mw_element(length=rabi_period / 2,
+                                           increment=0.0,
+                                           amp=self.microwave_amplitude,
+                                           freq=self.microwave_frequency,
+                                           phase=90.0)
+
+        # get tau elements
+        tau_element = self._get_idle_element(length=real_tau, increment=0)
+        tauhalf_element = self._get_idle_element(length=real_tau / 2, increment=0)
+        #self.log.warning(locals())
+
+
+
+        # create XY8-N block element list
+        xy8_block = PulseBlock(name=name)
+        for ii in range(num_of_points):
+            xy8_block.append(pihalf_element)
+            xy8_block.append(tauhalf_element)
+            xy8_order = xy8_array[ii]
+            for n in range(xy8_order):
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                if n != xy8_order - 1:
+                    xy8_block.append(tau_element)
+            xy8_block.append(tauhalf_element)
+            xy8_block.append(pihalf_element)
+            xy8_block.append(laser_red_element)
+            xy8_block.append(idle_between_lasers_element)
+            xy8_block.append(laser_init_element)
+            xy8_block.append(delay_element)
+            xy8_block.append(waiting_element)
+            if alternating:
+                xy8_block.append(pihalf_element)
+                xy8_block.append(tauhalf_element)
+                for n in range(xy8_order):
+                    xy8_block.append(pix_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(pix_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(pix_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(pix_element)
+                    if n != xy8_order - 1:
+                        xy8_block.append(tau_element)
+                xy8_block.append(tauhalf_element)
+                xy8_block.append(pi3half_element)
+                xy8_block.append(laser_red_element)
+                xy8_block.append(idle_between_lasers_element)
+                xy8_block.append(laser_init_element)
+                xy8_block.append(delay_element)
+                xy8_block.append(waiting_element)
+
+        created_blocks.append(xy8_block)
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((xy8_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        created_blocks, block_ensemble = self._add_trigger(created_blocks, block_ensemble)
+        # add metadata to invoke settings
+        block_ensemble = self._add_metadata_to_settings(block_ensemble, created_blocks=created_blocks,
+                                                        alternating=alternating,
+                                                        controlled_variable= 8 * xy8_array * tau)
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+
+        return created_blocks, created_ensembles, created_sequences
+
+
+
+
 
     def generate_t1_pentacene(self, name='T1_pen', tau_start=1.0e-6, tau_step=1.0e-6,
                     num_of_points=50, alternating=False, wait_2_time=50e-6):
