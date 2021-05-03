@@ -19,13 +19,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('scan_blink_correction',)
+
 import numpy as np
 from scipy.ndimage import minimum_filter1d, maximum_filter1d
-
 import logging
-_logger = logging.getLogger(__name__)
 
-__all__ = ('scan_blink_correction',)
+_logger = logging.getLogger(__name__)
 
 
 def scan_blink_correction(image, axis=1):

@@ -20,11 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('find_highest_peaks', 'estimate_double_peaks', 'estimate_triple_peaks')
+
 import numpy as np
 from scipy.signal import find_peaks as _find_peaks
 from scipy.signal import peak_widths as _peak_widths
-
-__all__ = ('find_highest_peaks', 'estimate_double_peaks', 'estimate_triple_peaks')
 
 
 def find_highest_peaks(data, peak_count, allow_borders=True, **kwargs):

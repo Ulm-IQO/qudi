@@ -23,10 +23,10 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more information.
 """
 
+__all__ = ('Mutex', 'RecursiveMutex')
+
 from PySide2.QtCore import QMutex as _QMutex
 from PySide2.QtCore import QRecursiveMutex as _QRecursiveMutex
-
-__all__ = ('Mutex', 'RecursiveMutex')
 
 
 class Mutex(_QMutex):

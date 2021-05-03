@@ -20,15 +20,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = (
+    'DoubleLorentzian', 'Lorentzian', 'LorentzianLinear', 'TripleLorentzian', 'multiple_lorentzian'
+)
+
 import numpy as np
 from ._general import FitModelBase, estimator, correct_offset_histogram, smooth_data
 from ._general import sort_check_data
 from ._peak_helpers import estimate_double_peaks, estimate_triple_peaks
 from .linear import Linear
-
-__all__ = (
-    'DoubleLorentzian', 'Lorentzian', 'LorentzianLinear', 'TripleLorentzian', 'multiple_lorentzian'
-)
 
 
 def multiple_lorentzian(x, centers, sigmas, amplitudes):

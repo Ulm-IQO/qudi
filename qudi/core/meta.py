@@ -20,13 +20,13 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('ABCQObjectMeta', 'ModuleMeta', 'QObjectMeta')
+
 from abc import ABCMeta
 from PySide2.QtCore import QObject
 from qudi.core.statusvariable import StatusVar
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-
-__all__ = ('ABCQObjectMeta', 'ModuleMeta', 'QObjectMeta')
 
 
 QObjectMeta = type(QObject)
