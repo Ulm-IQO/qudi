@@ -20,14 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('OptimizerDockWidget',)
+
 import numpy as np
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtWidgets
 from pyqtgraph import PlotDataItem, mkPen
 from qudi.core.gui.qtwidgets.scan_2d_widget import Scan2DPlotWidget, ScanImageItem
 from qudi.core.gui.qtwidgets.scan_1d_widget import Scan1DPlotWidget
 from qudi.core.gui.colordefs import QudiPalette
-
-__all__ = ('OptimizerDockWidget',)
 
 
 class OptimizerDockWidget(QtWidgets.QDockWidget):

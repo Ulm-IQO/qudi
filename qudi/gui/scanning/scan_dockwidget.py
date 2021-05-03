@@ -20,13 +20,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('Scan1DDockWidget', 'Scan2DDockWidget')
+
 import os
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2 import QtGui, QtWidgets
 from qudi.core.gui.qtwidgets.scan_2d_widget import Scan2DWidget
 from qudi.core.gui.qtwidgets.scan_1d_widget import Scan1DWidget
 from qudi.core.paths import get_artwork_dir
-
-__all__ = ('Scan1DDockWidget', 'Scan2DDockWidget')
 
 
 class Scan2DDockWidget(QtWidgets.QDockWidget):
