@@ -23,13 +23,14 @@ import os
 import weakref
 import platform
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.util.helpers import has_pyqtgraph
 from qudi.core.gui.main_gui.main_gui import QudiMainGui
 from qudi.core.paths import get_artwork_dir
 from qudi.core.logger import get_logger
 
-if has_pyqtgraph:
+try:
     import pyqtgraph as pg
+except ImportError:
+    pg = None
 
 logger = get_logger(__name__)
 
@@ -138,7 +139,7 @@ class Gui(QtCore.QObject):
     @staticmethod
     def _configure_pyqtgraph(use_opengl=False):
         # Configure pyqtgraph (if present)
-        if has_pyqtgraph:
+        if pg is not None:
             # test setting background of pyqtgraph
             testwidget = QtWidgets.QWidget()
             testwidget.ensurePolished()
