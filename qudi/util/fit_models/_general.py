@@ -21,16 +21,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = (
+    'correct_offset_histogram', 'estimator', 'FitCompositeModelBase', 'FitCompositeModelMeta',
+    'FitModelBase', 'FitModelMeta', 'sort_check_data', 'smooth_data'
+)
+
 import inspect
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from lmfit import Model, CompositeModel
 from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
-
-__all__ = (
-    'correct_offset_histogram', 'estimator', 'FitCompositeModelBase', 'FitCompositeModelMeta',
-    'FitModelBase', 'FitModelMeta', 'sort_check_data', 'smooth_data'
-)
 
 
 def estimator(name):

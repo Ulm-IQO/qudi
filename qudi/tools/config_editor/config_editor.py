@@ -3,6 +3,8 @@
 
 """
 
+__all__ = ('main', 'ConfigurationEditorMainWindow', 'ConfigurationEditor')
+
 import os
 import sys
 from PySide2 import QtCore, QtGui, QtWidgets
@@ -21,8 +23,6 @@ try:
     matplotlib.use('agg')
 except ImportError:
     pass
-
-__all__ = ('main', 'ConfigurationEditorMainWindow', 'ConfigurationEditor')
 
 
 class ConfigurationEditorMainWindow(QtWidgets.QMainWindow):

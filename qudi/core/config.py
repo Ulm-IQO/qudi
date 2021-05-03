@@ -28,6 +28,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML', 'load',
+           'save', 'yaml_load', 'yaml_dump')
+
 import os
 import re
 import copy
@@ -39,9 +42,6 @@ from io import BytesIO, TextIOWrapper
 from PySide2 import QtCore
 
 import qudi.core.paths as _paths
-
-__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML',
-           'load', 'save', 'yaml_load', 'yaml_dump')
 
 
 class QudiSafeRepresenter(_yaml.SafeRepresenter):
