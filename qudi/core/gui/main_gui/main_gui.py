@@ -29,7 +29,6 @@ from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.paths import get_main_dir, get_default_config_dir
-from qudi.util.helpers import has_pyqtgraph
 from qudi.core.remote import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
@@ -47,8 +46,10 @@ try:
 except ImportError:
     Repo = None
 
-if has_pyqtgraph:
+try:
     import pyqtgraph as pg
+except ImportError:
+    pg = None
 
 
 class QudiMainGui(GuiBase):
@@ -247,7 +248,7 @@ class QudiMainGui(GuiBase):
              'config': self._qudi_main.configuration.config_dict,
              'qudi': self._qudi_main}
         )
-        if has_pyqtgraph:
+        if pg is not None:
             self._kernel_manager.kernel.shell.user_ns['pg'] = pg
         self.update_ipython_all_modules()
         self._kernel_manager.kernel.gui = 'qt4'
@@ -262,7 +263,7 @@ class QudiMainGui(GuiBase):
         """
         Create an IPython console widget and connect it to an IPython kernel.
         """
-        if has_pyqtgraph:
+        if pg is not None:
             banner_modules = 'The numpy and pyqtgraph modules have already been imported as "np" ' \
                              'and "pg".'
         else:

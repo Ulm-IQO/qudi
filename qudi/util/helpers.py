@@ -15,17 +15,14 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-Distributed under the MIT license, see documentation/MITLicense.md.
-PyQtGraph - Scientific Graphics and GUI Library for Python
-www.pyqtgraph.org
-Copyright:
-  2012  University of North Carolina at Chapel Hill
-        Luke Campagnola    <luke.campagnola@gmail.com>
 """
 
+__all__ = ('csv_2_list', 'in_range', 'is_complex', 'is_float', 'is_integer', 'is_number',
+           'iter_modules_recursive', 'natural_sort')
+
 import re
-import logging
+import os
+import pkgutil
 import numpy as np
 
 # use setuptools parse_version if available and use distutils LooseVersion as
@@ -35,17 +32,41 @@ try:
 except ImportError:
     from distutils.version import LooseVersion as parse_version
 
-has_pyqtgraph = False
-try:
-    import pyqtgraph
-    has_pyqtgraph = True
-except ImportError:
-    pass
 
-_logger = logging.getLogger(__name__)
+def iter_modules_recursive(path, prefix=''):
+    """ Has the same signature as pkgutil.iter_modules() but extends the functionality by walking
+    through the entire directory tree and concatenating the return values of pkgutil.iter_modules()
+    for each directory.
 
-__all__ = ('csv_2_list', 'has_pyqtgraph', 'in_range', 'is_complex', 'is_float', 'is_integer',
-           'is_number', 'natural_sort')
+    Additional modifications include:
+    - Directories starting with "_" or "." are ignored (also including their sub-directories)
+    - Python modules starting with a double-underscore ("__") are excluded in the result
+
+    @param iterable path: Iterable of root directories to start the search for modules
+    @param str prefix: optional, prefix to prepend to all module names.
+    """
+    if isinstance(path, str):
+        path = [path]
+    module_infos = list()
+    for search_top in list(path):
+        for root, dirs, files in os.walk(search_top):
+            rel_path = os.path.relpath(root, search_top)
+            if rel_path and rel_path != '.' and rel_path[0] in '._':
+                # Prevent os.walk to descent further down this tree branch
+                dirs.clear()
+                # Ignore this directory
+                continue
+            # Resolve current module prefix
+            if not rel_path or rel_path == '.':
+                curr_prefix = prefix
+            else:
+                curr_prefix = prefix + '.'.join(rel_path.split(os.sep)) + '.'
+            # find modules and packages in current dir
+            tmp = pkgutil.iter_modules([root], prefix=curr_prefix)
+            module_infos.extend(
+                [mod_inf for mod_inf in tmp if not mod_inf.name.rsplit('.', 1)[-1].startswith('__')]
+            )
+    return module_infos
 
 
 def natural_sort(iterable):
