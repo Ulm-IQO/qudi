@@ -21,13 +21,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('ProcessSetpointInterface', 'ProcessValueInterface', 'ProcessControlInterface',
+           'ProcessControlConstraints')
+
 import numpy as np
 from abc import abstractmethod
 from qudi.core.module import Base
 from qudi.util.helpers import in_range
-
-__all__ = ('ProcessSetpointInterface', 'ProcessValueInterface', 'ProcessControlInterface',
-           'ProcessControlConstraints')
 
 
 class ProcessSetpointInterface(Base):

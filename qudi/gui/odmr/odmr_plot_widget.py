@@ -20,14 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('OdmrPlotWidget',)
+
 import pyqtgraph as pg
 from PySide2 import QtCore, QtWidgets
 
 from qudi.core.gui.qtwidgets.scan_2d_widget import ScanImageItem
 from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget, ColorBarMode
 from qudi.core.gui.colordefs import QudiPalettePale as palette
-
-__all__ = ('OdmrPlotWidget',)
 
 
 class OdmrPlotWidget(QtWidgets.QWidget):

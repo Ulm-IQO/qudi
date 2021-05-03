@@ -20,13 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('OdmrCwControlDockWidget', 'OdmrScanControlDockWidget')
+
 import numpy as np
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 
-__all__ = ('OdmrCwControlDockWidget', 'OdmrScanControlDockWidget')
 
 # Determine minimal spinbox width from current default metrics
 _min_spinbox_width = QtGui.QFontMetrics(ScienDSpinBox().font()).width('   -000.000000 GHz   ')

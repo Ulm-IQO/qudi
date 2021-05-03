@@ -20,10 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('OdmrFitDockWidget',)
+
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.core.gui.qtwidgets.fitting import FitWidget
-
-__all__ = ('OdmrFitDockWidget',)
 
 
 class OdmrFitDockWidget(AdvancedDockWidget):
