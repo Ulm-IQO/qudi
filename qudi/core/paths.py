@@ -15,15 +15,15 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+
+ToDo: Throw errors around for non-existent directories
 """
-
-# ToDo: Throw errors around for non-existent directories
-
-import os
-import sys
 
 __all__ = ('get_appdata_dir', 'get_default_config_dir', 'get_default_log_dir', 'get_home_dir',
            'get_main_dir', 'get_userdata_dir', 'get_artwork_dir')
+
+import os
+import sys
 
 
 def get_main_dir():

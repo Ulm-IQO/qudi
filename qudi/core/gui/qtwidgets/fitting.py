@@ -20,14 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('FitWidget', 'FitConfigurationWidget', 'FitConfigurationDialog')
+
 import os
 import weakref
 from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel, FitConfiguration
 from qudi.core.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-
-__all__ = ('FitWidget', 'FitConfigurationWidget', 'FitConfigurationDialog')
 
 
 class FitWidget(QtWidgets.QWidget):

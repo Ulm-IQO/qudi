@@ -21,14 +21,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
+__all__ = ('ColorBarMode', 'ColorBarWidget')
+
 from enum import Enum
-from pyqtgraph import mkPen, mkBrush, GraphicsObject, PlotWidget, BarGraphItem, mkColor
+from pyqtgraph import mkPen, mkBrush, PlotWidget, BarGraphItem
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.colordefs import ColorScaleInferno
-
-__all__ = ('ColorBarMode', 'ColorBarWidget')
 
 
 class ColorBarMode(Enum):

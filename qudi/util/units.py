@@ -19,15 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('create_formatted_output', 'get_relevant_digit', 'get_si_norm', 'get_unit_prefix_dict',
+           'round_value_to_error', 'ScaledFloat')
+
 import math
 import numpy as np
 try:
     import pyqtgraph.functions as fn
 except ImportError:
     fn = None
-
-__all__ = ('create_formatted_output', 'get_relevant_digit', 'get_si_norm', 'get_unit_prefix_dict',
-           'round_value_to_error', 'ScaledFloat')
 
 
 def get_unit_prefix_dict():

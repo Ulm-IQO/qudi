@@ -20,11 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'estimate_frequency_ft')
+
 import numpy as np
 from qudi.util.math import compute_ft
 from ._general import FitModelBase, estimator, sort_check_data
-
-__all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'estimate_frequency_ft')
 
 
 def estimate_frequency_ft(data, x):
