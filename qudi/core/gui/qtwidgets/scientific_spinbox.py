@@ -17,14 +17,14 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
+__all__ = ('ScienDSpinBox', 'ScienSpinBox')
+
 from PySide2 import QtCore, QtGui, QtWidgets
 import numpy as np
 import re
 from decimal import Decimal as D  # Use decimal to avoid accumulating floating-point errors
 from decimal import ROUND_FLOOR
 import math
-
-__all__ = ['ScienDSpinBox', 'ScienSpinBox']
 
 
 class FloatValidator(QtGui.QValidator):

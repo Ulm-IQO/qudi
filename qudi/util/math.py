@@ -19,10 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('compute_ft', 'ft_windows')
+
 import numpy as np
 from scipy import signal
 
-__all__ = ('compute_ft', 'ft_windows')
 
 # Available windows to be applied on signal data before FT.
 # To find out the amplitude normalization factor check either the scipy implementation on

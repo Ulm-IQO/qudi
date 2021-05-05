@@ -17,9 +17,9 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from PySide2 import QtCore, QtWidgets
-
 __all__ = ('AdvancedDockWidget',)
+
+from PySide2 import QtCore, QtWidgets
 
 
 class AdvancedDockWidget(QtWidgets.QDockWidget):

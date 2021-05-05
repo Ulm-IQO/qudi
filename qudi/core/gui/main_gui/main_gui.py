@@ -39,6 +39,11 @@ try:
 except ImportError:
     Repo = None
 
+try:
+    import pyqtgraph as pg
+except ImportError:
+    pg = None
+
 
 class QudiMainGui(GuiBase):
     """

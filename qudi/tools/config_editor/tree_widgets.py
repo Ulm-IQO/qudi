@@ -3,9 +3,9 @@
 
 """
 
-from PySide2 import QtCore, QtGui, QtWidgets
-
 __all__ = ('AvailableModulesTreeWidget', 'SelectedModulesTreeWidget', 'ConfigModulesTreeWidget')
+
+from PySide2 import QtCore, QtGui, QtWidgets
 
 
 class AvailableModulesTreeWidget(QtWidgets.QTreeWidget):
