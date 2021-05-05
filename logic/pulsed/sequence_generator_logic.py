@@ -27,7 +27,6 @@ import time
 import copy
 import traceback
 import datetime
-import re
 
 from qtpy import QtCore
 from collections import OrderedDict
@@ -2295,7 +2294,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         start_time = time.perf_counter()
 
-        loaded_dict = self.pulsegenerator().load_waveform(wfm_list)[0]
+        loaded_dict = self.pulsegenerator().load_waveform(wfm_list)
         if not ignore_datapoint:
             self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                                 is_persistent=persistent_datapoint)
