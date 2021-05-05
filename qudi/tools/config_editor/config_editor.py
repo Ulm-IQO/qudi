@@ -68,7 +68,7 @@ class ConfigurationEditorMainWindow(QtWidgets.QMainWindow):
         self.module_tree_widget.itemSelectionChanged.connect(self.module_selection_changed)
 
         # Main window actions
-        icon_dir = os.path.join(get_main_dir(), 'core', 'artwork', 'icons', 'oxygen', '22x22')
+        icon_dir = os.path.join(get_main_dir(), 'artwork', 'icons', 'oxygen', '22x22')
         quit_icon = QtGui.QIcon(os.path.join(icon_dir, 'application-exit.png'))
         self.quit_action = QtWidgets.QAction(quit_icon, 'Quit')
         self.quit_action.setShortcut(QtGui.QKeySequence('Ctrl+Q'))
