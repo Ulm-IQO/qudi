@@ -1387,12 +1387,12 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         else:
             self.log.error('Method load_waveform expects a list of waveform '
                            'names or a dict.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         if len(waveforms) != 1:
             self.log.error('PulseBlaster expects exactly one waveform name for '
                            'load_waveform.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         waveform = waveforms[0]
         if waveform != self._current_pb_waveform_name:
@@ -1400,7 +1400,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                            'PulseBlaster.\n'
                            'Only one waveform at a time can be '
                            'held.'.format(waveform))
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         self.write_pulse_form(self._current_pb_waveform)
         self._currently_loaded_waveform = waveform
