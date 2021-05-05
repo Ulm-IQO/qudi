@@ -603,13 +603,13 @@ class AWG70K(PulserInterface):
         if not channels_to_set.issubset(analog_channels):
             self.log.error('Unable to load waveforms into channels.\n'
                            'One or more channels to set are not active.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Check if all waveforms to load are present on device memory
         if not set(load_dict.values()).issubset(self.get_waveform_names()):
             self.log.error('Unable to load waveforms into channels.\n'
                            'One or more waveforms to load are missing on device memory.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Load waveforms into channels
         for chnl_num, waveform in load_dict.items():
