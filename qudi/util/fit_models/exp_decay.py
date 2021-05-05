@@ -22,10 +22,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ('ExponentialDecay', 'multiple_exponential_decay')
 
-import numpy as np
 import warnings
+import numpy as np
 from scipy.ndimage import filters
-from ._general import FitModelBase, estimator
+from qudi.util.fit_models.model import FitModelBase, estimator
 
 
 def multiple_exponential_decay(x, amplitudes, decays, stretches):
