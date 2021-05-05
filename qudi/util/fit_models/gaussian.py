@@ -23,10 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ('DoubleGaussian', 'Gaussian', 'Gaussian2D', 'TripleGaussian', 'multiple_gaussian')
 
 import numpy as np
-from ._general import FitModelBase, estimator, correct_offset_histogram, smooth_data
-from ._general import sort_check_data
-from ._peak_helpers import estimate_double_peaks, estimate_triple_peaks
-from .linear import Linear
+from qudi.util.fit_models.model import FitModelBase, estimator
+from qudi.util.fit_models.helpers import correct_offset_histogram, smooth_data, sort_check_data
+from qudi.util.fit_models.helpers import estimate_double_peaks, estimate_triple_peaks
+from qudi.util.fit_models.linear import Linear
 
 
 def multiple_gaussian(x, centers, sigmas, amplitudes):
