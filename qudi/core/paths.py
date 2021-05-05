@@ -39,7 +39,7 @@ def get_artwork_dir():
 
     @return string: path to the artwork directory of qudi
     """
-    return os.path.join(get_main_dir(), 'core', 'artwork')
+    return os.path.join(get_main_dir(), 'artwork')
 
 
 def get_home_dir():
