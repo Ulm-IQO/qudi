@@ -20,11 +20,51 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('find_highest_peaks', 'estimate_double_peaks', 'estimate_triple_peaks')
+__all__ = ('correct_offset_histogram', 'find_highest_peaks', 'estimate_double_peaks',
+           'estimate_triple_peaks', 'sort_check_data', 'smooth_data')
 
 import numpy as np
 from scipy.signal import find_peaks as _find_peaks
 from scipy.signal import peak_widths as _peak_widths
+from scipy.ndimage.filters import gaussian_filter1d as _gaussian_filter
+
+
+def sort_check_data(data, x):
+    # sort x in increasing order and data accordingly
+    sorted_args = np.argsort(x)
+    x = np.asarray(x[sorted_args])
+    data = np.asarray(data[sorted_args])
+    return data, x
+
+
+def smooth_data(data, filter_width=None):
+    if filter_width is None:
+        filter_width = max(1, int(round(len(data) / 100)))
+    return _gaussian_filter(data, sigma=filter_width), filter_width
+
+
+def correct_offset_histogram(data, bin_width=None):
+    """ Subtracts a constant offset from a copy of given data array and returns it.
+    The offset is assumed to be the most common value in data. This value is determined by creating
+    a histogram of <data> with bin width <bin_width> and taking the value with most occurrences.
+    If no bin width has been specified, assume bin width of 1/50th of data length (min. 1).
+
+    For best results, make sure to filter noisy data beforehand. The used smoothing filter width
+    is a good estimate for optimal bin_width.
+
+    @param iterable data: Peak data to correct offset for. Must be convertible using numpy.asarray.
+    @param int bin_width: optional, bin width in samples to use for histogram creation.
+
+    @return numpy.ndarray, float: New array with offset-corrected data, the offset value
+    """
+    data = np.asarray(data)
+    if bin_width is None:
+        bin_width = max(1, data.size // 50)
+    elif not isinstance(bin_width, int):
+        bin_width = max(1, int(round(bin_width)))
+    hist = np.histogram(data, bins=bin_width)
+    offset = (hist[1][hist[0].argmax()] + hist[1][hist[0].argmax() + 1]) / 2
+    return data - offset, offset
 
 
 def find_highest_peaks(data, peak_count, allow_borders=True, **kwargs):

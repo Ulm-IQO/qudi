@@ -24,7 +24,8 @@ __all__ = ('Sine', 'DoubleSine', 'ExponentialDecaySine', 'estimate_frequency_ft'
 
 import numpy as np
 from qudi.util.math import compute_ft
-from ._general import FitModelBase, estimator, sort_check_data
+from qudi.util.fit_models.model import FitModelBase, estimator
+from qudi.util.fit_models.helpers import sort_check_data
 
 
 def estimate_frequency_ft(data, x):
