@@ -447,7 +447,7 @@ class PulserDummy(PulserInterface):
                     return self.current_loaded_assets
             new_loaded_assets[channel] = waveform
         self.current_loaded_assets = new_loaded_assets
-        return self.get_loaded_assets()
+        return return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -463,7 +463,7 @@ class PulserDummy(PulserInterface):
         if sequence_name not in self.sequence_dict:
             self.log.error('Sequence loading failed. No sequence with name "{0}" found on device '
                            'memory.'.format(sequence_name))
-            return self.get_loaded_assets()
+            return return self.get_loaded_assets()[0]
 
         # Determine if the device is purely digital and get all active channels
         analog_channels = natural_sort(chnl for chnl in self.activation_config if chnl.startswith('a'))
@@ -474,12 +474,12 @@ class PulserDummy(PulserInterface):
             self.log.error('Sequence loading failed. Number of active digital channels ({0:d}) does'
                            ' not match the number of tracks in the sequence ({1:d}).'
                            ''.format(len(digital_channels), self.sequence_dict[sequence_name]))
-            return self.get_loaded_assets()
+            return return self.get_loaded_assets()[0]
         if not pure_digital and len(analog_channels) != self.sequence_dict[sequence_name]:
             self.log.error('Sequence loading failed. Number of active analog channels ({0:d}) does'
                            ' not match the number of tracks in the sequence ({1:d}).'
                            ''.format(len(analog_channels), self.sequence_dict[sequence_name]))
-            return self.get_loaded_assets()
+            return return self.get_loaded_assets()[0]
 
         new_loaded_assets = dict()
         if pure_digital:
@@ -492,7 +492,7 @@ class PulserDummy(PulserInterface):
                 new_loaded_assets[chnl_num] = '{0}_{1:d}'.format(sequence_name, track_index)
 
         self.current_loaded_assets = new_loaded_assets
-        return self.get_loaded_assets()
+        return return self.get_loaded_assets()[0]
 
     def get_loaded_assets(self):
         """
