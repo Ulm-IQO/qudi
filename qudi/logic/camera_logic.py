@@ -297,7 +297,7 @@ class CameraLogic(LogicBase):
     #     y_prefix = axes_prefix[y_prefix_count]
     #
     #     # Use qudi style
-    #     plt.style.use(self._save_logic.mpl_qd_style)
+    #     plt.style.use(self._save_logic.mpl_qudi_style)
     #
     #     # Create figure
     #     fig, ax = plt.subplots()

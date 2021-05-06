@@ -35,7 +35,7 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
-from qudi.util.mpl_style import mpl_qd_style
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 
 from qudi.interface.scanning_probe_interface import ScanData
 
@@ -237,7 +237,7 @@ class ScanningDataLogic(LogicBase):
         # ToDo: Scale data and axes in a suitable and general way (with utils)
 
         # Use qudi style
-        plt.style.use(mpl_qd_style)
+        plt.style.use(mpl_qudi_style)
 
         # Create figure
         fig, ax = plt.subplots()
@@ -346,7 +346,7 @@ class ScanningDataLogic(LogicBase):
         # ToDo: Scale data and axes in a suitable and general way (with utils)
 
         # Use qudi style
-        plt.style.use(mpl_qd_style)
+        plt.style.use(mpl_qudi_style)
 
         # Create figure
         fig, ax = plt.subplots()
