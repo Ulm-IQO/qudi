@@ -32,6 +32,7 @@ from qudi.core.logger import init_rotating_file_handler, init_record_model_handl
 from qudi.core.logger import get_logger, set_log_level
 from qudi.core.paths import get_main_dir, get_default_log_dir
 from qudi.util.mutex import Mutex
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
@@ -115,6 +116,13 @@ class Qudi(QtCore.QObject):
         self._configured_extension_paths = list()
         self._is_running = False
         self._shutting_down = False
+
+        # Set qudi style for matplotlib
+        try:
+            import matplotlib.pyplot as plt
+            plt.style.use(mpl_qudi_style)
+        except ImportError:
+            pass
 
     def _qudi_excepthook(self, ex_type, ex_value, ex_traceback):
         """ Handler function to be used as sys.excepthook. Should forward all unhandled exceptions
