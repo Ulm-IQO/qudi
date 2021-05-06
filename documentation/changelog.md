@@ -4,6 +4,8 @@
 
 Changes/New features:
 
+* Changed all pulser hardware to return only a dict on loading of waveform and sequences. This was previously 
+guaranteed by the pulser interface, but not consistently implemented. 
 * Added support for Keysight M8195A and M8190A AWGs.
 * Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
 in case the hardware supports it.
