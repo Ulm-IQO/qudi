@@ -34,7 +34,6 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import TextDataStorage
-from qudi.util.mpl_qudi_style import mpl_qudi_style as _mpl_qudi_style
 from qudi.util.enums import SamplingOutputMode
 
 
@@ -772,9 +771,6 @@ class OdmrLogic(LogicBase):
         raw_unit_prefix = scaled.scale
         if raw_unit_prefix:
             raw_data = raw_data / scaled.scale_val
-
-        # Use qudi style
-        plt.style.use(_mpl_qudi_style)
 
         # Create figure
         fig, (ax_signal, ax_raw) = plt.subplots(nrows=2, ncols=1)
