@@ -617,7 +617,7 @@ class AWG70K(PulserInterface):
             while self.query('SOUR{0:d}:CASS?'.format(chnl_num)) != waveform:
                 time.sleep(0.1)
 
-        return self.get_loaded_assets()
+        return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -633,7 +633,7 @@ class AWG70K(PulserInterface):
         if sequence_name not in self.get_sequence_names():
             self.log.error('Unable to load sequence.\n'
                            'Sequence to load is missing on device memory.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
@@ -645,7 +645,7 @@ class AWG70K(PulserInterface):
         if trac_num != len(analog_channels):
             self.log.error('Unable to load sequence.\nNumber of tracks in sequence to load does '
                            'not match the number of active analog channels.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Load sequence
         for chnl in range(1, trac_num + 1):
@@ -654,7 +654,7 @@ class AWG70K(PulserInterface):
                     sequence_name, chnl):
                 time.sleep(0.2)
 
-        return self.get_loaded_assets()
+        return self.get_loaded_assets()[0]
 
     def get_loaded_assets(self):
         """
