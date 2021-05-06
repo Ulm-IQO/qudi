@@ -31,7 +31,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
 from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
-from qudi.util.mpl_style import mpl_qd_style
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
 
@@ -415,7 +415,7 @@ class QDPlotLogic(LogicBase):
             y_label = self._y_label[plot_index] + ' (' + self._y_unit[plot_index] + ')'
 
             # Prepare the figure to save as a "data thumbnail"
-            plt.style.use(mpl_qd_style)
+            plt.style.use(mpl_qudi_style)
 
             fig, ax1 = plt.subplots()
 

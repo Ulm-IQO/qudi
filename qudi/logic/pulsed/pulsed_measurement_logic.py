@@ -1417,10 +1417,10 @@ class PulsedMeasurementLogic(LogicBase):
         #
         #     if save_figure:
         #         # Prepare the figure to save as a "data thumbnail"
-        #         plt.style.use(self.savelogic().mpl_qd_style)
+        #         plt.style.use(self.savelogic().mpl_qudi_style)
         #
         #         # extract the possible colors from the colorscheme:
-        #         prop_cycle = self.savelogic().mpl_qd_style['axes.prop_cycle']
+        #         prop_cycle = self.savelogic().mpl_qudi_style['axes.prop_cycle']
         #         colors = {}
         #         for i, color_setting in enumerate(prop_cycle):
         #             colors[i] = color_setting['color']

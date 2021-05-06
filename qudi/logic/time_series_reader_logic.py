@@ -727,7 +727,7 @@ class TimeSeriesReaderLogic(LogicBase):
         """
         pass
         # # Use qudi style
-        # plt.style.use(self._savelogic.mpl_qd_style)
+        # plt.style.use(self._savelogic.mpl_qudi_style)
         #
         # # Create figure and scale data
         # max_abs_value = ScaledFloat(max(data.max(), np.abs(data.min())))
