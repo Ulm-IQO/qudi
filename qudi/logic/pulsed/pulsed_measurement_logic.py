@@ -221,6 +221,7 @@ class PulsedMeasurementLogic(LogicBase):
         self.fit_config_model = None  # Model for custom fit configurations
         self.fc = None  # Fit container
         self.alt_fc = None
+        self._fit_result = None
         return
 
     def on_activate(self):
@@ -1080,6 +1081,9 @@ class PulsedMeasurementLogic(LogicBase):
         data = self.signal_alt_data if use_alternative_data else self.signal_data
         try:
             config, result = container.fit_data(fit_config, data[0], data[1])
+            self._fit_result = result
+            if result:
+                self._fit_result.result_str = container.formatted_result(self._fit_result)
         except:
             config, result = '', None
             self.log.exception('Something went wrong while trying to perform data fit.')
@@ -1709,6 +1713,7 @@ class PulsedMeasurementLogic(LogicBase):
         plt.style.use(mpl_qd_style)
 
         # extract the possible colors from the colorscheme:
+        # todo: still needed or set by core?
         prop_cycle = mpl_qd_style['axes.prop_cycle']
         colors = {}
         for i, color_setting in enumerate(prop_cycle):
@@ -1749,11 +1754,14 @@ class PulsedMeasurementLogic(LogicBase):
                          label='data trace 2')
 
         # Do not include fit curve if there is no fit calculated.
-        # todo: fix fitting
-        """
-        if self.signal_fit_data.size != 0 and np.sum(np.abs(self.signal_fit_data[1])) > 0:
-            x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
-            ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
+
+        #"""
+        if self._fit_result.success and np.sum(np.abs(self._fit_result.high_res_best_fit[1])) > 0:
+
+            fit_x, fit_y = self._fit_result.high_res_best_fit
+
+            x_axis_fit_scaled = fit_x / scaled_float.scale_val
+            ax1.plot(x_axis_fit_scaled, fit_y,
                      color=colors[2], marker='None', linewidth=1.5,
                      label='fit')
 
@@ -1767,11 +1775,8 @@ class PulsedMeasurementLogic(LogicBase):
             rel_len_fac = 0.011
             entries_per_col = 24
 
-            # create the formatted fit text:
-            if hasattr(self.fit_result, 'result_str_dict'):
-                result_str = create_formatted_output(self.fit_result.result_str_dict)
-            else:
-                result_str = ''
+            result_str = self._fit_result.result_str
+
             # do reverse processing to get each entry in a list
             entry_list = result_str.split('\n')
             # slice the entry_list in entries_per_col
@@ -1806,8 +1811,9 @@ class PulsedMeasurementLogic(LogicBase):
                 rel_offset += rel_len_fac * len(max_length)
 
                 is_first_column = False
-        """
+        #"""
         # handle the save of the alternative data plot
+        # todo: fix fitting of alt data
         if self._alternative_data_type and self._alternative_data_type != 'None':
 
             # scale the x_axis for plotting
