@@ -229,7 +229,7 @@ class DataStorageBase(metaclass=ABCMeta):
         return file_path
 
     @abstractmethod
-    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, nametag=None, timestamp=None):
         """ This method must be implemented in a subclass. It should provide the facility to save an
         entire measurement as a whole along with experiment metadata (to include e.g. in the file
         header). The user can either specify an explicit filename or a generic one will be created.
@@ -238,7 +238,6 @@ class DataStorageBase(metaclass=ABCMeta):
 
         @param numpy.ndarray data: data array to be saved (must be 1D or 2D for text files)
         @param dict metadata: optional, metadata to be saved in the data header / metadata
-        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
 
@@ -247,12 +246,10 @@ class DataStorageBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def load_data(self, file_path):
+    def load_data(self, *args, **kwargs):
         """ This method must be implemented in a subclass. It should provide the facility to load a
         saved data set including the metadata/experiment parameters and column headers
         (if possible).
-
-        @param str file_path: The path pointing to the data file to be loaded
 
         @return np.ndarray, dict, tuple: Data as numpy array, extracted metadata, column headers
         """
@@ -266,37 +263,39 @@ class DataStorageBase(metaclass=ABCMeta):
             return cls._global_metadata.copy()
 
     @classmethod
-    def set_global_metadata_field(cls, name, value, overwrite=False):
-        """ Set a single global metadata key-value pair to save in all data file headers during
-        this qudi session.
+    def add_global_metadata(cls, name, value=None, *, overwrite=False):
+        """ Set a single global metadata key-value pair or alternatively multiple ones as dict.
+        Metadata added this way will persist for all data storage instances in this process until
+        being selectively removed by calls to "remove_global_metadata".
         """
-        if not isinstance(name, str):
-            raise TypeError('global metadata field name must be str type.')
+        if isinstance(name, str):
+            metadata = {name: copy.deepcopy(value)}
+        elif isinstance(name, dict):
+            if any(not isinstance(key, str) for key in name):
+                TypeError('Metadata dict must contain only str type keys.')
+            metadata = copy.deepcopy(name)
+        else:
+            raise TypeError('add_global_metadata expects either a single dict as first argument or '
+                            'a str key and a value as first two arguments.')
+
         with cls._global_metadata_lock:
-            if not overwrite and name in cls._global_metadata:
-                raise KeyError(
-                    f'global metadata field "{name}" already set while overwrite flag is False.'
-                )
-            cls._global_metadata[name] = copy.deepcopy(value)
+            if not overwrite:
+                duplicate_keys = set(metadata).intersection(cls._global_metadata)
+                if duplicate_keys:
+                    raise KeyError(f'global metadata keys "{duplicate_keys}" already set while '
+                                   f'overwrite flag is False.')
+            cls._global_metadata.update(metadata)
 
     @classmethod
-    def set_global_metadata(cls, metadata, overwrite=False):
-        """ Set multiple global metadata fields to save in all data during this qudi session.
+    def remove_global_metadata(cls, names):
+        """ Remove a global metadata key-value pair by key. Does not raise an error if the key is
+        not found.
         """
-        if any(not isinstance(name, str) for name in metadata):
-            raise TypeError('global metadata field name must be str type.')
+        if isinstance(names, str):
+            names = [names]
         with cls._global_metadata_lock:
-            if not overwrite and any(name in cls._global_metadata for name in metadata):
-                raise KeyError(f'global metadata field already set while overwrite flag is False.')
-            for name, value in metadata.items():
-                cls._global_metadata[name] = copy.deepcopy(value)
-
-    @classmethod
-    def remove_global_metadata_field(cls, name):
-        """ Remove a global metadata field. Does not raise an error.
-        """
-        with cls._global_metadata_lock:
-            cls._global_metadata.pop(name, None)
+            for name in names:
+                cls._global_metadata.pop(name, None)
 
 
 class TextDataStorage(DataStorageBase):
@@ -442,8 +441,10 @@ class TextDataStorage(DataStorageBase):
 
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
+
+        @param str file_path: optional, path to file to load data from
         """
-        raise RuntimeError('Not yet implemented!')
+        raise NotImplementedError
         # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
         # metadata = dict()
         # column_header = ''
@@ -520,8 +521,10 @@ class CsvDataStorage(TextDataStorage):
 
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
+
+        @param str file_path: optional, path to file to load data from
         """
-        raise RuntimeError('Not yet implemented!')
+        raise NotImplementedError
 
 
 class NpyDataStorage(DataStorageBase):
@@ -603,5 +606,7 @@ class NpyDataStorage(DataStorageBase):
 
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
+
+        @param str file_path: optional, path to file to load data from
         """
-        raise RuntimeError('Not yet implemented!')
+        raise NotImplementedError
