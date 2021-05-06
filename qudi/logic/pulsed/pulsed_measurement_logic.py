@@ -32,11 +32,11 @@ from qudi.core.statusvariable import StatusVar
 from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
 from qudi.core.datafitting import FitConfigurationsModel, FitContainer
-from qudi.util import units
 from qudi.util.math import compute_ft
 from qudi.core.module import LogicBase
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
+from qudi.core.datastorage import TextDataStorage
 
 
 class PulsedMeasurementLogic(LogicBase):
@@ -1336,7 +1336,39 @@ class PulsedMeasurementLogic(LogicBase):
 
         @return str: filepath where data were saved
         """
-        pass
+
+        data_storage_txt = TextDataStorage(sub_directory='PulsedMeasurement')
+
+        #####################################################################
+        ####                Save measurement data                        ####
+        #####################################################################
+        if save_pulsed_measurement:
+            filelabel = 'pulsed_measurement'
+            if tag:
+                 filelabel = tag + '_pulsed_measurement'
+
+             # write the parameters to header
+             parameters = dict()
+             parameters['Approx. measurement time (s)'] = self.__elapsed_time
+             parameters['Measurement sweeps'] = self.__elapsed_sweeps
+             parameters['Number of laser pulses'] = self._number_of_lasers
+             parameters['Laser ignore indices'] = self._laser_ignore_list
+             parameters['alternating'] = self._alternating
+             parameters['analysis parameters'] = self.analysis_settings
+             parameters['extraction parameters'] = self.extraction_settings
+             parameters['fast counter settings'] = self.fast_counter_settings
+
+             # write data
+            data = self.signal_data.transpose()
+            data_storage_txt.column_headers = f'Controlled variable(s), Signal'
+            if with_error:
+                data = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
+                data_storage_txt.column_headers = f'Controlled variable(s), Signal, Error'
+
+            data_storage_txt.save_data(data,
+                                       parameters=parameters,
+                                       nametag=filelabel)
+
         # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
         # timestamp = datetime.datetime.now()
         #
