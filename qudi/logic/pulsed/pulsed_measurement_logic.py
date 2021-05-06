@@ -18,10 +18,10 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-import os.path
 
 from PySide2 import QtCore
 import numpy as np
+import copy
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -29,16 +29,14 @@ import matplotlib.pyplot as plt
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.module import LogicBase
 from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
-from qudi.util.datafitting import FitConfigurationsModel, FitContainer
+from qudi.core.datafitting import FitConfigurationsModel, FitContainer
 from qudi.util.math import compute_ft
-from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
-from qudi.util.units import ScaledFloat
-from qudi.util.mpl_qudi_style import mpl_qudi_style
+from qudi.core.module import LogicBase
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
+from qudi.core.datastorage import TextDataStorage
 
 
 def _data_storage_from_cfg_option(cfg_str):
@@ -1097,13 +1095,6 @@ class PulsedMeasurementLogic(LogicBase):
         data = self.signal_alt_data if use_alternative_data else self.signal_data
         try:
             config, result = container.fit_data(fit_config, data[0], data[1])
-            if result:
-                result.result_str = container.formatted_result(result)
-            if use_alternative_data:
-                self._fit_result_alt = result
-            else:
-                self._fit_result = result
-
         except:
             config, result = '', None
             self.log.exception('Something went wrong while trying to perform data fit.')
