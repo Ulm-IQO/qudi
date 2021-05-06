@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import cycler
+from cycler import cycler
 
 
 # Matplotlib style definition for saving plots
