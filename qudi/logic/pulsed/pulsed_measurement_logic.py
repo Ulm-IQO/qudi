@@ -222,6 +222,7 @@ class PulsedMeasurementLogic(LogicBase):
         self.fc = None  # Fit container
         self.alt_fc = None
         self._fit_result = None
+        self._fit_result_alt = None
         return
 
     def on_activate(self):
@@ -1081,9 +1082,13 @@ class PulsedMeasurementLogic(LogicBase):
         data = self.signal_alt_data if use_alternative_data else self.signal_data
         try:
             config, result = container.fit_data(fit_config, data[0], data[1])
-            self._fit_result = result
             if result:
-                self._fit_result.result_str = container.formatted_result(self._fit_result)
+                result.result_str = container.formatted_result(result)
+            if use_alternative_data:
+                self._fit_result_alt = result
+            else:
+                self._fit_result = result
+
         except:
             config, result = '', None
             self.log.exception('Something went wrong while trying to perform data fit.')
@@ -1709,6 +1714,71 @@ class PulsedMeasurementLogic(LogicBase):
         # return filepath
 
     def _plot_pulsed_thumbnail(self, with_error=False):
+
+        def _plot_fit(axis, use_alternative_data=False):
+
+            fit_res = self._fit_result
+            if use_alternative_data:
+                fit_res = self._fit_result_alt
+
+            fit_x, fit_y = fit_res.high_res_best_fit
+
+            label = 'fit'
+            if use_alternative_data:
+                label = label='secondary fit'
+
+            x_axis_fit_scaled = fit_x / scaled_float.scale_val
+            axis.plot(x_axis_fit_scaled, fit_y,
+                     color=colors[2], marker='None', linewidth=1.5,
+                     label=label)
+
+            # add then the fit result to the plot:
+
+            # Parameters for the text plot:
+            # The position of the text annotation is controlled with the
+            # relative offset in x direction and the relative length factor
+            # rel_len_fac of the longest entry in one column
+            rel_offset = 0.02
+            rel_len_fac = 0.011
+            entries_per_col = 24
+
+            result_str = fit_res.result_str
+
+            # do reverse processing to get each entry in a list
+            entry_list = result_str.split('\n')
+            # slice the entry_list in entries_per_col
+            chunks = [entry_list[x:x + entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+            is_first_column = True  # first entry should contain header or \n
+
+            for column in chunks:
+
+                max_length = max(column, key=len)  # get the longest entry
+                column_text = ''
+
+                for entry in column:
+                    column_text += entry + '\n'
+
+                column_text = column_text[:-1]  # remove the last new line
+
+                heading = ''
+                if is_first_column:
+                    heading = 'Fit results:'
+
+                column_text = heading + '\n' + column_text
+
+                axis.text(1.00 + rel_offset, 0.99, column_text,
+                         verticalalignment='top',
+                         horizontalalignment='left',
+                         transform=axis.transAxes,
+                         fontsize=12)
+
+                # the rel_offset in position of the text is a linear function
+                # which depends on the longest entry in the column
+                rel_offset += rel_len_fac * len(max_length)
+
+                is_first_column = False
+
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(mpl_qd_style)
 
@@ -1757,63 +1827,10 @@ class PulsedMeasurementLogic(LogicBase):
 
         #"""
         if self._fit_result.success and np.sum(np.abs(self._fit_result.high_res_best_fit[1])) > 0:
+            _plot_fit(axis=ax1)
 
-            fit_x, fit_y = self._fit_result.high_res_best_fit
-
-            x_axis_fit_scaled = fit_x / scaled_float.scale_val
-            ax1.plot(x_axis_fit_scaled, fit_y,
-                     color=colors[2], marker='None', linewidth=1.5,
-                     label='fit')
-
-            # add then the fit result to the plot:
-
-            # Parameters for the text plot:
-            # The position of the text annotation is controlled with the
-            # relative offset in x direction and the relative length factor
-            # rel_len_fac of the longest entry in one column
-            rel_offset = 0.02
-            rel_len_fac = 0.011
-            entries_per_col = 24
-
-            result_str = self._fit_result.result_str
-
-            # do reverse processing to get each entry in a list
-            entry_list = result_str.split('\n')
-            # slice the entry_list in entries_per_col
-            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-            is_first_column = True  # first entry should contain header or \n
-
-            for column in chunks:
-
-                max_length = max(column, key=len)   # get the longest entry
-                column_text = ''
-
-                for entry in column:
-                    column_text += entry + '\n'
-
-                column_text = column_text[:-1]  # remove the last new line
-
-                heading = ''
-                if is_first_column:
-                    heading = 'Fit results:'
-
-                column_text = heading + '\n' + column_text
-
-                ax1.text(1.00 + rel_offset, 0.99, column_text,
-                         verticalalignment='top',
-                         horizontalalignment='left',
-                         transform=ax1.transAxes,
-                         fontsize=12)
-
-                # the rel_offset in position of the text is a linear function
-                # which depends on the longest entry in the column
-                rel_offset += rel_len_fac * len(max_length)
-
-                is_first_column = False
         #"""
         # handle the save of the alternative data plot
-        # todo: fix fitting of alt data
         if self._alternative_data_type and self._alternative_data_type != 'None':
 
             # scale the x_axis for plotting
@@ -1860,61 +1877,9 @@ class PulsedMeasurementLogic(LogicBase):
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
-            if (self.signal_fit_alt_data.size != 0
-                    and np.sum(np.abs(self.signal_fit_alt_data[1])) > 0):
-                x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
-                ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
-                         color=colors[2], marker='None', linewidth=1.5,
-                         label='secondary fit')
+            if self._fit_result_alt.success and np.sum(np.abs(self._fit_result_alt.high_res_best_fit[1])) > 0:
+                _plot_fit(axis=ax2, use_alternative_data=True)
 
-                # add then the fit result to the plot:
-
-                # Parameters for the text plot:
-                # The position of the text annotation is controlled with the
-                # relative offset in x direction and the relative length factor
-                # rel_len_fac of the longest entry in one column
-                rel_offset = 0.02
-                rel_len_fac = 0.011
-                entries_per_col = 24
-
-                # create the formatted fit text:
-                if hasattr(self.alt_fit_result, 'result_str_dict'):
-                    result_str = create_formatted_output(self.alt_fit_result.result_str_dict)
-                else:
-                    result_str = ''
-                # do reverse processing to get each entry in a list
-                entry_list = result_str.split('\n')
-                # slice the entry_list in entries_per_col
-                chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-                is_first_column = True  # first entry should contain header or \n
-
-                for column in chunks:
-                    max_length = max(column, key=len)   # get the longest entry
-                    column_text = ''
-
-                    for entry in column:
-                        column_text += entry + '\n'
-
-                    column_text = column_text[:-1]  # remove the last new line
-
-                    heading = ''
-                    if is_first_column:
-                        heading = 'Fit results:'
-
-                    column_text = heading + '\n' + column_text
-
-                    ax2.text(1.00 + rel_offset, 0.99, column_text,
-                             verticalalignment='top',
-                             horizontalalignment='left',
-                             transform=ax2.transAxes,
-                             fontsize=12)
-
-                    # the rel_offset in position of the text is a linear function
-                    # which depends on the longest entry in the column
-                    rel_offset += rel_len_fac * len(max_length)
-
-                    is_first_column = False
 
         ax1.set_xlabel(
             '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
