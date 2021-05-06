@@ -12,7 +12,8 @@ with open('README.md', 'r') as file:
 with open(os.path.join('.', 'qudi', 'core', 'VERSION.txt'), 'r') as file:
     version = file.read().strip()
 
-unix_dep = ['entrypoints',
+unix_dep = ['cycler',
+            'entrypoints',
             'fysom',
             'GitPython',
             'jupyter',
@@ -30,7 +31,8 @@ unix_dep = ['entrypoints',
             'scipy',
             ]
 
-windows_dep = ['entrypoints',
+windows_dep = ['cycler',
+               'entrypoints',
                'fysom',
                'GitPython',
                'jupyter',
