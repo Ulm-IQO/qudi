@@ -112,21 +112,21 @@ class DataStorageBase(metaclass=ABCMeta):
     structure to store data in (default).
     Subclasses provide the functionality to save and load measurement data
     (including experiment metadata) to/from disc in a specific file format.
-    Metadata can include so called "global parameters" which are shared named parameters that can
+    Metadata can include so called "global metdata fields" which are shared named values that can
     be globally set in this Python process. These should represent parameters that are shared
     across different kind of measurements.
     """
-    _global_parameters = dict()
-    _global_parameters_lock = Mutex()
+    _global_metadata = dict()
+    _global_metadata_lock = Mutex()
 
     def __init__(self, *, root_dir=None, sub_directory=None, file_extension='.dat',
-                 use_daily_dir=True, include_global_parameters=True, image_format=ImageFormat.PNG):
+                 use_daily_dir=True, include_global_metadata=True, image_format=ImageFormat.PNG):
         """
         @param str root_dir: optional, root-directory path for daily directory tree
         @param str sub_directory: optional, sub-directory name to use within daily data directory
         @param str file_extension: optional, the file extension to be used for the data file
         @param bool use_daily_dir: optional, flag indicating daily sub-directory usage
-        @param bool include_global_parameters: optional, flag indicating saving of global parameters
+        @param bool include_global_metadata: optional, flag indicating saving of global metadata
         @param ImageFormat image_format: optional, image file format Enum
         """
         if root_dir is None:
@@ -146,7 +146,7 @@ class DataStorageBase(metaclass=ABCMeta):
         self.sub_directory = sub_directory
         self.image_format = image_format
         self.use_daily_dir = bool(use_daily_dir)
-        self.include_global_parameters = bool(include_global_parameters)
+        self.include_global_metadata = bool(include_global_metadata)
         return
 
     def get_data_directory(self, timestamp=None, create_missing=True):
@@ -229,15 +229,15 @@ class DataStorageBase(metaclass=ABCMeta):
         return file_path
 
     @abstractmethod
-    def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None):
         """ This method must be implemented in a subclass. It should provide the facility to save an
-        entire measurement as a whole along with experiment parameters (to include e.g. in the file
+        entire measurement as a whole along with experiment metadata (to include e.g. in the file
         header). The user can either specify an explicit filename or a generic one will be created.
         If optional nametag and/or timestamp is provided, this will be used to create the generic
         filename (only if filename parameter is omitted).
 
         @param numpy.ndarray data: data array to be saved (must be 1D or 2D for text files)
-        @param dict parameters: optional, named parameters to be saved in the data header / metadata
+        @param dict metadata: optional, metadata to be saved in the data header / metadata
         @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
@@ -254,49 +254,49 @@ class DataStorageBase(metaclass=ABCMeta):
 
         @param str file_path: The path pointing to the data file to be loaded
 
-        @return np.ndarray, dict, tuple: Data as numpy array, extracted parameters, column headers
+        @return np.ndarray, dict, tuple: Data as numpy array, extracted metadata, column headers
         """
         pass
 
     @classmethod
-    def get_global_parameters(cls):
-        """ Return a copy of the global parameters dict.
+    def get_global_metadata(cls):
+        """ Return a copy of the global metadata dict.
         """
-        with cls._global_parameters_lock:
-            return cls._global_parameters.copy()
+        with cls._global_metadata_lock:
+            return cls._global_metadata.copy()
 
     @classmethod
-    def set_global_parameter(cls, name, value, overwrite=False):
-        """ Set a single global parameter to save in all data file headers during this qudi session.
+    def set_global_metadata_field(cls, name, value, overwrite=False):
+        """ Set a single global metadata key-value pair to save in all data file headers during
+        this qudi session.
         """
         if not isinstance(name, str):
-            raise TypeError('global parameter name must be str type.')
-        with cls._global_parameters_lock:
-            if not overwrite and name in cls._global_parameters:
+            raise TypeError('global metadata field name must be str type.')
+        with cls._global_metadata_lock:
+            if not overwrite and name in cls._global_metadata:
                 raise KeyError(
-                    f'global parameter "{name}" already set while overwrite flag is False.'
+                    f'global metadata field "{name}" already set while overwrite flag is False.'
                 )
-            cls._global_parameters[name] = copy.deepcopy(value)
+            cls._global_metadata[name] = copy.deepcopy(value)
 
     @classmethod
-    def set_global_parameters(cls, params, overwrite=False):
-        """ Set multiple global parameters to save in all data file headers during this qudi
-        session.
+    def set_global_metadata(cls, metadata, overwrite=False):
+        """ Set multiple global metadata fields to save in all data during this qudi session.
         """
-        if any(not isinstance(name, str) for name in params):
-            raise TypeError('global parameter name must be str type.')
-        with cls._global_parameters_lock:
-            if not overwrite and any(name in cls._global_parameters for name in params):
-                raise KeyError('global parameter already set while overwrite flag is False.')
-            for name, value in params.items():
-                cls._global_parameters[name] = copy.deepcopy(value)
+        if any(not isinstance(name, str) for name in metadata):
+            raise TypeError('global metadata field name must be str type.')
+        with cls._global_metadata_lock:
+            if not overwrite and any(name in cls._global_metadata for name in metadata):
+                raise KeyError(f'global metadata field already set while overwrite flag is False.')
+            for name, value in metadata.items():
+                cls._global_metadata[name] = copy.deepcopy(value)
 
     @classmethod
-    def remove_global_parameter(cls, name):
-        """ Remove a global parameter. Does not raise an error.
+    def remove_global_metadata_field(cls, name):
+        """ Remove a global metadata field. Does not raise an error.
         """
-        with cls._global_parameters_lock:
-            cls._global_parameters.pop(name, None)
+        with cls._global_metadata_lock:
+            cls._global_metadata.pop(name, None)
 
 
 class TextDataStorage(DataStorageBase):
@@ -340,23 +340,23 @@ class TextDataStorage(DataStorageBase):
         self.delimiter = delimiter
         self._current_data_file = None
 
-    def create_header(self, parameters=None, timestamp=None, include_column_headers=True):
+    def create_header(self, metadata=None, timestamp=None, include_column_headers=True):
         """
         """
         if timestamp is None:
             timestamp = datetime.now()
-        # Gather all parameters (both global and provided) into a single dict if needed
-        all_parameters = self.get_global_parameters() if self.include_global_parameters else dict()
-        if parameters is not None:
-            all_parameters.update(parameters)
+        # Gather all metadata (both global and locally provided) into a single dict if needed
+        all_metadata = self.get_global_metadata() if self.include_global_metadata else dict()
+        if metadata is not None:
+            all_metadata.update(metadata)
 
         header_lines = list()
         header_lines.append('Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
         header_lines.append('')
-        if all_parameters:
-            header_lines.append('Parameters:')
+        if all_metadata:
+            header_lines.append('Metadata:')
             header_lines.append('===========')
-            for param, value in all_parameters.items():
+            for param, value in all_metadata.items():
                 if isinstance(value, (float, np.floating)):
                     header_lines.append(f'{param}: {value:.18e}')
                 elif isinstance(value, (int, np.integer)):
@@ -377,11 +377,11 @@ class TextDataStorage(DataStorageBase):
                                  line_sep.join(header_lines))
         return header + '\n'
 
-    def new_data_file(self, *, parameters=None, filename=None, nametag=None, timestamp=None):
+    def new_data_file(self, *, metadata=None, filename=None, nametag=None, timestamp=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
         silently if they have the same path.
 
-        @param dict parameters: optional, named parameters to be saved in the data header / metadata
+        @param dict metadata: optional, named metadata values to be saved in the data header
         @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
@@ -394,7 +394,7 @@ class TextDataStorage(DataStorageBase):
         # Determine full file path and create containing directories if needed
         file_path = self.create_file_path(timestamp=timestamp, filename=filename, nametag=nametag)
         # Create header
-        header = self.create_header(parameters=parameters, timestamp=timestamp)
+        header = self.create_header(metadata=metadata, timestamp=timestamp)
         with open(file_path, 'w') as file:
             file.write(header)
         self._current_data_file = file_path
@@ -428,11 +428,11 @@ class TextDataStorage(DataStorageBase):
                 np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
         return (1, data.shape[0]) if data.ndim == 1 else data.shape
 
-    def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None):
         """ See: DataStorageBase.save_data()
         """
         # Create new data file (overwrite old one if it exists)
-        file_path, timestamp = self.new_data_file(parameters=parameters,
+        file_path, timestamp = self.new_data_file(metadata=metadata,
                                                   filename=filename,
                                                   nametag=nametag,
                                                   timestamp=timestamp)
@@ -445,7 +445,7 @@ class TextDataStorage(DataStorageBase):
         """
         raise RuntimeError('Not yet implemented!')
         # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
-        # parameters = dict()
+        # metadata = dict()
         # column_header = ''
         # if self.data_format in (DataFormat.TEXT, DataFormat.CSV):
         #     index = 0
@@ -456,7 +456,7 @@ class TextDataStorage(DataStorageBase):
         #             if not line.startswith(self.comments):
         #                 file.seek(index)
         #                 break
-        #             if line.endswith('Parameters:\n'):
+        #             if line.endswith('Metadata:\n'):
         #                 in_params = True
         #             elif line.endswith('Data:\n'):
         #                 in_data = True
@@ -466,11 +466,11 @@ class TextDataStorage(DataStorageBase):
         #                 clean_param = line[len(self.comments):].strip()
         #                 name, value_str = clean_param.rsplit(': ', 1)
         #                 if self.__int_regex.match(value_str):
-        #                     parameters[name] = int(value_str)
+        #                     metadata[name] = int(value_str)
         #                 elif self.__float_regex.match(value_str):
-        #                     parameters[name] = float(value_str)
+        #                     metadata[name] = float(value_str)
         #                 else:
-        #                     parameters[name] = str(value_str)
+        #                     metadata[name] = str(value_str)
         #         reader = csv.reader(file, delimiter=self.delimiter)
         #         data_array = np.asarray([data for data in reader])
         #         if data_array.ndim > 1:
@@ -482,7 +482,7 @@ class TextDataStorage(DataStorageBase):
         #                     it.strip() for it in column_header.split(self.delimiter) if it.strip())
         #                 if len(headers) != data_array.shape[1]:
         #                     headers = (column_header.strip(),) if column_header else tuple()
-        # return data_array, parameters, headers
+        # return data_array, metadata, headers
 
 
 class CsvDataStorage(TextDataStorage):
@@ -505,15 +505,15 @@ class CsvDataStorage(TextDataStorage):
         kwargs['delimiter'] = ','
         super().__init__(**kwargs)
 
-    def create_header(self, parameters=None, timestamp=None):
+    def create_header(self, metadata=None, timestamp=None):
         """ See: TextDataStorage.create_header()
         """
         if timestamp is None:
             timestamp = datetime.now()
         if isinstance(self.column_headers, str):
-            header = super().create_header(parameters, timestamp, True)
+            header = super().create_header(metadata, timestamp, True)
         else:
-            header = super().create_header(parameters, timestamp, False)
+            header = super().create_header(metadata, timestamp, False)
             if self.column_headers is not None:
                 header += ','.join(self.column_headers) + '\n'
         return header
@@ -532,15 +532,15 @@ class NpyDataStorage(DataStorageBase):
         kwargs['comments'] = None
         super().__init__(**kwargs)
 
-    def create_header(self, data_filename, parameters=None, timestamp=None, include_column_headers=True):
+    def create_header(self, data_filename, metadata=None, timestamp=None, include_column_headers=True):
         """
         """
         if timestamp is None:
             timestamp = datetime.now()
-        # Gather all parameters (both global and provided) into a single dict if needed
-        all_parameters = self.get_global_parameters() if self.include_global_parameters else dict()
-        if parameters is not None:
-            all_parameters.update(parameters)
+        # Gather all metadata (both global and provided) into a single dict if needed
+        all_metadata = self.get_global_metadata() if self.include_global_metadata else dict()
+        if metadata is not None:
+            all_metadata.update(metadata)
 
         header_lines = list()
         header_lines.append(
@@ -549,10 +549,10 @@ class NpyDataStorage(DataStorageBase):
                                                 )
         )
         header_lines.append('')
-        if all_parameters:
-            header_lines.append('Parameters:')
+        if all_metadata:
+            header_lines.append('Metadata:')
             header_lines.append('===========')
-            for param, value in all_parameters.items():
+            for param, value in all_metadata.items():
                 if isinstance(value, (float, np.floating)):
                     header_lines.append('{0}: {1:.18e}'.format(param, value))
                 elif isinstance(value, (int, np.integer)):
@@ -573,11 +573,11 @@ class NpyDataStorage(DataStorageBase):
                                  line_sep.join(header_lines))
         return header + '\n'
 
-    def save_data(self, data, *, parameters=None, filename=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None):
         """ Saves a binary file containing the data array.
-        Also saves alongside a text file containing the (global) parameters and column headers for
+        Also saves alongside a text file containing the (global) metadata and column headers for
         this data set. The filename of the text file will be the same as for the binary file
-        appended by "_parameters".
+        appended by "_metadata".
 
         For more information see: DataStorageBase.save_data()
         """
@@ -593,9 +593,9 @@ class NpyDataStorage(DataStorageBase):
             np.save(file, data, allow_pickle=False, fix_imports=False)
 
         # Create header to save in a separate text file
-        param_file_path = file_path.rsplit('.', 1)[0] + '_parameters.txt'
+        param_file_path = file_path.rsplit('.', 1)[0] + '_metadata.txt'
         header = self.create_header(data_filename=os.path.split(file_path)[-1],
-                                    parameters=parameters,
+                                    metadata=metadata,
                                     timestamp=timestamp)
         with open(param_file_path, 'w') as file:
             file.write(header)
