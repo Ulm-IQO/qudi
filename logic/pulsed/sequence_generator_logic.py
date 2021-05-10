@@ -27,7 +27,6 @@ import time
 import copy
 import traceback
 import datetime
-import re
 
 from qtpy import QtCore
 from collections import OrderedDict
@@ -76,6 +75,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                                    default=None,
                                                    missing='nothing')
     _info_on_estimated_upload_time = ConfigOption(name='info_on_estimated_upload_time', default=60, missing='nothing')
+    _disable_bench_prompt = ConfigOption(name='disable_benchmark_prompt', default=False, missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
@@ -2198,7 +2198,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 time_fraction = time_fraction / 2. if time_fraction > 2 else 2
                 i += 1
 
-        except:
+        except Exception:
             self.log.exception('Something went wrong while running upload benchmark:')
         else:
             self.log.info(f"Pulse generator benchmark finished after {i:d} chunks.")
@@ -2294,7 +2294,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         start_time = time.perf_counter()
 
-        loaded_dict = self.pulsegenerator().load_waveform(wfm_list)[0]
+        loaded_dict = self.pulsegenerator().load_waveform(wfm_list)
         if not ignore_datapoint:
             self._benchmark_load.add_benchmark(time.perf_counter() - start_time, n_samples,
                                                 is_persistent=persistent_datapoint)
@@ -2307,6 +2307,12 @@ class SequenceGeneratorLogic(GenericLogic):
         self._delete_waveform_by_nametag(waveform_name)
         self.pulsegenerator().set_active_channels(active_channels_saved)
         return 0, list(), dict()
+
+    def has_valid_pg_benchmark(self):
+        is_valid = not np.isnan(self.get_speed_write_load())
+        ignore = self._disable_bench_prompt
+        if ignore: return True
+        return is_valid
 
     def get_speed_write_load(self):
         """

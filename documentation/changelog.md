@@ -4,6 +4,11 @@
 
 Changes/New features:
 
+* Added visual indication of ongoing waveform upload in pulsed gui. 
+* Added benchmarking of the upload times of pulse generator devices in pulsed gui.
+* Added estimated time for waveform upload, issued for long expected upload times (threshold value configurable). 
+* Changed all pulser hardware to return only a dict on loading of waveform and sequences. This was previously 
+guaranteed by the pulser interface, but not consistently implemented. 
 * Added support for Keysight M8195A and M8190A AWGs.
 * Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
 in case the hardware supports it.
@@ -91,6 +96,10 @@ please use _ni_x_series_in_streamer.py_ as hardware module.
 * New SwitchInterface and updated logic plus GUI
 * Added biexponential fit function, model and estimator
 * Added custom circular loading indicator widget `qtwidgets.loading_indicator.CircleLoadingIndicator`
+* added property disable_wheel to custom ScienSponBox and ScienDSpinBox to deactivate wheel scrolling if required
+* Added possibility to fit data of all ranges in ODMR module when Fit range is -1
+*
+* Added basic field calculation tool with NV center.
 
 
 Config changes:
@@ -239,6 +248,7 @@ This can be used to specify the axis labels for the measurement (excluding units
     * Introduced separate fit tools for each of the two plots in the pulsed analysis tab
     * Automatically clears fit data when changing the alternative plot type or starting a new 
       measurement.
+    * Adding in NI switches the possibility to invert the output and to use PFI channels.
 
 Config changes:
 * **All** pulsed related logic module paths need to be changed because they have been moved in the logic
