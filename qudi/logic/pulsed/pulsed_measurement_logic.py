@@ -18,10 +18,10 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-import os.path
 
 from PySide2 import QtCore
 import numpy as np
+import copy
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -29,28 +29,17 @@ import matplotlib.pyplot as plt
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.module import LogicBase
 from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
-from qudi.util.datafitting import FitConfigurationsModel, FitContainer
+from qudi.core.datafitting import FitConfigurationsModel, FitContainer
 from qudi.util.math import compute_ft
-from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
-from qudi.util.units import ScaledFloat
-from qudi.util.colordefs import QudiMatplotlibStyle
+from qudi.core.module import LogicBase
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
-
-
-def _data_storage_from_cfg_option(cfg_str):
-    cfg_str = cfg_str.lower()
-    if cfg_str == 'text':
-        return TextDataStorage
-    if cfg_str == 'csv':
-        return CsvDataStorage
-    if cfg_str == 'npy':
-        return NpyDataStorage
-    raise ValueError('Invalid ConfigOption value to specify data storage type.')
-
+from qudi.core.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
+from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
+from qudi.util.units import ScaledFloat
+from qudi.util.units import create_formatted_output
 
 class PulsedMeasurementLogic(LogicBase):
     """
@@ -68,9 +57,8 @@ class PulsedMeasurementLogic(LogicBase):
     analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
     # Optional file type descriptor for saving raw data to file.
     # todo: doesn't warn if checker not satisfied
-    _default_data_storage_cls = ConfigOption(name='default_data_storage_type',
-                                             default='text',
-                                             converter=_data_storage_from_cfg_option)
+    _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text',
+                                       checker=lambda x: x in ['text', 'csv', 'npy'])
     _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
 
     # status variables
@@ -1348,158 +1336,446 @@ class PulsedMeasurementLogic(LogicBase):
     # FIXME: Revise everything below
 
     ############################################################################
-    def _get_raw_metadata(self):
-        return {'bin width (s)'               : self.__fast_counter_binwidth,
-                'record length (s)'           : self.__fast_counter_record_length,
-                'gated counting'              : self.fast_counter_settings['is_gated'],
-                'Number of laser pulses'      : self._number_of_lasers,
-                'alternating'                 : self._alternating,
-                'Controlled variable'         : list(self.signal_data[0]),
-                'Approx. measurement time (s)': self.__elapsed_time,
-                'Measurement sweeps'          : self.__elapsed_sweeps}
-
-    def _get_laser_metadata(self):
-        return {'bin width (s)'        : self.__fast_counter_binwidth,
-                'record length (s)'    : self.__fast_counter_record_length,
-                'gated counting'       : self.fast_counter_settings['is_gated'],
-                'extraction parameters': self.extraction_settings}
-
-    def _get_signal_metadata(self):
-        return {'Approx. measurement time (s)': self.__elapsed_time,
-                'Measurement sweeps'          : self.__elapsed_sweeps,
-                'Number of laser pulses'      : self._number_of_lasers,
-                'Laser ignore indices'        : self._laser_ignore_list,
-                'alternating'                 : self._alternating,
-                'analysis parameters'         : self.analysis_settings,
-                'extraction parameters'       : self.extraction_settings,
-                'fast counter settings'       : self.fast_counter_settings}
-
-    @staticmethod
-    def _get_patched_filename_nametag(file_name=None, nametag=None, suffix_str=''):
-        """ Helper method to return either a full file name or a nametag to be used as arguments in
-        storage objects save_data methods.
-        If a file_name is given, return a file_name with patched-in suffix_str and None as nametag.
-        If tag is given, append suffix_str to it and return None as file_name.
+    @QtCore.Slot(str, bool)
+    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+                              save_figure=False):
         """
-        if file_name is None:
-            if nametag is None:
-                nametag = ''
-            return None, f'{nametag}{suffix_str}'
-        else:
-            file_name_stub, file_extension = file_name.rsplit('.', 1)
-            return f'{file_name_stub}{suffix_str}.{file_extension}', None
+        Prepare data to be saved and create a proper plot of the data
 
-    def _get_signal_column_headers(self, with_error):
-        """ Helper method to retrieve formatted column header strings for pulsed measurement data.
-
-        @param bool with_error: Boolean flag indicating if error data should be included
-
-        @return list: List of column header strings
-        """
-        column_headers = [f'{self._data_labels[0]} ({self._data_units[0]})',
-                          f'{self._data_labels[1]} ({self._data_units[1]})']
-        if with_error:
-            column_headers.append(f'{self._data_labels[1]} ({self._data_units[1]})')
-        return column_headers
-
-    def save_measurement_data(self, tag=None, notes=None, file_path=None, storage_cls=None,
-                              with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=None):
-        """ Prepare data to be saved and create a proper plot of the data
-
-        @param str tag: a name tag which will be included in the filename if file_path is None
-        @param str file_path: optional, custom full file path including file extension to use.
-                              If given, tag is ignored.
-        @param type storage_cls: optional, override for data storage class to use
+        @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
-        @param bool save_figure: select whether a thumbnail plot should be saved
-        @param str notes: optional, string that is included in the metadata "as-is" without a field
+        @param bool save_figure: select whether png and pdf should be saved
+
+        @return str: filepath where data were saved
         """
-        # Use default data storage type if none has been given explicitly
-        if storage_cls is None:
-            storage_cls = self._default_data_storage_cls
 
-        # Use default data dir if none has been given explicitly.
-        # Ignore tag if explicit file_path is given
-        if file_path is None:
-            data_dir = self.module_default_data_dir
-            file_name = None
-        else:
-            data_dir, file_name = os.path.split(file_path)
+        def _get_header_params(type):
+            if type == 'laser_pulses':
+                # prepare parameters for header
+                parameters = dict()
+                parameters['bin width (s)'] = self.__fast_counter_binwidth
+                parameters['record length (s)'] = self.__fast_counter_record_length
+                parameters['gated counting'] = self.fast_counter_settings['is_gated']
+                parameters['extraction parameters'] = self.extraction_settings
+            elif type == 'pulsed_measurement':
+                parameters = dict()
+                parameters['Approx. measurement time (s)'] = self.__elapsed_time
+                parameters['Measurement sweeps'] = self.__elapsed_sweeps
+                parameters['Number of laser pulses'] = self._number_of_lasers
+                parameters['Laser ignore indices'] = self._laser_ignore_list
+                parameters['alternating'] = self._alternating
+                parameters['analysis parameters'] = self.analysis_settings
+                parameters['extraction parameters'] = self.extraction_settings
+                parameters['fast counter settings'] = self.fast_counter_settings
+            elif type == 'raw':
+                parameters = dict()
+                parameters['bin width (s)'] = self.__fast_counter_binwidth
+                parameters['record length (s)'] = self.__fast_counter_record_length
+                parameters['gated counting'] = self.fast_counter_settings['is_gated']
+                parameters['Number of laser pulses'] = self._number_of_lasers
+                parameters['alternating'] = self._alternating
+                parameters['Controlled variable'] = list(self.signal_data[0])
+                parameters['Approx. measurement time (s)'] = self.__elapsed_time
+                parameters['Measurement sweeps'] = self.__elapsed_sweeps
+            else:
+                raise ValueError(f"Unknown save type: {type}")
 
-        # If save_figure is not explicitly given, use module default
-        if save_figure is None:
-            save_figure = self._save_thumbnails
+        def _build_data_storage():
 
-        # Create common timestamp for all files to save
-        timestamp = datetime.datetime.now()
+            ds = None
 
-        # get and initialize data storage object. Daily sub-directory behaviour is already
-        # included in self.module_default_data_dir.
-        data_storage = storage_cls(root_dir=data_dir)
+            if self._raw_data_save_type == 'text':
+                ds = TextDataStorage(sub_directory='PulsedMeasurement')
+            elif self._raw_data_save_type == 'npy':
+                ds = NpyDataStorage(sub_directory='PulsedMeasurement')
+            elif self._raw_data_save_type == 'csv':
+                ds = CsvDataStorage(sub_directory='PulsedMeasurement')
+            else:
+                raise ValueError(f"Unknown save data type: {self._raw_data_save_type}")
 
-        ###############
-        # Save raw data
-        ###############
-        # Use either a name tag or a fixed file name
-        save_filename, nametag = self._get_patched_filename_nametag(file_name,
-                                                                    tag,
-                                                                    '_raw_timetrace')
-        # Save data to file
-        data_storage.save_data(self.raw_data.astype('int64')[:, np.newaxis],
-                               metadata=self._get_raw_metadata(),
-                               nametag=nametag,
-                               filename=save_filename,
-                               timestamp=timestamp,
-                               notes=notes,
-                               column_headers='Signal (counts)')
+            return ds
 
-        ###########################
-        # Save extracted laser data
-        ###########################
+        data_storage = _build_data_storage()
+        timestamp_common = datetime.datetime.now()
+
         if save_laser_pulses:
-            save_filename, nametag = self._get_patched_filename_nametag(file_name,
-                                                                        tag,
-                                                                        '_laser_pulses')
-            data_storage.save_data(self.laser_data,
-                                   metadata=self._get_laser_metadata(),
-                                   nametag=nametag,
-                                   filename=save_filename,
-                                   timestamp=timestamp,
-                                   notes=notes,
-                                   column_headers='Signal (counts)')
+            filelabel = 'laser_pulses' if not tag else tag + '_laser_pulses'
+            parameters = _get_header_params('laser_pulses')
 
-        ############################
-        # Save evaluated signal data
-        ############################
+            data = self.laser_data
+            data_storage.column_headers = f'Signal (counts)'
+
+            data_storage.save_data(data,
+                                   parameters=parameters,
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
+
         if save_pulsed_measurement:
-            save_filename, nametag = self._get_patched_filename_nametag(file_name,
-                                                                        tag,
-                                                                        '_pulsed_measurement')
+            filelabel = 'pulsed_measurement' if not tag else tag + '_pulsed_measurement'
+            parameters = _get_header_params('pulsed_measurement')
 
-            # Format data to save
+            # write data
+            data = self.signal_data.transpose()
+            data_storage.column_headers = f'Controlled variable(s) Signal'
             if with_error:
                 data = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
-            else:
-                data = self.signal_data.transpose()
+                data_storage.column_headers = f'Controlled variable(s) Signal Error'
 
-            save_path, _, _ = data_storage.save_data(
-                data,
-                metadata=self._get_signal_metadata(),
-                nametag=nametag,
-                filename=save_filename,
-                timestamp=timestamp,
-                notes=notes,
-                column_headers=self._get_signal_column_headers(with_error)
-            )
+            data_storage.save_data(data,
+                                   parameters=parameters,
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
 
-            # save thumbnail figure if required
-            if save_figure:
+            if save_figure or self._save_thumbnails:
                 fig = self._plot_pulsed_thumbnail(with_error=with_error)
-                fig_path = save_path.rsplit('.', 1)[0]
-                data_storage.save_thumbnail(fig, file_path=fig_path)
+                data_storage.save_thumbnail(fig,
+                                            nametag=filelabel,
+                                            timestamp=timestamp_common)
+
+        # save raw data
+        filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
+        parameters = _get_header_params('raw')
+
+        # prepare the data in a dict:
+        data = self.raw_data.astype('int64')[:, np.newaxis]
+        data_storage.column_headers = f'Signal(counts)'
+
+        data_storage.save_data(data,
+                               parameters=parameters,
+                               nametag=filelabel,
+                               timestamp=timestamp_common)
+
+
+        # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
+        # timestamp = datetime.datetime.now()
+        #
+        # #####################################################################
+        # ####                Save extracted laser pulses                  ####
+        # #####################################################################
+        # if save_laser_pulses:
+        #     if tag:
+        #         filelabel = tag + '_laser_pulses'
+        #     else:
+        #         filelabel = 'laser_pulses'
+        #
+        #     # prepare the data in a dict:
+        #     data = dict()
+        #     laser_trace = self.laser_data
+        #     data['Signal (counts)'] = laser_trace.transpose()
+        #
+        #     # write the parameters:
+        #     parameters = dict()
+        #     parameters['bin width (s)'] = self.__fast_counter_binwidth
+        #     parameters['record length (s)'] = self.__fast_counter_record_length
+        #     parameters['gated counting'] = self.fast_counter_settings['is_gated']
+        #     parameters['extraction parameters'] = self.extraction_settings
+        #
+        #     self.savelogic().save_data(data,
+        #                                timestamp=timestamp,
+        #                                parameters=parameters,
+        #                                filepath=filepath,
+        #                                filelabel=filelabel,
+        #                                filetype='text',
+        #                                fmt='%d',
+        #                                delimiter='\t')
+        #
+        # #####################################################################
+        # ####                Save measurement data                        ####
+        # #####################################################################
+        # if save_pulsed_measurement:
+        #     if tag:
+        #         filelabel = tag + '_pulsed_measurement'
+        #     else:
+        #         filelabel = 'pulsed_measurement'
+        #
+        #     # prepare the data in a dict:
+        #     header_str = 'Controlled variable'
+        #     if self._data_units[0]:
+        #         header_str += '({0})'.format(self._data_units[0])
+        #     header_str += '\tSignal'
+        #     if self._data_units[1]:
+        #         header_str += '({0})'.format(self._data_units[1])
+        #     if self._alternating:
+        #         header_str += '\tSignal2'
+        #         if self._data_units[1]:
+        #             header_str += '({0})'.format(self._data_units[1])
+        #     if with_error:
+        #         header_str += '\tError'
+        #         if self._data_units[1]:
+        #             header_str += '({0})'.format(self._data_units[1])
+        #         if self._alternating:
+        #             header_str += '\tError2'
+        #             if self._data_units[1]:
+        #                 header_str += '({0})'.format(self._data_units[1])
+        #     data = dict()
+        #     if with_error:
+        #         data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
+        #     else:
+        #         data[header_str] = self.signal_data.transpose()
+        #
+        #     # write the parameters:
+        #     parameters = dict()
+        #     parameters['Approx. measurement time (s)'] = self.__elapsed_time
+        #     parameters['Measurement sweeps'] = self.__elapsed_sweeps
+        #     parameters['Number of laser pulses'] = self._number_of_lasers
+        #     parameters['Laser ignore indices'] = self._laser_ignore_list
+        #     parameters['alternating'] = self._alternating
+        #     parameters['analysis parameters'] = self.analysis_settings
+        #     parameters['extraction parameters'] = self.extraction_settings
+        #     parameters['fast counter settings'] = self.fast_counter_settings
+        #
+        #     if save_figure:
+        #         # Prepare the figure to save as a "data thumbnail"
+        #         plt.style.use(self.savelogic().mpl_qd_style)
+        #
+        #         # extract the possible colors from the colorscheme:
+        #         prop_cycle = self.savelogic().mpl_qd_style['axes.prop_cycle']
+        #         colors = {}
+        #         for i, color_setting in enumerate(prop_cycle):
+        #             colors[i] = color_setting['color']
+        #
+        #         # scale the x_axis for plotting
+        #         max_val = np.max(self.signal_data[0])
+        #         scaled_float = units.ScaledFloat(max_val)
+        #         counts_prefix = scaled_float.scale
+        #         x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
+        #
+        #         # Create the figure object
+        #         if self._alternative_data_type and self._alternative_data_type != 'None':
+        #             fig, (ax1, ax2) = plt.subplots(2, 1)
+        #         else:
+        #             fig, ax1 = plt.subplots()
+        #
+        #         if with_error:
+        #             ax1.errorbar(x=x_axis_scaled, y=self.signal_data[1],
+        #                          yerr=self.measurement_error[1], fmt='-o',
+        #                          linestyle=':', linewidth=0.5, color=colors[0],
+        #                          ecolor=colors[1], capsize=3, capthick=0.9,
+        #                          elinewidth=1.2, label='data trace 1')
+        #
+        #             if self._alternating:
+        #                 ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
+        #                              yerr=self.measurement_error[2], fmt='-D',
+        #                              linestyle=':', linewidth=0.5, color=colors[3],
+        #                              ecolor=colors[4],  capsize=3, capthick=0.7,
+        #                              elinewidth=1.2, label='data trace 2')
+        #         else:
+        #             ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
+        #                      linestyle=':', linewidth=0.5, label='data trace 1')
+        #
+        #             if self._alternating:
+        #                 ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
+        #                          color=colors[3], linestyle=':', linewidth=0.5,
+        #                          label='data trace 2')
+        #
+        #         # Do not include fit curve if there is no fit calculated.
+        #         if self.signal_fit_data.size != 0 and np.sum(np.abs(self.signal_fit_data[1])) > 0:
+        #             x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
+        #             ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
+        #                      color=colors[2], marker='None', linewidth=1.5,
+        #                      label='fit')
+        #
+        #             # add then the fit result to the plot:
+        #
+        #             # Parameters for the text plot:
+        #             # The position of the text annotation is controlled with the
+        #             # relative offset in x direction and the relative length factor
+        #             # rel_len_fac of the longest entry in one column
+        #             rel_offset = 0.02
+        #             rel_len_fac = 0.011
+        #             entries_per_col = 24
+        #
+        #             # create the formatted fit text:
+        #             if hasattr(self.fit_result, 'result_str_dict'):
+        #                 result_str = units.create_formatted_output(self.fit_result.result_str_dict)
+        #             else:
+        #                 result_str = ''
+        #             # do reverse processing to get each entry in a list
+        #             entry_list = result_str.split('\n')
+        #             # slice the entry_list in entries_per_col
+        #             chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+        #
+        #             is_first_column = True  # first entry should contain header or \n
+        #
+        #             for column in chunks:
+        #
+        #                 max_length = max(column, key=len)   # get the longest entry
+        #                 column_text = ''
+        #
+        #                 for entry in column:
+        #                     column_text += entry + '\n'
+        #
+        #                 column_text = column_text[:-1]  # remove the last new line
+        #
+        #                 heading = ''
+        #                 if is_first_column:
+        #                     heading = 'Fit results:'
+        #
+        #                 column_text = heading + '\n' + column_text
+        #
+        #                 ax1.text(1.00 + rel_offset, 0.99, column_text,
+        #                          verticalalignment='top',
+        #                          horizontalalignment='left',
+        #                          transform=ax1.transAxes,
+        #                          fontsize=12)
+        #
+        #                 # the rel_offset in position of the text is a linear function
+        #                 # which depends on the longest entry in the column
+        #                 rel_offset += rel_len_fac * len(max_length)
+        #
+        #                 is_first_column = False
+        #
+        #         # handle the save of the alternative data plot
+        #         if self._alternative_data_type and self._alternative_data_type != 'None':
+        #
+        #             # scale the x_axis for plotting
+        #             max_val = np.max(self.signal_alt_data[0])
+        #             scaled_float = units.ScaledFloat(max_val)
+        #             x_axis_prefix = scaled_float.scale
+        #             x_axis_ft_scaled = self.signal_alt_data[0] / scaled_float.scale_val
+        #
+        #             # since no ft units are provided, make a small work around:
+        #             if self._alternative_data_type == 'FFT':
+        #                 if self._data_units[0] == 's':
+        #                     inverse_cont_var = 'Hz'
+        #                 elif self._data_units[0] == 'Hz':
+        #                     inverse_cont_var = 's'
+        #                 else:
+        #                     inverse_cont_var = '(1/{0})'.format(self._data_units[0])
+        #                 x_axis_ft_label = 'FT {0} ({1}{2})'.format(
+        #                     self._data_labels[0], x_axis_prefix, inverse_cont_var)
+        #                 y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
+        #                 ft_label = 'FT of data trace 1'
+        #             else:
+        #                 if self._data_units[0]:
+        #                     x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
+        #                                                             self._data_units[0])
+        #                 else:
+        #                     x_axis_ft_label = '{0}'.format(self._data_labels[0])
+        #                 if self._data_units[1]:
+        #                     y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+        #                 else:
+        #                     y_axis_ft_label = '{0}'.format(self._data_labels[1])
+        #
+        #                 ft_label = '{0} of data traces'.format(self._alternative_data_type)
+        #
+        #             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
+        #                      linestyle=':', linewidth=0.5, color=colors[0],
+        #                      label=ft_label)
+        #             if self._alternating and len(self.signal_alt_data) > 2:
+        #                 ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+        #                          linestyle=':', linewidth=0.5, color=colors[3],
+        #                          label=ft_label.replace('1', '2'))
+        #
+        #             ax2.set_xlabel(x_axis_ft_label)
+        #             ax2.set_ylabel(y_axis_ft_label)
+        #             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #                        mode="expand", borderaxespad=0.)
+        #
+        #             if (self.signal_fit_alt_data.size != 0
+        #                     and np.sum(np.abs(self.signal_fit_alt_data[1])) > 0):
+        #                 x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
+        #                 ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
+        #                          color=colors[2], marker='None', linewidth=1.5,
+        #                          label='secondary fit')
+        #
+        #                 # add then the fit result to the plot:
+        #
+        #                 # Parameters for the text plot:
+        #                 # The position of the text annotation is controlled with the
+        #                 # relative offset in x direction and the relative length factor
+        #                 # rel_len_fac of the longest entry in one column
+        #                 rel_offset = 0.02
+        #                 rel_len_fac = 0.011
+        #                 entries_per_col = 24
+        #
+        #                 # create the formatted fit text:
+        #                 if hasattr(self.alt_fit_result, 'result_str_dict'):
+        #                     result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+        #                 else:
+        #                     result_str = ''
+        #                 # do reverse processing to get each entry in a list
+        #                 entry_list = result_str.split('\n')
+        #                 # slice the entry_list in entries_per_col
+        #                 chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+        #
+        #                 is_first_column = True  # first entry should contain header or \n
+        #
+        #                 for column in chunks:
+        #                     max_length = max(column, key=len)   # get the longest entry
+        #                     column_text = ''
+        #
+        #                     for entry in column:
+        #                         column_text += entry + '\n'
+        #
+        #                     column_text = column_text[:-1]  # remove the last new line
+        #
+        #                     heading = ''
+        #                     if is_first_column:
+        #                         heading = 'Fit results:'
+        #
+        #                     column_text = heading + '\n' + column_text
+        #
+        #                     ax2.text(1.00 + rel_offset, 0.99, column_text,
+        #                              verticalalignment='top',
+        #                              horizontalalignment='left',
+        #                              transform=ax2.transAxes,
+        #                              fontsize=12)
+        #
+        #                     # the rel_offset in position of the text is a linear function
+        #                     # which depends on the longest entry in the column
+        #                     rel_offset += rel_len_fac * len(max_length)
+        #
+        #                     is_first_column = False
+        #
+        #         ax1.set_xlabel(
+        #             '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+        #         if self._data_units[1]:
+        #             ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+        #         else:
+        #             ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+        #
+        #         fig.tight_layout()
+        #         ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #                    mode="expand", borderaxespad=0.)
+        #         # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #         #            mode="expand", borderaxespad=0.)
+        #     else:
+        #         fig = None
+        #
+        #     self.savelogic().save_data(data, timestamp=timestamp,
+        #                                parameters=parameters, fmt='%.15e',
+        #                                filepath=filepath, filelabel=filelabel, filetype='text',
+        #                                delimiter='\t', plotfig=fig)
+        #
+        # #####################################################################
+        # ####                Save raw data timetrace                      ####
+        # #####################################################################
+        # filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
+        #
+        # # prepare the data in a dict:
+        # data = dict()
+        # raw_trace = self.raw_data.astype('int64')
+        # data['Signal(counts)'] = raw_trace.transpose()
+        # # write the parameters:
+        # parameters = dict()
+        # parameters['bin width (s)'] = self.__fast_counter_binwidth
+        # parameters['record length (s)'] = self.__fast_counter_record_length
+        # parameters['gated counting'] = self.fast_counter_settings['is_gated']
+        # parameters['Number of laser pulses'] = self._number_of_lasers
+        # parameters['alternating'] = self._alternating
+        # parameters['Controlled variable'] = list(self.signal_data[0])
+        # parameters['Approx. measurement time (s)'] = self.__elapsed_time
+        # parameters['Measurement sweeps'] = self.__elapsed_sweeps
+        #
+        # self.savelogic().save_data(data, timestamp=timestamp,
+        #                            parameters=parameters, fmt='%d',
+        #                            filepath=filepath, filelabel=filelabel,
+        #                            filetype=self._raw_data_save_type,
+        #                            delimiter='\t')
+        # return filepath
 
     def _plot_pulsed_thumbnail(self, with_error=False):
 
@@ -1579,11 +1855,11 @@ class PulsedMeasurementLogic(LogicBase):
 
 
         # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(QudiMatplotlibStyle)
+        plt.style.use(mpl_qd_style)
 
         # extract the possible colors from the colorscheme:
         # todo: still needed or set by core?
-        prop_cycle = QudiMatplotlibStyle['axes.prop_cycle']
+        prop_cycle = mpl_qd_style['axes.prop_cycle']
         colors = {}
         for i, color_setting in enumerate(prop_cycle):
             colors[i] = color_setting['color']
@@ -1625,6 +1901,7 @@ class PulsedMeasurementLogic(LogicBase):
         if _is_fit_available():
             _plot_fit(axis=ax1)
 
+        #"""
         # handle the save of the alternative data plot
         if self._alternative_data_type and self._alternative_data_type != 'None':
 
@@ -1675,6 +1952,7 @@ class PulsedMeasurementLogic(LogicBase):
             if _is_fit_available(use_alternative_data=True):
                 _plot_fit(axis=ax2, use_alternative_data=True)
 
+
         ax1.set_xlabel(
             '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
         if self._data_units[1]:
@@ -1719,3 +1997,6 @@ class PulsedMeasurementLogic(LogicBase):
             self.signal_alt_data = np.zeros(self.signal_data.shape, dtype=float)
             self.signal_alt_data[0] = self.signal_data[0]
         return
+
+
+
