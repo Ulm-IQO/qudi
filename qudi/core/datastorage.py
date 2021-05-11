@@ -180,6 +180,8 @@ class DataStorageBase(metaclass=ABCMeta):
         # catch, if user delivers absolute path by mistake
         if os.path.isabs(subdir):
             subdir = subdir.lstrip("\\").lstrip("/")
+
+        save_sub_dir = self.sub_directory
         self.sub_directory += ("/" + subdir)
 
         nametag = os.path.basename(nametag)
@@ -198,8 +200,11 @@ class DataStorageBase(metaclass=ABCMeta):
         if file_extension is not None and not filename.endswith(file_extension):
             filename += file_extension
 
-        return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
+        full_path = os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
                             filename)
+        self.sub_directory = save_sub_dir
+
+        return full_path
 
     def save_thumbnail(self, mpl_figure, timestamp=None, filename=None, nametag=None):
         """ Save a matplotlib figure visualizing the saved data in the image format provided.
