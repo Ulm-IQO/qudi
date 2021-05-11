@@ -36,7 +36,7 @@ from qudi.util.math import compute_ft
 from qudi.core.module import LogicBase
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
-from qudi.core.datastorage import TextDataStorage
+from qudi.core.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
 from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
 from qudi.util.units import ScaledFloat
 from qudi.util.units import create_formatted_output
@@ -55,8 +55,11 @@ class PulsedMeasurementLogic(LogicBase):
     # Optional additional paths to import from
     extraction_import_path = ConfigOption(name='additional_extraction_path', default=None)
     analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
-    # Optional file type descriptor for saving raw data to file
-    _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text')
+    # Optional file type descriptor for saving raw data to file.
+    # todo: doesn't warn if checker not satisfied
+    _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text',
+                                       checker=lambda x: x in ['text', 'csv', 'npy'])
+    _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
 
     # status variables
     # ext. microwave settings
@@ -1335,7 +1338,7 @@ class PulsedMeasurementLogic(LogicBase):
     ############################################################################
     @QtCore.Slot(str, bool)
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
+                              save_figure=False):
         """
         Prepare data to be saved and create a proper plot of the data
 
@@ -1379,7 +1382,22 @@ class PulsedMeasurementLogic(LogicBase):
             else:
                 raise ValueError(f"Unknown save type: {type}")
 
-        data_storage_txt = TextDataStorage(sub_directory='PulsedMeasurement')
+        def _build_data_storage():
+
+            ds = None
+
+            if self._raw_data_save_type == 'text':
+                ds = TextDataStorage(sub_directory='PulsedMeasurement')
+            elif self._raw_data_save_type == 'npy':
+                ds = NpyDataStorage(sub_directory='PulsedMeasurement')
+            elif self._raw_data_save_type == 'csv':
+                ds = CsvDataStorage(sub_directory='PulsedMeasurement')
+            else:
+                raise ValueError(f"Unknown save data type: {self._raw_data_save_type}")
+
+            return ds
+
+        data_storage = _build_data_storage()
         timestamp_common = datetime.datetime.now()
 
         if save_laser_pulses:
@@ -1387,12 +1405,12 @@ class PulsedMeasurementLogic(LogicBase):
             parameters = _get_header_params('laser_pulses')
 
             data = self.laser_data
-            data_storage_txt.column_headers = f'Signal (counts)'
+            data_storage.column_headers = f'Signal (counts)'
 
-            data_storage_txt.save_data(data,
-                                       parameters=parameters,
-                                       nametag=filelabel,
-                                       timestamp=timestamp_common)
+            data_storage.save_data(data,
+                                   parameters=parameters,
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
 
         if save_pulsed_measurement:
             filelabel = 'pulsed_measurement' if not tag else tag + '_pulsed_measurement'
@@ -1400,21 +1418,21 @@ class PulsedMeasurementLogic(LogicBase):
 
             # write data
             data = self.signal_data.transpose()
-            data_storage_txt.column_headers = f'Controlled variable(s) Signal'
+            data_storage.column_headers = f'Controlled variable(s) Signal'
             if with_error:
                 data = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
-                data_storage_txt.column_headers = f'Controlled variable(s) Signal Error'
+                data_storage.column_headers = f'Controlled variable(s) Signal Error'
 
-            data_storage_txt.save_data(data,
-                                       parameters=parameters,
-                                       nametag=filelabel,
-                                       timestamp=timestamp_common)
+            data_storage.save_data(data,
+                                   parameters=parameters,
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
 
-            if save_figure:
+            if save_figure or self._save_thumbnails:
                 fig = self._plot_pulsed_thumbnail(with_error=with_error)
-                data_storage_txt.save_thumbnail(fig,
-                                                nametag=filelabel,
-                                                timestamp=timestamp_common)
+                data_storage.save_thumbnail(fig,
+                                            nametag=filelabel,
+                                            timestamp=timestamp_common)
 
         # save raw data
         filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
@@ -1422,12 +1440,12 @@ class PulsedMeasurementLogic(LogicBase):
 
         # prepare the data in a dict:
         data = self.raw_data.astype('int64')[:, np.newaxis]
-        data_storage_txt.column_headers = f'Signal(counts)'
+        data_storage.column_headers = f'Signal(counts)'
 
-        data_storage_txt.save_data(data,
-                                   parameters=parameters,
-                                   nametag=filelabel,
-                                   timestamp=timestamp_common)
+        data_storage.save_data(data,
+                               parameters=parameters,
+                               nametag=filelabel,
+                               timestamp=timestamp_common)
 
 
         # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
