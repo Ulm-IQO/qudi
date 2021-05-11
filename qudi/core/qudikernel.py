@@ -124,7 +124,6 @@ class QudiKernelClient:
         port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
                                        port=port,
-                                       config={'allow_all_attrs': True},
                                        service=self.service_instance)
 
     def disconnect(self):
