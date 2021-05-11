@@ -39,6 +39,7 @@ class TemplateHardware(Base):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.global_var = 10
 
     def on_activate(self):
         """Everything that should be done when activating the module must go in here.
@@ -77,3 +78,11 @@ class TemplateHardware(Base):
         """
         print('my_slot_for_stuff has been called!')
         return
+
+    @property
+    def status_var(self):
+        return self._my_status_variable
+
+    @status_var.setter
+    def status_var(self, value):
+        self._my_status_variable = value

@@ -53,6 +53,7 @@ def get_remote_module_instance(remote_url, certfile=None, keyfile=None, protocol
                                   config=protocol_config,
                                   certfile=certfile,
                                   keyfile=keyfile)
+    logger.debug(f'get_remote_module_instance has protocol_config {protocol_config}')
     return connection.root.get_module_instance(parsed.path.replace('/', ''))
 
 
@@ -102,6 +103,9 @@ class _ServerRunnable(QtCore.QObject):
                                               authenticator=authenticator)
             logger.info(f'Starting RPyC server "{self.thread().objectName()}" on '
                         f'[{self.host}]:{self.port:d}')
+            logger.debug(f'{self.thread().objectName()}: '
+                         f'protocol_config is {self.protocol_config}, '
+                         f'authenticator is {authenticator}')
             self.server.start()
         except:
             logger.exception(f'Error during start of RPyC Server "{self.thread().objectName()}":')
