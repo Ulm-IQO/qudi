@@ -19,7 +19,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import sys
 import logging
+import subprocess
+
+import jupyter_client.kernelspec
 from PySide2 import QtCore, QtWidgets
 from qtconsole.manager import QtKernelManager
 
@@ -117,7 +121,7 @@ class QudiMainGui(GuiBase):
         self.mw.action_load_configuration.triggered.connect(self.load_configuration)
         self.mw.action_reload_qudi.triggered.connect(
             qudi_main.prompt_restart, QtCore.Qt.QueuedConnection)
-        self.mw.action_save_configuration.triggered.connect(self.save_configuration)
+        self.mw.action_open_configuration_editor.triggered.connect(self.new_configuration)
         self.mw.action_load_all_modules.triggered.connect(
             qudi_main.module_manager.start_all_modules)
         self.mw.action_view_default.triggered.connect(self.reset_default_layout)
@@ -143,7 +147,7 @@ class QudiMainGui(GuiBase):
         self.mw.action_quit.triggered.disconnect()
         self.mw.action_load_configuration.triggered.disconnect()
         self.mw.action_reload_qudi.triggered.disconnect()
-        self.mw.action_save_configuration.triggered.disconnect()
+        self.mw.action_open_configuration_editor.triggered.disconnect()
         self.mw.action_load_all_modules.triggered.disconnect()
         self.mw.action_view_default.triggered.disconnect()
         # Disconnect signals from manager
@@ -225,9 +229,10 @@ class QudiMainGui(GuiBase):
     def start_jupyter_widget(self):
         """ Starts a qudi IPython kernel in a separate process and connects it to the console widget
         """
+        self._has_console = False
         try:
             # Create and start kernel process
-            kernel_manager = QtKernelManager(kernel_name='Qudi')
+            kernel_manager = QtKernelManager(kernel_name='Qudi', autorestart=False)
             # kernel_manager.kernel.gui = 'qt4'
             kernel_manager.start_kernel()
 
@@ -238,16 +243,42 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.banner = banner
             self.console_apply_settings()
             self.mw.console_widget.set_default_style(colors='linux')
-            kernel_client = kernel_manager.client()
+            kernel_client = kernel_manager.client(autorestart=False)
+            bad = set(dir(QtCore.QObject()))
+            kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
+            print([n for n in dir(kernel_client.hb_channel) if not n.startswith('_') and n not in bad])
+
             kernel_client.start_channels()
             self.mw.console_widget.kernel_manager = kernel_manager
             self.mw.console_widget.kernel_client = kernel_client
             self._has_console = True
             self.log.info('IPython kernel for qudi main GUI successfully started.')
+        except jupyter_client.kernelspec.NoSuchKernel:
+            self.log.error(
+                'Qudi IPython kernelspec not installed. IPython console not available. Please run '
+                '"qudi-install-kernel" from within the qudi Python environment and restart qudi. '
+            )
         except:
+            self.log.exception(
+                'Exception while trying to start IPython kernel for qudi main GUI. Qudi IPython '
+                'console not available.'
+            )
+
+    @QtCore.Slot()
+    def kernel_died_callback(self):
+        """
+        """
+        try:
+            self.mw.console_widget.kernel_client.stop_channels()
+        except:
+            pass
+        if self._has_console:
             self._has_console = False
-            self.log.exception('Exception while trying to start IPython kernel for qudi main GUI. '
-                               'Qudi IPython console not available.')
+            self.log.error(
+                'Qudi IPython kernel has unexpectedly died. This can be caused by a corrupt qudi '
+                'kernelspec installation. Try to run "qudi-install-kernel" from within the qudi '
+                'Python environment and restart qudi.'
+            )
 
     def stop_jupyter_widget(self):
         """ Stops the qudi IPython kernel process and detaches it from the console widget
@@ -381,15 +412,22 @@ class QudiMainGui(GuiBase):
             if reply == QtWidgets.QMessageBox.Yes:
                 self._qudi_main.restart()
 
-    def save_configuration(self):
-        """ Ask the user for a file where the configuration should be saved
-            to.
+    def new_configuration(self):
+        """ Prompt the user to open the graphical config editor in a subprocess in order to
+        edit/create config files for qudi.
         """
-        filename = QtWidgets.QFileDialog.getSaveFileName(self.mw,
-                                                         'Save Configuration',
-                                                         get_default_config_dir(True),
-                                                         'Configuration files (*.cfg)')[0]
-        if filename:
-            if not filename.endswith('.cfg'):
-                filename += '.cfg'
-            self._qudi_main.configuration.save_config(filename)
+        reply = QtWidgets.QMessageBox.question(
+                self.mw,
+                'Open Configuration Editor',
+                'Do you want open the graphical qudi configuration editor to create or edit qudi '
+                'config files?\n',
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.Yes
+        )
+        if reply == QtWidgets.QMessageBox.Yes:
+            process = subprocess.Popen(args=[sys.executable, '-m', 'tools.config_editor'],
+                                       close_fds=False,
+                                       env=os.environ.copy(),
+                                       stdin=sys.stdin,
+                                       stdout=sys.stdout,
+                                       stderr=sys.stderr)
