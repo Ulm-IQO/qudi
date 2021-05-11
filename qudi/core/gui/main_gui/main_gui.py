@@ -243,11 +243,8 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.banner = banner
             self.console_apply_settings()
             self.mw.console_widget.set_default_style(colors='linux')
-            kernel_client = kernel_manager.client(autorestart=False)
-            bad = set(dir(QtCore.QObject()))
+            kernel_client = kernel_manager.client()
             kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
-            print([n for n in dir(kernel_client.hb_channel) if not n.startswith('_') and n not in bad])
-
             kernel_client.start_channels()
             self.mw.console_widget.kernel_manager = kernel_manager
             self.mw.console_widget.kernel_client = kernel_client
