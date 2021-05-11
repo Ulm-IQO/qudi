@@ -1348,26 +1348,53 @@ class PulsedMeasurementLogic(LogicBase):
         @return str: filepath where data were saved
         """
 
+        def _get_header_params(type):
+            if type == 'laser_pulses':
+                # prepare parameters for header
+                parameters = dict()
+                parameters['bin width (s)'] = self.__fast_counter_binwidth
+                parameters['record length (s)'] = self.__fast_counter_record_length
+                parameters['gated counting'] = self.fast_counter_settings['is_gated']
+                parameters['extraction parameters'] = self.extraction_settings
+            elif type == 'pulsed_measurement':
+                parameters = dict()
+                parameters['Approx. measurement time (s)'] = self.__elapsed_time
+                parameters['Measurement sweeps'] = self.__elapsed_sweeps
+                parameters['Number of laser pulses'] = self._number_of_lasers
+                parameters['Laser ignore indices'] = self._laser_ignore_list
+                parameters['alternating'] = self._alternating
+                parameters['analysis parameters'] = self.analysis_settings
+                parameters['extraction parameters'] = self.extraction_settings
+                parameters['fast counter settings'] = self.fast_counter_settings
+            elif type == 'raw':
+                parameters = dict()
+                parameters['bin width (s)'] = self.__fast_counter_binwidth
+                parameters['record length (s)'] = self.__fast_counter_record_length
+                parameters['gated counting'] = self.fast_counter_settings['is_gated']
+                parameters['Number of laser pulses'] = self._number_of_lasers
+                parameters['alternating'] = self._alternating
+                parameters['Controlled variable'] = list(self.signal_data[0])
+                parameters['Approx. measurement time (s)'] = self.__elapsed_time
+                parameters['Measurement sweeps'] = self.__elapsed_sweeps
+            else:
+                raise ValueError(f"Unknown save type: {type}")
+
         data_storage_txt = TextDataStorage(sub_directory='PulsedMeasurement')
 
-        #####################################################################
-        ####                Save measurement data                        ####
-        #####################################################################
-        if save_pulsed_measurement:
-            filelabel = 'pulsed_measurement'
-            if tag:
-                filelabel = tag + '_pulsed_measurement'
+        if save_laser_pulses:
+            filelabel = 'laser_pulses' if not tag else tag + '_laser_pulses'
+            parameters = _get_header_params('laser_pulses')
 
-                # write the parameters to header
-            parameters = dict()
-            parameters['Approx. measurement time (s)'] = self.__elapsed_time
-            parameters['Measurement sweeps'] = self.__elapsed_sweeps
-            parameters['Number of laser pulses'] = self._number_of_lasers
-            parameters['Laser ignore indices'] = self._laser_ignore_list
-            parameters['alternating'] = self._alternating
-            parameters['analysis parameters'] = self.analysis_settings
-            parameters['extraction parameters'] = self.extraction_settings
-            parameters['fast counter settings'] = self.fast_counter_settings
+            data = self.laser_data
+            data_storage_txt.column_headers = f'Signal (counts)'
+
+            data_storage_txt.save_data(data,
+                                       parameters=parameters,
+                                       nametag=filelabel)
+
+        if save_pulsed_measurement:
+            filelabel = 'pulsed_measurement' if not tag else tag + '_pulsed_measurement'
+            parameters = _get_header_params('pulsed_measurement')
 
             # write data
             data = self.signal_data.transpose()
@@ -1383,6 +1410,19 @@ class PulsedMeasurementLogic(LogicBase):
             if save_figure:
                 fig = self._plot_pulsed_thumbnail(with_error=with_error)
                 data_storage_txt.save_thumbnail(fig, nametag=filelabel)
+
+        # save raw data
+        filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
+        parameters = _get_header_params('raw')
+
+        # prepare the data in a dict:
+        data = self.raw_data.astype('int64')[:, np.newaxis]
+        data_storage_txt.column_headers = f'Signal(counts)'
+
+        data_storage_txt.save_data(data,
+                                   parameters=parameters,
+                                   nametag=filelabel)
+
 
         # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
         # timestamp = datetime.datetime.now()
@@ -1779,6 +1819,17 @@ class PulsedMeasurementLogic(LogicBase):
 
                 is_first_column = False
 
+        def _is_fit_available(use_alternative_data=False):
+
+            fit = self._fit_result if not use_alternative_data else self._fit_result_alt
+
+            if not fit:
+                return False
+            else:
+                return fit.success and np.sum(np.abs(fit.high_res_best_fit[1])) > 0
+
+
+
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(mpl_qd_style)
 
@@ -1823,10 +1874,7 @@ class PulsedMeasurementLogic(LogicBase):
                          color=colors[3], linestyle=':', linewidth=0.5,
                          label='data trace 2')
 
-        # Do not include fit curve if there is no fit calculated.
-
-        #"""
-        if self._fit_result.success and np.sum(np.abs(self._fit_result.high_res_best_fit[1])) > 0:
+        if _is_fit_available():
             _plot_fit(axis=ax1)
 
         #"""
@@ -1877,7 +1925,7 @@ class PulsedMeasurementLogic(LogicBase):
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
-            if self._fit_result_alt.success and np.sum(np.abs(self._fit_result_alt.high_res_best_fit[1])) > 0:
+            if _is_fit_available(use_alternative_data=True):
                 _plot_fit(axis=ax2, use_alternative_data=True)
 
 
