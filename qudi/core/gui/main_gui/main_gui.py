@@ -23,6 +23,7 @@ import sys
 import logging
 import subprocess
 
+import jupyter_client.kernelspec
 from PySide2 import QtCore, QtWidgets
 from qtconsole.manager import QtKernelManager
 
@@ -228,9 +229,10 @@ class QudiMainGui(GuiBase):
     def start_jupyter_widget(self):
         """ Starts a qudi IPython kernel in a separate process and connects it to the console widget
         """
+        self._has_console = False
         try:
             # Create and start kernel process
-            kernel_manager = QtKernelManager(kernel_name='Qudi')
+            kernel_manager = QtKernelManager(kernel_name='Qudi', autorestart=False)
             # kernel_manager.kernel.gui = 'qt4'
             kernel_manager.start_kernel()
 
@@ -241,16 +243,42 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.banner = banner
             self.console_apply_settings()
             self.mw.console_widget.set_default_style(colors='linux')
-            kernel_client = kernel_manager.client()
+            kernel_client = kernel_manager.client(autorestart=False)
+            bad = set(dir(QtCore.QObject()))
+            kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
+            print([n for n in dir(kernel_client.hb_channel) if not n.startswith('_') and n not in bad])
+
             kernel_client.start_channels()
             self.mw.console_widget.kernel_manager = kernel_manager
             self.mw.console_widget.kernel_client = kernel_client
             self._has_console = True
             self.log.info('IPython kernel for qudi main GUI successfully started.')
+        except jupyter_client.kernelspec.NoSuchKernel:
+            self.log.error(
+                'Qudi IPython kernelspec not installed. IPython console not available. Please run '
+                '"qudi-install-kernel" from within the qudi Python environment and restart qudi. '
+            )
         except:
+            self.log.exception(
+                'Exception while trying to start IPython kernel for qudi main GUI. Qudi IPython '
+                'console not available.'
+            )
+
+    @QtCore.Slot()
+    def kernel_died_callback(self):
+        """
+        """
+        try:
+            self.mw.console_widget.kernel_client.stop_channels()
+        except:
+            pass
+        if self._has_console:
             self._has_console = False
-            self.log.exception('Exception while trying to start IPython kernel for qudi main GUI. '
-                               'Qudi IPython console not available.')
+            self.log.error(
+                'Qudi IPython kernel has unexpectedly died. This can be caused by a corrupt qudi '
+                'kernelspec installation. Try to run "qudi-install-kernel" from within the qudi '
+                'Python environment and restart qudi.'
+            )
 
     def stop_jupyter_widget(self):
         """ Stops the qudi IPython kernel process and detaches it from the console widget
