@@ -1145,7 +1145,7 @@ class PredefinedGeneratorBase:
                                  pulse_function=pulse_function,
                                  digital_high=digital_high)
 
-    def _get_laser_element(self, length, increment):
+    def _get_laser_element(self, length, increment, add_gate_ch='d_ch4'):
         """
         Creates laser trigger PulseBlockElement
 
@@ -1158,6 +1158,9 @@ class PredefinedGeneratorBase:
                                                   increment=increment,
                                                   channels=self.laser_channel)
         laser_element.laser_on = True
+        # additional slow counter switch for pentacene setup
+        # be sure this is not a fast counter switch!
+        laser_element.digital_high[add_gate_ch] = True
         return laser_element
 
     def _get_laser_gate_element(self, length, increment):
