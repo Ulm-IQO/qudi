@@ -95,8 +95,8 @@ class QudiKernelService(rpyc.Service):
         finally:
             self._background_server = None
 
-    def exposed_modules_changed(self):
-        logging.warning(f'modules_changed called on client')
+    # Implement methods starting with 'exposed_' here in order to provide services to qudi module
+    # server.
 
 
 class QudiKernelClient:
