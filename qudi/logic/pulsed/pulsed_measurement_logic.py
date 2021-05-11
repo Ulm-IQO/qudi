@@ -1380,6 +1380,7 @@ class PulsedMeasurementLogic(LogicBase):
                 raise ValueError(f"Unknown save type: {type}")
 
         data_storage_txt = TextDataStorage(sub_directory='PulsedMeasurement')
+        timestamp_common = datetime.datetime.now()
 
         if save_laser_pulses:
             filelabel = 'laser_pulses' if not tag else tag + '_laser_pulses'
@@ -1390,7 +1391,8 @@ class PulsedMeasurementLogic(LogicBase):
 
             data_storage_txt.save_data(data,
                                        parameters=parameters,
-                                       nametag=filelabel)
+                                       nametag=filelabel,
+                                       timestamp=timestamp_common)
 
         if save_pulsed_measurement:
             filelabel = 'pulsed_measurement' if not tag else tag + '_pulsed_measurement'
@@ -1405,11 +1407,14 @@ class PulsedMeasurementLogic(LogicBase):
 
             data_storage_txt.save_data(data,
                                        parameters=parameters,
-                                       nametag=filelabel)
+                                       nametag=filelabel,
+                                       timestamp=timestamp_common)
 
             if save_figure:
                 fig = self._plot_pulsed_thumbnail(with_error=with_error)
-                data_storage_txt.save_thumbnail(fig, nametag=filelabel)
+                data_storage_txt.save_thumbnail(fig,
+                                                nametag=filelabel,
+                                                timestamp=timestamp_common)
 
         # save raw data
         filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
@@ -1421,7 +1426,8 @@ class PulsedMeasurementLogic(LogicBase):
 
         data_storage_txt.save_data(data,
                                    parameters=parameters,
-                                   nametag=filelabel)
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
 
 
         # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
