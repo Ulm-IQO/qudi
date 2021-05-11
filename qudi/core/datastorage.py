@@ -538,9 +538,9 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, comments=None, **kwargs):
         kwargs['file_extension'] = '.npy'
-        kwargs['comments'] = None
+        self.comments = comments if isinstance(comments, str) else None
         super().__init__(**kwargs)
 
     def create_header(self, data_filename, parameters=None, timestamp=None, include_column_headers=True):
