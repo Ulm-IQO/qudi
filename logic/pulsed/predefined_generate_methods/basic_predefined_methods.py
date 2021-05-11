@@ -131,6 +131,37 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_n_digital_high(self, name='digital_high', length=3.0e-6,
+                                  digital_channels="1,2,3,4"):
+        """ General generation method for laser on and microwave on generation.
+
+        @param string name: Name of the PulseBlockEnsemble to be generated
+        @param float length: Length of the PulseBlockEnsemble in seconds
+
+        @return object: the generated PulseBlockEnsemble object.
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        d_ch_nums = csv_2_list(digital_channels)
+        digital_channels = ["d_ch{}".format(int(i)) for i in d_ch_nums]
+        # create the laser_mw element
+        trigger_element = self._get_trigger_element(length=length,
+                                                    increment=0,
+                                                    channels=list(digital_channels))
+
+        # Create block and append to created_blocks list
+        laser_mw_block = PulseBlock(name=name)
+        laser_mw_block.append(trigger_element)
+        created_blocks.append(laser_mw_block)
+        # Create block ensemble and append to created_ensembles list
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((laser_mw_block.name, 0))
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
     def generate_idle(self, name='idle', length=3.0e-6):
         """ Generate just a simple idle ensemble.
 
