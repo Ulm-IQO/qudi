@@ -175,6 +175,15 @@ class DataStorageBase(metaclass=ABCMeta):
 
         @return str: Full absolute path of the data file
         """
+
+        subdir = os.path.dirname(nametag)
+        # catch, if user delivers absolute path by mistake
+        if os.path.isabs(subdir):
+            subdir = subdir.lstrip("\\").lstrip("/")
+        self.sub_directory += ("/" + subdir)
+
+        nametag = os.path.basename(nametag)
+
         if filename is None:
             if timestamp is None:
                 timestamp = datetime.now()
@@ -188,6 +197,7 @@ class DataStorageBase(metaclass=ABCMeta):
             file_extension = '.' + file_extension
         if file_extension is not None and not filename.endswith(file_extension):
             filename += file_extension
+
         return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
                             filename)
 
