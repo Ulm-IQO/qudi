@@ -241,11 +241,9 @@ class QudiNamespaceServer(BaseServer):
         @param int port: port the RPyC server should listen to
         @param PySide2.QtCore.QObject parent: optional, parent Qt QObject
         """
-        service = QudiNamespaceService(qudi=qudi)
         super().__init__(parent=parent,
                          qudi=qudi,
-                         service_instance=service,
+                         service_instance=QudiNamespaceService(qudi=qudi),
                          name=name,
                          host='localhost',
                          port=port)
-        self._module_manager.sigModuleStateChanged.connect(service.notify_module_change)
