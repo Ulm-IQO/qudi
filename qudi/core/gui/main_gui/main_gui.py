@@ -19,14 +19,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import sys
 import logging
+import subprocess
+
 import numpy as np
 
 from collections import OrderedDict
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.paths import get_main_dir, get_default_config_dir
-from qudi.util.helpers import has_pyqtgraph
 from qudi.core.remote import get_remote_modules_model
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
@@ -44,8 +46,10 @@ try:
 except ImportError:
     Repo = None
 
-if has_pyqtgraph:
+try:
     import pyqtgraph as pg
+except ImportError:
+    pg = None
 
 
 class QudiMainGui(GuiBase):
@@ -131,7 +135,7 @@ class QudiMainGui(GuiBase):
         self.mw.action_load_configuration.triggered.connect(self.load_configuration)
         self.mw.action_reload_qudi.triggered.connect(
             qudi_main.prompt_restart, QtCore.Qt.QueuedConnection)
-        self.mw.action_save_configuration.triggered.connect(self.save_configuration)
+        self.mw.action_open_configuration_editor.triggered.connect(self.new_configuration)
         self.mw.action_load_all_modules.triggered.connect(
             qudi_main.module_manager.start_all_modules)
         self.mw.action_view_default.triggered.connect(self.reset_default_layout)
@@ -157,7 +161,7 @@ class QudiMainGui(GuiBase):
         self.mw.action_quit.triggered.disconnect()
         self.mw.action_load_configuration.triggered.disconnect()
         self.mw.action_reload_qudi.triggered.disconnect()
-        self.mw.action_save_configuration.triggered.disconnect()
+        self.mw.action_open_configuration_editor.triggered.disconnect()
         self.mw.action_load_all_modules.triggered.disconnect()
         self.mw.action_view_default.triggered.disconnect()
         # Disconnect signals from manager
@@ -244,7 +248,7 @@ class QudiMainGui(GuiBase):
              'config': self._qudi_main.configuration.config_dict,
              'qudi': self._qudi_main}
         )
-        if has_pyqtgraph:
+        if pg is not None:
             self._kernel_manager.kernel.shell.user_ns['pg'] = pg
         self.update_ipython_all_modules()
         self._kernel_manager.kernel.gui = 'qt4'
@@ -259,7 +263,7 @@ class QudiMainGui(GuiBase):
         """
         Create an IPython console widget and connect it to an IPython kernel.
         """
-        if has_pyqtgraph:
+        if pg is not None:
             banner_modules = 'The numpy and pyqtgraph modules have already been imported as "np" ' \
                              'and "pg".'
         else:
@@ -445,15 +449,22 @@ class QudiMainGui(GuiBase):
             if reply == QtWidgets.QMessageBox.Yes:
                 self._qudi_main.restart()
 
-    def save_configuration(self):
-        """ Ask the user for a file where the configuration should be saved
-            to.
+    def new_configuration(self):
+        """ Prompt the user to open the graphical config editor in a subprocess in order to
+        edit/create config files for qudi.
         """
-        filename = QtWidgets.QFileDialog.getSaveFileName(self.mw,
-                                                         'Save Configuration',
-                                                         get_default_config_dir(True),
-                                                         'Configuration files (*.cfg)')[0]
-        if filename:
-            if not filename.endswith('.cfg'):
-                filename += '.cfg'
-            self._qudi_main.configuration.save_config(filename)
+        reply = QtWidgets.QMessageBox.question(
+                self.mw,
+                'Open Configuration Editor',
+                'Do you want open the graphical qudi configuration editor to create or edit qudi '
+                'config files?\n',
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.Yes
+        )
+        if reply == QtWidgets.QMessageBox.Yes:
+            process = subprocess.Popen(args=[sys.executable, '-m', 'tools.config_editor'],
+                                       close_fds=False,
+                                       env=os.environ.copy(),
+                                       stdin=sys.stdin,
+                                       stdout=sys.stdout,
+                                       stderr=sys.stderr)

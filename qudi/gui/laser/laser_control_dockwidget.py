@@ -20,14 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('LaserControlDockWidget',)
+
 from PySide2 import QtCore, QtWidgets
 
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
 from qudi.core.gui.qtwidgets.slider import DoubleSlider
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.interface.simple_laser_interface import ControlMode
-
-__all__ = ('LaserControlDockWidget',)
 
 
 class LaserControlDockWidget(AdvancedDockWidget):

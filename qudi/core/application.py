@@ -31,8 +31,8 @@ from PySide2 import QtCore, QtWidgets
 from qudi.core.logger import init_rotating_file_handler, init_record_model_handler
 from qudi.core.logger import get_logger, set_log_level
 from qudi.core.paths import get_main_dir, get_default_log_dir
-from qudi.util.helpers import import_check
 from qudi.util.mutex import Mutex
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
@@ -86,10 +86,6 @@ class Qudi(QtCore.QObject):
         self.log = get_logger(__class__.__name__)  # will be "qudi.Qudi" in custom logger
         sys.excepthook = self._qudi_excepthook
 
-        # Check vital packages for qudi, otherwise qudi will not even start.
-        if import_check() != 0:
-            raise RuntimeError('Vital python packages missing. Unable to use qudi.')
-
         self.thread_manager = ThreadManager(parent=self)
         self.module_manager = ModuleManager(qudi_main=self, parent=self)
         self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
@@ -120,6 +116,13 @@ class Qudi(QtCore.QObject):
         self._configured_extension_paths = list()
         self._is_running = False
         self._shutting_down = False
+
+        # Set qudi style for matplotlib
+        try:
+            import matplotlib.pyplot as plt
+            plt.style.use(mpl_qudi_style)
+        except ImportError:
+            pass
 
     def _qudi_excepthook(self, ex_type, ex_value, ex_traceback):
         """ Handler function to be used as sys.excepthook. Should forward all unhandled exceptions

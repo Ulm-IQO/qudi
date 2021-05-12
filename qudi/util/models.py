@@ -19,10 +19,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('DictTableModel', 'ListTableModel')
+
 from PySide2 import QtCore
 from .mutex import RecursiveMutex
-
-__all__ = ('DictTableModel', 'ListTableModel')
 
 
 class DictTableModel(QtCore.QAbstractTableModel):

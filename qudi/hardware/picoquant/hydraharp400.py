@@ -19,13 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.modules import get_main_dir
-from interface.fast_counter_interface import FastCounterInterface
 import time
-import numpy as np
 import ctypes
+import numpy as np
+
+from qudi.core.configoption import ConfigOption
+from qudi.interface.fast_counter_interface import FastCounterInterface
 
 # =============================================================================
 # Wrapper around the HHLib64.DLL. The current file is based on the header files
@@ -54,7 +53,8 @@ correspond to standard C/C++ data types as follows:
     double                  64 bit floating point number
 """
 
-class HydraHarp400(Base, FastCounterInterface):
+
+class HydraHarp400(FastCounterInterface):
     """ Hardware class to control the HydraHarp 400 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0.0.2

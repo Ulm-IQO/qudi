@@ -19,15 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import TimeTagger as tt
-from core.module import Base
-from core.configoption import ConfigOption
-import os
+
+from qudi.interface.fast_counter_interface import FastCounterInterface
+from qudi.core.configoption import ConfigOption
 
 
-class TimeTaggerFastCounter(Base, FastCounterInterface):
+class TimeTaggerFastCounter(FastCounterInterface):
     """ Hardware class to controls a Time Tagger from Swabian Instruments.
 
     Example config for copy-paste:
@@ -218,7 +217,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
                      'elapsed_time': None}  # TODO : implement that according to hardware capabilities
         return np.array(self.pulsed.getData(), dtype='int64'), info_dict
 
-
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
             return value.
@@ -235,4 +233,3 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         """ Returns the width of a single timebin in the timetrace in seconds. """
         width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
-

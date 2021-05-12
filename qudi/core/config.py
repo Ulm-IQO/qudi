@@ -28,6 +28,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML', 'load',
+           'save', 'yaml_load', 'yaml_dump')
+
 import os
 import re
 import copy
@@ -39,9 +42,6 @@ from io import BytesIO, TextIOWrapper
 from PySide2 import QtCore
 
 import qudi.core.paths as _paths
-
-__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML',
-           'load', 'save', 'yaml_load', 'yaml_dump')
 
 
 class QudiSafeRepresenter(_yaml.SafeRepresenter):
@@ -361,13 +361,13 @@ class Configuration(QtCore.QObject):
         """
         stylesheet = self._global_config.get('stylesheet', None)
         if not os.path.dirname(stylesheet):
-            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', 'application', stylesheet)
+            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', stylesheet)
         return os.path.abspath(stylesheet)
 
     @stylesheet.setter
     def stylesheet(self, file_path):
         """ Setter for .qss file path used as stylesheet for qudi Qt application.
-        Can either be a relative path to <qudi>/artwork/styles/application/ or an absolute path.
+        Can either be a relative path to <qudi>/artwork/styles/ or an absolute path.
 
         If stylesheet path is set to None, it will be removed from config. This will cause the
         application to fall back to platform dependent Qt defaults.

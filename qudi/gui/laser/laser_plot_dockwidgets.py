@@ -20,14 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('LaserOutputDockWidget', 'LaserTemperatureDockWidget')
+
 import time
 import pyqtgraph as pg
 from PySide2 import QtCore
 
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
-
-__all__ = ('LaserOutputDockWidget', 'LaserTemperatureDockWidget')
 
 
 class LaserOutputDockWidget(AdvancedDockWidget):

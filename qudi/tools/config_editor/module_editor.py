@@ -3,11 +3,11 @@
 
 """
 
+__all__ = ('ModuleConfigurationWidget',)
+
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.paths import get_artwork_dir
-
-__all__ = ('ModuleConfigurationWidget',)
 
 
 class ModuleConfigurationWidget(QtWidgets.QWidget):

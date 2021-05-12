@@ -20,10 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
-from ._general import FitModelBase, estimator
-
 __all__ = ('Linear',)
+
+import numpy as np
+from qudi.util.fit_models.model import FitModelBase, estimator
 
 
 class Linear(FitModelBase):

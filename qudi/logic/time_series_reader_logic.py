@@ -726,9 +726,6 @@ class TimeSeriesReaderLogic(LogicBase):
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
         pass
-        # # Use qudi style
-        # plt.style.use(self._savelogic.mpl_qd_style)
-        #
         # # Create figure and scale data
         # max_abs_value = ScaledFloat(max(data.max(), np.abs(data.min())))
         # time_data = np.arange(data.shape[1]) / timebase

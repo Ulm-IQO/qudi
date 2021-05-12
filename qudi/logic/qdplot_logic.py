@@ -30,10 +30,8 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
-from qudi.util import units
-from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
-from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
-from qudi.core.datafitting import FitContainer, FitConfigurationsModel
+from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
 
 class QDPlotLogic(LogicBase):
@@ -414,9 +412,6 @@ class QDPlotLogic(LogicBase):
             # Data labels
             x_label = self._x_label[plot_index] + ' (' + self._x_unit[plot_index] + ')'
             y_label = self._y_label[plot_index] + ' (' + self._y_unit[plot_index] + ')'
-
-            # Prepare the figure to save as a "data thumbnail"
-            plt.style.use(mpl_qd_style)
 
             fig, ax1 = plt.subplots()
 
