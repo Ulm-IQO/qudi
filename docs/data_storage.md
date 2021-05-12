@@ -80,6 +80,7 @@ Let's go through the parameters one-by-one:
 - `image_format`:
   The image format used to save matplotlib figures to file using storage method `save_thumbnail`.
 
+## Storage location
 By default all file based data is stored in daily sub-directories of the qudi data directory 
 (default is `<user_home>/qudi/Data/` but it can be changed via global config parameter 
 `default_data_dir`).  
