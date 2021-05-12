@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from PySide2 import QtCore
 import numpy as np
-import copy
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -29,17 +28,17 @@ import matplotlib.pyplot as plt
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+from qudi.core.module import LogicBase
 from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
-from qudi.core.datafitting import FitConfigurationsModel, FitContainer
+from qudi.util.datafitting import FitConfigurationsModel, FitContainer
 from qudi.util.math import compute_ft
-from qudi.core.module import LogicBase
+from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
+from qudi.util.units import ScaledFloat
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
-from qudi.core.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
-from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
-from qudi.util.units import ScaledFloat
-from qudi.util.units import create_formatted_output
+
 
 class PulsedMeasurementLogic(LogicBase):
     """
@@ -1382,6 +1381,8 @@ class PulsedMeasurementLogic(LogicBase):
             else:
                 raise ValueError(f"Unknown save type: {type}")
 
+            return parameters
+
         def _build_data_storage():
 
             ds = None
@@ -1408,7 +1409,7 @@ class PulsedMeasurementLogic(LogicBase):
             data_storage.column_headers = f'Signal (counts)'
 
             data_storage.save_data(data,
-                                   parameters=parameters,
+                                   metadata=parameters,
                                    nametag=filelabel,
                                    timestamp=timestamp_common)
 
@@ -1424,7 +1425,7 @@ class PulsedMeasurementLogic(LogicBase):
                 data_storage.column_headers = f'Controlled variable(s) Signal Error'
 
             data_storage.save_data(data,
-                                   parameters=parameters,
+                                   metadata=parameters,
                                    nametag=filelabel,
                                    timestamp=timestamp_common)
 
@@ -1443,7 +1444,7 @@ class PulsedMeasurementLogic(LogicBase):
         data_storage.column_headers = f'Signal(counts)'
 
         data_storage.save_data(data,
-                               parameters=parameters,
+                               metadata=parameters,
                                nametag=filelabel,
                                timestamp=timestamp_common)
 
@@ -1855,11 +1856,11 @@ class PulsedMeasurementLogic(LogicBase):
 
 
         # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(mpl_qd_style)
+        plt.style.use(mpl_qudi_style)
 
         # extract the possible colors from the colorscheme:
         # todo: still needed or set by core?
-        prop_cycle = mpl_qd_style['axes.prop_cycle']
+        prop_cycle = mpl_qudi_style['axes.prop_cycle']
         colors = {}
         for i, color_setting in enumerate(prop_cycle):
             colors[i] = color_setting['color']
