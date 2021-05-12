@@ -69,6 +69,16 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         layout = QtWidgets.QGridLayout()
         main_layout.addLayout(layout)
 
+        # Create local module server port editor
+        label = QtWidgets.QLabel('Local Module Server Port:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.local_port_spinbox = QtWidgets.QSpinBox()
+        self.local_port_spinbox.setToolTip('Port number for the local module server')
+        self.local_port_spinbox.setRange(0, 65535)
+        self.local_port_spinbox.setValue(18861)
+        layout.addWidget(label, 0, 0)
+        layout.addWidget(self.local_port_spinbox, 0, 1)
+
         # Create startup modules editor
         label = QtWidgets.QLabel('Startup Modules:')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -76,8 +86,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.startup_lineedit.setPlaceholderText('No startup modules')
         self.startup_lineedit.setToolTip('Modules to be automatically activated on qudi startup.\n'
                                          'Separate multiple module names with commas.')
-        layout.addWidget(label, 0, 0)
-        layout.addWidget(self.startup_lineedit, 0, 1)
+        layout.addWidget(label, 1, 0)
+        layout.addWidget(self.startup_lineedit, 1, 1)
 
         # Create stylesheet file path editor
         label = QtWidgets.QLabel('Stylesheet:')
@@ -88,8 +98,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
             'Absolute file path for qudi QSS stylesheet to use. If just a file name is given '
             'without full path, the file must be located in the "<qudi>/artwork/styles/".'
         )
-        layout.addWidget(label, 1, 0)
-        layout.addWidget(self.stylesheet_lineedit, 1, 1)
+        layout.addWidget(label, 2, 0)
+        layout.addWidget(self.stylesheet_lineedit, 2, 1)
 
         # Create path extensions editor
         label = QtWidgets.QLabel('Extension Paths:')
@@ -98,8 +108,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.extensions_lineedit.setPlaceholderText('No qudi extensions')
         self.extensions_lineedit.setToolTip('Extension module search paths for Qudi.\nSeparate '
                                             'multiple paths with commas.')
-        layout.addWidget(label, 2, 0)
-        layout.addWidget(self.extensions_lineedit, 2, 1)
+        layout.addWidget(label, 3, 0)
+        layout.addWidget(self.extensions_lineedit, 3, 1)
 
         # Create default data path editor
         label = QtWidgets.QLabel('Data Directory:')
@@ -108,8 +118,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.data_directory_lineedit.setPlaceholderText('Default "<UserHome>/qudi/Data/"')
         self.data_directory_lineedit.setToolTip('Default data directory for qudi modules to save '
                                                 'measurement data into.')
-        layout.addWidget(label, 3, 0)
-        layout.addWidget(self.data_directory_lineedit, 3, 1)
+        layout.addWidget(label, 4, 0)
+        layout.addWidget(self.data_directory_lineedit, 4, 1)
 
         # Create another layout to hold custom global config options
         self.custom_opt_layout = QtWidgets.QGridLayout()
@@ -143,15 +153,16 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.custom_opt_widgets = dict()
 
     def get_config_dict(self):
-        # module server dict
+        # remote module server dict
         host = self.host_lineedit.text().strip()
         port = self.port_spinbox.value()
         certfile = self.certfile_lineedit.text().strip()
         keyfile = self.keyfile_lineedit.text().strip()
-        module_server = {'address': host if host else None,
-                         'port': port,
-                         'certfile': certfile if certfile else None,
-                         'keyfile': keyfile if keyfile else None}
+        remote_modules_server = {'address': host if host else None,
+                                 'port': port,
+                                 'certfile': certfile if certfile else None,
+                                 'keyfile': keyfile if keyfile else None}
+        namespace_server_port = self.local_port_spinbox.value()
 
         # Other options
         default_data_dir = self.data_directory_lineedit.text().strip()
@@ -163,7 +174,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         cfg_dict = {'default_data_dir': default_data_dir if default_data_dir else None,
                     'extensions': extensions if extensions else None,
                     'stylesheet': stylesheet if stylesheet else None,
-                    'module_server': module_server,
+                    'remote_modules_server': remote_modules_server,
+                    'namespace_server_port': namespace_server_port,
                     'startup': startup if startup else None}
 
         # Add custom config options
@@ -181,11 +193,12 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         extensions = cfg_dict.pop('extensions', None)
         stylesheet = cfg_dict.pop('stylesheet', None)
         startup = cfg_dict.pop('startup', None)
-        module_server = cfg_dict.pop('module_server', dict())
-        host = module_server.get('address', None)
-        port = module_server.get('port', None)
-        certfile = module_server.get('certfile', None)
-        keyfile = module_server.get('keyfile', None)
+        remote_modules_server = cfg_dict.pop('remote_modules_server', dict())
+        host = remote_modules_server.get('address', None)
+        port = remote_modules_server.get('port', None)
+        certfile = remote_modules_server.get('certfile', None)
+        keyfile = remote_modules_server.get('keyfile', None)
+        namespace_server_port = cfg_dict.pop('namespace_server_port', None)
 
         self.data_directory_lineedit.setText('' if default_data_dir is None else default_data_dir)
         self.stylesheet_lineedit.setText('' if stylesheet is None else stylesheet)
@@ -195,6 +208,9 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.port_spinbox.setValue(0 if port is None else int(port))
         self.certfile_lineedit.setText('' if certfile is None else certfile)
         self.keyfile_lineedit.setText('' if keyfile is None else keyfile)
+        self.local_port_spinbox.setValue(
+            0 if namespace_server_port is None else int(namespace_server_port)
+        )
 
         # Handle custom options (all remaining items in cfg_dict)
         self._clear_custom_widgets()
@@ -203,7 +219,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def add_custom_option(self, name=None, value_str=''):
-        fixed_names = {'module_server', 'default_data_dir', 'extensions', 'stylesheet', 'startup'}
+        fixed_names = {'remote_modules_server', 'default_data_dir', 'extensions', 'stylesheet',
+                       'startup'}
         name = name if isinstance(name, str) else self.custom_opt_name_lineedit.text().strip()
         self.custom_opt_name_lineedit.clear()
         # Create editor widget for new global config option if name is given

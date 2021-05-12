@@ -339,18 +339,29 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
-    def module_server(self):
-        if 'module_server' not in self._global_config:
+    def remote_modules_server(self):
+        if 'remote_modules_server' not in self._global_config:
             return None
-        return copy.deepcopy(self._global_config['module_server'])
+        return copy.deepcopy(self._global_config['remote_modules_server'])
 
-    @module_server.setter
-    def module_server(self, server_settings):
+    @remote_modules_server.setter
+    def remote_modules_server(self, server_settings):
         # ToDo: Sanity checks
         if not server_settings:
-            self._global_config.pop('module_server', None)
+            self._global_config.pop('remote_modules_server', None)
             return
-        self._global_config['module_server'] = copy.deepcopy(server_settings)
+        self._global_config['remote_modules_server'] = copy.deepcopy(server_settings)
+        self.sigConfigChanged.emit(self)
+
+    @property
+    def namespace_server_port(self):
+        return self._global_config.get('namespace_server_port', 18861)
+
+    @namespace_server_port.setter
+    def namespace_server_port(self, port):
+        port = int(port)
+        assert 0 <= port <= 65535
+        self._global_config['namespace_server_port'] = port
         self.sigConfigChanged.emit(self)
 
     @property
@@ -594,7 +605,8 @@ class Configuration(QtCore.QObject):
         new_config.extension_paths = global_cfg.pop('extensions', None)
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
-        new_config.module_server = global_cfg.pop('module_server', None)
+        new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
+        new_config.remote_modules_server = global_cfg.pop('remote_modules_server', None)
         if global_cfg:
             warn(f'Found additional entries in global config. The following entries will be '
                  f'ignored:\n{global_cfg}')
