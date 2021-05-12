@@ -229,7 +229,7 @@ class DataStorageBase(metaclass=ABCMeta):
         return file_path
 
     @abstractmethod
-    def save_data(self, data, *, metadata=None, nametag=None, timestamp=None, comment=None):
+    def save_data(self, data, *, metadata=None, comment=None, nametag=None, timestamp=None):
         """ This method must be implemented in a subclass. It should provide the facility to save an
         entire measurement as a whole along with experiment metadata (to include e.g. in the file
         header). The user can either specify an explicit filename or a generic one will be created.
@@ -237,10 +237,10 @@ class DataStorageBase(metaclass=ABCMeta):
         filename (only if filename parameter is omitted).
 
         @param numpy.ndarray data: data array to be saved (must be 1D or 2D for text files)
+        @param str comment: optional, string that is saved to the comment section of the file header
         @param dict metadata: optional, metadata to be saved in the data header / metadata
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
-        @param str comment: optional, string that is saved to the comment section of the file header
 
         @return (str, datetime.datetime, tuple): Full file path, timestamp used, saved data shape
         """
@@ -391,15 +391,16 @@ class TextDataStorage(DataStorageBase):
                                  line_sep.join(header_lines))
         return header + '\n'
 
-    def new_data_file(self, *, metadata=None, filename=None, nametag=None, timestamp=None, comment=None):
+    def new_data_file(self, *, metadata=None, comment=None, filename=None, nametag=None, timestamp=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
         silently if they have the same path.
 
         @param dict metadata: optional, named metadata values to be saved in the data header
+        @param str comment: optional, string that is saved to the comment section of the file header
         @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
-        @param str comment: optional, string that is saved to the comment section of the file header
+
 
         @return (str, datetime.datetime): Full file path, timestamp used
         """
