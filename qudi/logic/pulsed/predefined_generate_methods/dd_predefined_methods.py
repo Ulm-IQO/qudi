@@ -176,16 +176,8 @@ class DDPredefinedGenerator(PredefinedGeneratorBase):
         tau_array = 1 / (2 * freq_array)
         tau_pspacing_array = self.tau_2_pulse_spacing(tau_array)
 
-        # old transformation to "real tau"
-        real_tau_array = tau_array - self.rabi_period / 2
-        np.clip(real_tau_array, 0, None, real_tau_array)
-
         # Convert back to frequency in order to account for clipped values
-        freq_array_old = 1 / (2 * (real_tau_array + self.rabi_period / 2))
         freq_array = 1 / (2 * (self.tau_2_pulse_spacing(tau_pspacing_array, inverse=True)))
-
-        self.log.debug("So far tau: {}, \nnew: {}".format(real_tau_array, tau_pspacing_array))
-        self.log.debug("So far freq: {}, \nnew: {}".format(freq_array_old, freq_array))
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)

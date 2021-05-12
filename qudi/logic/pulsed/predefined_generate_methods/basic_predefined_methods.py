@@ -138,6 +138,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         @param string name: Name of the PulseBlockEnsemble to be generated
         @param float length: Length of the PulseBlockEnsemble in seconds
+        @params string digital_channels: Comma separated channel numbers.
 
         @return object: the generated PulseBlockEnsemble object.
         """
