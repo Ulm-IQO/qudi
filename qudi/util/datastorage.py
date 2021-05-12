@@ -362,7 +362,7 @@ class TextDataStorage(DataStorageBase):
 
         if all_metadata:
             header_lines.append('Metadata:')
-            header_lines.append('===========')
+            header_lines.append('=========')
             for param, value in all_metadata.items():
                 if isinstance(value, (float, np.floating)):
                     header_lines.append(f'{param}: {value:.18e}')
@@ -567,7 +567,9 @@ class NpyDataStorage(DataStorageBase):
             all_metadata.update(metadata)
 
         header_lines = list()
-        header_lines.append('Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
+        header_lines.append(
+            f'Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
+        )
         header_lines.append('')
 
         if notes:
@@ -576,7 +578,7 @@ class NpyDataStorage(DataStorageBase):
 
         if all_metadata:
             header_lines.append('Metadata:')
-            header_lines.append('===========')
+            header_lines.append('=========')
             for param, value in all_metadata.items():
                 if isinstance(value, (float, np.floating)):
                     header_lines.append(f'{param}: {value:.18e}')
@@ -587,7 +589,7 @@ class NpyDataStorage(DataStorageBase):
             header_lines.append('')
 
         header_lines.append('Column headers:')
-        header_lines.append('=====')
+        header_lines.append('===============')
         if self.column_headers is not None:
             if isinstance(self.column_headers, str):
                 header_lines.append(self.column_headers)
