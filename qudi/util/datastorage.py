@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_default_data_dir', 'get_daily_data_directory', 'CsvDataStorage', 'DataStorageBase',
-           'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+__all__ = ('get_default_data_dir', 'get_default_filename','get_daily_data_directory',
+           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
 import copy
@@ -98,6 +98,23 @@ def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
         else:
             raise NotADirectoryError('Daily directory not found.')
     return daily_dir
+
+
+def get_default_filename(timestamp=None, nametag=None):
+    """ Returns a qudi standard filename (without file extension, e.g. ".dat") used for saving data
+    to file.
+
+
+    @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
+    @param str nametag: optional, explicit root path for daily directory structure
+
+    @return str: The file name without file extension
+    """
+    # Create timestamp if omitted
+    if not isinstance(timestamp, datetime):
+        timestamp = datetime.now()
+    datetime_str = timestamp.strftime('%Y%m%d-%H%M-%S')
+    return f'{datetime_str}_{nametag}' if nametag else datetime_str
 
 
 class ImageFormat(Enum):
@@ -181,12 +198,7 @@ class DataStorageBase(metaclass=ABCMeta):
         @return str: Full absolute path of the data file
         """
         if filename is None:
-            if timestamp is None:
-                timestamp = datetime.now()
-            if nametag is None:
-                filename = timestamp.strftime('%Y%m%d-%H%M-%S')
-            else:
-                filename = '{0}_{1}'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), nametag)
+            filename = get_default_filename(timestamp=timestamp, nametag=nametag)
         if file_extension is None:
             file_extension = self.file_extension
         elif not file_extension.startswith('.'):
