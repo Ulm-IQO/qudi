@@ -233,6 +233,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self._dynamic_precision = True
         self._assumed_unit_prefix = None  # To assume one prefix. This is only used if no prefix would be out of range
         self._is_valid = True  # A flag property to check if the current value is valid.
+        self.disable_wheel = False
         self.validator = FloatValidator()
         self.lineEdit().textEdited.connect(self.update_value)
         self.update_display()
@@ -924,6 +925,17 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         return self.StepUpEnabled | self.StepDownEnabled
 
+    def wheelEvent(self, event):
+        """
+        Overwriting wheel event, such that with the class variable disable_wheel = True the stepping with the mouse
+        wheel is turned off and the wheel event is passed to the parent widget.
+        :param event:
+        """
+        if self.disable_wheel:
+            event.ignore()
+        else:
+            super().wheelEvent(event)
+
     def stepBy(self, steps):
         """
         This method is incrementing the value of the SpinBox when the user triggers a step
@@ -1022,6 +1034,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         self.__minimalStep = 1
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
+        self.disable_wheel = False
         self.validator = IntegerValidator()
         self.lineEdit().textEdited.connect(self.update_value)
         self.update_display()
@@ -1331,6 +1344,17 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         self.update_display()
         super().focusOutEvent(event)
         return
+
+    def wheelEvent(self, event):
+        """
+        Overwriting wheel event, such that with the class variable disable_wheel = True the stepping with the mouse
+        wheel is turned off and the wheel event is passed to the parent widget.
+        :param event:
+        """
+        if self.disable_wheel:
+            event.ignore()
+        else:
+            super().wheelEvent(event)
 
     def validate(self, text, position):
         """

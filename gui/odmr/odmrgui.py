@@ -119,6 +119,8 @@ class ODMRGui(GUIBase):
         constraints = self._odmr_logic.get_hw_constraints()
 
         # Adjust range of scientific spinboxes above what is possible in Qt Designer
+        self._mw.cw_frequency_DoubleSpinBox.setMaximum(constraints.max_frequency)
+        self._mw.cw_frequency_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.cw_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.cw_power_DoubleSpinBox.setMinimum(constraints.min_power)
         self._mw.sweep_power_DoubleSpinBox.setMaximum(constraints.max_power)
@@ -169,6 +171,7 @@ class ODMRGui(GUIBase):
             stop_label.setText('Stop:')
             setattr(self._mw.odmr_control_DockWidget, 'stop_label_{}'.format(row), stop_label)
             stop_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+            stop_freq_DoubleSpinBox.setSuffix('Hz')
             stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
             stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
             stop_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
@@ -530,6 +533,7 @@ class ODMRGui(GUIBase):
         stop_label.setText('Stop:')
         setattr(self._mw.odmr_control_DockWidget, 'stop_label_{}'.format(insertion_row), stop_label)
         stop_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+        stop_freq_DoubleSpinBox.setSuffix('Hz')
         stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
         stop_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
