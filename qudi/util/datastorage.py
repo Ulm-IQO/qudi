@@ -230,7 +230,7 @@ class DataStorageBase(metaclass=ABCMeta):
         return file_path
 
     @abstractmethod
-    def save_data(self, data, *, metadata=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, comment=None, nametag=None, timestamp=None):
         """ This method must be implemented in a subclass. It should provide the facility to save an
         entire measurement as a whole along with experiment metadata (to include e.g. in the file
         header). The user can either specify an explicit filename or a generic one will be created.
@@ -238,6 +238,7 @@ class DataStorageBase(metaclass=ABCMeta):
         filename (only if filename parameter is omitted).
 
         @param numpy.ndarray data: data array to be saved (must be 1D or 2D for text files)
+        @param str comment: optional, string that is saved to the comment section of the file header
         @param dict metadata: optional, metadata to be saved in the data header / metadata
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
@@ -298,6 +299,14 @@ class DataStorageBase(metaclass=ABCMeta):
             for name in names:
                 cls._global_metadata.pop(name, None)
 
+    def _format_comment(self, comment):
+        # add comments character to every newline in multi line comment strings
+        if hasattr(self, 'comments'):
+            if self.comments:
+                comment = comment.replace("\n", f"\n{self.comments}")
+
+        return comment
+
 
 class TextDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk in a daily directory as text file.
@@ -340,7 +349,7 @@ class TextDataStorage(DataStorageBase):
         self.delimiter = delimiter
         self._current_data_file = None
 
-    def create_header(self, metadata=None, timestamp=None, include_column_headers=True):
+    def create_header(self, metadata=None, comment=None, timestamp=None, include_column_headers=True):
         """
         """
         if timestamp is None:
@@ -364,6 +373,12 @@ class TextDataStorage(DataStorageBase):
                 else:
                     header_lines.append(f'{param}: {value}')
             header_lines.append('')
+        if comment:
+            header_lines.append('Comment:')
+            header_lines.append('===========')
+            header_lines.append(self._format_comment(comment))
+            header_lines.append('')
+
         header_lines.append('Data:')
         header_lines.append('=====')
         if self.column_headers is not None and include_column_headers:
@@ -377,14 +392,16 @@ class TextDataStorage(DataStorageBase):
                                  line_sep.join(header_lines))
         return header + '\n'
 
-    def new_data_file(self, *, metadata=None, filename=None, nametag=None, timestamp=None):
+    def new_data_file(self, *, metadata=None, comment=None, filename=None, nametag=None, timestamp=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
         silently if they have the same path.
 
         @param dict metadata: optional, named metadata values to be saved in the data header
+        @param str comment: optional, string that is saved to the comment section of the file header
         @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
+
 
         @return (str, datetime.datetime): Full file path, timestamp used
         """
@@ -394,7 +411,7 @@ class TextDataStorage(DataStorageBase):
         # Determine full file path and create containing directories if needed
         file_path = self.create_file_path(timestamp=timestamp, filename=filename, nametag=nametag)
         # Create header
-        header = self.create_header(metadata=metadata, timestamp=timestamp)
+        header = self.create_header(metadata=metadata, comment=comment, timestamp=timestamp)
         with open(file_path, 'w') as file:
             file.write(header)
         self._current_data_file = file_path
@@ -428,14 +445,15 @@ class TextDataStorage(DataStorageBase):
                 np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
         return (1, data.shape[0]) if data.ndim == 1 else data.shape
 
-    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None, comment=None):
         """ See: DataStorageBase.save_data()
         """
         # Create new data file (overwrite old one if it exists)
         file_path, timestamp = self.new_data_file(metadata=metadata,
                                                   filename=filename,
                                                   nametag=nametag,
-                                                  timestamp=timestamp)
+                                                  timestamp=timestamp,
+                                                  comment=comment)
         # Append data to file
         rows, columns = self.append_data_file(data)
         return file_path, timestamp, (rows, columns)
@@ -507,15 +525,15 @@ class CsvDataStorage(TextDataStorage):
         kwargs['delimiter'] = ','
         super().__init__(**kwargs)
 
-    def create_header(self, metadata=None, timestamp=None):
+    def create_header(self, metadata=None, comment=None, timestamp=None):
         """ See: TextDataStorage.create_header()
         """
         if timestamp is None:
             timestamp = datetime.now()
         if isinstance(self.column_headers, str):
-            header = super().create_header(metadata, timestamp, True)
+            header = super().create_header(metadata, comment, timestamp, True)
         else:
-            header = super().create_header(metadata, timestamp, False)
+            header = super().create_header(metadata, comment, timestamp, False)
             if self.column_headers is not None:
                 header += ','.join(self.column_headers) + '\n'
         return header
@@ -531,12 +549,12 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, comments=None, **kwargs):
         kwargs['file_extension'] = '.npy'
-        kwargs['comments'] = None
+        self.comments = comments if isinstance(comments, str) else None
         super().__init__(**kwargs)
 
-    def create_header(self, data_filename, metadata=None, timestamp=None, include_column_headers=True):
+    def create_header(self, data_filename, metadata=None, comment=None, timestamp=None, include_column_headers=True):
         """
         """
         if timestamp is None:
@@ -563,6 +581,12 @@ class NpyDataStorage(DataStorageBase):
                     header_lines.append('{0}: {1:d}'.format(param, value))
                 else:
                     header_lines.append('{0}: {1}'.format(param, value))
+        if comment:
+            header_lines.append('')
+            header_lines.append('Comment:')
+            header_lines.append('===========')
+            header_lines.append(self._format_comment(comment))
+
         if self.column_headers is not None and include_column_headers:
             header_lines.append('')
             header_lines.append('Column headers:')
@@ -577,7 +601,7 @@ class NpyDataStorage(DataStorageBase):
                                  line_sep.join(header_lines))
         return header + '\n'
 
-    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, comment=None, filename=None, nametag=None, timestamp=None):
         """ Saves a binary file containing the data array.
         Also saves alongside a text file containing the (global) metadata and column headers for
         this data set. The filename of the text file will be the same as for the binary file
@@ -599,6 +623,7 @@ class NpyDataStorage(DataStorageBase):
         # Create header to save in a separate text file
         param_file_path = file_path.rsplit('.', 1)[0] + '_metadata.txt'
         header = self.create_header(data_filename=os.path.split(file_path)[-1],
+                                    comment=comment,
                                     metadata=metadata,
                                     timestamp=timestamp)
         with open(param_file_path, 'w') as file:
