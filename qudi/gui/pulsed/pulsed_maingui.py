@@ -258,7 +258,7 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.action_continue_pause.triggered.connect(self.measurement_continue_pause_clicked)
         self._mw.action_pull_data.triggered.connect(self.pull_data_clicked)
         self._mw.action_save.triggered.connect(self.save_clicked)
-        self._mw.actionSave.triggered.connect(self.save_clicked)
+        self._mw.action_save_as.triggered.connect(self.save_as_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
         self._mw.action_Settings_Generator.triggered.connect(self.show_generator_settings)
         self._mw.action_FitSettings.triggered.connect(self._fcd.show)
@@ -418,11 +418,10 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.action_continue_pause.triggered.disconnect()
         self._mw.action_pull_data.triggered.disconnect()
         self._mw.action_save.triggered.disconnect()
-        self._mw.actionSave.triggered.disconnect()
+        self._mw.action_save_as.triggered.disconnect()
         self._mw.action_Settings_Analysis.triggered.disconnect()
         self._mw.action_Settings_Generator.triggered.disconnect()
         self._mw.action_FitSettings.triggered.disconnect()
-        return
 
     def _disconnect_dialog_signals(self):
         # Connect signals used in predefined methods config dialog
@@ -786,15 +785,33 @@ class PulsedMeasurementGui(GuiBase):
     def save_clicked(self):
         """Saves the current data"""
         self._mw.action_save.setEnabled(False)
-        self._mw.actionSave.setEnabled(False)
+        self._mw.action_save_as.setEnabled(False)
         save_tag = self._mw.save_tag_LineEdit.text()
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
 
-        self.pulsedmasterlogic().save_measurement_data(tag=save_tag,
-                                                       with_error=with_error)
+        self.pulsedmasterlogic().save_measurement_data(tag=save_tag, with_error=with_error)
         self._mw.action_save.setEnabled(True)
-        self._mw.actionSave.setEnabled(True)
-        return
+        self._mw.action_save_as.setEnabled(True)
+
+    def save_as_clicked(self):
+        """Saves the current data"""
+        self._mw.action_save.setEnabled(False)
+        self._mw.action_save_as.setEnabled(False)
+        save_tag = self._mw.save_tag_LineEdit.text()
+        file_path = QtWidgets.QFileDialog.getSaveFileName(
+            self._mw,
+            'Save pulsed measurement as...',
+            self.pulsedmasterlogic().default_data_dir,
+            'Text File (*.dat);;CSV File (*.csv);;Numpy Binary File (*.npy)',
+            'Text File (*.dat)'
+        )
+        print('File path to save is:', file_path)
+
+        with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
+
+        # self.pulsedmasterlogic().save_measurement_data(tag=save_tag, with_error=with_error)
+        self._mw.action_save.setEnabled(True)
+        self._mw.action_save_as.setEnabled(True)
 
     @QtCore.Slot()
     def measurement_timer_changed(self):
