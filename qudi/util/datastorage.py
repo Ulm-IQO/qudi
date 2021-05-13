@@ -33,14 +33,10 @@ from datetime import datetime
 from abc import ABCMeta, abstractmethod
 from matplotlib.backends.backend_pdf import PdfPages
 
-from .mutex import Mutex
-
-try:
-    from qudi.core.paths import get_userdata_dir
-    from qudi.core.application import Qudi
-    __qudi_installed = True
-except ImportError:
-    __qudi_installed = False
+from qudi.util.mutex import Mutex
+from qudi.core.paths import get_daily_directory_tree
+from qudi.core.paths import get_default_data_root_dir as _get_default_data_root_dir
+from qudi.core.application import Qudi
 
 
 def get_default_data_dir(create_missing=False):
@@ -49,26 +45,25 @@ def get_default_data_dir(create_missing=False):
     back to the default qudi userdata directory (usually user home dir).
 
     @param bool create_missing: optional, flag indicating if directories will be created if missing
+
+    @return str: default data directory path
     """
-    if __qudi_installed:
-        qudi = Qudi.instance()
-        if qudi is None:
-            path = os.path.join(get_userdata_dir(create_missing=create_missing), 'Data')
-        else:
-            path = qudi.configuration.default_data_dir
-            if path is None:
-                path = os.path.join(get_userdata_dir(create_missing=create_missing), 'Data')
+    qudi = Qudi.instance()
+    if qudi is None:
+        path = _get_default_data_root_dir(create_missing=create_missing)
     else:
-        path = os.path.join(os.path.abspath(os.path.expanduser('~')), 'Data')
-    if create_missing and not os.path.exists(path):
-        os.makedirs(path)
+        path = qudi.configuration.default_data_dir
+        if path is None:
+            path = _get_default_data_root_dir(create_missing=create_missing)
+    if create_missing:
+        os.makedirs(path, exist_ok=True)
     return path
 
 
 def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
     """ Returns a path to a directory for storing data from today.
 
-    The directory structure will have the form: <root>/<YYYY>/<MM>/<YYYYMMDD>/
+    The directory structure will have the form: <root>/<YYYY>/<MM>/<YYYY-MM-DD>/
 
     If not root directory is given, this method will first try to interface with a running qudi
     instance and extract the desired root directory from the loaded config. If this fails, it will
@@ -81,23 +76,17 @@ def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
     """
     # Determine root directory
     if root is None:
-        root = get_default_data_dir(create_missing=create_missing)
+        root = get_default_data_dir(create_missing)
 
-    # Create timestamp if omitted
-    if not isinstance(timestamp, datetime):
-        timestamp = datetime.now()
+    # Determine daily directory path. Create timestamp if it has been omitted.
+    path = os.path.join(root, get_daily_directory_tree(timestamp))
 
-    # Determine daily directory path
-    leaf_dir = '{0:04d}{1:02d}{2:02d}'.format(timestamp.year, timestamp.month, timestamp.day)
-    daily_dir = os.path.join(root, '{0:04d}'.format(timestamp.year), '{0:02d}'.format(timestamp.month), leaf_dir)
-
-    # Create directory if necessary
-    if not os.path.exists(daily_dir):
-        if create_missing:
-            os.makedirs(daily_dir, exist_ok=True)
-        else:
-            raise NotADirectoryError('Daily directory not found.')
-    return daily_dir
+    # Create directory if requested. Raise exception if the directory does not exist otherwise.
+    if create_missing:
+        os.makedirs(path, exist_ok=True)
+    elif not os.path.exists(path):
+        raise NotADirectoryError('Daily directory not found.')
+    return path
 
 
 def get_default_filename(timestamp=None, nametag=None):

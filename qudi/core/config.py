@@ -400,6 +400,30 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
+    def daily_data_dirs(self):
+        """ Flag indicating if daily sub-directories should be used by default (True) or not (False)
+
+        @return bool|None: Use daily sub-directories flag (default is True)
+        """
+        return self._global_config.get('daily_data_dirs', None)
+
+    @daily_data_dirs.setter
+    def daily_data_dirs(self, use_daily_dirs):
+        """ Setter for daily data sub-directories flag.
+        A value of None will exclude the config parameter from the config, defaulting to True.
+
+        @param bool|None use_daily_dirs: Use daily sub-directories flag to set.
+        """
+        assert use_daily_dirs is None or isinstance(use_daily_dirs, bool), \
+            'daily_data_dirs must be bool type or None'
+
+        if use_daily_dirs is None:
+            self._global_config.pop('daily_data_dirs', None)
+        else:
+            self._global_config['daily_data_dirs'] = use_daily_dirs
+        self.sigConfigChanged.emit(self)
+
+    @property
     def default_data_dir(self):
         """ Absolute path to qudi default data root directory to save (measurement) data into.
 
@@ -604,6 +628,7 @@ class Configuration(QtCore.QObject):
         new_config.startup_modules = global_cfg.pop('startup', None)
         new_config.extension_paths = global_cfg.pop('extensions', None)
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
+        new_config.daily_data_dirs = global_cfg.pop('daily_data_dirs', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
         new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
         new_config.remote_modules_server = global_cfg.pop('remote_modules_server', None)
