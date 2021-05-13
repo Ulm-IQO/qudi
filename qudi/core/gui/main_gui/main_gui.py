@@ -46,7 +46,8 @@ class QudiMainGui(GuiBase):
     This class provides a GUI to the qudi main application object.
     """
     # status vars
-    _console_font_size = StatusVar('console_font_size', 10)
+    _console_font_size = StatusVar(name='console_font_size', default=10)
+    _show_error_popups = StatusVar(name='show_error_popups', default=True)
 
     def __init__(self, *args, **kwargs):
         """Create an instance of the module.
@@ -70,6 +71,7 @@ class QudiMainGui(GuiBase):
         self._restore_window_geometry(self.mw)
         # Create error dialog for error message popups
         self.error_dialog = ErrorDialog()
+        self.error_dialog.set_enabled(self._show_error_popups)
 
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
@@ -89,7 +91,7 @@ class QudiMainGui(GuiBase):
 
         self._connect_signals()
 
-        self.console_keep_settings()
+        self.keep_settings()
         self.update_configured_modules()
         self.update_config_widget()
 
@@ -130,9 +132,10 @@ class QudiMainGui(GuiBase):
         qudi_main.module_manager.sigManagedModulesChanged.connect(self.update_configured_modules)
         qudi_main.module_manager.sigModuleStateChanged.connect(self.update_module_state)
         qudi_main.module_manager.sigModuleAppDataChanged.connect(self.update_module_app_data)
-        # Console settings
-        self.mw.console_settings_dialog.accepted.connect(self.console_apply_settings)
-        self.mw.console_settings_dialog.rejected.connect(self.console_keep_settings)
+        # Settings dialog
+        self.mw.settings_dialog.accepted.connect(self.apply_settings)
+        self.mw.settings_dialog.rejected.connect(self.keep_settings)
+        self.error_dialog.disable_checkbox.clicked.connect(self._error_dialog_enabled_changed)
         # Modules list
         self.mw.module_widget.sigActivateModule.connect(qudi_main.module_manager.activate_module)
         self.mw.module_widget.sigReloadModule.connect(qudi_main.module_manager.reload_module)
@@ -155,9 +158,10 @@ class QudiMainGui(GuiBase):
         qudi_main.module_manager.sigManagedModulesChanged.disconnect(self.update_configured_modules)
         qudi_main.module_manager.sigModuleStateChanged.disconnect(self.update_module_state)
         qudi_main.module_manager.sigModuleAppDataChanged.disconnect(self.update_module_app_data)
-        # Console settings
-        self.mw.console_settings_dialog.accepted.disconnect()
-        self.mw.console_settings_dialog.rejected.disconnect()
+        # Settings dialog
+        self.mw.settings_dialog.accepted.disconnect()
+        self.mw.settings_dialog.rejected.disconnect()
+        self.error_dialog.disable_checkbox.clicked.disconnect()
         # Modules list
         self.mw.module_widget.sigActivateModule.disconnect()
         self.mw.module_widget.sigReloadModule.disconnect()
@@ -241,7 +245,8 @@ class QudiMainGui(GuiBase):
                      'instance can be accessed via "qudi". View the current namespace with dir().\n' \
                      'Go, play.\n'
             self.mw.console_widget.banner = banner
-            self.console_apply_settings()
+            self.mw.console_widget.font_size = self._console_font_size
+            self.mw.console_widget.reset_font()
             self.mw.console_widget.set_default_style(colors='linux')
             kernel_client = kernel_manager.client()
             kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
@@ -291,18 +296,32 @@ class QudiMainGui(GuiBase):
         self._has_console = False
         self.log.info('IPython kernel process for qudi main GUI has shut down.')
 
-    def console_keep_settings(self):
-        """ Write old values into config dialog.
+    def keep_settings(self):
+        """ Write old values into settings dialog.
         """
-        self.mw.console_settings_dialog.font_size_spinbox.setValue(self._console_font_size)
+        self.mw.settings_dialog.font_size_spinbox.setValue(self._console_font_size)
+        self.mw.settings_dialog.show_error_popups_checkbox.setChecked(self._show_error_popups)
 
-    def console_apply_settings(self):
-        """ Apply values from config dialog to console.
+    def apply_settings(self):
+        """ Apply values from settings dialog.
         """
-        fontsize = self.mw.console_settings_dialog.font_size_spinbox.value()
-        self.mw.console_widget.font_size = fontsize
-        self._console_font_size = fontsize
+        # Console font size
+        font_size = self.mw.settings_dialog.font_size_spinbox.value()
+        self.mw.console_widget.font_size = font_size
         self.mw.console_widget.reset_font()
+        self._console_font_size = font_size
+
+        # Error popups
+        error_popups = self.mw.settings_dialog.show_error_popups_checkbox.isChecked()
+        self.error_dialog.set_enabled(error_popups)
+        self._show_error_popups = error_popups
+
+    @QtCore.Slot()
+    def _error_dialog_enabled_changed(self):
+        """ Callback for the error dialog disable checkbox
+        """
+        self._show_error_popups = self.error_dialog.enabled
+        self.mw.settings_dialog.show_error_popups_checkbox.setChecked(self._show_error_popups)
 
     @QtCore.Slot()
     @QtCore.Slot(object)
