@@ -46,10 +46,10 @@ class ErrorDialog(QtWidgets.QDialog):
         # Set up dialog window
         self.setWindowTitle('Qudi Error')
         self.setWindowFlags((QtCore.Qt.Dialog |
-                             QtCore.Qt.WindowStaysOnTopHint |
                              QtCore.Qt.CustomizeWindowHint |
                              QtCore.Qt.WindowSystemMenuHint |
                              QtCore.Qt.WindowTitleHint) & (~QtCore.Qt.WindowCloseButtonHint))
+        self.setModal(True)
         screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
         screen_width = screen_size.width()
         screen_height = screen_size.height()
