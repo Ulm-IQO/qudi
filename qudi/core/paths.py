@@ -19,9 +19,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 ToDo: Throw errors around for non-existent directories
 """
 
-__all__ = ('get_appdata_dir', 'get_default_config_dir', 'get_default_log_dir', 'get_home_dir',
-           'get_main_dir', 'get_userdata_dir', 'get_artwork_dir')
+__all__ = ('get_appdata_dir', 'get_default_config_dir', 'get_default_log_dir',
+           'get_default_data_root_dir', 'get_daily_directory_tree', 'get_home_dir', 'get_main_dir',
+           'get_userdata_dir', 'get_artwork_dir')
 
+import datetime
 import os
 import sys
 
@@ -107,3 +109,30 @@ def get_default_log_dir(create_missing=False):
     if create_missing and not os.path.exists(path):
         os.mkdir(path)
     return path
+
+
+def get_default_data_root_dir(create_missing=False):
+    """ Get the system specific application data root directory.
+
+    @return str: path to default data root directory
+    """
+    # FIXME: This needs to be properly done for linux systems
+    path = os.path.join(get_userdata_dir(create_missing), 'Data')
+    # Create path if desired.
+    if create_missing and not os.path.exists(path):
+        os.mkdir(path)
+    return path
+
+
+def get_daily_directory_tree(timestamp=None):
+    """ Get a directory tree based on a datetime timestamp. The returned path is not an absolute
+    path but just a relative directory tree.
+    If no timestamp is given, a timestamp will be created via datetime.datetime.now().
+
+    @return str: Relative daily directory tree path
+    """
+    if timestamp is None:
+        timestamp = datetime.datetime.now()
+    day_dir = timestamp.strftime('%Y-%m-%d')
+    year_dir, month_dir = day_dir.split('-')[:2]
+    return os.path.join(year_dir, month_dir, day_dir)
