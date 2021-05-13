@@ -24,7 +24,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.main_gui.logwidget import LogWidget
 from qudi.core.gui.main_gui.remotewidget import RemoteWidget
 from qudi.core.gui.main_gui.aboutqudidialog import AboutQudiDialog
-from qudi.core.gui.main_gui.consolesettingsdialog import ConsoleSettingsDialog
+from qudi.core.gui.main_gui.settingsdialog import SettingsDialog
 from qudi.core.gui.main_gui.modulewidget import ModuleWidget
 from qudi.core.paths import get_artwork_dir
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
@@ -110,11 +110,10 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         self.action_view_default.setText('Restore default')
         self.action_view_default.setToolTip('Restore default view')
         # Dialog actions
-        self.action_console_settings = QtWidgets.QAction()
-        self.action_console_settings.setIcon(
-            QtGui.QIcon(os.path.join(icon_path, 'configure.png')))
-        self.action_console_settings.setText('Console')
-        self.action_console_settings.setToolTip('Open IPython console settings')
+        self.action_settings = QtWidgets.QAction()
+        self.action_settings.setIcon(QtGui.QIcon(os.path.join(icon_path, 'configure.png')))
+        self.action_settings.setText('Settings')
+        self.action_settings.setToolTip('Open settings dialog')
         self.action_about_qudi = QtWidgets.QAction()
         self.action_about_qudi.setIcon(
             QtGui.QIcon(os.path.join(icon_path, 'go-home.png')))
@@ -146,6 +145,8 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         menu.addSeparator()
         menu.addAction(self.action_load_all_modules)
         menu.addSeparator()
+        menu.addAction(self.action_settings)
+        menu.addSeparator()
         menu.addAction(self.action_quit)
         self.menubar.addMenu(menu)
         menu = QtWidgets.QMenu('View')
@@ -156,9 +157,6 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         menu.addAction(self.action_view_threads)
         menu.addSeparator()
         menu.addAction(self.action_view_default)
-        self.menubar.addMenu(menu)
-        menu = QtWidgets.QMenu('Settings')
-        menu.addAction(self.action_console_settings)
         self.menubar.addMenu(menu)
         menu = QtWidgets.QMenu('About')
         menu.addAction(self.action_about_qudi)
@@ -176,7 +174,7 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         # Create dialogues
         self.about_qudi_dialog = AboutQudiDialog()
         self.about_qudi_dialog.setWindowTitle('About qudi')
-        self.console_settings_dialog = ConsoleSettingsDialog()
+        self.settings_dialog = SettingsDialog()
 
         # Create dockwidgets
         self.config_widget = QtWidgets.QTreeWidget()
@@ -229,5 +227,5 @@ class QudiMainWindow(QtWidgets.QMainWindow):
         # Connect dialog open signals
         self.action_about_qudi.triggered.connect(self.about_qudi_dialog.open)
         self.action_about_qt.triggered.connect(QtWidgets.QApplication.aboutQt)
-        self.action_console_settings.triggered.connect(self.console_settings_dialog.exec_)  # modal
+        self.action_settings.triggered.connect(self.settings_dialog.exec_)  # modal
         return
