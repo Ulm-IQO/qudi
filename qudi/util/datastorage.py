@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_default_data_dir', 'get_default_filename','get_daily_data_directory',
+__all__ = ('get_default_data_dir', 'get_default_filename', 'get_daily_data_directory',
            'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
