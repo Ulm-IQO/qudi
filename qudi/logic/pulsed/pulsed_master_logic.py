@@ -387,6 +387,10 @@ class PulsedMasterLogic(LogicBase):
     def fit_config_model(self):
         return self.pulsedmeasurementlogic().fit_config_model
 
+    @property
+    def default_data_dir(self):
+        return self.pulsedmeasurementlogic().module_default_data_dir
+
     #######################################################################
     ###             Pulsed measurement methods                          ###
     #######################################################################
