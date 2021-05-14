@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from PySide2 import QtCore
 import numpy as np
-import copy
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -29,12 +28,14 @@ import matplotlib.pyplot as plt
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+from qudi.core.module import LogicBase
 from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
 from qudi.util.datafitting import FitConfigurationsModel, FitContainer
-from qudi.util import units
 from qudi.util.math import compute_ft
-from qudi.core.module import LogicBase
+from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
+from qudi.util.units import ScaledFloat
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
 
@@ -53,8 +54,11 @@ class PulsedMeasurementLogic(LogicBase):
     # Optional additional paths to import from
     extraction_import_path = ConfigOption(name='additional_extraction_path', default=None)
     analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
-    # Optional file type descriptor for saving raw data to file
-    _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text')
+    # Optional file type descriptor for saving raw data to file.
+    # todo: doesn't warn if checker not satisfied
+    _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text',
+                                       checker=lambda x: x in ['text', 'csv', 'npy'])
+    _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
 
     # status variables
     # ext. microwave settings
@@ -219,6 +223,8 @@ class PulsedMeasurementLogic(LogicBase):
         self.fit_config_model = None  # Model for custom fit configurations
         self.fc = None  # Fit container
         self.alt_fc = None
+        self._fit_result = None
+        self._fit_result_alt = None
         return
 
     def on_activate(self):
@@ -1078,6 +1084,13 @@ class PulsedMeasurementLogic(LogicBase):
         data = self.signal_alt_data if use_alternative_data else self.signal_data
         try:
             config, result = container.fit_data(fit_config, data[0], data[1])
+            if result:
+                result.result_str = container.formatted_result(result)
+            if use_alternative_data:
+                self._fit_result_alt = result
+            else:
+                self._fit_result = result
+
         except:
             config, result = '', None
             self.log.exception('Something went wrong while trying to perform data fit.')
@@ -1323,8 +1336,9 @@ class PulsedMeasurementLogic(LogicBase):
 
     ############################################################################
     @QtCore.Slot(str, bool)
-    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
+    def save_measurement_data(self, tag=None, file_path=None, file_type=None,
+                              with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+                              save_figure=False):
         """
         Prepare data to be saved and create a proper plot of the data
 
@@ -1336,7 +1350,110 @@ class PulsedMeasurementLogic(LogicBase):
 
         @return str: filepath where data were saved
         """
-        pass
+
+        def _get_header_params(type):
+            if type == 'laser_pulses':
+                # prepare parameters for header
+                parameters = dict()
+                parameters['bin width (s)'] = self.__fast_counter_binwidth
+                parameters['record length (s)'] = self.__fast_counter_record_length
+                parameters['gated counting'] = self.fast_counter_settings['is_gated']
+                parameters['extraction parameters'] = self.extraction_settings
+            elif type == 'pulsed_measurement':
+                parameters = dict()
+                parameters['Approx. measurement time (s)'] = self.__elapsed_time
+                parameters['Measurement sweeps'] = self.__elapsed_sweeps
+                parameters['Number of laser pulses'] = self._number_of_lasers
+                parameters['Laser ignore indices'] = self._laser_ignore_list
+                parameters['alternating'] = self._alternating
+                parameters['analysis parameters'] = self.analysis_settings
+                parameters['extraction parameters'] = self.extraction_settings
+                parameters['fast counter settings'] = self.fast_counter_settings
+            elif type == 'raw':
+                parameters = dict()
+                parameters['bin width (s)'] = self.__fast_counter_binwidth
+                parameters['record length (s)'] = self.__fast_counter_record_length
+                parameters['gated counting'] = self.fast_counter_settings['is_gated']
+                parameters['Number of laser pulses'] = self._number_of_lasers
+                parameters['alternating'] = self._alternating
+                parameters['Controlled variable'] = list(self.signal_data[0])
+                parameters['Approx. measurement time (s)'] = self.__elapsed_time
+                parameters['Measurement sweeps'] = self.__elapsed_sweeps
+            else:
+                raise ValueError(f"Unknown save type: {type}")
+
+            return parameters
+
+        def _get_save_filename(file_label=None, file_path=None):
+            return None
+
+        def _build_data_storage():
+
+            ds = None
+
+            if self._raw_data_save_type == 'text':
+                ds = TextDataStorage(sub_directory='PulsedMeasurement')
+            elif self._raw_data_save_type == 'npy':
+                ds = NpyDataStorage(sub_directory='PulsedMeasurement')
+            elif self._raw_data_save_type == 'csv':
+                ds = CsvDataStorage(sub_directory='PulsedMeasurement')
+            else:
+                raise ValueError(f"Unknown save data type: {self._raw_data_save_type}")
+
+            return ds
+
+        data_storage = _build_data_storage()
+        timestamp_common = datetime.datetime.now()
+        save_file_path = _get_save_filename()
+
+        if save_laser_pulses:
+            filelabel = 'laser_pulses' if not tag else tag + '_laser_pulses'
+            parameters = _get_header_params('laser_pulses')
+
+            data = self.laser_data
+            data_storage.column_headers = f'Signal (counts)'
+
+            data_storage.save_data(data,
+                                   metadata=parameters,
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
+
+        if save_pulsed_measurement:
+            filelabel = 'pulsed_measurement' if not tag else tag + '_pulsed_measurement'
+            parameters = _get_header_params('pulsed_measurement')
+
+            # write data
+            data = self.signal_data.transpose()
+            data_storage.column_headers = f'Controlled variable(s) Signal'
+            if with_error:
+                data = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
+                data_storage.column_headers = f'Controlled variable(s) Signal Error'
+
+            data_storage.save_data(data,
+                                   metadata=parameters,
+                                   nametag=filelabel,
+                                   timestamp=timestamp_common)
+
+            if save_figure or self._save_thumbnails:
+                fig = self._plot_pulsed_thumbnail(with_error=with_error)
+                data_storage.save_thumbnail(fig,
+                                            nametag=filelabel,
+                                            timestamp=timestamp_common)
+
+        # save raw data
+        filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
+        parameters = _get_header_params('raw')
+
+        # prepare the data in a dict:
+        data = self.raw_data.astype('int64')[:, np.newaxis]
+        data_storage.column_headers = f'Signal(counts)'
+
+        data_storage.save_data(data,
+                               metadata=parameters,
+                               nametag=filelabel,
+                               timestamp=timestamp_common)
+
+
         # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
         # timestamp = datetime.datetime.now()
         #
@@ -1417,9 +1534,10 @@ class PulsedMeasurementLogic(LogicBase):
         #
         #     if save_figure:
         #         # Prepare the figure to save as a "data thumbnail"
+        #         plt.style.use(self.savelogic().mpl_qd_style)
         #
         #         # extract the possible colors from the colorscheme:
-        #         prop_cycle = self.savelogic().mpl_qudi_style['axes.prop_cycle']
+        #         prop_cycle = self.savelogic().mpl_qd_style['axes.prop_cycle']
         #         colors = {}
         #         for i, color_setting in enumerate(prop_cycle):
         #             colors[i] = color_setting['color']
@@ -1664,6 +1782,197 @@ class PulsedMeasurementLogic(LogicBase):
         #                            filetype=self._raw_data_save_type,
         #                            delimiter='\t')
         # return filepath
+
+    def _plot_pulsed_thumbnail(self, with_error=False):
+
+        def _plot_fit(axis, use_alternative_data=False):
+
+            fit_res = self._fit_result
+            if use_alternative_data:
+                fit_res = self._fit_result_alt
+
+            fit_x, fit_y = fit_res.high_res_best_fit
+
+            label = 'fit'
+            if use_alternative_data:
+                label = label='secondary fit'
+
+            x_axis_fit_scaled = fit_x / scaled_float.scale_val
+            axis.plot(x_axis_fit_scaled, fit_y,
+                     color=colors[2], marker='None', linewidth=1.5,
+                     label=label)
+
+            # add then the fit result to the plot:
+
+            # Parameters for the text plot:
+            # The position of the text annotation is controlled with the
+            # relative offset in x direction and the relative length factor
+            # rel_len_fac of the longest entry in one column
+            rel_offset = 0.02
+            rel_len_fac = 0.011
+            entries_per_col = 24
+
+            result_str = fit_res.result_str
+
+            # do reverse processing to get each entry in a list
+            entry_list = result_str.split('\n')
+            # slice the entry_list in entries_per_col
+            chunks = [entry_list[x:x + entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+            is_first_column = True  # first entry should contain header or \n
+
+            for column in chunks:
+
+                max_length = max(column, key=len)  # get the longest entry
+                column_text = ''
+
+                for entry in column:
+                    column_text += entry + '\n'
+
+                column_text = column_text[:-1]  # remove the last new line
+
+                heading = ''
+                if is_first_column:
+                    heading = 'Fit results:'
+
+                column_text = heading + '\n' + column_text
+
+                axis.text(1.00 + rel_offset, 0.99, column_text,
+                         verticalalignment='top',
+                         horizontalalignment='left',
+                         transform=axis.transAxes,
+                         fontsize=12)
+
+                # the rel_offset in position of the text is a linear function
+                # which depends on the longest entry in the column
+                rel_offset += rel_len_fac * len(max_length)
+
+                is_first_column = False
+
+        def _is_fit_available(use_alternative_data=False):
+
+            fit = self._fit_result if not use_alternative_data else self._fit_result_alt
+
+            if not fit:
+                return False
+            else:
+                return fit.success and np.sum(np.abs(fit.high_res_best_fit[1])) > 0
+
+
+
+        # Prepare the figure to save as a "data thumbnail"
+        plt.style.use(mpl_qudi_style)
+
+        # extract the possible colors from the colorscheme:
+        # todo: still needed or set by core?
+        prop_cycle = mpl_qudi_style['axes.prop_cycle']
+        colors = {}
+        for i, color_setting in enumerate(prop_cycle):
+            colors[i] = color_setting['color']
+
+        # scale the x_axis for plotting
+        max_val = np.max(self.signal_data[0])
+        scaled_float = ScaledFloat(max_val)
+        counts_prefix = scaled_float.scale
+        x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
+
+        # Create the figure object
+        if self._alternative_data_type and self._alternative_data_type != 'None':
+            fig, (ax1, ax2) = plt.subplots(2, 1)
+        else:
+            fig, ax1 = plt.subplots()
+
+        if with_error:
+            ax1.errorbar(x=x_axis_scaled, y=self.signal_data[1],
+                         yerr=self.measurement_error[1], fmt='-o',
+                         linestyle=':', linewidth=0.5, color=colors[0],
+                         ecolor=colors[1], capsize=3, capthick=0.9,
+                         elinewidth=1.2, label='data trace 1')
+
+            if self._alternating:
+                ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
+                             yerr=self.measurement_error[2], fmt='-D',
+                             linestyle=':', linewidth=0.5, color=colors[3],
+                             ecolor=colors[4],  capsize=3, capthick=0.7,
+                             elinewidth=1.2, label='data trace 2')
+        else:
+            ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
+                     linestyle=':', linewidth=0.5, label='data trace 1')
+
+            if self._alternating:
+                ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
+                         color=colors[3], linestyle=':', linewidth=0.5,
+                         label='data trace 2')
+
+        if _is_fit_available():
+            _plot_fit(axis=ax1)
+
+        #"""
+        # handle the save of the alternative data plot
+        if self._alternative_data_type and self._alternative_data_type != 'None':
+
+            # scale the x_axis for plotting
+            max_val = np.max(self.signal_alt_data[0])
+            scaled_float = ScaledFloat(max_val)
+            x_axis_prefix = scaled_float.scale
+            x_axis_ft_scaled = self.signal_alt_data[0] / scaled_float.scale_val
+
+            # since no ft units are provided, make a small work around:
+            if self._alternative_data_type == 'FFT':
+                if self._data_units[0] == 's':
+                    inverse_cont_var = 'Hz'
+                elif self._data_units[0] == 'Hz':
+                    inverse_cont_var = 's'
+                else:
+                    inverse_cont_var = '(1/{0})'.format(self._data_units[0])
+                x_axis_ft_label = 'FT {0} ({1}{2})'.format(
+                    self._data_labels[0], x_axis_prefix, inverse_cont_var)
+                y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
+                ft_label = 'FT of data trace 1'
+            else:
+                if self._data_units[0]:
+                    x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
+                                                            self._data_units[0])
+                else:
+                    x_axis_ft_label = '{0}'.format(self._data_labels[0])
+                if self._data_units[1]:
+                    y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+                else:
+                    y_axis_ft_label = '{0}'.format(self._data_labels[1])
+
+                ft_label = '{0} of data traces'.format(self._alternative_data_type)
+
+            ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
+                     linestyle=':', linewidth=0.5, color=colors[0],
+                     label=ft_label)
+            if self._alternating and len(self.signal_alt_data) > 2:
+                ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+                         linestyle=':', linewidth=0.5, color=colors[3],
+                         label=ft_label.replace('1', '2'))
+
+            ax2.set_xlabel(x_axis_ft_label)
+            ax2.set_ylabel(y_axis_ft_label)
+            ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                       mode="expand", borderaxespad=0.)
+
+            if _is_fit_available(use_alternative_data=True):
+                _plot_fit(axis=ax2, use_alternative_data=True)
+
+
+        ax1.set_xlabel(
+            '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+        if self._data_units[1]:
+            ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+        else:
+            ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+
+        fig.tight_layout()
+        ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                   mode="expand", borderaxespad=0.)
+        # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #            mode="expand", borderaxespad=0.)
+
+        return fig
 
     def _compute_alt_data(self):
         """
