@@ -391,6 +391,10 @@ class PulsedMasterLogic(LogicBase):
     def default_data_dir(self):
         return self.pulsedmeasurementlogic().module_default_data_dir
 
+    @property
+    def default_data_fname(self):
+        return self.pulsedmeasurementlogic().module_default_data_fname
+
     #######################################################################
     ###             Pulsed measurement methods                          ###
     #######################################################################
@@ -588,7 +592,7 @@ class PulsedMasterLogic(LogicBase):
         return
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
+                              save_figure=True, file_path=None,  file_type=None):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
@@ -601,8 +605,12 @@ class PulsedMasterLogic(LogicBase):
 
         @return str: filepath where data were saved
         """
-        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
-                                                            save_figure)
+
+        self.pulsedmeasurementlogic().save_measurement_data(tag=tag, with_error=with_error,
+                                                            save_laser_pulses=save_laser_pulses,
+                                                            save_pulsed_measurement=save_pulsed_measurement,
+                                                            save_figure=save_figure, file_path=file_path,
+                                                            file_type=file_type)
         return
 
     #######################################################################

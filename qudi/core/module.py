@@ -258,6 +258,10 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         return self._module_meta['uuid']
 
     @property
+    def module_default_data_fname(self):
+        return os.path.basename(self.module_default_data_dir)
+
+    @property
     def module_default_data_dir(self):
         """ Read-only property returning a path-like object representing a sub-directory in which .
         In other words this is a path relative to qudi.util.datastorage.get_default_data_dir().
