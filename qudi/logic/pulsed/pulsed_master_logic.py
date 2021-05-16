@@ -589,7 +589,7 @@ class PulsedMasterLogic(LogicBase):
 
     def save_measurement_data(self, tag=None, data_dir=None, file_name=None, storage_cls=None,
                               with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=False):
+                              save_figure=False, notes=None):
         """ Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
@@ -601,6 +601,7 @@ class PulsedMasterLogic(LogicBase):
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
         @param bool save_figure: select whether png and pdf should be saved
+        @param str notes: optional, string that is included in the metadata "as-is" without a field
         """
         return self.pulsedmeasurementlogic().save_measurement_data(
             tag=tag,
@@ -610,7 +611,8 @@ class PulsedMasterLogic(LogicBase):
             with_error=with_error,
             save_laser_pulses=save_laser_pulses,
             save_pulsed_measurement=save_pulsed_measurement,
-            save_figure=save_figure
+            save_figure=save_figure,
+            notes=notes
         )
 
     #######################################################################

@@ -1378,7 +1378,7 @@ class PulsedMeasurementLogic(LogicBase):
 
     def save_measurement_data(self, tag=None, data_dir=None, file_name=None, storage_cls=None,
                               with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=False):
+                              save_figure=False, notes=None):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str tag: a name tag which will be included in the filename if file_path is None
@@ -1389,6 +1389,7 @@ class PulsedMeasurementLogic(LogicBase):
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
         @param bool save_figure: select whether png and pdf should be saved
+        @param str notes: optional, string that is included in the metadata "as-is" without a field
         """
         # Use default data storage type if none has been given explicitly
         if storage_cls is None:
@@ -1429,7 +1430,8 @@ class PulsedMeasurementLogic(LogicBase):
                                metadata=self._get_raw_metadata(),
                                nametag=name_tag,
                                filename=full_filename,
-                               timestamp=timestamp)
+                               timestamp=timestamp,
+                               notes=notes)
 
         ###########################
         # Save extracted laser data
@@ -1451,7 +1453,8 @@ class PulsedMeasurementLogic(LogicBase):
                                    metadata=self._get_laser_metadata(),
                                    nametag=name_tag,
                                    filename=full_filename,
-                                   timestamp=timestamp)
+                                   timestamp=timestamp,
+                                   notes=notes)
 
         ############################
         # Save evaluated signal data
@@ -1483,7 +1486,8 @@ class PulsedMeasurementLogic(LogicBase):
                                    metadata=self._get_signal_metadata(),
                                    nametag=name_tag,
                                    filename=full_filename,
-                                   timestamp=timestamp)
+                                   timestamp=timestamp,
+                                   notes=notes)
 
             if save_figure or self._save_thumbnails:
                 fig = self._plot_pulsed_thumbnail(with_error=with_error)
