@@ -93,7 +93,6 @@ def get_default_filename(timestamp=None, nametag=None):
     """ Returns a qudi standard filename (without file extension, e.g. ".dat") used for saving data
     to file.
 
-
     @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
     @param str nametag: optional, explicit root path for daily directory structure
 
@@ -165,12 +164,13 @@ class DataStorageBase(metaclass=ABCMeta):
         @return str: Absolute path to the data directory
         """
         if self.use_daily_dir:
-            daily = get_daily_data_directory(root=self.root_dir,
-                                             timestamp=timestamp,
-                                             create_missing=create_missing)
-            path = daily if self.sub_directory is None else os.path.join(daily, self.sub_directory)
+            path = get_daily_data_directory(root=self.root_dir,
+                                            timestamp=timestamp,
+                                            create_missing=create_missing)
         else:
-            path = os.path.join(self.root_dir, self.sub_directory)
+            path = self.root_dir
+        if self.sub_directory is not None:
+            path = os.path.join(path, self.sub_directory)
         if create_missing:
             os.makedirs(path, exist_ok=True)
         return path
