@@ -799,9 +799,6 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.action_save.setEnabled(False)
         self._mw.action_save_as.setEnabled(False)
         nametag = self._mw.save_tag_LineEdit.text()
-        if nametag == '':
-            nametag = self.pulsedmasterlogic().default_data_fname
-
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
 
         data_dir = self.pulsedmasterlogic().default_data_dir
@@ -817,10 +814,7 @@ class PulsedMeasurementGui(GuiBase):
         print('File path to save is:', file_path)
         print('File type to save is:', file_type)
 
-        self.pulsedmasterlogic().save_measurement_data(tag=nametag,
-                                                       with_error=with_error,
-                                                       file_path=file_path,
-                                                       file_type=file_type)
+        # self.pulsedmasterlogic().save_measurement_data(tag=save_tag, with_error=with_error)
         self._mw.action_save.setEnabled(True)
         self._mw.action_save_as.setEnabled(True)
 
