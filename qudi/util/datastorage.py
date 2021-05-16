@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 __all__ = ('get_default_data_dir', 'get_default_filename', 'get_daily_data_directory',
-           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'StorageType',
+           'TextDataStorage')
 
 import os
 import copy
@@ -92,7 +93,6 @@ def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
 def get_default_filename(timestamp=None, nametag=None):
     """ Returns a qudi standard filename (without file extension, e.g. ".dat") used for saving data
     to file.
-
 
     @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
     @param str nametag: optional, explicit root path for daily directory structure
@@ -611,3 +611,11 @@ class NpyDataStorage(DataStorageBase):
         @param str file_path: optional, path to file to load data from
         """
         raise NotImplementedError
+
+
+class StorageType(Enum):
+    """ Data storage type to use. Enum values are corresponding data storage classes.
+    """
+    TEXT = TextDataStorage
+    CSV = CsvDataStorage
+    NPY = NpyDataStorage
