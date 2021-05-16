@@ -21,8 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 __all__ = ('get_default_data_dir', 'get_default_filename', 'get_daily_data_directory',
-           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'StorageType',
-           'TextDataStorage')
+           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
 import copy
@@ -165,12 +164,13 @@ class DataStorageBase(metaclass=ABCMeta):
         @return str: Absolute path to the data directory
         """
         if self.use_daily_dir:
-            daily = get_daily_data_directory(root=self.root_dir,
-                                             timestamp=timestamp,
-                                             create_missing=create_missing)
-            path = daily if self.sub_directory is None else os.path.join(daily, self.sub_directory)
+            path = get_daily_data_directory(root=self.root_dir,
+                                            timestamp=timestamp,
+                                            create_missing=create_missing)
         else:
-            path = os.path.join(self.root_dir, self.sub_directory)
+            path = self.root_dir
+        if self.sub_directory is not None:
+            path = os.path.join(path, self.sub_directory)
         if create_missing:
             os.makedirs(path, exist_ok=True)
         return path
@@ -611,11 +611,3 @@ class NpyDataStorage(DataStorageBase):
         @param str file_path: optional, path to file to load data from
         """
         raise NotImplementedError
-
-
-class StorageType(Enum):
-    """ Data storage type to use. Enum values are corresponding data storage classes.
-    """
-    TEXT = TextDataStorage
-    CSV = CsvDataStorage
-    NPY = NpyDataStorage
