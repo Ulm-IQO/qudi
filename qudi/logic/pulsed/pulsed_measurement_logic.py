@@ -33,7 +33,7 @@ from qudi.util.mutex import Mutex
 from qudi.util.network import netobtain
 from qudi.util.datafitting import FitConfigurationsModel, FitContainer
 from qudi.util.math import compute_ft
-from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
+from qudi.util.datastorage import StorageType, get_default_filename
 from qudi.util.units import ScaledFloat
 from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
@@ -56,8 +56,12 @@ class PulsedMeasurementLogic(LogicBase):
     analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
     # Optional file type descriptor for saving raw data to file.
     # todo: doesn't warn if checker not satisfied
-    _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text',
-                                       checker=lambda x: x in ['text', 'csv', 'npy'])
+    _default_data_storage_type = ConfigOption(
+        name='default_data_storage_type',
+        default='TEXT',
+        # checker=lambda x: x.upper in [t.name for t in StorageType],
+        converter=lambda x: StorageType[x.upper()]
+    )
     _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
 
     # status variables
@@ -1335,76 +1339,72 @@ class PulsedMeasurementLogic(LogicBase):
     # FIXME: Revise everything below
 
     ############################################################################
+    def _get_raw_metadata(self):
+        return {'bin width (s)'               : self.__fast_counter_binwidth,
+                'record length (s)'           : self.__fast_counter_record_length,
+                'gated counting'              : self.fast_counter_settings['is_gated'],
+                'Number of laser pulses'      : self._number_of_lasers,
+                'alternating'                 : self._alternating,
+                'Controlled variable'         : list(self.signal_data[0]),
+                'Approx. measurement time (s)': self.__elapsed_time,
+                'Measurement sweeps'          : self.__elapsed_sweeps}
+
+    def _get_laser_metadata(self):
+        return {'bin width (s)'        : self.__fast_counter_binwidth,
+                'record length (s)'    : self.__fast_counter_record_length,
+                'gated counting'       : self.fast_counter_settings['is_gated'],
+                'extraction parameters': self.extraction_settings}
+
+    def _get_signal_metadata(self):
+        return {'Approx. measurement time (s)': self.__elapsed_time,
+                'Measurement sweeps'          : self.__elapsed_sweeps,
+                'Number of laser pulses'      : self._number_of_lasers,
+                'Laser ignore indices'        : self._laser_ignore_list,
+                'alternating'                 : self._alternating,
+                'analysis parameters'         : self.analysis_settings,
+                'extraction parameters'       : self.extraction_settings,
+                'fast counter settings'       : self.fast_counter_settings}
+
     @QtCore.Slot(str, bool)
-    def save_measurement_data(self, tag=None, file_path=None, file_type=None,
+    def save_measurement_data(self, tag=None, data_dir=None, file_name=None, storage_type=None,
                               with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
                               save_figure=False):
-        """
-        Prepare data to be saved and create a proper plot of the data
+        """ Prepare data to be saved and create a proper plot of the data
 
-        @param str tag: a filetag which will be included in the filename
+        @param str tag: a name tag which will be included in the filename if file_path is None
+        @param str data_dir: optional, custom absolute path to the directory to save files into
+        @param str file_name: optional, custom file name prototype to use as basis for files to save
+        @param StorageType storage_type: optional, enum to override default data storage type
         @param bool with_error: select whether errors should be saved/plotted
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
         @param bool save_figure: select whether png and pdf should be saved
-
-        @return str: filepath where data were saved
         """
+        # Use default data storage type if none has been specified explicitly
+        if storage_type is None:
+            storage_type = self._default_data_storage_type
 
-        def _get_header_params(type):
-            if type == 'laser_pulses':
-                # prepare parameters for header
-                parameters = dict()
-                parameters['bin width (s)'] = self.__fast_counter_binwidth
-                parameters['record length (s)'] = self.__fast_counter_record_length
-                parameters['gated counting'] = self.fast_counter_settings['is_gated']
-                parameters['extraction parameters'] = self.extraction_settings
-            elif type == 'pulsed_measurement':
-                parameters = dict()
-                parameters['Approx. measurement time (s)'] = self.__elapsed_time
-                parameters['Measurement sweeps'] = self.__elapsed_sweeps
-                parameters['Number of laser pulses'] = self._number_of_lasers
-                parameters['Laser ignore indices'] = self._laser_ignore_list
-                parameters['alternating'] = self._alternating
-                parameters['analysis parameters'] = self.analysis_settings
-                parameters['extraction parameters'] = self.extraction_settings
-                parameters['fast counter settings'] = self.fast_counter_settings
-            elif type == 'raw':
-                parameters = dict()
-                parameters['bin width (s)'] = self.__fast_counter_binwidth
-                parameters['record length (s)'] = self.__fast_counter_record_length
-                parameters['gated counting'] = self.fast_counter_settings['is_gated']
-                parameters['Number of laser pulses'] = self._number_of_lasers
-                parameters['alternating'] = self._alternating
-                parameters['Controlled variable'] = list(self.signal_data[0])
-                parameters['Approx. measurement time (s)'] = self.__elapsed_time
-                parameters['Measurement sweeps'] = self.__elapsed_sweeps
-            else:
-                raise ValueError(f"Unknown save type: {type}")
+        storage_cls = storage_type.value()
+        timestamp = datetime.datetime.now()
 
-            return parameters
+        # Determine filename stump
+        if file_name is None:
+            filename_stump = get_default_filename(timestamp=timestamp, nametag=tag)
 
-        def _get_save_filename(file_label=None, file_path=None):
-            return None
 
-        def _build_data_storage():
 
-            ds = None
+        full_filename = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
 
-            if self._raw_data_save_type == 'text':
-                ds = TextDataStorage(sub_directory='PulsedMeasurement')
-            elif self._raw_data_save_type == 'npy':
-                ds = NpyDataStorage(sub_directory='PulsedMeasurement')
-            elif self._raw_data_save_type == 'csv':
-                ds = CsvDataStorage(sub_directory='PulsedMeasurement')
-            else:
-                raise ValueError(f"Unknown save data type: {self._raw_data_save_type}")
+        parameters = _get_header_params('raw')
 
-            return ds
+        # prepare the data in a dict:
+        data = self.raw_data.astype('int64')[:, np.newaxis]
+        data_storage.column_headers = f'Signal(counts)'
 
-        data_storage = _build_data_storage()
-        timestamp_common = datetime.datetime.now()
-        save_file_path = _get_save_filename()
+        data_storage.save_data(data,
+                               metadata=parameters,
+                               nametag=filelabel,
+                               timestamp=timestamp_common)
 
         if save_laser_pulses:
             filelabel = 'laser_pulses' if not tag else tag + '_laser_pulses'
@@ -1441,17 +1441,7 @@ class PulsedMeasurementLogic(LogicBase):
                                             timestamp=timestamp_common)
 
         # save raw data
-        filelabel = 'raw_timetrace' if not tag else tag + '_raw_timetrace'
-        parameters = _get_header_params('raw')
 
-        # prepare the data in a dict:
-        data = self.raw_data.astype('int64')[:, np.newaxis]
-        data_storage.column_headers = f'Signal(counts)'
-
-        data_storage.save_data(data,
-                               metadata=parameters,
-                               nametag=filelabel,
-                               timestamp=timestamp_common)
 
 
         # filepath = self.savelogic().get_path_for_module('PulsedMeasurement')

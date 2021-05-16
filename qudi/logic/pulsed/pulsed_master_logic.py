@@ -587,23 +587,31 @@ class PulsedMasterLogic(LogicBase):
         self.sigFitUpdated.emit(fit_name, fit_result, use_alternative_data)
         return
 
-    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+    def save_measurement_data(self, tag=None, data_dir=None, file_name=None, storage_type=None,
+                              with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
                               save_figure=True):
-        """
-        Prepare data to be saved and create a proper plot of the data.
+        """ Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
-        @param str tag: a filetag which will be included in the filename
+        @param str tag: a name tag which will be included in the filename if file_path is None
+        @param str data_dir: optional, custom absolute path to the directory to save files into
+        @param str file_name: optional, custom file name prototype to use as basis for files to save
+        @param StorageType storage_type: optional, enum to override default data storage type
         @param bool with_error: select whether errors should be saved/plotted
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
         @param bool save_figure: select whether png and pdf should be saved
-
-        @return str: filepath where data were saved
         """
-        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
-                                                            save_figure)
-        return
+        return self.pulsedmeasurementlogic().save_measurement_data(
+            tag=tag,
+            data_dir=data_dir,
+            file_name=file_name,
+            storage_type=storage_type,
+            with_error=with_error,
+            save_laser_pulses=save_laser_pulses,
+            save_pulsed_measurement=save_pulsed_measurement,
+            save_figure=save_figure
+        )
 
     #######################################################################
     ###             Sequence generator properties                       ###
