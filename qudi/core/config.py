@@ -28,6 +28,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML', 'load',
+           'save', 'yaml_load', 'yaml_dump')
+
 import os
 import re
 import copy
@@ -39,9 +42,6 @@ from io import BytesIO, TextIOWrapper
 from PySide2 import QtCore
 
 import qudi.core.paths as _paths
-
-__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML',
-           'load', 'save', 'yaml_load', 'yaml_dump')
 
 
 class QudiSafeRepresenter(_yaml.SafeRepresenter):
@@ -339,18 +339,29 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
-    def module_server(self):
-        if 'module_server' not in self._global_config:
+    def remote_modules_server(self):
+        if 'remote_modules_server' not in self._global_config:
             return None
-        return copy.deepcopy(self._global_config['module_server'])
+        return copy.deepcopy(self._global_config['remote_modules_server'])
 
-    @module_server.setter
-    def module_server(self, server_settings):
+    @remote_modules_server.setter
+    def remote_modules_server(self, server_settings):
         # ToDo: Sanity checks
         if not server_settings:
-            self._global_config.pop('module_server', None)
+            self._global_config.pop('remote_modules_server', None)
             return
-        self._global_config['module_server'] = copy.deepcopy(server_settings)
+        self._global_config['remote_modules_server'] = copy.deepcopy(server_settings)
+        self.sigConfigChanged.emit(self)
+
+    @property
+    def namespace_server_port(self):
+        return self._global_config.get('namespace_server_port', 18861)
+
+    @namespace_server_port.setter
+    def namespace_server_port(self, port):
+        port = int(port)
+        assert 0 <= port <= 65535
+        self._global_config['namespace_server_port'] = port
         self.sigConfigChanged.emit(self)
 
     @property
@@ -361,13 +372,13 @@ class Configuration(QtCore.QObject):
         """
         stylesheet = self._global_config.get('stylesheet', None)
         if not os.path.dirname(stylesheet):
-            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', 'application', stylesheet)
+            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', stylesheet)
         return os.path.abspath(stylesheet)
 
     @stylesheet.setter
     def stylesheet(self, file_path):
         """ Setter for .qss file path used as stylesheet for qudi Qt application.
-        Can either be a relative path to <qudi>/artwork/styles/application/ or an absolute path.
+        Can either be a relative path to <qudi>/artwork/styles/ or an absolute path.
 
         If stylesheet path is set to None, it will be removed from config. This will cause the
         application to fall back to platform dependent Qt defaults.
@@ -386,6 +397,30 @@ class Configuration(QtCore.QObject):
                 'stylesheet must either be file name or absolute path'
 
         self._global_config['stylesheet'] = file_path
+        self.sigConfigChanged.emit(self)
+
+    @property
+    def daily_data_dirs(self):
+        """ Flag indicating if daily sub-directories should be used by default (True) or not (False)
+
+        @return bool|None: Use daily sub-directories flag (default is True)
+        """
+        return self._global_config.get('daily_data_dirs', None)
+
+    @daily_data_dirs.setter
+    def daily_data_dirs(self, use_daily_dirs):
+        """ Setter for daily data sub-directories flag.
+        A value of None will exclude the config parameter from the config, defaulting to True.
+
+        @param bool|None use_daily_dirs: Use daily sub-directories flag to set.
+        """
+        assert use_daily_dirs is None or isinstance(use_daily_dirs, bool), \
+            'daily_data_dirs must be bool type or None'
+
+        if use_daily_dirs is None:
+            self._global_config.pop('daily_data_dirs', None)
+        else:
+            self._global_config['daily_data_dirs'] = use_daily_dirs
         self.sigConfigChanged.emit(self)
 
     @property
@@ -593,8 +628,10 @@ class Configuration(QtCore.QObject):
         new_config.startup_modules = global_cfg.pop('startup', None)
         new_config.extension_paths = global_cfg.pop('extensions', None)
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
+        new_config.daily_data_dirs = global_cfg.pop('daily_data_dirs', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
-        new_config.module_server = global_cfg.pop('module_server', None)
+        new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
+        new_config.remote_modules_server = global_cfg.pop('remote_modules_server', None)
         if global_cfg:
             warn(f'Found additional entries in global config. The following entries will be '
                  f'ignored:\n{global_cfg}')

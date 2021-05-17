@@ -34,8 +34,7 @@ from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
-from qudi.core.artwork.styles.matplotlib.mpl_style import mpl_qd_style
+from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 
 from qudi.interface.scanning_probe_interface import ScanData
 
@@ -236,9 +235,6 @@ class ScanningDataLogic(LogicBase):
 
         # ToDo: Scale data and axes in a suitable and general way (with utils)
 
-        # Use qudi style
-        plt.style.use(mpl_qd_style)
-
         # Create figure
         fig, ax = plt.subplots()
 
@@ -344,9 +340,6 @@ class ScanningDataLogic(LogicBase):
             cbar_range = (image_arr.min(), image_arr.max())
 
         # ToDo: Scale data and axes in a suitable and general way (with utils)
-
-        # Use qudi style
-        plt.style.use(mpl_qd_style)
 
         # Create figure
         fig, ax = plt.subplots()

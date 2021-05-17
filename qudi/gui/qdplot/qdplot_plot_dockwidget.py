@@ -20,13 +20,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('PlotDockWidget',)
+
+import pyqtgraph as pg
+from qtpy import QtWidgets, QtCore
 from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.core.gui.qtwidgets.fitting import FitWidget
 from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qtpy import QtWidgets, QtCore, QtGui
-import pyqtgraph as pg
-
-__all__ = ('PlotDockWidget',)
 
 
 class CustomAxis(pg.AxisItem):

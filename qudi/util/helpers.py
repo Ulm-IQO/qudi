@@ -15,18 +15,14 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-Distributed under the MIT license, see documentation/MITLicense.md.
-PyQtGraph - Scientific Graphics and GUI Library for Python
-www.pyqtgraph.org
-Copyright:
-  2012  University of North Carolina at Chapel Hill
-        Luke Campagnola    <luke.campagnola@gmail.com>
 """
 
+__all__ = ('csv_2_list', 'in_range', 'is_complex', 'is_float', 'is_integer', 'is_number',
+           'iter_modules_recursive', 'natural_sort')
+
 import re
-import importlib
-import logging
+import os
+import pkgutil
 import numpy as np
 
 # use setuptools parse_version if available and use distutils LooseVersion as fallback
@@ -35,95 +31,41 @@ try:
 except ImportError:
     from distutils.version import LooseVersion as parse_version
 
-has_pyqtgraph = False
-try:
-    import pyqtgraph
-    has_pyqtgraph = True
-except ImportError:
-    pass
 
-_logger = logging.getLogger(__name__)
+def iter_modules_recursive(path, prefix=''):
+    """ Has the same signature as pkgutil.iter_modules() but extends the functionality by walking
+    through the entire directory tree and concatenating the return values of pkgutil.iter_modules()
+    for each directory.
 
-__all__ = ('csv_2_list', 'has_pyqtgraph', 'import_check', 'in_range', 'is_complex', 'is_float',
-           'is_integer', 'is_number', 'natural_sort')
+    Additional modifications include:
+    - Directories starting with "_" or "." are ignored (also including their sub-directories)
+    - Python modules starting with a double-underscore ("__") are excluded in the result
 
-
-def import_check():
-    """ Checks whether all the necessary modules are present upon start of qudi.
-
-    @return: int, error code either 0 or 4.
-
-    Check also whether some recommended packages exists. Return err_code=0 if
-    all vital packages are installed and err_code=4 if vital packages are
-    missing. Make a warning about missing packages. Check versions.
+    @param iterable path: Iterable of root directories to start the search for modules
+    @param str prefix: optional, prefix to prepend to all module names.
     """
-    # encode like: (python-package-name, repository-name, version)
-    vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
-                 ('fysom', 'fysom', '2.1.4')]
-    opt_pkg = [('rpyc', 'rpyc', None),
-               ('pyqtgraph', 'pyqtgraph', None),
-               ('git', 'gitpython', None)]
-
-    def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
-        """
-        Checks if a package is installed and if so whether it is new enough.
-
-        @param: pkg_name : str, package name
-        @param: repo_name : str, repository name
-        @param: version : str, required version number
-        @param: optional : bool, indicates whether a package is optional
-        @return: int, error code either 0 or 4.
-        """
-        try:
-            module = importlib.import_module(check_pkg_name)
-        except ImportError:
-            if optional:
-                additional_text = 'It is recommended to have this package installed. '
+    if isinstance(path, str):
+        path = [path]
+    module_infos = list()
+    for search_top in list(path):
+        for root, dirs, files in os.walk(search_top):
+            rel_path = os.path.relpath(root, search_top)
+            if rel_path and rel_path != '.' and rel_path[0] in '._':
+                # Prevent os.walk to descent further down this tree branch
+                dirs.clear()
+                # Ignore this directory
+                continue
+            # Resolve current module prefix
+            if not rel_path or rel_path == '.':
+                curr_prefix = prefix
             else:
-                additional_text = ''
-            _logger.error('No Package "{0}" installed! {2}Perform e.g.\n\n    pip install {1}\n\n'
-                          'in the console to install the missing package.'.format(check_pkg_name,
-                                                                                  check_repo_name,
-                                                                                  additional_text))
-            return 4
-        if check_version is not None:
-            # get package version number
-            try:
-                module_version = module.__version__
-            except AttributeError:
-                _logger.warning('Package "{0}" does not have a __version__ attribute. Ignoring '
-                                'version check!'.format(check_pkg_name))
-                return 0
-            # compare version number
-            if parse_version(module_version) < parse_version(check_version):
-                _logger.error('Installed package "{0}" has version {1}, but version {2} is '
-                              'required. Upgrade e.g. with \n\n    pip install --upgrade {3}\n\n'
-                              'in the console to upgrade to newest version.'
-                              ''.format(check_pkg_name,
-                                        module_version,
-                                        check_version,
-                                        check_repo_name))
-                return 4
-        return 0
-
-    err_code = 0
-    # check required packages
-    for pkg_name, repo_name, version in vital_pkg:
-        err_code = err_code | check_package(pkg_name, repo_name, version)
-
-    # check qt
-    try:
-        from PySide2.QtCore import Qt
-    except ImportError:
-        _logger.error('No Qt bindungs detected! Perform e.g.\n\n    pip install PyQt5\n\n'
-                      'in the console to install the missing package.')
-        err_code = err_code | 4
-
-    # check optional packages
-    for pkg_name, repo_name, version in opt_pkg:
-        check_package(pkg_name, repo_name, version, True)
-
-    return err_code
+                curr_prefix = prefix + '.'.join(rel_path.split(os.sep)) + '.'
+            # find modules and packages in current dir
+            tmp = pkgutil.iter_modules([root], prefix=curr_prefix)
+            module_infos.extend(
+                [mod_inf for mod_inf in tmp if not mod_inf.name.rsplit('.', 1)[-1].startswith('__')]
+            )
+    return module_infos
 
 
 def natural_sort(iterable):

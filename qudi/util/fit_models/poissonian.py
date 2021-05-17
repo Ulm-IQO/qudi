@@ -20,13 +20,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ('DoublePoissonian', 'Poissonian', 'multiple_poissonian')
+
 import numpy as np
 from scipy.special import gammaln, xlogy
-from ._general import FitModelBase, estimator, smooth_data, sort_check_data
-from ._peak_helpers import estimate_double_peaks
-from .gaussian import multiple_gaussian
-
-__all__ = ('DoublePoissonian', 'Poissonian', 'multiple_poissonian')
+from qudi.util.fit_models.model import FitModelBase, estimator
+from qudi.util.fit_models.helpers import smooth_data, sort_check_data, estimate_double_peaks
+from qudi.util.fit_models.gaussian import multiple_gaussian
 
 
 def multiple_poissonian(x, mus, amplitudes):

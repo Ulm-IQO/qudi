@@ -24,14 +24,10 @@ import numpy as np
 import time
 from qtpy import QtCore
 
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.modules import get_main_dir
-from core.util.mutex import Mutex
-from interface.slow_counter_interface import SlowCounterInterface
-from interface.slow_counter_interface import SlowCounterConstraints
-from interface.slow_counter_interface import CountingMode
-from interface.fast_counter_interface import FastCounterInterface
+from qudi.core.configoption import ConfigOption
+from qudi.core.paths import get_main_dir
+from qudi.util.mutex import Mutex
+from qudi.interface.fast_counter_interface import FastCounterInterface
 
 # =============================================================================
 # Wrapper around the PHLib.DLL. The current file is based on the header files
@@ -87,7 +83,7 @@ correspond to standard C/C++ data types as follows:
 #WARNING_OFFSET_UNNECESSARY     = 0x0800    # 2048
 
 
-class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
+class PicoHarp300(FastCounterInterface):
     """ Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0

@@ -31,20 +31,14 @@ from PySide2 import QtCore, QtWidgets
 from qudi.core.logger import init_rotating_file_handler, init_record_model_handler
 from qudi.core.logger import get_logger, set_log_level
 from qudi.core.paths import get_main_dir, get_default_log_dir
-from qudi.util.helpers import import_check
 from qudi.util.mutex import Mutex
+from qudi.util.mpl_qudi_style import mpl_qudi_style
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
 from qudi.core.threadmanager import ThreadManager
 from qudi.core.gui.gui import Gui
-from qudi.core.remote import RemoteModuleServer
-from qudi.core.jupyterkernel.kernelmanager import JupyterKernelManager
-
-try:
-    from zmq.eventloop import ioloop
-except ImportError:
-    pass
+from qudi.core.servers import RemoteModulesServer, QudiNamespaceServer
 
 # Use non-GUI "Agg" backend for matplotlib by default since it is reasonably thread-safe. Otherwise
 # you can only plot from main thread and not e.g. in a logic module.
@@ -86,40 +80,50 @@ class Qudi(QtCore.QObject):
         self.log = get_logger(__class__.__name__)  # will be "qudi.Qudi" in custom logger
         sys.excepthook = self._qudi_excepthook
 
-        # Check vital packages for qudi, otherwise qudi will not even start.
-        if import_check() != 0:
-            raise RuntimeError('Vital python packages missing. Unable to use qudi.')
-
         self.thread_manager = ThreadManager(parent=self)
         self.module_manager = ModuleManager(qudi_main=self, parent=self)
-        self.jupyter_kernel_manager = JupyterKernelManager(qudi_main=self)
         self.configuration = Configuration(parent=self)
         if config_file is None:
             config_file = Configuration.get_saved_config()
             if config_file is None:
                 config_file = Configuration.get_default_config()
         self.configuration.load_config(file_path=config_file, set_default=True)
-        server_config = self.configuration.module_server
-        if server_config:
-            self.remote_server = RemoteModuleServer(
-                kernel_manager=self.jupyter_kernel_manager,
-                host=server_config.get('address', None),
-                port=server_config.get('port', None),
-                certfile=server_config.get('certfile', None),
-                keyfile=server_config.get('certfile', None),
-                protocol_config=server_config.get('protocol_config', None),
-                ssl_version=server_config.get('ssl_version', None),
-                cert_reqs=server_config.get('cert_reqs', None),
-                ciphers=server_config.get('ciphers', None),
-                allow_pickle=server_config.get('allow_pickle', None))
+        remote_server_config = self.configuration.remote_modules_server
+        if remote_server_config:
+            self.remote_modules_server = RemoteModulesServer(
+                parent=self,
+                qudi=self,
+                name='remote-modules-server',
+                host=remote_server_config.get('address', None),
+                port=remote_server_config.get('port', None),
+                certfile=remote_server_config.get('certfile', None),
+                keyfile=remote_server_config.get('certfile', None),
+                protocol_config=remote_server_config.get('protocol_config', None),
+                ssl_version=remote_server_config.get('ssl_version', None),
+                cert_reqs=remote_server_config.get('cert_reqs', None),
+                ciphers=remote_server_config.get('ciphers', None)
+            )
         else:
-            self.remote_server = None
+            self.remote_modules_server = None
+        self.local_namespace_server = QudiNamespaceServer(
+            parent=self,
+            qudi=self,
+            name='local-namespace-server',
+            port=self.configuration.namespace_server_port
+        )
         self.watchdog = None
         self.gui = None
 
         self._configured_extension_paths = list()
         self._is_running = False
         self._shutting_down = False
+
+        # Set qudi style for matplotlib
+        try:
+            import matplotlib.pyplot as plt
+            plt.style.use(mpl_qudi_style)
+        except ImportError:
+            pass
 
     def _qudi_excepthook(self, ex_type, ex_value, ex_traceback):
         """ Handler function to be used as sys.excepthook. Should forward all unhandled exceptions
@@ -161,14 +165,20 @@ class Qudi(QtCore.QObject):
     def _remove_extensions_from_path(self):
         # Clean up previously configured expansion paths
         for ext_path in self._configured_extension_paths:
-            if ext_path in sys.path:
+            try:
                 sys.path.remove(ext_path)
+            except ValueError:
+                pass
 
     def _add_extensions_to_path(self):
         extensions = self.configuration.extension_paths
         # Add qudi extension paths to sys.path
+        try:
+            insert_index = sys.path.index(get_main_dir())
+        except ValueError:
+            insert_index = 0
         for ext_path in reversed(extensions):
-            sys.path.insert(0, ext_path)
+            sys.path.insert(insert_index, ext_path)
         self._configured_extension_paths = extensions
 
     @QtCore.Slot()
@@ -208,41 +218,19 @@ class Qudi(QtCore.QObject):
         self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
-    def _start_remote_server(self):
-        if self.remote_server is None or self.remote_server.is_running:
-            return
-        server_thread = self.thread_manager.get_new_thread('remote-server')
-        self.remote_server.moveToThread(server_thread)
-        server_thread.started.connect(self.remote_server.run)
-        server_thread.start()
-
-    def _stop_remote_server(self):
-        if self.remote_server is None or not self.remote_server.is_running:
-            return
-        try:
-            self.remote_server.stop()
-            self.thread_manager.quit_thread('remote-server')
-            self.thread_manager.join_thread('remote-server', time=5)
-        except:
-            self.log.exception('Error during shutdown of remote module server:')
-
-    def _init_juypter_kernel_manager(self):
-        thread = self.thread_manager.get_new_thread('jupyter-kernel-manager')
-        self.jupyter_kernel_manager.moveToThread(thread)
-        thread.finished.connect(self.jupyter_kernel_manager.terminate)
-        thread.start()
-
-    def _terminate_jupyter_kernel_manager(self):
-        self.thread_manager.quit_thread('jupyter-kernel-manager')
-        self.thread_manager.join_thread('jupyter-kernel-manager', time=5)
-        return
-
     def run(self):
         """
         """
         with self._run_lock:
             if self._is_running:
                 raise RuntimeError('Qudi is already running!')
+
+            # Disable pyqtgraph "application exit workarounds" because they cause errors on exit
+            try:
+                import pyqtgraph
+                pyqtgraph.setConfigOption('exitCleanup', False)
+            except ImportError:
+                pass
 
             # add qudi main directory to PATH
             qudi_path = get_main_dir()
@@ -270,20 +258,13 @@ class Qudi(QtCore.QObject):
             if app is None:
                 app = app_cls(sys.argv)
 
-            # Install the pyzmq ioloop.
-            # This has to be done before anything else from tornado is imported.
-            try:
-                ioloop.install()
-            except:
-                self.log.error('Preparing ZMQ failed, probably no IPython possible!')
-
             # Install app watchdog
             self.watchdog = AppWatchdog(self.interrupt_quit)
 
-            # Start remote server
-            self._start_remote_server()
-            # Init jupyter kernel manager
-            self._init_juypter_kernel_manager()
+            # Start module servers
+            if self.remote_modules_server is not None:
+                self.remote_modules_server.start()
+            self.local_namespace_server.start()
 
             # Apply configuration to qudi
             self._configure_qudi()
@@ -349,14 +330,17 @@ class Qudi(QtCore.QObject):
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Qudi shutting down...')
             print('> Qudi shutting down...')
-            if self.remote_server is not None:
-                self.log.info('Stopping remote server...')
-                print('> Stopping remote server...')
-                self._stop_remote_server()
-                QtCore.QCoreApplication.instance().processEvents()
-            self.log.info('Stopping Jupyter kernels...')
-            print('> Stopping Jupyter kernels...')
-            self._terminate_jupyter_kernel_manager()
+            self.log.info('Stopping module server(s)...')
+            print('> Stopping module server(s)...')
+            if self.remote_modules_server is not None:
+                try:
+                    self.remote_modules_server.stop()
+                except:
+                    self.log.exception('Exception during shutdown of remote modules server:')
+            try:
+                self.local_namespace_server.stop()
+            except:
+                self.log.exception('Error during shutdown of local namespace server:')
             QtCore.QCoreApplication.instance().processEvents()
             self.log.info('Deactivating modules...')
             print('> Deactivating modules...')

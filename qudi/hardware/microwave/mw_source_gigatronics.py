@@ -30,7 +30,7 @@ import numpy as np
 from qudi.util.mutex import Mutex
 from qudi.core.configoption import ConfigOption
 from qudi.interface.microwave_interface import MicrowaveInterface, MicrowaveConstraints
-from qudi.core.enums import TriggerEdge, SamplingOutputMode
+from qudi.util.enums import SamplingOutputMode
 
 
 class MicrowaveGigatronics(MicrowaveInterface):
