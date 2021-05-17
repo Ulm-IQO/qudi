@@ -392,7 +392,7 @@ class OdmrLogic(LogicBase):
                 data_rate = self.data_rate if data_rate is None else float(data_rate)
                 oversampling = self.oversampling if oversampling is None else max(1,
                                                                                   int(oversampling))
-                if self.scanner_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
+                if self.data_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
                     self._data_rate = data_rate
                     self._oversampling_factor = oversampling
                 else:
