@@ -1415,12 +1415,7 @@ class PulsedMeasurementLogic(LogicBase):
         # Save raw data
         ###############
         # Use either a name tag or a fixed file name
-        if file_name is None:
-            name_tag = tag + '_raw_timetrace' if tag else 'raw_timetrace'
-            full_filename = None
-        else:
-            name_tag = None
-            full_filename = f'{file_name}_raw_timetrace.{file_extension}'
+        full_filename, name_tag = self._get_save_filename_tag(file_name, tag, file_extension, suffix_str='raw_timetrace')
 
         # Set column header in data storage object
         data_storage.column_headers = 'Signal (counts)'
@@ -1438,12 +1433,8 @@ class PulsedMeasurementLogic(LogicBase):
         ###########################
         if save_laser_pulses:
             # Use either a name tag or a fixed file name
-            if file_name is None:
-                name_tag = tag + '_laser_pulses' if tag else 'laser_pulses'
-                full_filename = None
-            else:
-                name_tag = None
-                full_filename = f'{file_name}_laser_pulses.{file_extension}'
+            full_filename, name_tag = self._get_save_filename_tag(file_name, tag, file_extension,
+                                                                  suffix_str='laser_pulses')
 
             # Set column header in data storage object
             data_storage.column_headers = 'Signal (counts)'
@@ -1461,12 +1452,8 @@ class PulsedMeasurementLogic(LogicBase):
         ############################
         if save_pulsed_measurement:
             # Use either a name tag or a fixed file name
-            if file_name is None:
-                name_tag = tag + '_pulsed_measurement' if tag else 'pulsed_measurement'
-                full_filename = None
-            else:
-                name_tag = None
-                full_filename = f'{file_name}_pulsed_measurement.{file_extension}'
+            full_filename, name_tag = self._get_save_filename_tag(file_name, tag, file_extension,
+                                                                  suffix_str='pulsed_measurement')
 
             # Set column header in data storage object
             column_headers = [f'{self._data_labels[0]} ({self._data_units[0]})',
@@ -1497,6 +1484,16 @@ class PulsedMeasurementLogic(LogicBase):
                                             nametag=name_tag,
                                             filename=full_filename,
                                             timestamp=timestamp)
+
+    def _get_save_filename_tag(self, file_name, nametag, file_extension, suffix_str=''):
+        if file_name is None:
+            name_tag = nametag + f"_{suffix_str}" if nametag else f"{suffix_str}"
+            full_filename = None
+        else:
+            name_tag = None
+            full_filename = f'{file_name}_{suffix_str}.{file_extension}'
+
+        return full_filename, name_tag
 
     def _plot_pulsed_thumbnail(self, with_error=False):
 
