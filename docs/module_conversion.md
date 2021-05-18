@@ -28,13 +28,14 @@ class SwitchDummy(SwitchInterface):
     pass
 ```
 
-Often used connectors are:
+Common objects used in qudi modules are:
 ```Python
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
-from qudi.util.mutex import Mutex, RecursiveMutex
+from qudi.util.mutex import Mutex, RecursiveMutex  # use Mutex over RecursiveMutex whenever possible
 ```
+
 ## Interfaces
 The old way of declaring an intraface was:
 ```Python
@@ -74,41 +75,69 @@ Therefore both can be accessed via core-imports instead of with connectors.
 
 For details please see [Saving](data_storage.md) and [Fitting](data_fitting_integration.md).
 
-## threading
+## Threading
 In general threading in qudi should not be handled directly but through Signals in QT. 
 All the logic modules run in their own threads, as can be seen when selecting the 
-thread view in the qudi manager. GUI modules have to run in the QT-main-thread 
-while hardware modules do not have their own threads and their functions are run 
+thread view in the qudi main window. GUI modules have to run in the Qt main thread 
+while hardware modules do not have their own threads by default and their functions are run 
 by the calling thread (probably logic).
+You can however also force a hardware module to run in its own thread by setting `_threaded = True` 
+in the module class definition, e.g.:
+```Python
+class MyThreadedHardware(MyInterface):
+    _threaded = True
+    ...
+```
 
 If you do however need explicit threading, please use the qudi thread manager, 
 so it keeps track of them and also shows them in the thread view.
 
-A simple example is given below:
+A simple example for spawning a worker thread and executing a worker method inside this thread.
 ```Python
-import threading
+import time
+from PySide2.QtCore import QObject, QThread
 from qudi.core.threadmanager import ThreadManager
 
-class Dummy:
-    def start(self):
-        print(f'I am running in thread: {threading.current_thread().name}')
 
-def run_in_thread():
-    thread_name = 'MyThread'
+class Worker(QObject):
+    """ This is a classical worker class that can run a script defined e.g. in "do_stuff"
+    """
+    def do_stuff(self):
+        print(f'Worker started in thread: "{QThread.currentThread().objectName()}"')
+        # work on stuff, e.g. something that takes 5 seconds to complete
+        time.sleep(5)
+        print(f'Worker finished in thread: "{QThread.currentThread().objectName()}"')
+        
+        
+def run_in_thread(thread_name='MyThread'):
+    """ This function will spawn and run a new worker thread and waits until it has finished.
+    
+    @param str thread_name: The custom name of the thread to spawn
+    """
+    # Check if thread manager can be retrieved from the qudi main application
     thread_manager = ThreadManager.instance()
     if thread_manager is None:
-        return False
-    thread = thread_manager.get_new_thread(thread_name)
-    runner = Dummy()
-    self._instance.moveToThread(thread)
-    thread.start()
-    QtCore.QMetaObject.invokeMethod(runner,
-                                    'start',
-                                    QtCore.Qt.BlockingQueuedConnection)
-
+        raise RuntimeError('No thread manager found. Qudi application is probably not running.')
+    # Get a newly spawned thread (PySide2.QtCore.QThread) from the thread manager and give it a name
+    my_thread = thread_manager.get_new_thread(thread_name)
+    # Create worker instance and move the worker object to the new thread
+    my_worker = Worker()
+    my_worker.moveToThread(my_thread)
+    # Connect the QThread.started signal to the worker "run"-method.
+    # This will cause the worker to execute its "do_stuff" method as soon as the corresponding
+    # thread is up and running.
+    my_thread.started.connect(my_worker.do_stuff)
+    # Start the thread and let the worker run
+    my_thread.start()
+    # Issue stopping the thread. This will not wait until it has actually stopped.
+    thread_manager.quit_thread(my_thread)
+    # Wait until it has actually finished running and the thread is stopped.
+    # The thread manager will clean up the created thread automatically after it has stopped so 
+    # you can not re-run a thread after it has stopped
+    thread_manager.join_thread(my_thread)
 ```
 
-##  miscellaneous
+## Miscellaneous
 
 - The former `qudi_slot` mechanism does not exist anymore. 
   Just use normal slots from Pyside.
