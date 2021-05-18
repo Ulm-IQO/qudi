@@ -20,10 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_default_data_dir', 'get_default_filename', 'get_daily_data_directory',
+__all__ = ('get_default_data_dir', 'get_timestamp_filename', 'get_daily_data_directory',
            'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
+import re
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -89,19 +90,24 @@ def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
     return path
 
 
-def get_default_filename(timestamp=None, nametag=None):
-    """ Returns a qudi standard filename (without file extension, e.g. ".dat") used for saving data
-    to file.
+def get_timestamp_filename(timestamp, nametag=None):
+    """ Returns a qudi standard filename used for saving measurement data to file.
+    Not including any file extension.
 
-    @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
-    @param str nametag: optional, explicit root path for daily directory structure
+    @param datetime.datetime timestamp: Timestamp used to create the filename from
+    @param str nametag: optional, additional string to include in the file name
 
-    @return str: The file name without file extension
+    @return str: Generated file name without file extension
     """
-    # Create timestamp if omitted
-    if not isinstance(timestamp, datetime):
-        timestamp = datetime.now()
+    # Start of the filename contains the timestamp, i.e. "20210130-1130-59"
     datetime_str = timestamp.strftime('%Y%m%d-%H%M-%S')
+    if nametag:
+        nametag = nametag.strip()
+        # Replace unicode whitespaces with underscores.
+        # Consecutive whitespaces are replaced by single underscore.
+        nametag = re.sub(r'[\s]+', '_', nametag)
+        # ToDo: More character sequence checking needed. Raise exception if bad.
+    # Separate nametag and timestamp string with an underscore
     return f'{datetime_str}_{nametag}' if nametag else datetime_str
 
 
@@ -113,89 +119,85 @@ class ImageFormat(Enum):
 
 
 class DataStorageBase(metaclass=ABCMeta):
-    """ Base helper class to store (measurement)data on disk. Optionally creates daily directory
-    structure to store data in (default).
-    Subclasses provide the functionality to save and load measurement data
-    (including experiment metadata) to/from disc in a specific file format.
-    Metadata can include so called "global metdata fields" which are shared named values that can
-    be globally set in this Python process. These should represent parameters that are shared
-    across different kind of measurements.
+    """ Base helper class to store/load (measurement)data to/from disk.
+    Subclasses handle saving and loading of measurement data (including metadata) for specific file
+    formats.
+    Metadata is represented as dictionary (key-value pairs).
+    It is also possible to set so called "global metadata" using this or any subclass of this class.
+    Global metadata is shared and accessible throughout all instances of these storage objects
+    within the Python process.
+
+    If the storage type is file based and root_dir is not initialized, each call to save_data must
+    provide the full save path information and not just a file name or name tag.
     """
     _global_metadata = dict()
     _global_metadata_lock = Mutex()
 
-    def __init__(self, *, root_dir=None, sub_directory=None, file_extension='.dat',
-                 use_daily_dir=True, include_global_metadata=True, image_format=ImageFormat.PNG):
+    def __init__(self, *, root_dir=None, file_extension=None, include_global_metadata=True,
+                 image_format=ImageFormat.PNG):
         """
-        @param str root_dir: optional, root-directory path for daily directory tree
-        @param str sub_directory: optional, sub-directory name to use within daily data directory
-        @param str file_extension: optional, the file extension to be used for the data file
-        @param bool use_daily_dir: optional, flag indicating daily sub-directory usage
+        @param str root_dir: optional, root-directory for this storage instance to work in
+        @param str file_extension: optional, the file extension to use for data files
         @param bool include_global_metadata: optional, flag indicating saving of global metadata
-        @param ImageFormat image_format: optional, image file format Enum
+        @param ImageFormat image_format: optional, image file format Enum for saving thumbnails
         """
-        if root_dir is None:
-            self.root_dir = get_default_data_dir(create_missing=False)
-        else:
-            self.root_dir = root_dir
-
-        if isinstance(file_extension, str):
-            if file_extension:
-                self.file_extension = '.' * (not file_extension.startswith('.')) + file_extension
-        else:
-            self.file_extension = None
-
         if not isinstance(image_format, ImageFormat):
             raise TypeError('image_format must be ImageFormat Enum')
 
-        self.sub_directory = sub_directory
-        self.image_format = image_format
-        self.use_daily_dir = bool(use_daily_dir)
-        self.include_global_metadata = bool(include_global_metadata)
-        return
+        self.root_dir = root_dir  # ToDo: Maybe some sanity checking for correct path syntax?
 
-    def get_data_directory(self, timestamp=None, create_missing=True):
-        """ Create (optional) and return directory path to save data in.
-
-        @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
-        @param bool create_missing: optional, indicate if a directory should be created (True) or
-                                    not (False)
-
-        @return str: Absolute path to the data directory
-        """
-        if self.use_daily_dir:
-            path = get_daily_data_directory(root=self.root_dir,
-                                            timestamp=timestamp,
-                                            create_missing=create_missing)
+        if not file_extension:
+            self.file_extension = None
+        elif file_extension.startswith('.'):
+            self.file_extension = file_extension
         else:
-            path = self.root_dir
-        if self.sub_directory is not None:
-            path = os.path.join(path, self.sub_directory)
-        if create_missing:
-            os.makedirs(path, exist_ok=True)
-        return path
+            self.file_extension = '.' + file_extension
 
-    def create_file_path(self, timestamp=None, filename=None, nametag=None, file_extension=None):
-        """ Creates a generic filename if none has been given and constructs an absolute path to
-        the file to be saved. Creates all necessary directories along the way.
+        self.include_global_metadata = bool(include_global_metadata)
+        self.image_format = image_format
 
-        @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
-        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
-        @param str nametag: optional, nametag to include in the generic filename
-        @param str file_extension: optional, the file extension to use
-
-        @return str: Full absolute path of the data file
-        """
-        if filename is None:
-            filename = get_default_filename(timestamp=timestamp, nametag=nametag)
-        if file_extension is None:
-            file_extension = self.file_extension
-        elif not file_extension.startswith('.'):
-            file_extension = '.' + file_extension
-        if file_extension is not None and not filename.endswith(file_extension):
-            filename += file_extension
-        return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
-                            filename)
+    # def get_data_directory(self, timestamp=None, create_missing=True):
+    #     """ Create (optional) and return directory path to save data in.
+    #
+    #     @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
+    #     @param bool create_missing: optional, indicate if a directory should be created (True) or
+    #                                 not (False)
+    #
+    #     @return str: Absolute path to the data directory
+    #     """
+    #     if self.use_daily_dir:
+    #         path = get_daily_data_directory(root=self.root_dir,
+    #                                         timestamp=timestamp,
+    #                                         create_missing=create_missing)
+    #     else:
+    #         path = self.root_dir
+    #     if self.sub_directory is not None:
+    #         path = os.path.join(path, self.sub_directory)
+    #     if create_missing:
+    #         os.makedirs(path, exist_ok=True)
+    #     return path
+    #
+    # def create_file_path(self, timestamp=None, filename=None, nametag=None, file_extension=None):
+    #     """ Creates a generic filename if none has been given and constructs an absolute path to
+    #     the file to be saved. Creates all necessary directories along the way.
+    #
+    #     @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
+    #     @param str filename: optional, filename to use (nametag and timestamp will be ignored)
+    #     @param str nametag: optional, nametag to include in the generic filename
+    #     @param str file_extension: optional, the file extension to use
+    #
+    #     @return str: Full absolute path of the data file
+    #     """
+    #     if filename is None:
+    #         filename = get_default_filename(timestamp=timestamp, nametag=nametag)
+    #     if file_extension is None:
+    #         file_extension = self.file_extension
+    #     elif not file_extension.startswith('.'):
+    #         file_extension = '.' + file_extension
+    #     if file_extension is not None and not filename.endswith(file_extension):
+    #         filename += file_extension
+    #     return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
+    #                         filename)
 
     def save_thumbnail(self, mpl_figure, timestamp=None, filename=None, nametag=None):
         """ Save a matplotlib figure visualizing the saved data in the image format provided.
