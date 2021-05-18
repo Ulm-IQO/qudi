@@ -12,7 +12,7 @@ All the imports of the qudi core modules have changed from e.g.
 So the new import of the connector would be: `from qudi.core.connector import Connector`
 
 Also the base modules of your custom qudi classes have changed to:
-``` python
+```Python
 from qudi.core.module import Base, LogicBase, GuiBase
 ```
 Notice, that the base class for the logic also has been renamed.
@@ -21,7 +21,7 @@ As the Interfaces now inherite from the base class,
 you do not need to inherit again from `Base` if you make your custom class 
 confirm to an interface by inheriting it. 
 Therefore the follwoing will suffice e.g. for a new hardware switch module:
-``` python
+```Python
 from qudi.interface.switch_interface import SwitchInterface
 
 class SwitchDummy(SwitchInterface):
@@ -29,7 +29,7 @@ class SwitchDummy(SwitchInterface):
 ```
 
 Often used connectors are:
-``` python
+```Python
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
@@ -42,3 +42,9 @@ from qudi.util.mutex import Mutex, RecursiveMutex
 ## threading
 
 ##  miscellaneous
+
+- The former `qudi_slot` mechanism does not exist anymore. 
+  Just use normal slots from Pyside.
+- ui-files created with the QTDesigner can contain promoted widgets that directly 
+  link to qudi custom widgets. In this case the path to the custom widgets needs to be replaced.
+  e.g. `qtwidgets.scientific_spinbox.h` becomes `qudi.core.gui.qtwidgets.scientific_spinbox`
