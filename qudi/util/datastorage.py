@@ -572,4 +572,4 @@ class NpyDataStorage(DataStorageBase):
                 meta_lines = file.read().splitlines()[2:]
         except FileNotFoundError:
             return data, dict(), tuple(), ''
-
+        return data, dict(), tuple(), ''
