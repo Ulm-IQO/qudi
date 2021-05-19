@@ -288,6 +288,7 @@ class TextDataStorage(DataStorageBase):
         self.file_extension = file_extension
         self.number_format = number_format
         self.comments = comments if isinstance(comments, str) else None
+        self._delimiter = '\t'
         self.delimiter = delimiter
 
     @property
@@ -304,6 +305,16 @@ class TextDataStorage(DataStorageBase):
             self._file_extension = value
         else:
             self._file_extension = '.' + value
+
+    @property
+    def delimiter(self):
+        return self._delimiter
+
+    @delimiter.setter
+    def delimiter(self, value):
+        if not isinstance(value, str):
+            raise TypeError('delimiter must be str type')
+        self._delimiter = value
 
     def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
         """
@@ -451,11 +462,17 @@ class CsvDataStorage(TextDataStorage):
     def __init__(self, *, file_extension='.csv', **kwargs):
         """ See: qudi.util.datastorage.TextDataStorage
         """
+        kwargs['delimiter'] = ','
         super().__init__(file_extension=file_extension, **kwargs)
 
     @property
     def delimiter(self):
         return ','
+
+    @delimiter.setter
+    def delimiter(self, value):
+        if value != ',':
+            raise UserWarning('CsvDataStorage only accepts "," as delimiter')
 
     def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
         """ Include column_headers without line comment specifier.
