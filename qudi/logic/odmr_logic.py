@@ -391,7 +391,7 @@ class OdmrLogic(LogicBase):
                 data_rate = self.data_rate if data_rate is None else float(data_rate)
                 oversampling = self.oversampling if oversampling is None else max(1,
                                                                                   int(oversampling))
-                if self.scanner_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
+                if self.data_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
                     self._data_rate = data_rate
                     self._oversampling_factor = oversampling
                 else:
@@ -676,7 +676,7 @@ class OdmrLogic(LogicBase):
                 'Oversampling factor (Hz)': self._oversampling_factor,
                 'Channel Name': ''
             }
-            channel_units = self.scanner_constraints.channel_units
+            channel_units = self.data_constraints.channel_units
             tag_str = tag + '_' if tag else ''
             # Join frequency data from all scan ranges
             freq_data = np.concatenate(self._frequency_data)
@@ -748,7 +748,7 @@ class OdmrLogic(LogicBase):
         fit_result = self._fit_results[channel][range_index]
         if fit_result is not None:
             fit_x, fit_y = fit_result[1].high_res_best_fit
-        unit = self.scanner_constraints.channel_units[channel]
+        unit = self.data_constraints.channel_units[channel]
 
         # Determine SI unit scaling for signal
         scaled = ScaledFloat(np.max(signal_data))
