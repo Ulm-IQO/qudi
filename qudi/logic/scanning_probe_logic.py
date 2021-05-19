@@ -61,7 +61,7 @@ class ScanningProbeLogic(LogicBase):
         self.__scan_poll_timer = None
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
-        self._curr_caller_id = self.module_state.uuid
+        self._curr_caller_id = self.module_uuid
         return
 
     def on_activate(self):
@@ -80,7 +80,7 @@ class ScanningProbeLogic(LogicBase):
 
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
-        self._curr_caller_id = self.module_state.uuid
+        self._curr_caller_id = self.module_uuid
 
         self.__scan_poll_timer = QtCore.QTimer()
         self.__scan_poll_timer.setSingleShot(True)
@@ -232,7 +232,7 @@ class ScanningProbeLogic(LogicBase):
             if self.module_state() != 'idle':
                 self.log.error('Unable to change scanner target position while a scan is running.')
                 new_pos = self._scanner().get_target()
-                self.sigScannerTargetChanged.emit(new_pos, self.module_state.uuid)
+                self.sigScannerTargetChanged.emit(new_pos, self.module_uuid)
                 return new_pos
 
             ax_constr = self.scanner_constraints.axes
@@ -241,7 +241,7 @@ class ScanningProbeLogic(LogicBase):
                 if ax not in ax_constr:
                     self.log.error('Unknown scanner axis: "{0}"'.format(ax))
                     new_pos = self._scanner().get_target()
-                    self.sigScannerTargetChanged.emit(new_pos, self.module_state.uuid)
+                    self.sigScannerTargetChanged.emit(new_pos, self.module_uuid)
                     return new_pos
 
                 new_pos[ax] = ax_constr[ax].clip_value(pos)
@@ -254,7 +254,7 @@ class ScanningProbeLogic(LogicBase):
                 caller_id = None
             self.sigScannerTargetChanged.emit(
                 new_pos,
-                self.module_state.uuid if caller_id is None else caller_id
+                self.module_uuid if caller_id is None else caller_id
             )
             return new_pos
 
@@ -275,7 +275,7 @@ class ScanningProbeLogic(LogicBase):
                 return 0
 
             scan_axes = tuple(scan_axes)
-            self._curr_caller_id = self.module_state.uuid if caller_id is None else caller_id
+            self._curr_caller_id = self.module_uuid if caller_id is None else caller_id
 
             self.module_state.lock()
 

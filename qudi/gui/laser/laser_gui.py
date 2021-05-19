@@ -373,7 +373,7 @@ class LaserGui(GuiBase):
         """
         value = self.control_dock_widget.power_slider.value()
         self.control_dock_widget.power_setpoint_spinbox.setValue(value)
-        self.sigPowerChanged.emit(value, self.module_state.uuid)
+        self.sigPowerChanged.emit(value, self.module_uuid)
 
     @QtCore.Slot()
     def _current_slider_moved(self):
@@ -381,7 +381,7 @@ class LaserGui(GuiBase):
         """
         value = self.control_dock_widget.current_slider.value()
         self.control_dock_widget.current_setpoint_spinbox.setValue(value)
-        self.sigCurrentChanged.emit(value, self.module_state.uuid)
+        self.sigCurrentChanged.emit(value, self.module_uuid)
 
     @QtCore.Slot()
     def _power_setpoint_edited(self):
@@ -389,7 +389,7 @@ class LaserGui(GuiBase):
         """
         value = self.control_dock_widget.power_setpoint_spinbox.value()
         self.control_dock_widget.power_slider.setValue(value)
-        self.sigPowerChanged.emit(value, self.module_state.uuid)
+        self.sigPowerChanged.emit(value, self.module_uuid)
 
     @QtCore.Slot()
     def _current_setpoint_edited(self):
@@ -397,17 +397,17 @@ class LaserGui(GuiBase):
         """
         value = self.control_dock_widget.current_setpoint_spinbox.value()
         self.control_dock_widget.current_slider.setValue(value)
-        self.sigCurrentChanged.emit(value, self.module_state.uuid)
+        self.sigCurrentChanged.emit(value, self.module_uuid)
 
     @QtCore.Slot(float, object)
     def _power_setpoint_updated(self, value, caller_id):
-        if caller_id != self.module_state.uuid:
+        if caller_id != self.module_uuid:
             self.control_dock_widget.power_setpoint_spinbox.setValue(value)
             self.control_dock_widget.power_slider.setValue(value)
 
     @QtCore.Slot(float, object)
     def _current_setpoint_updated(self, value, caller_id):
-        if caller_id != self.module_state.uuid:
+        if caller_id != self.module_uuid:
             self.control_dock_widget.current_setpoint_spinbox.setValue(value)
             self.control_dock_widget.current_slider.setValue(value)
 
