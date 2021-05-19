@@ -20,8 +20,8 @@ ToDo: Throw errors around for non-existent directories
 """
 
 __all__ = ('get_appdata_dir', 'get_default_config_dir', 'get_default_log_dir',
-           'get_default_data_root_dir', 'get_daily_directory_tree', 'get_home_dir', 'get_main_dir',
-           'get_userdata_dir', 'get_artwork_dir')
+           'get_default_data_dir', 'get_daily_directory', 'get_home_dir', 'get_main_dir',
+           'get_userdata_dir', 'get_artwork_dir', 'get_module_app_data_path')
 
 import datetime
 import os
@@ -111,8 +111,9 @@ def get_default_log_dir(create_missing=False):
     return path
 
 
-def get_default_data_root_dir(create_missing=False):
-    """ Get the system specific application data root directory.
+def get_default_data_dir(create_missing=False):
+    """ Get the system specific application fallback data root directory.
+    Does NOT consider qudi configuration.
 
     @return str: path to default data root directory
     """
@@ -124,15 +125,34 @@ def get_default_data_root_dir(create_missing=False):
     return path
 
 
-def get_daily_directory_tree(timestamp=None):
-    """ Get a directory tree based on a datetime timestamp. The returned path is not an absolute
-    path but just a relative directory tree.
-    If no timestamp is given, a timestamp will be created via datetime.datetime.now().
+def get_daily_directory(timestamp=None, root=None, create_missing=False):
+    """ Returns a path tree according to the timestamp given.
 
-    @return str: Relative daily directory tree path
+    The directory structure will have the form: root/<YYYY>/<MM>/<YYYY-MM-DD>
+    If not root directory is given, this method will return just the relative path stub:
+    <YYYY>/<MM>/<YYYY-MM-DD>
+
+    @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
+                                        (default: now)
+    @param str root: optional, root path for daily directory structure
+    @param bool create_missing: optional, indicate if the directory should be created (True) or not
+                                (False). Is only considered if root is given as well.
     """
     if timestamp is None:
         timestamp = datetime.datetime.now()
+
     day_dir = timestamp.strftime('%Y-%m-%d')
     year_dir, month_dir = day_dir.split('-')[:2]
-    return os.path.join(year_dir, month_dir, day_dir)
+    daily_path = os.path.join(year_dir, month_dir, day_dir)
+    if root is not None:
+        daily_path = os.path.join(root, daily_path)
+        if create_missing:
+            os.makedirs(daily_path, exist_ok=True)
+    return daily_path
+
+
+def get_module_app_data_path(cls_name, module_base, module_name):
+    """ Constructs the appData file path for the given qudi module
+    """
+    file_name = f'status-{cls_name}_{module_base}_{module_name}.cfg'
+    return os.path.join(get_appdata_dir(), file_name)
