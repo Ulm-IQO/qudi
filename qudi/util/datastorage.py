@@ -267,7 +267,7 @@ class TextDataStorage(DataStorageBase):
     # __int_regex = re.compile(r'\A[+-]?\d+\Z')
     # __float_regex = re.compile(r'\A[+-]?\d+.\d+([eE][+-]?\d+)?\Z')
 
-    def __init__(self, *, number_format='%.18e', comments='# ', delimiter='\t',
+    def __init__(self, *, root_dir, number_format='%.18e', comments='# ', delimiter='\t',
                  file_extension='.dat', **kwargs):
         """
         @param tuple|str column_headers: optional, iterable of strings containing column headers.
@@ -279,7 +279,7 @@ class TextDataStorage(DataStorageBase):
         @param str delimiter: optional, column delimiter used in text files
         @param kwargs: optional, for additional keyword arguments see DataStorageBase.__init__
         """
-        super().__init__(**kwargs)
+        super().__init__(root_dir=root_dir, **kwargs)
 
         if not delimiter or not isinstance(delimiter, str):
             raise ValueError('Parameter "delimiter" must be non-empty string.')
@@ -483,6 +483,9 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
+    def __init__(self, *, root_dir, **kwargs):
+        super().__init__(root_dir=root_dir, **kwargs)
+
     @property
     def file_extension(self):
         return '.npy'
