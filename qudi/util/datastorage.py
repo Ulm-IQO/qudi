@@ -180,17 +180,6 @@ class DataStorageBase(metaclass=ABCMeta):
 
         @return str: Full absolute path of the data file
         """
-
-        subdir = os.path.dirname(nametag)
-        # catch, if user delivers absolute path by mistake
-        if os.path.isabs(subdir):
-            subdir = subdir.lstrip("\\").lstrip("/")
-
-        save_sub_dir = self.sub_directory
-        self.sub_directory += ("/" + subdir)
-
-        nametag = os.path.basename(nametag)
-
         if filename is None:
             if timestamp is None:
                 timestamp = datetime.now()
@@ -204,12 +193,8 @@ class DataStorageBase(metaclass=ABCMeta):
             file_extension = '.' + file_extension
         if file_extension is not None and not filename.endswith(file_extension):
             filename += file_extension
-
-        full_path = os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
+        return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
                             filename)
-        self.sub_directory = save_sub_dir
-
-        return full_path
 
     def save_thumbnail(self, mpl_figure, timestamp=None, filename=None, nametag=None):
         """ Save a matplotlib figure visualizing the saved data in the image format provided.
@@ -545,9 +530,9 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
-    def __init__(self, comments=None, **kwargs):
+    def __init__(self, **kwargs):
         kwargs['file_extension'] = '.npy'
-        self.comments = comments if isinstance(comments, str) else None
+        kwargs['comments'] = None
         super().__init__(**kwargs)
 
     def create_header(self, data_filename, metadata=None, timestamp=None, include_column_headers=True):
