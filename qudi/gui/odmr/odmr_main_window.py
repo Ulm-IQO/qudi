@@ -187,4 +187,3 @@ class OdmrStatusBar(QtWidgets.QStatusBar):
         self.elapsed_time_lineedit.setFocusPolicy(QtCore.Qt.NoFocus)
         layout.addWidget(self.elapsed_time_lineedit)
         self.addPermanentWidget(widget, 1)
-

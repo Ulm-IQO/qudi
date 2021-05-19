@@ -102,6 +102,7 @@ class OdmrGui(GuiBase):
         self._update_scan_state()
         self._update_cw_parameters()
         self._update_cw_state()
+        self._restore_odmr_settings()
 
         # Connect signals
         self.__connect_main_window_actions()
@@ -178,6 +179,16 @@ class OdmrGui(GuiBase):
             logic.set_scans_to_average, QtCore.Qt.QueuedConnection
         )
         self._scan_control_dockwidget.sigDataSelectionChanged.connect(self._data_selection_changed)
+
+        self._odmr_settings_dialog.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self._apply_odmr_settings
+        )
+        self._odmr_settings_dialog.button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(
+            self._apply_odmr_settings
+        )
+        self._odmr_settings_dialog.button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(
+            self._restore_odmr_settings
+        )
 
     def __connect_gui_signals(self):
         logic = self._odmr_logic()
