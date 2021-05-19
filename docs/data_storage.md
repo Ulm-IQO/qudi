@@ -18,7 +18,7 @@ If you want to implement a new storage format class, it must inherit this base c
 The most important API methods that each specialized sub-class must implement are:
 
 ```Python
-def save_data(self, data, *, metadata=None, nametag=None, timestamp=None, **kwargs):
+def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None, **kwargs):
     # Save data to appropriate format
     pass
 
@@ -27,7 +27,8 @@ def load_data(self, *args, **kwargs):
     pass
 ```
 
-The exact method signatures can differ between storage classes and can be looked up individually.
+The exact method signatures with additional keyword-only arguments can differ between storage 
+classes and can be looked up individually.
 
 Before you can start saving or loading data arrays with the methods mentioned above, you need to 
 instantiate and configure the storage object appropriately.
@@ -47,29 +48,17 @@ Here is an example for storing text files that is using a commonly used subset o
 ```Python
 from qudi.util.datastorage import TextDataStorage, ImageFormat
 
-# Instantiate text storage object and configure it (recommended way)
-data_storage = TextDataStorage(sub_directory='MyMeasurementCategory', 
-                               column_headers=('time (s)', 'amplitude (V)'), 
+# Instantiate text storage object and configure it
+data_storage = TextDataStorage(root_dir='C:\\Data\\MyMeasurementCategory',
                                number_format='%.18e',
                                comments='# ', 
                                delimiter='\t',
                                image_format=ImageFormat.PNG)
-
-# Alternative instantiation (no sanity checks)
-data_storage = TextDataStorage()
-data_storage.sub_directory = 'MyMeasurementCategory'
-data_storage.column_headers = ('time (s)', 'amplitude (V)')
-data_storage.number_format = '%.18e'
-data_storage.comments = '# '
-data_storage.delimiter = '\t'
-data_storage.image_format = ImageFormat.PNG
 ```
 
 Let's go through the parameters one-by-one:
-- `sub_directory`:
-  Additional sub-directory that is used as direct parent directory for the file.
-- `column_headers`:
-  Iterable of header strings for each data column or a single string that will be used "as-is".
+- `root_dir`:
+  The root or working directory for the storage class to work in. Files will be saved into this dir.
 - `number_format`:
   Numpy style format string used to convert the values to text. Can also provide iterable of strings
   for each column.
@@ -81,13 +70,23 @@ Let's go through the parameters one-by-one:
   The image format used to save matplotlib figures to file using storage method `save_thumbnail`.
 
 ## Storage location
+Generally you have to set the `root_dir` parameter for (file-based) storage objects before saving 
+or loading any data.
+
+For your convenience each qudi module (GUI, logic or hardware) has an attribute 
+`module_default_data_dir` containing a standardized generic data directory. This directory respects 
+the global config options `default_data_dir` and `daily_data_dirs` and adds a module-specific 
+sub-directory. If applicable, you should always use this attribute to set `root_dir` in storage 
+objects.  
+By default this path resolves to: 
+`<user home>/qudi/Data/<YYYY>/<MM>/<YYYYMMDD>/<configured module name>`
+
+In case you really want to customize the storage location on a per-module basis, you should 
+overwrite `module_default_data_dir` in the module class definition in order to make the custom path 
+accessible from outside the module.
 By default all file based data is stored in daily sub-directories of the qudi data directory 
 (default is `<user_home>/qudi/Data/` but it can be changed via global config parameter 
-`default_data_dir`).  
-This data root directory can be overridden locally by providing a custom path in the optional 
-parameter `root_dir`.  
-You can turn off the daily sub-directory behaviour locally with the optional flag parameter 
-`use_daily_dir`.
+`default_data_dir`).
 
 
 ## Saving data
@@ -117,15 +116,19 @@ timestamp = datetime(2021, 5, 6, 11, 11, 11)  # 06.05.2021 at 11h:11m:11s
 # Create a nametag to include in the file name
 nametag = 'amplitude_measurement'
 
+# Create an iterable of data column header strings
+column_headers = ('time (s)', 'amplitude (V)')
+
 # Save data to file
 file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
                                                                metadata=metadata, 
                                                                nametag=nametag,
-                                                               timestamp=timestamp)
+                                                               timestamp=timestamp, 
+                                                               column_headers=column_headers)
 ```
 
-This will save the data to file 
-`<qudi_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.dat` with the following 
+This will save the data to a file with a generic filename constructed from nametag and timestamp.
+`<default_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.dat` with the following 
 content:
 
 ```
@@ -145,6 +148,21 @@ content:
 2.002002002002001985e-03	2.515524538937584723e-02
 ⋮ 				⋮
 ```
+
+Alternatively it is also possible to specify the filename directly instead of relying on the 
+generic construction from nametag and timestamp:
+
+```Python
+# Save data to file
+file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
+                                                               metadata=metadata,
+                                                               timestamp=timestamp, 
+                                                               column_headers=column_headers, 
+                                                               filename='my_custom_filename.abc')
+```
+
+This would result in a file at `<default_data_dir>/2021/05/20210506/my_custom_filename.abc`
+
 
 ### Saving a thumbnail
 In order to save a thumbnail alongside the data file, you can create a `matplotlib` figure and pass 
@@ -169,7 +187,7 @@ Note that we have used the same `nametag` and `timestamp` as we have used for th
 This ensures that the thumbnail picture file will have the same filename as the data text file 
 (except for the file type extension, in this case `.png`).  
 This example creates the file: 
-`<qudi_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.png`
+`<default_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.png`
 
 
 ## Loading data
