@@ -364,7 +364,7 @@ class TextDataStorage(DataStorageBase):
         if not os.path.isfile(file_path):
             raise FileNotFoundError(
                 'File to append data to not found. '
-                'Create a new file to append to by calling "new_data_file".'
+                'Create a new file to append to by calling "new_file".'
             )
         # Append data to file
         with open(file_path, 'a') as file:
@@ -385,14 +385,14 @@ class TextDataStorage(DataStorageBase):
         @param str|list column_headers: optional, data column header strings or single string
         """
         # Create new data file (overwrite old one if it exists)
-        file_path, timestamp = self.new_data_file(metadata=metadata,
-                                                  notes=notes,
-                                                  nametag=nametag,
-                                                  timestamp=timestamp,
-                                                  column_headers=column_headers,
-                                                  filename=filename)
+        file_path, timestamp = self.new_file(metadata=metadata,
+                                             notes=notes,
+                                             nametag=nametag,
+                                             timestamp=timestamp,
+                                             column_headers=column_headers,
+                                             filename=filename)
         # Append data to file
-        rows_columns = self.append_data_file(data)
+        rows_columns = self.append_file(data, file_path=file_path)
         return file_path, timestamp, rows_columns
 
     def load_data(self, file_path):
