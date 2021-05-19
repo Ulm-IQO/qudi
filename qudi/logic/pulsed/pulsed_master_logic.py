@@ -587,26 +587,25 @@ class PulsedMasterLogic(LogicBase):
         self.sigFitUpdated.emit(fit_name, fit_result, use_alternative_data)
         return
 
-    def save_measurement_data(self, tag=None, data_dir=None, file_name=None, storage_cls=None,
+    def save_measurement_data(self, tag=None, notes=None, file_path=None, storage_cls=None,
                               with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=False, notes=None):
+                              save_figure=None):
         """ Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
         @param str tag: a name tag which will be included in the filename if file_path is None
-        @param str data_dir: optional, custom absolute path to the directory to save files into
-        @param str file_name: optional, custom file name prototype to use as basis for files to save
+        @param str file_path: optional, custom full file path including file extension to use.
+                              If given, tag is ignored.
         @param type storage_cls: optional, the explicit data storage class to use
         @param bool with_error: select whether errors should be saved/plotted
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
-        @param bool save_figure: select whether png and pdf should be saved
+        @param bool save_figure: select whether a thumbnail plot should be saved
         @param str notes: optional, string that is included in the metadata "as-is" without a field
         """
         return self.pulsedmeasurementlogic().save_measurement_data(
             tag=tag,
-            data_dir=data_dir,
-            file_name=file_name,
+            file_path=file_path,
             storage_cls=storage_cls,
             with_error=with_error,
             save_laser_pulses=save_laser_pulses,

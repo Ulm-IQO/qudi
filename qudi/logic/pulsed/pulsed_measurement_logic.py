@@ -18,6 +18,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+import os.path
 
 from PySide2 import QtCore
 import numpy as np
@@ -67,12 +68,9 @@ class PulsedMeasurementLogic(LogicBase):
     analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
     # Optional file type descriptor for saving raw data to file.
     # todo: doesn't warn if checker not satisfied
-    _default_data_storage_type = ConfigOption(
-        name='default_data_storage_type',
-        default='text',
-        # checker=lambda x: x.upper in [t.name for t in StorageType],
-        converter=_data_storage_from_cfg_option
-    )
+    _default_data_storage_cls = ConfigOption(name='default_data_storage_type',
+                                             default='text',
+                                             converter=_data_storage_from_cfg_option)
     _save_thumbnails = ConfigOption(name='save_thumbnails', default=True)
 
     # status variables
@@ -1376,91 +1374,110 @@ class PulsedMeasurementLogic(LogicBase):
                 'extraction parameters'       : self.extraction_settings,
                 'fast counter settings'       : self.fast_counter_settings}
 
-    def save_measurement_data(self, tag=None, data_dir=None, file_name=None, storage_cls=None,
+    @staticmethod
+    def _get_patched_filename_nametag(file_name=None, nametag=None, suffix_str=''):
+        """ Helper method to return either a full file name or a nametag to be used as arguments in
+        storage objects save_data methods.
+        If a file_name is given, return a file_name with patched-in suffix_str and None as nametag.
+        If tag is given, append suffix_str to it and return None as file_name.
+        """
+        if file_name is None:
+            if nametag is None:
+                nametag = ''
+            return None, f'{nametag}{suffix_str}'
+        else:
+            file_name_stub, file_extension = file_name.rsplit('.', 1)
+            return f'{file_name_stub}{suffix_str}.{file_extension}', None
+
+    def _get_signal_column_headers(self, with_error):
+        """ Helper method to retrieve formatted column header strings for pulsed measurement data.
+
+        @param bool with_error: Boolean flag indicating if error data should be included
+
+        @return list: List of column header strings
+        """
+        column_headers = [f'{self._data_labels[0]} ({self._data_units[0]})',
+                          f'{self._data_labels[1]} ({self._data_units[1]})']
+        if with_error:
+            column_headers.append(f'{self._data_labels[1]} ({self._data_units[1]})')
+        return column_headers
+
+    def save_measurement_data(self, tag=None, notes=None, file_path=None, storage_cls=None,
                               with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=False, notes=None):
+                              save_figure=None):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str tag: a name tag which will be included in the filename if file_path is None
-        @param str data_dir: optional, custom absolute path to the directory to save files into
-        @param str file_name: optional, custom file name including file extension
-        @param type storage_cls: optional, the explicit data storage class to use
+        @param str file_path: optional, custom full file path including file extension to use.
+                              If given, tag is ignored.
+        @param type storage_cls: optional, override for data storage class to use
         @param bool with_error: select whether errors should be saved/plotted
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
-        @param bool save_figure: select whether png and pdf should be saved
+        @param bool save_figure: select whether a thumbnail plot should be saved
         @param str notes: optional, string that is included in the metadata "as-is" without a field
         """
         # Use default data storage type if none has been given explicitly
         if storage_cls is None:
-            storage_cls = self._default_data_storage_type
-        # Use default data dir if none has been given explicitly
-        if data_dir is None:
+            storage_cls = self._default_data_storage_cls
+
+        # Use default data dir if none has been given explicitly.
+        # Ignore tag if explicit file_path is given
+        if file_path is None:
             data_dir = self.module_default_data_dir
+            file_name = None
+        else:
+            data_dir, file_name = os.path.split(file_path)
+
+        # If save_figure is not explicitly given, use module default
+        if save_figure is None:
+            save_figure = self._save_thumbnails
+
         # Create common timestamp for all files to save
         timestamp = datetime.datetime.now()
 
         # get and initialize data storage object. Daily sub-directory behaviour is already
         # included in self.module_default_data_dir.
-        # separate file name and file extension if file_name argument is given.
-        if file_name is None:
-            data_storage = storage_cls(root_dir=data_dir, use_daily_dir=False)
-        else:
-            file_name, file_extension = file_name.rsplit('.', 1)
-            data_storage = storage_cls(root_dir=data_dir,
-                                       use_daily_dir=False,
-                                       file_extension=file_extension)
+        data_storage = storage_cls(root_dir=data_dir)
 
         ###############
         # Save raw data
         ###############
         # Use either a name tag or a fixed file name
-        full_filename, name_tag = self._get_save_filename_tag(file_name, tag, file_extension, suffix_str='raw_timetrace')
-
-        # Set column header in data storage object
-        data_storage.column_headers = 'Signal (counts)'
-
+        save_filename, nametag = self._get_patched_filename_nametag(file_name,
+                                                                    tag,
+                                                                    '_raw_timetrace')
         # Save data to file
         data_storage.save_data(self.raw_data.astype('int64')[:, np.newaxis],
                                metadata=self._get_raw_metadata(),
-                               nametag=name_tag,
-                               filename=full_filename,
+                               nametag=nametag,
+                               filename=save_filename,
                                timestamp=timestamp,
-                               notes=notes)
+                               notes=notes,
+                               column_headers='Signal (counts)')
 
         ###########################
         # Save extracted laser data
         ###########################
         if save_laser_pulses:
-            # Use either a name tag or a fixed file name
-            full_filename, name_tag = self._get_save_filename_tag(file_name, tag, file_extension,
-                                                                  suffix_str='laser_pulses')
-
-            # Set column header in data storage object
-            data_storage.column_headers = 'Signal (counts)'
-
-            # Save data to file
+            save_filename, nametag = self._get_patched_filename_nametag(file_name,
+                                                                        tag,
+                                                                        '_laser_pulses')
             data_storage.save_data(self.laser_data,
                                    metadata=self._get_laser_metadata(),
-                                   nametag=name_tag,
-                                   filename=full_filename,
+                                   nametag=nametag,
+                                   filename=save_filename,
                                    timestamp=timestamp,
-                                   notes=notes)
+                                   notes=notes,
+                                   column_headers='Signal (counts)')
 
         ############################
         # Save evaluated signal data
         ############################
         if save_pulsed_measurement:
-            # Use either a name tag or a fixed file name
-            full_filename, name_tag = self._get_save_filename_tag(file_name, tag, file_extension,
-                                                                  suffix_str='pulsed_measurement')
-
-            # Set column header in data storage object
-            column_headers = [f'{self._data_labels[0]} ({self._data_units[0]})',
-                              f'{self._data_labels[1]} ({self._data_units[1]})']
-            if with_error:
-                column_headers.append(f'{self._data_labels[1]} ({self._data_units[1]})')
-            data_storage.column_headers = column_headers
+            save_filename, nametag = self._get_patched_filename_nametag(file_name,
+                                                                        tag,
+                                                                        '_pulsed_measurement')
 
             # Format data to save
             if with_error:
@@ -1468,32 +1485,21 @@ class PulsedMeasurementLogic(LogicBase):
             else:
                 data = self.signal_data.transpose()
 
-            # Save data to file
-            data_storage.save_data(data,
-                                   metadata=self._get_signal_metadata(),
-                                   nametag=name_tag,
-                                   filename=full_filename,
-                                   timestamp=timestamp,
-                                   notes=notes)
+            save_path, _, _ = data_storage.save_data(
+                data,
+                metadata=self._get_signal_metadata(),
+                nametag=nametag,
+                filename=save_filename,
+                timestamp=timestamp,
+                notes=notes,
+                column_headers=self._get_signal_column_headers(with_error)
+            )
 
-            if save_figure or self._save_thumbnails:
+            # save thumbnail figure if required
+            if save_figure:
                 fig = self._plot_pulsed_thumbnail(with_error=with_error)
-                if full_filename is not None:
-                    full_filename = full_filename.rsplit('.', 1)[0]
-                data_storage.save_thumbnail(fig,
-                                            nametag=name_tag,
-                                            filename=full_filename,
-                                            timestamp=timestamp)
-
-    def _get_save_filename_tag(self, file_name, nametag, file_extension, suffix_str=''):
-        if file_name is None:
-            name_tag = nametag + f"_{suffix_str}" if nametag else f"{suffix_str}"
-            full_filename = None
-        else:
-            name_tag = None
-            full_filename = f'{file_name}_{suffix_str}.{file_extension}'
-
-        return full_filename, name_tag
+                fig_path = save_path.rsplit('.', 1)[0]
+                data_storage.save_thumbnail(fig, file_path=fig_path)
 
     def _plot_pulsed_thumbnail(self, with_error=False):
 
