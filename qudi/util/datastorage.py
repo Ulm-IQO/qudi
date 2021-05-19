@@ -560,6 +560,16 @@ class NpyDataStorage(DataStorageBase):
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
 
-        @param str file_path: optional, path to file to load data from
+        @param str file_path: path to file to load data from
         """
-        raise NotImplementedError
+        # ToDo: Finish implementation of loading metadata
+        # Load numpy array
+        data = np.load(file_path, allow_pickle=False, fix_imports=False)
+        # Try to find and load metadata from text file
+        metadata_path = file_path.split('.npy')[0] + '_metadata.txt'
+        try:
+            with open(metadata_path, 'r') as file:
+                meta_lines = file.read().splitlines()[2:]
+        except FileNotFoundError:
+            return data, dict(), tuple(), ''
+        return data, dict(), tuple(), ''
