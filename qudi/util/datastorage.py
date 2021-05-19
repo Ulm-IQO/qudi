@@ -20,8 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_timestamp_filename', 'format_column_headers', 'format_header', 'CsvDataStorage',
-           'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+__all__ = ('get_timestamp_filename', 'format_column_headers', 'format_header',
+           'metadata_to_str_dict', 'get_header_from_file', 'get_info_from_header', 'CsvDataStorage',
+           'create_dir_for_file', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage',
+           'TextDataStorage')
 
 import os
 import re
@@ -33,6 +35,8 @@ from enum import Enum
 from datetime import datetime
 from abc import ABCMeta, abstractmethod
 from matplotlib.backends.backend_pdf import PdfPages
+from configparser import ConfigParser
+from io import StringIO
 
 from qudi.util.mutex import Mutex
 
@@ -65,7 +69,7 @@ def get_timestamp_filename(timestamp, nametag=None):
     return f'{datetime_str}_{nametag}' if nametag else datetime_str
 
 
-def format_column_headers(column_headers, delimiter='\t'):
+def format_column_headers(column_headers, delimiter=';;'):
     if not column_headers:
         return None
     if isinstance(column_headers, str):
@@ -75,7 +79,20 @@ def format_column_headers(column_headers, delimiter='\t'):
     return delimiter.join(column_headers)
 
 
-def format_header(timestamp=None, metadata=None, notes=None, column_header_str=None, comments=None):
+def metadata_to_str_dict(metadata):
+    meta_str_dict = dict()
+    if metadata:
+        for param, value in metadata.items():
+            if isinstance(value, (float, np.floating)):
+                meta_str_dict[f'{param}'] = f'{value:.18e}'
+            elif isinstance(value, (int, np.integer)):
+                meta_str_dict[f'{param}'] = f'{value:d}'
+            else:
+                meta_str_dict[f'{param}'] = f'{value}'
+    return meta_str_dict
+
+
+def format_header(timestamp=None, metadata=None, notes=None, column_headers=None, comments=None):
     """
     """
     # Gather all lines in a list of strings (NOT including line separation chars)
@@ -84,30 +101,67 @@ def format_header(timestamp=None, metadata=None, notes=None, column_header_str=N
         header_lines.append(timestamp.strftime('Saved Data on %d.%m.%Y at %Hh%Mm%Ss'))
         header_lines.append('')
 
+    # Collect all data that needs to be loadable again into a config parser
+    config = ConfigParser(comment_prefixes=None, delimiters=('=',))
+
+    root_dict = dict()
     if notes:
-        header_lines.extend(notes.splitlines())
-        header_lines.append('')
+        root_dict['notes'] = notes
+    if column_headers:
+        root_dict['column headers'] = format_column_headers(column_headers)
+    if root_dict:
+        config['Root'] = root_dict
 
     if metadata:
-        header_lines.append('Metadata:')
-        header_lines.append('=========')
-        for param, value in metadata.items():
-            if isinstance(value, (float, np.floating)):
-                header_lines.append(f'{param}: {value:.18e}')
-            elif isinstance(value, (int, np.integer)):
-                header_lines.append(f'{param}: {value:d}')
-            else:
-                header_lines.append(f'{param}: {value}')
-        header_lines.append('')
+        config['Metadata'] = metadata_to_str_dict(metadata)
+
+    buffer = StringIO()
+    config.write(buffer)
+    buffer.seek(0)
+    header_lines.extend(buffer.read().splitlines())
+    buffer.close()
 
     header_lines.append('Data:')
     header_lines.append('=====')
 
-    if column_header_str:
-        header_lines.append(column_header_str)
-
     line_sep = '\n' if comments is None else f'\n{comments}'
     return f'{line_sep[1:]}{line_sep.join(header_lines)}'
+
+
+def get_header_from_file(file_path, comments=''):
+    offset = 0
+    with open(file_path, 'r') as file:
+        for line in file:
+            if not line.startswith(comments):
+                break
+            offset += len(line)
+        file.seek(0)
+        header_lines = file.read(offset).splitlines()
+    line_start = len(comments)
+    return '\n'.join(line[line_start:] for line in header_lines)
+
+
+def get_info_from_header(header):
+    # Parse header sections
+    config = ConfigParser(comment_prefixes=None, delimiters=('=',))
+    config.read_string(header)
+
+    # extract notes
+    notes = config.get('Root', 'notes', raw=True, fallback='')
+
+    # extract column headers
+    column_headers = config.get('Root', 'column headers', raw=True, fallback='')
+    if column_headers:
+        column_headers = tuple(column_headers.split(';;'))
+    else:
+        column_headers = tuple()
+
+    # extract metadata
+    if config.has_section('Metadata'):
+        metadata = dict(config.items('Metadata', raw=True))
+    else:
+        metadata = dict()
+    return metadata, notes, column_headers
 
 
 def create_dir_for_file(file_path):
@@ -321,12 +375,10 @@ class TextDataStorage(DataStorageBase):
         """
         # Gather all metadata (both global and locally provided) into a single dict
         metadata = self.get_unified_metadata(metadata)
-        # Format column headers into a single string
-        column_header_str = format_column_headers(column_headers, self.delimiter)
         return format_header(timestamp=timestamp,
                              metadata=metadata,
                              notes=notes,
-                             column_header_str=column_header_str,
+                             column_headers=column_headers,
                              comments=self.comments)
 
     def new_file(self, *, metadata=None, notes=None, nametag=None, timestamp=None,
@@ -512,12 +564,10 @@ class NpyDataStorage(DataStorageBase):
         """
         # Gather all metadata (both global and locally provided) into a single dict
         metadata = self.get_unified_metadata(metadata)
-        # Format column headers into a single string
-        column_header_str = format_column_headers(column_headers, ';;')
         return format_header(timestamp=timestamp,
                              metadata=metadata,
                              notes=notes,
-                             column_header_str=column_header_str,
+                             column_headers=column_headers,
                              comments=None)
 
     def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None,
@@ -562,14 +612,13 @@ class NpyDataStorage(DataStorageBase):
 
         @param str file_path: path to file to load data from
         """
-        # ToDo: Finish implementation of loading metadata
         # Load numpy array
         data = np.load(file_path, allow_pickle=False, fix_imports=False)
         # Try to find and load metadata from text file
         metadata_path = file_path.split('.npy')[0] + '_metadata.txt'
         try:
-            with open(metadata_path, 'r') as file:
-                meta_lines = file.read().splitlines()[2:]
+            header = get_header_from_file(metadata_path, comments='')
         except FileNotFoundError:
             return data, dict(), tuple(), ''
-        return data, dict(), tuple(), ''
+        metadata, notes, column_headers = get_info_from_header(header)
+        return data, metadata, notes, column_headers
