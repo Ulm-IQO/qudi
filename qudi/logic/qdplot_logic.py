@@ -30,7 +30,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
-from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.util.datastorage import NpyDataStorage, TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
 
@@ -495,11 +495,6 @@ class QDPlotLogic(LogicBase):
             data = np.array(data).T
 
             ds = TextDataStorage(root_dir=self.module_default_data_dir,
-                                 number_format='%.15e',
-                                 comments='# ',
-                                 delimiter='\t',
-                                 file_extension='.dat',
-                                 image_format=ImageFormat.PNG,
                                  include_global_metadata=True)
 
             file_path, _, _ = ds.save_data(data,
