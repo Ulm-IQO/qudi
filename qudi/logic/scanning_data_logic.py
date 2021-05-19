@@ -77,7 +77,7 @@ class ScanningDataLogic(LogicBase):
         else:
             self._curr_history_index = 0
             self._curr_data_per_scan = dict()
-        self._logic_id = self._scan_logic().module_state.uuid
+        self._logic_id = self._scan_logic().module_uuid
         self._scan_logic().sigScanStateChanged.connect(self._update_scan_state)
         return
 
