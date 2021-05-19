@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_default_data_dir', 'get_timestamp_filename', 'get_daily_data_directory',
-           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+__all__ = ('get_timestamp_filename', 'format_column_headers', 'format_header', 'CsvDataStorage',
+           'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
 import re
@@ -35,59 +35,13 @@ from abc import ABCMeta, abstractmethod
 from matplotlib.backends.backend_pdf import PdfPages
 
 from qudi.util.mutex import Mutex
-from qudi.core.paths import get_daily_directory_tree
-from qudi.core.paths import get_default_data_root_dir as _get_default_data_root_dir
-from qudi.core.application import Qudi
 
 
-def get_default_data_dir(create_missing=False):
-    """ Returns the qudi default data root directory. Will first try to interface with the running
-    qudi instance and extract the desired root directory from the loaded config. If this fails, fall
-    back to the default qudi userdata directory (usually user home dir).
-
-    @param bool create_missing: optional, flag indicating if directories will be created if missing
-
-    @return str: default data directory path
+class ImageFormat(Enum):
+    """ Image format to use for saving data thumbnails.
     """
-    qudi = Qudi.instance()
-    if qudi is None:
-        path = _get_default_data_root_dir(create_missing=create_missing)
-    else:
-        path = qudi.configuration.default_data_dir
-        if path is None:
-            path = _get_default_data_root_dir(create_missing=create_missing)
-    if create_missing:
-        os.makedirs(path, exist_ok=True)
-    return path
-
-
-def get_daily_data_directory(root=None, timestamp=None, create_missing=True):
-    """ Returns a path to a directory for storing data from today.
-
-    The directory structure will have the form: <root>/<YYYY>/<MM>/<YYYY-MM-DD>/
-
-    If not root directory is given, this method will first try to interface with a running qudi
-    instance and extract the desired root directory from the loaded config. If this fails, it will
-    fall back to the default qudi userdata directory (usually user home dir).
-
-    @param str root: optional, explicit root path for daily directory structure
-    @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
-    @param bool create_missing: optional, indicate if a directory should be created (True) or not
-                                (False)
-    """
-    # Determine root directory
-    if root is None:
-        root = get_default_data_dir(create_missing)
-
-    # Determine daily directory path. Create timestamp if it has been omitted.
-    path = os.path.join(root, get_daily_directory_tree(timestamp))
-
-    # Create directory if requested. Raise exception if the directory does not exist otherwise.
-    if create_missing:
-        os.makedirs(path, exist_ok=True)
-    elif not os.path.exists(path):
-        raise NotADirectoryError('Daily directory not found.')
-    return path
+    PNG = '.png'
+    PDF = '.pdf'
 
 
 def get_timestamp_filename(timestamp, nametag=None):
@@ -111,11 +65,58 @@ def get_timestamp_filename(timestamp, nametag=None):
     return f'{datetime_str}_{nametag}' if nametag else datetime_str
 
 
-class ImageFormat(Enum):
-    """ Image format to use for saving data thumbnails.
+def format_column_headers(column_headers, delimiter='\t'):
+    if not column_headers:
+        return None
+    if isinstance(column_headers, str):
+        return column_headers
+    if any(not isinstance(header, str) for header in column_headers):
+        raise TypeError('column_headers must be iterable of str.')
+    return delimiter.join(column_headers)
+
+
+def format_header(timestamp=None, metadata=None, notes=None, column_header_str=None, comments=None):
     """
-    PNG = '.png'
-    PDF = '.pdf'
+    """
+    # Gather all lines in a list of strings (NOT including line separation chars)
+    header_lines = list()
+    if timestamp is not None:
+        header_lines.append(timestamp.strftime('Saved Data on %d.%m.%Y at %Hh%Mm%Ss'))
+        header_lines.append('')
+
+    if notes:
+        header_lines.extend(notes.splitlines())
+        header_lines.append('')
+
+    if metadata:
+        header_lines.append('Metadata:')
+        header_lines.append('=========')
+        for param, value in metadata.items():
+            if isinstance(value, (float, np.floating)):
+                header_lines.append(f'{param}: {value:.18e}')
+            elif isinstance(value, (int, np.integer)):
+                header_lines.append(f'{param}: {value:d}')
+            else:
+                header_lines.append(f'{param}: {value}')
+        header_lines.append('')
+
+    header_lines.append('Data:')
+    header_lines.append('=====')
+
+    if column_header_str:
+        header_lines.append(column_header_str)
+
+    line_sep = '\n' if comments is None else f'\n{comments}'
+    return f'{line_sep[1:]}{line_sep.join(header_lines)}'
+
+
+def create_dir_for_file(file_path):
+    """ Helper method to create the directory (recursively) for a given file path.
+    Will NOT raise an error if the directory already exists.
+
+    @param str file_path: File path to create the directory for
+    """
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
 
 class DataStorageBase(metaclass=ABCMeta):
@@ -133,11 +134,10 @@ class DataStorageBase(metaclass=ABCMeta):
     _global_metadata = dict()
     _global_metadata_lock = Mutex()
 
-    def __init__(self, *, root_dir=None, file_extension=None, include_global_metadata=True,
+    def __init__(self, *, root_dir=None, include_global_metadata=True,
                  image_format=ImageFormat.PNG):
         """
         @param str root_dir: optional, root-directory for this storage instance to work in
-        @param str file_extension: optional, the file extension to use for data files
         @param bool include_global_metadata: optional, flag indicating saving of global metadata
         @param ImageFormat image_format: optional, image file format Enum for saving thumbnails
         """
@@ -145,84 +145,25 @@ class DataStorageBase(metaclass=ABCMeta):
             raise TypeError('image_format must be ImageFormat Enum')
 
         self.root_dir = root_dir  # ToDo: Maybe some sanity checking for correct path syntax?
-
-        if not file_extension:
-            self.file_extension = None
-        elif file_extension.startswith('.'):
-            self.file_extension = file_extension
-        else:
-            self.file_extension = '.' + file_extension
-
         self.include_global_metadata = bool(include_global_metadata)
         self.image_format = image_format
 
-    # def get_data_directory(self, timestamp=None, create_missing=True):
-    #     """ Create (optional) and return directory path to save data in.
-    #
-    #     @param datetime.datetime timestamp: optional, Timestamp for which to create daily directory
-    #     @param bool create_missing: optional, indicate if a directory should be created (True) or
-    #                                 not (False)
-    #
-    #     @return str: Absolute path to the data directory
-    #     """
-    #     if self.use_daily_dir:
-    #         path = get_daily_data_directory(root=self.root_dir,
-    #                                         timestamp=timestamp,
-    #                                         create_missing=create_missing)
-    #     else:
-    #         path = self.root_dir
-    #     if self.sub_directory is not None:
-    #         path = os.path.join(path, self.sub_directory)
-    #     if create_missing:
-    #         os.makedirs(path, exist_ok=True)
-    #     return path
-    #
-    # def create_file_path(self, timestamp=None, filename=None, nametag=None, file_extension=None):
-    #     """ Creates a generic filename if none has been given and constructs an absolute path to
-    #     the file to be saved. Creates all necessary directories along the way.
-    #
-    #     @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
-    #     @param str filename: optional, filename to use (nametag and timestamp will be ignored)
-    #     @param str nametag: optional, nametag to include in the generic filename
-    #     @param str file_extension: optional, the file extension to use
-    #
-    #     @return str: Full absolute path of the data file
-    #     """
-    #     if filename is None:
-    #         filename = get_default_filename(timestamp=timestamp, nametag=nametag)
-    #     if file_extension is None:
-    #         file_extension = self.file_extension
-    #     elif not file_extension.startswith('.'):
-    #         file_extension = '.' + file_extension
-    #     if file_extension is not None and not filename.endswith(file_extension):
-    #         filename += file_extension
-    #     return os.path.join(self.get_data_directory(timestamp=timestamp, create_missing=True),
-    #                         filename)
-
-    def save_thumbnail(self, mpl_figure, timestamp=None, filename=None, nametag=None):
-        """ Save a matplotlib figure visualizing the saved data in the image format provided.
-        Providing the same timestamp and nametag as was used for saving data will result in the same
-        generic file name (excluding the extension and provided no explicit filename is given).
+    def save_thumbnail(self, mpl_figure, file_path):
+        """ Save a matplotlib figure visualizing the saved data in the image format configured.
+        It is recommended to use the same file_path as the corresponding data file (if applicable)
+        and exclude the file extension (will be added according to image format).
 
         @param matplotlib.figure.Figure mpl_figure: The matplotlib figure object to save as image
-        @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
-        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
-        @param str nametag: optional, nametag to include in the generic filename
+        @param str file_path: full file path to use without file extension
 
         @return str: Full absolute path of the saved image
         """
-        # Create file path
-        file_path = self.create_file_path(timestamp=timestamp,
-                                          filename=filename,
-                                          nametag=nametag,
-                                          file_extension=self.image_format.value)
+        file_path += self.image_format.value
 
         if self.image_format is ImageFormat.PDF:
-            # Create the PdfPages object to which we will save the pages:
             with PdfPages(file_path) as pdf:
                 pdf.savefig(mpl_figure, bbox_inches='tight', pad_inches=0.05)
         elif self.image_format is ImageFormat.PNG:
-            # save the image as PNG
             mpl_figure.savefig(file_path, bbox_inches='tight', pad_inches=0.05)
         else:
             raise RuntimeError(f'Unknown image format selected: "{self.image_format}"')
@@ -230,6 +171,19 @@ class DataStorageBase(metaclass=ABCMeta):
         # close matplotlib figure and return
         plt.close(mpl_figure)
         return file_path
+
+    def get_unified_metadata(self, local_metadata=None):
+        """ Helper method to return a dict containing provided local_metadata as well as global
+        metadata depending on include_global_metadata flag.
+
+        @param dict local_metadata: Metadata to include in addition to global metadata
+
+        @return dict: New dict containing local_metadata and global metadata
+        """
+        metadata = self.get_global_metadata() if self.include_global_metadata else dict()
+        if local_metadata is not None:
+            metadata.update(local_metadata)
+        return metadata
 
     @abstractmethod
     def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None):
@@ -240,7 +194,7 @@ class DataStorageBase(metaclass=ABCMeta):
         filename (only if filename parameter is omitted).
 
         @param numpy.ndarray data: data array to be saved (must be 1D or 2D for text files)
-        @param str notes: optional, string that is included in the metadata "as-is" without a name
+        @param str notes: optional, string that is included in the metadata "as-is" without a key
         @param dict metadata: optional, named metadata to be saved in the data header / metadata
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
@@ -304,7 +258,7 @@ class DataStorageBase(metaclass=ABCMeta):
 
 
 class TextDataStorage(DataStorageBase):
-    """ Helper class to store (measurement)data on disk in a daily directory as text file.
+    """ Helper class to store (measurement)data on disk as text file.
     Data will always be saved in a tabular format with column headers. Single/Multiple rows are
     appendable.
     """
@@ -313,8 +267,8 @@ class TextDataStorage(DataStorageBase):
     # __int_regex = re.compile(r'\A[+-]?\d+\Z')
     # __float_regex = re.compile(r'\A[+-]?\d+.\d+([eE][+-]?\d+)?\Z')
 
-    def __init__(self, *, column_headers=None, number_format='%.18e', comments='# ', delimiter='\t',
-                 **kwargs):
+    def __init__(self, *, number_format='%.18e', comments='# ', delimiter='\t',
+                 file_extension='.dat', **kwargs):
         """
         @param tuple|str column_headers: optional, iterable of strings containing column headers.
                                          If a single string is given, write it to file header
@@ -327,107 +281,91 @@ class TextDataStorage(DataStorageBase):
         """
         super().__init__(**kwargs)
 
-        if not column_headers:
-            self.column_headers = None
-        elif isinstance(column_headers, str):
-            self.column_headers = column_headers
-        elif any(not isinstance(header, str) for header in column_headers):
-            raise TypeError('Data column headers must be str type.')
-        else:
-            self.column_headers = tuple(column_headers)
-
         if not delimiter or not isinstance(delimiter, str):
             raise ValueError('Parameter "delimiter" must be non-empty string.')
 
+        self._file_extension = ''
+        self.file_extension = file_extension
         self.number_format = number_format
         self.comments = comments if isinstance(comments, str) else None
         self.delimiter = delimiter
-        self._current_data_file = None
 
-    def create_header(self, metadata=None, notes=None, timestamp=None, include_column_headers=True):
+    @property
+    def file_extension(self):
+        return self._file_extension
+
+    @file_extension.setter
+    def file_extension(self, value):
+        if (value is not None) and (not isinstance(value, str)):
+            raise TypeError('file_extension must be str or None')
+        if not value:
+            self._file_extension = ''
+        elif value.startswith('.'):
+            self._file_extension = value
+        else:
+            self._file_extension = '.' + value
+
+    def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
         """
         """
-        if timestamp is None:
-            timestamp = datetime.now()
-        # Gather all metadata (both global and locally provided) into a single dict if needed
-        all_metadata = self.get_global_metadata() if self.include_global_metadata else dict()
-        if metadata is not None:
-            all_metadata.update(metadata)
+        # Gather all metadata (both global and locally provided) into a single dict
+        metadata = self.get_unified_metadata(metadata)
+        # Format column headers into a single string
+        column_header_str = format_column_headers(column_headers, self.delimiter)
+        return format_header(timestamp=timestamp,
+                             metadata=metadata,
+                             notes=notes,
+                             column_header_str=column_header_str,
+                             comments=self.comments)
 
-        header_lines = list()
-        header_lines.append('Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
-        header_lines.append('')
-
-        if notes:
-            header_lines.extend(notes.splitlines())
-            header_lines.append('')
-
-        if all_metadata:
-            header_lines.append('Metadata:')
-            header_lines.append('=========')
-            for param, value in all_metadata.items():
-                if isinstance(value, (float, np.floating)):
-                    header_lines.append(f'{param}: {value:.18e}')
-                elif isinstance(value, (int, np.integer)):
-                    header_lines.append(f'{param}: {value:d}')
-                else:
-                    header_lines.append(f'{param}: {value}')
-            header_lines.append('')
-
-        header_lines.append('Data:')
-        header_lines.append('=====')
-        if self.column_headers is not None and include_column_headers:
-            if isinstance(self.column_headers, str):
-                header_lines.append(self.column_headers)
-            else:
-                header_lines.append(self.delimiter.join(self.column_headers))
-
-        line_sep = '\n{0}'.format('' if self.comments is None else self.comments)
-        header = '{0}{1}'.format('' if self.comments is None else self.comments,
-                                 line_sep.join(header_lines))
-        return header + '\n'
-
-    def new_data_file(self, *, metadata=None, notes=None, filename=None, nametag=None, timestamp=None):
+    def new_file(self, *, metadata=None, notes=None, nametag=None, timestamp=None,
+                 column_headers=None, filename=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
         silently if they have the same path.
 
         @param dict metadata: optional, named metadata values to be saved in the data header
         @param str notes: optional, string that is included in the file header "as-is"
-        @param str filename: optional, filename to use (nametag and timestamp will be ignored)
         @param str nametag: optional, nametag to include in the generic filename
         @param datetime.datetime timestamp: optional, timestamp to construct a generic filename from
-
+        @param str filename: optional, filename to use (nametag, timestamp and
+                             configured file_extension will not be included)
+        @param str|list column_headers: optional, data column header strings or single string
 
         @return (str, datetime.datetime): Full file path, timestamp used
         """
         # Create timestamp if missing
         if timestamp is None:
             timestamp = datetime.now()
-        # Determine full file path and create containing directories if needed
-        file_path = self.create_file_path(timestamp=timestamp, filename=filename, nametag=nametag)
+        # Construct file name if none is given explicitly
+        if filename is None:
+            filename = get_timestamp_filename(timestamp=timestamp,
+                                              nametag=nametag) + self.file_extension
         # Create header
-        header = self.create_header(metadata=metadata, notes=notes, timestamp=timestamp)
+        header = self.create_header(timestamp=timestamp,
+                                    metadata=metadata,
+                                    notes=notes,
+                                    column_headers=column_headers)
+        # Determine full file path and create containing directories if needed
+        file_path = os.path.join(self.root_dir, filename)
+        create_dir_for_file(file_path)
+        # Write to file. Overwrite silently.
         with open(file_path, 'w') as file:
-            file.write(header)
-        self._current_data_file = file_path
+            file.write(header + '\n')
         return file_path, timestamp
 
-    def append_data_file(self, data, file_path=None):
+    def append_file(self, data, file_path):
         """ Append single or multiple rows to an existing data file.
-        If no explicit file_path is given, data will be appended to the last file created with
-        "new_data_file()".
 
         @param numpy.ndarray data: data array to be appended (1D: single row, 2D: multiple rows)
-        @param str file_path: optional, explicit file path to append to (default: last written file)
+        @param str file_path: file path to append to
 
         @return (int, int): Number of rows written, Number of columns written
         """
-        if file_path is None:
-            file_path = self._current_data_file
-
-        if file_path is None or not os.path.isfile(file_path):
-            raise FileNotFoundError('No file created for writing data. Call "new_data_file" before '
-                                    'trying to append.')
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(
+                'File to append data to not found. '
+                'Create a new file to append to by calling "new_data_file".'
+            )
         # Append data to file
         with open(file_path, 'a') as file:
             # Write numpy data array
@@ -440,19 +378,22 @@ class TextDataStorage(DataStorageBase):
                 np.savetxt(file, data, delimiter=self.delimiter, fmt=self.number_format)
         return (1, data.shape[0]) if data.ndim == 1 else data.shape
 
-    def save_data(self, data, *, metadata=None, filename=None, nametag=None, timestamp=None,
-                  notes=None):
-        """ See: DataStorageBase.save_data()
+    def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None,
+                  column_headers=None, filename=None):
+        """ See: DataStorageBase.save_data() for more information
+
+        @param str|list column_headers: optional, data column header strings or single string
         """
         # Create new data file (overwrite old one if it exists)
         file_path, timestamp = self.new_data_file(metadata=metadata,
-                                                  filename=filename,
+                                                  notes=notes,
                                                   nametag=nametag,
                                                   timestamp=timestamp,
-                                                  notes=notes)
+                                                  column_headers=column_headers,
+                                                  filename=filename)
         # Append data to file
-        rows, columns = self.append_data_file(data)
-        return file_path, timestamp, (rows, columns)
+        rows_columns = self.append_data_file(data)
+        return file_path, timestamp, rows_columns
 
     def load_data(self, file_path):
         """ See: DataStorageBase.load_data()
@@ -503,35 +444,32 @@ class TextDataStorage(DataStorageBase):
 
 class CsvDataStorage(TextDataStorage):
     """ Helper class to store (measurement)data on disk as CSV file.
-    This is a specialized sub-class of TextDataStorage that uses commas as delimiter and includes
-    column headers uncommented in the first row of data. This is the standard for importing a table
-    into e.g. MS Excel.
+    This is a specialized sub-class of TextDataStorage that uses hard-coded commas as delimiter and
+    includes column headers uncommented in the first row of data. This is the standard format for
+    importing a table into e.g. MS Excel.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, *, file_extension='.csv', **kwargs):
+        """ See: qudi.util.datastorage.TextDataStorage
         """
-        @param tuple|str column_headers: optional, iterable of strings containing column headers.
-                                         If a single string is given, write it to file header
-                                         without formatting.
-        @param str|tuple number_format: optional, number format specifier (mini-language) for text
-                                        files. Can be iterable of format specifiers for each column.
-        @param str comments: optional, string to put at the beginning of comment and header lines
-        @param str delimiter: optional, column delimiter used in text files
-        @param kwargs: optional, for additional keyword arguments see DataStorageBase.__init__
-        """
-        kwargs['delimiter'] = ','
-        super().__init__(**kwargs)
+        super().__init__(file_extension=file_extension, **kwargs)
 
-    def create_header(self, metadata=None, notes=None, timestamp=None):
-        """ See: TextDataStorage.create_header()
+    @property
+    def delimiter(self):
+        return ','
+
+    def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
+        """ Include column_headers without line comment specifier.
+        for more information see: qudi.util.datastorage.TextDataStorage.create_header()
         """
-        if timestamp is None:
-            timestamp = datetime.now()
-        if isinstance(self.column_headers, str):
-            header = super().create_header(metadata, notes, timestamp, True)
-        else:
-            header = super().create_header(metadata, notes, timestamp, False)
-            if self.column_headers is not None:
-                header += ','.join(self.column_headers) + '\n'
+        # Create default header as specified in parent TextDataStorage object without column headers
+        header = super().create_header(timestamp=timestamp,
+                                       metadata=metadata,
+                                       notes=notes,
+                                       column_headers=None)
+        # Append column headers if needed
+        column_headers = format_column_headers(column_headers, self.delimiter)
+        if column_headers is not None:
+            header += f'\n{column_headers}'
         return header
 
     def load_data(self, file_path):
@@ -545,88 +483,58 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
-    def __init__(self, *, column_headers=None, **kwargs):
-        kwargs['file_extension'] = '.npy'
-        super().__init__(**kwargs)
-        if not column_headers:
-            self.column_headers = None
-        elif isinstance(column_headers, str):
-            self.column_headers = column_headers
-        elif any(not isinstance(header, str) for header in column_headers):
-            raise TypeError('Data column headers must be str type.')
-        else:
-            self.column_headers = tuple(column_headers)
+    @property
+    def file_extension(self):
+        return '.npy'
 
-    def create_header(self, metadata=None, notes=None, timestamp=None):
+    def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
         """
         """
-        if timestamp is None:
-            timestamp = datetime.now()
+        # Gather all metadata (both global and locally provided) into a single dict
+        metadata = self.get_unified_metadata(metadata)
+        # Format column headers into a single string
+        column_header_str = format_column_headers(column_headers, ';;')
+        return format_header(timestamp=timestamp,
+                             metadata=metadata,
+                             notes=notes,
+                             column_header_str=column_header_str,
+                             comments=None)
 
-        # Gather all metadata (both global and provided) into a single dict if needed
-        all_metadata = self.get_global_metadata() if self.include_global_metadata else dict()
-        if metadata is not None:
-            all_metadata.update(metadata)
-
-        header_lines = list()
-        header_lines.append(
-            f'Saved Data on {0}'.format(timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
-        )
-        header_lines.append('')
-
-        if notes:
-            header_lines.extend(notes.splitlines())
-            header_lines.append('')
-
-        if all_metadata:
-            header_lines.append('Metadata:')
-            header_lines.append('=========')
-            for param, value in all_metadata.items():
-                if isinstance(value, (float, np.floating)):
-                    header_lines.append(f'{param}: {value:.18e}')
-                elif isinstance(value, (int, np.integer)):
-                    header_lines.append(f'{param}: {value:d}')
-                else:
-                    header_lines.append(f'{param}: {value}')
-            header_lines.append('')
-
-        header_lines.append('Column headers:')
-        header_lines.append('===============')
-        if self.column_headers is not None:
-            if isinstance(self.column_headers, str):
-                header_lines.append(self.column_headers)
-            else:
-                header_lines.append(', '.join(self.column_headers))
-
-        return '\n'.join(header_lines) + '\n'
-
-    def save_data(self, data, *, metadata=None, notes=None, filename=None, nametag=None,
-                  timestamp=None):
+    def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None,
+                  column_headers=None, filename=None):
         """ Saves a binary file containing the data array.
         Also saves alongside a text file containing the notes, (global) metadata and column headers
         for this data set. The filename of the text file will be the same as for the binary file
         appended by "_metadata".
 
-        For more information see: DataStorageBase.save_data()
+        For more information see: qudi.util.datastorage.DataStorageBase.save_data
+
+        @param str|list column_headers: optional, data column header strings or single string
         """
-        # Create timestamp if missing
         if timestamp is None:
             timestamp = datetime.now()
+        # Construct file name if none is given explicitly
+        if filename is None:
+            filename = get_timestamp_filename(timestamp=timestamp,
+                                              nametag=nametag) + self.file_extension
+        # Create filename for separate metadata textfile
+        param_filename = filename.rsplit('.', 1)[0] + '_metadata.txt'
 
+        # Create header
+        header = self.create_header(timestamp=timestamp,
+                                    metadata=metadata,
+                                    notes=notes,
+                                    column_headers=column_headers)
         # Determine full file path and create containing directories if needed
-        file_path = self.create_file_path(timestamp=timestamp, filename=filename, nametag=nametag)
-        # Write out data file
+        file_path = os.path.join(self.root_dir, filename)
+        create_dir_for_file(file_path)
+        param_file_path = os.path.join(self.root_dir, param_filename)
+        # Write data and metadata to file. Overwrite silently.
         with open(file_path, 'wb') as file:
             # Write numpy data array in binary format
             np.save(file, data, allow_pickle=False, fix_imports=False)
-
-        # Create header to save in a separate text file
-        param_file_path = file_path.rsplit('.', 1)[0] + '_metadata.txt'
-        header = self.create_header(notes=notes,
-                                    metadata=metadata,
-                                    timestamp=timestamp)
         with open(param_file_path, 'w') as file:
-            file.write(header)
+            file.write(header + '\n')
         return file_path, timestamp, data.shape
 
     def load_data(self, file_path):
