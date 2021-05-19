@@ -29,7 +29,7 @@ from enum import Enum
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.util.helpers import natural_sort
-from qudi.util.datastorage import get_default_filename
+from qudi.util.datastorage import get_timestamp_filename
 from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
@@ -807,10 +807,11 @@ class PulsedMeasurementGui(GuiBase):
             file_types = {'Text File (*.dat)': TextDataStorage,
                           'CSV File (*.csv)': CsvDataStorage,
                           'Numpy Binary File (*.npy)': NpyDataStorage}
-            data_dir = self.pulsedmasterlogic().default_data_dir
-            os.makedirs(data_dir, exist_ok=True)
-            default_path = os.path.join(self.pulsedmasterlogic().default_data_dir,
-                                        get_default_filename(nametag=nametag if nametag else None))
+            default_dir = self.pulsedmasterlogic().default_data_dir
+            os.makedirs(default_dir, exist_ok=True)
+            default_filename = get_timestamp_filename(timestamp=datetime.datetime.now(),
+                                                      nametag=nametag if nametag else None)
+            default_path = os.path.join(default_dir, default_filename)
 
             file_path, file_type = QtWidgets.QFileDialog.getSaveFileName(
                 self._mw,
@@ -821,15 +822,8 @@ class PulsedMeasurementGui(GuiBase):
             )
 
             if file_path:
-                print(f'File path to save is: "{file_path}"')
-                print(f'File type to save is: "{file_type}"')
-
-                data_dir, file_name = os.path.split(file_path)
-                storage_cls = file_types[file_type]
-
-                self.pulsedmasterlogic().save_measurement_data(data_dir=data_dir,
-                                                               file_name=file_name,
-                                                               storage_cls=storage_cls,
+                self.pulsedmasterlogic().save_measurement_data(file_path=file_path,
+                                                               storage_cls=file_types[file_type],
                                                                with_error=with_error)
         finally:
             self._mw.action_save.setEnabled(True)
