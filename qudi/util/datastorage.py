@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('get_timestamp_filename', 'format_column_headers', 'format_header', 'CsvDataStorage',
-           'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
+__all__ = ('get_timestamp_filename', 'format_column_headers', 'format_header', 'create_dir_for_file',
+           'CsvDataStorage', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
 import re
@@ -459,6 +459,7 @@ class CsvDataStorage(TextDataStorage):
     includes column headers uncommented in the first row of data. This is the standard format for
     importing a table into e.g. MS Excel.
     """
+
     def __init__(self, *, file_extension='.csv', **kwargs):
         """ See: qudi.util.datastorage.TextDataStorage
         """
@@ -500,6 +501,7 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
+
     def __init__(self, *, root_dir, **kwargs):
         super().__init__(root_dir=root_dir, **kwargs)
 
