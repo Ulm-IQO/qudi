@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 __all__ = ('get_timestamp_filename', 'format_column_headers', 'format_header',
-           'metadata_to_str_dict', 'get_header_from_file', 'get_info_from_header', 'CsvDataStorage',
-           'create_dir_for_file', 'DataStorageBase', 'ImageFormat', 'NpyDataStorage',
-           'TextDataStorage')
+           'metadata_to_str_dict', 'str_dict_to_metadata', 'get_header_from_file',
+           'get_info_from_header', 'CsvDataStorage', 'create_dir_for_file', 'DataStorageBase',
+           'ImageFormat', 'NpyDataStorage', 'TextDataStorage')
 
 import os
 import re
@@ -70,8 +70,6 @@ def get_timestamp_filename(timestamp, nametag=None):
 
 
 def format_column_headers(column_headers, delimiter=';;'):
-    if not column_headers:
-        return None
     if isinstance(column_headers, str):
         return column_headers
     if any(not isinstance(header, str) for header in column_headers):
@@ -80,16 +78,19 @@ def format_column_headers(column_headers, delimiter=';;'):
 
 
 def metadata_to_str_dict(metadata):
-    meta_str_dict = dict()
     if metadata:
-        for param, value in metadata.items():
-            if isinstance(value, (float, np.floating)):
-                meta_str_dict[f'{param}'] = f'{value:.18e}'
-            elif isinstance(value, (int, np.integer)):
-                meta_str_dict[f'{param}'] = f'{value:d}'
-            else:
-                meta_str_dict[f'{param}'] = f'{value}'
-    return meta_str_dict
+        return {str(param): repr(value) for param, value in metadata.items()}
+    return dict()
+
+
+def str_dict_to_metadata(str_dict):
+    metadata = dict()
+    for param, value in str_dict.items():
+        try:
+            metadata[param] = eval(value)
+        except:
+            metadata[param] = value
+    return metadata
 
 
 def format_header(timestamp, dtype, number_format=None, metadata=None, notes=None,
@@ -102,17 +103,18 @@ def format_header(timestamp, dtype, number_format=None, metadata=None, notes=Non
     config = ConfigParser(comment_prefixes=None, delimiters=('=',))
 
     # write general section
-    general_dict = {'disclaimer': timestamp.strftime('Saved Data on %d.%m.%Y at %Hh%Mm%Ss'),
-                    'dtype': dtype.name,
-                    'comments': '' if comments is None else comments}
+    general_dict = {'disclaimer': repr(timestamp.strftime('Saved Data on %d.%m.%Y at %Hh%Mm%Ss')),
+                    'dtype': dtype.name}
+    if comments:
+        general_dict['comments'] = repr(comments)
     if delimiter:
-        general_dict['delimiter'] = f'"{delimiter}"'
+        general_dict['delimiter'] = repr(delimiter)
     if number_format:
         general_dict['number_format'] = number_format
     if column_headers:
-        general_dict['column_headers'] = format_column_headers(column_headers)
+        general_dict['column_headers'] = repr(format_column_headers(column_headers))
     if notes:
-        general_dict['notes'] = notes
+        general_dict['notes'] = repr(notes)
     config['General'] = general_dict
 
     if metadata:
@@ -158,25 +160,28 @@ def get_info_from_header(header):
     config.read_string(header)
 
     # extract and convert general section
-    general = {'disclaimer': config.get('General', 'disclaimer', raw=True, fallback=''),
+    general = {'disclaimer': config.get('General', 'disclaimer', raw=True, fallback=None),
                'dtype': np.dtype(config.get('General', 'dtype', raw=True, fallback='float')),
                'number_format': config.get('General', 'number_format', raw=True, fallback=None),
                'comments': config.get('General', 'comments', raw=True, fallback=None),
                'delimiter': config.get('General', 'delimiter', raw=True, fallback=None),
-               'notes': config.get('General', 'notes', raw=True, fallback=''),
+               'notes': config.get('General', 'notes', raw=True, fallback=None),
                'column_headers': config.get('General', 'column_headers', raw=True, fallback=None)}
-    if general['comments'] == '':
-        general['comments'] = None
-    if general['delimiter'] is not None:
-        general['delimiter'] = general['delimiter'][1:-1]  # strip enclosing hyphens
-    if general['column_headers'] is None:
-        general['column_headers'] = tuple()
-    else:
-        general['column_headers'] = tuple(general['column_headers'].split(';;'))
+    if general['disclaimer']:
+        general['disclaimer'] = eval(general['disclaimer'])
+    if general['comments']:
+        general['comments'] = eval(general['comments'])
+    if general['delimiter']:
+        general['delimiter'] = eval(general['delimiter'])
+    if general['notes']:
+        general['notes'] = eval(general['notes'])
+    if general['column_headers']:
+        general['column_headers'] = tuple(eval(general['column_headers']).split(';;'))
 
     # extract metadata
     if config.has_section('Metadata'):
-        metadata = dict(config.items('Metadata', raw=True))
+        metadata_str_dict = dict(config.items('Metadata', raw=True))
+        metadata = str_dict_to_metadata(metadata_str_dict)
     else:
         metadata = dict()
     return general, metadata
@@ -258,7 +263,7 @@ class DataStorageBase(metaclass=ABCMeta):
         return metadata
 
     @abstractmethod
-    def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None):
+    def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None, **kwargs):
         """ This method must be implemented in a subclass. It should provide the facility to save an
         entire measurement as a whole along with experiment metadata (to include e.g. in the file
         header). The user can either specify an explicit filename or a generic one will be created.
@@ -536,9 +541,8 @@ class CsvDataStorage(TextDataStorage):
                                        notes=notes,
                                        column_headers=column_headers)
         # Append column headers if needed
-        column_headers = format_column_headers(column_headers, self.delimiter)
         if column_headers:
-            header += f'{column_headers}\n'
+            header += f'{format_column_headers(column_headers, self.delimiter)}\n'
         return header
 
     @staticmethod

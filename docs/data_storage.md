@@ -53,6 +53,7 @@ data_storage = TextDataStorage(root_dir='C:\\Data\\MyMeasurementCategory',
                                number_format='%.18e',
                                comments='# ', 
                                delimiter='\t',
+                               file_extension='.dat',
                                image_format=ImageFormat.PNG)
 ```
 
@@ -66,6 +67,8 @@ Let's go through the parameters one-by-one:
   String used at the start of lines in the text file to identify them as comment lines.
 - `delimiter`:
   Delimiter string used to separate columns.
+- `file_extension`:
+  The default file extension to use for new data files. Used if not explicit file name is provided
 - `image_format`:
   The image format used to save matplotlib figures to file using storage method `save_thumbnail`.
 
@@ -104,24 +107,27 @@ y = np.sin(2 * np.pi * 2 * x)  # 2 Hz sine wave
 data = np.asarray([x, y]).transpose()  # Format data into a single 2D array with x being the first 
                                        # column and y being the second column
                                        
-# Prepare a dict containing metadata to be saved in the file header (comments)
-metadata = {'sample number': 42,
-            'batch'        : 'xyz-123',
-            'notes'        : 'This measurement was performed under the influence of 10 mugs of coffee.'}
+# Prepare a dict containing metadata to be saved in the file header
+metadata = {'sample_number': 42,
+            'batch'        : 'xyz-123'}
 
 # Create an explicit timestamp.
 timestamp = datetime(2021, 5, 6, 11, 11, 11)  # 06.05.2021 at 11h:11m:11s
 # timestamp = datetime.now()  # Usually you would use this
 
-# Create a nametag to include in the file name
+# Create a nametag to include in the file name (optional)
 nametag = 'amplitude_measurement'
 
-# Create an iterable of data column header strings
+# Create an iterable of data column header strings (optional)
 column_headers = ('time (s)', 'amplitude (V)')
+
+# Create an arbitrary string of informal "lab notes" that is included in the file header
+notes = 'This measurement was performed under the influence of 10 mugs of coffee and no sleep.'
 
 # Save data to file
 file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
                                                                metadata=metadata, 
+                                                               notes=notes,
                                                                nametag=nametag,
                                                                timestamp=timestamp, 
                                                                column_headers=column_headers)
@@ -132,22 +138,29 @@ This will save the data to a file with a generic filename constructed from namet
 content:
 
 ```
-# Saved Data on 06.05.2021 at 11h11m11s
+# [General]
+# disclaimer='Saved Data on 06.05.2021 at 11h11m11s'
+# dtype=float64
+# comments='# '
+# delimiter='\t'
+# column_headers='time (s);;amplitude (V)'
+# notes='This measurement was performed under the influence of 10 mugs of coffee and no sleep.'
 # 
-# Metadata:
-# ===========
-# sample number: 42
-# batch: xyz-123
-# notes: This measurement was performed under the influence of 10 cups of coffee.
+# [Metadata]
+# sample_number=42
+# batch='xyz-123'
 # 
-# Data:
-# =====
-# time (s)	amplitude (V)
+# ---- END HEADER ----
 0.000000000000000000e+00	0.000000000000000000e+00
 1.001001001001000992e-03	1.257861783874105778e-02
 2.002002002002001985e-03	2.515524538937584723e-02
 ⋮ 				⋮
 ```
+
+**NOTE**: metadata keys must be str type and not contain leading or trailing whitespaces as well as 
+avoid the pattern `'[...]'`.  
+**NOTE**: metadata values must be representable and reconstructable via `repr` and `eval`, i.e. 
+`value == eval(repr(value))`.
 
 Alternatively it is also possible to specify the filename directly instead of relying on the 
 generic construction from nametag and timestamp:
@@ -161,13 +174,21 @@ file_path, timestamp, (rows, columns) = data_storage.save_data(data,
                                                                filename='my_custom_filename.abc')
 ```
 
-This would result in a file at `<default_data_dir>/2021/05/20210506/my_custom_filename.abc`
+This would result in a file at `<default_data_dir>/2021/05/20210506/my_custom_filename.abc`.  
+Please note that you need to provide the file extension as well in this case.
 
 
 ### Saving a thumbnail
 In order to save a thumbnail alongside the data file, you can create a `matplotlib` figure and pass 
-it to the data storage method `save_thumbnail` if this is available for the specific storage class.
-To continue our example with text files:
+it to the data storage method `save_thumbnail`.  
+
+`save_thumbnail` expects a full file path *without* file extension (this is automatically completed 
+according to the configured `image_format` enum).  
+Usually you want your thumbnail file name to be the same as your data file name. An easy way to 
+achieve that is to remove the file extension from the first return value of `save_data` and pass it 
+to `save_thumbnail`.
+
+To continue our example with text files, this could look like:
 
 ```Python
 import matplotlib.pyplot as plt
@@ -179,13 +200,10 @@ ax.plot(x, y)
 ax.set_xlabel('time (s)')
 ax.set_ylabel('amplitude (V)')
 
-# Save figure as thumbnail
-file_path = data_storage.save_thumbnail(fig, nametag=nametag, timestamp=timestamp)
+# Save figure as thumbnail with the same file name as the corresponding data file
+figure_path = data_storage.save_thumbnail(fig, file_path.rsplit('.')[0])
 ```
-Note that we have used the same `nametag` and `timestamp` as we have used for the call to 
-`save_data`.
-This ensures that the thumbnail picture file will have the same filename as the data text file 
-(except for the file type extension, in this case `.png`).  
+
 This example creates the file: 
 `<default_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.png`
 
@@ -248,6 +266,47 @@ data_storage.remove_global_metadata('user')
 # or if you want to remove multiple key-value pairs with one call
 data_storage.remove_global_metadata(['user', 'frustration_level'])
 ```
+
+## Logging Data
+Another common use-case instead of dumping an entire data set at once is saving one chunk of data 
+(or a single entry) at a time by appending to an already created file / database. This could for 
+example be be useful for a data logger.
+
+In order to do this, `TextDataStorage` and `CsvDataStorage` have additional API methods `new_file` 
+and `append_file`.
+
+`new_file` accepts the same keyword-only arguments as `save_data` and will create a new data file 
+containing only the file header. The only difference is an additional keyword-only parameter `dtype`
+for which you should provide a `numpy` dtype since it can not be derived from the data array in 
+this case (`numpy.float` will be assumed by default).
+ 
+The created file can then be appended by single or multiple rows of data using `append_file` 
+(you can also append files created by `save_data`).
+
+An example:
+```Python
+# Create data file with the same variables as in the save_data example above
+file_path, timestamp = data_storage.new_file(metadata=metadata,
+                                             notes=notes,
+                                             nametag=nametag,
+                                             timestamp=timestamp,
+                                             column_headers=column_headers,
+                                             dtype=np.dtype('float'))
+
+# Append each row of the previously created data array one after the other
+for data_row in data:
+    data_storage.append_file(data_row, file_path)
+
+# You can also append a chunk of multiple rows at once
+data_storage.append_file(data[:10], file_path)
+```
+
+**NOTE:** appending to files like this is far less efficient than writing a single 
+chunk of data at once. This comes from the implementation detail that each call to `append_file`
+will have the overhead of opening and closing a file handle.  
+If you are after high-frequency data logging, consider buffering data for a while and writing it 
+out in chunks or implement a specialized data storage subclassing of `TextDataStorage` or 
+`DataStorageBase`.
 
 ### Reading global metadata
 You can get a _shallow_ copy of the global metadata dict via:
