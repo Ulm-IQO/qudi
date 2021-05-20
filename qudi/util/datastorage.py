@@ -106,7 +106,7 @@ def format_header(timestamp, dtype, number_format=None, metadata=None, notes=Non
                     'dtype': dtype.name,
                     'comments': '' if comments is None else comments}
     if delimiter:
-        general_dict['delimiter'] = delimiter
+        general_dict['delimiter'] = f'"{delimiter}"'
     if number_format:
         general_dict['number_format'] = number_format
     if column_headers:
@@ -119,7 +119,7 @@ def format_header(timestamp, dtype, number_format=None, metadata=None, notes=Non
         config['Metadata'] = metadata_to_str_dict(metadata)
 
     buffer = StringIO()
-    config.write(buffer)
+    config.write(buffer, space_around_delimiters=False)
     buffer.seek(0)
     header_lines = buffer.read().splitlines()
     buffer.close()
@@ -167,6 +167,8 @@ def get_info_from_header(header):
                'column_headers': config.get('General', 'column_headers', raw=True, fallback=None)}
     if general['comments'] == '':
         general['comments'] = None
+    if general['delimiter'] is not None:
+        general['delimiter'] = general['delimiter'][1:-1]  # strip enclosing hyphens
     if general['column_headers'] is None:
         general['column_headers'] = tuple()
     else:
@@ -277,10 +279,10 @@ class DataStorageBase(metaclass=ABCMeta):
     def load_data(self, *args, **kwargs):
         """ This method must be implemented in a subclass. It should provide the facility to load a
         saved data set including the metadata/experiment parameters and column headers
-        (if possible).
+        (if possible). Many storage classes can even implement this method as staticmethod (better).
+        For file based storage objects, the only parameter should be file_path (if possible).
 
-        @return np.ndarray, dict, tuple, str: Data as numpy array, extracted metadata,
-                                              column headers, notes
+        @return np.ndarray, dict, dict: Data as numpy array, user metadata, general header data
         """
         pass
 
@@ -481,51 +483,24 @@ class TextDataStorage(DataStorageBase):
         rows_columns = self.append_file(data, file_path=file_path)
         return file_path, timestamp, rows_columns
 
-    def load_data(self, file_path):
+    @staticmethod
+    def load_data(file_path):
         """ See: DataStorageBase.load_data()
 
         @param str file_path: optional, path to file to load data from
         """
-        raise NotImplementedError
-        # FIXME: This is not in a satisfying condition yet. Please improve, test and remove error.
-        # metadata = dict()
-        # column_header = ''
-        # if self.data_format in (DataFormat.TEXT, DataFormat.CSV):
-        #     index = 0
-        #     in_params = False
-        #     in_data = False
-        #     with open(file_path, 'r', newline='') as file:
-        #         for line in file:
-        #             if not line.startswith(self.comments):
-        #                 file.seek(index)
-        #                 break
-        #             if line.endswith('Metadata:\n'):
-        #                 in_params = True
-        #             elif line.endswith('Data:\n'):
-        #                 in_data = True
-        #             if in_data and not line[len(self.comments):].startswith('====='):
-        #                 column_header += line[len(self.comments):]
-        #             elif in_params and ': ' in line:
-        #                 clean_param = line[len(self.comments):].strip()
-        #                 name, value_str = clean_param.rsplit(': ', 1)
-        #                 if self.__int_regex.match(value_str):
-        #                     metadata[name] = int(value_str)
-        #                 elif self.__float_regex.match(value_str):
-        #                     metadata[name] = float(value_str)
-        #                 else:
-        #                     metadata[name] = str(value_str)
-        #         reader = csv.reader(file, delimiter=self.delimiter)
-        #         data_array = np.asarray([data for data in reader])
-        #         if data_array.ndim > 1:
-        #             if data_array.shape[1] == 1:
-        #                 data_array = data_array[:, 0]
-        #                 headers = (column_header.strip(),) if column_header else tuple()
-        #             else:
-        #                 headers = tuple(
-        #                     it.strip() for it in column_header.split(self.delimiter) if it.strip())
-        #                 if len(headers) != data_array.shape[1]:
-        #                     headers = (column_header.strip(),) if column_header else tuple()
-        # return data_array, metadata, headers
+        # Read back metadata
+        header = get_header_from_file(file_path)
+        general, metadata = get_info_from_header(header)
+        # Load data from file
+        start_line = len(header.splitlines()) + 2
+        print(general)
+        data = np.loadtxt(file_path,
+                          dtype=general['dtype'],
+                          comments=general['comments'],
+                          delimiter=general['delimiter'],
+                          skiprows=start_line)
+        return data, metadata, general
 
 
 class CsvDataStorage(TextDataStorage):
@@ -566,7 +541,8 @@ class CsvDataStorage(TextDataStorage):
             header += f'{column_headers}\n'
         return header
 
-    def load_data(self, file_path):
+    @staticmethod
+    def load_data(file_path):
         """ See: DataStorageBase.load_data()
 
         @param str file_path: optional, path to file to load data from
@@ -574,6 +550,7 @@ class CsvDataStorage(TextDataStorage):
         # Read back metadata
         header = get_header_from_file(file_path)
         general, metadata = get_info_from_header(header)
+        # Load data from file
         start_line = len(header.splitlines()) + 2
         if general['column_headers']:
             start_line += 1
@@ -645,7 +622,8 @@ class NpyDataStorage(DataStorageBase):
             file.write(header)
         return file_path, timestamp, data.shape
 
-    def load_data(self, file_path):
+    @staticmethod
+    def load_data(file_path):
         """ See: DataStorageBase.load_data()
 
         @param str file_path: path to file to load data from
