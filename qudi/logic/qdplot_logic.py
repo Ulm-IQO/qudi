@@ -30,7 +30,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.module import LogicBase
-from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
+from qudi.util.datastorage import NpyDataStorage, TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
 
@@ -487,31 +487,22 @@ class QDPlotLogic(LogicBase):
             data = list()
             header = list()
             for data_set in range(len(self._x_data[plot_index])):
-                header.append('{0} set {1:d}'.format(x_label, data_set + 1))
-                header.append('{0} set {1:d}'.format(y_label, data_set + 1))
+                header.append(f'{x_label} set {data_set + 1:d}')
+                header.append(f'{y_label} set {data_set + 1:d}')
                 data.append(self._x_data[plot_index][data_set])
                 data.append(self._y_data[plot_index][data_set])
 
             data = np.array(data).T
 
-            ds = TextDataStorage(column_headers=header,
-                                 number_format='%.9e',
-                                 comments='# ',
-                                 delimiter='\t',
-                                 sub_directory='QDPlot',
-                                 root_dir=r'C:\Data',
-                                 file_extension='.dat',
-                                 image_format=ImageFormat.PNG,
-                                 include_global_parameters=True,
-                                 use_daily_dir=True)
+            ds = TextDataStorage(root_dir=self.module_default_data_dir,
+                                 include_global_metadata=True)
 
             file_path, _, _ = ds.save_data(data,
-                                           parameters=parameters,
+                                           metadata=parameters,
+                                           column_headers=header,
                                            nametag='qd_plot')
 
-            ds.save_thumbnail(mpl_figure=fig, nametag='qd_plot')
-
-            plt.close(fig)
+            ds.save_thumbnail(fig, file_path=file_path.rsplit('.', 1)[0])
             self.log.debug('Data saved to:\n{0}'.format(file_path))
 
     def get_limits(self, plot_index=0):

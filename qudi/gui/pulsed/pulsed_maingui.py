@@ -29,6 +29,8 @@ from enum import Enum
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.util.helpers import natural_sort
+from qudi.util.datastorage import get_timestamp_filename
+from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
 from qudi.core.gui.colordefs import QudiPalettePale as palette
 from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
 from qudi.core.module import GuiBase
@@ -258,7 +260,7 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.action_continue_pause.triggered.connect(self.measurement_continue_pause_clicked)
         self._mw.action_pull_data.triggered.connect(self.pull_data_clicked)
         self._mw.action_save.triggered.connect(self.save_clicked)
-        self._mw.actionSave.triggered.connect(self.save_clicked)
+        self._mw.action_save_as.triggered.connect(self.save_as_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
         self._mw.action_Settings_Generator.triggered.connect(self.show_generator_settings)
         self._mw.action_FitSettings.triggered.connect(self._fcd.show)
@@ -418,11 +420,10 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.action_continue_pause.triggered.disconnect()
         self._mw.action_pull_data.triggered.disconnect()
         self._mw.action_save.triggered.disconnect()
-        self._mw.actionSave.triggered.disconnect()
+        self._mw.action_save_as.triggered.disconnect()
         self._mw.action_Settings_Analysis.triggered.disconnect()
         self._mw.action_Settings_Generator.triggered.disconnect()
         self._mw.action_FitSettings.triggered.disconnect()
-        return
 
     def _disconnect_dialog_signals(self):
         # Connect signals used in predefined methods config dialog
@@ -786,15 +787,47 @@ class PulsedMeasurementGui(GuiBase):
     def save_clicked(self):
         """Saves the current data"""
         self._mw.action_save.setEnabled(False)
-        self._mw.actionSave.setEnabled(False)
-        save_tag = self._mw.save_tag_LineEdit.text()
-        with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
+        self._mw.action_save_as.setEnabled(False)
+        try:
+            nametag = self._mw.save_tag_LineEdit.text()
+            with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
 
-        self.pulsedmasterlogic().save_measurement_data(tag=save_tag,
-                                                       with_error=with_error)
-        self._mw.action_save.setEnabled(True)
-        self._mw.actionSave.setEnabled(True)
-        return
+            self.pulsedmasterlogic().save_measurement_data(tag=nametag, with_error=with_error)
+        finally:
+            self._mw.action_save.setEnabled(True)
+            self._mw.action_save_as.setEnabled(True)
+
+    def save_as_clicked(self):
+        """Saves the current data"""
+        self._mw.action_save.setEnabled(False)
+        self._mw.action_save_as.setEnabled(False)
+        try:
+            nametag = self._mw.save_tag_LineEdit.text().strip()
+            with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
+            file_types = {'Text File (*.dat)': TextDataStorage,
+                          'CSV File (*.csv)': CsvDataStorage,
+                          'Numpy Binary File (*.npy)': NpyDataStorage}
+            default_dir = self.pulsedmasterlogic().default_data_dir
+            os.makedirs(default_dir, exist_ok=True)
+            default_filename = get_timestamp_filename(timestamp=datetime.datetime.now(),
+                                                      nametag=nametag if nametag else None)
+            default_path = os.path.join(default_dir, default_filename)
+
+            file_path, file_type = QtWidgets.QFileDialog.getSaveFileName(
+                self._mw,
+                'Save pulsed measurement as...',
+                default_path,
+                ';;'.join(file_types),
+                next(iter(file_types))
+            )
+
+            if file_path:
+                self.pulsedmasterlogic().save_measurement_data(file_path=file_path,
+                                                               storage_cls=file_types[file_type],
+                                                               with_error=with_error)
+        finally:
+            self._mw.action_save.setEnabled(True)
+            self._mw.action_save_as.setEnabled(True)
 
     @QtCore.Slot()
     def measurement_timer_changed(self):

@@ -234,7 +234,7 @@ class ScanningOptimizeLogic(LogicBase):
 
             if self._scan_logic().toggle_scan(True,
                                               self._scan_sequence[self._sequence_index],
-                                              self.module_state.uuid) < 0:
+                                              self.module_uuid) < 0:
                 self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
                     self._scan_sequence[self._sequence_index])
                 )
@@ -244,7 +244,7 @@ class ScanningOptimizeLogic(LogicBase):
     @QtCore.Slot(bool, object, object)
     def _scan_state_changed(self, is_running, data, caller_id):
         with self._thread_lock:
-            if is_running or self.module_state() == 'idle' or caller_id != self.module_state.uuid:
+            if is_running or self.module_state() == 'idle' or caller_id != self.module_uuid:
                 return
             elif data is not None:
                 if data.scan_dimension == 1:

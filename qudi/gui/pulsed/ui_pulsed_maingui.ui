@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>931</width>
-    <height>820</height>
+    <height>818</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -42,14 +42,15 @@
      <x>0</x>
      <y>0</y>
      <width>931</width>
-     <height>18</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>Fi&amp;le</string>
     </property>
-    <addaction name="actionSave"/>
+    <addaction name="action_save"/>
+    <addaction name="action_save_as"/>
     <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
@@ -114,15 +115,6 @@
     <string>Analysis Settings</string>
    </property>
   </action>
-  <action name="actionSave">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Save</string>
-   </property>
-  </action>
   <action name="action_run_stop">
    <property name="checkable">
     <bool>true</bool>
@@ -160,7 +152,13 @@
      <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
-    <string>Save the current measurement data</string>
+    <string>Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save current measurement data</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
   <action name="action_pull_data">
@@ -212,6 +210,21 @@
    </property>
    <property name="text">
     <string>Pulse Generator Settings</string>
+   </property>
+  </action>
+  <action name="action_save_as">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save As...</string>
+   </property>
+   <property name="toolTip">
+    <string>Save current measurement data to  a custom file path</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
    </property>
   </action>
  </widget>
