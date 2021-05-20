@@ -92,25 +92,28 @@ def metadata_to_str_dict(metadata):
     return meta_str_dict
 
 
-def format_header(timestamp=None, metadata=None, notes=None, column_headers=None, comments=None):
+def format_header(timestamp, dtype, number_format=None, metadata=None, notes=None,
+                  column_headers=None, comments=None, delimiter=None):
     """
     """
-    # Gather all lines in a list of strings (NOT including line separation chars)
-    header_lines = list()
-    if timestamp is not None:
-        header_lines.append(timestamp.strftime('Saved Data on %d.%m.%Y at %Hh%Mm%Ss'))
-        header_lines.append('')
-
-    # Collect all data that needs to be loadable again into a config parser
+    if comments is None:
+        comments = ''
+    # Collect all data to include in the header into a config parser
     config = ConfigParser(comment_prefixes=None, delimiters=('=',))
 
-    root_dict = dict()
-    if notes:
-        root_dict['notes'] = notes
+    # write general section
+    general_dict = {'disclaimer': timestamp.strftime('Saved Data on %d.%m.%Y at %Hh%Mm%Ss'),
+                    'dtype': dtype.name,
+                    'comments': '' if comments is None else comments}
+    if delimiter:
+        general_dict['delimiter'] = delimiter
+    if number_format:
+        general_dict['number_format'] = number_format
     if column_headers:
-        root_dict['column headers'] = format_column_headers(column_headers)
-    if root_dict:
-        config['Root'] = root_dict
+        general_dict['column_headers'] = format_column_headers(column_headers)
+    if notes:
+        general_dict['notes'] = notes
+    config['General'] = general_dict
 
     if metadata:
         config['Metadata'] = metadata_to_str_dict(metadata)
@@ -118,24 +121,32 @@ def format_header(timestamp=None, metadata=None, notes=None, column_headers=None
     buffer = StringIO()
     config.write(buffer)
     buffer.seek(0)
-    header_lines.extend(buffer.read().splitlines())
+    header_lines = buffer.read().splitlines()
     buffer.close()
 
-    header_lines.append('Data:')
-    header_lines.append('=====')
+    # Include comment specifiers at the beginning of each line
+    # Also add an "end header" marker for easier custom header parsing
+    header_lines.append('---- END HEADER ----')
+    line_sep = f'\n{comments}'
+    return f'{comments}{line_sep.join(header_lines)}\n'
 
-    line_sep = '\n' if comments is None else f'\n{comments}'
-    return f'{line_sep[1:]}{line_sep.join(header_lines)}'
 
-
-def get_header_from_file(file_path, comments=''):
+def get_header_from_file(file_path):
     offset = 0
+    comments = None
     with open(file_path, 'r') as file:
         for line in file:
-            if not line.startswith(comments):
+            # Determine comments specifier (if there is any)
+            if line.endswith('---- END HEADER ----\n'):
+                comments = line.rsplit('---- END HEADER ----', 1)[0]
                 break
             offset += len(line)
         file.seek(0)
+        if comments is None:
+            raise RuntimeError(
+                'Qudi data file is missing "---- END HEADER ----" marker. File was probably not '
+                'created by the same qudi.util.datastorage.<storage class> helper object'
+            )
         header_lines = file.read(offset).splitlines()
     line_start = len(comments)
     return '\n'.join(line[line_start:] for line in header_lines)
@@ -146,22 +157,27 @@ def get_info_from_header(header):
     config = ConfigParser(comment_prefixes=None, delimiters=('=',))
     config.read_string(header)
 
-    # extract notes
-    notes = config.get('Root', 'notes', raw=True, fallback='')
-
-    # extract column headers
-    column_headers = config.get('Root', 'column headers', raw=True, fallback='')
-    if column_headers:
-        column_headers = tuple(column_headers.split(';;'))
+    # extract and convert general section
+    general = {'disclaimer': config.get('General', 'disclaimer', raw=True, fallback=''),
+               'dtype': np.dtype(config.get('General', 'dtype', raw=True, fallback='float')),
+               'number_format': config.get('General', 'number_format', raw=True, fallback=None),
+               'comments': config.get('General', 'comments', raw=True, fallback=None),
+               'delimiter': config.get('General', 'delimiter', raw=True, fallback=None),
+               'notes': config.get('General', 'notes', raw=True, fallback=''),
+               'column_headers': config.get('General', 'column_headers', raw=True, fallback=None)}
+    if general['comments'] == '':
+        general['comments'] = None
+    if general['column_headers'] is None:
+        general['column_headers'] = tuple()
     else:
-        column_headers = tuple()
+        general['column_headers'] = tuple(general['column_headers'].split(';;'))
 
     # extract metadata
     if config.has_section('Metadata'):
         metadata = dict(config.items('Metadata', raw=True))
     else:
         metadata = dict()
-    return metadata, notes, column_headers
+    return general, metadata
 
 
 def create_dir_for_file(file_path):
@@ -370,19 +386,21 @@ class TextDataStorage(DataStorageBase):
             raise TypeError('delimiter must be str type')
         self._delimiter = value
 
-    def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
+    def create_header(self, timestamp, dtype, metadata=None, notes=None, column_headers=None):
         """
         """
         # Gather all metadata (both global and locally provided) into a single dict
         metadata = self.get_unified_metadata(metadata)
-        return format_header(timestamp=timestamp,
+        return format_header(timestamp,
+                             dtype,
                              metadata=metadata,
                              notes=notes,
                              column_headers=column_headers,
-                             comments=self.comments)
+                             comments=self.comments,
+                             delimiter=self.delimiter)
 
     def new_file(self, *, metadata=None, notes=None, nametag=None, timestamp=None,
-                 column_headers=None, filename=None):
+                 column_headers=None, filename=None, dtype=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
         silently if they have the same path.
 
@@ -399,12 +417,16 @@ class TextDataStorage(DataStorageBase):
         # Create timestamp if missing
         if timestamp is None:
             timestamp = datetime.now()
+        # Assume numpy.float dtype if missing
+        if dtype is None:
+            dtype = np.float
         # Construct file name if none is given explicitly
         if filename is None:
             filename = get_timestamp_filename(timestamp=timestamp,
                                               nametag=nametag) + self.file_extension
         # Create header
-        header = self.create_header(timestamp=timestamp,
+        header = self.create_header(timestamp,
+                                    dtype,
                                     metadata=metadata,
                                     notes=notes,
                                     column_headers=column_headers)
@@ -413,7 +435,7 @@ class TextDataStorage(DataStorageBase):
         create_dir_for_file(file_path)
         # Write to file. Overwrite silently.
         with open(file_path, 'w') as file:
-            file.write(header + '\n')
+            file.write(header)
         return file_path, timestamp
 
     def append_file(self, data, file_path):
@@ -453,7 +475,8 @@ class TextDataStorage(DataStorageBase):
                                              nametag=nametag,
                                              timestamp=timestamp,
                                              column_headers=column_headers,
-                                             filename=filename)
+                                             filename=filename,
+                                             dtype=data.dtype)
         # Append data to file
         rows_columns = self.append_file(data, file_path=file_path)
         return file_path, timestamp, rows_columns
@@ -524,21 +547,23 @@ class CsvDataStorage(TextDataStorage):
     @delimiter.setter
     def delimiter(self, value):
         if value != ',':
+            self._delimiter = ','
             raise UserWarning('CsvDataStorage only accepts "," as delimiter')
 
-    def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
+    def create_header(self, timestamp, dtype, metadata=None, notes=None, column_headers=None):
         """ Include column_headers without line comment specifier.
         for more information see: qudi.util.datastorage.TextDataStorage.create_header()
         """
         # Create default header as specified in parent TextDataStorage object without column headers
-        header = super().create_header(timestamp=timestamp,
+        header = super().create_header(timestamp,
+                                       dtype,
                                        metadata=metadata,
                                        notes=notes,
-                                       column_headers=None)
+                                       column_headers=column_headers)
         # Append column headers if needed
         column_headers = format_column_headers(column_headers, self.delimiter)
-        if column_headers is not None:
-            header += f'\n{column_headers}'
+        if column_headers:
+            header += f'{column_headers}\n'
         return header
 
     def load_data(self, file_path):
@@ -546,7 +571,19 @@ class CsvDataStorage(TextDataStorage):
 
         @param str file_path: optional, path to file to load data from
         """
-        raise NotImplementedError
+        # Read back metadata
+        header = get_header_from_file(file_path)
+        general, metadata = get_info_from_header(header)
+        start_line = len(header.splitlines()) + 2
+        if general['column_headers']:
+            start_line += 1
+            print(start_line)
+        data = np.loadtxt(file_path,
+                          dtype=general['dtype'],
+                          comments=general['comments'],
+                          delimiter=general['delimiter'],
+                          skiprows=start_line)
+        return data, metadata, general
 
 
 class NpyDataStorage(DataStorageBase):
@@ -559,16 +596,16 @@ class NpyDataStorage(DataStorageBase):
     def file_extension(self):
         return '.npy'
 
-    def create_header(self, timestamp, metadata=None, notes=None, column_headers=None):
+    def create_header(self, timestamp, dtype, metadata=None, notes=None, column_headers=None):
         """
         """
         # Gather all metadata (both global and locally provided) into a single dict
         metadata = self.get_unified_metadata(metadata)
-        return format_header(timestamp=timestamp,
+        return format_header(timestamp,
+                             dtype,
                              metadata=metadata,
                              notes=notes,
-                             column_headers=column_headers,
-                             comments=None)
+                             column_headers=column_headers)
 
     def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None,
                   column_headers=None, filename=None):
@@ -588,23 +625,24 @@ class NpyDataStorage(DataStorageBase):
             filename = get_timestamp_filename(timestamp=timestamp,
                                               nametag=nametag) + self.file_extension
         # Create filename for separate metadata textfile
-        param_filename = filename.rsplit('.', 1)[0] + '_metadata.txt'
+        meta_filename = filename.rsplit('.', 1)[0] + '_metadata.txt'
 
         # Create header
-        header = self.create_header(timestamp=timestamp,
+        header = self.create_header(timestamp,
+                                    data.dtype,
                                     metadata=metadata,
                                     notes=notes,
                                     column_headers=column_headers)
         # Determine full file path and create containing directories if needed
         file_path = os.path.join(self.root_dir, filename)
         create_dir_for_file(file_path)
-        param_file_path = os.path.join(self.root_dir, param_filename)
+        meta_file_path = os.path.join(self.root_dir, meta_filename)
         # Write data and metadata to file. Overwrite silently.
         with open(file_path, 'wb') as file:
             # Write numpy data array in binary format
             np.save(file, data, allow_pickle=False, fix_imports=False)
-        with open(param_file_path, 'w') as file:
-            file.write(header + '\n')
+        with open(meta_file_path, 'w') as file:
+            file.write(header)
         return file_path, timestamp, data.shape
 
     def load_data(self, file_path):
@@ -617,8 +655,8 @@ class NpyDataStorage(DataStorageBase):
         # Try to find and load metadata from text file
         metadata_path = file_path.split('.npy')[0] + '_metadata.txt'
         try:
-            header = get_header_from_file(metadata_path, comments='')
+            header = get_header_from_file(metadata_path)
         except FileNotFoundError:
-            return data, dict(), tuple(), ''
-        metadata, notes, column_headers = get_info_from_header(header)
-        return data, metadata, notes, column_headers
+            return data, dict(), dict()
+        metadata, general = get_info_from_header(header)
+        return data, metadata, general
