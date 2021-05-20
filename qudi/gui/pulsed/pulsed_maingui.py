@@ -2326,12 +2326,10 @@ class PulsedMeasurementGui(GuiBase):
         if mw_constraints is None:
             self._pa.extrnal_control_groupbox.hide()
         else:
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(
-                *mw_constraints.channel_limits['Frequency']
-            )
-            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(
-                *mw_constraints.channel_limits['Power']
-            )
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(mw_constraints.min_frequency,
+                                                                mw_constraints.max_frequency)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(mw_constraints.min_power,
+                                                                 mw_constraints.max_power)
         self._pa.ana_param_fc_bins_ComboBox.clear()
         for binwidth in fc_constraints['hardware_binwidth_list']:
             self._pa.ana_param_fc_bins_ComboBox.addItem(str(binwidth))
