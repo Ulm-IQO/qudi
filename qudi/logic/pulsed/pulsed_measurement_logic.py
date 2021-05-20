@@ -60,14 +60,13 @@ class PulsedMeasurementLogic(LogicBase):
     # declare connectors
     _fastcounter = Connector(name='fastcounter', interface='FastCounterInterface')
     _pulsegenerator = Connector(name='pulsegenerator', interface='PulserInterface')
-    _microwave = Connector(name='microwave', interface='ProcessSetpointInterface', optional=True)
+    _microwave = Connector(name='microwave', interface='MicrowaveInterface', optional=True)
 
     # Config options
     # Optional additional paths to import from
     extraction_import_path = ConfigOption(name='additional_extraction_path', default=None)
     analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
     # Optional file type descriptor for saving raw data to file.
-    # todo: doesn't warn if checker not satisfied
     _default_data_storage_cls = ConfigOption(name='default_data_storage_type',
                                              default='text',
                                              converter=_data_storage_from_cfg_option)
