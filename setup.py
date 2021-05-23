@@ -123,7 +123,7 @@ setup(name='qudi',
                 ],
       license='GPLv3',
       install_requires=windows_dep if sys.platform == 'win32' else unix_dep,
-      python_requires='~=3.7',
+      python_requires='~=3.6',
       cmdclass={'develop': PrePostDevelopCommands, 'install': PrePostInstallCommands},
       entry_points={
           'console_scripts': ['qudi=qudi.runnable:main',
