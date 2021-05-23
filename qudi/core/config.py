@@ -41,8 +41,7 @@ from collections import OrderedDict
 from io import BytesIO, TextIOWrapper
 from PySide2 import QtCore
 
-import qudi.core.paths as _paths
-
+from qudi.core.paths import *
 
 class QudiSafeRepresenter(_yaml.SafeRepresenter):
     """ Custom YAML representer for qudi config files
@@ -372,7 +371,7 @@ class Configuration(QtCore.QObject):
         """
         stylesheet = self._global_config.get('stylesheet', None)
         if not os.path.dirname(stylesheet):
-            stylesheet = os.path.join(_paths.get_artwork_dir(), 'styles', stylesheet)
+            stylesheet = os.path.join(get_artwork_dir(), 'styles', stylesheet)
         return os.path.abspath(stylesheet)
 
     @stylesheet.setter
@@ -459,26 +458,6 @@ class Configuration(QtCore.QObject):
         """
         return self._global_config.get('extensions', list()).copy()
 
-    @extension_paths.setter
-    def extension_paths(self, paths):
-        """ Setter for absolute paths to extend qudi module search paths with.
-
-        If extension_paths is set to None, it will be removed from config. This will cause
-        qudi to only consider modules within the qudi package.
-
-        @param list|None paths: absolute paths to extend qudi search paths with
-        """
-        if not paths:
-            self._global_config.pop('extensions', None)
-            return
-
-        if isinstance(paths, str):
-            paths = [paths]
-
-        assert all(os.path.isabs(path) for path in paths), 'extension_paths must be absolute paths'
-
-        self._global_config['extensions'] = list(paths)
-        self.sigConfigChanged.emit(self)
 
     def add_local_module(self, name, base, module, cls):
         self.check_module_name(name)
@@ -626,7 +605,7 @@ class Configuration(QtCore.QObject):
         # Configure global settings
         global_cfg = config.pop('global', dict())
         new_config.startup_modules = global_cfg.pop('startup', None)
-        new_config.extension_paths = global_cfg.pop('extensions', None)
+        #new_config.extension_paths = global_cfg.pop('extensions', None)
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
         new_config.daily_data_dirs = global_cfg.pop('daily_data_dirs', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
@@ -698,14 +677,14 @@ class Configuration(QtCore.QObject):
     @staticmethod
     def set_default_config_path(path):
         # Write current config file path to load.cfg
-        save(file_path=os.path.join(_paths.get_appdata_dir(create_missing=True), 'load.cfg'),
+        save(file_path=os.path.join(get_appdata_dir(create_missing=True), 'load.cfg'),
              data={'load_config_path': path})
 
     @staticmethod
     def get_saved_config():
         # Try loading config file path from last session
         try:
-            load_cfg = load(os.path.join(_paths.get_appdata_dir(), 'load.cfg'), ignore_missing=True)
+            load_cfg = load(os.path.join(get_appdata_dir(), 'load.cfg'), ignore_missing=True)
         except:
             load_cfg = dict()
         file_path = load_cfg.get('load_config_path', '')
@@ -716,12 +695,12 @@ class Configuration(QtCore.QObject):
     @staticmethod
     def get_default_config():
         # Try default.cfg in user home directory
-        file_path = os.path.join(_paths.get_default_config_dir(), 'default.cfg')
+        file_path = os.path.join(get_default_config_dir(), 'default.cfg')
         if os.path.isfile(file_path):
             return file_path
 
         # Fall back to default.cfg in qudi core directory
-        file_path = os.path.join(_paths.get_main_dir(), 'core', 'default.cfg')
+        file_path = os.path.join(get_main_dir(), 'core', 'default.cfg')
         if os.path.isfile(file_path):
             return file_path
 
@@ -735,9 +714,9 @@ class Configuration(QtCore.QObject):
             return path
 
         # relative path? Try relative to userdata dir, user home dir and relative to main dir
-        search_dirs = (_paths.get_userdata_dir(),
-                       _paths.get_home_dir(),
-                       _paths.get_main_dir())
+        search_dirs = (get_userdata_dir(),
+                       get_home_dir(),
+                       get_main_dir())
         for search_dir in search_dirs:
             new_path = os.path.abspath(os.path.join(search_dir, path))
             if os.path.isdir(new_path):
