@@ -17,20 +17,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('csv_2_list', 'in_range', 'is_complex', 'is_float', 'is_integer', 'is_number',
-           'iter_modules_recursive', 'natural_sort')
+__all__ = ('csv_2_list', 'in_range', 'is_complex', 'is_complex_type', 'is_float', 'is_float_type',
+           'is_integer', 'is_integer_type', 'is_number', 'is_number_type', 'is_string',
+           'is_string_type', 'iter_modules_recursive', 'natural_sort', 'str_to_number')
 
 import re
 import os
 import pkgutil
 import numpy as np
-
-# use setuptools parse_version if available and use distutils LooseVersion as
-# fallback
-try:
-    from pkg_resources import parse_version
-except ImportError:
-    from distutils.version import LooseVersion as parse_version
 
 
 def iter_modules_recursive(path, prefix=''):
@@ -88,37 +82,82 @@ def natural_sort(iterable):
 def is_number(test_value):
     """ Check whether passed value is a number
 
-    @return: bool, True if the passed value is a number, otherwise false.
+    @return bool: True if the passed value is a number, otherwise False.
     """
     return is_integer(test_value) or is_float(test_value) or is_complex(test_value)
+
+
+def is_number_type(test_obj):
+    """ Check whether passed object is a number type
+
+    @return bool: True if the passed object is a number type, otherwise False.
+    """
+    return is_integer_type(test_obj) or is_float_type(test_obj) or is_complex_type(test_obj)
 
 
 def is_integer(test_value):
     """ Check all available integer representations.
 
-    @return: bool, True if the passed value is a integer, otherwise false.
+    @return bool: True if the passed value is a integer, otherwise False.
     """
 
-    return type(test_value) in [np.int, np.int8, np.int16, np.int32, np.int64,
-                                np.uint, np.uint8, np.uint16, np.uint32,
-                                np.uint64]
+    return isinstance(test_value, (int, np.integer))
+
+
+def is_integer_type(test_obj):
+    """ Check if passed object is an integer type.
+
+    @return bool: True if the passed value is a integer, otherwise False.
+    """
+    return issubclass(test_obj, (int, np.integer))
 
 
 def is_float(test_value):
     """ Check all available float representations.
 
-    @return: bool, True if the passed value is a float, otherwise false.
+    @return bool: True if the passed object is a float type, otherwise False.
     """
-    return type(test_value) in [np.float, np.float16, np.float32, np.float64]
+    return isinstance(test_value, (float, np.floating))
+
+
+def is_float_type(test_obj):
+    """ Check if passed object is a float type.
+
+    @return bool: True if the passed object is a float type, otherwise False.
+    """
+    return issubclass(test_obj, (float, np.floating))
 
 
 def is_complex(test_value):
     """ Check all available complex representations.
 
-    @return: bool, True if the passed value is a complex value, otherwise false.
+    @return bool: True if the passed value is a complex value, otherwise False.
     """
-
     return np.iscomplexobj(test_value)
+
+
+def is_complex_type(test_obj):
+    """ Check if passed object is a complex type.
+
+    @return bool: True if the passed object is a complex type, otherwise False.
+    """
+    return issubclass(test_obj, (complex, np.complexfloating))
+
+
+def is_string(test_value):
+    """ Check all available string representations.
+
+    @return bool: True if the passed value is a string value, otherwise False.
+    """
+    return isinstance(test_value, (str, np.str_, np.string_))
+
+
+def is_string_type(test_obj):
+    """ Check if passed object is a string type.
+
+    @return bool: True if the passed object is a string type, otherwise False.
+    """
+    return issubclass(test_obj, (str, np.str_, np.string_))
 
 
 def in_range(value, lower_limit, upper_limit):
@@ -163,7 +202,27 @@ def csv_2_list(csv_string, str_2_val=None):
 
     # Cast each str value to float if no explicit cast function is given by parameter str_2_val.
     if str_2_val is None:
-        csv_list = [float(val_str) for val_str in csv_string.split(',')]
+        csv_list = [str_to_number(val_str) for val_str in csv_string.split(',')]
     else:
         csv_list = [str_2_val(val_str.strip()) for val_str in csv_string.split(',')]
     return csv_list
+
+
+def str_to_number(str_value, return_failed=False):
+    """ Parse a string into either int, float or complex (in that order).
+    """
+    try:
+        return int(str_value)
+    except ValueError:
+        try:
+            return float(str_value)
+        except ValueError:
+            try:
+                return complex(str_value)
+            except ValueError:
+                if return_failed:
+                    return str_value
+                else:
+                    raise ValueError(
+                        f'Could not convert string to int, float or complex: \'{str_value}\''
+                    )
