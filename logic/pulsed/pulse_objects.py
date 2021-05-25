@@ -1288,7 +1288,8 @@ class PredefinedGeneratorBase:
                     phase_3=phases[2])
         return mw_element
 
-    def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None):
+    def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None,
+                              add_gate_ch='d_ch4'):
         """
 
         @param length:
@@ -1305,6 +1306,7 @@ class PredefinedGeneratorBase:
                                                 phase=phase)
         if self.laser_channel.startswith('d'):
             mw_laser_element.digital_high[self.laser_channel] = True
+            mw_laser_element.digital_high[add_gate_ch] = True
         elif self.laser_channel.startswith('a'):
             mw_laser_element.pulse_function[self.laser_channel] = SamplingFunctions.DC(
                 voltage=self.analog_trigger_voltage)
