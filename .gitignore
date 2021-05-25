@@ -4,6 +4,9 @@
 *.la
 *.al
 *.libs
+*.lib
+*.exe
+*.dll
 *.so
 *.so.[0-9]*
 *.a
