@@ -41,7 +41,7 @@ class ErrorDialog(QtWidgets.QDialog):
         """
         super().__init__()
         self.logWindow = logWindow
-        self.setWindowFlags(QtCore.Qt.Window)
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         # self.setWindowModality(QtCore.Qt.NonModal)
         self.setWindowTitle('Qudi Error')
         wid = QtWidgets.QDesktopWidget()
@@ -60,7 +60,7 @@ class ErrorDialog(QtWidgets.QDialog):
         self.msgLabel.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         # self.msgLabel.setFrameStyle(QtGui.QFrame.Box)
-        #self.msgLabel.setStyleSheet('QLabel { font-weight: bold }')
+        # self.msgLabel.setStyleSheet('QLabel { font-weight: bold }')
         self.layout.addWidget(self.msgLabel)
         self.msgLabel.setMaximumWidth(800)
         self.msgLabel.setMinimumWidth(500)
@@ -102,7 +102,7 @@ class ErrorDialog(QtWidgets.QDialog):
 
         # extract list of exceptions
         exceptions = []
-        #helpful = []
+        # helpful = []
         key = 'exception'
         exc = entry
         while key in exc:
@@ -135,7 +135,7 @@ class ErrorDialog(QtWidgets.QDialog):
             self.nextBtn.show()
             self.nextBtn.setEnabled(True)
             self.nextBtn.setText('Show next error ({0:d} more)'.format(
-                                 len(self.messages)))
+                len(self.messages)))
         else:
             w = QtWidgets.QApplication.activeWindow()
             self.nextBtn.hide()
