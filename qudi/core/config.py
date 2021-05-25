@@ -747,3 +747,4 @@ class Configuration(QtCore.QObject):
         raise FileNotFoundError(
             f'Qudi relative path "{path}" can not be resolved or does not exist.'
         )
+
