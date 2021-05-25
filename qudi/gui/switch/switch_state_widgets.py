@@ -111,7 +111,7 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
 
     sigStateChanged = QtCore.Signal(str)
 
-    def __init__(self, parent=None, switch_states=('Off', 'On'), thumb_track_ratio=1):
+    def __init__(self, parent=None, switch_states=('Off', 'On'), thumb_track_ratio=1, scaling=1):
         super().__init__(parent=parent)
         assert len(switch_states) == 2, 'switch_states must be tuple of exactly 2 strings'
         assert all(isinstance(s, str) and s for s in switch_states), \
@@ -123,7 +123,7 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
         layout.setAlignment(QtCore.Qt.AlignCenter)
         layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(layout)
-        self.toggle_switch = ToggleSwitch(None, *switch_states, thumb_track_ratio)
+        self.toggle_switch = ToggleSwitch(None, *switch_states, thumb_track_ratio, scaling)
         self.toggle_switch.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         if thumb_track_ratio > 1:
             self.labels = (QtWidgets.QLabel(switch_states[0]), QtWidgets.QLabel(switch_states[1]))
