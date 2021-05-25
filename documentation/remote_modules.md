@@ -4,7 +4,7 @@ Using rpyc Qudi modules can be accessed from a remote computer like they were lo
 
 ## Requirements
 
-* rpyc in at least version 4.0.2 has to be installed.
+* rpyc in version 4.0.2 has to be installed.
 
 ## Server Configuration
 
@@ -14,11 +14,12 @@ In the configuration file:
 
 ```
 [global]
-  remote_server:
+  module_server:
     - address: ''
     - port: 12345
     - certfile: 'path/to/ssl/certificate'
     - keyfile: 'path/to/ssl/key'
+    - cacerts: 'path/to/ssl/cacerts'
 ```
 
 To activate access to individual modules, add
@@ -39,8 +40,25 @@ Specify a module in the configuration file as usual, but add the following optio
 remote: 'rpyc://servername:port/module_name'
 certfile: 'path/to/ssl/certificate'
 keyfile: 'path/to/ssl/key'
+cacerts: 'path/to/ssl/cacerts'
 ```
 
 ## Important Notes
 
 * If `certfile` and `keyfile` are not specified, the connection is unencrypted and not authenticated.
+
+## Certificate generation
+
+To generate the server certificate use
+
+```openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout server.key -out server.crt```
+
+To generate the client certificate use
+
+```openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout client.key -out client.crt```
+
+### Notes
+* You do not have the setup your own CA to sign certificates. Simply use the client certificate as `cacerts` on
+  server side and the server certificate on client side. That way you obtain simple two way authentication between the
+  server and one client.
+* For `cacerts` you can concatenate multiple client certificates into a single file to authenticate multiple clients.

@@ -36,3 +36,14 @@ The trailing ElementType also increases readability when using functions of thes
 ~~~~~~~~~~~~~{.py}
 roi_cb_manual_RadioButton.setChecked(True)
 ~~~~~~~~~~~~~
+
+A very frequent need when building UI is the need to have a QtObject, like spinbox or checkbox, matching an attribute
+of the logic.
+The Mapper class in core.mapper can help do just that.
+ 
+Example :
+~~~~~~~~~~~~~{.py}
+self.mapper.add_mapping(self.lineedit, self.logic_module, 'some_value', 'some_value_changed')
+~~~~~~~~~~~~~
+For more detail, please refer to the class documentation or
+look at an example in counter GUI.
