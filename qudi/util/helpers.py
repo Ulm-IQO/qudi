@@ -133,7 +133,7 @@ def is_complex(test_value):
 
     @return bool: True if the passed value is a complex value, otherwise False.
     """
-    return np.iscomplexobj(test_value)
+    return isinstance(test_value, (complex, np.complexfloating))
 
 
 def is_complex_type(test_obj):

@@ -107,13 +107,27 @@ def _is_dtype_class(obj):
                      np.complexfloating,
                      np.str_,
                      np.string_)
-    return issubclass(obj, allowed_types)
+    return type(obj) == type and issubclass(obj, allowed_types)
 
 
 def _is_dtype_str(obj):
     """ Helper to check for valid dtype string
     """
     return obj in ('int', 'float', 'complex', 'str')
+
+
+def _value_to_dtype(val):
+    """ Helper to return the dtype (int, float, complex or str) of a data value.
+    """
+    if is_string(val):
+        return str
+    if is_integer(val):
+        return int
+    if is_float(val):
+        return float
+    if is_complex(val):
+        return complex
+    raise TypeError(f'Unknown value dtype encountered: "{type(val)}"')
 
 
 def _dtype_to_str(obj):
@@ -139,6 +153,13 @@ def _str_to_dtype(dtype_str):
         return eval(dtype_str)
     raise ValueError(f'Invalid dtype string encountered: "{dtype_str}".\n'
                      f'Must be one of "int", "float", "complex", "str".')
+
+
+def _is_1d_array(array):
+    try:
+        return is_number(array[0]) or is_string(array[0])
+    except IndexError:
+        raise ValueError('Checking if empty array is 1D is not allowed.')
 
 
 def format_header(timestamp, number_format=None, metadata=None, notes=None, column_dtypes=None,
@@ -213,7 +234,7 @@ def get_header_from_file(file_path):
             )
         header_lines = file.read(offset).splitlines()
     line_start = len(comments)
-    return '\n'.join(line[line_start:] for line in header_lines)
+    return '\n'.join(line[line_start:] for line in header_lines), len(header_lines)
 
 
 def get_info_from_header(header):
@@ -417,15 +438,18 @@ class TextDataStorage(DataStorageBase):
     # __int_regex = re.compile(r'\A[+-]?\d+\Z')
     # __float_regex = re.compile(r'\A[+-]?\d+.\d+([eE][+-]?\d+)?\Z')
 
+    # Default format specifiers for all dtypes
+    _default_fmt_for_type = {int: '%d', float: '%.15e', complex: '%r', str: '%s'}
+
     def __init__(self, *, root_dir, comments='# ', delimiter='\t', file_extension='.dat',
-                 column_format='%.18e', column_headers=None, column_dtypes=None, **kwargs):
+                 column_formats=None, **kwargs):
         """
         @param str root_dir: Root directory for this storage instance to save files into
         @param str comments: optional, string to put at the beginning of comment and header lines
         @param str delimiter: optional, column delimiter used in text files
         @param str file_extension: optional, file extension to use for text files
-        @param str|sequence column_format: optional, value format specifier (mini-language) for each
-                                           column. Single string case will be used for all columns.
+        @param str|sequence column_formats: optional, value format specifier (mini-language) for each
+                                            column. Single string case will be used for all columns.
         @param str|sequence column_headers: optional, sequence of strings containing column headers.
                                             If a single string is given, write it to file header
                                             without formatting.
@@ -440,9 +464,7 @@ class TextDataStorage(DataStorageBase):
         self.file_extension = file_extension
         self.delimiter = delimiter
         self.comments = comments if isinstance(comments, str) else None
-        self.column_format = column_format
-        self.column_headers = column_headers
-        self.column_dtypes = column_dtypes
+        self.column_formats = column_formats
 
     @property
     def file_extension(self):
@@ -469,23 +491,22 @@ class TextDataStorage(DataStorageBase):
             raise ValueError('delimiter must be non-empty string')
         self._delimiter = value
 
-    def create_header(self, timestamp=None, metadata=None, notes=None):
+    def create_header(self, timestamp=None, metadata=None, notes=None, column_headers=None,
+                      column_dtypes=None):
         """
         """
-        # Create timestamp if missing
-        if timestamp is None:
-            timestamp = datetime.now()
         # Gather all metadata (both global and locally provided) into a single dict
         metadata = self.get_unified_metadata(metadata)
         return format_header(timestamp,
                              metadata=metadata,
                              notes=notes,
-                             column_headers=self.column_headers,
-                             column_dtypes=self.column_dtypes,
+                             column_headers=column_headers,
+                             column_dtypes=column_dtypes,
                              comments=self.comments,
                              delimiter=self.delimiter)
 
-    def new_file(self, *, metadata=None, notes=None, nametag=None, timestamp=None, filename=None):
+    def new_file(self, *, timestamp=None, metadata=None, notes=None, nametag=None,
+                 column_headers=None, column_dtypes=None, filename=None):
         """ Create a new data file on disk and write header string to it. Will overwrite old files
         silently if they have the same path.
 
@@ -498,12 +519,19 @@ class TextDataStorage(DataStorageBase):
 
         @return (str, datetime.datetime): Full file path, timestamp used
         """
+        # Create timestamp if missing
+        if timestamp is None:
+            timestamp = datetime.now()
         # Construct file name if none is given explicitly
         if filename is None:
             filename = get_timestamp_filename(timestamp=timestamp,
                                               nametag=nametag) + self.file_extension
         # Create header
-        header = self.create_header(timestamp=timestamp, metadata=metadata, notes=notes)
+        header = self.create_header(timestamp=timestamp,
+                                    metadata=metadata,
+                                    notes=notes,
+                                    column_headers=column_headers,
+                                    column_dtypes=column_dtypes)
         # Determine full file path and create containing directories if needed
         file_path = os.path.join(self.root_dir, filename)
         create_dir_for_file(file_path)
@@ -520,69 +548,66 @@ class TextDataStorage(DataStorageBase):
 
         @return (int, int): Number of rows written, Number of columns written
         """
-        if not data:
-            return
         if not os.path.isfile(file_path):
             raise FileNotFoundError(f'File to append data to not found: "{file_path}"\n'
                                     f'Create a new file to append to by calling "new_file".')
 
-        # Determine data dimension and collect row dtypes of first row
-        is_1d = is_number(data[0]) or is_string(data[0])
-        if is_1d:
-            row_dtypes = [_dtype_to_str(type(val)) for val in data]
+        # Determine data dimension
+        try:
+            is_1d = _is_1d_array(data)
+            print(is_1d, data)
+        except ValueError:
+            # Data array is empty
+            return
+        # Construct row format specifier
+        # Deduce from first data row if no column_formats is configured
+        first_row = data if is_1d else data[0]
+        number_of_columns = len(first_row)
+        if not self.column_formats:
+            row_fmt_str = self.delimiter.join(
+                [self._default_fmt_for_type[_value_to_dtype(val)] for val in first_row]
+            ) + '\n'
+        elif isinstance(self.column_formats, str):
+            row_fmt_str = self.delimiter.join([self.column_formats] * number_of_columns) + '\n'
+        elif len(self.column_formats) != number_of_columns:
+            raise ValueError(
+                'column_formats sequence has not the same length as number of data columns.'
+            )
         else:
-            row_dtypes = [_dtype_to_str(type(val)) for val in data[0]]
-
-        # Check row length if needed
-        if not self.column_format or is_string(self.column_format):
-
-
-        # determine data types from first column if column_dtypes was not configured
-
-        if not self.column_dtypes:
-            column_types =
-
-
-        # Determine array dimension (1D or 2D)
-        if hasattr(data, 'ndim'):
-            is_2d = data.ndim > 1
-        else:
-            try:
-                row_lengths = [len(row) * (not is_string(row)) for row in data]
-                tmp = row_lengths[0]
-                is_2d = tmp > 0 and all(l == tmp for l in row_lengths)
-            except TypeError:
-                is_2d = False
-
-        # Construct format specifier
-        if
+            row_fmt_str = self.delimiter.join(self.column_formats) + '\n'
 
         # Append data to file
         with open(file_path, 'a') as file:
-            # Write numpy data array
-            if data.ndim == 1:
-                np.savetxt(file,
-                           np.expand_dims(data, axis=0),
-                           delimiter=self.delimiter,
-                           fmt=self.column_format)
+            # Write data row-by-row
+            if is_1d:
+                file.write(row_fmt_str % tuple(data))
+                rows_written = 1
             else:
-                np.savetxt(file, data, delimiter=self.delimiter, fmt=self.column_format)
-        return (1, data.shape[0]) if data.ndim == 1 else data.shape
+                rows_written = 0
+                for data_row in data:
+                    file.write(row_fmt_str % tuple(data_row))
+                    rows_written += 1
+        return rows_written, number_of_columns
 
-    def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None,
-                  column_headers=None, filename=None):
+    def save_data(self, data, *, timestamp=None, metadata=None, notes=None, nametag=None,
+                  column_headers=None, column_dtypes=None, filename=None):
         """ See: DataStorageBase.save_data() for more information
 
         @param str|list column_headers: optional, data column header strings or single string
         """
+        # Derive dtypes from first data row if not explicitly given
+        if column_dtypes is None:
+            first_row = data if _is_1d_array(data) else data[0]
+            column_dtypes = [_value_to_dtype(val) for val in first_row]
+
         # Create new data file (overwrite old one if it exists)
-        file_path, timestamp = self.new_file(metadata=metadata,
+        file_path, timestamp = self.new_file(timestamp=timestamp,
+                                             metadata=metadata,
                                              notes=notes,
                                              nametag=nametag,
-                                             timestamp=timestamp,
                                              column_headers=column_headers,
-                                             filename=filename,
-                                             dtype=data.dtype)
+                                             column_dtypes=column_dtypes,
+                                             filename=filename)
         # Append data to file
         rows_columns = self.append_file(data, file_path=file_path)
         return file_path, timestamp, rows_columns
@@ -594,16 +619,25 @@ class TextDataStorage(DataStorageBase):
         @param str file_path: optional, path to file to load data from
         """
         # Read back metadata
-        header = get_header_from_file(file_path)
+        header, header_lines = get_header_from_file(file_path)
         general, metadata = get_info_from_header(header)
+        # Determine dtype specifier from general header section
+        dtype = general['column_dtypes']
+        if dtype is not None and not isinstance(dtype, type):
+            # If dtypes differ, construct a structured array
+            if all(dtype[0] == typ for typ in dtype):
+                dtype = dtype[0]
+            elif str in dtype:
+                # handle str type separately since this is (arguably) a bug in numpy.genfromtxt
+                dtype = None
+            else:
+                dtype = [(f'f{col:d}', typ) for col, typ in enumerate(dtype)]
         # Load data from file
-        start_line = len(header.splitlines()) + 2
-        print(general)
-        data = np.loadtxt(file_path,
-                          dtype=general['dtype'],
-                          comments=general['comments'],
-                          delimiter=general['delimiter'],
-                          skiprows=start_line)
+        data = np.genfromtxt(file_path,
+                             dtype=dtype,
+                             comments=general['comments'],
+                             delimiter=general['delimiter'],
+                             skip_header=header_lines + 2)
         return data, metadata, general
 
 
@@ -629,19 +663,20 @@ class CsvDataStorage(TextDataStorage):
             self._delimiter = ','
             raise UserWarning('CsvDataStorage only accepts "," as delimiter')
 
-    def create_header(self, timestamp, dtype, metadata=None, notes=None, column_headers=None):
+    def create_header(self, timestamp=None, metadata=None, notes=None, column_headers=None,
+                      column_dtypes=None):
         """ Include column_headers without line comment specifier.
         for more information see: qudi.util.datastorage.TextDataStorage.create_header()
         """
         # Create default header as specified in parent TextDataStorage object without column headers
-        header = super().create_header(timestamp,
-                                       dtype,
+        header = super().create_header(timestamp=timestamp,
                                        metadata=metadata,
                                        notes=notes,
-                                       column_headers=column_headers)
+                                       column_headers=column_headers,
+                                       column_dtypes=column_dtypes)
         # Append column headers if needed
         if column_headers:
-            header += f'{format_column_headers(column_headers, self.delimiter)}\n'
+            return f'{header}{format_column_headers(column_headers, self.delimiter)}\n'
         return header
 
     @staticmethod
@@ -651,18 +686,28 @@ class CsvDataStorage(TextDataStorage):
         @param str file_path: optional, path to file to load data from
         """
         # Read back metadata
-        header = get_header_from_file(file_path)
+        header, header_lines = get_header_from_file(file_path)
         general, metadata = get_info_from_header(header)
-        # Load data from file
-        start_line = len(header.splitlines()) + 2
+        # Determine dtype specifier from general header section
+        dtype = general['column_dtypes']
+        if dtype is not None and not isinstance(dtype, type):
+            # If dtypes differ, construct a structured array
+            if all(dtype[0] == typ for typ in dtype):
+                dtype = dtype[0]
+            elif str in dtype:
+                # handle str type separately since this is (arguably) a bug in numpy.genfromtxt
+                dtype = None
+            else:
+                dtype = [(f'f{col:d}', typ) for col, typ in enumerate(dtype)]
+        # Load data from file and skip header
+        start_line = header_lines + 2
         if general['column_headers']:
             start_line += 1
-            print(start_line)
-        data = np.loadtxt(file_path,
-                          dtype=general['dtype'],
-                          comments=general['comments'],
-                          delimiter=general['delimiter'],
-                          skiprows=start_line)
+        data = np.genfromtxt(file_path,
+                             dtype=dtype,
+                             comments=general['comments'],
+                             delimiter=general['delimiter'],
+                             skip_header=start_line)
         return data, metadata, general
 
 
