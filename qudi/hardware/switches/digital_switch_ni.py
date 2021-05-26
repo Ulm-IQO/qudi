@@ -22,15 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import re
 import nidaqmx
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.mutex import RecursiveMutex
-from interface.switch_interface import SwitchInterface
+from qudi.core.configoption import ConfigOption
+from qudi.util.mutex import RecursiveMutex
+from qudi.interface.switch_interface import SwitchInterface
+from qudi.core.statusvariable import StatusVar
 
-from core.statusvariable import StatusVar
-
-
-class DigitalSwitchNI(Base, SwitchInterface):
+class DigitalSwitchNI(SwitchInterface):
     """ This class enables to control a switch via the NI card.
     Control external hardware by the output of the digital channels of a NI card.
 
