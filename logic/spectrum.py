@@ -23,7 +23,7 @@ from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
-
+from time import sleep
 from core.connector import Connector
 from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
@@ -81,7 +81,7 @@ class SpectrumLogic(GenericLogic):
         """
         self._spectrum_data_corrected = np.array([])
         self._calculate_corrected_spectrum()
-
+       
         self.spectrum_fit = np.array([])
         self.fit_domain = np.array([])
 
@@ -90,6 +90,7 @@ class SpectrumLogic(GenericLogic):
         self.repetition_count = 0    # count loops for differential spectrum
 
         self._spectrometer_device = self.spectrometer()
+        self.integration_time = self._spectrometer_device._integration_time
         self._odmr_logic = self.odmrlogic()
         self._save_logic = self.savelogic()
 
@@ -133,7 +134,9 @@ class SpectrumLogic(GenericLogic):
         """
         # Clear any previous fit
         self.fc.clear_result()
-
+        # clear spectro,eter buffer
+        self._spectrometer_device.clearBuffer()
+        sleep(self._spectrometer_device._integration_time/int(1e6))
         if background:
             self._spectrum_background = netobtain(self._spectrometer_device.recordSpectrum())
         else:
@@ -245,6 +248,11 @@ class SpectrumLogic(GenericLogic):
         self.sig_specdata_updated.emit()
 
         self.sig_next_diff_loop.emit()
+
+    def update_integration_time(self, integration_time):
+        self._spectrometer_device._integration_time = integration_time * 1000000
+        self._spectrometer_device.setExposure(self._spectrometer_device._integration_time)
+
 
     def stop_differential_spectrum(self):
         """Stop an ongoing differential spectrum acquisition

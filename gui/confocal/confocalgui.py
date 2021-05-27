@@ -31,7 +31,10 @@ from core.statusvariable import StatusVar
 from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colordefs import ColorScaleInferno
+#from gui.colordefs import ColorScaleInferno
+#from gui.colordefs import ColorScaleViridis
+from gui.colordefs import ColorScaleRdBu
+from gui.colordefs import ColorScaleRdBuRev
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitParametersWidget
 from qtpy import QtCore
@@ -566,7 +569,9 @@ class ConfocalGui(GUIBase):
         #           Connect the colorbar and their actions              #
         #################################################################
         # Get the colorscale and set the LUTs
-        self.my_colors = ColorScaleInferno()
+        #self.my_colors = ColorScaleInferno()
+        #self.my_colors = ColorScaleViridis()
+        self.my_colors = ColorScaleRdBuRev()
 
         self.xy_image.setLookupTable(self.my_colors.lut)
         self.depth_image.setLookupTable(self.my_colors.lut)

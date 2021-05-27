@@ -352,9 +352,9 @@ class CwaveScanGui(GUIBase):
     def refresh_plot(self):
         """ Refresh the xy-plot image """
         self.scan_image.setData(self._cwavescan_logic.plot_x, self._cwavescan_logic.plot_y)
-        self.shgPD_image.setData(self._cwavescan_logic.plot_x_shg_pd, self._cwavescan_logic.plot_y_shg_pd)
-        self.opoPD_image.setData(self._cwavescan_logic.plot_x_opo_pd, self._cwavescan_logic.plot_y_opo_pd)
-        self.wavemeter_image.setData(self._cwavescan_logic.plot_x_wlm, self._cwavescan_logic.plot_y_wlm)
+        self.shgPD_image.setData(self._cwavescan_logic.plot_x_shg_pd, self._cwavescan_logic.plot_y_shg_pd[-len(self._cwavescan_logic.plot_x_shg_pd):])
+        self.opoPD_image.setData(self._cwavescan_logic.plot_x_opo_pd, self._cwavescan_logic.plot_y_opo_pd[-len(self._cwavescan_logic.plot_x_opo_pd):])
+        self.wavemeter_image.setData(self._cwavescan_logic.plot_x_wlm, self._cwavescan_logic.plot_y_wlm[-len(self._cwavescan_logic.plot_x_wlm):])
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """

@@ -252,8 +252,9 @@ class WavemeterLogGui(GUIBase):
 
     def add_data_point(self, point):
         if len(point) >= 3:
-            spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor(point[2]/100, 255)}]
-            self._scatterplot.addPoints(spts)
+            if point[0] * point[1] > 0:
+                spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor(point[2]/100, 255)}]
+                self._scatterplot.addPoints(spts)
 
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
