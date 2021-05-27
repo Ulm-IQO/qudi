@@ -38,15 +38,19 @@ class OceanOptics(Base, SpectrometerInterface):
 
     """
     _serial = ConfigOption('spectrometer_serial', missing='warn')
-    _integration_time = StatusVar('integration_time', default=10000)
+    _integration_time = StatusVar('integration_time', default=1000000)
 
     def on_activate(self):
         """ Activate module.
         """
 
-        self.spec = sb.Spectrometer.from_serial_number(self._serial)
+        self.spec = sb.Spectrometer.from_first_available()
         self.log.info(''.format(self.spec.model, self.spec.serial_number))
         self.spec.integration_time_micros(self._integration_time)
+
+        # set temperature
+        self.spec.features['thermo_electric'][0].set_temperature_setpoint_degrees_celsius(-22)
+
         self.log.info('Exposure set to {} microseconds'.format(self._integration_time))
 
     def on_deactivate(self):
@@ -65,6 +69,9 @@ class OceanOptics(Base, SpectrometerInterface):
         specdata[1] = self.spec.intensities()
         return specdata
 
+    def clearBuffer(self):
+        self.spec.features['data_buffer'][0].clear()
+
     def getExposure(self):
         """ Get exposure.
 
@@ -82,3 +89,4 @@ class OceanOptics(Base, SpectrometerInterface):
         """
         self._integration_time = exposureTime
         self.spec.integration_time_micros(self._integration_time)
+

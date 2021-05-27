@@ -54,6 +54,7 @@ class SpectrometerGui(GUIBase):
 
     # declare connectors
     spectrumlogic = Connector(interface='SpectrumLogic')
+    sigRecordSpectrum = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -67,6 +68,12 @@ class SpectrometerGui(GUIBase):
         # setting up the window
         self._mw = SpectrometerWindow()
 
+        #Vlad updates
+        self.sigRecordSpectrum.connect(self._spectrum_logic.get_single_spectrum)
+        self._mw.integration_time_doubleSpinBox.editingFinished.connect(self.update_integration_time)
+        self.update_integration_time()
+
+        # ... 
         self._mw.stop_diff_spec_Action.setEnabled(False)
         self._mw.resume_diff_spec_Action.setEnabled(False)
         self._mw.correct_background_Action.setChecked(self._spectrum_logic.background_correction)
@@ -185,7 +192,28 @@ class SpectrometerGui(GUIBase):
     def record_single_spectrum(self):
         """ Handle resume of the scanning without resetting the data.
         """
-        self._spectrum_logic.get_single_spectrum()
+        int_time = self._mw.integration_time_doubleSpinBox.value()
+        self.time_passed = 0
+        self._mw.progressBar.setMaximum(int_time)
+        self.sigRecordSpectrum.emit(False)
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.updateProgress)
+        self.update_time = 500
+        self.timer.start(self.update_time)
+    
+    def updateProgress(self):
+        int_time = self._mw.integration_time_doubleSpinBox.value()
+        self.time_passed += self.update_time/1000
+        if self.time_passed >= int_time:
+            self.timer.stop()
+            self._mw.progressBar.setValue(int_time)
+            return
+        self._mw.progressBar.setValue(self.time_passed)
+
+
+    def update_integration_time(self):
+        int_time = self._mw.integration_time_doubleSpinBox.value()
+        self._spectrum_logic.update_integration_time(int_time)
 
     def start_differential_measurement(self):
 
@@ -222,7 +250,8 @@ class SpectrometerGui(GUIBase):
         self._spectrum_logic.background_correction = self._mw.correct_background_Action.isChecked()
 
     def acquire_background(self):
-        self._spectrum_logic.get_single_spectrum(background=True)
+        self.sigRecordSpectrum.emit(True)
+        # self._spectrum_logic.get_single_spectrum(background=True)
 
     def save_background_data(self):
         self._spectrum_logic.save_spectrum_data(background=True)
