@@ -29,7 +29,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
 
     """
 
-    def __init__(self, parent=None, off_state=None, on_state=None, thumb_track_ratio=1, scaling=1.):
+    def __init__(self, parent=None, off_state=None, on_state=None, thumb_track_ratio=1, scaling=1., max_font_size = 20):
         assert off_state is None or isinstance(off_state, str), 'off_state must be str or None'
         assert on_state is None or isinstance(on_state, str), 'on_state must be str or None'
         super().__init__(parent=parent)
@@ -66,7 +66,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
             self._track_opacity = 1
         self._text_font = QtGui.QFont()
         # self._text_font.setBold(True)
-        self._text_font.setPixelSize(1.5 * self._track_radius)
+        self._text_font.setPixelSize(min(1.5 * self._track_radius, max_font_size))
 
         # property value for current thumb position
         self._thumb_position = self._thumb_origin
