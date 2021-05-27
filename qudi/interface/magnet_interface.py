@@ -45,17 +45,17 @@ class MagnetInterface(Base):
         raise NotImplementedError
 
     @abstractmethod
-    def set_optional_settings(self):
+    def set_optional_settings(self, **kwargs):
 
         raise NotImplementedError
 
     @abstractmethod
-    def get_axis_value(self):
+    def get_axis_value(self,axis):
 
         raise NotImplementedError
 
     @abstractmethod
-    def set_axis_value(self):
+    def set_axis_value(self, axis, value):
 
         raise NotImplementedError
 
