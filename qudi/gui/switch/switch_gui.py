@@ -48,11 +48,8 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
         # Create main layout and central widget
         self.main_layout = QtWidgets.QGridLayout()
         self.main_layout.setColumnStretch(1, 1)
-        self.main_layout.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         widget = QtWidgets.QWidget()
         widget.setLayout(self.main_layout)
-        widget.setFixedSize(1, 1)
         self.setCentralWidget(widget)
 
         # Create QActions and menu bar
@@ -97,9 +94,6 @@ class SwitchGui(GuiBase):
 
     # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
-
-    # declare config options
-    _switch_row_num_max = ConfigOption(name='switch_row_num_max', default=None)
 
     # declare status variables
     _switch_style = StatusVar(name='switch_style',
@@ -184,26 +178,28 @@ class SwitchGui(GuiBase):
         self._widgets = dict()
         for ii, (switch, states) in enumerate(self.switchlogic().available_states.items()):
             label = self._get_switch_label(switch)
-            if self._switch_row_num_max is None:
-                grid_pos = [ii, 0]
-            else:
-                grid_pos = [int(ii % self._switch_row_num_max), int(ii / self._switch_row_num_max) * 2]
             if len(states) > 2 or self._switch_style == SwitchStyle.RADIO_BUTTON:
                 switch_widget = SwitchRadioButtonWidget(switch_states=states)
                 self._widgets[switch] = (label, switch_widget)
-                self._mw.main_layout.addWidget(self._widgets[switch][0], grid_pos[0], grid_pos[1])
-                self._mw.main_layout.addWidget(self._widgets[switch][1], grid_pos[0], grid_pos[1]+1)
+                self._mw.main_layout.addWidget(self._widgets[switch][0], ii, 0)
+                self._mw.main_layout.addWidget(self._widgets[switch][1], ii, 1)
                 switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
             elif self._switch_style == SwitchStyle.TOGGLE_SWITCH:
                 if self._alt_toggle_switch_style:
-                    switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=1.35)
+                    switch_widget = ToggleSwitchWidget(switch_states=states,
+                                                       thumb_track_ratio=1.35,
+                                                       scale_text_in_switch=True,
+                                                       text_inside_switch=True)
                 else:
-                    switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=0.9)
+                    switch_widget = ToggleSwitchWidget(switch_states=states,
+                                                       thumb_track_ratio=0.9,
+                                                       scale_text_in_switch=True,
+                                                       text_inside_switch=True)
                 self._widgets[switch] = (label, switch_widget)
-                switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                                            QtWidgets.QSizePolicy.Fixed)
-                self._mw.main_layout.addWidget(self._widgets[switch][0], grid_pos[0], grid_pos[1])
-                self._mw.main_layout.addWidget(switch_widget, grid_pos[0], grid_pos[1]+1)
+                switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                            QtWidgets.QSizePolicy.Preferred)
+                self._mw.main_layout.addWidget(self._widgets[switch][0], ii, 0)
+                self._mw.main_layout.addWidget(switch_widget, ii, 1)
                 switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
 
     @staticmethod
@@ -214,28 +210,26 @@ class SwitchGui(GuiBase):
         @return QWidget: QLabel with switch name
         """
         label = QtWidgets.QLabel(f'{switch}:')
-        font = QtGui.QFont()
+        font = label.font()
         font.setBold(True)
         font.setPointSize(11)
-        # font.setPixelSize(int(round(0.75 * QtWidgets.QLineEdit().sizeHint().height())))
         label.setFont(font)
-        # label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
-        #                     QtWidgets.QSizePolicy.MinimumExpanding)
-        label.setMinimumWidth(label.sizeHint().width())
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         return label
 
     def _delete_switches(self):
         """ Delete all the buttons from the main layout. """
-        for switch in reversed(tuple(self._widgets)):
-            label, widget = self._widgets[switch]
-            widget.sigStateChanged.disconnect()
-            self._mw.main_layout.removeWidget(label)
-            self._mw.main_layout.removeWidget(widget)
-            label.setParent(None)
+        self._widgets.clear()
+        while True:
+            item = self._mw.main_layout.takeAt(0)
+            if item is None:
+                break
+            widget = item.widget()
+            try:
+                widget.sigStateChanged.disconnect()
+            except AttributeError:
+                pass
             widget.setParent(None)
-            del self._widgets[switch]
-            label.deleteLater()
             widget.deleteLater()
 
     @QtCore.Slot(dict)
@@ -265,7 +259,6 @@ class SwitchGui(GuiBase):
             self._switch_style = SwitchStyle(index)
             self._mw.close()
             self._delete_switches()
-            self._mw.centralWidget().setFixedSize(1, 1)
             self._populate_switches()
             self._switches_updated(self.switchlogic().states)
             self._update_state_colorscheme()
