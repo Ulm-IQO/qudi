@@ -608,7 +608,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         # Create figure
         fig, ax = plt.subplots()
-
+        
         ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5)
 
         ax.set_xlabel('wavelength (nm)')

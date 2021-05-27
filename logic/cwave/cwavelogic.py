@@ -24,7 +24,7 @@ class CwaveLogic(GenericLogic):
 
     # declare connectors
     timetagger = Connector(interface='TT')
-    laser = Connector(interface='CwaveLaser')
+    cwavelaser = Connector(interface='CwaveLaser')
     wavemeter = Connector(interface='HighFinesseWavemeter')
     savelogic = Connector(interface='SaveLogic')
 
@@ -78,7 +78,7 @@ class CwaveLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._laser = self.laser()
+        self._cwavelaser = self.cwavelaser()
         self._wavemeter = self.wavemeter()
         self._timetagger = self.timetagger() 
         self._save_logic = self.savelogic()
@@ -86,23 +86,23 @@ class CwaveLogic(GenericLogic):
         wlm_res = self._wavemeter.start_acqusition()
         self.wavelength = self._wavemeter.get_current_wavelength()
         if wlm_res != 0 and self.wavelength < 0:
-            self.wavelength = self._laser.wavelength
+            self.wavelength = self._cwavelaser.wavelength
 
-        self.shutters = self._laser.shutters
-        self.status_cwave = self._laser.status_cwave
-        self.cwstate = self._laser.cwstate
+        self.shutters = self._cwavelaser.shutters
+        self.status_cwave = self._cwavelaser.status_cwave
+        self.cwstate = self._cwavelaser.cwstate
         self.scan_mode = 'refcavint'#refcavext or refcavint
-        self.laserPD = self._laser.read_photodiode_laser()
-        self.opoPD = self._laser.read_photodiode_opo()
-        self.shgPD = self._laser.read_photodiode_shg()
+        self.laserPD = self._cwavelaser.read_photodiode_laser()
+        self.opoPD = self._cwavelaser.read_photodiode_opo()
+        self.shgPD = self._cwavelaser.read_photodiode_shg()
 
         self.number_of_bins = self._number_of_bins
         self.number_of_repeats = self._number_of_repeats
         self.scan_range = self._scan_range
         self.pix_integration = self._pix_integration
 
-        self.a_range = self._laser.VoltRange
-        self.setpoint = self._laser.scanner_setpoint
+        self.a_range = self._cwavelaser.VoltRange
+        self.setpoint = self._cwavelaser.scanner_setpoint
 
         self.sigSetpointChanged.connect(self.change_setpoint)
         self.sigNextPixel.connect(self.scan_lines)
@@ -138,8 +138,8 @@ class CwaveLogic(GenericLogic):
         self.sigGetUpdates.emit()
         self.sigUpdatePanelPlots.emit()
         # #! update gui: (create qurey interval)
-        # qi = self.queryInterval
-        # self.queryTimer.start(qi)
+        qi = self.queryInterval
+        self.queryTimer.start(qi)
         self.sigUpdate.emit()
 
     # @set_param_when_threading
@@ -148,7 +148,7 @@ class CwaveLogic(GenericLogic):
         print("New setpoint:", new_voltage)
         if self.scan_mode is 'refcavint':
             new_voltage_hex = int(65535 * new_voltage / 100)
-            res = self._laser.set_int_value('x', new_voltage_hex)
+            res = self._cwavelaser.set_int_value('x', new_voltage_hex)
             if res == 1:
                 time.sleep(1)
                 return res
@@ -198,11 +198,12 @@ class CwaveLogic(GenericLogic):
             print("cwave is not connected")
             return 
         if self.scan_mode == "refcavint":
-            if self.pix_integration*self.number_of_bins > 2000: 
+            if self.pix_integration*self.number_of_bins > 100: 
                 self.start_ref_int_scanner()
             else:
                 raise Exception("Too fast scanning!")
         elif self.scan_mode == "oporeg":
+            
             self.start_opo_reg_scanner()
         elif self.scan_mode == "refcavext":
             pass
@@ -223,7 +224,7 @@ class CwaveLogic(GenericLogic):
         print("number_of_bins", self.number_of_bins)
         self._initialise_data_matrix()
         scan_duration = self.number_of_bins * self.pix_integration
-        if scan_duration < 5000:
+        if scan_duration < 3000:
             print("Wow, let's make a slower scan first")
         else:
             # delay timer for querying laser
@@ -232,8 +233,8 @@ class CwaveLogic(GenericLogic):
             self.scanQueryTimer.setSingleShot(True)
             self.scanQueryTimer.timeout.connect(self.update_opo_reg_scan_plots, QtCore.Qt.QueuedConnection)     
             self.scan_trace = self._timetagger.counter(refresh_rate=self.pix_integration, n_values=self.number_of_bins)
-            self.scanQueryTimer.start(self.scanQueryTimer)
-            self._laser.scan(scan_duration, self.scan_range[0], self.scan_range[1])
+            self.scanQueryTimer.start()
+            self._cwavelaser.scan(scan_duration, self.scan_range[0], self.scan_range[1])
 
 
     @QtCore.Slot()
@@ -242,6 +243,7 @@ class CwaveLogic(GenericLogic):
             self.scanQueryTimer.stop()
             return 
         self.plot_y = self.scan_trace.getData().sum(axis=0) * (1/self.pix_integration) # to counts 
+
         self.scan_matrix = np.vstack((self.scan_matrix, self.plot_y))
         self.sigUpdateScanPlots.emit()
         self.scan_trace.clear()
@@ -266,7 +268,7 @@ class CwaveLogic(GenericLogic):
         if (self.scan_points.shape[0] > 0) and (not self.stopRequested):
             v = self.scan_points[0]
             v_hex = int(65535 * v / 100)
-            self._laser.set_int_value('x', v_hex)
+            self._cwavelaser.set_int_value('x', v_hex)
             self.scan_counter.clear()
             sleep(self.pix_integration)
             self.plot_y[self.number_of_bins - self.scan_points.shape[0]] = self.scan_counter.getData().sum()
@@ -274,6 +276,8 @@ class CwaveLogic(GenericLogic):
             self.scan_points = np.delete(self.scan_points, 0)
             print("self.scan_points", self.scan_points)
             self.sigUpdateScanPlots.emit()
+            self.sigUpdate.emit()
+            self.sigUpdatePanelPlots.emit()
             self.sigNextPixel.emit()
         else:
             #NEXT line
@@ -291,13 +295,13 @@ class CwaveLogic(GenericLogic):
 #! Laser control panel:
     @QtCore.Slot(str)
     def optimize_cwave(self, opt_command):
-        self._laser.set_command(opt_command)
+        self._cwavelaser.set_command(opt_command)
 
     @QtCore.Slot(str, bool)
     def change_shutter_state(self, shutter, state):
-        self._laser.shutters.update({shutter: state})
-        self._laser.set_shutters_states()
-        self.shutters = self._laser.shutters
+        self._cwavelaser.shutters.update({shutter: state})
+        self._cwavelaser.set_shutters_states()
+        self.shutters = self._cwavelaser.shutters
         self.sigUpdate.emit()
 
     @QtCore.Slot(str)
@@ -312,18 +316,18 @@ class CwaveLogic(GenericLogic):
     
     @QtCore.Slot()
     def update_cwave_states(self):
-        self._laser.get_shutters_states()
-        self._laser.get_laser_status()
-        self.shutters = self._laser.shutters
-        self.status_cwave = self._laser.status_cwave
+        self._cwavelaser.get_shutters_states()
+        self._cwavelaser.get_laser_status()
+        self.shutters = self._cwavelaser.shutters
+        self.status_cwave = self._cwavelaser.status_cwave
 
-        self.laserPD = self._laser.read_photodiode_laser()
-        self.opoPD = self._laser.read_photodiode_opo()
-        self.shgPD = self._laser.read_photodiode_shg()
+        self.laserPD = self._cwavelaser.read_photodiode_laser()
+        self.opoPD = self._cwavelaser.read_photodiode_opo()
+        self.shgPD = self._cwavelaser.read_photodiode_shg()
 
         self.wavelength = self._wavemeter.get_current_wavelength()
         if self.wavelength < 0:
-            self.wavelength = self._laser.get_wavelength()
+            self.wavelength = self._cwavelaser.get_wavelength()
 
         self.sigUpdate.emit()
 
@@ -337,17 +341,16 @@ class CwaveLogic(GenericLogic):
 
         self.plot_y_wlm = np.insert(self.plot_y_wlm, 0, self.wavelength)
         self.plot_y_wlm = np.delete(self.plot_y_wlm, -1)
-        
 
 
     @QtCore.Slot()
     def connection_cwave(self):
         """ Connect to the cwave """
         if self.cwstate == 0:
-            self._laser.connect()
+            self._cwavelaser.connect()
         else:
-            self._laser.disconnect()
-        self.cwstate = self._laser.cwstate
+            self._cwavelaser.disconnect()
+        self.cwstate = self._cwavelaser.cwstate
         print('CWAVE state:', self.cwstate)
         self.sigUpdate.emit()
 
