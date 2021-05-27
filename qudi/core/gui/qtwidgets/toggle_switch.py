@@ -93,6 +93,15 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         # Connect notifier signal
         self.clicked.connect(self._notify_state_change)
 
+        # set up the animation
+        self._slider_animation = QtCore.QPropertyAnimation(self, b'thumb_position', self)
+        self._slider_animation.finished.connect(self._finish_animation)
+
+    @QtCore.Slot()
+    def _finish_animation(self):
+        if self._thumb_position != self._thumb_end:
+            self.setChecked(self.isChecked())
+
     def _refresh_size_hint(self):
         metrics = QtGui.QFontMetrics(self.font())
         if self._display_text:
@@ -269,11 +278,10 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
         if event.button() == QtCore.Qt.LeftButton:
-            anim = QtCore.QPropertyAnimation(self, b'thumb_position', self)
-            anim.setDuration(200)
-            anim.setStartValue(self._thumb_position)
-            anim.setEndValue(self._thumb_end)
-            anim.start()
+            self._slider_animation.setDuration(200)
+            self._slider_animation.setStartValue(self._thumb_position)
+            self._slider_animation.setEndValue(self._thumb_end)
+            self._slider_animation.start()
 
     def enterEvent(self, event):
         self.setCursor(QtCore.Qt.PointingHandCursor)
