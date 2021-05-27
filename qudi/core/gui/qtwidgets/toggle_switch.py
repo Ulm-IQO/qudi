@@ -84,6 +84,15 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         )
         self.setMinimumSize(self._size_hint)
 
+        # set up the animation
+        self._slider_animation = QtCore.QPropertyAnimation(self, b'thumb_position', self)
+        self._slider_animation.finished.connect(self._finish_animation)
+
+    @QtCore.Slot()
+    def _finish_animation(self):
+        if self._thumb_position != self._thumb_end:
+            self.setChecked(self.isChecked())
+
     @property
     def current_state(self):
         return self._state_names[int(self.isChecked())] if self._state_names else None
@@ -174,11 +183,10 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
         if event.button() == QtCore.Qt.LeftButton:
-            anim = QtCore.QPropertyAnimation(self, b'thumb_position', self)
-            anim.setDuration(200)
-            anim.setStartValue(self._thumb_position)
-            anim.setEndValue(self._thumb_end)
-            anim.start()
+            self._slider_animation.setDuration(200)
+            self._slider_animation.setStartValue(self._thumb_position)
+            self._slider_animation.setEndValue(self._thumb_end)
+            self._slider_animation.start()
 
     def enterEvent(self, event):
         self.setCursor(QtCore.Qt.PointingHandCursor)
