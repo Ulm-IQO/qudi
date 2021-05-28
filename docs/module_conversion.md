@@ -144,3 +144,10 @@ def run_in_thread(thread_name='MyThread'):
 - ui-files created with the QTDesigner can contain promoted widgets that directly 
   link to qudi custom widgets. In this case the path to the custom widgets needs to be replaced.
   e.g. `qtwidgets.scientific_spinbox.h` becomes `qudi.core.gui.qtwidgets.scientific_spinbox`
+- On some Windows 10 system the following error might appear after installation of the new core:\
+`ImportError: DLL load failed while importing win32api: The specified module could not be found.`\
+  There is a bug report on that [here](https://github.com/jupyter/notebook/issues/4980). \
+  An estabilished workaround is to call the following in you new qudi environment. 
+  This is actually not a fix, but by upgrading the pywin32 package with pip 
+  you make sure that the PATH is set correctly independent of the buggy conda: \
+  `pip install –upgrade pywin32==225`
