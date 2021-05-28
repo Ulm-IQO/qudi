@@ -48,7 +48,6 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('qudi: <INSERT HARDWARE NAME>')
         # Create main layout and central widget
         self.main_layout = QtWidgets.QGridLayout()
-        self.main_layout.setColumnStretch(1, 1)
         widget = QtWidgets.QWidget()
         widget.setLayout(self.main_layout)
         self.setCentralWidget(widget)
@@ -206,10 +205,11 @@ class SwitchGui(GuiBase):
                                                        scale_text_in_switch=True,
                                                        text_inside_switch=True)
                 self._widgets[switch] = (label, switch_widget)
-                switch_widget.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                             QtWidgets.QSizePolicy.Preferred)
                 self._mw.main_layout.addWidget(self._widgets[switch][0], grid_pos[0], grid_pos[1])
                 self._mw.main_layout.addWidget(switch_widget, grid_pos[0], grid_pos[1] + 1)
+                self._mw.main_layout.setColumnStretch(grid_pos[1], 0)
                 self._mw.main_layout.setColumnStretch(grid_pos[1] + 1, 1)
                 switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
 
@@ -226,6 +226,7 @@ class SwitchGui(GuiBase):
         font.setPointSize(11)
         label.setFont(font)
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         return label
 
     def _delete_switches(self):
