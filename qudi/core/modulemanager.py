@@ -723,6 +723,8 @@ class ManagedModule(QtCore.QObject):
                                      ''.format(self._class, self._base, self._module))
                     self._instance = None
                     return False
+            self.__last_state = self.state
+            self.sigStateChanged.emit(self._base, self._name, self.__last_state)
             return True
 
     def _connect(self):
