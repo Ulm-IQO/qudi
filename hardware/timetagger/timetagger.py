@@ -38,13 +38,13 @@ class TT(Base):
             print(f"RUNNING CHANNEL {i} WITH TEST SIGNAL!")
             self.tagger.setTestSignal(i, True)
 
-        # set specified in the params.yaml channels params
-        for channel, params in self._channels_params.items():
-            channel = self.channel_codes[channel]
-            if 'delay' in params.keys():
-                self.delay_channel(delay=params['delay'], channel = channel)
-            if 'triggerLevel' in params.keys():
-                self.tagger.setTriggerLevel(channel, params['triggerLevel'])
+        # # set specified in the params.yaml channels params
+        # for channel, params in self._channels_params.items():
+        #     channel = self.channel_codes[channel]
+        #     if 'delay' in params.keys():
+        #         self.delay_channel(delay=params['delay'], channel = channel)
+        #     if 'triggerLevel' in params.keys():
+        #         self.tagger.setTriggerLevel(channel, params['triggerLevel'])
 
     def histogram(self, **kwargs):  
         """
