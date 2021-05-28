@@ -25,6 +25,7 @@ from PySide2 import QtWidgets, QtCore, QtGui
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.module import GuiBase
+from qudi.core.configoption import ConfigOption
 
 from .switch_state_widgets import SwitchRadioButtonWidget, ToggleSwitchWidget
 
@@ -47,7 +48,6 @@ class SwitchMainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('qudi: <INSERT HARDWARE NAME>')
         # Create main layout and central widget
         self.main_layout = QtWidgets.QGridLayout()
-        self.main_layout.setColumnStretch(1, 1)
         widget = QtWidgets.QWidget()
         widget.setLayout(self.main_layout)
         self.setCentralWidget(widget)
@@ -94,6 +94,9 @@ class SwitchGui(GuiBase):
 
     # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
+
+    # declare config options
+    _switch_row_num_max = ConfigOption(name='switch_row_num_max', default=None)
 
     # declare status variables
     _switch_style = StatusVar(name='switch_style',
@@ -178,18 +181,24 @@ class SwitchGui(GuiBase):
         self._widgets = dict()
         for ii, (switch, states) in enumerate(self.switchlogic().available_states.items()):
             label = self._get_switch_label(switch)
+
+            if self._switch_row_num_max is None:
+                grid_pos = [ii, 0]
+            else:
+                grid_pos = [int(ii % self._switch_row_num_max), int(ii / self._switch_row_num_max) * 2]
+
             if len(states) > 2 or self._switch_style == SwitchStyle.RADIO_BUTTON:
                 switch_widget = SwitchRadioButtonWidget(switch_states=states)
                 self._widgets[switch] = (label, switch_widget)
-                self._mw.main_layout.addWidget(self._widgets[switch][0], ii, 0)
-                self._mw.main_layout.addWidget(self._widgets[switch][1], ii, 1)
+                self._mw.main_layout.addWidget(self._widgets[switch][0], grid_pos[0], grid_pos[1])
+                self._mw.main_layout.addWidget(self._widgets[switch][1], grid_pos[0], grid_pos[1] + 1)
                 switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
             elif self._switch_style == SwitchStyle.TOGGLE_SWITCH:
                 if self._alt_toggle_switch_style:
                     switch_widget = ToggleSwitchWidget(switch_states=states,
                                                        thumb_track_ratio=1.35,
                                                        scale_text_in_switch=True,
-                                                       text_inside_switch=True)
+                                                       text_inside_switch=False)
                 else:
                     switch_widget = ToggleSwitchWidget(switch_states=states,
                                                        thumb_track_ratio=0.9,
@@ -198,8 +207,10 @@ class SwitchGui(GuiBase):
                 self._widgets[switch] = (label, switch_widget)
                 switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                             QtWidgets.QSizePolicy.Preferred)
-                self._mw.main_layout.addWidget(self._widgets[switch][0], ii, 0)
-                self._mw.main_layout.addWidget(switch_widget, ii, 1)
+                self._mw.main_layout.addWidget(self._widgets[switch][0], grid_pos[0], grid_pos[1])
+                self._mw.main_layout.addWidget(switch_widget, grid_pos[0], grid_pos[1] + 1)
+                self._mw.main_layout.setColumnStretch(grid_pos[1], 0)
+                self._mw.main_layout.setColumnStretch(grid_pos[1] + 1, 1)
                 switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
 
     @staticmethod
@@ -215,6 +226,7 @@ class SwitchGui(GuiBase):
         font.setPointSize(11)
         label.setFont(font)
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         return label
 
     def _delete_switches(self):
@@ -291,4 +303,5 @@ class SwitchGui(GuiBase):
     def __get_state_update_func(self, switch):
         def update_func(state):
             self.sigSwitchChanged.emit(switch, state)
+
         return update_func
