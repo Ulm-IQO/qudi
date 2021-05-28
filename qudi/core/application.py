@@ -306,14 +306,17 @@ class Qudi(QtCore.QObject):
                         if response in ('y', 'yes'):
                             break
                         elif response in ('', 'n', 'no'):
+                            self._shutting_down = False
                             return
                 else:
                     # GUI prompt
                     if restart:
                         if not self.gui.prompt_restart(locked_modules):
+                            self._shutting_down = False
                             return
                     else:
                         if not self.gui.prompt_shutdown(locked_modules):
+                            self._shutting_down = False
                             return
 
             QtCore.QCoreApplication.instance().processEvents()
