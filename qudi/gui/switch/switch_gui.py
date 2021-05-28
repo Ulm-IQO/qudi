@@ -23,7 +23,6 @@ from enum import IntEnum
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from qudi.core.connector import Connector
-from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.module import GuiBase
 
@@ -100,7 +99,6 @@ class SwitchGui(GuiBase):
     switchlogic = Connector(interface='SwitchLogic')
 
     # declare config options
-    _toggle_switch_scaling = ConfigOption(name='toggle_switch_scaling', default=1.)
     _switch_row_num_max = ConfigOption(name='switch_row_num_max', default=None)
 
     # declare status variables
@@ -198,13 +196,9 @@ class SwitchGui(GuiBase):
                 switch_widget.sigStateChanged.connect(self.__get_state_update_func(switch))
             elif self._switch_style == SwitchStyle.TOGGLE_SWITCH:
                 if self._alt_toggle_switch_style:
-                    switch_widget = ToggleSwitchWidget(switch_states=states,
-                                                       thumb_track_ratio=1.35,
-                                                       scaling=self._toggle_switch_scaling)
+                    switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=1.35)
                 else:
-                    switch_widget = ToggleSwitchWidget(switch_states=states,
-                                                       thumb_track_ratio=0.9,
-                                                       scaling=self._toggle_switch_scaling)
+                    switch_widget = ToggleSwitchWidget(switch_states=states, thumb_track_ratio=0.9)
                 self._widgets[switch] = (label, switch_widget)
                 switch_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
                                             QtWidgets.QSizePolicy.Fixed)
