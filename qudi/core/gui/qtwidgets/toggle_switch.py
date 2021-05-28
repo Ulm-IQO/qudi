@@ -29,7 +29,7 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
 
     """
 
-    def __init__(self, parent=None, off_state=None, on_state=None, thumb_track_ratio=1, scaling=1., max_font_size = 20):
+    def __init__(self, parent=None, off_state=None, on_state=None, thumb_track_ratio=1):
         assert off_state is None or isinstance(off_state, str), 'off_state must be str or None'
         assert on_state is None or isinstance(on_state, str), 'on_state must be str or None'
         super().__init__(parent=parent)
@@ -43,11 +43,11 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
         # Get default track height from QLineEdit sizeHint if thumb_track_ratio <= 1
         # If thumb_track_ratio > 1 the QLineEdit height will serve as thumb diameter
         if thumb_track_ratio > 1:
-            self._thumb_radius = int(round(QtWidgets.QLineEdit().sizeHint().height() / 2) * scaling)
+            self._thumb_radius = int(round(QtWidgets.QLineEdit().sizeHint().height() / 2))
             self._track_radius = max(1, int(round(self._thumb_radius / thumb_track_ratio)))
             self._text_font = QtWidgets.QLabel().font()
         else:
-            self._track_radius = int(round(QtWidgets.QLineEdit().sizeHint().height() / 2) * scaling)
+            self._track_radius = int(round(QtWidgets.QLineEdit().sizeHint().height() / 2))
             self._thumb_radius = max(1, int(round(self._track_radius * thumb_track_ratio)))
         self._track_margin = max(0, self._thumb_radius - self._track_radius)
         self._thumb_origin = max(self._thumb_radius, self._track_radius)
