@@ -99,8 +99,9 @@ class ToggleSwitch(QtWidgets.QAbstractButton):
 
     @QtCore.Slot()
     def _finish_animation(self):
-        if self._thumb_position != self._thumb_end:
-            self.setChecked(self.isChecked())
+        target_position = self._thumb_end
+        if self._thumb_position != target_position:
+            self.thumb_position = target_position
 
     def _refresh_size_hint(self):
         metrics = QtGui.QFontMetrics(self.font())
