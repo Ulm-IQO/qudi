@@ -1,6 +1,6 @@
 from qtpy import QtCore
-import sys
-
+import sys, os
+import numpy as np
 from core.connector import Connector
 from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
@@ -13,10 +13,11 @@ class TimeTaggerLogic(GenericLogic):
     timetagger = Connector(interface='TT')
     savelogic = Connector(interface='SaveLogic')
 
+    queryInterval = ConfigOption('query_interval', 500)
     
     sigUpdate = QtCore.Signal()
     sigNewMeasurement = QtCore.Signal()
-    sigHistRefresh = QtCore.Signal()
+    sigHistRefresh = QtCore.Signal(float)
     sigUpdateGuiParams=QtCore.Signal()
     def __init__(self, **kwargs):
         """ Create CwaveScannerLogic object with connectors.
@@ -45,8 +46,10 @@ class TimeTaggerLogic(GenericLogic):
 
         self.sigNewMeasurement.connect(self.new_measurement)
         self.sigHistRefresh.connect(self.set_hist_refresh_time)
+        self.counter_params = self._timetagger._counter
+        self.hist_params = self._timetagger._hist
+        self.corr_params  = self._timetagger._corr
         
-        self.init_plot_params()
         self.init_plots()
 
         # delay timer for querying laser
@@ -55,7 +58,7 @@ class TimeTaggerLogic(GenericLogic):
         self.queryTimer.setSingleShot(True)
         self.queryTimer.timeout.connect(self.loop_body, QtCore.Qt.QueuedConnection)     
         self.queryTimer.start(self.queryInterval)
-        self.set_hist_refresh_time.emit(self.refresh_time)
+        self.sigHistRefresh.emit(self.refresh_time)
         
 
         self.sigUpdate.emit()
@@ -78,37 +81,39 @@ class TimeTaggerLogic(GenericLogic):
 
     @QtCore.Slot()
     def init_plots(self):
-        self.time_counter = np.linspace(0, self.counter_params['number_of_bins']*self.counter_params['bins_width']/1000, self.counter_params['number_of_bins'])
+        self.time_counter = np.linspace(0, self.counter_params['n_values']*self.counter_params['bins_width']/1000, self.counter_params['n_values'])
         self.time_hist = np.linspace(0, self.hist_params['number_of_bins']*self.hist_params['bins_width']/1000, self.hist_params['number_of_bins'])
         self.time_corr = np.linspace(0, self.corr_params['number_of_bins']*self.corr_params['bins_width']/1000, self.corr_params['number_of_bins'])
 
-        self.hist_tt = self._timetagger.histogram(self.hist_params)
-        self.corr_tt = self._timetagger.correlation(self.corr_params)
-        self.counter_tt = self._timetagger.counter(self.counter_params)
+        self.hist_tt = self._timetagger.histogram(**self.hist_params)
+        self.corr_tt = self._timetagger.correlation(**self.corr_params)
+        self.counter_tt = self._timetagger.counter(**self.counter_params)
 
 
     @QtCore.Slot()
     def load_params(self):
-        with open("params.yaml", 'r') as param_file:
-            try:
-                self.tt_params = yaml.safe_load(param_file)
-            except yaml.YAMLError as exc:
-                print(exc)
-        for key in self.tt_params:
-            setattr(self, f"{key}_params", self.tt_params[key])
+        dir_ = os.path.dirname(sys.argv[0])
+        # with open(os.path.join(dir_, "params.yaml"), 'r') as param_file:
+        #     try:
+        #         self.tt_params = yaml.safe_load(param_file)
+        #     except yaml.YAMLError as exc:
+        #         print(exc)
+        # for key in self.tt_params:
+        #     setattr(self, f"{key}_params", self.tt_params[key])
         self.sigNewMeasurement.emit()
         self.sigUpdateGuiParams.emit()
 
     @QtCore.Slot()
     def save_params(self):
-        with open("params.yaml", 'w') as param_file:
-            for key in self.tt_params:
-                key = key.split("_params")[0]
-                self.tt_params[key] = getattr(self, key, 0)
-            try:
-                yaml.dump(self.tt_params, param_file)
-            except yaml.YAMLError as exc:
-                print(exc)        
+        dir_ = os.path.dirname(sys.argv[0])
+        # with open(os.path.join(dir_, "params.yaml"), 'w') as param_file:
+        #     # for key in self.tt_params:
+        #         key = key.split("_params")[0]
+        #         self.tt_params[key] = getattr(self, key, 0)
+        #     try:
+        #         yaml.dump(self.tt_params, param_file)
+        #     except yaml.YAMLError as exc:
+        #         print(exc)        
 
     @QtCore.Slot(int)
     def change_hist_channel(self, channel):
@@ -118,14 +123,21 @@ class TimeTaggerLogic(GenericLogic):
     # @thread_safety
     @QtCore.Slot()
     def loop_body(self):
+        self.queryTimer.start(self.queryInterval)
         self.sigUpdate.emit()
 
     @QtCore.Slot()
     def refresh_hist_loop(self):
-        self.hist_tt.clear()
+        pass
+        # self.hist_tt.clear()
 
     @QtCore.Slot()
     def new_measurement(self):
         self.init_plots()
         self.sigUpdate.emit()
-
+    
+    @QtCore.Slot(str, int, int)
+    def update_params(self, attr, num, width):
+        getattr(self, f'{attr}_params')['number_of_bins'] = num
+        getattr(self, f'{attr}_params')['bins_width'] = width
+        self.new_measurement()

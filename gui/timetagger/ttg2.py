@@ -40,7 +40,7 @@ class TTGui(GUIBase):
     timetaggerlogic = Connector(interface='TimeTaggerLogic')
     savelogic = Connector(interface='SaveLogic')
 
-    sigStopScan = QtCore.Signal()
+    sigUpdatePlotParams = QtCore.Signal(str, int, int)
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -57,9 +57,8 @@ class TTGui(GUIBase):
         self._timetaggerlogic = self.timetaggerlogic()
 
         self._savelogic = self.savelogic()
-
-        # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the
-        # GUI element:
+        self._timetaggerlogic.sigUpdate.connect(self.update_plots)
+        self.sigUpdatePlotParams.connect(self._timetaggerlogic.update_params)
         self.currentChan = 1
         self.binWidth = 100
         self.numBins = 1000
@@ -79,7 +78,7 @@ class TTGui(GUIBase):
         self._mw = TTWindow()
         self.init_connections_ui()
         self.init_params_ui()
-        self.init_hists()
+        self._timetaggerlogic.init_plots()
         # Add save file tag input box
         self.setup_plots()
         
@@ -87,6 +86,10 @@ class TTGui(GUIBase):
     def setup_plots(self):
         self.font = QtGui.QFont()
         self.font.setPixelSize(20)
+        self.p0 = self._mw.widget_counter.addPlot()
+        self.p0 = self.plot_curve(self.p0, return_p=True)
+        self.curve_counter = self.p0.plot()
+
         self.trig_len=150   # in ns
         self.p1 = self._mw.widget_hist.addPlot()
         self.p1 = self.plot_curve(self.p1, return_p=True)
@@ -120,10 +123,10 @@ class TTGui(GUIBase):
 
     def init_params_ui(self):
         self._mw.refreshTextField.setText(str(self.refreshTime))
-        self._mw.binsTextField.setText(str(self.numBins))
-        self._mw.binsWidthTextField.setText(str(self.binWidth))
-        self._mw.delayTextField.setText(str(self.delayTimes[self.currentChan-1]))
-        self._mw.tabWidget_1.setCurrentIndex(0)
+        self._mw.number_of_bins_ttTextField.setText(str(self.numBins))
+        self._mw.bins_width_ttTextField.setText(str(self.binWidth))
+        self._mw.delay_TextField.setText(str(self.delayTimes[self.currentChan-1]))
+        self._mw.tabsWidget.setCurrentIndex(0)
 
     def init_connections_ui(self):
 
@@ -134,38 +137,38 @@ class TTGui(GUIBase):
 
 
         # SET BINS
-        self._mw.binsTextField.returnPressed.connect(self.setBins)
-        self._mw.binsWidthTextField.returnPressed.connect(self.setBins)
+        self._mw.bins_width_ttTextField.returnPressed.connect(self.setBins)
+        self._mw.number_of_bins_ttTextField.returnPressed.connect(self.setBins)
         # SET REFRESH TIME
         self._mw.refreshTextField.returnPressed.connect(self.setRefreshTime)
 
         # SET DELAY TIME
-        self._mw.delayTextField.returnPressed.connect(self.delayTime)
+        self._mw.delay_TextField.returnPressed.connect(self.delayTime)
 
         # DUMP DATA
-        self._mw.saveToggle.toggled.connect(self.dumpData)
-        self._mw.actionNew_cooldown.triggered.connect(self.new_cooldown)
+        # self._mw.saveDumpCheckBox.toggled.connect(self.dumpData)
+        # self._mw.actionNew_cooldown.triggered.connect(self.new_cooldown)
 
         # SELECT CHANNEL1
-        self._mw.chSelect.setCurrentIndex(self.currentChan - 1)
-        self._mw.chSelect.currentTextChanged.connect(self.setChannel)
+        self._mw.hist_channel_ComboBox.setCurrentIndex(self.currentChan - 1)
+        self._mw.hist_channel_ComboBox.currentTextChanged.connect(self.setChannel)
         # NEW MEASUREMENT
-        self._mw.button.clicked.connect(self.newMeasurement)
+        self._mw.new_measurement_PushButton.clicked.connect(self.newMeasurement)
 
         # FREEZE
-        self._mw.freeze.clicked.connect(self.switch)
+        self._mw.freeze_PushButton.clicked.connect(self.switch)
         self.freeze = False
         self.lr42.sigRegionChanged.connect(self.regionChanged42)
         self.lr41.sigRegionChanged.connect(self.regionChanged41)
 
-        # SAVE PARAMS
-        self._mw.saveButt.clicked.connect(self.save_Params)
+        # # SAVE PARAMS
+        # self._mw.saveButt.clicked.connect(self.save_Params)
 
-        #LOAD PARAMS
-        self._mw.loadButt.clicked.connect(self.load_Params)
+        # #LOAD PARAMS
+        # self._mw.loadButt.clicked.connect(self.load_Params)
 
         # PLOT DATA
-        self._mw.saveFig.clicked.connect(self.saveFigure)
+        # self._mw.saveFig.clicked.connect(self.saveFigure)
 
     
     def regionChanged41(self):
@@ -194,15 +197,20 @@ class TTGui(GUIBase):
         self.freeze = not self.freeze
 
     def setBins(self):
-        self.numBins = int(self._mw.binsTextField.text())
-        self.binWidth = int(self._mw.binsWidthTextField.text())
+        self.numBins = int(self._mw.number_of_bins_ttTextField.text())
+        self.binWidth = int(self._mw.bins_width_ttTextField.text())
+        self.update_plot_params(self.numBins, self.binWidth)
         print(f"Number of bins: {self.numBins}\tbin width:{self.binWidth}")
 
 
     def setCounterBins(self):
-        self.numBinsCounter = int(self._mw.binsCounterTextField.text())
-        self.binWidthCounter = int(self._mw.binsWidthCounterTextField.text())
+        self.numBinsCounter = int(self._mw.number_of_bins_ttTextField.text())
+        self.binWidthCounter = int(self._mw.bins_width_ttTextField.text())
         print(f"Number of bins: {self.numBinsCounter}\tbin width:{self.binWidthCounter}")
+
+
+    def newMeasurement(self):
+        self._timetaggerlogic.new_measurement()
 
     def setChannel(self):
         ch = self.sender()
@@ -212,10 +220,52 @@ class TTGui(GUIBase):
             print(self.currentChan)
             self.newMeasurement()
             return
-        print("setChannel1", self._mw.chSelect.currentIndex() + 1)
-        self.currentChan = self._mw.chSelect.currentIndex() + 1
+        print("setChannel1", self._mw.hist_channel_ComboBox.currentIndex() + 1)
+        self.currentChan = self._mw.hist_channel_ComboBox.currentIndex() + 1
         self.newMeasurement()
 
 
+    def update_plots(self):
+        # t = np.linspace(0, self.numBins*self.binWidth/1000, self.numBins)
+        
+        def plot_counter():
+            self.curve_counter.setData(self._timetaggerlogic.time_counter, self._timetaggerlogic.counter_tt.getData()[1])
 
+        def plot_histog():
+            self.curve_hist.setData(self._timetaggerlogic.time_hist, self._timetaggerlogic.hist_tt.getData())
 
+        def plot_correlation():
+            self.curve_corr.setData(self._timetaggerlogic.corr_tt.getData())
+
+        def plot_freeze():
+            if self.freeze:
+                self.curve_freeze_1.setData(self._timetaggerlogic.time_hist, self._timetaggerlogic.hist_tt.getData())
+            else:
+                self.curve_freeze_2.setData(self._timetaggerlogic.time_hist, self._timetaggerlogic.hist_tt.getData())
+                
+
+        #TODO: plot depending on what tab is open
+        graphs = [plot_counter, plot_histog, plot_correlation, plot_freeze]
+        graphs[self._mw.tabsWidget.currentIndex()]()
+
+        # if self.m_ui.saveToggle.isChecked():
+        #     if self.loop_dump // 20 == 1:
+        #         try:
+        #             if self.dump.isRunning():
+        #                 self.m_ui.dumpSize.setText(f"{round(getsize(self.dumpPath)/1024**2)} MB")
+        #         except AttributeError:
+        #             print("No Dump yet!")
+        #         self.loop_dump = 0
+        #     self.loop_dump+=1
+
+        
+
+        # if self.refreshTime > 0:
+        #     if self.loop_refresh[0] // (20*self.refreshTime)  == 1:
+        #         self.hist.clear()
+        #         self.loop_refresh[0] = 0
+        #     self.loop_refresh[0]+=1
+    def update_plot_params(self, number_of_bins, bin_width):
+        ind = self._mw.tabsWidget.currentIndex()
+        attr = ["counter", "hist", "corr", "hist"][ind]
+        self.sigUpdatePlotParams.emit(attr, number_of_bins, bin_width)
