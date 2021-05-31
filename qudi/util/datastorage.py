@@ -439,7 +439,7 @@ class TextDataStorage(DataStorageBase):
     # __float_regex = re.compile(r'\A[+-]?\d+.\d+([eE][+-]?\d+)?\Z')
 
     # Default format specifiers for all dtypes
-    _default_fmt_for_type = {int: '%d', float: '%.15e', complex: '%r', str: '%s'}
+    _default_fmt_for_type = {int: 'd', float: '.15e', complex: 'r', str: 's'}
 
     def __init__(self, *, root_dir, comments='# ', delimiter='\t', file_extension='.dat',
                  column_formats=None, **kwargs):
@@ -564,28 +564,27 @@ class TextDataStorage(DataStorageBase):
         first_row = data if is_1d else data[0]
         number_of_columns = len(first_row)
         if not self.column_formats:
-            row_fmt_str = self.delimiter.join(
-                [self._default_fmt_for_type[_value_to_dtype(val)] for val in first_row]
-            ) + '\n'
+            column_formats = [self._default_fmt_for_type[_value_to_dtype(val)] for val in first_row]
         elif isinstance(self.column_formats, str):
-            row_fmt_str = self.delimiter.join([self.column_formats] * number_of_columns) + '\n'
+            column_formats = [self.column_formats] * number_of_columns
         elif len(self.column_formats) != number_of_columns:
             raise ValueError(
                 'column_formats sequence has not the same length as number of data columns.'
             )
         else:
-            row_fmt_str = self.delimiter.join(self.column_formats) + '\n'
+            column_formats = self.column_formats
+        row_fmt_str = self.delimiter.join(f'{{:{fmt}}}' for fmt in column_formats) + '\n'
 
         # Append data to file
         with open(file_path, 'a') as file:
             # Write data row-by-row
             if is_1d:
-                file.write(row_fmt_str % tuple(data))
+                file.write(row_fmt_str.format(*data))
                 rows_written = 1
             else:
                 rows_written = 0
                 for data_row in data:
-                    file.write(row_fmt_str % tuple(data_row))
+                    file.write(row_fmt_str.format(*data_row))
                     rows_written += 1
         return rows_written, number_of_columns
 

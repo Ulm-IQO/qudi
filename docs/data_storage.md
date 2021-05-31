@@ -12,7 +12,8 @@ There may be more supported storage formats in the future (e.g. database storage
 so you might want to check `qudi.util.datastorage` for any objects not listed in this 
 documentation.  
 All these objects are derived from the abstract base class `qudi.util.datastorage.DataStorageBase` 
-which is defining a generalized API for all storage classes.  
+which is very loosely defining a generalized API for all storage classes and handles global 
+metadata.  
 If you want to implement a new storage format class, it must inherit this base class.
 
 The most important API methods that each specialized sub-class must implement are:
@@ -34,10 +35,7 @@ Before you can start saving or loading data arrays with the methods mentioned ab
 instantiate and configure the storage object appropriately.
 Each specialized storage object can provide an entirely different set of parameters to initialize.
 You can look up configuration options for a specific storage object in the `__init__` method doc 
-string of the respective class.  
-All configuration parameters present in the `__init__` of the storage class should also be 
-accessible through as instance attributes or properties (setters and getters) to read and alter 
-them dynamically after the instance has been created.
+string of the respective class.
 
 So the first step before loading and saving data arrays is always to create an instance of the 
 desired storage object. 
@@ -50,25 +48,29 @@ from qudi.util.datastorage import TextDataStorage, ImageFormat
 
 # Instantiate text storage object and configure it
 data_storage = TextDataStorage(root_dir='C:\\Data\\MyMeasurementCategory',
-                               number_format='%.18e',
                                comments='# ', 
                                delimiter='\t',
                                file_extension='.dat',
+                               column_formats=('.8f', '.15e'),
+                               include_global_metadata=True,
                                image_format=ImageFormat.PNG)
 ```
 
 Let's go through the parameters one-by-one:
 - `root_dir`:
   The root or working directory for the storage class to work in. Files will be saved into this dir.
-- `number_format`:
-  Numpy style format string used to convert the values to text. Can also provide iterable of strings
-  for each column.
 - `comments`:
   String used at the start of lines in the text file to identify them as comment lines.
 - `delimiter`:
-  Delimiter string used to separate columns.
+  Delimiter string used to separate data columns. Must be non-empty.
 - `file_extension`:
   The default file extension to use for new data files. Used if not explicit file name is provided
+- `column_formats`:
+  Sequence of format specifiers for each column or a single specifier for all columns. If `None` 
+  (default) the column format is derived from the first data row. 
+  See also [format specification mini-language](https://docs.python.org/3/library/string.html#formatspec)
+- `include_global_metadata`:
+  Flag indicating if global metadata should be automatically included when saving data.
 - `image_format`:
   The image format used to save matplotlib figures to file using storage method `save_thumbnail`.
 
@@ -80,7 +82,7 @@ For your convenience each qudi module (GUI, logic or hardware) has an attribute
 `module_default_data_dir` containing a standardized generic data directory. This directory respects 
 the global config options `default_data_dir` and `daily_data_dirs` and adds a module-specific 
 sub-directory. If applicable, you should always use this attribute to set `root_dir` in storage 
-objects.  
+objects used by a qudi logic module.  
 By default this path resolves to: 
 `<user home>/qudi/Data/<YYYY>/<MM>/<YYYYMMDD>/<configured module name>`
 
@@ -90,6 +92,9 @@ accessible from outside the module.
 By default all file based data is stored in daily sub-directories of the qudi data directory 
 (default is `<user_home>/qudi/Data/` but it can be changed via global config parameter 
 `default_data_dir`).
+
+Standalone scripts that use the qudi data storage objects obviously do not need to follow any 
+convention and can customize `root_dir` however they like.
 
 
 ## Saving data
@@ -126,11 +131,12 @@ notes = 'This measurement was performed under the influence of 10 mugs of coffee
 
 # Save data to file
 file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
+                                                               timestamp=timestamp, 
                                                                metadata=metadata, 
                                                                notes=notes,
                                                                nametag=nametag,
-                                                               timestamp=timestamp, 
-                                                               column_headers=column_headers)
+                                                               column_headers=column_headers,
+                                                               column_dtypes=(float, float))
 ```
 
 This will save the data to a file with a generic filename constructed from nametag and timestamp.
@@ -139,10 +145,10 @@ content:
 
 ```
 # [General]
-# disclaimer='Saved Data on 06.05.2021 at 11h11m11s'
-# dtype=float64
+# timestamp=2021-05-06T11:11:11
 # comments='# '
 # delimiter='\t'
+# column_dtypes=float;;float
 # column_headers='time (s);;amplitude (V)'
 # notes='This measurement was performed under the influence of 10 mugs of coffee and no sleep.'
 # 
@@ -151,16 +157,20 @@ content:
 # batch='xyz-123'
 # 
 # ---- END HEADER ----
-0.000000000000000000e+00	0.000000000000000000e+00
-1.001001001001000992e-03	1.257861783874105778e-02
-2.002002002002001985e-03	2.515524538937584723e-02
+0.00000000	0.000000000000000e+00
+0.00100100	1.257861783874106e-02
+0.00200200	2.515524538937585e-02
 ⋮ 				⋮
 ```
 
 **NOTE**: metadata keys must be str type and not contain leading or trailing whitespaces as well as 
 avoid the pattern `'[...]'`.  
 **NOTE**: metadata values must be representable and reconstructable via `repr` and `eval`, i.e. 
-`value == eval(repr(value))`.
+`value == eval(repr(value))`.  
+**NOTE**: If column dtypes are explicitly given (as in the example), they must be one of `int`, 
+`float`, `complex` or `str`. This will become important when loading back mixed data from disk.
+If `column_dtypes` is `None` (default) the dtypes will be automatically derived from the first data 
+row.
 
 Alternatively it is also possible to specify the filename directly instead of relying on the 
 generic construction from nametag and timestamp:
@@ -168,9 +178,11 @@ generic construction from nametag and timestamp:
 ```Python
 # Save data to file
 file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
+                                                               timestamp=timestamp,
                                                                metadata=metadata,
-                                                               timestamp=timestamp, 
+                                                               notes=notes,
                                                                column_headers=column_headers, 
+                                                               column_dtypes=(float, float),
                                                                filename='my_custom_filename.abc')
 ```
 
@@ -267,6 +279,15 @@ data_storage.remove_global_metadata('user')
 data_storage.remove_global_metadata(['user', 'frustration_level'])
 ```
 
+### Reading global metadata
+You can get a _shallow_ copy of the global metadata dict via:
+```Python
+metadata = data_storage.get_global_metadata()
+```
+Since the returned dict is only a shallow copy of the actual global metadata dict one must avoid 
+to mutate any of the values unless you are **very** sure what you are doing.
+
+
 ## Logging Data
 Another common use-case instead of dumping an entire data set at once is saving one chunk of data 
 (or a single entry) at a time by appending to an already created file / database. This could for 
@@ -286,12 +307,12 @@ The created file can then be appended by single or multiple rows of data using `
 An example:
 ```Python
 # Create data file with the same variables as in the save_data example above
-file_path, timestamp = data_storage.new_file(metadata=metadata,
+file_path, timestamp = data_storage.new_file(timestamp=timestamp,
+                                             metadata=metadata,
                                              notes=notes,
                                              nametag=nametag,
-                                             timestamp=timestamp,
                                              column_headers=column_headers,
-                                             dtype=np.dtype('float'))
+                                             column_dtypes=(float, float))
 
 # Append each row of the previously created data array one after the other
 for data_row in data:
@@ -307,14 +328,6 @@ will have the overhead of opening and closing a file handle.
 If you are after high-frequency data logging, consider buffering data for a while and writing it 
 out in chunks or implement a specialized data storage subclassing of `TextDataStorage` or 
 `DataStorageBase`.
-
-### Reading global metadata
-You can get a _shallow_ copy of the global metadata dict via:
-```Python
-metadata = data_storage.get_global_metadata()
-```
-Since the returned dict is only a shallow copy of the actual global metadata dict one must avoid 
-to mutate any of the values unless you are **very** sure what you are doing.
 
 
 ## Thread-Safety
