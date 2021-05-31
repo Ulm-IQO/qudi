@@ -121,6 +121,7 @@ class MotorStagePI(Base, MotorInterface):
             resource_name=self._com_port_pi_xyz,
             baud_rate=self._pi_xyz_baud_rate,
             timeout=self._pi_xyz_timeout)
+            #read_termination=b'\x03')
 
         return 0
 
@@ -227,6 +228,24 @@ class MotorStagePI(Base, MotorInterface):
         #return pos
         return param_dict
 
+    def wait_on_condition(self, condition_str, dt_s=0.2, timeout_s=-1):
+
+        timed_out = False
+        t = 0
+        t_start = time.perf_counter()
+        while not eval(condition_str):
+
+            t = time.perf_counter() - t_start
+            if timeout_s >= 0 and t > timeout_s:
+                timed_out = True
+                break
+            time.sleep(dt_s)
+            self.log.debug(f"Waiting for {condition_str}")
+
+        if timed_out:
+            self.log.warning(f"Timed out after {t} s waiting for {condition_str}")
+
+
     def move_abs(self, param_dict):
         """Moves stage to absolute position
 
@@ -246,9 +265,11 @@ class MotorStagePI(Base, MotorInterface):
                 for axis_label in param_dict:
                     move = param_dict[axis_label]
                     self._do_move_abs(axis_label, move)
-                while not self._motor_stopped():
-                    time.sleep(0.02)
 
+                timeout_ms = float(self._pi_xyz_timeout)
+
+                self.wait_on_condition("self._motor_stopped()", dt_s=0.02,
+                                       timeout_s=timeout_ms/1000.)
             except:
                 self.log.warning('Motor connection problem! Try again...')
             else:
@@ -295,13 +316,15 @@ class MotorStagePI(Base, MotorInterface):
         # unfortunately, probably due to connection problems this specific command sometimes failing
         # although it should run.... therefore some retries are added
 
+        self.log.debug("Trying to get pos")
+
         try:
             if param_list is not None:
                 for axis_label in param_list:
                     for attempt in range(5):
                         # self.log.debug(attempt)
                         try:
-                            pos = int(self._ask_xyz(axis_label,'TT').split(":",1)[1])
+                            pos = int(self._ask_xyz(axis_label,'TT', nchunks=3).split(":",1)[1])  # expect 18 bytes
                             param_dict[axis_label] = pos * 1e-7
                         except:
                             continue
@@ -313,12 +336,15 @@ class MotorStagePI(Base, MotorInterface):
                         #self.log.debug(attempt)
                         try:
                             #pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                            pos = int(self._ask_xyz(axis_label, 'TT').split(":",1)[1])
+                            pos = int(self._ask_xyz(axis_label, 'TT', nchunks=3).split(":",1)[1])
                             param_dict[axis_label] = pos * 1e-7
                         except:
                             continue
                         else:
                             break
+
+            self.log.debug(f"Pos {param_dict}")
+
             return param_dict
         except:
             self.log.error('Could not find current xyz motor position')
@@ -344,12 +370,19 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    status = self._ask_xyz(axis_label,'TS').split(":",1)[1]
+                    status = self._ask_xyz(axis_label,'TS', nchunks=3).split(":",1)[1]
                     param_dict[axis_label] = status
+
+                    self.log.debug(f"return code in movevement: {status}")
+                    self.log.debug(f"Updating status dict: {param_dict}")
             else:
                 for axis_label in constraints:
-                    status = self._ask_xyz(axis_label, 'TS').split(":",1)[1]
+                    status = self._ask_xyz(axis_label, 'TS', nchunks=3).split(":",1)[1]
                     param_dict[axis_label] = status
+
+                    self.log.debug(f"return code in movevement: {status}")
+                    self.log.debug(f"Updating status dict: {param_dict}")
+
             return param_dict
         except:
             self.log.error('Status request unsuccessful')
@@ -407,11 +440,11 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    vel = int(self._ask_xyz(axis_label, 'TY').split(":",1)[1])
+                    vel = int(self._ask_úxyz(axis_label, 'TY', nchunks=3).split(":",1)[1]) # expect 17 bytes
                     param_dict[axis_label] = vel * 1e-7
             else:
                 for axis_label in constraints:
-                    vel = int(self._ask_xyz(axis_label, 'TY').split(":",1)[1])
+                    vel = int(self._ask_xyz(axis_label, 'TY', nchunks=3).split(":",1)[1])
                     param_dict[axis_label] = vel * 1e-7
             return param_dict
         except:
@@ -472,16 +505,63 @@ class MotorStagePI(Base, MotorInterface):
         @return answer string: answer of motor
         """
 
-        still_reading = True
-        answer=''
-        while still_reading:
+        finished_reading = False
+        timed_out = False
+        answer = ''
+
+        timeout_ms = float(self._pi_xyz_timeout)
+
+        t = 0
+        timeout_s = float(timeout_ms) / 1000
+        t_start = time.perf_counter()
+
+        while not finished_reading and not timed_out:
+
+            self.log.debug(f"[{t} s] Fetching serial answer. So far: {answer}")
+            t = time.perf_counter() - t_start
+            if timeout_s >= 0 and t > timeout_s:
+                timed_out = True
+                break
             try:
                 answer = answer + self._serial_connection_xyz.read()[:-1]
             except:
-                still_reading = False
+                finished_reading = True
+                self.log.debug("Done.")
+
+        if timed_out:
+            self.log.warning(f"Timed out after {t} s while serial read")
+
         return answer
 
-    def _ask_xyz(self,axis,question):
+    def _ask_xyz_OLD(self, axis, question, nbytes=18):
+
+        constraints = self.get_constraints()
+        self.log.debug(f"Asking {constraints[axis]['ID']+question} for {nbytes} bytes...")
+        self._serial_connection_xyz.write(str(constraints[axis]['ID']) + question + '\n')
+        time.sleep(0.02)
+        raw_ret = self._serial_connection_xyz.read_bytes(nbytes).decode('unicode_escape')
+
+        return raw_ret.replace("\r", "").replace("\n","")
+
+    def _ask_xyz(self, axis, question, nchunks=1):
+
+        constraints = self.get_constraints()
+        self.log.debug(f"Asking {constraints[axis]['ID']+question} for {nchunks} chunks...")
+        self._serial_connection_xyz.write(str(constraints[axis]['ID']) + question + '\n')
+
+        str_ret = ""
+
+        for i in range(nchunks):
+            raw_ret = self._serial_connection_xyz.read()
+            str_ret += str(raw_ret).replace("\r", "").replace("\n", "")
+            self.log.debug(f"Chunk {i}: {str_ret}")
+
+        self.log.debug(f"Finished response: {str_ret}")
+
+        return str_ret
+
+
+    def _ask_xyz_OLD(self,axis,question):
         """this method combines writing a command and reading the answer
         @param axis string: name of the axis that should be asked
 
@@ -490,7 +570,9 @@ class MotorStagePI(Base, MotorInterface):
         @return answer string: answer of motor
         """
         constraints = self.get_constraints()
+        self.log.debug(f"Asking {constraints[axis]['ID']+question} ...")
         self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
+        self.log.debug("Done. Reading...")
         answer=self._read_answer_xyz()
         return answer
 
@@ -538,7 +620,6 @@ class MotorStagePI(Base, MotorInterface):
         return axis, move
 
 
-
     def _in_movement_xyz(self):
         """this method checks if the magnet is still moving and returns
         a dictionary which of the axis are moving.
@@ -549,8 +630,13 @@ class MotorStagePI(Base, MotorInterface):
         constraints=self.get_constraints()
         param_dict = {}
         for axis_label in constraints:
-            tmp0 = int(self._ask_xyz(constraints[axis_label]['label'],'TS')[8:])
+            try:
+                tmp0 = int(self._ask_xyz(constraints[axis_label]['label'],'TS', nchunks=3)[8:])
+            except Exception as e:
+                self.log.exception("Failed: ")
+            self.log.debug(f"return code in movevement: {tmp0}")
             param_dict[axis_label] = tmp0%2
+            self.log.debug(f"Updating movement dict: {param_dict}")
 
         return param_dict
 
@@ -564,7 +650,7 @@ class MotorStagePI(Base, MotorInterface):
         stopped=True
         for axis_label in param_dict:
             if param_dict[axis_label] != 0:
-                self.log.info(axis_label + ' is moving')
+                self.log.debug(axis_label + ' is moving')
                 stopped=False
         return stopped
 

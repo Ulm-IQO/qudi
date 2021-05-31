@@ -64,7 +64,10 @@ class MagnetLogic(GenericLogic):
     ---
     """
 
-    # declare connectors
+    _modclass = 'MagnetLogic'
+    _modtype = 'logic'
+
+    ## declare connectors
     magnetstage = Connector(interface='MagnetInterface')
     optimizerlogic = Connector(interface='OptimizerLogic')
     counterlogic = Connector(interface='CounterLogic')
@@ -798,8 +801,9 @@ class MagnetLogic(GenericLogic):
         self._magnet_device.move_abs(move_dict_abs)
         # self.move_rel(move_dict_rel)
         while self._check_is_moving():
-            time.sleep(self._checktime)
             self.log.debug("Went into while loop in _move_to_curr_pathway_index")
+            self.log.debug(f"Waiting for {self._checktime}")
+            time.sleep(self._checktime)
 
         # this function will return to this function if position is reached:
         start_pos = self._saved_pos_before_align
@@ -879,10 +883,12 @@ class MagnetLogic(GenericLogic):
             # commenting this out for now, because it is kind of useless for us
             # self.set_velocity(move_dict_vel)
             self._magnet_device.move_abs(move_dict_abs)
+            self.log.debug(f"Returning from move command: {move_dict_abs}")
 
             while self._check_is_moving():
-                time.sleep(self._checktime)
                 self.log.debug("Went into while loop in stepwise_loop_body")
+                time.sleep(self._checktime)
+
 
             self.log.debug("stepwise_loop_body reports magnet moving ? {0}".format(self._check_is_moving()))
 
@@ -894,6 +900,7 @@ class MagnetLogic(GenericLogic):
                 end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
             # rerun this loop again
+            self.log.debug("Emit for next step")
             self._sigStepwiseAlignmentNext.emit()
 
         else:
@@ -1049,7 +1056,7 @@ class MagnetLogic(GenericLogic):
     def _do_premeasurement_proc(self):
         # do a selected pre measurement procedure, like e.g. optimize position.
 
-
+        self.log.debug("Starting pre-measurement procedure")
         # first attempt of an optimizer usage:
         # Trying to implement that a user can adjust the frequency
         # at which he wants to refocus.
