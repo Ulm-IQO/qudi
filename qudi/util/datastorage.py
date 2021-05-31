@@ -555,7 +555,6 @@ class TextDataStorage(DataStorageBase):
         # Determine data dimension
         try:
             is_1d = _is_1d_array(data)
-            print(is_1d, data)
         except ValueError:
             # Data array is empty
             return
