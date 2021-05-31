@@ -45,7 +45,7 @@ class NIXSeriesInStreamer(DataInStreamInterface):
     Example config for copy-paste:
 
     nicard_6343_instreamer:
-        module.Class: 'ni_x_series_in_streamer.NIXSeriesInStreamer'
+        module.Class: 'ni_x_series.ni_x_series_in_streamer.NIXSeriesInStreamer'
         device_name: 'Dev1'
         digital_sources:  # optional
             - 'PFI15'
@@ -1090,6 +1090,8 @@ class NIXSeriesInStreamer(DataInStreamInterface):
             except ni.DaqError:
                 self.log.exception('Error while trying to terminate digital counter task.')
                 err = -1
+            finally:
+                del self._di_task_handles[-1]
         self._di_task_handles = list()
 
         if self._ai_task_handle is not None:
