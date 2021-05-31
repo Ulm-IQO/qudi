@@ -495,11 +495,13 @@ class QDPlotLogic(LogicBase):
             data = np.array(data).T
 
             ds = TextDataStorage(root_dir=self.module_default_data_dir,
+                                 column_formats='.15e',
                                  include_global_metadata=True)
 
             file_path, _, _ = ds.save_data(data,
                                            metadata=parameters,
                                            column_headers=header,
+                                           column_dtypes=[float] * len(header),
                                            nametag='qd_plot')
 
             ds.save_thumbnail(fig, file_path=file_path.rsplit('.', 1)[0])
