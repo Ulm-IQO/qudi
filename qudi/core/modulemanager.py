@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import logging
 import importlib
 import copy
 import weakref
@@ -134,8 +133,9 @@ class ModuleManager(QtCore.QObject):
         with self._lock:
             if module_name not in self._modules:
                 if not ignore_missing:
-                    logger.error('No module with name "{0}" registered. Unable to remove module.'
-                                 ''.format(module_name))
+                    logger.error(
+                        f'No module with name "{module_name}" registered. Unable to remove module.'
+                    )
                 return
             self._modules[module_name].deactivate()
             self._modules[module_name].sigStateChanged.disconnect(self.sigModuleStateChanged)
@@ -154,8 +154,9 @@ class ModuleManager(QtCore.QObject):
             if not isinstance(name, str) or not name:
                 raise TypeError('module name must be non-empty str type')
             if base not in ('gui', 'logic', 'hardware'):
-                logger.error('No valid module base "{0}". Unable to create qudi module "{1}".'
-                             ''.format(base, name))
+                logger.error(
+                    f'No valid module base "{base}". Unable to create qudi module "{name}".'
+                )
                 return
             if allow_overwrite:
                 self.remove_module(name, ignore_missing=True)
@@ -200,40 +201,40 @@ class ModuleManager(QtCore.QObject):
     def activate_module(self, module_name):
         with self._lock:
             if module_name not in self._modules:
-                logger.error('No module named "{0}" found in managed qudi modules. '
-                             'Module activation aborted.'.format(module_name))
+                logger.error(f'No module named "{module_name}" found in managed qudi modules. '
+                             f'Module activation aborted.')
                 return False
             return self._modules[module_name].activate()
 
     def deactivate_module(self, module_name):
         with self._lock:
             if module_name not in self._modules:
-                logger.error('No module named "{0}" found in managed qudi modules. '
-                             'Module deactivation aborted.'.format(module_name))
+                logger.error(f'No module named "{module_name}" found in managed qudi modules. '
+                             f'Module deactivation aborted.')
                 return False
             return self._modules[module_name].deactivate()
 
     def reload_module(self, module_name):
         with self._lock:
             if module_name not in self._modules:
-                logger.error('No module named "{0}" found in managed qudi modules. '
-                             'Module reload aborted.'.format(module_name))
+                logger.error(f'No module named "{module_name}" found in managed qudi modules. '
+                             f'Module reload aborted.')
                 return False
             return self._modules[module_name].reload()
 
     def clear_module_app_data(self, module_name):
         with self._lock:
             if module_name not in self._modules:
-                logger.error('No module named "{0}" found in managed qudi modules. '
-                             'Can not clear module app status.'.format(module_name))
+                logger.error(f'No module named "{module_name}" found in managed qudi modules. '
+                             f'Can not clear module app status.')
                 return False
             return self._modules[module_name].clear_module_app_data()
 
     def has_app_data(self, module_name):
         with self._lock:
             if module_name not in self._modules:
-                logger.error('No module named "{0}" found in managed qudi modules. '
-                             'Can not check for app status file.'.format(module_name))
+                logger.error(f'No module named "{module_name}" found in managed qudi modules. '
+                             f'Can not check for app status file.')
                 return False
             return self._modules[module_name].has_app_data()
 
@@ -282,16 +283,18 @@ class ManagedModule(QtCore.QObject):
         if not isinstance(configuration.get('module.Class', ''), str):
             raise TypeError(f'module.Class config entry of module "{name}" must be str type.')
         if not isinstance(configuration.get('remote_url', ''), str):
-            raise TypeError('remote URL of module "{0}" must be of str type.'.format(name))
+            raise TypeError(f'remote URL of module "{name}" must be of str type.')
         if not isinstance(configuration.get('certfile', ''), str):
-            raise TypeError('certfile config option of remotemodules module "{0}" must be of str '
-                            'type.'.format(name))
+            raise TypeError(
+                f'certfile config option of remotemodules module "{name}" must be of str type.'
+            )
         if not isinstance(configuration.get('keyfile', ''), str):
-            raise TypeError('keyfile config option of remotemodules module "{0}" must be of str '
-                            'type.'.format(name))
+            raise TypeError(
+                f'keyfile config option of remotemodules module "{name}" must be of str type.'
+            )
         if not isinstance(configuration.get('remoteaccess', False), bool):
-            raise TypeError('remoteaccess config option of remotemodules module "{0}" must be of '
-                            'bool type.'.format(name))
+            raise TypeError(f'remoteaccess config option of remotemodules module "{name}" must be '
+                            f'of bool type.')
 
         super().__init__()
         if self.thread() is not QtCore.QCoreApplication.instance().thread():
@@ -420,8 +423,9 @@ class ManagedModule(QtCore.QObject):
                 raise TypeError('items in required_modules must be weakref.ref instances.')
             if not isinstance(module(), ManagedModule):
                 if module() is None:
-                    logger.error('Dead weakref passed as required module to ManagedModule "{0}"'
-                                 ''.format(self._name))
+                    logger.error(
+                        f'Dead weakref passed as required module to ManagedModule "{self._name}"'
+                    )
                     return
                 raise TypeError('required_modules must be iterable of ManagedModule instances '
                                 '(or weakref to same instances)')
@@ -440,8 +444,9 @@ class ManagedModule(QtCore.QObject):
                 raise TypeError('items in dependent_modules must be weakref.ref instances.')
             if not isinstance(module(), ManagedModule):
                 if module() is None:
-                    logger.error('Dead weakref passed as dependent module to ManagedModule "{0}"'
-                                 ''.format(self._name))
+                    logger.error(
+                        f'Dead weakref passed as dependent module to ManagedModule "{self._name}"'
+                    )
                     return
                 raise TypeError('dependent_modules must be iterable of ManagedModule instances '
                                 '(or weakref to same instances)')
@@ -455,8 +460,8 @@ class ManagedModule(QtCore.QObject):
             for module_ref in self._dependent_modules:
                 module = module_ref()
                 if module is None:
-                    logger.warning('Dead dependent module weakref encountered in ManagedModule '
-                                   '"{0}".'.format(self._name))
+                    logger.warning(f'Dead dependent module weakref encountered in ManagedModule '
+                                   f'"{self._name}".')
                     continue
                 if module.is_active:
                     active_modules = module.ranking_active_dependent_modules
@@ -468,7 +473,7 @@ class ManagedModule(QtCore.QObject):
 
     @property
     def module_thread_name(self):
-        return 'mod-{0}-{1}'.format(self._base, self._name)
+        return f'mod-{self._base}-{self._name}'
 
     @property
     def has_app_data(self):
@@ -544,8 +549,9 @@ class ManagedModule(QtCore.QObject):
                 if not self.is_active:
                     return False
             except:
-                logger.exception('Massive error during activation of module "{0}.{1}"'
-                                 ''.format(self._base, self._name))
+                logger.exception(
+                    f'Massive error during activation of module "{self._base}.{self._name}"'
+                )
                 return False
             self.__last_state = self.state
             self.sigStateChanged.emit(self._base, self._name, self.__last_state)
@@ -595,8 +601,8 @@ class ManagedModule(QtCore.QObject):
             for module_ref in self._dependent_modules:
                 module = module_ref()
                 if module is None:
-                    logger.error('Dead dependent module weakref encountered in ManagedModule "{0}".'
-                                 ''.format(self._name))
+                    logger.error(f'Dead dependent module weakref encountered in ManagedModule '
+                                 f'"{self._name}".')
                     return False
                 if module.is_active:
                     success = success and module.deactivate()
@@ -629,8 +635,9 @@ class ManagedModule(QtCore.QObject):
                 QtCore.QCoreApplication.instance().processEvents()
                 success = success and not self.is_active
             except:
-                logger.exception('Massive error during deactivation of module "{0}.{1}"'
-                                 ''.format(self._base, self._name))
+                logger.exception(
+                    f'Massive error during deactivation of module "{self._base}.{self._name}"'
+                )
                 success = False
             success = success and self._disconnect()
             self.__last_state = self.state
@@ -692,19 +699,18 @@ class ManagedModule(QtCore.QObject):
             else:
                 # Try qudi module import
                 try:
-                    mod = importlib.import_module('{0}.{1}'.format(self._base, self._module))
+                    mod = importlib.import_module(f'{self._base}.{self._module}')
                     importlib.reload(mod)
                 except ImportError:
-                    logger.exception(
-                        'Error during import of module "{0}.{1}"'.format(self._base, self._module))
+                    logger.exception(f'Error during import of module "{self._base}.{self._module}"')
                     return False
 
                 # Try getting qudi module class from imported module
                 try:
                     mod_class = getattr(mod, self._class)
                 except:
-                    logger.exception('Error getting module class "{0}" from module "{1}.{2}"'
-                                     ''.format(self._class, self._base, self._module))
+                    logger.exception(f'Error getting module class "{self._class}" from module '
+                                     f'"{self._base}.{self._module}"')
                     return False
 
                 # Check if imported class is a valid qudi module class
@@ -719,8 +725,8 @@ class ManagedModule(QtCore.QObject):
                                                name=self._name,
                                                config=self._options)
                 except:
-                    logger.exception('Error during initialization of qudi module "{0}.{1}.{2}"'
-                                     ''.format(self._class, self._base, self._module))
+                    logger.exception(f'Error during initialization of qudi module '
+                                     f'"{self._class}.{self._base}.{self._module}"')
                     self._instance = None
                     return False
             self.__last_state = self.state
@@ -731,8 +737,8 @@ class ManagedModule(QtCore.QObject):
         with self._lock:
             # Check if module has already been loaded/instantiated
             if not self.is_loaded:
-                logger.error('Connection failed. No module instance found or module "{0}.{1}".'
-                             ''.format(self._base, self._name))
+                logger.error(f'Connection failed. No module instance found or module '
+                             f'"{self._base}.{self._name}".')
                 return False
 
             # Get Connector meta objects for this module
@@ -741,14 +747,18 @@ class ManagedModule(QtCore.QObject):
             mandatory_conn = set(conn.name for conn in conn_objects.values() if not conn.optional)
             configured_conn = set(self._connect_cfg)
             if not configured_conn.issubset(conn_names):
-                logger.error('Connection of module "{0}.{1}" failed. Encountered mismatch of '
-                             'connectors in configuration {2} and module Connector meta objects '
-                             '{3}.'.format(self._base, self._name, configured_conn, conn_names))
+                logger.error(
+                    f'Connection of module "{self._base}.{self._name}" failed. Encountered '
+                    f'mismatch of connectors in configuration {configured_conn} and module '
+                    f'Connector meta objects {conn_names}.'
+                )
                 return False
             if not mandatory_conn.issubset(configured_conn):
-                logger.error('Connection of module "{0}.{1}" failed. Not all mandatory connectors '
-                             'are specified in config.\nMandatory connectors are: {2}'
-                             ''.format(self._base, self._name, mandatory_conn))
+                logger.error(
+                    f'Connection of module "{self._base}.{self._name}" failed. Not all mandatory '
+                    f'connectors are specified in config.\n'
+                    f'Mandatory connectors are: {mandatory_conn}'
+                )
                 return False
 
             # Iterate through module connectors and try to connect them
@@ -761,8 +771,8 @@ class ManagedModule(QtCore.QObject):
                             break
                     connector.connect(module_ref().instance)
             except:
-                logger.exception('Something went wrong while trying to connect module "{0}.{1}".'
-                                 ''.format(self._base, self._name))
+                logger.exception(f'Something went wrong while trying to connect module '
+                                 f'"{self._base}.{self._name}".')
                 return False
             return True
 
@@ -773,7 +783,7 @@ class ManagedModule(QtCore.QObject):
                 for connector in conn_obj.values():
                     connector.disconnect()
             except:
-                logger.exception('Something went wrong while trying to disconnect module "{0}.{1}".'
-                                 ''.format(self._base, self._name))
+                logger.exception(f'Something went wrong while trying to disconnect module '
+                                 f'"{self._base}.{self._name}".')
                 return False
             return True
