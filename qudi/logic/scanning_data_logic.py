@@ -181,7 +181,7 @@ class ScanningDataLogic(LogicBase):
             self.sigSaveStateChanged.emit(True)
             self.module_state.lock()
             try:
-                ds = TextDataStorage(root_dir=self.module_default_data_dir)
+                ds = TextDataStorage(root_dir=self.module_default_data_dir, column_formats='.15e')
                 timestamp = datetime.datetime.now()
 
                 # write the parameters:
@@ -207,10 +207,11 @@ class ScanningDataLogic(LogicBase):
                     else:
                         y_header = '{0}'.format(channel)
                     file_path, _, _ = ds.save_data(data,
+                                                   timestamp=timestamp,
                                                    metadata=parameters,
                                                    nametag=nametag,
-                                                   timestamp=timestamp,
-                                                   column_headers=(x_header, y_header))
+                                                   column_headers=(x_header, y_header),
+                                                   column_dtypes=float)
                     # thumbnail
                     figure = self.draw_1d_scan_figure(scan_data, channel)
                     ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
