@@ -255,7 +255,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0)
+                                                     increment=0,
+                                                     add_gate_ch='d_ch4')
         delay_element = self._get_delay_gate_element()
 
         # Create block and append to created_blocks list

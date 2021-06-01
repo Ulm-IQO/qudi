@@ -1160,14 +1160,16 @@ class PredefinedGeneratorBase:
         laser_element.laser_on = True
         # additional slow counter switch for pentacene setup
         # be sure this is not a fast counter switch!
-        laser_element.digital_high[add_gate_ch] = True
+        if add_gate_ch != "":
+            laser_element.digital_high[add_gate_ch] = True
         return laser_element
 
-    def _get_laser_gate_element(self, length, increment):
+    def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4'):
         """
         """
         laser_gate_element = self._get_laser_element(length=length,
-                                                     increment=increment)
+                                                     increment=increment,
+                                                     add_gate_ch=add_gate_ch)
         if self.gate_channel:
             if self.gate_channel.startswith('d'):
                 laser_gate_element.digital_high[self.gate_channel] = True

@@ -231,12 +231,16 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_sequences = list()
 
         laser_init_element = self._get_laser_gate_element(length=t_laser_init,
-                                                          increment=0)
+                                                          increment=0,
+                                                          add_gate_ch='')
+        # additional gate channel, independent on the one from pulsed gui
         laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
-                                                         increment=0)
+                                                         increment=0,
+                                                         add_gate_ch=add_gate_ch)
         # close gap between aom init laser pulse and instant red pulse
         laser_red_balanceaom_element = self._get_laser_gate_element(length=t_aom_safety,
-                                                         increment=0)
+                                                                    increment=0,
+                                                                    add_gate_ch=add_gate_ch)
         if laser_read_ch:
             laser_red_element.digital_high[self.laser_channel] = False
             laser_red_element.digital_high[laser_read_ch] = True
@@ -246,10 +250,6 @@ class PentaceneMethods(PredefinedGeneratorBase):
                 laser_red_balanceaom_element.digital_high[self.laser_channel] = False
             laser_red_balanceaom_element.digital_high[laser_read_ch] = True
 
-        # additional gate channel, independent on the one from pulsed gui
-        if add_gate_ch:
-            laser_red_element.digital_high[add_gate_ch] = True
-            laser_red_balanceaom_element.digital_high[add_gate_ch] = True
 
         idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
                                                              increment=0)
@@ -314,19 +314,17 @@ class PentaceneMethods(PredefinedGeneratorBase):
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
         laser_red_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0)
+                                                         increment=0,
+                                                         add_gate_ch=add_gate_ch)
         if laser_read_ch:
             laser_red_element.digital_high[self.laser_channel] = False
             laser_red_element.digital_high[laser_read_ch] = True
 
-        # additional gate channel, independent on the one from pulsed gui
-        if add_gate_ch:
-            laser_red_element.digital_high[add_gate_ch] = True
-
         idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
-                                                 increment=0)
+                                                             increment=0)
         laser_init_element = self._get_laser_gate_element(length=t_laser_init,
-                                                     increment=0)
+                                                          increment=0,
+                                                          add_gate_ch='')
         delay_element = self._get_delay_gate_element()
 
         # Create block and append to created_blocks list
