@@ -412,7 +412,7 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    vel = int(self._ask_úxyz(axis_label, 'TY', nchunks=3).split(":", 1)[1])
+                    vel = int(self._ask_xyz(axis_label, 'TY', nchunks=3).split(":", 1)[1])
                     param_dict[axis_label] = vel * 1e-7
             else:
                 for axis_label in constraints:
