@@ -316,7 +316,7 @@ class MotorStagePI(Base, MotorInterface):
         # unfortunately, probably due to connection problems this specific command sometimes failing
         # although it should run.... therefore some retries are added
 
-        self.log.debug("Trying to get pos")
+        #self.log.debug("Trying to get pos")
 
         try:
             if param_list is not None:
@@ -343,13 +343,12 @@ class MotorStagePI(Base, MotorInterface):
                         else:
                             break
 
-            self.log.debug(f"Pos {param_dict}")
+            self.log.debug(f"Returning Pos {param_dict}")
 
             return param_dict
         except:
             self.log.error('Could not find current xyz motor position')
             return -1
-
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -373,14 +372,14 @@ class MotorStagePI(Base, MotorInterface):
                     status = self._ask_xyz(axis_label,'TS', nchunks=3).split(":",1)[1]
                     param_dict[axis_label] = status
 
-                    self.log.debug(f"return code in movevement: {status}")
+                    #self.log.debug(f"return code in movevement: {status}")
                     self.log.debug(f"Updating status dict: {param_dict}")
             else:
                 for axis_label in constraints:
                     status = self._ask_xyz(axis_label, 'TS', nchunks=3).split(":",1)[1]
                     param_dict[axis_label] = status
 
-                    self.log.debug(f"return code in movevement: {status}")
+                    #self.log.debug(f"return code in movevement: {status}")
                     self.log.debug(f"Updating status dict: {param_dict}")
 
             return param_dict
@@ -477,12 +476,9 @@ class MotorStagePI(Base, MotorInterface):
             self.log.error('Could not set axis velocity')
             return -1
 
-
-
 ########################## internal methods ##################################
 
-
-    def _write_xyz(self,axis,command):
+    def _write_xyz(self, axis, command):
         """this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
         @param axis string: name of the axis that should be asked
 
@@ -493,15 +489,19 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         try:
             #self.log.info(constraints[axis]['ID'] + command + '\n')
+
             self._serial_connection_xyz.write(constraints[axis]['ID'] + command + '\n')
-            trash=self._read_answer_xyz()   # deletes possible answers
+            _ = self._read_answer_xyz()
             return 0
-        except:
-            self.log.error('Command was no accepted')
+
+        except BaseException:
+            self.log.exception('Command was no accepted: ')
             return -1
 
     def _read_answer_xyz(self):
-        """this method reads the answer from the motor!
+        """ Read answer if number of chunks is not known ahead of call.
+        Try to avoid, may cause instability.
+        For a certain command n_chunks should be constant. -> Use ._aks_xyz()
         @return answer string: answer of motor
         """
 
@@ -533,20 +533,10 @@ class MotorStagePI(Base, MotorInterface):
 
         return answer
 
-    def _ask_xyz_OLD(self, axis, question, nbytes=18):
-
-        constraints = self.get_constraints()
-        self.log.debug(f"Asking {constraints[axis]['ID']+question} for {nbytes} bytes...")
-        self._serial_connection_xyz.write(str(constraints[axis]['ID']) + question + '\n')
-        time.sleep(0.02)
-        raw_ret = self._serial_connection_xyz.read_bytes(nbytes).decode('unicode_escape')
-
-        return raw_ret.replace("\r", "").replace("\n","")
-
     def _ask_xyz(self, axis, question, nchunks=1):
 
         constraints = self.get_constraints()
-        self.log.debug(f"Asking {constraints[axis]['ID']+question} for {nchunks} chunks...")
+        #self.log.debug(f"Asking {constraints[axis]['ID'] + question} for {nchunks} chunks...")
         self._serial_connection_xyz.write(str(constraints[axis]['ID']) + question + '\n')
 
         str_ret = ""
@@ -554,29 +544,11 @@ class MotorStagePI(Base, MotorInterface):
         for i in range(nchunks):
             raw_ret = self._serial_connection_xyz.read()
             str_ret += str(raw_ret).replace("\r", "").replace("\n", "")
-            self.log.debug(f"Chunk {i}: {str_ret}")
+            #self.log.debug(f"Chunk {i}: {str_ret}")
 
-        self.log.debug(f"Finished response: {str_ret}")
+        #self.log.debug(f"Finished response: {str_ret}")
 
         return str_ret
-
-
-    def _ask_xyz_OLD(self,axis,question):
-        """this method combines writing a command and reading the answer
-        @param axis string: name of the axis that should be asked
-
-        @param command string: command
-
-        @return answer string: answer of motor
-        """
-        constraints = self.get_constraints()
-        self.log.debug(f"Asking {constraints[axis]['ID']+question} ...")
-        self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
-        self.log.debug("Done. Reading...")
-        answer=self._read_answer_xyz()
-        return answer
-
-
 
     def _do_move_rel(self, axis, step):
         """internal method for the relative move
@@ -634,7 +606,7 @@ class MotorStagePI(Base, MotorInterface):
                 tmp0 = int(self._ask_xyz(constraints[axis_label]['label'],'TS', nchunks=3)[8:])
             except Exception as e:
                 self.log.exception("Failed: ")
-            self.log.debug(f"return code in movevement: {tmp0}")
+            #self.log.debug(f"return code in movevement: {tmp0}")
             param_dict[axis_label] = tmp0%2
             self.log.debug(f"Updating movement dict: {param_dict}")
 
