@@ -724,6 +724,9 @@ class MagnetLogic(GenericLogic):
         # during alignment, the return will be a dict!
         self._saved_pos_before_align = self.get_pos([self.align_2d_axis0_name, self.align_2d_axis1_name])
 
+        self.log.info(f"Starting alignment from {self.align_2d_axis0_name}/{self.align_2d_axis1_name}:"
+                      f" { self._saved_pos_before_align},")
+
         if not continue_meas:
 
             self.sigMeasurementStarted.emit()
@@ -1818,25 +1821,37 @@ class MagnetLogic(GenericLogic):
         # from the magnet logic
         supplementary_data = OrderedDict()
 
-        axes_names = list(self._saved_pos_before_align)
+        axis0 = self.align_2d_axis0_name
+        axis1 = self.align_2d_axis0_name
+
+        try:  # todo: ugly catches, all self._fields should be created correctly. even if scan never run
+            axes_names = list(self._saved_pos_before_align)
+        except AttributeError:
+            pass    # if not existent, just dont save
 
         matrix_data['Alignment Matrix'] = self._2D_data_matrix
 
         parameters = OrderedDict()
-        parameters['Measurement start time'] = self._start_measurement_time
-        if self._stop_measurement_time is not None:
-            parameters['Measurement stop time'] = self._stop_measurement_time
-        parameters['Time at Data save'] = timestamp
-        parameters['Pathway of the magnet alignment'] = 'Snake-wise steps'
+        try:
+            parameters['Measurement start time'] = self._start_measurement_time
+            if self._stop_measurement_time is not None:
+                parameters['Measurement stop time'] = self._stop_measurement_time
+            parameters['Time at Data save'] = timestamp
+            parameters['Pathway of the magnet alignment'] = 'Snake-wise steps'
 
-        for index, entry in enumerate(self._pathway):
-            parameters['index_' + str(index)] = entry
+            for index, entry in enumerate(self._pathway):
+                parameters['index_' + str(index)] = entry
 
-        parameters['Backmap of the magnet alignment'] = 'Index wise display'
+            parameters['Backmap of the magnet alignment'] = 'Index wise display'
 
-        for entry in self._backmap:
-            parameters['related_intex_' + str(entry)] = self._backmap[entry]
+            for entry in self._backmap:
+                parameters['related_intex_' + str(entry)] = self._backmap[entry]
 
+        except AttributeError:
+            self.log.warning("Empty fields while saving data.")  # if not existent, just dont save
+
+        self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp)
         self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp)
 
@@ -1844,33 +1859,40 @@ class MagnetLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         add_data = OrderedDict()
-        axis0_data = np.zeros(len(self._backmap))
-        axis1_data = np.zeros(len(self._backmap))
-        param_data = np.zeros(len(self._backmap), dtype='object')
-
-        for backmap_index in self._backmap:
-            axis0_data[backmap_index] = self._backmap[backmap_index][self._axis0_name]
-            axis1_data[backmap_index] = self._backmap[backmap_index][self._axis1_name]
-            param_data[backmap_index] = str(self._2D_add_data_matrix[self._backmap[backmap_index]['index']])
 
         constr = self.get_hardware_constraints()
-        units_axis0 = constr[self._axis0_name]['unit']
-        units_axis1 = constr[self._axis1_name]['unit']
+        try:
+            units_axis0 = constr[axis0]['unit']
+            units_axis1 = constr[axis1]['unit']
 
-        add_data['{0} values ({1})'.format(self._axis0_name, units_axis0)] = axis0_data
-        add_data['{0} values ({1})'.format(self._axis1_name, units_axis1)] = axis1_data
-        add_data['all measured additional parameter'] = param_data
+            axis0_data = np.zeros(len(self._backmap))
+            axis1_data = np.zeros(len(self._backmap))
+            param_data = np.zeros(len(self._backmap), dtype='object')
 
-        self._save_logic.save_data(add_data, filepath=filepath, filelabel=filelabel2,
-                                   timestamp=timestamp)
+            for backmap_index in self._backmap:
+                axis0_data[backmap_index] = self._backmap[backmap_index][axis0]
+                axis1_data[backmap_index] = self._backmap[backmap_index][axis1]
+                param_data[backmap_index] = str(self._2D_add_data_matrix[self._backmap[backmap_index]['index']])
+
+            add_data['{0} values ({1})'.format(axis0, units_axis0)] = axis0_data
+            add_data['{0} values ({1})'.format(axis1, units_axis1)] = axis1_data
+            add_data['all measured additional parameter'] = param_data
+
+        except AttributeError:
+            pass  # if not existent, just dont save
+
+
+        # todo: throws error in save logic, enable again
+        #self._save_logic.save_data(add_data, filepath=filepath, filelabel=filelabel2,
+        #                           timestamp=timestamp)
         # save the data table
 
         count_data = self._2D_data_matrix
         x_val = self._2D_axis0_data
         y_val = self._2D_axis1_data
         save_dict = OrderedDict()
-        axis0_key = '{0} values ({1})'.format(self._axis0_name, units_axis0)
-        axis1_key = '{0} values ({1})'.format(self._axis1_name, units_axis1)
+        axis0_key = '{0} values ({1})'.format(axis0, units_axis0)
+        axis1_key = '{0} values ({1})'.format(axis1, units_axis1)
         counts_key = 'counts (c/s)'
         save_dict[axis0_key] = []
         save_dict[axis1_key] = []
@@ -1890,28 +1912,34 @@ class MagnetLogic(GenericLogic):
 
         self._save_logic.save_data(save_dict, filepath=filepath, filelabel=filelabel3,
                                    timestamp=timestamp, fmt='%.6e')
-        keys = self._2d_intended_fields[0].keys()
-        intended_fields = OrderedDict()
-        for key in keys:
-            field_values = [coord_dict[key] for coord_dict in self._2d_intended_fields]
-            intended_fields[key] = field_values
+        try:
+            keys = self._2d_intended_fields[0].keys()
+            intended_fields = OrderedDict()
+            for key in keys:
+                field_values = [coord_dict[key] for coord_dict in self._2d_intended_fields]
+                intended_fields[key] = field_values
 
-        self._save_logic.save_data(intended_fields, filepath=filepath, filelabel=filelabel4,
-                                   timestamp=timestamp)
+            self._save_logic.save_data(intended_fields, filepath=filepath, filelabel=filelabel4,
+                                       timestamp=timestamp)
 
-        measured_fields = OrderedDict()
-        for key in keys:
-            field_values = [coord_dict[key] for coord_dict in self._2d_measured_fields]
-            measured_fields[key] = field_values
+            measured_fields = OrderedDict()
+            for key in keys:
+                field_values = [coord_dict[key] for coord_dict in self._2d_measured_fields]
+                measured_fields[key] = field_values
 
-        self._save_logic.save_data(measured_fields, filepath=filepath, filelabel=filelabel5,
-                                   timestamp=timestamp)
+            self._save_logic.save_data(measured_fields, filepath=filepath, filelabel=filelabel5,
+                                       timestamp=timestamp)
 
-        error = OrderedDict()
-        error['quadratic error'] = self._2d_error
+            error = OrderedDict()
+            error['quadratic error'] = self._2d_error
 
-        self._save_logic.save_data(error, filepath=filepath, filelabel=filelabel6,
-                                   timestamp=timestamp)
+            self._save_logic.save_data(error, filepath=filepath, filelabel=filelabel6,
+                                       timestamp=timestamp)
+        except AttributeError:
+            pass  # if not existent, just dont save
+
+
+
 
     def _move_to_index(self, pathway_index, pathway):
 
