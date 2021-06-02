@@ -27,10 +27,12 @@ class CwaveLogic(GenericLogic):
     cwavelaser = Connector(interface='CwaveLaser')
     wavemeter = Connector(interface='HighFinesseWavemeter')
     savelogic = Connector(interface='SaveLogic')
+    nicard = Connector(interface='NationalInstrumentsXSeries')
 
     queryInterval = ConfigOption('query_interval', 500)
 
     _scan_range = StatusVar('scan_range', [0, 100])
+    _go_to_freq = StatusVar('go_to_freq', 25)
     _number_of_repeats = StatusVar(default=1)
     _number_of_bins = StatusVar('number_of_bins', 100)
     _pix_integration = StatusVar('pix_integration', 0.5)
@@ -39,6 +41,7 @@ class CwaveLogic(GenericLogic):
 
     sigSetpointChanged = QtCore.Signal(float)
     sigNextPixel = QtCore.Signal()
+    sigNextPixel_ext = QtCore.Signal()
 
     sigScanNextLine = QtCore.Signal()
     sigUpdate = QtCore.Signal()
@@ -47,7 +50,7 @@ class CwaveLogic(GenericLogic):
     sigScanStarted = QtCore.Signal()
     sigDataNext = QtCore.Signal()
     sigGetUpdates = QtCore.Signal()
-    
+    sigGoToVoltage = QtCore.Signal(float)
     
     
     sigUpdatePanelPlots = QtCore.Signal()
@@ -82,6 +85,7 @@ class CwaveLogic(GenericLogic):
         self._wavemeter = self.wavemeter()
         self._timetagger = self.timetagger() 
         self._save_logic = self.savelogic()
+        self._nicard = self.nicard()
 
         wlm_res = self._wavemeter.start_acqusition()
         self.wavelength = self._wavemeter.get_current_wavelength()
@@ -100,13 +104,15 @@ class CwaveLogic(GenericLogic):
         self.number_of_repeats = self._number_of_repeats
         self.scan_range = self._scan_range
         self.pix_integration = self._pix_integration
-
+        self.clock_freq = 1/self.pix_integration
         self.a_range = self._cwavelaser.VoltRange
         self.setpoint = self._cwavelaser.scanner_setpoint
 
         self.sigSetpointChanged.connect(self.change_setpoint)
         self.sigNextPixel.connect(self.scan_lines)
+        self.sigNextPixel_ext.connect(self.scan_lines_ext)
        
+        self.sigGoToVoltage.connect(self.go_to_voltage)
 
         self.sigGetUpdates.connect(self.update_cwave_states)
         self.sigUpdatePanelPlots.connect(self.update_panel_plots)
@@ -146,7 +152,7 @@ class CwaveLogic(GenericLogic):
     @QtCore.Slot(float)
     def change_setpoint(self, new_voltage):
         print("New setpoint:", new_voltage)
-        if self.scan_mode is 'refcavint':
+        if self.scan_mode == 'refcavint':
             new_voltage_hex = int(65535 * new_voltage / 100)
             res = self._cwavelaser.set_int_value('x', new_voltage_hex)
             if res == 1:
@@ -154,11 +160,23 @@ class CwaveLogic(GenericLogic):
                 return res
             else:
                 raise Exception('The ref cavity set setpoint command failed.')
-        elif self.scan_mode is 'oporeg':
+        elif self.scan_mode == 'oporeg':
             pass
-        elif self.scan_mode is 'refcavext':
-            pass
+        elif self.scan_mode == 'refcavext':
+            self.sigGoToVoltage.emit(new_voltage)
+
     # @set_param_when_threading
+    def close_scanner(self):
+        self._nicard.close_scanner_clock()
+        self._nicard.close_scanner()
+
+    def init_ni_scanner(self, clock_freq):
+        """Initialise the clock and locks for a scan"""
+        self._nicard.set_up_scanner_clock(clock_frequency=clock_freq)
+        self._nicard.set_up_scanner()
+    
+
+
     @QtCore.Slot(list)
     def set_scan_range(self, scan_range):
         r_max = np.clip(scan_range[1], self.a_range[0], self.a_range[1])
@@ -193,49 +211,53 @@ class CwaveLogic(GenericLogic):
     def start_scanning(self):
         print('start scanning')
         self.stopRequested = False
+        # self.close_scanner()
         #TODO hardcoded limit on the scan duration
         if self.cwstate == 0:
             print("cwave is not connected")
             return 
         if self.scan_mode == "refcavint":
             if self.pix_integration*self.number_of_bins > 100: 
-                self.start_ref_int_scanner()
+                print("Scan range: ", self.scan_range)
+                print("self.number_of_bins", self.number_of_bins)
+                self._initialise_data_matrix()
+                self.scan_points = np.linspace(self.scan_range[0], self.scan_range[1], self.number_of_bins)
+                self.scan_counter = self._timetagger.countrate() 
+                self.scan_lines()
             else:
                 raise Exception("Too fast scanning!")
         elif self.scan_mode == "oporeg":
-            
-            self.start_opo_reg_scanner()
+            print("Scan range: ", self.scan_range)
+            print("number_of_bins", self.number_of_bins)
+            self._initialise_data_matrix()
+            scan_duration = self.number_of_bins * self.pix_integration
+            if scan_duration < 3000:
+                print("Wow, let's make a slower scan first")
+            else:
+                # delay timer for querying laser
+                self.scanQueryTimer = QtCore.QTimer()
+                self.scanQueryTimer.setInterval(scan_duration)
+                self.scanQueryTimer.setSingleShot(True)
+                self.scanQueryTimer.timeout.connect(self.update_opo_reg_scan_plots, QtCore.Qt.QueuedConnection)     
+                self.scan_trace = self._timetagger.counter(refresh_rate=self.pix_integration, n_values=self.number_of_bins)
+                self.scanQueryTimer.start()
+                self._cwavelaser.scan(scan_duration, self.scan_range[0], self.scan_range[1])
         elif self.scan_mode == "refcavext":
-            pass
-        
+            self._initialise_data_matrix()
+            scan_duration = self.number_of_bins * self.pix_integration
+            self.ramp = self.make_ramp(*self.scan_range, self.number_of_bins)
+            self.sigNextPixel_ext.emit()
+    
 
     @QtCore.Slot()
     def stop_scanning(self):
         print('stop scanning')
         self.stopRequested = True
+        if self.scan_mode == "refcavext":
+            self.close_scanner()
         for i in range(5):
             QtCore.QCoreApplication.processEvents()
             time.sleep(self.queryInterval/1000)
-        
-
-    @QtCore.Slot()
-    def start_opo_reg_scanner(self):
-        print("Scan range: ", self.scan_range)
-        print("number_of_bins", self.number_of_bins)
-        self._initialise_data_matrix()
-        scan_duration = self.number_of_bins * self.pix_integration
-        if scan_duration < 3000:
-            print("Wow, let's make a slower scan first")
-        else:
-            # delay timer for querying laser
-            self.scanQueryTimer = QtCore.QTimer()
-            self.scanQueryTimer.setInterval(scan_duration)
-            self.scanQueryTimer.setSingleShot(True)
-            self.scanQueryTimer.timeout.connect(self.update_opo_reg_scan_plots, QtCore.Qt.QueuedConnection)     
-            self.scan_trace = self._timetagger.counter(refresh_rate=self.pix_integration, n_values=self.number_of_bins)
-            self.scanQueryTimer.start()
-            self._cwavelaser.scan(scan_duration, self.scan_range[0], self.scan_range[1])
-
 
     @QtCore.Slot()
     def update_opo_reg_scan_plots(self):
@@ -247,19 +269,7 @@ class CwaveLogic(GenericLogic):
         self.scan_matrix = np.vstack((self.scan_matrix, self.plot_y))
         self.sigUpdateScanPlots.emit()
         self.scan_trace.clear()
-            
-            
 
-
-    @QtCore.Slot()
-    def start_ref_int_scanner(self):
-        print("Scan range: ", self.scan_range)
-        print("self.number_of_bins", self.number_of_bins)
-        self._initialise_data_matrix()
-        self.scan_points = np.linspace(self.scan_range[0], self.scan_range[1], self.number_of_bins)
-        self.scan_counter = self._timetagger.countrate() 
-        self.scan_lines()
-            
     @QtCore.Slot()
     def scan_lines(self):
         print("Next Pix")
@@ -286,13 +296,49 @@ class CwaveLogic(GenericLogic):
             self.plot_y = np.zeros(self.number_of_bins)
             self.scan_points = np.linspace(self.scan_range[0], self.scan_range[1], self.number_of_bins)
             self.sigNextPixel.emit()
-            
+    
+    @QtCore.Slot()
+    def scan_lines_ext(self):
+        print("Next Pix")
+         # stops scanning
+        if self.stopRequested:
+            self.close_scanner()
+            return
+        
+        self.clock_freq = 1/self.pix_integration
+        self.init_ni_scanner(self.clock_freq)
+        self.plot_y = self._nicard.scan_line(self.ramp).flatten()
+        print("P", self.plot_y)
+        self.close_scanner()
+
+        self.scan_matrix = np.vstack((self.scan_matrix, self.plot_y))
+        self.sigGoToVoltage.emit(0)
+        self.sigUpdateScanPlots.emit()
+        self.sigNextPixel_ext.emit()
+
+    def make_ramp(self, start=0, stop=0, steps_number=50):
+        current_pos = np.array(self._nicard.get_scanner_position())
+        if start == 0:
+            start = current_pos[-1]
+        ramp = np.ones(steps_number) * current_pos[:, np.newaxis]
+        scan_points = np.linspace(start, stop, steps_number)
+        ramp[-1] = scan_points
+        return ramp 
+
+
+    @QtCore.Slot(float)
+    def go_to_voltage(self, voltage):
+        ramp = self.make_ramp(stop = voltage, steps_number = 150)
+        freq_diff = np.abs(ramp[-1][-1] - ramp[-1][0]) 
+        self.init_ni_scanner(clock_freq=self._go_to_freq * 100/freq_diff)
+        self._nicard.scan_line(ramp)
+        self.close_scanner()
 
     @QtCore.Slot(int)
     def set_number_of_bins(self, number_of_bins):
         self.number_of_bins = number_of_bins
 
-#! Laser control panel:
+    #! Laser control panel:
     @QtCore.Slot(str)
     def optimize_cwave(self, opt_command):
         self._cwavelaser.set_command(opt_command)

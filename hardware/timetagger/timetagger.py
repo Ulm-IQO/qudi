@@ -119,16 +119,15 @@ class TT(Base):
         return Counter(self.tagger,
                                 self._counter['channels'],
                                 self._counter['bins_width'],
-                                self._counter['n_values'])
+                                sself._counter['n_values'])
 
 
-    def count_between_markers(self, click_channel):
+    def count_between_markers(self, click_channel, begin_channel, end_channel, n_values):
         return CountBetweenMarkers(self.tagger,
                                 click_channel,
                                 begin_channel,
                                 end_channel,
-                                n_values
-                                    )     
+                                n_values)     
 
     def write_into_file(self, filename, channels):
         return FileWriter(self.tagger,

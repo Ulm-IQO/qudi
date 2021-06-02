@@ -48,11 +48,11 @@ class LaserScannerLogic(GenericLogic):
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
     savelogic = Connector(interface='SaveLogic')
 
-    scan_range = StatusVar('scan_range', [-10, 10])
+    scan_range = StatusVar('scan_range', [0, 10])
     number_of_repeats = StatusVar(default=10)
-    resolution = StatusVar('resolution', 500)
-    _scan_speed = StatusVar('scan_speed', 10)
-    _static_v = StatusVar('goto_voltage', 5)
+    resolution = StatusVar('resolution', 1000)
+    _scan_speed = StatusVar('scan_speed', 1)
+    _static_v = StatusVar('goto_voltage', 0)
 
     sigChangeVoltage = QtCore.Signal(float)
     sigVoltageChanged = QtCore.Signal(float)
@@ -164,6 +164,8 @@ class LaserScannerLogic(GenericLogic):
         ramp_scan = self._generate_ramp(self.get_current_voltage(), new_voltage, self._goto_speed)
         self._initialise_scanner()
         ignored_counts = self._scan_line(ramp_scan)
+        
+        self._scanning_device.scanner_set_position(a = new_voltage)
         self._close_scanner()
         self.sigVoltageChanged.emit(new_voltage)
         return 0
@@ -244,14 +246,14 @@ class LaserScannerLogic(GenericLogic):
         if returnvalue < 0:
             self._scanning_device.module_state.unlock()
             self.module_state.unlock()
-            self.set_position('scanner')
+            # self.set_position('scanner')
             return -1
 
         returnvalue = self._scanning_device.set_up_scanner()
         if returnvalue < 0:
             self._scanning_device.module_state.unlock()
             self.module_state.unlock()
-            self.set_position('scanner')
+            # self.set_position('scanner')
             return -1
 
         return 0
