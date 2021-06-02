@@ -112,7 +112,7 @@ class ScannerGui(GuiBase):
         This method executes the all the inits for the differnt GUIs and passes
         the event argument from fysom to the methods.
         """
-        self._optimizer_id = self._optimize_logic().module_state.uuid
+        self._optimizer_id = self._optimize_logic().module_uuid
 
         self.scan_2d_dockwidgets = dict()
         self.scan_1d_dockwidgets = dict()
@@ -298,7 +298,7 @@ class ScannerGui(GuiBase):
             lambda ax, ranges: self.sigScanSettingsChanged.emit({'range': {ax: ranges}})
         )
         self.scanner_control_dockwidget.sigTargetChanged.connect(
-            lambda ax, pos: self.sigScannerTargetChanged.emit({ax: pos}, self.module_state.uuid)
+            lambda ax, pos: self.sigScannerTargetChanged.emit({ax: pos}, self.module_uuid)
         )
         # ToDo: Implement a way to avoid too fast position update from slider movement.
         #  Currently the scanner target position is only updated upon slider release.
@@ -520,7 +520,7 @@ class ScannerGui(GuiBase):
 
         @param dict target_pos:
         """
-        self.sigScannerTargetChanged.emit(target_pos, self.module_state.uuid)
+        self.sigScannerTargetChanged.emit(target_pos, self.module_uuid)
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
@@ -534,7 +534,7 @@ class ScannerGui(GuiBase):
         """
         # If this update has been issued by this module, do not update display.
         # This has already been done before notifying the logic.
-        if caller_id is self.module_state.uuid:
+        if caller_id is self.module_uuid:
             return
 
         if not isinstance(pos_dict, dict):
@@ -700,7 +700,7 @@ class ScannerGui(GuiBase):
             self._toggle_enable_scan_buttons(not enabled, exclude_scan=axes)
             self._toggle_enable_actions(not enabled)
             self._toggle_enable_scan_crosshairs(not enabled)
-            self.sigToggleScan.emit(enabled, axes, self.module_state.uuid)
+            self.sigToggleScan.emit(enabled, axes, self.module_uuid)
         return toggle_func
 
     def __get_range_from_selection_func(self, axes):

@@ -23,20 +23,15 @@ import os
 import copy
 from abc import abstractmethod
 from uuid import uuid4
-from fysom import Fysom  # provides a finite state machine
+from fysom import Fysom
 from PySide2 import QtCore
 
 from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.paths import get_appdata_dir, get_daily_directory_tree, get_default_data_root_dir
+from qudi.core.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
 from qudi.core.config import load, save
 from qudi.core.meta import ModuleMeta
 from qudi.core.logger import get_logger
-
-
-def get_module_app_data_path(cls_name, module_base, module_name):
-    file_name = 'status-{0}_{1}_{2}.cfg'.format(cls_name, module_base, module_name)
-    return os.path.join(get_appdata_dir(), file_name)
 
 
 class ModuleStateMachine(Fysom, QtCore.QObject):
@@ -259,20 +254,18 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
 
     @property
     def module_default_data_dir(self):
-        """ Read-only property returning a path-like object representing a sub-directory in which .
-        In other words this is a path relative to qudi.util.datastorage.get_default_data_dir().
-        By default this will be just the module name as specified in the config, resulting in a
-        sub-directory named after the configured module name.
-        Module implementations can overwrite this property with a custom path.
+        """ Read-only property returning the generic default directory in which to save data.
+        Module implementations can overwrite this property with a custom path but should only do so
+        with a very good reason.
 
-        @return path-like: Relative path from default qudi data directory.
+        @return str: Path of module-specific generic default data directory
         """
         config = self._qudi_main.configuration
         data_root = config.default_data_dir
         if data_root is None:
-            data_root = get_default_data_root_dir()
+            data_root = get_default_data_dir()
         if config.daily_data_dirs or config.daily_data_dirs is None:
-            data_dir = os.path.join(data_root, get_daily_directory_tree(), self.module_name)
+            data_dir = os.path.join(get_daily_directory(root=data_root), self.module_name)
         else:
             data_dir = os.path.join(data_root, self.module_name)
         return data_dir

@@ -12,13 +12,14 @@ There may be more supported storage formats in the future (e.g. database storage
 so you might want to check `qudi.util.datastorage` for any objects not listed in this 
 documentation.  
 All these objects are derived from the abstract base class `qudi.util.datastorage.DataStorageBase` 
-which is defining a generalized API for all storage classes.  
+which is very loosely defining a generalized API for all storage classes and handles global 
+metadata.  
 If you want to implement a new storage format class, it must inherit this base class.
 
 The most important API methods that each specialized sub-class must implement are:
 
 ```Python
-def save_data(self, data, *, metadata=None, nametag=None, timestamp=None, **kwargs):
+def save_data(self, data, *, metadata=None, notes=None, nametag=None, timestamp=None, **kwargs):
     # Save data to appropriate format
     pass
 
@@ -27,16 +28,14 @@ def load_data(self, *args, **kwargs):
     pass
 ```
 
-The exact method signatures can differ between storage classes and can be looked up individually.
+The exact method signatures with additional keyword-only arguments can differ between storage 
+classes and can be looked up individually.
 
 Before you can start saving or loading data arrays with the methods mentioned above, you need to 
 instantiate and configure the storage object appropriately.
 Each specialized storage object can provide an entirely different set of parameters to initialize.
 You can look up configuration options for a specific storage object in the `__init__` method doc 
-string of the respective class.  
-All configuration parameters present in the `__init__` of the storage class should also be 
-accessible through as instance attributes or properties (setters and getters) to read and alter 
-them dynamically after the instance has been created.
+string of the respective class.
 
 So the first step before loading and saving data arrays is always to create an instance of the 
 desired storage object. 
@@ -47,47 +46,55 @@ Here is an example for storing text files that is using a commonly used subset o
 ```Python
 from qudi.util.datastorage import TextDataStorage, ImageFormat
 
-# Instantiate text storage object and configure it (recommended way)
-data_storage = TextDataStorage(sub_directory='MyMeasurementCategory', 
-                               column_headers=('time (s)', 'amplitude (V)'), 
-                               number_format='%.18e',
+# Instantiate text storage object and configure it
+data_storage = TextDataStorage(root_dir='C:\\Data\\MyMeasurementCategory',
                                comments='# ', 
                                delimiter='\t',
+                               file_extension='.dat',
+                               column_formats=('.8f', '.15e'),
+                               include_global_metadata=True,
                                image_format=ImageFormat.PNG)
-
-# Alternative instantiation (no sanity checks)
-data_storage = TextDataStorage()
-data_storage.sub_directory = 'MyMeasurementCategory'
-data_storage.column_headers = ('time (s)', 'amplitude (V)')
-data_storage.number_format = '%.18e'
-data_storage.comments = '# '
-data_storage.delimiter = '\t'
-data_storage.image_format = ImageFormat.PNG
 ```
 
 Let's go through the parameters one-by-one:
-- `sub_directory`:
-  Additional sub-directory that is used as direct parent directory for the file.
-- `column_headers`:
-  Iterable of header strings for each data column or a single string that will be used "as-is".
-- `number_format`:
-  Numpy style format string used to convert the values to text. Can also provide iterable of strings
-  for each column.
+- `root_dir`:
+  The root or working directory for the storage class to work in. Files will be saved into this dir.
 - `comments`:
   String used at the start of lines in the text file to identify them as comment lines.
 - `delimiter`:
-  Delimiter string used to separate columns.
+  Delimiter string used to separate data columns. Must be non-empty.
+- `file_extension`:
+  The default file extension to use for new data files. Used if not explicit file name is provided
+- `column_formats`:
+  Sequence of format specifiers for each column or a single specifier for all columns. If `None` 
+  (default) the column format is derived from the first data row. 
+  See also [format specification mini-language](https://docs.python.org/3/library/string.html#formatspec)
+- `include_global_metadata`:
+  Flag indicating if global metadata should be automatically included when saving data.
 - `image_format`:
   The image format used to save matplotlib figures to file using storage method `save_thumbnail`.
 
 ## Storage location
+Generally you have to set the `root_dir` parameter for (file-based) storage objects before saving 
+or loading any data.
+
+For your convenience each qudi module (GUI, logic or hardware) has an attribute 
+`module_default_data_dir` containing a standardized generic data directory. This directory respects 
+the global config options `default_data_dir` and `daily_data_dirs` and adds a module-specific 
+sub-directory. If applicable, you should always use this attribute to set `root_dir` in storage 
+objects used by a qudi logic module.  
+By default this path resolves to: 
+`<user home>/qudi/Data/<YYYY>/<MM>/<YYYYMMDD>/<configured module name>`
+
+In case you really want to customize the storage location on a per-module basis, you should 
+overwrite `module_default_data_dir` in the module class definition in order to make the custom path 
+accessible from outside the module.
 By default all file based data is stored in daily sub-directories of the qudi data directory 
 (default is `<user_home>/qudi/Data/` but it can be changed via global config parameter 
-`default_data_dir`).  
-This data root directory can be overridden locally by providing a custom path in the optional 
-parameter `root_dir`.  
-You can turn off the daily sub-directory behaviour locally with the optional flag parameter 
-`use_daily_dir`.
+`default_data_dir`).
+
+Standalone scripts that use the qudi data storage objects obviously do not need to follow any 
+convention and can customize `root_dir` however they like.
 
 
 ## Saving data
@@ -105,51 +112,95 @@ y = np.sin(2 * np.pi * 2 * x)  # 2 Hz sine wave
 data = np.asarray([x, y]).transpose()  # Format data into a single 2D array with x being the first 
                                        # column and y being the second column
                                        
-# Prepare a dict containing metadata to be saved in the file header (comments)
-metadata = {'sample number': 42,
-            'batch'        : 'xyz-123',
-            'notes'        : 'This measurement was performed under the influence of 10 mugs of coffee.'}
+# Prepare a dict containing metadata to be saved in the file header
+metadata = {'sample_number': 42,
+            'batch'        : 'xyz-123'}
 
 # Create an explicit timestamp.
 timestamp = datetime(2021, 5, 6, 11, 11, 11)  # 06.05.2021 at 11h:11m:11s
 # timestamp = datetime.now()  # Usually you would use this
 
-# Create a nametag to include in the file name
+# Create a nametag to include in the file name (optional)
 nametag = 'amplitude_measurement'
+
+# Create an iterable of data column header strings (optional)
+column_headers = ('time (s)', 'amplitude (V)')
+
+# Create an arbitrary string of informal "lab notes" that is included in the file header
+notes = 'This measurement was performed under the influence of 10 mugs of coffee and no sleep.'
 
 # Save data to file
 file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
+                                                               timestamp=timestamp, 
                                                                metadata=metadata, 
+                                                               notes=notes,
                                                                nametag=nametag,
-                                                               timestamp=timestamp)
+                                                               column_headers=column_headers,
+                                                               column_dtypes=(float, float))
 ```
 
-This will save the data to file 
-`<qudi_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.dat` with the following 
+This will save the data to a file with a generic filename constructed from nametag and timestamp.
+`<default_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.dat` with the following 
 content:
 
 ```
-# Saved Data on 06.05.2021 at 11h11m11s
+# [General]
+# timestamp=2021-05-06T11:11:11
+# comments='# '
+# delimiter='\t'
+# column_dtypes=float;;float
+# column_headers='time (s);;amplitude (V)'
+# notes='This measurement was performed under the influence of 10 mugs of coffee and no sleep.'
 # 
-# Metadata:
-# ===========
-# sample number: 42
-# batch: xyz-123
-# notes: This measurement was performed under the influence of 10 cups of coffee.
+# [Metadata]
+# sample_number=42
+# batch='xyz-123'
 # 
-# Data:
-# =====
-# time (s)	amplitude (V)
-0.000000000000000000e+00	0.000000000000000000e+00
-1.001001001001000992e-03	1.257861783874105778e-02
-2.002002002002001985e-03	2.515524538937584723e-02
+# ---- END HEADER ----
+0.00000000	0.000000000000000e+00
+0.00100100	1.257861783874106e-02
+0.00200200	2.515524538937585e-02
 ⋮ 				⋮
 ```
 
+**NOTE**: metadata keys must be str type and not contain leading or trailing whitespaces as well as 
+avoid the pattern `'[...]'`.  
+**NOTE**: metadata values must be representable and reconstructable via `repr` and `eval`, i.e. 
+`value == eval(repr(value))`.  
+**NOTE**: If column dtypes are explicitly given (as in the example), they must be one of `int`, 
+`float`, `complex` or `str`. This will become important when loading back mixed data from disk.
+If `column_dtypes` is `None` (default) the dtypes will be automatically derived from the first data 
+row.
+
+Alternatively it is also possible to specify the filename directly instead of relying on the 
+generic construction from nametag and timestamp:
+
+```Python
+# Save data to file
+file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
+                                                               timestamp=timestamp,
+                                                               metadata=metadata,
+                                                               notes=notes,
+                                                               column_headers=column_headers, 
+                                                               column_dtypes=(float, float),
+                                                               filename='my_custom_filename.abc')
+```
+
+This would result in a file at `<default_data_dir>/2021/05/20210506/my_custom_filename.abc`.  
+Please note that you need to provide the file extension as well in this case.
+
+
 ### Saving a thumbnail
 In order to save a thumbnail alongside the data file, you can create a `matplotlib` figure and pass 
-it to the data storage method `save_thumbnail` if this is available for the specific storage class.
-To continue our example with text files:
+it to the data storage method `save_thumbnail`.  
+
+`save_thumbnail` expects a full file path *without* file extension (this is automatically completed 
+according to the configured `image_format` enum).  
+Usually you want your thumbnail file name to be the same as your data file name. An easy way to 
+achieve that is to remove the file extension from the first return value of `save_data` and pass it 
+to `save_thumbnail`.
+
+To continue our example with text files, this could look like:
 
 ```Python
 import matplotlib.pyplot as plt
@@ -161,15 +212,12 @@ ax.plot(x, y)
 ax.set_xlabel('time (s)')
 ax.set_ylabel('amplitude (V)')
 
-# Save figure as thumbnail
-file_path = data_storage.save_thumbnail(fig, nametag=nametag, timestamp=timestamp)
+# Save figure as thumbnail with the same file name as the corresponding data file
+figure_path = data_storage.save_thumbnail(fig, file_path.rsplit('.')[0])
 ```
-Note that we have used the same `nametag` and `timestamp` as we have used for the call to 
-`save_data`.
-This ensures that the thumbnail picture file will have the same filename as the data text file 
-(except for the file type extension, in this case `.png`).  
+
 This example creates the file: 
-`<qudi_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.png`
+`<default_data_dir>/2021/05/20210506/20210506-1111-11_amplitude_measurement.png`
 
 
 ## Loading data
@@ -238,6 +286,48 @@ metadata = data_storage.get_global_metadata()
 ```
 Since the returned dict is only a shallow copy of the actual global metadata dict one must avoid 
 to mutate any of the values unless you are **very** sure what you are doing.
+
+
+## Logging Data
+Another common use-case instead of dumping an entire data set at once is saving one chunk of data 
+(or a single entry) at a time by appending to an already created file / database. This could for 
+example be be useful for a data logger.
+
+In order to do this, `TextDataStorage` and `CsvDataStorage` have additional API methods `new_file` 
+and `append_file`.
+
+`new_file` accepts the same keyword-only arguments as `save_data` and will create a new data file 
+containing only the file header. The only difference is an additional keyword-only parameter `dtype`
+for which you should provide a `numpy` dtype since it can not be derived from the data array in 
+this case (`numpy.float` will be assumed by default).
+ 
+The created file can then be appended by single or multiple rows of data using `append_file` 
+(you can also append files created by `save_data`).
+
+An example:
+```Python
+# Create data file with the same variables as in the save_data example above
+file_path, timestamp = data_storage.new_file(timestamp=timestamp,
+                                             metadata=metadata,
+                                             notes=notes,
+                                             nametag=nametag,
+                                             column_headers=column_headers,
+                                             column_dtypes=(float, float))
+
+# Append each row of the previously created data array one after the other
+for data_row in data:
+    data_storage.append_file(data_row, file_path)
+
+# You can also append a chunk of multiple rows at once
+data_storage.append_file(data[:10], file_path)
+```
+
+**NOTE:** appending to files like this is far less efficient than writing a single 
+chunk of data at once. This comes from the implementation detail that each call to `append_file`
+will have the overhead of opening and closing a file handle.  
+If you are after high-frequency data logging, consider buffering data for a while and writing it 
+out in chunks or implement a specialized data storage subclassing of `TextDataStorage` or 
+`DataStorageBase`.
 
 
 ## Thread-Safety
