@@ -704,12 +704,13 @@ class OdmrLogic(LogicBase):
         """ Saves the current ODMR data to a file."""
         with self._threadlock:
             # Create and configure storage helper instance
-            data_storage = TextDataStorage(root_dir=self.module_default_data_dir)
             timestamp = datetime.datetime.now()
             metadata = self._get_metadata()
             tag = tag + '_' if tag else ''
 
             # Save raw data in a separate file per data channel
+            data_storage = TextDataStorage(root_dir=self.module_default_data_dir,
+                                           column_formats='.15e')
             for channel, range_data in self._raw_data.items():
                 metadata['Channel Name'] = channel
                 column_headers = self._get_raw_column_headers(channel)
@@ -721,7 +722,8 @@ class OdmrLogic(LogicBase):
                                                          metadata=metadata,
                                                          nametag=nametag,
                                                          timestamp=timestamp,
-                                                         column_headers=column_headers)
+                                                         column_headers=column_headers,
+                                                         column_dtypes=float)
 
                 # Save plot images if required. This takes by far the most time to complete.
                 if self._save_thumbnails:
@@ -743,7 +745,8 @@ class OdmrLogic(LogicBase):
                                    metadata=metadata,
                                    nametag=nametag,
                                    timestamp=timestamp,
-                                   column_headers=column_headers)
+                                   column_headers=column_headers,
+                                   column_dtypes=[float] * len(column_headers))
 
     def _draw_figure(self, channel, range_index):
         """ Draw the summary figure to save with the data.
