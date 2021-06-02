@@ -22,7 +22,7 @@ class ScannerWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'cwave.ui')
+        ui_file = os.path.join(this_dir, 'cwavescanner.ui')
 
         # Load it
         super(ScannerWindow, self).__init__()
