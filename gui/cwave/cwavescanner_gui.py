@@ -171,7 +171,7 @@ class CwaveScanGui(GUIBase):
         self._mw.stopDoubleSpinBox.setValue(self._cwavescan_logic.scan_range[1])
         self._mw.constDoubleSpinBox.setValue(self._cwavescan_logic._static_v)
         self._mw.numberOfBinsSpinBox.setValue(self._cwavescan_logic.number_of_bins)
-        self._mw.linesSpinBox.setValue(self._cwavescan_logic.number_of_repeats)
+        # self._mw.linesSpinBox.setValue(self._cwavescan_logic.number_of_repeats)
 
         # Update the inputed/displayed numbers if the cursor has left the field:
         self._mw.startDoubleSpinBox.editingFinished.connect(self.change_start_volt)
