@@ -22,7 +22,7 @@ class ScannerWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'cwavescanner.ui')
+        ui_file = os.path.join(this_dir, 'cwave.ui')
 
         # Load it
         super(ScannerWindow, self).__init__()
@@ -121,6 +121,8 @@ class CwaveScanGui(GUIBase):
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.scan_ViewWidget.addItem(self.scan_image)
+        self._mw.wavelength_ViewWidget.addItem(self.wavemeter_image)
+
         self._mw.shgPD_ViewWidget.addItem(self.shgPD_image)
         self._mw.shgPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.opoPD_ViewWidget.addItem(self.opoPD_image)
@@ -131,12 +133,12 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
 
         self.lr = pg.LinearRegionItem([0, 100], bounds=[0, 100])#, pen=pg.mkPen({'color': "E8C4F7", alpha=0.3}))
-        self.lr.setZValue(10)
+        self.lr.setZValue(0)
         self._mw.scan_ViewWidget.addItem(self.lr)
         self.lr.sigRegionChangeFinished.connect(self.regionChanged)
         self.lr.sigRegionChanged.connect(self.displayRegion)
 
-        self.freq_pos = pg.InfiniteLine(10, movable=True, pen=pg.mkPen({'color': "E8C4F7", 'width': 2}), bounds=[0,100])
+        self.freq_pos = pg.InfiniteLine(0, movable=True, pen=pg.mkPen({'color': "E8C4F7", 'width': 2}), bounds=[0,100])
         self._mw.scan_ViewWidget.addItem(self.freq_pos)
         self.freq_pos.setZValue(100)
         self.freq_pos.sigPositionChangeFinished.connect(self.freqChanged)
