@@ -208,6 +208,17 @@ class CwaveLaser(Base):
     @laser_is_connected
     def set_int_value(self, param, intval):
         return self.cwave_dll.set_intvalue(param.encode('utf-8'), c_char_p(int(intval)))
+
+    
+    def set_thick_etalon(self, pm):
+        "move pm picometers"
+        self.set_int_value('thicketa_rel_hr', pm)
+
+    def set_wavelength(self, delta_lambda):
+        self.set_int_value('opo_rlambda', delta_lambda)
+ 
+    
+
     @laser_is_connected
     def get_int_value(self, param):
         return self.cwave_dll.get_intvalue(param.encode('utf-8'))

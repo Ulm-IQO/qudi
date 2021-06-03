@@ -89,9 +89,10 @@ class CwaveLogic(GenericLogic):
 
         wlm_res = self._wavemeter.start_acqusition()
         self.wavelength = self._wavemeter.get_current_wavelength()
-        if wlm_res != 0 and self.wavelength < 0:
-            self.wavelength = self._cwavelaser.wavelength
 
+        if wlm_res != 0 and self.wavelength <= 0:
+            self.wavelength = self._cwavelaser.wavelength
+        print("wavelength", self.wavelength)
         self.shutters = self._cwavelaser.shutters
         self.status_cwave = self._cwavelaser.status_cwave
         self.cwstate = self._cwavelaser.cwstate
@@ -154,9 +155,10 @@ class CwaveLogic(GenericLogic):
         print("New setpoint:", new_voltage)
         if self.scan_mode == 'refcavint':
             new_voltage_hex = int(65535 * new_voltage / 100)
+            
+
             res = self._cwavelaser.set_int_value('x', new_voltage_hex)
             if res == 1:
-                time.sleep(1)
                 return res
             else:
                 raise Exception('The ref cavity set setpoint command failed.')
@@ -204,7 +206,15 @@ class CwaveLogic(GenericLogic):
 
         wlm_len = 60000 # 60 sec
         self.plot_x_wlm = np.linspace(0,int(wlm_len/1000) , int(wlm_len/self.queryInterval))
-        self.plot_y_wlm = np.zeros(int(wlm_len/self.queryInterval))
+
+
+        self.wavelength = self._wavemeter.get_current_wavelength()
+        print("Init matrix ", self.wavelength)
+        if self.wavelength <= 0:
+            self.wavelength = self._cwavelaser.get_wavelength()
+        if self.wavelength == None:
+            self.wavelength = 0
+        self.plot_y_wlm = np.ones(int(wlm_len/self.queryInterval)) * self.wavelength
 
 
     @QtCore.Slot()
@@ -213,6 +223,8 @@ class CwaveLogic(GenericLogic):
         self.stopRequested = False
         # self.close_scanner()
         #TODO hardcoded limit on the scan duration
+        self.scan_range[0], self.scan_range[1]
+
         if self.cwstate == 0:
             print("cwave is not connected")
             return 
@@ -314,6 +326,7 @@ class CwaveLogic(GenericLogic):
         self.scan_matrix = np.vstack((self.scan_matrix, self.plot_y))
         self.sigGoToVoltage.emit(0)
         self.sigUpdateScanPlots.emit()
+        self.sigUpdatePanelPlots.emit()
         self.sigNextPixel_ext.emit()
 
     def make_ramp(self, start=0, stop=0, steps_number=50):
@@ -372,22 +385,23 @@ class CwaveLogic(GenericLogic):
         self.shgPD = self._cwavelaser.read_photodiode_shg()
 
         self.wavelength = self._wavemeter.get_current_wavelength()
-        if self.wavelength < 0:
+        if self.wavelength <= 500:
             self.wavelength = self._cwavelaser.get_wavelength()
 
         self.sigUpdate.emit()
 
     @QtCore.Slot()
     def update_panel_plots(self):
+        self.sigGetUpdates.emit()
         self.plot_y_shg_pd = np.insert(self.plot_y_shg_pd, 0, self.shgPD)
         self.plot_y_shg_pd = np.delete(self.plot_y_shg_pd, -1)
 
         self.plot_y_opo_pd = np.insert(self.plot_y_opo_pd, 0, self.opoPD)
         self.plot_y_opo_pd = np.delete(self.plot_y_opo_pd, -1)
-
+        self.plot_y_wlm = self.plot_y_wlm[self.plot_y_wlm != 0]
         self.plot_y_wlm = np.insert(self.plot_y_wlm, 0, self.wavelength)
-        self.plot_y_wlm = np.delete(self.plot_y_wlm, -1)
-
+        # self.plot_y_wlm = np.delete(self.plot_y_wlm, -1)
+        self.plot_x_wlm = np.linspace(0, len(self.plot_y_wlm) , len(self.plot_y_wlm)) 
 
     @QtCore.Slot()
     def connection_cwave(self):
@@ -399,6 +413,11 @@ class CwaveLogic(GenericLogic):
         self.cwstate = self._cwavelaser.cwstate
         print('CWAVE state:', self.cwstate)
         self.sigUpdate.emit()
+
+    @QtCore.Slot(int)
+    def adj_thick_etalon(self, adj):
+        print("here_we_go", adj)
+        self._cwavelaser.set_thick_etalon(adj)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.

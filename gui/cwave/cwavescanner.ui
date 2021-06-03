@@ -382,6 +382,35 @@
        </item>
       </layout>
      </widget>
+     <widget class="QLabel" name="label">
+      <property name="geometry">
+       <rect>
+        <x>540</x>
+        <y>10</y>
+        <width>81</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Thick etalon, pm</string>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="spinBox_ThickEtalon">
+      <property name="geometry">
+       <rect>
+        <x>540</x>
+        <y>30</y>
+        <width>42</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="minimum">
+       <number>-100</number>
+      </property>
+      <property name="maximum">
+       <number>100</number>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QDockWidget" name="scan_control_DockWidget">
@@ -545,7 +574,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="shgPD">
        <attribute name="title">

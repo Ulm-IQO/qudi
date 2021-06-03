@@ -14,7 +14,10 @@ from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
 
-
+def wavelength_to_freq(wavelength):
+    aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
+    freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
+    return freqs
 
 class ScannerWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -42,6 +45,7 @@ class CwaveScanGui(GUIBase):
 
     sigStopScan = QtCore.Signal()
     sigChangeSetpoint = QtCore.Signal(float)
+    sigAdjThickEtalon = QtCore.Signal(int)
     sigChangeRange = QtCore.Signal(list)
     sigChangeBinsNumber = QtCore.Signal(int)
     sigSaveMeasurement = QtCore.Signal(str, list, list)
@@ -107,8 +111,8 @@ class CwaveScanGui(GUIBase):
             self._cwavescan_logic.plot_y_opo_pd)
 
         self.wavemeter_image = pg.PlotDataItem(
-            self._cwavescan_logic.plot_x_wlm,
-            self._cwavescan_logic.plot_y_wlm)
+            self._cwavescan_logic.plot_y_wlm,
+            self._cwavescan_logic.plot_x_wlm)
 
         self.scan_fit_image = pg.PlotDataItem(
             self._cwavescan_logic.fit_x,
@@ -121,14 +125,15 @@ class CwaveScanGui(GUIBase):
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.scan_ViewWidget.addItem(self.scan_image)
+
         self._mw.wavelength_ViewWidget.addItem(self.wavemeter_image)
 
         self._mw.shgPD_ViewWidget.addItem(self.shgPD_image)
         self._mw.shgPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.opoPD_ViewWidget.addItem(self.opoPD_image)
         self._mw.opoPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.wavemeter_ViewWidget.addItem(self.wavemeter_image)
-        self._mw.wavemeter_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        #self._mw.wavemeter_ViewWidget.addItem(self.wavemeter_image)
+        #self._mw.wavemeter_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
         self._mw.scan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
 
@@ -180,6 +185,8 @@ class CwaveScanGui(GUIBase):
         self._mw.numberOfBinsSpinBox.editingFinished.connect(self.change_numer_of_bins)
         self._mw.constDoubleSpinBox.editingFinished.connect(self.update_setpoint)
 
+        self._mw.spinBox_ThickEtalon.editingFinished.connect(self.set_thick_etalon)
+
         self._mw.scan_cb_max_InputWidget.valueChanged.connect(self.refresh_matrix)
         self._mw.scan_cb_min_InputWidget.valueChanged.connect(self.refresh_matrix)
         self._mw.scan_cb_high_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
@@ -216,7 +223,7 @@ class CwaveScanGui(GUIBase):
         self._cwavescan_logic.sigScanFinished.connect(self.scan_stopped)
         self._cwavescan_logic.sigScanStarted.connect(self.scan_started)
 
-
+        self.sigAdjThickEtalon.connect(self._cwavescan_logic.adj_thick_etalon)
 
         #! Scan control panel
         self.sigStartScan.connect(self._cwavescan_logic.start_scanning)
@@ -246,6 +253,15 @@ class CwaveScanGui(GUIBase):
             self.sigOptimize.emit(opt_param)
         else:
             print("Wrong button for this function!")
+
+
+    def set_thick_etalon(self):
+        eta = self._mw.spinBox_ThickEtalon.value()
+        print("Aga!", eta)
+        self.sigAdjThickEtalon.emit(eta)
+
+    #TODO!:
+    # def set_frequency()
 
     @QtCore.Slot()
     def flip_shutter(self):
@@ -356,7 +372,9 @@ class CwaveScanGui(GUIBase):
         self.scan_image.setData(self._cwavescan_logic.plot_x, self._cwavescan_logic.plot_y)
         self.shgPD_image.setData(self._cwavescan_logic.plot_x_shg_pd, self._cwavescan_logic.plot_y_shg_pd[-len(self._cwavescan_logic.plot_x_shg_pd):])
         self.opoPD_image.setData(self._cwavescan_logic.plot_x_opo_pd, self._cwavescan_logic.plot_y_opo_pd[-len(self._cwavescan_logic.plot_x_opo_pd):])
-        self.wavemeter_image.setData(self._cwavescan_logic.plot_x_wlm, self._cwavescan_logic.plot_y_wlm[-len(self._cwavescan_logic.plot_x_wlm):])
+        wlm_y = self._cwavescan_logic.plot_y_wlm
+        wlm_y = wavelength_to_freq(wlm_y) * 1e-6
+        self.wavemeter_image.setData(wlm_y -  wlm_y.mean(), np.linspace(0, len(wlm_y), len(wlm_y)))
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
