@@ -244,8 +244,8 @@ class MotorStagePI(Base, MotorInterface):
 
                 timeout_ms = float(self._pi_xyz_timeout)
 
-                self._wait_on_condition("self._motor_stopped()", dt_s=0.02,
-                                       timeout_s=timeout_ms / 1000.)
+                self._wait_on_condition(self._motor_stopped, dt_s=0.02,
+                                        timeout_s=timeout_ms / 1000.)
             except:
                 self.log.warning('Motor connection problem! Try again...')
             else:
@@ -598,12 +598,12 @@ class MotorStagePI(Base, MotorInterface):
                 stopped = False
         return stopped
 
-    def _wait_on_condition(self, condition_str, dt_s=0.2, timeout_s=-1):
+    def _wait_on_condition(self, condition_func, dt_s=0.2, timeout_s=-1):
 
         timed_out = False
         t = 0
         t_start = time.perf_counter()
-        while not eval(condition_str):
+        while not condition_func():
 
             t = time.perf_counter() - t_start
             if timeout_s >= 0 and t > timeout_s:
@@ -613,5 +613,5 @@ class MotorStagePI(Base, MotorInterface):
             # self.log.debug(f"Waiting for {condition_str}")
 
         if timed_out:
-            self.log.warning(f"Timed out after {t} s waiting for {condition_str}")
+            self.log.warning(f"Timed out after {t} s waiting for {str(condition_func)}")
 
