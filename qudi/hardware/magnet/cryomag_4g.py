@@ -100,9 +100,12 @@ class Cryomag4G(MagnetInterface):
             mag_current = self.query('IMAG?').split(',')[0]
             return mag_current
 
-    @abstractmethod
-    def set_axis_value(self):
-        raise NotImplementedError
+    def set_axis_value(self,axis,value):
+        if self._model == 'APS100':
+
+        elif self._model == 'APS200':
+            self.write('CHAN {0}'.format(axis))
+
 
     @abstractmethod
     def calibrate(self):
