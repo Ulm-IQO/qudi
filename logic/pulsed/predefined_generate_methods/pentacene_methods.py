@@ -139,7 +139,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         block_ensemble.measurement_information['controlled_variable'] = freq_array
         block_ensemble.measurement_information['units'] = ('Hz', '')
         block_ensemble.measurement_information['labels'] = ('Frequency', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['number_of_lasers'] =  2 * num_of_points if alternating_no_mw else num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 
@@ -1029,6 +1029,359 @@ class PentaceneMethods(PredefinedGeneratorBase):
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_DEER(self, name='DEER', tau_start=1e-6, tau_step=1e-6, num_of_points=50,
+                      hahn_echo_tau=50e-6, second_rabi_period=20e-9,
+                      second_mw_amplitude=0.0, second_mw_frequency=2.87e9, two_deer_pi=True, alternating=True):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks.
+        # Calculate boundaries for second pi_pulse length to avoid pulse overlap.
+        min_tau = self.rabi_period / 8 + second_rabi_period / 4
+        max_tau = hahn_echo_tau - self.rabi_period / 4 - second_rabi_period / 4
+        if tau_start < min_tau:
+            tau_start = min_tau
+        # Reduce number of points to stay within tau boundaries
+        while (tau_start + (num_of_points-1) * tau_step - max_tau) > 0:
+            num_of_points -= 1
+        if num_of_points < 1:
+            raise Exception('Number of points for DEER measurement is smaller than 1. This can '
+                            'happen if you entered a wrong number or if the hahn_echo_tau interval '
+                            'is too small to fit tau_step witout overlapping pulses.')
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        pi_element = self._get_mw_element(length=self.rabi_period / 2,
+                                          increment=0,
+                                          amp=self.microwave_amplitude,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
+        second_pi_element = self._get_mw_element(length=second_rabi_period / 2,
+                                                 increment=0,
+                                                 amp=second_mw_amplitude,
+                                                 freq=second_mw_frequency,
+                                                 phase=0)
+        # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        # Hahn echo tau compensated for finite pulse length
+        real_hahn_tau = hahn_echo_tau - self.rabi_period / 8 - self.rabi_period / 4
+        real_tau_start = tau_start - self.rabi_period / 8 - second_rabi_period / 4
+        real_remainder_start = real_hahn_tau - real_tau_start - self.rabi_period / 4 - second_rabi_period / 4
+
+        # total mw free times in first and second half of hahn echo
+        if two_deer_pi:
+            real_hahn_tau_1 = real_hahn_tau - second_rabi_period / 2
+            mw_first_free_1 = real_hahn_tau_1 + second_rabi_period / 2
+        else:
+            real_hahn_tau_1 = real_hahn_tau
+            mw_first_free_1 = real_hahn_tau_1
+
+        real_hahn_tau_2 = real_tau_start + real_remainder_start
+        mw_first_free_2 = real_hahn_tau_2 + second_rabi_period / 2
+
+        self.log.debug(f"MW-free free evolution: real tau_1: {real_hahn_tau_1}"
+                       f" real tau_2: {real_hahn_tau_2} "
+                       f"1st-electron-MW-free free evolution: real tau_1: {mw_first_free_1} "
+                       f"real tau_2: {mw_first_free_2}")
+
+        while (real_remainder_start - (num_of_points-1) * tau_step) < 0:
+            num_of_points -= 1
+            if num_of_points < 1:
+                raise Exception('Number of points for DEER measurement is smaller than 1. This can '
+                                'happen if you entered a wrong number or if the hahn_echo_tau '
+                                'interval is too small to fit tau_step witout overlapping pulses.')
+            tau_array = tau_array[:-1]
+
+        hahn_tau_element = self._get_idle_element(length=real_hahn_tau, increment=0)
+        if two_deer_pi:
+            hahn_tau_element = self._get_idle_element(length=real_hahn_tau_1, increment=0)
+
+        hahn_remainder_element = self._get_idle_element(length=real_remainder_start, increment=-tau_step)
+        tau_element = self._get_idle_element(length=real_tau_start, increment=tau_step)
+
+        # Create block and append to created_blocks list
+        hahn_block = PulseBlock(name=name)
+        hahn_block.append(pihalf_element)
+        if two_deer_pi:
+            hahn_block.append(second_pi_element)
+            hahn_block.append(hahn_tau_element)
+        else:
+            hahn_block.append(hahn_tau_element)
+        hahn_block.append(pi_element)
+
+        hahn_block.append(hahn_remainder_element)
+        hahn_block.append(second_pi_element)
+        hahn_block.append(tau_element)
+
+        hahn_block.append(pihalf_element)
+        hahn_block.append(laser_element)
+        hahn_block.append(delay_element)
+        hahn_block.append(waiting_element)
+        if alternating:
+            hahn_block.append(pihalf_element)
+            if two_deer_pi:
+                hahn_block.append(second_pi_element)
+                hahn_block.append(hahn_tau_element)
+            else:
+                hahn_block.append(hahn_tau_element)
+            hahn_block.append(pi_element)
+
+            hahn_block.append(hahn_remainder_element)
+            hahn_block.append(second_pi_element)
+            hahn_block.append(tau_element)
+
+            hahn_block.append(pi3half_element)
+            hahn_block.append(laser_element)
+            hahn_block.append(delay_element)
+            hahn_block.append(waiting_element)
+        created_blocks.append(hahn_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hahn_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_deer_spectrum(self, name='DEERspect', freq_start=2870.0e6, freq_step=0.2e6, deer_amp=0.001, pi_len=20.0e-9,
+                           tau = 200.0e-9, num_of_points=50, two_deer_pi=False, alternating=False):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # Create frequency array
+        freq_array = freq_start + np.arange(num_of_points) * freq_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        pulsedodmr_block = PulseBlock(name=name)
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                          increment=0,
+                                          amp=self.microwave_amplitude,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
+        pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=180)
+        pi_element = self._get_mw_element(length=self.rabi_period / 2,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        tau1_element = self._get_idle_element(length=tau,
+                                                 increment=0)
+        tau2_element = self._get_idle_element(length=tau-pi_len,
+                                             increment=0)
+
+        for mw_freq in freq_array:
+
+            mw_element = self._get_mw_element(length=pi_len,
+                                              increment=0,
+                                              amp=deer_amp,
+                                              freq=mw_freq,
+                                              phase=0)
+            pulsedodmr_block.append(pihalf_element)
+            if two_deer_pi:
+                pulsedodmr_block.append(mw_element)
+            pulsedodmr_block.append(tau1_element)
+            pulsedodmr_block.append(pi_element)
+            pulsedodmr_block.append(mw_element)
+            pulsedodmr_block.append(tau2_element)
+            pulsedodmr_block.append(pihalf_element)
+            pulsedodmr_block.append(laser_element)
+            pulsedodmr_block.append(waiting_element)
+
+            if alternating:
+                pulsedodmr_block.append(pihalf_element)
+                if two_deer_pi:
+                    pulsedodmr_block.append(mw_element)
+                pulsedodmr_block.append(tau1_element)
+                pulsedodmr_block.append(pi_element)
+                pulsedodmr_block.append(mw_element)
+                pulsedodmr_block.append(tau2_element)
+                pulsedodmr_block.append(pi3half_element)
+                pulsedodmr_block.append(laser_element)
+                pulsedodmr_block.append(waiting_element)
+
+        created_blocks.append(pulsedodmr_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((pulsedodmr_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        if self.sync_channel:
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append(self._get_sync_element())
+            created_blocks.append(sync_block)
+            block_ensemble.append((sync_block.name, 0))
+
+        # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_deer_rabi(self, name='DEERrabi', tau_fixed=200.0e-9, deer_freq=2870.0e6, deer_amp=0.001,
+                          tau_start=2.0e-9, tau_step=2.0e-9, num_of_taus=50, two_deer_pi=False, alternating=False):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # Create frequency array
+        tau_array = tau_start + np.arange(num_of_taus) * tau_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        deerrabi_block = PulseBlock(name=name)
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                               increment=0,
+                                               amp=self.microwave_amplitude,
+                                               freq=self.microwave_frequency,
+                                               phase=180)
+        tau1_element = self._get_idle_element(length=tau_fixed,
+                                              increment=0)
+        tau2_element = self._get_idle_element(length=tau_fixed - tau_start,
+                                              increment=-tau_step)
+
+        pi_element = self._get_mw_element(length=self.rabi_period / 2,
+                                          increment=0,
+                                          amp=self.microwave_amplitude,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
+        mw_element = self._get_mw_element(length=tau_start,
+                                          increment=tau_step,
+                                          amp=deer_amp,
+                                          freq=deer_freq,
+                                          phase=0)
+
+        deerrabi_block.append(pihalf_element)
+        if two_deer_pi:
+            deerrabi_block.append(mw_element)
+            deerrabi_block.append(tau2_element)
+        else:
+            deerrabi_block.append(tau1_element)
+        deerrabi_block.append(pi_element)
+
+        deerrabi_block.append(mw_element)
+        deerrabi_block.append(tau2_element)
+        deerrabi_block.append(pihalf_element)
+
+        deerrabi_block.append(laser_element)
+        deerrabi_block.append(waiting_element)
+        if alternating:
+            deerrabi_block.append(pihalf_element)
+            if two_deer_pi:
+                deerrabi_block.append(mw_element)
+            deerrabi_block.append(tau1_element)
+            deerrabi_block.append(pi_element)
+            deerrabi_block.append(mw_element)
+            deerrabi_block.append(tau2_element)
+            deerrabi_block.append(pi3half_element)
+            deerrabi_block.append(laser_element)
+            deerrabi_block.append(waiting_element)
+        created_blocks.append(deerrabi_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((deerrabi_block.name, num_of_taus - 1))
+
+        # Create and append sync trigger block if needed
+        if self.sync_channel:
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append(self._get_sync_element())
+            created_blocks.append(sync_block)
+            block_ensemble.append((sync_block.name, 0))
+
+        # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_taus if alternating else num_of_taus
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
