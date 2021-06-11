@@ -218,7 +218,11 @@ class DTG5334(PulserInterface):
         """
         self.dtg.write('OUTP:STAT:ALL ON;*WAI')
         self.dtg.write('TBAS:RUN ON')
-        state = 0 if int(self.dtg.query('TBAS:RUN?')) == 1 else -1
+        ret = int(self.dtg.query('TBAS:RUN?'))
+        state = 0 if ret == 1 else -1
+
+        self.log.error(f"Turning on error code: {ret}")
+
         return state
 
     def pulser_off(self):
@@ -550,7 +554,7 @@ class DTG5334(PulserInterface):
                 line_nr,
                 '{0}'.format(line_nr + 1),
                 0,
-                params['name'][0].rsplit('.')[0],
+                params['ensemble'][0].rsplit('.')[0],
                 reps,
                 jump_to,
                 go_to
@@ -561,7 +565,7 @@ class DTG5334(PulserInterface):
             time.sleep(0.2)
 
         self.sequence_names.add(name)
-        return 0
+        return num_steps
 
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
