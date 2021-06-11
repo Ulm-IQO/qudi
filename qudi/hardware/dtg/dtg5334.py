@@ -490,7 +490,7 @@ class DTG5334(PulserInterface):
         # check input
         if not name:
             self.log.error('Please specify a name for waveform creation.')
-            return -1
+            return -1, []
 
         min_samples = 960
         longest_channel = max([len(v) for k, v in digital_samples.items()])
@@ -498,7 +498,7 @@ class DTG5334(PulserInterface):
         if longest_channel < min_samples:
             self.log.error('Minimum waveform length for DTG5334 series is {0} samples.\n'
                            'Direct waveform creation for {1} failed.'.format(min_samples, name))
-            return -1
+            return -1, []
 
         # determine active channels
         activation_dict = self.get_active_channels()
@@ -514,7 +514,7 @@ class DTG5334(PulserInterface):
                 'write.\nChannel activation is: {}.\n'
                 'Sample arrays have: {}.'
                 ''.format(active_digital, list(digital_samples.keys())))
-            return -1
+            return -1, []
 
         self._block_new(name, longest_channel)
         self.log.debug(self.dtg.query('BLOC:SEL?'))
