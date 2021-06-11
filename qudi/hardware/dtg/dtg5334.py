@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import time
-import visa
+import pyvisa as visa
 import numpy as np
 
 from qudi.util.helpers import natural_sort
@@ -73,9 +73,9 @@ class DTG5334(PulserInterface):
         self.current_loaded_assets = {}
 
         # connect to DTG
-        self._rm = visa.ResourceManager('@py')
+        self._rm = visa.ResourceManager()
 
-        self.dtg = self._rm.open_resource(self.visa_address, read_termination='\n\x00')
+        self.dtg = self._rm.open_resource(self.visa_address)
 
         # set timeout by default to 15 sec
         self.dtg.timeout = 15000
@@ -523,6 +523,7 @@ class DTG5334(PulserInterface):
         self.current_loaded_assets = {int(ch.split('_ch')[1]): name for ch in active_digital}
         self.current_loaded_asset_type = 'waveform'
         self.waveform_names.add(name)
+
         return max(written), [name]
 
     def write_sequence(self, name, sequence_parameters):
