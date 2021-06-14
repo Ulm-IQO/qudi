@@ -39,7 +39,7 @@ class DDMethods(Enum):
 
     # define a function to nest the phases of sequence 1 into sequence 2
     def nest_phases_function(xseq1, xseq2):
-        return [((xseq1[j] + xseq2[k]) % 360.) for k in range(len(xseq2)) for j in range(len(xseq1))]
+        return [(xel1 + xel2) % 360 for xel2 in xseq2 for xel1 in xseq1]
 
     # define a function to calculate the phases of the UR sequences,
     # reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
