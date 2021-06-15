@@ -876,8 +876,9 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
 
 
-    def generate_pol_ise(self, name='ise_pen', t_laser=1e-6, t_mw_ramp=100e-9, f_mw_sweep=10e6,
-                                   jump_channel=''):
+    def generate_pol_ise(self, name='ise_pen', t_laser=1e-6, f_mw_sweep=10e6,
+                                    mw_sweep_speed=3e12,
+                                   jump_channel='', add_gate_ch='d_ch4', depolarize=False):
 
         created_blocks = list()
         created_ensembles = list()
@@ -891,11 +892,16 @@ class PentaceneMethods(PredefinedGeneratorBase):
         laser_element_jump = self._get_laser_element(length=t_laser, increment=0)
         laser_element_jump.digital_high[jump_channel] = True
         """
+
+        t_mw_ramp = f_mw_sweep / mw_sweep_speed
+
         # create n mw chirps
         n_mw_chirps = int(t_laser/t_mw_ramp)
         if t_laser % t_mw_ramp != 0.:
-            self.log.warning("Laser not dividable by t_mw. Extending to: {} us".
-                             format(n_mw_chirps*t_mw_ramp))
+            t_laser = n_mw_chirps * t_mw_ramp
+            self.log.info(f"Adjusting t_laser to {t_laser*1e6} us to fit in {n_mw_chirps}"
+                          f" t_mw= {t_mw_ramp*1e6} us. Sweep speed= {mw_sweep_speed/1e12} MHz/us")
+
         mw_freq_center = self.microwave_frequency
         freq_range = f_mw_sweep
         mw_freq_start = mw_freq_center - freq_range / 2.
@@ -907,21 +913,37 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                           start_freq=mw_freq_start,
                                                           stop_freq=mw_freq_end,
                                                           phase=0)
+
+        mw_sweep_depol_element = self.self._get_mw_element_linearchirp(length=t_mw_ramp,
+                                                                 increment=0,
+                                                                 amplitude=self.microwave_amplitude,
+                                                                 start_freq=mw_freq_end,
+                                                                 stop_freq=mw_freq_start,
+                                                                 phase=0)
+
+
+        # laser on during mw sweep
         mw_sweep_element.digital_high[self.laser_channel] = True
         if jump_channel:
             mw_sweep_element.digital_high[jump_channel] = True
+            mw_sweep_depol_element.digital_high[jump_channel] = True
+        if add_gate_ch != "":
+            mw_sweep_element.digital_high[add_gate_ch] = True
+            mw_sweep_depol_element.digital_high[add_gate_ch] = True
 
         # Create block and append to created_blocks list
-        laser_block = PulseBlock(name=name)
-        #laser_block.append(laser_element_jump)
-        for i in range(n_mw_chirps):
-            laser_block.append(mw_sweep_element)
+        ise_block = PulseBlock(name=name)
 
-        created_blocks.append(laser_block)
+        for i in range(n_mw_chirps):
+            ise_block.append(mw_sweep_element)
+            if depolarize:
+                ise_block.append(mw_sweep_depol_element)
+
+        created_blocks.append(ise_block)
 
         # Create block ensemble and append to created_ensembles list
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append((laser_block.name, 0))
+        block_ensemble.append((ise_block.name, 0))
 
 
         # Create and append sync trigger block if needed
