@@ -7,6 +7,7 @@
 *.lib
 *.exe
 *.dll
+*.chm
 *.so
 *.so.[0-9]*
 *.a
