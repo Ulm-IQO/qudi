@@ -33,7 +33,7 @@ qm_dict_final ={}
 setup = OrderedDict()
 setup['gated'] = False
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
-setup['bin_width'] = 4.0e-9
+setup['bin_width'] = 1.0e-9
 setup['wait_time'] = 1.0e-6
 setup['laser_delay'] = 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
@@ -568,7 +568,7 @@ def conventional_measurement(qm_dict):
     logger.info("Pulser on")
 
     i_wait = 0
-    n_wait_max = 50
+    n_wait_max = 100
     while not pulsedmasterlogic.status_dict['measurement_running'] and i_wait < n_wait_max:
         logger.debug("Waiting for mes to start.")
         time.sleep(0.5)
@@ -644,7 +644,7 @@ def set_up_conventional_measurement(qm_dict):
         analy_method = qm_dict['analysis_method']
     else:
         analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
-                                            'norm_start': 1.8e-6, 'norm_end': 2.8e-6}
+                                            'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
 
     logger.info("Setting laser pulse analysis method: {}".format(analy_method))
     pulsedmasterlogic.set_analysis_settings(analy_method)
