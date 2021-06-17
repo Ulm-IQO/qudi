@@ -1395,8 +1395,10 @@ class MagnetGui(GUIBase):
             filename = os.path.join(filepath, '{0}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
         exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
+        exporter_graph_png = pyqtgraph.exporters.ImageExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
         #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
-        exporter_graph.export(filename  + '.svg')
+        exporter_graph.export(filename + '.svg')
+        exporter_graph_png.export(filename + '.png')
 
         # self._save_logic.
         self._magnet_logic.save_2d_data(filetag, timestamp)
