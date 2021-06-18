@@ -47,7 +47,9 @@ def get_remote_module_instance(remote_url, certfile=None, keyfile=None, protocol
     """
     parsed = urlparse(remote_url)
     if protocol_config is None:
-        protocol_config = {'allow_all_attrs': True, 'allow_setattr': True, 'allow_delattr': True}
+        protocol_config = {'allow_all_attrs': True,
+                           'allow_setattr': True,
+                           'allow_delattr': True}
     connection = rpyc.ssl_connect(host=parsed.hostname,
                                   port=parsed.port,
                                   config=protocol_config,
