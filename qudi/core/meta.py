@@ -23,13 +23,41 @@ top-level directory of this distribution and at
 __all__ = ('ABCQObjectMeta', 'ModuleMeta', 'QObjectMeta')
 
 from abc import ABCMeta
+from functools import wraps
+from inspect import signature, isfunction
 from PySide2.QtCore import QObject
 from qudi.core.statusvariable import StatusVar
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
+from qudi.util.network import net_copy_ndarray
 
 
 QObjectMeta = type(QObject)
+
+
+def _module_rpyc_argument_wrapper(func):
+    sig = signature(func)
+    if len(sig.parameters) > 0 and isinstance(func, staticmethod):
+
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            sig.bind(*args, **kwargs)
+            args = [net_copy_ndarray(arg) for arg in args]
+            kwargs = {name: net_copy_ndarray(arg) for name, arg in kwargs.items()}
+            return func(*args, **kwargs)
+        wrapped.__signature__ = sig
+        return wrapped
+    elif len(sig.parameters) > 1:
+
+        @wraps(func)
+        def wrapped(self, *args, **kwargs):
+            sig.bind(self, *args, **kwargs)
+            args = [net_copy_ndarray(arg) for arg in args]
+            kwargs = {name: net_copy_ndarray(arg) for name, arg in kwargs.items()}
+            return func(self, *args, **kwargs)
+        wrapped.__signature__ = sig
+        return wrapped
+    return func
 
 
 class ABCQObjectMeta(ABCMeta, QObjectMeta):
@@ -37,6 +65,14 @@ class ABCQObjectMeta(ABCMeta, QObjectMeta):
     """
 
     def __new__(mcs, name, bases, attributes):
+        module_bases = ('GuiBase', 'LogicBase', 'Base')
+        if any(base.__name__ in module_bases for base in bases) and name not in module_bases:
+            exclude_attrs = ('on_activate', 'on_deactivate', 'move_to_main_thread', 'show')
+            for attr_name in list(attributes):
+                attr = attributes[attr_name]
+                if isfunction(attr) and attr_name not in exclude_attrs and attr_name[0] != '_':
+                    attributes[attr_name] = _module_rpyc_argument_wrapper(attr)
+
         cls = super(ABCQObjectMeta, mcs).__new__(mcs, name, bases, attributes)
         # Compute set of abstract method names
         abstracts = {

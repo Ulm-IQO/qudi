@@ -133,6 +133,7 @@ class QudiKernelClient:
         config.load_config(file_path=config_path, set_default=False)
         port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
+                                       config={'allow_pickle': True},
                                        port=port,
                                        service=self.service_instance)
 
@@ -161,12 +162,12 @@ class QudiIPythonKernel(IPythonKernel):
         removed = self._namespace_qudi_modules.difference(modules)
         for mod in removed:
             self.shell.user_ns.pop(mod, None)
-        for name, obj in self.shell.user_ns.items():
-            if obj is numpy:
-                modules[name] = self._qudi_client.get_numpy_module()
-                if modules[name] is None:
-                    modules.pop(name, None)
-                break
+        # for name, obj in self.shell.user_ns.items():
+        #     if obj is numpy:
+        #         modules[name] = self._qudi_client.get_numpy_module()
+        #         if modules[name] is None:
+        #             modules.pop(name, None)
+        #         break
         self.shell.push(modules)
         self._namespace_qudi_modules = set(modules)
 
