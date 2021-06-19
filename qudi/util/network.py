@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ('netobtain',)
 
-import numpy as np
 import rpyc.core.netref as _netref
 import rpyc.utils.classic as _classic
 
@@ -30,13 +29,5 @@ def netobtain(obj):
     """
     """
     if isinstance(obj, _netref.BaseNetref):
-        return _classic.obtain(obj)
-    return obj
-
-
-def net_copy_ndarray(obj):
-    """
-    """
-    if isinstance(obj, np.ndarray):
         return _classic.obtain(obj)
     return obj

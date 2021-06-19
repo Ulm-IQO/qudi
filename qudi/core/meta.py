@@ -29,7 +29,7 @@ from PySide2.QtCore import QObject
 from qudi.core.statusvariable import StatusVar
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-from qudi.util.network import net_copy_ndarray
+from qudi.util.network import netobtain
 
 
 QObjectMeta = type(QObject)
@@ -42,8 +42,8 @@ def _module_rpyc_argument_wrapper(func):
         @wraps(func)
         def wrapped(*args, **kwargs):
             sig.bind(*args, **kwargs)
-            args = [net_copy_ndarray(arg) for arg in args]
-            kwargs = {name: net_copy_ndarray(arg) for name, arg in kwargs.items()}
+            args = [netobtain(arg) for arg in args]
+            kwargs = {name: netobtain(arg) for name, arg in kwargs.items()}
             return func(*args, **kwargs)
         wrapped.__signature__ = sig
         return wrapped
@@ -52,8 +52,8 @@ def _module_rpyc_argument_wrapper(func):
         @wraps(func)
         def wrapped(self, *args, **kwargs):
             sig.bind(self, *args, **kwargs)
-            args = [net_copy_ndarray(arg) for arg in args]
-            kwargs = {name: net_copy_ndarray(arg) for name, arg in kwargs.items()}
+            args = [netobtain(arg) for arg in args]
+            kwargs = {name: netobtain(arg) for name, arg in kwargs.items()}
             return func(self, *args, **kwargs)
         wrapped.__signature__ = sig
         return wrapped
