@@ -571,7 +571,7 @@ def conventional_measurement(qm_dict):
     n_wait_max = 100
     while not pulsedmasterlogic.status_dict['measurement_running'] and i_wait < n_wait_max:
         logger.debug("Waiting for mes to start.")
-        time.sleep(0.5)
+        time.sleep(1)
         i_wait += 1
 
     if i_wait >= n_wait_max:
