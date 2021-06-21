@@ -3,6 +3,14 @@ from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions
 
+from enum import Enum
+
+
+class DeerAltModes(Enum):
+    Disable = 0
+    DeerPiOff = 1
+    NVPi3Half = 2
+    DeerPiOff_plus_NVPi3Half = 3
 
 class PentaceneMethods(PredefinedGeneratorBase):
     """
@@ -1099,8 +1107,9 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_deer_ramsey(self, name='deer_ramsey', f_mw_penta=1.4e9, t_rabi_penta=100e-9,
-                             tau_start=1.0e-6, tau_step=1.0e-6, num_of_points=50, alternating_mode='pentacene_pi_off'):
+    def generate_ramsey_deer_pi(self, name='ramsey_deer_pi', f_mw_deer=1.4e9, t_pi_deer=100e-9,
+                             tau_start=1.0e-6, tau_step=1.0e-6, num_of_points=50,
+                             alternating_mode=DeerAltModes.NVPi3Half):
 
 
         created_blocks = list()
@@ -1108,7 +1117,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_sequences = list()
 
         # get tau array for measurement ticks
-        tau_array = (tau_start + np.arange(num_of_points) * tau_step) + t_rabi_penta / 2
+        tau_array = (tau_start + np.arange(num_of_points) * tau_step) + t_pi_deer
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -1121,12 +1130,12 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
-        pi_pentacene_element = self._get_mw_element(length=t_rabi_penta / 2,
+        pi_deer_element = self._get_mw_element(length=t_pi_deer,
                                               increment=0,
                                               amp=self.microwave_amplitude,
-                                              freq=f_mw_penta,
+                                              freq=f_mw_deer,
                                               phase=0)
-        idle_pentacene_element = self._get_idle_element(length=t_rabi_penta / 2,
+        idle_deer_element = self._get_idle_element(length=t_pi_deer,
                                                         increment=0)
 
         # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
@@ -1147,7 +1156,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
         ramsey_block.append(pihalf_element)
-        ramsey_block.append(pi_pentacene_element)
+        ramsey_block.append(pi_deer_element)
         ramsey_block.append(tau_element)
         ramsey_block.append(pihalf_element)
         ramsey_block.append(laser_element)
@@ -1155,23 +1164,59 @@ class PentaceneMethods(PredefinedGeneratorBase):
         ramsey_block.append(waiting_element)
 
         alternating = False
-        if alternating_mode == 'nv_pi_3_2':
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
+        if alternating_mode.value == DeerAltModes.Disable.value:
+            pass
+        elif alternating_mode.value == DeerAltModes.NVPi3Half.value:
             ramsey_block.append(pihalf_element)
+            ramsey_block.append(pi_deer_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(pi3half_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
             alternating = True
-        elif alternating_mode == 'pentacene_pi_off':
+        elif alternating_mode.value == DeerAltModes.DeerPiOff.value:
             ramsey_block.append(pihalf_element)
+            ramsey_block.append(idle_deer_element)
             ramsey_block.append(tau_element)
-            ramsey_block.append(idle_pentacene_element)
             ramsey_block.append(pihalf_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
             alternating = True
+        elif alternating_mode.value == DeerAltModes.DeerPiOff_plus_NVPi3Half.value:
+            # deer pi + nv 3pi/2
+            ramsey_block.append(pihalf_element)
+            ramsey_block.append(pi_deer_element)
+            ramsey_block.append(tau_element)
+            ramsey_block.append(pi3half_element)
+            ramsey_block.append(laser_element)
+            ramsey_block.append(delay_element)
+            ramsey_block.append(waiting_element)
+            # deer idle + nv pi/2
+            ramsey_block.append(pihalf_element)
+            ramsey_block.append(idle_deer_element)
+            ramsey_block.append(tau_element)
+            ramsey_block.append(pihalf_element)
+            ramsey_block.append(laser_element)
+            ramsey_block.append(delay_element)
+            ramsey_block.append(waiting_element)
+            # deer idle + nv 3pi/2
+            ramsey_block.append(pihalf_element)
+            ramsey_block.append(idle_deer_element)
+            ramsey_block.append(tau_element)
+            ramsey_block.append(pi3half_element)
+            ramsey_block.append(laser_element)
+            ramsey_block.append(delay_element)
+            ramsey_block.append(waiting_element)
+
+            alternating = True
+            tau_array = np.repeat(tau_array, 2)
+            number_of_lasers = 4 * num_of_points if alternating else num_of_points
+        else:
+            self.log.debug(f"DeerAltModes.NVPi3Half.value")
+            raise ValueError(f"Unknown alternating mode {alternating_mode}, value: {alternating_mode.value}")
 
         created_blocks.append(ramsey_block)
 
@@ -1183,7 +1228,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        number_of_lasers = 2 * num_of_points if alternating else num_of_points
+
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
