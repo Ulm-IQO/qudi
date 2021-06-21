@@ -976,7 +976,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_ramsey_s3p(self, name='ramsey', tau_start=1.0e-6, tau_step=1.0e-6, num_of_points=50,
-                        alternating=True, no_nv_init=True):
+                        alternating=True, no_nv_init=True, read_phases_degree='0, 180'):
         """
         Modifies basic_predefined_methods::generate_ramsey()
         """
@@ -993,24 +993,24 @@ class PentaceneMethods(PredefinedGeneratorBase):
         laser_element = self._get_laser_gate_element(length=self.laser_length,
                                                      increment=0)
         delay_element = self._get_delay_gate_element()
+
+        read_phases = np.fromstring(read_phases_degree, sep=",")
+
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
-                                              phase=0)
+                                              phase=read_phases[0])
         # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
-                                                   phase=180)
+                                                   phase=read_phases[1])
         else:
-            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
-                                                   increment=0,
-                                                   amp=self.microwave_amplitude,
-                                                   freq=self.microwave_frequency,
-                                                   phase=0)
+            raise ValueError("This sequence requires an analog mw channel!")
+
         tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
 
         # Create block and append to created_blocks list
@@ -1075,9 +1075,101 @@ class PentaceneMethods(PredefinedGeneratorBase):
         ramsey_block, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=tau_start, tau_step=tau_step,
                                                       num_of_points=num_of_points,
                                                       alternating=False, no_nv_init=True)
-
+        # todo: finish this sequence
+        # was dropped in the meantime in favor of pol_ramsey_rf_pis
         ramsey_blocks = PulseBlock(name=name)
         ramsey_block.append(ramsey_block)
+        ramsey_blocks.append(ise_block)
+        ramsey_blocks.append(delay_element)
+        ramsey_blocks.append(waiting_element)
+
+
+        created_blocks.append(ramsey_blocks)
+
+        # Create block ensemble and append to created_ensembles list
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((ramsey_blocks.name, 0))
+
+        # Create and append sync trigger block if needed
+        # no trigger as this sequence is used by other sequences that add sync trigger
+        # self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        number_of_lasers = 1
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = [0]
+        block_ensemble.measurement_information['units'] = ('a.u.', '')
+        block_ensemble.measurement_information['labels'] = ('data point', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def _get_rf_element(self, length, increment, pulse_ch, amp=None, freq=None, phase=None):
+        """
+        Extends _get_mw_element in order to create the pulse on a second output channel,
+        independent of the MW output.
+        """
+
+        if pulse_ch:
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=pulse_ch)
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+            mw_element.pulse_function[pulse_ch] = SamplingFunctions.Sin(
+                amplitude=amp,
+                frequency=freq,
+                phase=phase)
+        return mw_element
+
+    def generate_pol_ramsey_rf_dd(self, name='ise+ramsey_pen', t_laser=1e-6, mw_sweep_speed=3e12, f_ise_res=2e9,
+                                df_mw_sweep=10e6, jump_channel='',
+                                tau=1.0e-6, n_tau=1,
+                                n_pi_rf=2, f_rf=100e6, t_pi_rf=10e-6, rf_channel="a_ch2",
+                                alternating=False):
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        ise_block, _, _ = self.generate_pol_ise(name='ise', t_laser=t_laser, f_res=f_ise_res, df_mw_sweep=df_mw_sweep,
+                                                mw_sweep_speed=mw_sweep_speed,
+                                                jump_channel=jump_channel, add_gate_ch='',
+                                                both_sweep_polarities=False)
+
+        # Ramsey, -90° readout
+        ramsey_block, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=df_mw_sweep, tau_step=0,
+                                                      num_of_points=1,
+                                                      alternating=False, read_phases_degree="-90, 90")
+        # Ramsey, 90° readout
+        ramsey_block_alt, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=df_mw_sweep, tau_step=0,
+                                                          num_of_points=1,
+                                                          alternating=False, read_phases_degree="90, -90")
+
+        pi_rf_element = self._get_rf_element(length=t_pi_rf,
+                                             increment=0,
+                                             pulse_ch=rf_channel,
+                                             amp=self.microwave_amplitude,
+                                             freq=f_rf,
+                                             phase=0)
+
+
+        ramsey_blocks = PulseBlock(name=name)
+        for i in range(n_tau):
+            ramsey_block.append(ramsey_block)
+            ramsey_block.append(ramsey_block_alt)
+
+        # ise block
         ramsey_blocks.append(ise_block)
         ramsey_blocks.append(delay_element)
         ramsey_blocks.append(waiting_element)
