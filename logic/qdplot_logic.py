@@ -88,6 +88,7 @@ class QDPlotLogic(GenericLogic):
         self._y_unit = list()
         self._x_data = list()
         self._y_data = list()
+        self._title = list()
         self._fit_data = list()
         self._fit_results = list()
         self._fit_method = list()
@@ -111,6 +112,7 @@ class QDPlotLogic(GenericLogic):
         self._y_unit = list()
         self._x_data = list()
         self._y_data = list()
+        self._title = list()
         self._fit_data = list()
         self._fit_results = list()
         self._fit_method = list()
@@ -157,6 +159,7 @@ class QDPlotLogic(GenericLogic):
             self._y_label.append('Y')
             self._x_unit.append('a.u.')
             self._y_unit.append('a.u.')
+            self._title.append('')
             self._x_data.append([np.zeros(1)])
             self._y_data.append([np.zeros(1)])
             self._fit_data.append(None)
@@ -179,7 +182,8 @@ class QDPlotLogic(GenericLogic):
                       'x_unit'  : self._x_unit[plot_index],
                       'y_unit'  : self._y_unit[plot_index],
                       'x_limits': self._x_limits[plot_index],
-                      'y_limits': self._y_limits[plot_index]}
+                      'y_limits': self._y_limits[plot_index],
+                      'title'   : self._title[plot_index]}
             self.sigPlotParamsUpdated.emit(plot_index, params)
 
     @QtCore.Slot()
@@ -200,6 +204,7 @@ class QDPlotLogic(GenericLogic):
             del self._y_unit[plot_index]
             del self._x_data[plot_index]
             del self._y_data[plot_index]
+            del self._title[plot_index]
             del self._fit_data[plot_index]
             del self._fit_results[plot_index]
             del self._fit_method[plot_index]
@@ -214,7 +219,8 @@ class QDPlotLogic(GenericLogic):
                           'x_unit': self._x_unit[i],
                           'y_unit': self._y_unit[i],
                           'x_limits': self._x_limits[i],
-                          'y_limits': self._y_limits[i]}
+                          'y_limits': self._y_limits[i],
+                          'title': self._title[i]}
                 self.sigPlotParamsUpdated.emit(i, params)
 
     @QtCore.Slot(int)
@@ -415,6 +421,7 @@ class QDPlotLogic(GenericLogic):
             # Data labels
             x_label = self._x_label[plot_index] + ' (' + self._x_unit[plot_index] + ')'
             y_label = self._y_label[plot_index] + ' (' + self._y_unit[plot_index] + ')'
+            title = self._title[plot_index]
 
             # prepare the data in a dict or in an OrderedDict:
             data = OrderedDict()
@@ -487,6 +494,7 @@ class QDPlotLogic(GenericLogic):
                     is_first_column = False
 
             # set labels, units and limits
+            ax1.set_title(title)
             ax1.set_xlabel(x_label)
             ax1.set_ylabel(y_label)
 
@@ -696,6 +704,29 @@ class QDPlotLogic(GenericLogic):
             self._y_unit[plot_index] = str(value)
             self.sigPlotParamsUpdated.emit(plot_index, {'y_unit': self._y_unit[plot_index]})
 
+    def set_title(self, value, plot_index=0):
+        """ Set the title of the plot.
+
+        @param str value: label to be set
+        @param int plot_index: index of the plot in the range for 0 to 2
+        """
+        with self.threadlock:
+            if not (0 <= plot_index < self.number_of_plots):
+                raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
+            self._title[plot_index] = str(value)
+            self.sigPlotParamsUpdated.emit(plot_index, {'title': self._title[plot_index]})
+
+    def get_title(self, plot_index=0):
+        """ Get the title of the plot.
+
+        @param int plot_index: index of the plot in the range from 0 to 2
+        @return str: current label of the y-axis
+        """
+        with self.threadlock:
+            if not (0 <= plot_index < self.number_of_plots):
+                raise IndexError('Plot index {0:d} out of bounds.'.format(plot_index))
+            return self._title[plot_index]
+
     def clear_old_data(self, plot_index=0):
         """ Get the information, if the previous plots in the windows are kept or not
 
@@ -723,6 +754,8 @@ class QDPlotLogic(GenericLogic):
                     self.set_x_limits(params['x_limits'], plot_index)
                 if 'y_limits' in params:
                     self.set_y_limits(params['y_limits'], plot_index)
+                if 'title' in params:
+                    self.set_title(params['title'], plot_index)
 
     @QtCore.Slot(int, bool, bool)
     def update_auto_range(self, plot_index, auto_x, auto_y):

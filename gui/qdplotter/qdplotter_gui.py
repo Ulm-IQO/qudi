@@ -505,6 +505,11 @@ class QDPlotterGui(GUIBase):
             dockwidget.y_upper_limit_DoubleSpinBox.setValue(limits[1])
             dockwidget.y_lower_limit_DoubleSpinBox.blockSignals(False)
             dockwidget.y_upper_limit_DoubleSpinBox.blockSignals(False)
+        if 'title' in params:
+            self._pg_signal_proxys[plot_index][0].block = True
+            dockwidget.plot_PlotWidget.setTitle(params['title'])
+            self._pg_signal_proxys[plot_index][0].block = False
+
 
     def save_clicked(self, plot_index):
         """ Handling the save button to save the data into a file. """
