@@ -64,7 +64,7 @@ class KeysightPlotter():
         else:
             raise NotImplementedError
 
-        wave_dict['t'] = t_us_ch1 * 1e6
+        wave_dict['t'] = t_us_ch1 * 1e-6
 
         return wave_dict
 
@@ -291,13 +291,36 @@ class KeysightPlotter():
 
 # debug code
 if __name__ == "__main__":
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
     file = r"C:\qudi\pulsed_files" + "/" + "ise+ramsey_pen_ch1.bin"
     file = os.path.abspath(file)
 
     plotter = KeysightPlotter(14, 8e9)
-    waves = plotter.load_data(file)
+    wave_dict = plotter.load_data(file)
 
-    print(waves.keys())
+    print(wave_dict.keys())
+
+    t = wave_dict['t'] * 1e6
+
+    plt.plot(t, wave_dict['a_ch1'], label="a_ch1", color="blue")
+    plt.plot(t, wave_dict['d_ch1'] - 2, label="d_ch1", color="orange")
+    plt.plot(t, wave_dict['d_ch2'] - 3, label="d_ch2", color="green")
+
+    try:
+        plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
+        plt.plot(t, wave_dict['d_ch3'] - 6, label="d_ch3", color="orange")
+        plt.plot(t, wave_dict['d_ch4'] - 7, label="d_ch4", color="green")
+    except:
+        pass  # no a_ch2 for bin8
+
+    plt.xlabel("t (us)")
+    plt.legend()
+    plt.show()
+
+    print("Closing")
 
 """
 # Plotting waveforms
