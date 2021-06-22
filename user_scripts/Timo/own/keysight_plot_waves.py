@@ -290,14 +290,14 @@ class KeysightPlotter():
 
 
 # debug code
+if __name__ == "__main__":
+    file = r"C:\qudi\pulsed_files" + "/" + "ise+ramsey_pen_ch1.bin"
+    file = os.path.abspath(file)
 
-file = r"C:\qudi\pulsed_files" + "/" + "ise+ramsey_pen_ch1.bin"
-file = os.path.abspath(file)
+    plotter = KeysightPlotter(14, 8e9)
+    waves = plotter.load_data(file)
 
-plotter = KeysightPlotter(14, 8e9)
-waves = plotter.load_data(file)
-
-print(waves.keys())
+    print(waves.keys())
 
 """
 # Plotting waveforms
