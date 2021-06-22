@@ -70,6 +70,10 @@ class DTG5334(PulserInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+
+        self.log.warning("DTG hardware module is deprecated and not actively supported anymore. "
+                         "Be careful and expect undefined behavior.")
+
         self.current_loaded_assets = {}
 
         # connect to DTG
