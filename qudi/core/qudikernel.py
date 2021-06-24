@@ -133,6 +133,10 @@ class QudiKernelClient:
         config.load_config(file_path=config_path, set_default=False)
         port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
+                                       config={'allow_all_attrs': True,
+                                               'allow_setattr'  : True,
+                                               'allow_delattr'  : True,
+                                               'allow_pickle'   : True},
                                        port=port,
                                        service=self.service_instance)
 
