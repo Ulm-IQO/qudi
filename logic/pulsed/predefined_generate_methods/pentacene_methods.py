@@ -1,7 +1,8 @@
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
-from logic.pulsed.sampling_functions import SamplingFunctions
+from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
+
 
 from enum import Enum
 
@@ -904,11 +905,11 @@ class PentaceneMethods(PredefinedGeneratorBase):
         t_mw_ramp = df_mw_sweep / mw_sweep_speed
 
         # create n mw chirps
-        n_mw_chirps = int(t_laser/t_mw_ramp)
+        n_mw_chirps = int(np.ceil(t_laser/t_mw_ramp))
         if t_laser % t_mw_ramp != 0.:
             t_laser = n_mw_chirps * t_mw_ramp
-            self.log.info(f"Adjusting t_laser to {t_laser*1e6} us to fit in {n_mw_chirps}"
-                          f" t_mw= {t_mw_ramp*1e6} us. Sweep speed= {mw_sweep_speed/1e12} MHz/us")
+            self.log.info(f"Adjusting t_laser to {t_laser*1e6:.3f} us to fit in {n_mw_chirps}"
+                          f" t_mw= {t_mw_ramp*1e6:.3f} us. Sweep speed= {mw_sweep_speed/1e12} MHz/us")
 
         if not f_res:
             mw_freq_center = self.microwave_frequency
@@ -919,14 +920,14 @@ class PentaceneMethods(PredefinedGeneratorBase):
         mw_freq_start = mw_freq_center - freq_range / 2.
         mw_freq_end = mw_freq_center + freq_range / 2
 
-        mw_sweep_element = self.self._get_mw_element_linearchirp(length=t_mw_ramp,
+        mw_sweep_element = self._get_mw_element_linearchirp(length=t_mw_ramp,
                                                           increment=0,
                                                           amplitude=self.microwave_amplitude,
                                                           start_freq=mw_freq_start,
                                                           stop_freq=mw_freq_end,
                                                           phase=0)
 
-        mw_sweep_depol_element = self.self._get_mw_element_linearchirp(length=t_mw_ramp,
+        mw_sweep_depol_element = self._get_mw_element_linearchirp(length=t_mw_ramp,
                                                                  increment=0,
                                                                  amplitude=self.microwave_amplitude,
                                                                  start_freq=mw_freq_end,
@@ -976,7 +977,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_ramsey_s3p(self, name='ramsey', tau_start=1.0e-6, tau_step=1.0e-6, num_of_points=50,
-                        alternating=True, no_nv_init=True, read_phases_degree='0, 180'):
+                        alternating=False, no_nv_init=False, read_phases_degree='0, 180'):
         """
         Modifies basic_predefined_methods::generate_ramsey()
         """
@@ -1113,7 +1114,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         independent of the MW output.
         """
 
-        if pulse_ch:
+        if pulse_ch.startswith('d'):
             mw_element = self._get_trigger_element(
                 length=length,
                 increment=increment,
@@ -1131,8 +1132,18 @@ class PentaceneMethods(PredefinedGeneratorBase):
     def generate_pol_ramsey_rf_dd(self, name='ise+ramsey_pen', t_laser=1e-6, mw_sweep_speed=3e12, f_ise_res=2e9,
                                 df_mw_sweep=10e6, jump_channel='',
                                 tau=1.0e-6, n_tau=1,
-                                n_pi_rf=2, f_rf=100e6, t_pi_rf=10e-6, rf_channel="a_ch2",
+                                n_order_pi_rf=2, f_rf=100e6, t_pi_rf=10e-6, rf_channel="a_ch2", dd_type=DDMethods.SE,
                                 alternating=False):
+
+        def get_pi_rf_element(xphase):
+            self.log.debug(f"rf params: ch {rf_channel} amp {self.microwave_amplitude},"
+                           f" t_length {t_pi_rf}, f {f_rf}")
+            return self._get_rf_element(length=t_pi_rf,
+                                        increment=0,
+                                        pulse_ch=rf_channel,
+                                        amp=self.microwave_amplitude,
+                                        freq=f_rf,
+                                        phase=xphase)
 
         created_blocks = list()
         created_ensembles = list()
@@ -1146,49 +1157,61 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                 mw_sweep_speed=mw_sweep_speed,
                                                 jump_channel=jump_channel, add_gate_ch='',
                                                 both_sweep_polarities=False)
-
         # Ramsey, -90° readout
-        ramsey_block, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=df_mw_sweep, tau_step=0,
+        ramsey_block, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=tau, tau_step=0,
                                                       num_of_points=1,
-                                                      alternating=False, read_phases_degree="-90, 90")
+                                                      alternating=False, read_phases_degree="-90, 90",
+                                                      no_nv_init=False)
         # Ramsey, 90° readout
-        ramsey_block_alt, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=df_mw_sweep, tau_step=0,
+        ramsey_block_alt, _, _ = self.generate_ramsey_s3p(name='ram_alt', tau_start=tau, tau_step=0,
                                                           num_of_points=1,
-                                                          alternating=False, read_phases_degree="90, -90")
+                                                          alternating=False, read_phases_degree="90, -90",
+                                                          no_nv_init=False)
 
-        pi_rf_element = self._get_rf_element(length=t_pi_rf,
-                                             increment=0,
-                                             pulse_ch=rf_channel,
-                                             amp=self.microwave_amplitude,
-                                             freq=f_rf,
-                                             phase=0)
+        # first element of created block list is a PulseBlock obj
+        ise_block = ise_block[0]
+        ramsey_block = ramsey_block[0]
+        ramsey_block_alt = ramsey_block_alt[0]
 
+        seq_block = PulseBlock(name=name)
+        for n in range(n_order_pi_rf):
+            for pulse_number in range(dd_type.suborder):
+                # single order of rf dd includes multiple NV Ramseys and readouts
+                for i in range(n_tau):
+                    seq_block.extend(ramsey_block.element_list)
+                    if alternating:
+                        seq_block.extend(ramsey_block_alt.element_list)
+                    seq_block.append(get_pi_rf_element(dd_type.phases[pulse_number]))
 
-        ramsey_blocks = PulseBlock(name=name)
-        for i in range(n_tau):
-            ramsey_block.append(ramsey_block)
-            ramsey_block.append(ramsey_block_alt)
+        n_rf_pi = n_order_pi_rf * dd_type.suborder
+
+        t_ramsey_duration = seq_block.init_length_s
+        t_pol_duration = ise_block.init_length_s
+        self.log.info(f"{n_rf_pi} rf pis. " #  {len(seq_block.element_list)} total PulseElements
+                      f"Duration pol/ramseys: {t_pol_duration*1e6:.3f} us / {t_ramsey_duration*1e6:.3f} us. "
+                      f"Ramseys fraction: {t_ramsey_duration/(t_pol_duration+t_ramsey_duration):.2f}")
 
         # ise block
-        ramsey_blocks.append(ise_block)
-        ramsey_blocks.append(delay_element)
-        ramsey_blocks.append(waiting_element)
+        seq_block.extend(ise_block.element_list)
+        seq_block.append(delay_element)
+        seq_block.append(waiting_element)
 
 
-        created_blocks.append(ramsey_blocks)
+        created_blocks.append(seq_block)
 
         # Create block ensemble and append to created_ensembles list
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append((ramsey_blocks.name, 0))
+        block_ensemble.append((seq_block.name, 0))
 
         # Create and append sync trigger block if needed
-        # no trigger as this sequence is used by other sequences that add sync trigger
-        # self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
-        number_of_lasers = 1
+        number_of_lasers = n_order_pi_rf * dd_type.suborder * n_tau
+        number_of_lasers = 2*number_of_lasers if alternating else number_of_lasers
+
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = [0]
+        block_ensemble.measurement_information['controlled_variable'] = np.repeat(tau, number_of_lasers)
         block_ensemble.measurement_information['units'] = ('a.u.', '')
         block_ensemble.measurement_information['labels'] = ('data point', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
@@ -1201,7 +1224,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
     def generate_ramsey_deer_pi(self, name='ramsey_deer_pi', f_mw_deer=1.4e9, t_pi_deer=100e-9,
                              tau_start=1.0e-6, tau_step=1.0e-6, num_of_points=50,
-                             alternating_mode=DeerAltModes.NVPi3Half):
+                             alternating_mode=DeerAltModes.NVPi3Half, two_deer_pi=False):
 
 
         created_blocks = list()
@@ -1251,6 +1274,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         ramsey_block.append(pi_deer_element)
         ramsey_block.append(tau_element)
         ramsey_block.append(pihalf_element)
+        if two_deer_pi:
+            ramsey_block.append(pi_deer_element)
         ramsey_block.append(laser_element)
         ramsey_block.append(delay_element)
         ramsey_block.append(waiting_element)
@@ -1264,6 +1289,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
             ramsey_block.append(pi_deer_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(pi3half_element)
+            if two_deer_pi:
+                ramsey_block.append(pi_deer_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
@@ -1273,6 +1300,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
             ramsey_block.append(idle_deer_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(pihalf_element)
+            if two_deer_pi:
+                ramsey_block.append(pi_deer_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
@@ -1283,6 +1312,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
             ramsey_block.append(pi_deer_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(pi3half_element)
+            if two_deer_pi:
+                ramsey_block.append(pi_deer_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
@@ -1291,6 +1322,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
             ramsey_block.append(idle_deer_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(pihalf_element)
+            if two_deer_pi:
+                ramsey_block.append(pi_deer_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
@@ -1299,6 +1332,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
             ramsey_block.append(idle_deer_element)
             ramsey_block.append(tau_element)
             ramsey_block.append(pi3half_element)
+            if two_deer_pi:
+                ramsey_block.append(pi_deer_element)
             ramsey_block.append(laser_element)
             ramsey_block.append(delay_element)
             ramsey_block.append(waiting_element)
@@ -1334,6 +1369,67 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_pulsedodmr_deer_pi(self, name='pulsedODMR', f_mw_deer=1.4e9, t_pi_deer=100e-9, deer_ampl=0.25,
+                                    freq_start=2870.0e6, freq_step=0.2e6,
+                                    num_of_points=50):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # Create frequency array
+        freq_array = freq_start + np.arange(num_of_points) * freq_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0,
+                                                     add_gate_ch='d_ch4')
+        delay_element = self._get_delay_gate_element()
+        pi_deer_element = self._get_mw_element(length=t_pi_deer,
+                                              increment=0,
+                                              amp=deer_ampl,
+                                              freq=f_mw_deer,
+                                              phase=0)
+
+        # Create block and append to created_blocks list
+        pulsedodmr_block = PulseBlock(name=name)
+        for mw_freq in freq_array:
+            mw_element = self._get_mw_element(length=self.rabi_period / 2,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=mw_freq,
+                                              phase=0)
+            pulsedodmr_block.append(pi_deer_element)
+            pulsedodmr_block.append(mw_element)
+            pulsedodmr_block.append(laser_element)
+            pulsedodmr_block.append(delay_element)
+            pulsedodmr_block.append(waiting_element)
+        created_blocks.append(pulsedodmr_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((pulsedodmr_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['labels'] = ('Frequency', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
 
     def generate_DEER(self, name='DEER', tau_start=1e-6, tau_step=1e-6, num_of_points=50,
                       he_tau=50e-6, second_rabi_period=20e-9,
@@ -1416,7 +1512,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self.log.debug(f"MW-free free evolution: real tau_1: {real_hahn_tau_1}"
                        f" real tau_2: {real_hahn_tau_2} "
                        f"1st-electron-MW-free free evolution: real tau_1: {mw_first_free_1} "
-                       f"real tau_2: {mw_first_free_2}")
+                       f"real tau_2: {mw_first_free_2} "
+                       f"remeainder start: {real_remainder_start}")
 
         while (real_remainder_start - (num_of_points-1) * tau_step) < 0:
             num_of_points -= 1
@@ -1754,7 +1851,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_deer_rabi(self, name='DEERrabi', he_tau=200.0e-9, deer_freq=2870.0e6, deer_amp=0.001,
+    def generate_deer_rabi(self, name='DEER_rabi', he_tau=200.0e-9, deer_freq=2870.0e6, deer_amp=0.001,
                           tau_start=2.0e-9, tau_step=2.0e-9, num_of_taus=50, two_deer_pi=False, alternating=False):
         """
 
@@ -1814,6 +1911,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         deerrabi_block.append(pihalf_element)
 
         deerrabi_block.append(laser_element)
+        deerrabi_block.append(delay_element)
         deerrabi_block.append(waiting_element)
         if alternating:
             deerrabi_block.append(pihalf_element)
@@ -1825,6 +1923,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
             deerrabi_block.append(tau2_element)
             deerrabi_block.append(pi3half_element)
             deerrabi_block.append(laser_element)
+            deerrabi_block.append(delay_element)
             deerrabi_block.append(waiting_element)
         created_blocks.append(deerrabi_block)
 
