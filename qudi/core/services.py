@@ -197,3 +197,9 @@ class QudiNamespaceService(rpyc.Service):
         mods = {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}
         mods['qudi'] = self._qudi
         return mods
+
+    def exposed_get_numpy_module(self):
+        """
+        """
+        import numpy
+        return numpy

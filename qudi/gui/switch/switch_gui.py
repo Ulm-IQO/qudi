@@ -95,6 +95,9 @@ class SwitchGui(GuiBase):
     # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
 
+    # declare config options
+    _switch_row_num_max = ConfigOption(name='switch_row_num_max', default=None)
+
     # declare status variables
     _switch_style = StatusVar(name='switch_style',
                               default=SwitchStyle.TOGGLE_SWITCH,

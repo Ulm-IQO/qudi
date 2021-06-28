@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import numpy
 import sys
 import rpyc
 import json
@@ -115,6 +116,15 @@ class QudiKernelClient:
             self.disconnect()
             return dict()
 
+    def get_numpy_module(self):
+        if self.connection is None or self.connection.closed:
+            return None
+        try:
+            return self.connection.root.get_numpy_module()
+        except (ConnectionError, EOFError):
+            self.disconnect()
+            return None
+
     def connect(self):
         config = Configuration()
         config_path = Configuration.get_saved_config()
@@ -123,6 +133,10 @@ class QudiKernelClient:
         config.load_config(file_path=config_path, set_default=False)
         port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
+                                       config={'allow_all_attrs': True,
+                                               'allow_setattr'  : True,
+                                               'allow_delattr'  : True,
+                                               'allow_pickle'   : True},
                                        port=port,
                                        service=self.service_instance)
 
@@ -151,10 +165,16 @@ class QudiIPythonKernel(IPythonKernel):
         removed = self._namespace_qudi_modules.difference(modules)
         for mod in removed:
             self.shell.user_ns.pop(mod, None)
+        for name, obj in self.shell.user_ns.items():
+            if obj is numpy:
+                modules[name] = self._qudi_client.get_numpy_module()
+                if modules[name] is None:
+                    modules.pop(name, None)
+                break
         self.shell.push(modules)
         self._namespace_qudi_modules = set(modules)
 
-    # Update module namespace each time right before a cell is excecuted
+    # Update module namespace each time right before a cell is executed
     def do_execute(self, *args, **kwargs):
         self.update_module_namespace()
         return super().do_execute(*args, **kwargs)

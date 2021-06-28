@@ -47,7 +47,10 @@ def get_remote_module_instance(remote_url, certfile=None, keyfile=None, protocol
     """
     parsed = urlparse(remote_url)
     if protocol_config is None:
-        protocol_config = {'allow_all_attrs': True, 'allow_setattr': True, 'allow_delattr': True}
+        protocol_config = {'allow_all_attrs': True,
+                           'allow_setattr'  : True,
+                           'allow_delattr'  : True,
+                           'allow_pickle'   : True}
     connection = rpyc.ssl_connect(host=parsed.hostname,
                                   port=parsed.port,
                                   config=protocol_config,
@@ -75,7 +78,8 @@ class _ServerRunnable(QtCore.QObject):
         if protocol_config is None:
             self.protocol_config = {'allow_all_attrs': True,
                                     'allow_setattr'  : True,
-                                    'allow_delattr'  : True}
+                                    'allow_delattr'  : True,
+                                    'allow_pickle'   : True}
         else:
             self.protocol_config = protocol_config
         self.ssl_version = ssl.PROTOCOL_TLSv1_2 if ssl_version is None else ssl_version
