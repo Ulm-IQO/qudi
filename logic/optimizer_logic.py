@@ -304,7 +304,7 @@ class OptimizerLogic(GenericLogic):
         else:
             move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
 
-        counts = self._scanning_device.scan_line(move_to_start_line)
+        counts = self._scanning_device.scan_line(move_to_start_line, True)
         if np.any(counts == -1):
             return -1
 
@@ -349,7 +349,7 @@ class OptimizerLogic(GenericLogic):
         else:
             line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
-        line_counts = self._scanning_device.scan_line(line)
+        line_counts = self._scanning_device.scan_line(line, True)
         if np.any(line_counts == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
@@ -364,7 +364,7 @@ class OptimizerLogic(GenericLogic):
         else:
             return_line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
-        return_line_counts = self._scanning_device.scan_line(return_line)
+        return_line_counts = self._scanning_device.scan_line(return_line, True)
         if np.any(return_line_counts == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
@@ -533,7 +533,7 @@ class OptimizerLogic(GenericLogic):
             line = np.vstack((scan_x_line, scan_y_line, scan_z_line, np.zeros(scan_x_line.shape)))
 
         # Perform scan
-        line_counts = self._scanning_device.scan_line(line)
+        line_counts = self._scanning_device.scan_line(line, True)
         if np.any(line_counts == -1):
             self.log.error('Z scan went wrong, killing the scanner.')
             self.stop_refocus()
@@ -565,7 +565,7 @@ class OptimizerLogic(GenericLogic):
                      scan_z_line,
                      np.zeros(scan_x_line.shape)))
 
-            line_bg_counts = self._scanning_device.scan_line(line_bg)
+            line_bg_counts = self._scanning_device.scan_line(line_bg, True)
             if np.any(line_bg_counts[0] == -1):
                 self.log.error('The scan went wrong, killing the scanner.')
                 self.stop_refocus()
