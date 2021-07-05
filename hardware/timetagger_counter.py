@@ -67,6 +67,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
             self._mode = 0
         else:
             self._mode = 2
+        self.set_up_counter()
 
     def on_deactivate(self):
         """ Shut down the TimeTagger.
@@ -150,7 +151,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
     def get_counter_channels(self):
         if self._mode < 2:
-            return self._channel_apd
+            return [self._channel_apd]
         else:
             return [self._channel_apd_0, self._channel_apd_1]
 

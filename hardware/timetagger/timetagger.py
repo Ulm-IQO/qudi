@@ -30,9 +30,9 @@ class TT(Base):
             self.tagger = createTimeTagger()
             # self.tagger.reset()
             print(f"Tagger initialization successful: {self.tagger.getSerial()}")
-        except RuntimeError:
-            print(f"\nCheck if the TimeTagger device is being used by another instance.")
-            sys.exit()
+        except:
+            self.log.error(f"\nCheck if the TimeTagger device is being used by another instance.")
+            Exception(f"\nCheck if the TimeTagger device is being used by another instance.")
 
         for i in self._test_channels:
             print(f"RUNNING CHANNEL {i} WITH TEST SIGNAL!")
@@ -119,7 +119,7 @@ class TT(Base):
         return Counter(self.tagger,
                                 self._counter['channels'],
                                 self._counter['bins_width'],
-                                sself._counter['n_values'])
+                                self._counter['n_values'])
 
 
     def count_between_markers(self, click_channel, begin_channel, end_channel, n_values):
