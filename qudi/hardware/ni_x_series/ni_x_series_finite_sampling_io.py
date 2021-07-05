@@ -31,6 +31,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.util.helpers import natural_sort
 from qudi.interface.finite_sampling_io_interface import FiniteSamplingIOInterface, FiniteSamplingIOConstraints
 from qudi.util.enums import SamplingOutputMode
+from qudi.util.mutex import RecursiveMutex
 
 
 class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
@@ -55,6 +56,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             'ao1': 'V'
         adc_voltage_range: [-10, 10]  # optional #TODO adapt interface for limits
         frame_size_limits: [1, 1e9]  # optional #TODO actual HW constraint?
+        output_mode: 'JUMP_LIST' # optional, must be name of SamplingOutputMode
         read_write_timeout: 10  # optional
 
     """
@@ -72,6 +74,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     _output_channel_units = ConfigOption(name='output_channel_units',
                                          default={'ao{}'.format(channel_index): 'V' for channel_index in range(0, 4)},
                                          missing='error')
+    _default_output_mode = ConfigOption(name='output_mode', default='JUMP_LIST',
+                                        constructor=lambda x: SamplingOutputMode[x.upper()], missing='nothing')
 
     # Todo: How to deal with current output value of the AO? Status var? "Safe" shutdown after deactivation?
 
@@ -97,7 +101,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self.__sample_rate = -1.0
 
         # Internal settings in streamer
-        self.__stream_length = -1
+        self.__frame_size = -1
         self.__buffer_size = -1
         self.__use_circular_buffer = False
 
@@ -117,6 +121,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         # Stored hardware constraints
         self._constraints = None
+        self._thread_lock = RecursiveMutex()
         return
 
     def on_activate(self):
@@ -321,6 +326,11 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         # # Reset data buffer
         # self._data_buffer = np.empty(0, dtype=self.__data_type)
         # self._has_overflown = False
+
+        assert self._constraints.output_mode_supported(self._default_output_mode),\
+            f'Config output "{self._default_output_mode}" mode not supported'
+        self.__output_mode = self._default_output_mode
+        self.__frame_size = 0
         return
 
     def on_deactivate(self):
@@ -374,12 +384,11 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         di_channels, ai_channels = self._extract_ai_di_from_input_channels(input_channels)
 
-        # TODO: mutex?
+        with self._thread_lock:
+            self.__active_channels['di_channels'], self.__active_channels['ai_channels'] \
+                = frozenset(di_channels), frozenset(ai_channels)
 
-        self.__active_channels['di_channels'], self.__active_channels['ai_channels'] \
-            = frozenset(di_channels), frozenset(ai_channels)
-
-        self.__active_channels['ao_channels'] = frozenset(output_channels)
+            self.__active_channels['ao_channels'] = frozenset(output_channels)
 
     @property
     def sample_rate(self):
@@ -403,7 +412,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 'a value between {1:.3e}Hz and {2:.3e}Hz. Value will be clipped to '
                 'the closest boundary.'.format(rate, min_val, max_val))
             rate = max(min(max_val, rate), min_val)
-        self.__sample_rate = float(rate)
+        with self._thread_lock:
+            self.__sample_rate = float(rate)
         return
 
     def set_output_mode(self, mode):
@@ -411,10 +421,10 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @param SamplingOutputMode mode: The output mode to set as SamplingOutputMode Enum
         """
-
-        assert self._constraints.output_mode_supported(mode), f'Output mode {mode!r} not supported'
-
-        self.__output_mode = mode
+        assert self._constraints.output_mode_supported(mode), f'Output mode {mode} not supported'
+        # TODO: in case of assertion error, set output mode to SamplingOutputMode.INVALID?
+        with self._thread_lock:
+            self.__output_mode = mode
 
     @property
     def output_mode(self):
@@ -438,7 +448,13 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return int: Number of samples per frame
         """
-        pass
+        return self.__frame_size
+
+    def _set_frame_size(self, size):
+        samples_per_channel = int(round(size))
+        assert self._constraints.frame_size_in_range(samples_per_channel), f'Frame size "{size}" is out of range'
+        with self._thread_lock:
+            self.__frame_size = samples_per_channel
 
     def set_frame_data(self, data):
         """ Fills the frame buffer for the next data frame to be emitted. Data must be a dict
@@ -586,27 +602,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         return
 
     @property
-    def streaming_mode(self):
-        """
-        The currently configured streaming mode Enum.
-
-        @return StreamingMode: Finite (StreamingMode.FINITE) or continuous
-                               (StreamingMode.CONTINUOUS) data acquisition
-        """
-        return self.__streaming_mode
-
-    @streaming_mode.setter
-    def streaming_mode(self, mode):
-        if self._check_settings_change():
-            mode = StreamingMode(mode)
-            if mode not in self._constraints.streaming_modes:
-                self.log.error('Unknown streaming mode "{0}" encountered.\nValid modes are: {1}.'
-                               ''.format(mode, self._constraints.streaming_modes))
-                return
-            self.__streaming_mode = mode
-        return
-
-    @property
     def number_of_channels(self):
         """
         Read-only property to return the currently configured number of data channels.
@@ -680,63 +675,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         @return bool: Flag indicates if buffer has overflown (True) or not (False)
         """
         return self._has_overflown
-
-    @property
-    def all_settings(self):
-        """
-        Read-only property to return a dict containing all current settings and values that can be
-        configured using the method "configure". Basically returns the same as "configure".
-
-        @return dict: Dictionary containing all configurable settings
-        """
-        return {'sample_rate': self.__sample_rate,
-                'streaming_mode': self.__streaming_mode,
-                'active_channels': self.active_channels,
-                'stream_length': self.__stream_length,
-                'buffer_size': self.__buffer_size,
-                'use_circular_buffer': self.__use_circular_buffer}
-
-    def configure(self, sample_rate=None, streaming_mode=None, active_channels=None,
-                  stream_length=None, buffer_size=None, use_circular_buffer=None):
-        """
-        Method to configure all possible settings of the data input stream.
-
-        @param float sample_rate: The sample rate in Hz at which data points are acquired
-        @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
-        @param iterable active_channels: Iterable of channel names (str) to be read from.
-        @param int stream_length: In case of a finite data stream, the total number of
-                                            samples to read per channel
-        @param int buffer_size: The size of the data buffer to pre-allocate in samples per channel
-        @param bool use_circular_buffer: Use circular buffering (True) or stop upon buffer overflow
-                                         (False)
-
-        @return dict: All current settings in a dict. Keywords are the same as kwarg names.
-        """
-        if self._check_settings_change():
-            # Handle sample rate change
-            if sample_rate is not None:
-                self.sample_rate = sample_rate
-
-            # Handle streaming mode change
-            if streaming_mode is not None:
-                self.streaming_mode = streaming_mode
-
-            # Handle active channels
-            if active_channels is not None:
-                self.active_channels = active_channels
-
-            # Handle total number of samples
-            if stream_length is not None:
-                self.stream_length = stream_length
-
-            # Handle buffer size
-            if buffer_size is not None:
-                self.buffer_size = buffer_size
-
-            # Handle circular buffer flag
-            if use_circular_buffer is not None:
-                self.use_circular_buffer = use_circular_buffer
-        return self.all_settings
 
     def get_constraints(self):
         """
@@ -869,26 +807,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             return -1
         return read_samples
 
-    # def get_buffered_samples(self, number_of_samples=None):
-    #     """
-    #     Read data from the stream buffer into a 1D/2D numpy array given as parameter.
-    #     In case of a single data channel the numpy array can be either 1D or 2D. In case of more
-    #     channels the array must be 2D with the first index corresponding to the channel number and
-    #     the second index serving as sample index:
-    #         buffer.shape == (self.number_of_channels, number_of_samples)
-    #     The numpy array must have the same data type as self.data_type.
-    #
-    #     This method will read all currently available samples into buffer. If number of available
-    #     samples exceed buffer size, read only as many samples as fit into the buffer.
-    #
-    #     @param numpy.ndarray buffer: The numpy array to write the samples to
-    #
-    #     @return int: Number of samples per channel read into buffer; negative value indicates error
-    #                  (e.g. read timeout)
-    #     """
-    #     avail_samples = min(buffer.size // self.number_of_channels, self.available_samples)
-    #     return self.read_data_into_buffer(buffer=buffer, number_of_samples=avail_samples)
-
     # =============================================================================================
     def _init_sample_clock(self):
         """
@@ -953,7 +871,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                     return -1
                 continue
             break
-
         self._clk_task_handle = task
         return 0
 
@@ -963,8 +880,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        digital_channels = tuple(
-            ch.name for ch in self.active_channels if ch.type == StreamChannelType.DIGITAL)
+        digital_channels = self.__active_channels['di_channels']
         if not digital_channels:
             return 0
         if self._di_task_handles:
@@ -973,19 +889,15 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             self.terminate_all_tasks()
             return -1
 
-        if self._clk_task_handle is None and self._external_sample_clock_source is None:
+        if self._clk_task_handle is None:
             self.log.error(
                 'No sample clock task has been generated and no external clock source specified. '
                 'Unable to create digital counting tasks.')
             self.terminate_all_tasks()
             return -1
 
-        if self._external_sample_clock_source:
-            clock_channel = '/{0}/{1}'.format(self._device_name, self._external_sample_clock_source)
-            sample_freq = float(self._external_sample_clock_frequency)
-        else:
-            clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
-            sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
+        clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
+        # sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
 
         # Set up digital counting tasks
         for i, chnl in enumerate(digital_channels):
@@ -1033,8 +945,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                             ctypes.c_char_p(chnl_name.encode('ascii')))
 
                     task.timing.cfg_implicit_timing(
-                        sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-                        samps_per_chan=self.__buffer_size)
+                        sample_mode=ni.constants.AcquisitionType.FINITE,
+                        samps_per_chan=self.__frame_size)
                 except ni.DaqError:
                     try:
                         del task
@@ -1087,14 +999,13 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 break
         return 0
 
-    def _init_analog_task(self):
+    def _init_analog_in_task(self):
         """
         Set up task for analog voltage measurement.
 
         @return int: error code (0:OK, -1:error)
         """
-        analog_channels = tuple(
-            ch.name for ch in self.active_channels if ch.type == StreamChannelType.ANALOG)
+        analog_channels = self.__active_channels['ai_channels']
         if not analog_channels:
             return 0
         if self._ai_task_handle:
@@ -1102,19 +1013,15 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 'Analog input task has already been generated. Unable to set up analog in task.')
             self.terminate_all_tasks()
             return -1
-        if self._clk_task_handle is None and self._external_sample_clock_source is None:
+        if self._clk_task_handle is None:
             self.log.error(
                 'No sample clock task has been generated and no external clock source specified. '
                 'Unable to create analog voltage measurement tasks.')
             self.terminate_all_tasks()
             return -1
 
-        if self._external_sample_clock_source:
-            clock_channel = '/{0}/{1}'.format(self._device_name, self._external_sample_clock_source)
-            sample_freq = float(self._external_sample_clock_frequency)
-        else:
-            clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
-            sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
+        clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
+        sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
 
         # Set up analog input task
         task_name = 'AnalogIn_{0:d}'.format(id(self))
@@ -1127,14 +1034,14 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         try:
             ai_ch_str = ','.join(['/{0}/{1}'.format(self._device_name, c) for c in analog_channels])
-            ai_task.ai_channels.add_ai_voltage_chan(ai_ch_str,
-                                                    max_val=max(self._adc_voltage_range),
-                                                    min_val=min(self._adc_voltage_range))
+            ai_task.ai_channels.add_ai_voltage_chan(ai_ch_str,  # TODO constraints for ADC range
+                                                    max_val=10,  # max(self._adc_voltage_range),
+                                                    min_val=0)  # min(self._adc_voltage_range))
             ai_task.timing.cfg_samp_clk_timing(sample_freq,
                                                source=clock_channel,
                                                active_edge=ni.constants.Edge.RISING,
-                                               sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-                                               samps_per_chan=self.__buffer_size)
+                                               sample_mode=ni.constants.AcquisitionType.FINITE,
+                                               samps_per_chan=self.__frame_size)
         except ni.DaqError:
             self.log.exception(
                 'Something went wrong while configuring the analog-in task.')
@@ -1180,6 +1087,48 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self._ai_task_handle = ai_task
         return 0
 
+    def _init_analog_out_task(self):
+        analog_channels = self.__active_channels['ao_channels']
+        if not analog_channels:
+            self.log.error('No output channels defined. Can initialize output task')
+            return -1
+
+        clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
+        sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
+
+        # Set up analog input task
+        task_name = 'AnalogOut_{0:d}'.format(id(self))
+
+        try:
+            ao_task = ni.Task(task_name)
+        except ni.DaqError:
+            self.log.exception('Unable to create analog-in task with name "{0}".'.format(task_name))
+            self.terminate_all_tasks()
+            return -1
+
+        try:
+            ao_ch_str = ','.join(['/{0}/{1}'.format(self._device_name, c) for c in analog_channels])
+            ao_task.ao_channels.add_ao_voltage_chan(ao_ch_str,  # TODO constraints for ADC range
+                                                    max_val=10,  # max(self._adc_voltage_range),
+                                                    min_val=0)  # min(self._adc_voltage_range))
+            ao_task.timing.cfg_samp_clk_timing(sample_freq,
+                                               source=clock_channel,
+                                               active_edge=ni.constants.Edge.RISING,
+                                               sample_mode=ni.constants.AcquisitionType.FINITE,
+                                               samps_per_chan=self.__frame_size)
+        except ni.DaqError:
+            self.log.exception(
+                'Something went wrong while configuring the analog-in task.')
+            try:
+                del ao_task
+            except NameError:
+                pass
+            self.terminate_all_tasks()
+            return -1
+
+        self._ao_task_handle = ao_task
+        return 0
+
     def reset_hardware(self):
         """
         Resets the NI hardware, so the connection is lost and other programs can access it.
@@ -1208,6 +1157,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             except ni.DaqError:
                 self.log.exception('Error while trying to terminate digital counter task.')
                 err = -1
+            finally:
+                del self._di_task_handles[-1]
         self._di_task_handles = list()
 
         if self._ai_task_handle is not None:
@@ -1219,6 +1170,16 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 self.log.exception('Error while trying to terminate analog input task.')
                 err = -1
         self._ai_task_handle = None
+
+        if self._ao_task_handle is not None:
+            try:
+                if not self._ao_task_handle.is_task_done():
+                    self._ao_task_handle.stop()
+                self._ao_task_handle.close()
+            except ni.DaqError:
+                self.log.exception('Error while trying to terminate analog input task.')
+                err = -1
+            self._ao_task_handle = None
 
         if self._clk_task_handle is not None:
             try:
