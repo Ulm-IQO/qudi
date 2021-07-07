@@ -106,7 +106,7 @@ class ModuleFrameWidget(QtWidgets.QWidget):
             self.activate_button.setText('Activate {0}'.format(self._module_name))
             self.cleanup_button.setEnabled(True)
             self.deactivate_button.setEnabled(False)
-            self.reload_button.setEnabled(False)
+            self.reload_button.setEnabled(True)
             if self.activate_button.isChecked():
                 self.activate_button.setChecked(False)
         else:

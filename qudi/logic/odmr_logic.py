@@ -34,7 +34,6 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import TextDataStorage
-from qudi.util.mpl_style import mpl_qd_style as _mpl_qd_style
 from qudi.util.enums import SamplingOutputMode
 
 
@@ -113,7 +112,6 @@ class OdmrLogic(LogicBase):
         self._signal_data = None
         self._frequency_data = None
         self._fit_results = None
-        self._data_storage = None
 
     def on_activate(self):
         """
@@ -151,9 +149,6 @@ class OdmrLogic(LogicBase):
 
         # Initialize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_data()
-
-        # Prepare data storage helper
-        self._data_storage = TextDataStorage(sub_directory='ODMR')
 
         # Connect signals
         self._sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
@@ -392,7 +387,7 @@ class OdmrLogic(LogicBase):
                 data_rate = self.data_rate if data_rate is None else float(data_rate)
                 oversampling = self.oversampling if oversampling is None else max(1,
                                                                                   int(oversampling))
-                if self.scanner_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
+                if self.data_constraints.sample_rate_in_range(data_rate * oversampling)[0]:
                     self._data_rate = data_rate
                     self._oversampling_factor = oversampling
                 else:
@@ -660,13 +655,8 @@ class OdmrLogic(LogicBase):
             self._fit_results[channel][range_index] = None
         self.sigFitUpdated.emit(self._fit_results[channel][range_index], channel, range_index)
 
-    @QtCore.Slot(str)
-    def save_odmr_data(self, tag=None):
-        """ Saves the current ODMR data to a file."""
-        with self._threadlock:
-            timestamp = datetime.datetime.now()
-            parameters = {
-                'Microwave CW Power (dBm)': self._cw_power,
+    def _get_metadata(self):
+        return {'Microwave CW Power (dBm)': self._cw_power,
                 'Microwave Scan Power (dBm)': self._scan_power,
                 'Approx. Run Time (s)': self._elapsed_time,
                 'Number of Frequency Sweeps (#)': self._elapsed_sweeps,
@@ -675,65 +665,88 @@ class OdmrLogic(LogicBase):
                 'Step sizes (Hz)': tuple(rng[2] for rng in self._scan_frequency_ranges),
                 'Data Rate (Hz)': self._data_rate,
                 'Oversampling factor (Hz)': self._oversampling_factor,
-                'Channel Name': ''
-            }
-            channel_units = self.scanner_constraints.channel_units
-            tag_str = tag + '_' if tag else ''
-            # Join frequency data from all scan ranges
-            freq_data = np.concatenate(self._frequency_data)
+                'Channel Name': ''}
+
+    def _get_raw_column_headers(self, data_channel):
+        channel_unit = self.data_constraints.channel_units[data_channel]
+        return 'Frequency (Hz)', f'Scan Data ({channel_unit})'
+
+    def _get_signal_column_headers(self):
+        channel_units = self.data_constraints.channel_units
+        column_headers = ['Frequency (Hz)']
+        column_headers.extend(f'{ch} ({channel_units[ch]})' for ch in self._signal_data)
+        return tuple(column_headers)
+
+    def _join_channel_raw_data(self, channel):
+        """ join raw data for one channel with corresponding frequency data into a single numpy
+        array for saving.
+
+        @param str channel: The channel name for which to join the raw data
+        """
+        channel_data = self._raw_data[channel]
+        # Filter raw data to get rid of invalid values (nan or inf)
+        joined_data = np.concatenate([raw[:, :self._elapsed_sweeps] for raw in channel_data],
+                                     axis=0)
+        # add frequency data as first column
+        return np.column_stack((np.concatenate(self._frequency_data), joined_data))
+
+    def _join_signal_data(self):
+        """ Join and return signal data from all scan ranges into a single numpy array for saving
+        """
+        joined_data = [np.concatenate(signal) for signal in self._signal_data.values()]
+        # add frequency data
+        joined_data.insert(0, np.concatenate(self._frequency_data))
+        # Join everything in one big array
+        return np.column_stack(joined_data)
+
+    @QtCore.Slot(str)
+    def save_odmr_data(self, tag=None):
+        """ Saves the current ODMR data to a file."""
+        with self._threadlock:
+            # Create and configure storage helper instance
+            timestamp = datetime.datetime.now()
+            metadata = self._get_metadata()
+            tag = tag + '_' if tag else ''
 
             # Save raw data in a separate file per data channel
+            data_storage = TextDataStorage(root_dir=self.module_default_data_dir,
+                                           column_formats='.15e')
             for channel, range_data in self._raw_data.items():
-                parameters['Channel Name'] = channel
-                ch_unit = channel_units[channel]
-                self._data_storage.column_headers = f'Frequency (Hz), Scan Data ({ch_unit})'
+                metadata['Channel Name'] = channel
+                column_headers = self._get_raw_column_headers(channel)
+                nametag = f'{tag}ODMR_{channel}_raw'
+                data = self._join_channel_raw_data(channel)
 
-                # ToDo: Better cleaning of filename (slugify)
-                channel_file_tag = channel.replace(' ', '-')
-                filelabel_raw = f'{tag_str}ODMR_{channel_file_tag}_raw'
+                # Save raw data for channel
+                file_path, _, _ = data_storage.save_data(data,
+                                                         metadata=metadata,
+                                                         nametag=nametag,
+                                                         timestamp=timestamp,
+                                                         column_headers=column_headers,
+                                                         column_dtypes=float)
 
-                # Filter raw data to get rid of invalid values (nan or inf)
-                joined_data = np.concatenate([raw[:, :self._elapsed_sweeps] for raw in range_data],
-                                             axis=0)
-                # add frequency data as first column
-                joined_data = np.column_stack((freq_data, joined_data))
-
-                # Save raw data
-                self._data_storage.save_data(joined_data,
-                                             parameters=parameters,
-                                             nametag=filelabel_raw,
-                                             timestamp=timestamp)
-
-            # Save signal data in a single file for all data channels
-            del parameters['Channel Name']
-            parameters['Averaged Scans (#)'] = self._scans_to_average
-            column_headers = ['Frequency (Hz)']
-            column_headers.extend(f'{ch} ({channel_units[ch]})' for ch in self._signal_data)
-            self._data_storage.column_headers = tuple(column_headers)
-            filelabel_signal = f'{tag_str}ODMR_signal'
-            # Join signal data from all scan ranges
-            joined_data = [np.concatenate(signal) for signal in self._signal_data.values()]
-            # add frequency data
-            joined_data.insert(0, freq_data)
-            # Join everything in one big array
-            joined_data = np.column_stack(joined_data)
-            # Save signal data
-            self._data_storage.save_data(joined_data,
-                                         parameters=parameters,
-                                         nametag=filelabel_signal,
-                                         timestamp=timestamp)
-
-            # Save plot images if required. This takes by far the most time to complete.
-            if self._save_thumbnails:
-                for channel, range_data in self._signal_data.items():
+                # Save plot images if required. This takes by far the most time to complete.
+                if self._save_thumbnails:
+                    fig_path_stump = file_path.rsplit('_raw.', 1)[0] + '_range'
                     for range_index, _ in enumerate(range_data):
                         fig = self._draw_figure(channel, range_index)
-                        # ToDo: Better cleaning of filename (slugify)
-                        channel_file_tag = channel.replace(' ', '-')
-                        filelabel_fig = f'{tag_str}ODMR_{channel_file_tag}_range{range_index:d}'
-                        self._data_storage.save_thumbnail(fig,
-                                                          timestamp=timestamp,
-                                                          nametag=filelabel_fig)
+                        fig_path = f'{fig_path_stump}{range_index:d}'
+                        data_storage.save_thumbnail(fig, file_path=fig_path)
+
+            # Save signal data in a single file for all data channels
+            del metadata['Channel Name']
+            metadata['Averaged Scans (#)'] = self._scans_to_average
+            column_headers = self._get_signal_column_headers()
+            nametag = f'{tag}ODMR_signal'
+            data = self._join_signal_data()
+
+            # Save signal data
+            data_storage.save_data(data,
+                                   metadata=metadata,
+                                   nametag=nametag,
+                                   timestamp=timestamp,
+                                   column_headers=column_headers,
+                                   column_dtypes=[float] * len(column_headers))
 
     def _draw_figure(self, channel, range_index):
         """ Draw the summary figure to save with the data.
@@ -749,7 +762,7 @@ class OdmrLogic(LogicBase):
         fit_result = self._fit_results[channel][range_index]
         if fit_result is not None:
             fit_x, fit_y = fit_result[1].high_res_best_fit
-        unit = self.scanner_constraints.channel_units[channel]
+        unit = self.data_constraints.channel_units[channel]
 
         # Determine SI unit scaling for signal
         scaled = ScaledFloat(np.max(signal_data))
@@ -772,9 +785,6 @@ class OdmrLogic(LogicBase):
         raw_unit_prefix = scaled.scale
         if raw_unit_prefix:
             raw_data = raw_data / scaled.scale_val
-
-        # Use qudi style
-        plt.style.use(_mpl_qd_style)
 
         # Create figure
         fig, (ax_signal, ax_raw) = plt.subplots(nrows=2, ncols=1)

@@ -35,8 +35,7 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
             'switch state must be non-empty str'
         super().__init__(parent=parent)
         layout = QtWidgets.QHBoxLayout()
-        layout.setAlignment(QtCore.Qt.AlignCenter)
-        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
         self.switch_states = tuple(switch_states)
@@ -87,6 +86,10 @@ class SwitchRadioButtonWidget(QtWidgets.QWidget):
             button.blockSignals(False)
             self._update_colors()
 
+    def setFont(self, font):
+        for label in self._labels.values():
+            label.setFont(font)
+
     def set_state_colors(self, unchecked=None, checked=None):
         assert unchecked is None or isinstance(unchecked, QtGui.QColor), \
             'arguments must be QColor object or None'
@@ -111,7 +114,8 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
 
     sigStateChanged = QtCore.Signal(str)
 
-    def __init__(self, parent=None, switch_states=('Off', 'On'), thumb_track_ratio=1):
+    def __init__(self, parent=None, switch_states=('Off', 'On'), thumb_track_ratio=1,
+                 scale_text_in_switch=True, text_inside_switch=True):
         super().__init__(parent=parent)
         assert len(switch_states) == 2, 'switch_states must be tuple of exactly 2 strings'
         assert all(isinstance(s, str) and s for s in switch_states), \
@@ -120,12 +124,18 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
         self._state_colors = (None, None)
 
         layout = QtWidgets.QHBoxLayout()
-        layout.setAlignment(QtCore.Qt.AlignCenter)
-        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-        self.toggle_switch = ToggleSwitch(None, *switch_states, thumb_track_ratio)
-        self.toggle_switch.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        if thumb_track_ratio > 1:
+        self.toggle_switch = ToggleSwitch(state_names=switch_states,
+                                          thumb_track_ratio=thumb_track_ratio,
+                                          scale_text=scale_text_in_switch,
+                                          display_text=text_inside_switch)
+        self.toggle_switch.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                         QtWidgets.QSizePolicy.Preferred)
+        if text_inside_switch:
+            self.labels = None
+            layout.addWidget(self.toggle_switch)
+        else:
             self.labels = (QtWidgets.QLabel(switch_states[0]), QtWidgets.QLabel(switch_states[1]))
             self.labels[0].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             self.labels[0].setTextFormat(QtCore.Qt.RichText)
@@ -134,10 +144,15 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
             layout.addWidget(self.labels[0])
             layout.addWidget(self.toggle_switch)
             layout.addWidget(self.labels[1])
-        else:
-            self.labels = None
-            layout.addWidget(self.toggle_switch)
-        self.toggle_switch.clicked.connect(self.__button_triggered_cb)
+
+        self.toggle_switch.sigStateChanged.connect(self._update_colors)
+        self.toggle_switch.sigStateChanged.connect(self.sigStateChanged)
+
+    def setFont(self, font):
+        super().setFont(font)
+        if self.labels:
+            self.labels[0].setFont(font)
+            self.labels[1].setFont(font)
 
     @property
     def switch_state(self):
@@ -174,14 +189,3 @@ class ToggleSwitchWidget(QtWidgets.QWidget):
                 self.labels[1].setText(self.switch_states[1])
             else:
                 self.labels[1].setText(f'<font color={color.name()}>{self.switch_states[1]}</font>')
-
-    @QtCore.Slot()
-    @QtCore.Slot(bool)
-    def __button_triggered_cb(self, checked):
-        """
-
-        @param button:
-        @param checked:
-        """
-        self.sigStateChanged.emit(self.toggle_switch.current_state)
-        self._update_colors()

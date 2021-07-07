@@ -21,23 +21,17 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import copy
-import logging
 from abc import abstractmethod
 from uuid import uuid4
-from fysom import Fysom  # provides a finite state machine
+from fysom import Fysom
 from PySide2 import QtCore
 
 from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.paths import get_appdata_dir
+from qudi.core.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
 from qudi.core.config import load, save
 from qudi.core.meta import ModuleMeta
 from qudi.core.logger import get_logger
-
-
-def get_module_app_data_path(cls_name, module_base, module_name):
-    file_name = 'status-{0}_{1}_{2}.cfg'.format(cls_name, module_base, module_name)
-    return os.path.join(get_appdata_dir(), file_name)
 
 
 class ModuleStateMachine(Fysom, QtCore.QObject):
@@ -74,7 +68,6 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
 
         # Initialise state machine:
         super().__init__(parent=parent, cfg=fsm_cfg, **kwargs)
-        self.__uuid = uuid4()
 
     def __call__(self):
         """
@@ -96,9 +89,6 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
             noun = 'activation' if event == 'activate' else 'deactivation'
 
             def wrap_event(*args, **kwargs):
-                self.parent().log.debug(
-                    '{0} in thread "{1}"'.format(noun.capitalize(),
-                                                 QtCore.QThread.currentThread().objectName()))
                 try:
                     base_event(*args, **kwargs)
                 except:
@@ -116,10 +106,6 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
         @param object e: Fysom event object passed through all state transition callbacks
         """
         self.sigStateChanged.emit(e)
-
-    @property
-    def uuid(self):
-        return self.__uuid
 
     @QtCore.Slot()
     def activate(self):
@@ -181,6 +167,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         self._module_meta = copy.deepcopy(self._module_meta)
         # Add additional meta info to _module_meta dict
         self._module_meta['name'] = name
+        self._module_meta['uuid'] = uuid4()
         self._module_meta['configuration'] = copy.deepcopy(config)
 
         # set instance attributes according to config_option meta objects
@@ -240,6 +227,50 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         return None
 
     @property
+    def module_name(self):
+        """ Read-only property returning the module name of this module instance as specified in the
+        config.
+
+        @return str: The configured module name
+        """
+        return self._module_meta['name']
+
+    @property
+    def module_base(self):
+        """ Read-only property returning the module base of this module instance
+        ('hardware' 'logic' or 'gui')
+
+        @return str: The module base
+        """
+        return self._module_meta['base']
+
+    @property
+    def module_uuid(self):
+        """ Read-only property returning a unique uuid for this module instance.
+
+        @return uuid.UUID: Unique uuid for this module instance.
+        """
+        return self._module_meta['uuid']
+
+    @property
+    def module_default_data_dir(self):
+        """ Read-only property returning the generic default directory in which to save data.
+        Module implementations can overwrite this property with a custom path but should only do so
+        with a very good reason.
+
+        @return str: Path of module-specific generic default data directory
+        """
+        config = self._qudi_main.configuration
+        data_root = config.default_data_dir
+        if data_root is None:
+            data_root = get_default_data_dir()
+        if config.daily_data_dirs or config.daily_data_dirs is None:
+            data_dir = os.path.join(get_daily_directory(root=data_root), self.module_name)
+        else:
+            data_dir = os.path.join(data_root, self.module_name)
+        return data_dir
+
+    @property
     def _qudi_main(self):
         qudi_main = self.__qudi_main_weakref()
         if qudi_main is None:
@@ -248,6 +279,18 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
                 'collected.'
             )
         return qudi_main
+
+    @property
+    def log(self):
+        """ Returns the module logger instance
+        """
+        return self.__logger
+
+    @property
+    def is_module_threaded(self):
+        """ Returns whether the module shall be started in its own thread.
+        """
+        return self._threaded
 
     def __activation_callback(self, event=None):
         """ Restore status variables before activation and invoke on_activate method.
@@ -271,25 +314,13 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
             # save status variables even if deactivation failed
             self._dump_status_variables()
 
-    @property
-    def log(self):
-        """ Returns the module logger instance
-        """
-        return self.__logger
-
-    @property
-    def is_module_threaded(self):
-        """ Returns whether the module shall be started in its own thread.
-        """
-        return self._threaded
-
     def _load_status_variables(self):
         """ Load status variables from app data directory on disc.
         """
         # Load status variables from app data directory
         class_name = self.__class__.__name__
-        name = self._module_meta['name']
-        base = self._module_meta['base']
+        name = self.module_name
+        base = self.module_base
         file_path = get_module_app_data_path(class_name, base, name)
         try:
             variables = load(file_path) if os.path.isfile(file_path) else dict()
@@ -318,8 +349,8 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         dump during module deactivation.
         """
         class_name = self.__class__.__name__
-        name = self._module_meta['name']
-        base = self._module_meta['base']
+        name = self.module_name
+        base = self.module_base
         file_path = get_module_app_data_path(class_name, base, name)
         # collect StatusVar values into dictionary
         variables = dict()

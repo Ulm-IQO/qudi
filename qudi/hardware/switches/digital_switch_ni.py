@@ -27,7 +27,6 @@ from qudi.util.mutex import RecursiveMutex
 from qudi.interface.switch_interface import SwitchInterface
 from qudi.core.statusvariable import StatusVar
 
-
 class DigitalSwitchNI(SwitchInterface):
     """ This class enables to control a switch via the NI card.
     Control external hardware by the output of the digital channels of a NI card.
@@ -44,8 +43,6 @@ class DigitalSwitchNI(SwitchInterface):
             One: ['Low', 'High']
             Two: ['Off', 'On']
     """
-    # ToDo: Implement this switch module for PFI channels. These do not clash with other tasks
-    #  contrary to a digital out port.
     # Channels of the NI Card to be used for switching.
     # Can either be a single channel or multiple lines.
     _channel = ConfigOption(name='channel', default='/Dev1/port0/line31', missing='warn')
@@ -58,6 +55,8 @@ class DigitalSwitchNI(SwitchInterface):
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+    # if inverted is True, first entry in switches is "high" and second is "low"
+    _inverted_states = ConfigOption(name='inverted_states', default=False, missing='nothing')
 
     _states = StatusVar(name='states', default=None)
 
@@ -78,13 +77,23 @@ class DigitalSwitchNI(SwitchInterface):
         # Determine DO lines to use. This defines the number of switches for this module.
         assert isinstance(self._channel, str), 'ConfigOption "channel" must be str type'
         match = re.match(r'(.*?dev\d/port\d/line)(\d+)(?::(\d+))?', self._channel, re.IGNORECASE)
-        assert match is not None, 'channel string invalid. Valid example: "/Dev1/port0/line29:31"'
-        if match.groups()[2] is None:
+        match_pfi = re.match(r'(.*?dev\d/pfi)(\d+)(?::(\d+))?', self._channel, re.IGNORECASE)
+        assert match is not None or match_pfi is not None, \
+            'channel string invalid. Valid examples: "/Dev1/port0/line29:31", "/Dev1/PFI10:13"'
+        if match is not None and match.groups()[2] is None:
             self._channels = (match.group(),)
-        else:
+        elif match_pfi is not None and match_pfi.groups()[2] is None:
+            self._channels = (match_pfi.group(),)
+        elif match is not None:
             first, last = sorted(int(ch) for ch in match.groups()[1:])
             prefix = match.groups()[0]
             self._channels = tuple('{0}{1:d}'.format(prefix, ii) for ii in range(first, last + 1))
+        elif match_pfi is not None:
+            first, last = sorted(int(ch) for ch in match_pfi.groups()[1:])
+            prefix = match_pfi.groups()[0]
+            self._channels = tuple('{0}{1:d}'.format(prefix, ii) for ii in range(first, last + 1))
+        else:
+            self.log.error(f'channel does not have the required format: "{self._channel}"')
 
         # Determine available switches and states
         if self._switches is None:
@@ -163,7 +172,10 @@ class DigitalSwitchNI(SwitchInterface):
                     binary = list()
                     for channel_index, (switch, state) in enumerate(new_states.items()):
                         switch_task.do_channels.add_do_chan(self._channels[channel_index])
-                        binary.append(avail_states[switch][0] != state)
+                        if self._inverted_states:
+                            binary.append(avail_states[switch][0] == state)
+                        else:
+                            binary.append(avail_states[switch][0] != state)
                     switch_task.write(binary, auto_start=True)
                     time.sleep(self._switch_time)
                     self._states = new_states

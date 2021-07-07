@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ('Linear',)
 
 import numpy as np
-from ._general import FitModelBase, estimator
+from qudi.util.fit_models.model import FitModelBase, estimator
 
 
 class Linear(FitModelBase):

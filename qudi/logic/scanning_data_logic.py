@@ -35,7 +35,6 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
-from qudi.util.mpl_style import mpl_qd_style
 
 from qudi.interface.scanning_probe_interface import ScanData
 
@@ -78,7 +77,7 @@ class ScanningDataLogic(LogicBase):
         else:
             self._curr_history_index = 0
             self._curr_data_per_scan = dict()
-        self._logic_id = self._scan_logic().module_state.uuid
+        self._logic_id = self._scan_logic().module_uuid
         self._scan_logic().sigScanStateChanged.connect(self._update_scan_state)
         return
 
@@ -182,15 +181,8 @@ class ScanningDataLogic(LogicBase):
             self.sigSaveStateChanged.emit(True)
             self.module_state.lock()
             try:
-                ds = TextDataStorage(column_headers=None,
-                                     number_format='%.18e',
-                                     comments='# ',
-                                     delimiter='\t',
-                                     sub_directory='Scanning',
-                                     file_extension='.dat',
-                                     image_format=ImageFormat.PNG,
-                                     include_global_parameters=True,
-                                     use_daily_dir=True)
+                ds = TextDataStorage(root_dir=self.module_default_data_dir, column_formats='.15e')
+                timestamp = datetime.datetime.now()
 
                 # write the parameters:
                 parameters = {'axis name'      : scan_data.scan_axes[0],
@@ -207,7 +199,6 @@ class ScanningDataLogic(LogicBase):
                     x_header = '{0}-axis'.format(scan_data.scan_axes[0])
 
                 # Save data and thumbnail to file
-                timestamp = datetime.datetime.now()
                 for channel, data in scan_data.data.items():
                     # data
                     nametag = '{0}_{1}_scan'.format(channel, scan_data.scan_axes[0])
@@ -215,11 +206,15 @@ class ScanningDataLogic(LogicBase):
                         y_header = '{0} ({1})'.format(channel, scan_data.channel_units[channel])
                     else:
                         y_header = '{0}'.format(channel)
-                    ds.column_headers = (x_header, y_header)
-                    ds.save_data(data, parameters=parameters, nametag=nametag, timestamp=timestamp)
+                    file_path, _, _ = ds.save_data(data,
+                                                   timestamp=timestamp,
+                                                   metadata=parameters,
+                                                   nametag=nametag,
+                                                   column_headers=(x_header, y_header),
+                                                   column_dtypes=float)
                     # thumbnail
                     figure = self.draw_1d_scan_figure(scan_data, channel)
-                    ds.save_thumbnail(mpl_figure=figure, timestamp=timestamp, nametag=nametag)
+                    ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
             finally:
                 self.module_state.unlock()
                 self.sigSaveStateChanged.emit(False)
@@ -235,9 +230,6 @@ class ScanningDataLogic(LogicBase):
         scanner_pos = self._scanner().get_target()
 
         # ToDo: Scale data and axes in a suitable and general way (with utils)
-
-        # Use qudi style
-        plt.style.use(mpl_qd_style)
 
         # Create figure
         fig, ax = plt.subplots()
@@ -291,15 +283,8 @@ class ScanningDataLogic(LogicBase):
             self.sigSaveStateChanged.emit(True)
             self.module_state.lock()
             try:
-                ds = TextDataStorage(column_headers='Image (columns is X, rows is Y)',
-                                     number_format='%.18e',
-                                     comments='# ',
-                                     delimiter='\t',
-                                     sub_directory='Scanning',
-                                     file_extension='.dat',
-                                     image_format=ImageFormat.PNG,
-                                     include_global_parameters=True,
-                                     use_daily_dir=True)
+                ds = TextDataStorage(root_dir=self.module_default_data_dir)
+                timestamp = datetime.datetime.now()
 
                 # ToDo: Add meaningful metadata if missing
                 parameters = {'x-axis name'      : scan_data.scan_axes[0],
@@ -315,14 +300,17 @@ class ScanningDataLogic(LogicBase):
                               'pixel frequency'  : scan_data.scan_frequency}
 
                 # Save data and thumbnail to file
-                timestamp = datetime.datetime.now()
                 for channel, data in scan_data.data.items():
                     # data
                     nametag = '{0}_{1}{2}_image_scan'.format(channel, *scan_data.scan_axes)
-                    ds.save_data(data, parameters=parameters, nametag=nametag, timestamp=timestamp)
+                    file_path, _, _ = ds.save_data(data,
+                                                   metadata=parameters,
+                                                   nametag=nametag,
+                                                   timestamp=timestamp,
+                                                   column_headers='Image (columns is X, rows is Y)')
                     # thumbnail
                     figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
-                    ds.save_thumbnail(mpl_figure=figure, timestamp=timestamp, nametag=nametag)
+                    ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
 
                 self.log.debug('Scan image saved.')
             finally:
@@ -344,9 +332,6 @@ class ScanningDataLogic(LogicBase):
             cbar_range = (image_arr.min(), image_arr.max())
 
         # ToDo: Scale data and axes in a suitable and general way (with utils)
-
-        # Use qudi style
-        plt.style.use(mpl_qd_style)
 
         # Create figure
         fig, ax = plt.subplots()
