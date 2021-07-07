@@ -20,3 +20,13 @@ c. Opo scanner
 **Lucid control:** @ Oliver
 
 a. Power control of the AOM
+
+
+**Add docs**
+
+https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html
+
+https://readthedocs.org/
+
+
+a. 
