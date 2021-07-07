@@ -30,6 +30,15 @@ from core.module import Base
 
 
 class PulseStreamer(Base):
+    """Methods to control the Swabian Instruments Pulse Streamer 8/2
+
+    Example config for copy-paste:
+
+    pulsestreamer:
+        module.Class: 'swabian_instruments.pulsestreamer_pi3.PulseStreamer'
+        pulsestreamer_ip: '192.168.202.200'
+
+    """
 
     _pulsestreamer_ip = ConfigOption(name='pulsestreamer_ip', default='192.168.202.200', missing='warn')
 
@@ -37,11 +46,12 @@ class PulseStreamer(Base):
         super().__init__(**kwargs)
 
     def on_activate(self):
-        print('Activating pulse streamer.')
-        self.pulser = ps.PulseStreamer(self._pulsestreamer_ip)
+        try:
+            self.pulser = ps.PulseStreamer(self._pulsestreamer_ip)
+        except:
+            print('Pulse Streamer could not be found.')
 
     def on_deactivate(self):
-        print('Deactivating pulse streamer.')
         self.pulser.reset() #resets pulse streamer
         del self.pulser #get rid of the object
 
@@ -50,6 +60,7 @@ class PulseStreamer(Base):
         Creates a pulse sequence specified by sequence_dict, uploads it to the pulsestreamer and starts it immediately.
 
         the dict should look like the following:
+
         {
             'd0' : pattern_ch0,
             'd1' : pattern_ch1,
@@ -58,7 +69,10 @@ class PulseStreamer(Base):
             'a0' : pattern_a0,
             'a1' : pattern_a1
         }
-        where pattern_ch1 is an array of tupels, e.g. [(1000,0) , (1000,1)] gives 
+
+        where pattern_ch1 is an array of tupels, e.g. [(1000,1) , (1000,0)].
+        First number is time in ns, second number is TTL-level (high or low).
+
         """
 
         #sequence object is created
@@ -80,5 +94,4 @@ class PulseStreamer(Base):
         self.pulser.stream(sequence, n_runs)
     
     def stop_sequence(self):
-        print('Stopping pulses')
         self.pulser.constant() #sets all outputs to zero
