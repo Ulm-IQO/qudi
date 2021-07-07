@@ -411,6 +411,19 @@
        <number>100</number>
       </property>
      </widget>
+     <widget class="QPushButton" name="refresh_pushButton">
+      <property name="geometry">
+       <rect>
+        <x>530</x>
+        <y>500</y>
+        <width>75</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Refresh</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QDockWidget" name="scan_control_DockWidget">

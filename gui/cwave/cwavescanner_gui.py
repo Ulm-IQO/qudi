@@ -76,7 +76,7 @@ class CwaveScanGui(GUIBase):
         # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the
         # GUI element:
         self._mw = ScannerWindow()
-
+    
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(500)
@@ -127,6 +127,34 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_ViewWidget.addItem(self.scan_image)
 
         self._mw.wavelength_ViewWidget.addItem(self.wavemeter_image)
+        self._plot_item = self._mw.wavelength_ViewWidget.plotItem
+
+        ## create a new ViewBox, link the right axis to its coordinate system
+        self._top_axis = pg.ViewBox()
+        self._plot_item.showAxis('top')
+        self._plot_item.scene().addItem(self._top_axis)
+        self._plot_item.getAxis('top').linkToView(self._top_axis)
+        self._top_axis.setYLink(self._plot_item)
+        self._top_axis.invertX(b=True)
+
+        self._plot_item.setLabel('left', 'Time', units='s')
+        # self._plot_item.setLabel('right', 'Number of Points', units='#')
+        self._plot_item.setLabel('top', 'Wavelength', units='nm')
+        self._plot_item.setLabel('bottom', 'Relative Frequency', units='Hz')
+
+
+        # handle resizing of any of the elements
+        # self._update_plot_views()
+        # self._plot_item.vb.sigResized.connect(self._update_plot_views)
+
+        # self._plot_item.setLabel('left', 'Fluorescence', units='counts/s')
+        # self._plot_item.setLabel('right', 'Number of Points', units='#')
+        # self._plot_item.setLabel('bottom', 'Wavelength', units='nm')
+        # self._plot_item.setLabel('top', 'Relative Frequency', units='Hz')
+
+
+
+
 
         self._mw.shgPD_ViewWidget.addItem(self.shgPD_image)
         self._mw.shgPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
@@ -192,6 +220,8 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_cb_high_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
         self._mw.scan_cb_low_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
 
+        self._mw.refresh_pushButton.clicked.connect(self.refresh_wlm)
+
         #! Configure laser control panel:
         #? Connect buttons
         self._mw.pushButton_connectCwave.clicked.connect(self.changeCwaveState)
@@ -217,7 +247,7 @@ class CwaveScanGui(GUIBase):
 
         #! Connect signals
         self._cwavescan_logic.sigUpdate.connect(self.refresh_matrix)
-        self._cwavescan_logic.sigUpdate.connect(self.refresh_plot)
+        self._cwavescan_logic.sigUpdate.connect(self.refresh_plots)
         self._cwavescan_logic.sigUpdate.connect(self.updateGui)
         self._cwavescan_logic.sigUpdateScanPlots.connect(self.updateScanPlots)
         self._cwavescan_logic.sigScanFinished.connect(self.scan_stopped)
@@ -237,6 +267,11 @@ class CwaveScanGui(GUIBase):
         self._mw.action_run_stop.triggered.connect(self.run_stop)
         # self._mw.action_Save.triggered.connect(self.save_data)
         self._mw.show()
+
+    def refresh_wlm(self):
+        self._cwavescan_logic.plot_y_wlm = np.array([])
+        self.refresh_plots()
+    
     @QtCore.Slot()
     def change_scan_mode(self):
         sender = self.sender()
@@ -257,7 +292,7 @@ class CwaveScanGui(GUIBase):
 
     def set_thick_etalon(self):
         eta = self._mw.spinBox_ThickEtalon.value()
-        print("Aga!", eta)
+        # print("Aga!", eta)
         self.sigAdjThickEtalon.emit(eta)
 
     #TODO!:
@@ -306,7 +341,7 @@ class CwaveScanGui(GUIBase):
 
     @QtCore.Slot()
     def changeCwaveState(self):
-        print(self._cwavescan_logic.cwstate)
+        # print(self._cwavescan_logic.cwstate)
         self.sigCwave.emit()
 
     def displayFreq(self):
@@ -329,6 +364,10 @@ class CwaveScanGui(GUIBase):
         r1 = self._mw.startDoubleSpinBox.value()
         r2 = self._mw.stopDoubleSpinBox.value()
         self.lr.setRegion([r1, r2])
+        self.sigChangeRange.emit([
+            r1,
+            r2
+        ])
         # print(region)
 
     def show(self):
@@ -362,19 +401,22 @@ class CwaveScanGui(GUIBase):
     def scan_stopped(self):
         self._mw.action_run_stop.setEnabled(True)
         self._mw.action_run_stop.setChecked(False)
-        self.refresh_plot()
+        self.refresh_plots()
         self.refresh_matrix()
         self.refresh_lines()
 
 
-    def refresh_plot(self):
+    def refresh_plots(self):
         """ Refresh the xy-plot image """
         self.scan_image.setData(self._cwavescan_logic.plot_x, self._cwavescan_logic.plot_y)
         self.shgPD_image.setData(self._cwavescan_logic.plot_x_shg_pd, self._cwavescan_logic.plot_y_shg_pd[-len(self._cwavescan_logic.plot_x_shg_pd):])
         self.opoPD_image.setData(self._cwavescan_logic.plot_x_opo_pd, self._cwavescan_logic.plot_y_opo_pd[-len(self._cwavescan_logic.plot_x_opo_pd):])
         wlm_y = self._cwavescan_logic.plot_y_wlm
-        wlm_y = wavelength_to_freq(wlm_y) * 1e-6
-        self.wavemeter_image.setData(wlm_y -  wlm_y.mean(), np.linspace(0, len(wlm_y), len(wlm_y)))
+        wlm_y = wavelength_to_freq(wlm_y)
+        if len(wlm_y) > 0:
+            self.wavemeter_image.setData(wlm_y - wlm_y[-1], np.linspace(0, len(wlm_y), len(wlm_y)))
+        
+
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
@@ -487,7 +529,7 @@ class CwaveScanGui(GUIBase):
 
     @QtCore.Slot()
     def updateScanPlots(self):
-        self.refresh_plot()
+        self.refresh_plots()
         self.refresh_matrix()
         self.refresh_scan_colorbar()
 
