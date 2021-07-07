@@ -429,7 +429,7 @@ class TimeSeriesGui(GuiBase):
         """
         """
         curr_channels = self._time_series_logic.active_channel_names
-        curr_av_channels = self._time_series_logic.averaged_channels
+        curr_av_channels = self._time_series_logic.averaged_channel_names
         for chnl, widgets in self._csd_widgets.items():
             widgets['checkbox1'].setChecked(chnl in curr_channels)
             widgets['checkbox2'].setChecked(chnl in curr_av_channels)
