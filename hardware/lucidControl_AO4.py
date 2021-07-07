@@ -34,7 +34,7 @@ from core.configoption import ConfigOption
 
 
 class Lucid_Control_AO4(Base):
-    	""" A device from LucidControl that has 4 analog outputs from 0 to 10 V.
+    """ A device from LucidControl that has 4 analog outputs from 0 to 10 V.
 
 
         Example config for copy-paste:
@@ -43,7 +43,7 @@ class Lucid_Control_AO4(Base):
             module.Class: 'lucidControl_AO4.Lucid_Control_AO4'
             ao4_port: 'COM3'
         
-        """
+    """
 
     # ConfigOptions need to be outside of any function.
     # They are already initialized as object of the class
