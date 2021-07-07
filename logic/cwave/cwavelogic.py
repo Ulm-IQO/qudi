@@ -92,7 +92,7 @@ class CwaveLogic(GenericLogic):
 
         if wlm_res != 0 and self.wavelength <= 0:
             self.wavelength = self._cwavelaser.wavelength
-        print("wavelength", self.wavelength)
+        # print("wavelength", self.wavelength)
         self.shutters = self._cwavelaser.shutters
         self.status_cwave = self._cwavelaser.status_cwave
         self.cwstate = self._cwavelaser.cwstate
@@ -152,7 +152,7 @@ class CwaveLogic(GenericLogic):
     # @set_param_when_threading
     @QtCore.Slot(float)
     def change_setpoint(self, new_voltage):
-        print("New setpoint:", new_voltage)
+        # print("New setpoint:", new_voltage)
         if self.scan_mode == 'refcavint':
             new_voltage_hex = int(65535 * new_voltage / 100)
             
@@ -209,7 +209,7 @@ class CwaveLogic(GenericLogic):
 
 
         self.wavelength = self._wavemeter.get_current_wavelength()
-        print("Init matrix ", self.wavelength)
+        # print("Init matrix ", self.wavelength)
         if self.wavelength <= 0:
             self.wavelength = self._cwavelaser.get_wavelength()
         if self.wavelength == None:
@@ -229,7 +229,7 @@ class CwaveLogic(GenericLogic):
             print("cwave is not connected")
             return 
         if self.scan_mode == "refcavint":
-            if self.pix_integration*self.number_of_bins > 100: 
+            if self.pix_integration*self.number_of_bins > 5: 
                 print("Scan range: ", self.scan_range)
                 print("self.number_of_bins", self.number_of_bins)
                 self._initialise_data_matrix()
@@ -238,6 +238,13 @@ class CwaveLogic(GenericLogic):
                 self.scan_lines()
             else:
                 raise Exception("Too fast scanning!")
+
+        elif self.scan_mode == "refcavext":
+            self._initialise_data_matrix()
+            scan_duration = self.number_of_bins * self.pix_integration
+            self.ramp = self.make_ramp(*self.scan_range, self.number_of_bins)
+            self.sigNextPixel_ext.emit()
+
         elif self.scan_mode == "oporeg":
             print("Scan range: ", self.scan_range)
             print("number_of_bins", self.number_of_bins)
@@ -254,11 +261,6 @@ class CwaveLogic(GenericLogic):
                 self.scan_trace = self._timetagger.counter(refresh_rate=self.pix_integration, n_values=self.number_of_bins)
                 self.scanQueryTimer.start()
                 self._cwavelaser.scan(scan_duration, self.scan_range[0], self.scan_range[1])
-        elif self.scan_mode == "refcavext":
-            self._initialise_data_matrix()
-            scan_duration = self.number_of_bins * self.pix_integration
-            self.ramp = self.make_ramp(*self.scan_range, self.number_of_bins)
-            self.sigNextPixel_ext.emit()
     
 
     @QtCore.Slot()
@@ -294,9 +296,9 @@ class CwaveLogic(GenericLogic):
             self.scan_counter.clear()
             sleep(self.pix_integration)
             self.plot_y[self.number_of_bins - self.scan_points.shape[0]] = self.scan_counter.getData().sum()
-            print("pix number:", self.number_of_bins - self.scan_points.shape[0], self.scan_counter.getData().sum())
+            # print("pix number:", self.number_of_bins - self.scan_points.shape[0], self.scan_counter.getData().sum())
             self.scan_points = np.delete(self.scan_points, 0)
-            print("self.scan_points", self.scan_points)
+            # print("self.scan_points", self.scan_points)
             self.sigUpdateScanPlots.emit()
             self.sigUpdate.emit()
             self.sigUpdatePanelPlots.emit()
@@ -311,7 +313,7 @@ class CwaveLogic(GenericLogic):
     
     @QtCore.Slot()
     def scan_lines_ext(self):
-        print("Next Pix")
+        print("Next Line")
          # stops scanning
         if self.stopRequested:
             self.close_scanner()
@@ -320,7 +322,7 @@ class CwaveLogic(GenericLogic):
         self.clock_freq = 1/self.pix_integration
         self.init_ni_scanner(self.clock_freq)
         self.plot_y = self._nicard.scan_line(self.ramp).flatten()
-        print("P", self.plot_y)
+        # print("P", self.plot_y)
         self.close_scanner()
 
         self.scan_matrix = np.vstack((self.scan_matrix, self.plot_y))
@@ -416,7 +418,7 @@ class CwaveLogic(GenericLogic):
 
     @QtCore.Slot(int)
     def adj_thick_etalon(self, adj):
-        print("here_we_go", adj)
+        # print("here_we_go", adj)
         self._cwavelaser.set_thick_etalon(adj)
 
     def on_deactivate(self):
