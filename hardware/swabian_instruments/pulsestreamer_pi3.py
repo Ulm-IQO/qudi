@@ -36,7 +36,7 @@ class PulseStreamer(Base):
 
     pulsestreamer:
         module.Class: 'swabian_instruments.pulsestreamer_pi3.PulseStreamer'
-        pulsestreamer_ip: '192.168.202.200'
+        pulsestreamer_ip: '169.254.8.2'
 
     """
 
@@ -59,19 +59,23 @@ class PulseStreamer(Base):
         """
         Creates a pulse sequence specified by sequence_dict, uploads it to the pulsestreamer and starts it immediately.
 
-        the dict should look like the following:
+        @param sequence_dict: Dict that contains the patterns for each channel.
 
-        {
-            'd0' : pattern_ch0,
-            'd1' : pattern_ch1,
-            ...
-            'd7' : pattern_ch7,
-            'a0' : pattern_a0,
-            'a1' : pattern_a1
-        }
+            The dict should look like the following:
 
-        where pattern_ch1 is an array of tupels, e.g. [(1000,1) , (1000,0)].
-        First number is time in ns, second number is TTL-level (high or low).
+            {
+                'd0' : pattern_ch0,
+                'd1' : pattern_ch1,
+                ...
+                'd7' : pattern_ch7,
+                'a0' : pattern_a0,
+                'a1' : pattern_a1
+            }
+
+            where pattern_ch1 is an array of tupels, e.g. [(1000,1) , (1000,0)].
+            First number is time in ns, second number is TTL-level (high or low).
+
+        @param n_runs: number of times the sequence will be repeated. Putting -1 will loop indefinitely.
 
         """
 
@@ -94,4 +98,5 @@ class PulseStreamer(Base):
         self.pulser.stream(sequence, n_runs)
     
     def stop_sequence(self):
+        """Sets all outputs to zero."""
         self.pulser.constant() #sets all outputs to zero
