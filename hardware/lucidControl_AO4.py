@@ -34,17 +34,25 @@ from core.configoption import ConfigOption
 
 
 class Lucid_Control_AO4(Base):
+    	""" A device from LucidControl that has 4 analog outputs from 0 to 10 V.
+
+
+        Example config for copy-paste:
+
+        lucidControlAO4:
+            module.Class: 'lucidControl_AO4.Lucid_Control_AO4'
+            ao4_port: 'COM3'
+        
+        """
+
     # ConfigOptions need to be outside of any function.
     # They are already initialized as object of the class
     _port = ConfigOption(name='ao4_port', missing='warn')
 
     def __init__(self, **kwargs):
-        print('LucidControlAO4 __init__')
         super().__init__(**kwargs)
 
     def on_activate(self):
-        print('LucidControlAO4 on_activate')
-
         try:
             # Create AO4 object
             self.ao4 = LucidControlAO4(self._port)
@@ -53,10 +61,12 @@ class Lucid_Control_AO4(Base):
         except:
             print('Could not open device LucidControlAO4.')
 
+        #initialize value objects that are used for reading and writing voltages
         self.values = (ValueVOS4(), ValueVOS4(), ValueVOS4(), ValueVOS4())
         
 
     def on_deactivate(self):
+        """Deactivates the device properly."""
         # set all outputs to zero
         self.outputs_off()
         self.ao4.close()
@@ -64,7 +74,6 @@ class Lucid_Control_AO4(Base):
 
     def outputs_off(self):
         """Sets all outputs to zero."""
-
         for i in range(4):
             self.values[i].setVoltage(0)
         channels = (True, True, True, True)
