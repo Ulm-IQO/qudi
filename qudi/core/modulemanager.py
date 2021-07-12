@@ -564,6 +564,10 @@ class ManagedModule(QtCore.QObject):
                 self.__poll_timer.start()
             else:
                 self._instance.module_state.sigStateChanged.connect(self._state_change_callback)
+
+            if self.is_active:
+                if self._base == 'gui':
+                    self._qudi_main_ref().gui.add_to_system_tray(self._name, self._instance.show)
             return True
 
     @QtCore.Slot()
@@ -643,6 +647,10 @@ class ManagedModule(QtCore.QObject):
             self.__last_state = self.state
             self.sigStateChanged.emit(self._base, self._name, self.__last_state)
             self.sigAppDataChanged.emit(self._base, self._name, self.has_app_data)
+
+            if self._base == 'gui':
+                self._qudi_main_ref().gui.remove_from_system_tray(self._name)
+
             return success
 
     @QtCore.Slot()

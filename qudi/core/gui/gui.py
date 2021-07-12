@@ -44,6 +44,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         Adds all the appropriate menus and actions.
         """
         super().__init__()
+        self._actions = dict()
         self.setIcon(QtWidgets.QApplication.instance().windowIcon())
         self.right_menu = QtWidgets.QMenu('Quit')
         self.left_menu = QtWidgets.QMenu('Manager')
@@ -75,6 +76,33 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         """
         if reason == self.Trigger:
             self.left_menu.exec_(QtGui.QCursor.pos())
+
+    @property
+    def actions(self):
+        return self._actions
+
+    def add_action(self, label, method, icon=None):
+        if label in self._actions:
+            logger.error(f'Action "{label}" already exists, will not add it to the system tray.')
+            return False
+        if not isinstance(icon, QtGui.QIcon):
+            icon = QtGui.QIcon()
+            iconpath = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
+            icon.addFile(os.path.join(iconpath, 'go-next.png'), QtCore.QSize(16, 16))
+        self._actions[label] = QtWidgets.QAction(label)
+        self._actions[label].setIcon(icon)
+        self._actions[label].triggered.connect(method)
+        self.left_menu.addAction(self._actions[label])
+        return True
+
+    def remove_action(self, label):
+        if label not in self._actions:
+            logger.warning(f'Action "{label}" does not exist, nothing to do.')
+            return False
+        self._actions[label].triggered.disconnect()
+        self.left_menu.removeAction(self._actions[label])
+        del self._actions[label]
+        return True
 
 
 class Gui(QtCore.QObject):
@@ -342,3 +370,11 @@ class Gui(QtCore.QObject):
             return
         self.system_tray_notification_bubble(title, message, time=time, icon=icon)
         return
+
+    def add_to_system_tray(self, label, method, icon=None):
+        if self.system_tray_icon:
+            self.system_tray_icon.add_action(label, method, icon)
+
+    def remove_from_system_tray(self, label):
+        if self.system_tray_icon:
+            self.system_tray_icon.remove_action(label)
