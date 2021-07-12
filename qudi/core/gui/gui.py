@@ -38,6 +38,7 @@ logger = get_logger(__name__)
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray icon class subclassing QSystemTrayIcon for custom functionality.
     """
+
     def __init__(self):
         """Tray icon constructor.
         Adds all the appropriate menus and actions.
@@ -46,16 +47,22 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.setIcon(QtWidgets.QApplication.instance().windowIcon())
         self.right_menu = QtWidgets.QMenu('Quit')
         self.left_menu = QtWidgets.QMenu('Manager')
+
         iconpath = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
         self.managericon = QtGui.QIcon()
         self.managericon.addFile(os.path.join(iconpath, 'go-home.png'), QtCore.QSize(16, 16))
+        self.managerAction = QtWidgets.QAction(self.managericon, 'Manager', self.left_menu)
+
         self.exiticon = QtGui.QIcon()
         self.exiticon.addFile(os.path.join(iconpath, 'application-exit.png'), QtCore.QSize(16, 16))
         self.quitAction = QtWidgets.QAction(self.exiticon, 'Quit', self.right_menu)
-        self.managerAction = QtWidgets.QAction(self.managericon, 'Manager', self.left_menu)
+
         self.left_menu.addAction(self.managerAction)
+        self.left_menu.addSeparator()
+
         self.right_menu.addAction(self.quitAction)
         self.setContextMenu(self.right_menu)
+
         self.activated.connect(self.handle_activation)
 
     @QtCore.Slot(QtWidgets.QSystemTrayIcon.ActivationReason)
@@ -213,6 +220,7 @@ class Gui(QtCore.QObject):
             self.main_gui_module.show()
             return
 
+        self.system_tray_icon.managerAction.triggered.connect(self.main_gui_module.show, QtCore.Qt.QueuedConnection)
         self.main_gui_module.module_state.activate()
         QtWidgets.QApplication.instance().processEvents()
 
