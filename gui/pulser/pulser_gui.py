@@ -176,8 +176,9 @@ class PulserGUI(GUIBase):
             pattern = self.turn_into_pattern(raw_pattern)
         except:
             print('Specified file could not be found.\n')
+            pattern = [(1,0)] #dummy pattern to get rid off error popup
+            fname = 'none'
         
-
         return pattern , fname
         
     
