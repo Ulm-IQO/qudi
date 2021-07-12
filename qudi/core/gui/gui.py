@@ -58,10 +58,15 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.exiticon.addFile(os.path.join(iconpath, 'application-exit.png'), QtCore.QSize(16, 16))
         self.quitAction = QtWidgets.QAction(self.exiticon, 'Quit', self.right_menu)
 
+        self.restarticon = QtGui.QIcon()
+        self.restarticon.addFile(os.path.join(iconpath, 'view-refresh.png'), QtCore.QSize(16, 16))
+        self.restartAction = QtWidgets.QAction(self.restarticon, 'Restart', self.right_menu)
+
         self.left_menu.addAction(self.managerAction)
         self.left_menu.addSeparator()
 
         self.right_menu.addAction(self.quitAction)
+        self.right_menu.addAction(self.restartAction)
         self.setContextMenu(self.right_menu)
 
         self.activated.connect(self.handle_activation)
@@ -131,6 +136,7 @@ class Gui(QtCore.QObject):
             theme = 'qudiTheme'
 
         super().__init__()
+        self.__qudi_main_weakref = weakref.ref(qudi_instance)
 
         app = QtWidgets.QApplication.instance()
         if app is None:
@@ -149,8 +155,12 @@ class Gui(QtCore.QObject):
         self._sigBalloonMessage.connect(self.balloon_message, QtCore.Qt.QueuedConnection)
 
         self._configure_pyqtgraph(use_opengl)
-        self.main_gui_module = QudiMainGui(qudi_main_weakref=weakref.ref(qudi_instance),
+        self.main_gui_module = QudiMainGui(qudi_main_weakref=self._qudi_main_weakref,
                                            name='qudi_main_gui')
+
+    @property
+    def _qudi_main_weakref(self):
+        return self.__qudi_main_weakref
 
     @classmethod
     def instance(cls):
@@ -248,7 +258,13 @@ class Gui(QtCore.QObject):
             self.main_gui_module.show()
             return
 
-        self.system_tray_icon.managerAction.triggered.connect(self.main_gui_module.show, QtCore.Qt.QueuedConnection)
+        self.system_tray_icon.managerAction.triggered.connect(self.main_gui_module.show,
+                                                              QtCore.Qt.QueuedConnection)
+        self.system_tray_icon.quitAction.triggered.connect(self._qudi_main_weakref().quit,
+                                                           QtCore.Qt.QueuedConnection)
+        self.system_tray_icon.restartAction.triggered.connect(self._qudi_main_weakref().restart,
+                                                             QtCore.Qt.QueuedConnection)
+
         self.main_gui_module.module_state.activate()
         QtWidgets.QApplication.instance().processEvents()
 
@@ -281,6 +297,7 @@ class Gui(QtCore.QObject):
         """
         self.hide_system_tray_icon()
         self.system_tray_icon.quitAction.triggered.disconnect()
+        self.system_tray_icon.restartAction.triggered.disconnect()
         self.system_tray_icon.managerAction.triggered.disconnect()
         self.system_tray_icon = None
 
