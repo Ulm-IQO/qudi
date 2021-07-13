@@ -50,6 +50,7 @@ class PulserLogic(GenericLogic):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
+
     def on_activate(self):
         self._pulser = self.pulsestreamer()
 
@@ -59,9 +60,13 @@ class PulserLogic(GenericLogic):
 
         #create sequence dict
         self.sequence_dict = {}
+        #create dict with the channels for constant output
+        self.constant_dict = {}
+
 
     def on_deactivate(self):
         pass
+
 
     def store_pattern(self,ch,pattern):
         """Stores the pattern in a dict.
@@ -76,10 +81,72 @@ class PulserLogic(GenericLogic):
         """
         self.sequence_dict[ch] = pattern
     
+
+    def set_constant(self,ch):
+        """ Recodrs that channel ch needs to output constant high.
+        
+        @param ch: channel in question
+
+        """
+        self.constant_dict[ch] = True
+
+
     def run_sequence(self):
         """Tells the pulser to run the sequence indefinitely."""
+        # find duration of longest pattern
+        dur = 0
+        for key in self.sequence_dict.keys():
+            pattern = self.sequence_dict[key]
+            ret = self.get_duration(pattern)
+            if ret > dur:
+                dur = ret
+        #expand duration to be multiple of 8
+        add = 8 - dur%8
+        dur += add
+        #set pattern to be constant output for each ch mentioned in constant dict
+        for key in self.constant_dict.keys():
+            self.sequence_dict[key] = [(dur,1)]
+        #run the sequence
         self.sigStart.emit(self.sequence_dict,-1)
+
 
     def stop_sequence(self):
         """Tells the pulser to stop the sequence."""
         self.sigStop.emit()
+    
+
+    def delete_pattern(self,ch):
+        """Removes the sequence for the selected channel.
+
+        @param ch: channel for which to remove the pattern.
+
+        """
+
+        # remove entry from sequence
+        try:
+            self.sequence_dict.pop(ch)
+            print('removing sequence')
+        except:
+            pass
+        # remove enty from boolean dict
+        try:
+            self.constant_dict.pop(ch)
+            print('removing constant')
+        except:
+            pass
+
+
+    def get_duration(self,pattern):
+        """Calculates the duration (in ms) of a given pattern.
+
+        @param pattern: pattern to analyze, needs to be in the form
+            [(time,level),(time,level),...], e.g.
+            [(1000,1),(500,0)]
+
+        @return dur: integer, duration of the pattern in ms
+
+        """
+        dur = 0
+        for i in range(len(pattern)):
+            dur += pattern[i][0]
+        return dur
