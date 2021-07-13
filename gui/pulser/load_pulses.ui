@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>Pulseloader</class>
+ <widget class="QMainWindow" name="Pulseloader">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>731</width>
-    <height>651</height>
+    <height>686</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Control Pulses</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="3" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_11">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch5">
         <item>
          <widget class="QLabel" name="label_11">
           <property name="text">
@@ -29,7 +29,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d5">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d5">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d5">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -64,8 +81,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>351</width>
+           <height>111</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -96,8 +113,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>350</width>
+           <height>111</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_16">
@@ -113,7 +130,7 @@
        </widget>
       </item>
       <item row="1" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch0">
         <item>
          <widget class="QLabel" name="label_4">
           <property name="text">
@@ -124,7 +141,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d0">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d0">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d0">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -159,8 +193,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>351</width>
+           <height>112</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_18">
@@ -176,7 +210,7 @@
        </widget>
       </item>
       <item row="3" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch1">
         <item>
          <widget class="QLabel" name="label_5">
           <property name="text">
@@ -187,7 +221,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d1">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d1">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d1">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -207,7 +258,7 @@
        </layout>
       </item>
       <item row="1" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch4">
         <item>
          <widget class="QLabel" name="label_2">
           <property name="text">
@@ -218,7 +269,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d4">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d4">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d4">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -253,8 +321,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>350</width>
+           <height>112</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_15">
@@ -285,8 +353,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>350</width>
+           <height>111</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -317,8 +385,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>351</width>
+           <height>111</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_14">
@@ -334,7 +402,7 @@
        </widget>
       </item>
       <item row="5" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch2">
         <item>
          <widget class="QLabel" name="label_6">
           <property name="text">
@@ -345,7 +413,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d2">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d2">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d2">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -380,8 +465,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>351</width>
+           <height>112</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_10">
@@ -421,8 +506,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>348</width>
-           <height>91</height>
+           <width>350</width>
+           <height>112</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_17">
@@ -444,7 +529,7 @@
        </widget>
       </item>
       <item row="7" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch3">
         <item>
          <widget class="QLabel" name="label">
           <property name="text">
@@ -455,7 +540,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d3">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d3">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d3">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -483,13 +585,16 @@
       </item>
       <item row="9" column="1">
        <widget class="QPushButton" name="pushButton_stop">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Stop</string>
         </property>
        </widget>
       </item>
       <item row="5" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_12">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch6">
         <item>
          <widget class="QLabel" name="label_12">
           <property name="text">
@@ -500,7 +605,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d6">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d6">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d6">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -520,7 +642,7 @@
        </layout>
       </item>
       <item row="7" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_8">
+       <layout class="QHBoxLayout" name="horizontalLayout_ch7">
         <item>
          <widget class="QLabel" name="label_8">
           <property name="text">
@@ -531,7 +653,24 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d7">
           <property name="text">
-           <string>load sequence</string>
+           <string>load pattern</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_const_d7">
+          <property name="text">
+           <string>const</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_delete_d7">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>delete</string>
           </property>
          </widget>
         </item>
@@ -561,7 +700,7 @@
      <x>0</x>
      <y>0</y>
      <width>731</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
