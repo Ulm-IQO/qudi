@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1261</width>
+    <width>1009</width>
     <height>1362</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1261</width>
+     <width>1009</width>
      <height>21</height>
     </rect>
    </property>
@@ -1225,6 +1225,9 @@
    <widget class="QWidget" name="dockWidgetContents_4">
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout"/>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
        <item>
         <widget class="ScanPlotWidget" name="xy_ViewWidget">
@@ -1900,6 +1903,21 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QToolBar" name="limitsToolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionUse_LT_limits"/>
+  </widget>
   <action name="actionSave_XY_Scan">
    <property name="icon">
     <iconset>
@@ -2310,6 +2328,21 @@
    </property>
    <property name="toolTip">
     <string>Blink correction</string>
+   </property>
+  </action>
+  <action name="actionUse_LT_limits">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/LT.png</normaloff>../../artwork/icons/oxygen/22x22/LT.png</iconset>
+   </property>
+   <property name="text">
+    <string>Use LT limits</string>
+   </property>
+   <property name="toolTip">
+    <string>DANGER! Only press this if you are at LT! This increases the voltage limit on the piezos.</string>
    </property>
   </action>
  </widget>

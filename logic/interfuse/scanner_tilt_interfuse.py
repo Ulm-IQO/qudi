@@ -19,6 +19,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import copy
+from qtpy import QtCore
 
 from core.connector import Connector
 from logic.generic_logic import GenericLogic
@@ -30,6 +31,9 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     """
 
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+
+    # signal to hardware
+    sigChangeLimits = QtCore.Signal(str)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -44,6 +48,8 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
         self.tiltcorrection = False
         self.tilt_reference_x = 0
         self.tilt_reference_y = 0
+
+        self.sigChangeLimits.connect(self._scanning_device.set_voltage_limits)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -210,3 +216,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
                 + (y - self.tilt_reference_y) * self.tilt_variable_ay
             )
             return dz
+
+    def set_voltage_limits(self,RTLT):
+        """Sends signal to hardware."""
+        self.sigChangeLimits.emit(RTLT)
