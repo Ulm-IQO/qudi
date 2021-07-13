@@ -94,6 +94,29 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         super(OptimizerSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
+
+class ChangingToLTLimitsDialog(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_change_to_LT.ui')
+
+        # Load it
+        super(ChangingToLTLimitsDialog, self).__init__()
+        uic.loadUi(ui_file, self)
+
+
+class ChangingToLTLimitsConfirmation(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_confirm_change.ui')
+
+        # Load it
+        super(ChangingToLTLimitsConfirmation, self).__init__()
+        uic.loadUi(ui_file, self)
+
+
 class SaveDialog(QtWidgets.QDialog):
     """ Dialog to provide feedback and block GUI while saving """
     def __init__(self, parent, title="Please wait", text="Saving..."):
@@ -135,6 +158,7 @@ class ConfocalGui(GUIBase):
 
     # signals
     sigStartOptimizer = QtCore.Signal(list, str)
+    sigChangeLimits = QtCore.Signal(str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -436,6 +460,11 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self.change_x_image_range)
         self._scanning_logic.signal_history_event.connect(self.change_y_image_range)
         self._scanning_logic.signal_history_event.connect(self.change_z_image_range)
+
+        # set voltage limits
+        self._mw.actionUse_LT_limits.changed.connect(self.change_piezo_voltage_limits)
+        self.sigChangeLimits.connect(self._scanning_logic.set_voltage_limits)
+        
 
         # Get initial tilt correction values
         self._mw.action_TiltCorrection.setChecked(
@@ -1318,6 +1347,44 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.image_z_range = [
             self._mw.z_min_InputWidget.value(),
             self._mw.z_max_InputWidget.value()]
+
+    def change_piezo_voltage_limits(self):
+        """ Switches the voltage limits for the piezos from RT (0 to 4 V) to LT (0 to 10 V) and back. """
+        if self._mw.actionUse_LT_limits.isChecked():
+            # create the dialog window
+            self._clt = ChangingToLTLimitsDialog()
+            self._clt.show()
+            # connect the action of the dialog window with the code
+            self._clt.pushButton_confirm_LT.clicked.connect(self.change_piezo_voltage_limits_to_LT)
+            self._clt.pushButton_deny_LT.clicked.connect(self.change_piezo_voltage_limits_to_RT)
+        else:
+            self.change_piezo_voltage_limits_to_RT()
+    
+    def change_piezo_voltage_limits_to_LT(self):
+        """ Sets the voltage limits for the piezos to LT (0 to 10 V). """
+        print('LT, were we go')
+        self._clt.close() #close previous window
+        # emit signal to change limits to LT logic
+        self.sigChangeLimits.emit('LT')
+        # create the dialog window
+        self._ltconf = ChangingToLTLimitsConfirmation()
+        self._ltconf.show()
+        #closes window on click
+        self._ltconf.pushButton_okay.clicked.connect(self.close_confirmation_window)
+        
+
+    def change_piezo_voltage_limits_to_RT(self):
+        """ Sets the voltage limits for the piezos to RT (0 to 4 V). """
+        print('RT')
+        #emit signal to change limits to RT logic
+        self.sigChangeLimits.emit('RT')
+        self._mw.actionUse_LT_limits.setChecked(False)
+        self._clt.close()
+    
+
+    def close_confirmation_window(self):
+        self._ltconf.close()
+
 
     def update_tilt_correction(self):
         """ Update all tilt points from the scanner logic. """
