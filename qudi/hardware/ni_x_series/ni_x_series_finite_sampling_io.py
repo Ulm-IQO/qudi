@@ -55,6 +55,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             'ao0': 'V'
             'ao1': 'V'
         adc_voltage_range: [-10, 10]  # optional #TODO adapt interface for limits
+        #TODO output range, also limits need to be included in constraints
         frame_size_limits: [1, 1e9]  # optional #TODO actual HW constraint?
         output_mode: 'JUMP_LIST' # optional, must be name of SamplingOutputMode
         read_write_timeout: 10  # optional
@@ -102,7 +103,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         # Internal settings in streamer
         self.__frame_size = -1
-        self.__buffer_size = -1
+        self.__frame_buffer = -1
         self.__use_circular_buffer = False
 
 
@@ -329,6 +330,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         assert self._constraints.output_mode_supported(self._default_output_mode),\
             f'Config output "{self._default_output_mode}" mode not supported'
+
         self.__output_mode = self._default_output_mode
         self.__frame_size = 0
         return
@@ -440,7 +442,13 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return int: Unread samples in input buffer
         """
-        pass
+        if not self.is_running:
+            return 0
+
+        if self._ai_task_handle is None:
+            return self._di_task_handles[0].in_stream.avail_samp_per_chan
+        else:
+            return self._ai_task_handle.in_stream.avail_samp_per_chan
 
     @property
     def frame_size(self):
@@ -455,6 +463,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         assert self._constraints.frame_size_in_range(samples_per_channel), f'Frame size "{size}" is out of range'
         with self._thread_lock:
             self.__frame_size = samples_per_channel
+            self.__frame_buffer = None
 
     def set_frame_data(self, data):
         """ Fills the frame buffer for the next data frame to be emitted. Data must be a dict
@@ -470,7 +479,28 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @param dict data: The frame data (values) to be set for all active channels (keys)
         """
-        pass
+        assert data is None or isinstance(data, dict), f'Wrong arguments passed to set_frame_data,' \
+                                                       f'expected dict and got {type(data)}'
+
+        active_channels_set = self.active_channels[0].union(self.active_channels[1])
+
+        if data is not None:
+            # Check for invalid keys
+            assert not set(data).difference(active_channels_set), f'Invalid keys in data ' \
+                                                                  f'{*set(data).difference(active_channels_set),}'
+            # Check if all active channels are in data
+            assert set(data) == active_channels_set, f'Keys of data {*data,} ' \
+                                                     f'do not match active channels {*active_channels_set,}'
+
+            output_channels = self.active_channels[1]
+            if self.output_mode == SamplingOutputMode.JUMP_LIST:
+                frame_size = len(data.values[0])
+                assert all(len(d) == frame_size for d in data.values()), f'Length of data values not the same'
+            elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                frame_size = len(data.values[0])
+                assert all(len(d) == 3 for d in data.values()), f'EQUIDISTANT_SWEEP output mode requires value' \
+                                                                f'tuples of length 3 for each output channel'
+
 
     def start_buffered_frame(self):
         """ Will start the input and output of the previously set data frame in a non-blocking way.
@@ -535,8 +565,9 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         Read-only flag indicating if the data acquisition is running.
 
-        @return bool: Data acquisition is running (True) or not (False)
+        @return bool: Finite IO is running (True) or not (False)
         """
+        assert self.module_state() in ('locked', 'idle')  # TODO what about other module states?
         if self.module_state() == 'locked':
             return True
         else:
