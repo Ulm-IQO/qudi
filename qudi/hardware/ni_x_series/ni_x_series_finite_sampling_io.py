@@ -97,7 +97,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self._di_readers = list()
         self._ai_reader = None
 
-        #Internal settings
+        # Internal settings
         self.__output_mode = None
         self.__sample_rate = -1.0
 
@@ -105,7 +105,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self.__frame_size = -1
         self.__frame_buffer = -1
         self.__use_circular_buffer = False
-
 
         # Data buffer
         self._data_buffer = np.empty(0, dtype=self.__data_type)
@@ -232,7 +231,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             )
         else:  # Only ao and di, therefore probably the fastest possible
             sample_rate_limits = (
-                self._device_handle.ao_min_rate, #TODO: What is the minimum frequency for the digital counter timebase?
+                self._device_handle.ao_min_rate,
+                # TODO: What is the minimum frequency for the digital counter timebase?
                 min(self._device_handle.ao_max_rate, self._device_handle.ci_max_timebase)
             )
 
@@ -328,7 +328,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         # self._data_buffer = np.empty(0, dtype=self.__data_type)
         # self._has_overflown = False
 
-        assert self._constraints.output_mode_supported(self._default_output_mode),\
+        assert self._constraints.output_mode_supported(self._default_output_mode), \
             f'Config output "{self._default_output_mode}" mode not supported'
 
         self.__output_mode = self._default_output_mode
@@ -357,7 +357,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         @return (frozenset, frozenset): active input channels, active output channels
         """
         return self.__active_channels['di_channels'].union(self.__active_channels['ai_channels']), \
-            self.__active_channels['ao_channels']
+               self.__active_channels['ao_channels']
 
     def set_active_channels(self, input_channels, output_channels):
         """ Will set the currently active input and output channels.
@@ -367,14 +367,17 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         @param iterable(str) output_channels: Iterable of output channel names to set active
         """
 
-        assert hasattr(input_channels, '__iter__') and not isinstance(input_channels, str),\
+        assert hasattr(input_channels, '__iter__') and not isinstance(input_channels, str), \
             f'Given input channels {input_channels} are not iterable'
 
-        assert hasattr(output_channels, '__iter__') and not isinstance(output_channels, str),\
+        assert hasattr(output_channels, '__iter__') and not isinstance(output_channels, str), \
             f'Given output channels {output_channels} are not iterable'
 
         assert self.is_running is False, \
             'Unable to change active channels while IO is running. New settings ignored.'
+
+        input_channels = tuple(self._extract_terminal(channel) for channel in input_channels)
+        output_channels = tuple(self._extract_terminal(channel) for channel in output_channels)
 
         assert set(input_channels).issubset(set(self._constraints.input_channel_names)), \
             f'Trying to set invalid input channels "' \
@@ -461,6 +464,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     def _set_frame_size(self, size):
         samples_per_channel = int(round(size))
         assert self._constraints.frame_size_in_range(samples_per_channel), f'Frame size "{size}" is out of range'
+        assert not self.is_running, f'Module is running. Cannot set frame size'
+
         with self._thread_lock:
             self.__frame_size = samples_per_channel
             self.__frame_buffer = None
@@ -477,29 +482,45 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         Calling this method will alter read-only property <frame_size>
 
-        @param dict data: The frame data (values) to be set for all active channels (keys)
+        @param dict data: The frame data (values) to be set for all active output channels (keys)
         """
         assert data is None or isinstance(data, dict), f'Wrong arguments passed to set_frame_data,' \
                                                        f'expected dict and got {type(data)}'
 
-        active_channels_set = self.active_channels[0].union(self.active_channels[1])
+        active_output_channels_set = self.active_channels[1]
 
         if data is not None:
             # Check for invalid keys
-            assert not set(data).difference(active_channels_set), f'Invalid keys in data ' \
-                                                                  f'{*set(data).difference(active_channels_set),}'
+            assert not set(data).difference(active_output_channels_set), \
+                f'Invalid keys in data {*set(data).difference(active_output_channels_set),} '
             # Check if all active channels are in data
-            assert set(data) == active_channels_set, f'Keys of data {*data,} ' \
-                                                     f'do not match active channels {*active_channels_set,}'
+            assert set(data) == active_output_channels_set, f'Keys of data {*data,} do not match active' \
+                                                            f'channels {*active_output_channels_set,}'
 
-            output_channels = self.active_channels[1]
+            # set frame size
             if self.output_mode == SamplingOutputMode.JUMP_LIST:
-                frame_size = len(data.values[0])
+                frame_size = len(next(iter(data.values())))
+                assert all(isinstance(d, np.ndarray) and len(d.shape) == 1 for d in data.values()),\
+                    f'Data values are no 1D numpy.ndarrays'
                 assert all(len(d) == frame_size for d in data.values()), f'Length of data values not the same'
             elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                frame_size = len(data.values[0])
-                assert all(len(d) == 3 for d in data.values()), f'EQUIDISTANT_SWEEP output mode requires value' \
-                                                                f'tuples of length 3 for each output channel'
+                assert all(len(tup) == 3 and isinstance(tup, tuple) for tup in data.values()), \
+                    f'EQUIDISTANT_SWEEP output mode requires value tuples of length 3 for each output channel'
+                assert all(np.issubdtype(int, tup[-1]) for tup in data.values()),\
+                    f'Linspace number of points not integer'
+                frame_size = next(iter(data.values()))[-1]
+            self._set_frame_size(frame_size)
+
+            with self._thread_lock:
+                if data is not None:
+                    if self.output_mode == SamplingOutputMode.JUMP_LIST:
+                        self.__frame_buffer = {output_ch: jump_list for output_ch, jump_list in data.items()}
+                    elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                        self.__frame_buffer = {output_ch: np.linspace(*tup) for output_ch, tup in data.items()}
+                    for input_ch in self.active_channels[0]:
+                        self.__frame_buffer[input_ch] = np.zeros(self.frame_size)
+                if data is None:
+                    self._set_frame_size(0)
 
 
     def start_buffered_frame(self):
@@ -572,7 +593,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             return True
         else:
             return False
-
 
     ### End of IO Interface methods / Start of old "copied over in streamer methods
 
@@ -903,6 +923,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 continue
             break
         self._clk_task_handle = task
+        # ni.system.System.connect_terms() # TODO: connect VI terminal to physical channel if defined in config
         return 0
 
     def _init_digital_tasks(self):
