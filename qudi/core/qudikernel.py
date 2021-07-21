@@ -116,15 +116,6 @@ class QudiKernelClient:
             self.disconnect()
             return dict()
 
-    def get_numpy_module(self):
-        if self.connection is None or self.connection.closed:
-            return None
-        try:
-            return self.connection.root.get_numpy_module()
-        except (ConnectionError, EOFError):
-            self.disconnect()
-            return None
-
     def connect(self):
         config = Configuration()
         config_path = Configuration.get_saved_config()
@@ -165,12 +156,6 @@ class QudiIPythonKernel(IPythonKernel):
         removed = self._namespace_qudi_modules.difference(modules)
         for mod in removed:
             self.shell.user_ns.pop(mod, None)
-        for name, obj in self.shell.user_ns.items():
-            if obj is numpy:
-                modules[name] = self._qudi_client.get_numpy_module()
-                if modules[name] is None:
-                    modules.pop(name, None)
-                break
         self.shell.push(modules)
         self._namespace_qudi_modules = set(modules)
 
