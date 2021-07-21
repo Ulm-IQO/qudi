@@ -374,15 +374,11 @@ class MotorRotationZaber(Base, MotorInterface):
                 z1 = zz
 
             sends = [xx, yy, z1, z2, z3, z4]
-            """
-            msg = u''.join([chr(a) for a in sends]).encode('latin')
 
-            self.log.debug(f"Sending {sends} as: {msg}")
+            msg = bytes(sends).decode('latin')
+            #self.log.debug(f"Sending {sends} as: {msg}")
+
             self._serial_connection_rot.write(msg)
-            """
-            for ii in range(6):
-                self._serial_connection_rot.write(chr(sends[ii]))
-
 
             return 0
         except:
