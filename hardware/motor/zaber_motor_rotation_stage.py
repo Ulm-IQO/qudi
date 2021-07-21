@@ -90,6 +90,7 @@ class MotorRotationZaber(Base, MotorInterface):
             write_termination="",
             read_termination="",
             send_end=False)
+        self._serial_connection_rot.encoding = 'latin'
 
         return 0
 
@@ -365,7 +366,7 @@ class MotorRotationZaber(Base, MotorInterface):
                 z4 = 255
                 zz += base**3
                 if zz/base**2 >= 1:
-                    z3 =int(zz/base**2)
+                    z3 = int(zz/base**2)
                     zz -= z3*base**2
                 if zz/base >= 1:
                     z2 = int(zz/base)
@@ -373,10 +374,15 @@ class MotorRotationZaber(Base, MotorInterface):
                 z1 = zz
 
             sends = [xx, yy, z1, z2, z3, z4]
-            msg = bytes(sends).decode('latin')
+            """
+            msg = u''.join([chr(a) for a in sends]).encode('latin')
 
-            #self.log.debug(f"Sending: {msg}")
+            self.log.debug(f"Sending {sends} as: {msg}")
             self._serial_connection_rot.write(msg)
+            """
+            for ii in range(6):
+                self._serial_connection_rot.write(chr(sends[ii]))
+
 
             return 0
         except:
