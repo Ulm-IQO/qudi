@@ -26,6 +26,7 @@ import numpy as np
 import nidaqmx as ni
 from nidaqmx._lib import lib_importer  # Due to NIDAQmx C-API bug needed to bypass property getter
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
+from nidaqmx.stream_writers import AnalogMultiChannelWriter
 
 from qudi.core.configoption import ConfigOption
 from qudi.util.helpers import natural_sort
@@ -96,6 +97,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         # nidaqmx stream reader instances to help with data acquisition
         self._di_readers = list()
         self._ai_reader = None
+        self._ao_writer = None
 
         # Internal settings
         self.__output_mode = None
@@ -238,7 +240,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         # Create constraints
         self._constraints = FiniteSamplingIOConstraints(
-            supported_output_modes=SamplingOutputMode,
+            supported_output_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP),
             input_channel_units=self._input_channel_units,
             output_channel_units=self._output_channel_units,
             frame_size_limits=self._frame_size_limits,
@@ -373,7 +375,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         assert hasattr(output_channels, '__iter__') and not isinstance(output_channels, str), \
             f'Given output channels {output_channels} are not iterable'
 
-        assert self.is_running is False, \
+        assert not self.is_running, \
             'Unable to change active channels while IO is running. New settings ignored.'
 
         input_channels = tuple(self._extract_terminal(channel) for channel in input_channels)
@@ -408,8 +410,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @param float rate: The sample rate to set
         """
-        # Todo how to change that in hardware? Sample rate is probably just passed in task creation,
-        #  so no issue when changed while device is running?
+        assert not self.is_running, \
+            'Unable to set sample rate while IO is running. New settings ignored.'
         min_val, max_val = self._constraints.sample_rate_limits
         if not min_val <= rate <= max_val:
             self.log.warning(
@@ -419,13 +421,14 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             rate = max(min(max_val, rate), min_val)
         with self._thread_lock:
             self.__sample_rate = float(rate)
-        return
 
     def set_output_mode(self, mode):
         """ Setter for the current output mode.
 
         @param SamplingOutputMode mode: The output mode to set as SamplingOutputMode Enum
         """
+        assert not self.is_running, \
+            'Unable to set output mode while IO is running. New settings ignored.'
         assert self._constraints.output_mode_supported(mode), f'Output mode {mode} not supported'
         # TODO: in case of assertion error, set output mode to SamplingOutputMode.INVALID?
         with self._thread_lock:
@@ -487,9 +490,13 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         assert data is None or isinstance(data, dict), f'Wrong arguments passed to set_frame_data,' \
                                                        f'expected dict and got {type(data)}'
 
+        assert not self.is_running, f'IO is running. Can not set frame data'
+
         active_output_channels_set = self.active_channels[1]
 
         if data is not None:
+            # assure dict keys are striped from device name and are lower case
+            data = {self._extract_terminal(ch): value for ch, value in data.items()}
             # Check for invalid keys
             assert not set(data).difference(active_output_channels_set), \
                 f'Invalid keys in data {*set(data).difference(active_output_channels_set),} '
@@ -500,15 +507,17 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             # set frame size
             if self.output_mode == SamplingOutputMode.JUMP_LIST:
                 frame_size = len(next(iter(data.values())))
-                assert all(isinstance(d, np.ndarray) and len(d.shape) == 1 for d in data.values()),\
+                assert all(isinstance(d, np.ndarray) and len(d.shape) == 1 for d in data.values()), \
                     f'Data values are no 1D numpy.ndarrays'
                 assert all(len(d) == frame_size for d in data.values()), f'Length of data values not the same'
             elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
                 assert all(len(tup) == 3 and isinstance(tup, tuple) for tup in data.values()), \
                     f'EQUIDISTANT_SWEEP output mode requires value tuples of length 3 for each output channel'
-                assert all(np.issubdtype(int, tup[-1]) for tup in data.values()),\
+                assert all(isinstance(tup[-1], int) for tup in data.values()), \
                     f'Linspace number of points not integer'
                 frame_size = next(iter(data.values()))[-1]
+            else:
+                frame_size = 0
             self._set_frame_size(frame_size)
 
             with self._thread_lock:
@@ -522,14 +531,76 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 if data is None:
                     self._set_frame_size(0)
 
-
     def start_buffered_frame(self):
         """ Will start the input and output of the previously set data frame in a non-blocking way.
         Must return immediately and not wait for the frame to finish.
 
         Must raise exception if frame output can not be started.
         """
-        pass
+
+        assert self.frame_size != 0, f'No frame data set, can not start buffered frame'
+
+        all_active_channels_set = frozenset(self.active_channels[0].union(self.active_channels[1]))
+        assert all_active_channels_set == set(self.__frame_buffer), \
+            f'Channels in active channels and frame buffer do not coincide'
+
+        # # set up all tasks
+        if self._init_sample_clock() < 0:
+            self.terminate_all_tasks()
+            raise NiInitError('Sample clock initialization failed; all tasks terminated')
+
+        if self._init_digital_tasks() < 0:
+            self.terminate_all_tasks()
+            raise NiInitError('Counter task initialization failed; all tasks terminated')
+
+        if self._init_analog_in_task() < 0:
+            self.terminate_all_tasks()
+            raise NiInitError('Analog in task initialization failed; all tasks terminated')
+
+        if self._init_analog_out_task() < 0:
+            self.terminate_all_tasks()
+            raise NiInitError('Analog out task initialization failed; all tasks terminated')
+
+        output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
+
+        for num, output_channel in enumerate(self.active_channels[1]):
+            output_data[num] = self.__frame_buffer[output_channel]
+
+        try:
+            self._ao_writer.write_many_sample(output_data)
+        except ni.DaqError:
+            self.terminate_all_tasks()
+            raise
+
+        if self._ao_task_handle is not None:
+            try:
+                self._ao_task_handle.start()
+            except ni.DaqError:
+                self.terminate_all_tasks()
+                raise
+
+        if self._ai_task_handle is not None:
+            try:
+                self._ai_task_handle.start()
+            except ni.DaqError:
+                self.terminate_all_tasks()
+                raise
+
+        if len(self._di_task_handles) > 0:
+            try:
+                for di_task in self._di_task_handles:
+                    di_task.start()
+            except ni.DaqError:
+                self.terminate_all_tasks()
+                raise
+
+        try:
+            self._clk_task_handle.start()
+        except ni.DaqError:
+            self.terminate_all_tasks()
+            raise
+
+        self.module_state.lock()
 
     def stop_buffered_frame(self):
         """ Will abort the currently running data frame input and output.
@@ -542,7 +613,11 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         Must NOT raise exceptions if no frame output is running.
         """
-        pass
+
+        if self.is_running:
+            self.terminate_all_tasks()
+
+            self.module_state.unlock()
 
     def get_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active input channels read from the
@@ -597,84 +672,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     ### End of IO Interface methods / Start of old "copied over in streamer methods
 
     @property
-    def data_type(self):
-        """
-        Read-only property to return the currently set data type
-
-        @return type: current data type
-        """
-        return self.__data_type
-
-    @property
-    def buffer_size(self):
-        """
-        The currently set buffer size.
-        Buffer size corresponds to the number of samples per channel that can be buffered. So the
-        actual buffer size in bytes can be estimated by:
-            buffer_size * number_of_channels * size_in_bytes(data_type)
-
-        @return int: current buffer size in samples per channel
-        """
-        return self.__buffer_size
-
-    @buffer_size.setter
-    def buffer_size(self, size):
-        if self._check_settings_change():
-            size = int(size)
-            if size > self._max_channel_samples_buffer:
-                self.log.error('buffer_size to set ({0}) is larger than maximum allowed buffer '
-                               'size of {1:d} samples per channel.'
-                               ''.format(size, self._max_channel_samples_buffer))
-                return
-            elif size < 1:
-                self.log.error('Buffer size smaller than 1 makes no sense. Tried to set {0} as '
-                               'buffer size and failed.'.format(size))
-                return
-            self.__buffer_size = int(size)
-            self._init_buffer()
-        return
-
-    @property
-    def use_circular_buffer(self):
-        """
-        A flag indicating if circular sample buffering is being used or not.
-
-        @return bool: indicate if circular sample buffering is used (True) or not (False)
-        """
-        return self.__use_circular_buffer
-
-    @use_circular_buffer.setter
-    def use_circular_buffer(self, flag):
-        if self._check_settings_change():
-            if flag and not self._constraints.allow_circular_buffer:
-                self.log.error('Circular buffer not allowed for this hardware module.')
-                return
-            self.__use_circular_buffer = bool(flag)
-        return
-
-    @property
-    def number_of_channels(self):
-        """
-        Read-only property to return the currently configured number of data channels.
-
-        @return int: the currently set number of channels
-        """
-        return len(self.__active_channels)
-
-    @property
-    def available_channels(self):
-        """
-        Read-only property to return the currently used data channel properties.
-        Returns a dict with channel names as keys and corresponding StreamChannel instances as
-        values.
-
-        @return tuple: data channel properties for all available channels with keys being the
-                       channel names and values being the corresponding StreamChannel instances.
-        """
-        return (*(ch.copy() for ch in self._constraints.digital_channels),
-                *(ch.copy() for ch in self._constraints.analog_channels))
-
-    @property
     def available_samples(self):
         """
         Read-only property to return the currently available number of samples per channel ready
@@ -693,26 +690,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             # avail_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - \
             #                 self._ai_task_handle.in_stream.curr_read_pos
             return self._ai_task_handle.in_stream.avail_samp_per_chan
-
-    @property
-    def stream_length(self):
-        """
-        Property holding the total number of samples per channel to be acquired by this stream.
-        This number is only relevant if the streaming mode is set to StreamingMode.FINITE.
-
-        @return int: The number of samples to acquire per channel. Ignored for continuous streaming.
-        """
-        return self.__stream_length
-
-    @stream_length.setter
-    def stream_length(self, length):
-        if self._check_settings_change():
-            length = int(length)
-            if length < 1:
-                self.log.error('Stream_length must be a positive integer >= 1.')
-                return
-            self.__stream_length = length
-        return
 
     @property
     def buffer_overflown(self):
@@ -734,54 +711,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         @return DataInStreamConstraints: Instance of DataInStreamConstraints containing constraints
         """
         return self._constraints.copy()
-
-    def start_stream(self):
-        """
-        Start the data acquisition and data stream.
-
-        @return int: error code (0: OK, -1: Error)
-        """
-        if self.is_running:
-            self.log.warning('Unable to start input stream. It is already running.')
-            return 0
-
-        if (self._init_sample_clock() + self._init_digital_tasks() + self._init_analog_task()) != 0:
-            return -1
-
-        self._init_buffer()
-
-        try:
-            self._clk_task_handle.start()
-        except ni.DaqError:
-            self.log.exception('Error while starting sample clock task.')
-            self.terminate_all_tasks()
-            return -1
-
-        if self._ai_task_handle is not None:
-            try:
-                self._ai_task_handle.start()
-            except ni.DaqError:
-                self.log.exception('Error while starting analog input task.')
-                self.terminate_all_tasks()
-                return -1
-        try:
-            for task in self._di_task_handles:
-                task.start()
-        except ni.DaqError:
-            self.log.exception('Error while starting digital counter tasks.')
-            self.terminate_all_tasks()
-            return -1
-        return 0
-
-    def stop_stream(self):
-        """
-        Stop the data acquisition and data stream.
-
-        @return int: error code (0: OK, -1: Error)
-        """
-        if self.is_running:
-            self.terminate_all_tasks()
-        return 0
 
     def read_data_into_buffer(self, buffer, number_of_samples=None):
         """
@@ -889,13 +818,15 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             try:
                 task.co_channels.add_co_pulse_chan_freq(
                     '/{0}/{1}'.format(self._device_name, src),
-                    freq=self.__sample_rate,
+                    freq=self.sample_rate,
                     idle_state=ni.constants.Level.LOW)
                 task.timing.cfg_implicit_timing(
-                    sample_mode=ni.constants.AcquisitionType.FINITE)
+                    sample_mode=ni.constants.AcquisitionType.FINITE,
+                    samps_per_chan=self.frame_size)
             except ni.DaqError:
                 self.log.exception('Error while configuring sample clock task.')
                 try:
+                    task.close()
                     del task
                 except NameError:
                     pass
@@ -998,9 +929,10 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
                     task.timing.cfg_implicit_timing(
                         sample_mode=ni.constants.AcquisitionType.FINITE,
-                        samps_per_chan=self.__frame_size)
+                        samps_per_chan=self.frame_size)
                 except ni.DaqError:
                     try:
+                        task.close()
                         del task
                     except NameError:
                         pass
@@ -1093,7 +1025,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                                source=clock_channel,
                                                active_edge=ni.constants.Edge.RISING,
                                                sample_mode=ni.constants.AcquisitionType.FINITE,
-                                               samps_per_chan=self.__frame_size)
+                                               samps_per_chan=self.frame_size)
         except ni.DaqError:
             self.log.exception(
                 'Something went wrong while configuring the analog-in task.')
@@ -1160,14 +1092,14 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         try:
             ao_ch_str = ','.join(['/{0}/{1}'.format(self._device_name, c) for c in analog_channels])
-            ao_task.ao_channels.add_ao_voltage_chan(ao_ch_str,  # TODO constraints for ADC range
+            ao_task.ao_channels.add_ao_voltage_chan(ao_ch_str,  # TODO constraints for range
                                                     max_val=10,  # max(self._adc_voltage_range),
                                                     min_val=0)  # min(self._adc_voltage_range))
             ao_task.timing.cfg_samp_clk_timing(sample_freq,
                                                source=clock_channel,
                                                active_edge=ni.constants.Edge.RISING,
                                                sample_mode=ni.constants.AcquisitionType.FINITE,
-                                               samps_per_chan=self.__frame_size)
+                                               samps_per_chan=self.frame_size)
         except ni.DaqError:
             self.log.exception(
                 'Something went wrong while configuring the analog-in task.')
@@ -1175,6 +1107,38 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 del ao_task
             except NameError:
                 pass
+            self.terminate_all_tasks()
+            return -1
+
+        try:
+            ao_task.control(ni.constants.TaskMode.TASK_RESERVE)
+        except ni.DaqError:
+            try:
+                ao_task.close()
+            except ni.DaqError:
+                self.log.exception('Unable to close task.')
+            try:
+                del ao_task
+            except NameError:
+                self.log.exception('Some weird namespace voodoo happened here...')
+
+            self.log.exception('Unable to reserve resources for analog-out task.')
+            self.terminate_all_tasks()
+            return -1
+
+        try:
+            self._ao_writer = AnalogMultiChannelWriter(ao_task.in_stream)
+            self._ao_writer.verify_array_shape = False
+        except ni.DaqError:
+            try:
+                ao_task.close()
+            except ni.DaqError:
+                self.log.exception('Unable to close task.')
+            try:
+                del ao_task
+            except NameError:
+                self.log.exception('Some weird namespace voodoo happened here...')
+            self.log.exception('Something went wrong while setting up the analog input reader.')
             self.terminate_all_tasks()
             return -1
 
@@ -1245,25 +1209,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self._clk_task_handle = None
         return err
 
-    def _init_buffer(self):
-        self._data_buffer = np.zeros(self.number_of_channels * self.buffer_size,
-                                     dtype=self.__data_type)
-        self._has_overflown = False
-        return
-
-    def _check_settings_change(self):
-        """
-        Helper method to check if streamer settings can be changed, i.e. if the streamer is idle.
-        Throw a warning if the streamer is running.
-
-        @return bool: Flag indicating if settings can be changed (True) or not (False)
-        """
-        if self.is_running:
-            self.log.warning('Unable to change streamer settings while streamer is running. '
-                             'New settings ignored.')
-            return False
-        return True
-
     @staticmethod
     def _extract_terminal(term_str):
         """
@@ -1293,3 +1238,9 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         assert (di_channels or ai_channels), f'No channels could be extracted from {*input_channels,}'
 
         return tuple(di_channels), tuple(ai_channels)
+
+
+class NiInitError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
