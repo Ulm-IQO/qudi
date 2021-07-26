@@ -132,7 +132,8 @@ class PulsedMasterLogic(GenericLogic):
                             'measurement_running': False,
                             'microwave_running': False,
                             'predefined_generation_busy': False,
-                            'fitting_busy': False}
+                            'fitting_busy': False,
+                            'benchmark_busy': False}
 
         # Connect signals controlling PulsedMeasurementLogic
         self.sigDoFit.connect(
@@ -239,6 +240,9 @@ class PulsedMasterLogic(GenericLogic):
             self.sample_sequence_finished, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigLoadedAssetUpdated.connect(
             self.loaded_asset_updated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigBenchmarkComplete.connect(
+            self.benchmark_completed, QtCore.Qt.QueuedConnection)
+
         return
 
     def on_deactivate(self):
@@ -301,6 +305,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sequencegeneratorlogic().sigSampleEnsembleComplete.disconnect()
         self.sequencegeneratorlogic().sigSampleSequenceComplete.disconnect()
         self.sequencegeneratorlogic().sigLoadedAssetUpdated.disconnect()
+        self.sequencegeneratorlogic().sigBenchmarkComplete.disconnect()
         return
 
     #######################################################################
@@ -577,6 +582,10 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['fitting_busy'] = False
         self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
         return
+
+    @QtCore.Slot()
+    def benchmark_completed(self):
+        self.status_dict['benchmark_busy'] = False
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
                               save_figure=True):
@@ -902,6 +911,16 @@ class PulsedMasterLogic(GenericLogic):
             for sequence_name in to_delete:
                 self.sigDeleteSequence.emit(sequence_name)
         return
+
+    @QtCore.Slot()
+    def refresh_pulse_generator_settings(self):
+        """
+        Trigger updated settings when values within might have changed without being
+        explicitly set by the setter method.
+        :return:
+        """
+        # causes update of benchmark results
+        self.sigGeneratorSettingsChanged.emit({})
 
     @QtCore.Slot(dict)
     def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
