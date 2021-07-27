@@ -47,9 +47,9 @@ def install_kernel():
         os.mkdir(path)
 
         kernel_dict = {
-            'argv'        : [sys.executable, kernel_path, '-f', '{connection_file}'],
+            'argv': [sys.executable, kernel_path, '-f', '{connection_file}'],
             'display_name': 'Qudi',
-            'language'    : 'python'
+            'language': 'python'
         }
         # write the kernelspec file
         with open(os.path.join(path, 'kernel.json'), 'w') as f:
@@ -79,6 +79,7 @@ def uninstall_kernel():
 class QudiKernelService(rpyc.Service):
     """
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._background_server = None
@@ -103,6 +104,7 @@ class QudiKernelService(rpyc.Service):
 class QudiKernelClient:
     """
     """
+
     def __init__(self):
         self.service_instance = QudiKernelService()
         self.connection = None
@@ -125,9 +127,10 @@ class QudiKernelClient:
         port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
                                        config={'allow_all_attrs': True,
-                                               'allow_setattr'  : True,
-                                               'allow_delattr'  : True,
-                                               'allow_pickle'   : True},
+                                               'allow_setattr': True,
+                                               'allow_delattr': True,
+                                               'allow_pickle': True,
+                                               'sync_request_timeout': 3600},
                                        port=port,
                                        service=self.service_instance)
 
@@ -144,6 +147,7 @@ class QudiKernelClient:
 class QudiIPythonKernel(IPythonKernel):
     """
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._qudi_client = QudiKernelClient()
@@ -177,4 +181,5 @@ if __name__ == '__main__':
         uninstall_kernel()
     else:
         from ipykernel.kernelapp import IPKernelApp
+
         IPKernelApp.launch_instance(kernel_class=QudiIPythonKernel)

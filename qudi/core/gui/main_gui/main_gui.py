@@ -249,6 +249,7 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.reset_font()
             self.mw.console_widget.set_default_style(colors='linux')
             kernel_client = kernel_manager.client()
+            kernel_client.hb_channel.time_to_dead = 10.0
             kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
             kernel_client.start_channels()
             self.mw.console_widget.kernel_manager = kernel_manager

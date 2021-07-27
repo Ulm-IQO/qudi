@@ -48,9 +48,10 @@ def get_remote_module_instance(remote_url, certfile=None, keyfile=None, protocol
     parsed = urlparse(remote_url)
     if protocol_config is None:
         protocol_config = {'allow_all_attrs': True,
-                           'allow_setattr'  : True,
-                           'allow_delattr'  : True,
-                           'allow_pickle'   : True}
+                           'allow_setattr': True,
+                           'allow_delattr': True,
+                           'allow_pickle': True,
+                           'sync_request_timeout': 3600}
     connection = rpyc.ssl_connect(host=parsed.hostname,
                                   port=parsed.port,
                                   config=protocol_config,
@@ -64,6 +65,7 @@ class _ServerRunnable(QtCore.QObject):
     """ QObject containing the actual long-running code to execute in a separate thread for qudi
     RPyC servers.
     """
+
     def __init__(self, service, host, port, certfile=None, keyfile=None, protocol_config=None,
                  ssl_version=None, cert_reqs=None, ciphers=None):
         super().__init__()
@@ -77,9 +79,10 @@ class _ServerRunnable(QtCore.QObject):
         self.keyfile = keyfile
         if protocol_config is None:
             self.protocol_config = {'allow_all_attrs': True,
-                                    'allow_setattr'  : True,
-                                    'allow_delattr'  : True,
-                                    'allow_pickle'   : True}
+                                    'allow_setattr': True,
+                                    'allow_delattr': True,
+                                    'allow_pickle': True,
+                                    'sync_request_timeout': 3600}
         else:
             self.protocol_config = protocol_config
         self.ssl_version = ssl.PROTOCOL_TLSv1_2 if ssl_version is None else ssl_version
@@ -136,6 +139,7 @@ class BaseServer(QtCore.QObject):
     USE SSL AUTHENTICATION WHEN LISTENING ON ANYTHING ELSE THAN "localhost"/127.0.0.1.
     Actual RPyC server runs in a QThread.
     """
+
     def __init__(self, qudi, service_instance, name, host, port, certfile=None,
                  keyfile=None, protocol_config=None, ssl_version=None, cert_reqs=None,
                  ciphers=None, parent=None):
@@ -219,6 +223,7 @@ class BaseServer(QtCore.QObject):
 class RemoteModulesServer(BaseServer):
     """
     """
+
     def __init__(self, **kwargs):
         kwargs['service_instance'] = RemoteModulesService()
         super().__init__(**kwargs)
@@ -238,6 +243,7 @@ class QudiNamespaceServer(BaseServer):
     clients.
     Actual rpyc server runs in a QThread.
     """
+
     def __init__(self, qudi, name, port, parent=None):
         """
         @param qudi.Qudi qudi: The governing qudi main application instance
