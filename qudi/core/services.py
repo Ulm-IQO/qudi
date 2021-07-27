@@ -23,7 +23,6 @@ __all__ = ('RemoteModulesService', 'QudiNamespaceService')
 
 import rpyc
 import weakref
-import numpy as np
 from functools import wraps
 from inspect import signature, isfunction, ismethod
 
@@ -205,13 +204,13 @@ class QudiNamespaceService(rpyc.Service):
 
 
 class ModuleRpycProxy:
-    """ Instances of this class serve as proxies for objects containing attributes of type
-    OverloadedAttribute. It can be used to hide the overloading mechanism by fixing the overloaded
-    attribute access key in a OverloadProxy instance. This allows for interfacing an overloaded
-    attribute in the object represented by this proxy by normal "pythonic" means without the
-    additional key-mapping lookup usually required by OverloadedAttribute.
+    """ Instances of this class serve as proxies for qudi modules accessed via RPyC.
+    It currently wraps all API methods (none- and single-underscore methods) to only receive
+    parameters "by value", i.e. using qudi.util.network.netobtain. This will only work if all
+    method arguments are "pickle-able".
+    In addition all values passed to __setattr__ are also received "by value".
 
-    Heavily inspired by this python recipe under PSF License:
+    Proxy class concept heavily inspired by this python recipe under PSF License:
     https://code.activestate.com/recipes/496741-object-proxying/
     """
 
