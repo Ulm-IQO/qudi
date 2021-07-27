@@ -19,15 +19,13 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-import abc
-import sys
+
 import logging
 import weakref
 import importlib
 from enum import Enum
 from PySide2 import QtCore
 
-from qudi.core.meta import TaskMetaclass
 from qudi.util.mutex import Mutex, RecursiveMutex
 from qudi.core.connector import Connector
 from fysom import Fysom
@@ -42,70 +40,110 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
     # Declare modules to control.
     # _my_module_conn = Connector(interface='MyModuleClassName', name='my_module')
 
-    sigFinished = QtCore.Signal(object, bool)
+    sigFinished = QtCore.Signal(object)
 
-    def __init__(self, *args, conn_modules, fn=None, **kwargs):
+    def __init__(self, module_connections=None, run_function=None, args=None, kwargs=None):
         super().__init__()
-        # Create connectors and connect them to module instances
-        for attr, conn in self.module_connectors().items():
-            name = attr if conn.name is None else conn.name
-            if name not in conn_modules and not conn.optional:
-                raise RuntimeError(
-                    f'Module connection "{name}" not configured for QudiScript.'
-                )
-            new_conn = conn.copy(name=name)
-            setattr(self, attr, new_conn)
-            new_conn.connect(conn_modules[name])
-        # Set function as _run bound method
-        if callable(fn):
-            self._run = fn.__get__(self)
-        self.args = args
-        self.kwargs = kwargs
+
+        # Create connector copies for this script instance and connect them to the modules
+        if module_connections is None:
+            module_connections = dict()
+
+        connectors = self.module_connectors()
+        conn_name_attr_mapping = {conn.name: attr_name for attr_name, conn in connectors.items()}
+        missing_mandatory_conn = {conn.name for conn in connectors.values() if not conn.optional}
+
+        for name, module in module_connections.items():
+            attr_name = conn_name_attr_mapping.get(name, None)
+            if attr_name is None:
+                raise ValueError(f'Unknown module connector "{name}" encountered.\n'
+                                 f'Valid connections are: {list(conn_name_attr_mapping)}')
+            conn = connectors[attr_name].copy()
+            conn.connect(module)
+            setattr(self, attr_name, conn)
+            if name in missing_mandatory_conn:
+                missing_mandatory_conn.remove(name)
+        if missing_mandatory_conn:
+            raise ValueError(f'Missing mandatory connections:\n{missing_mandatory_conn}')
+
+        # cache arguments for run method (if given)
+        self.args = tuple() if args is None else args
+        self.kwargs = dict() if kwargs is None else kwargs
+
+        # Set run_function as _run bound method
+        if callable(run_function):
+            self._run = run_function.__get__(self)
+
+        # run method result cache
         self.result = None
-        self.success = None
 
     @classmethod
     def module_connectors(cls):
+        """ Returns all Connector objects for this script class.
+        DO NOT OVERRIDE IN SUBCLASS!
+
+        @return dict: Dict with all Connector objects (values) and their attribute names (keys)
+        """
         connectors = dict()
-        for c in reversed(cls.mro()[:-1]):
+        for c in reversed(cls.mro()[:-4]):
             connectors.update(
-                {attr: val for attr, val in vars(c).items() if isinstance(val, Connector)})
+                {name: attr for name, attr in vars(c).items() if isinstance(attr, Connector)}
+            )
         return connectors
 
     @property
     def log(self):
-        """ Returns a logger object """
-        return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
+        """ Returns a logger object.
+        DO NOT OVERRIDE IN SUBCLASS!
+
+        @return logging.Logger: Logger object for this script class
+        """
+        return logging.getLogger(f'{self.__module__}.{self.__class__.__name__}')
 
     def __call__(self, *args, **kwargs):
+        """ Convenience magic method to run this script like a function
+        DO NOT OVERRIDE IN SUBCLASS!
+
+        @param args: Positional arguments passed to run method
+        @param kwargs: Keyword arguments passed to run method
+
+        @return object: Result of the script method
+        """
         self.args = args
         self.kwargs = kwargs
         self.run()
-        return self.result, self.success
+        return self.result
 
     @QtCore.Slot()
     def run(self):
-        if self.can_run():
-            try:
-                self.result = self._run(*self.args, **self.kwargs)
-                self.success = True
-            except:
-                self.result = None
-                self.success = False
-                self.log.exception('Something went wrong while executing ModuleScript "{0}":'
-                                   ''.format(self.__class__.__name__))
-        else:
-            self.result = None
-            self.success = False
-        self.sigFinished.emit(self.result, self.success)
-        return
+        """ Check run prerequisites and execute _run method with pre-cached arguments.
+        DO NOT OVERRIDE IN SUBCLASS!
+        """
+        self.result = None
+
+        if not self.can_run():
+            raise RuntimeError(f'Prerequisites to run ModuleScript "{self.__class__.__name__}" '
+                               f'not fulfilled.')
+
+        self.result = self._run(*self.args, **self.kwargs)
+        self.sigFinished.emit(self.result)
 
     def can_run(self):
+        """ Implement this method in a subclass if you need to check prerequisites before running.
+
+        @return bool: Indicator if the script can be run (default: True) or not (False)
+        """
         return True
 
-    @abc.abstractmethod
     def _run(self, *args, **kwargs):
-        pass
+        """ Implement this method in a subclass or provide a callable to the __init__ argument
+        "run_function" to be bound as this method.
+
+        @return object: The result of the script (default: None)
+        """
+        raise NotImplementedError(
+            f'No run method configured for ModuleScript "{self.__class__.__name__}".'
+        )
 
 
 class ScriptRunner(QtCore.QObject):
@@ -330,379 +368,379 @@ class TaskStateMachine(Fysom):
         return base_event
 
 
-class InterruptableTask(QtCore.QObject, metaclass=TaskMetaclass):
-    """
-    This class represents a task in a module that can be safely executed by checking
-    preconditions and pausing other tasks that are being executed as well.
-    The task can also be paused, given that the preconditions for pausing are met.
-
-    State diagram for InterruptableTask:
-
-        stopped -> starting -----------> running ---------> finishing -*
-           ^          |            _______|   ^_________               |
-           |<---------*            v                   |               v
-           |                   pausing -> paused -> resuming           |
-           |                      |                    |               |
-           ^                      v                    v               |
-           |-------------<--------|----------<---------|--------<-------
-
-    Each state has a transition state that allow for checks, synchronization and for parts of the
-    task to influence its own execution via signals.
-    This also allows the TaskRunner to be informed about what the task is doing and ensuring that a
-    task is executed in the correct thread.
-    """
-    sigAbort = QtCore.Signal()
-    sigStarted = QtCore.Signal()
-    sigNextTaskStep = QtCore.Signal()
-    sigDoPause = QtCore.Signal()
-    sigPaused = QtCore.Signal()
-    sigDoResume = QtCore.Signal()
-    sigResumed = QtCore.Signal()
-    sigDoFinish = QtCore.Signal()
-    sigFinished = QtCore.Signal()
-    sigStateChanged = QtCore.Signal(TaskState, TaskState)  # new state, old state
-
-    scripts = dict()
-
-    def __init__(self, name, runner, references, config, **kwargs):
-        """ Create an Interruptable task.
-          @param str name: unique task name
-          @param object runner: reference to the TaskRunner managing this task
-          @param dict references: a dictionary of all required modules
-          @param dict config: configuration dictionary
-        """
-        super().__init__(**kwargs)
-        fsm_callbacks = {'onchangestate': self._state_change_callback,
-                         # 'onrun': self._start,
-                         # 'onpause': self._pause,
-                         # 'onresume': self._resume,
-                         # 'onfinish': self._finish
-                         }
-
-        self.task_state = TaskStateMachine(parent=self, callbacks=fsm_callbacks)
-
-        self.lock = Mutex()
-        self.name = name
-        self.interruptable = False
-        self.success = False
-        self.runner = runner
-        self.ref = references
-        self.config = config
-
-        self.sigDoStart.connect(self._doStart, QtCore.Qt.QueuedConnection)
-        self.sigDoPause.connect(self._doPause, QtCore.Qt.QueuedConnection)
-        self.sigDoResume.connect(self._doResume, QtCore.Qt.QueuedConnection)
-        self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
-        self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
-
-    @property
-    def log(self):
-        """
-        Returns a logger object
-        """
-        return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
-
-    def _state_change_callback(self, e):
-        """ Fysom callback for state transition.
-
-          @param object e: Fysom state transition description
-        """
-        old = TaskState[e.src]
-        new = TaskState[e.dst]
-        if old != new:
-            self.sigStateChanged.emit(new, old)
-
-    def _startup_callback(self, e):
-        """
-          @param object e: Fysom state transition description
-
-          @return bool: True if task was started, False otherwise
-        """
-        self.result = TaskResult()
-        if self.checkStartPrerequisites():
-            #print('_run', QtCore.QThread.currentThreadId(), self.current)
-            self.sigDoStart.emit()
-            #print('_runemit', QtCore.QThread.currentThreadId(), self.current)
-            return True
-        else:
-            return False
-
-    @abc.abstractmethod
-    def task_preparation(self):
-        pass
-
-    @abc.abstractmethod
-    def task_cleanup(self):
-        pass
-
-    def _doStart(self):
-        """ Starting prerequisites were met, now do the actual start action.
-        """
-        try:
-            #print('dostart', QtCore.QThread.currentThreadId(), self.current)
-            self.runner.pause_pause_tasks(self)
-            self.runner.pre_run_prepost_tasks(self)
-            self.startTask()
-            self.startingFinished()
-            self.sigStarted.emit()
-            self.sigNextTaskStep.emit()
-        except Exception as e:
-            self.log.exception('Exception during task {0}. {1}'.format(
-                self.name, e))
-            self.result.update(None, False)
-
-    def _doTaskStep(self):
-        """ Check for state transitions to pause or stop and execute one step of the task work function.
-        """
-        try:
-            if self.runTaskStep():
-                if self.isstate('pausing') and self.checkPausePrerequisites():
-                    self.sigDoPause.emit()
-                elif self.isstate('finishing'):
-                    self.sigDoFinish.emit()
-                else:
-                    self.sigNextTaskStep.emit()
-            else:
-                self.finish()
-                self.sigDoFinish.emit()
-        except Exception as e:
-            self.log.exception('Exception during task step {0}. {1}'.format(
-                self.name, e))
-            self.result.update(None, False)
-            self.finish()
-            self.sigDoFinish.emit()
-
-    def _pause(self, e):
-        """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step.
-        """
-        pass
-
-    def _doPause(self):
-        """ Prerequisites for pausing were checked by Task runner and met, so execute the actual pausing action.
-        """
-        try:
-            self.pauseTask()
-            self.runner.post_run_prepost_tasks(self)
-            self.pausingFinished()
-            self.sigPaused.emit()
-        except Exception as e:
-            self.log.exception('Exception while pausing task {}. '
-                    '{}'.format(self.name, e))
-            self.result.update(None, False)
-
-    def _resume(self, e):
-        """ Trigger resuming action.
-        """
-        self.sigDoResume.emit()
-
-    def _doResume(self):
-        """ Actually execute resuming action.
-        """
-        try:
-            self.runner.pre_run_prepost_tasks(self)
-            self.resumeTask()
-            self.resumingFinished()
-            self.sigResumed.emit()
-            self.sigNextTaskStep.emit()
-        except Exception as e:
-            self.log.exception('Exception while resuming task {}. '
-                    '{}'.format(self.name, e))
-            self.result.update(None, False)
-
-    def _finish(self, e):
-        """ Do nothing, it is up to the TaskRunner to trigger the next step.
-        """
-        pass
-
-    def _doFinish(self):
-        """ Actually finish execution.
-        """
-        self.cleanupTask()
-        self.runner.resume_pause_tasks(self)
-        self.runner.post_run_prepost_tasks(self)
-        self.finishingFinished()
-        self.sigFinished.emit()
-
-    def checkStartPrerequisites(self):
-        """ Check whether this task can be started by checking if all tasks to be paused are either stopped or can be paused.
-            Also check custom prerequisites.
-
-          @return bool: True if task can be stated, False otherwise
-        """
-        for task in self.prePostTasks:
-            if not ( isinstance(self.prePostTasks[task], PrePostTask) and self.prePostTasks[task].can('prerun') ):
-                self.log('Cannot start task {0} as pre/post task {1} is not in a state to run.'.format(self.name, task), msgType='error')
-                return False
-        for task in self.pauseTasks:
-            if not (isinstance(self.pauseTasks[task], InterruptableTask)
-                    and (
-                        self.pauseTasks[task].can('pause')
-                        or self.pauseTasks[task].isstate('stopped')
-                    )):
-                self.log('Cannot start task {0} as interruptable task {1} is not stopped or able to pause.'.format(self.name, task), msgType='error')
-                return False
-        if not self.checkExtraStartPrerequisites():
-            return False
-        return True
-
-    def checkExtraStartPrerequisites(self):
-        """ If your task has extra prerequisites that are not covered by
-            checking if a certain task can be paused, overwrite this function
-            when sub-classing.
-
-        @return bool: return True if task can be started, False otherwise
-        """
-        return True
-
-    def checkPausePrerequisites(self):
-        """ Check if task is allowed to pause based on external state."""
-
-        try:
-            return self.checkExtraPausePrerequisites()
-        except Exception as e:
-            self.log.exception('Exception while checking pause '
-                    'prerequisites for task {}. {}'.format(self.name, e))
-            return False
-
-    def checkExtraPausePrerequisites(self):
-        """ If yout task has prerequisites for pausing, overwrite this function when subclassing and put the check here.
-
-          @return bool: return True if task can be paused right now, False otherwise
-        """
-        return True
-
-    def canPause(self):
-        """ Check if task can pause based on its own state only.
-        """
-        return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
-
-    @abc.abstractmethod
-    def startTask(self):
-        """ Implement the operation to start your task here.
-        """
-        pass
-
-    @abc.abstractmethod
-    def runTaskStep(self):
-        """ Implement one work step of your task here.
-          @return bool: True if the task should continue running, False if it should finish.
-        """
-        return False
-
-    @abc.abstractmethod
-    def pauseTask(self):
-        """ Implement the operations necessary to pause your task here.
-        """
-        pass
-
-    @abc.abstractmethod
-    def resumeTask(self):
-        """ Implement the operations necessary to resume your task from being paused here.
-        """
-        pass
-
-    @abc.abstractmethod
-    def cleanupTask(self):
-        """ If your task leaves behind any undesired state, take care to remove it in this function.
-            It is called after a task has finished.
-        """
-        pass
-
-class PrePostTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
-    """ Represents a task that creates the necessary conditions for a different task
-        and reverses its own actions afterwards.
-    """
-
-    sigPreExecStart = QtCore.Signal()
-    sigPreExecFinish = QtCore.Signal()
-    sigPostExecStart = QtCore.Signal()
-    sigPostExecFinish = QtCore.Signal()
-    sigStateChanged = QtCore.Signal(object)
-
-    requiredModules = []
-
-    def __init__(self, name, runner, references, config, **kwargs):
-        """ Create a PrePostTask.
-          @param str name: unique name of the task
-          @param object runner: TaskRunner that manages this task
-          @param dict references: contains references to all required modules
-          @param dict config: configuration parameter dictionary
-        """
-        _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
-        _stateList = {
-            'initial': 'stopped',
-            'events': [
-                {'name': 'prerun', 'src': 'stopped', 'dst': 'paused'},
-                {'name': 'postrun', 'src': 'paused', 'dst': 'stopped'}
-            ],
-            'callbacks': _default_callbacks
-        }
-        if 'PyQt5' in sys.modules:
-            super().__init__(cfg=_stateList, **kwargs)
-        else:
-            QtCore.QObject.__init__(self)
-            Fysom.__init__(self, _stateList)
-        self.lock = Mutex()
-        self.name = name
-        self.runner = runner
-        self.ref = references
-        self.config = config
-
-    @property
-    def log(self):
-        """
-        Returns a logger object
-        """
-        return logging.getLogger("{0}.{1}".format(
-            self.__module__,self.__class__.__name__))
-
-    def onchangestate(self, e):
-        """ Fysom callback for all state transitions.
-          @param object e: Fysom state transition description
-
-          This just emits a signal so external components can react.
-        """
-        self.sigStateChanged.emit(e)
-
-    @abc.abstractmethod
-    def preExecute(self):
-        """ This method contains any action that should be done before some task.
-            It needs to be overwritten in every subclass.
-        """
-        pass
-
-    @abc.abstractmethod
-    def postExecute(self):
-        """ This method needs to undo any actions in preExecute() after a task has been finished.
-            It needs to be overwritten in every subclass.
-        """
-        pass
-
-    def _pre(self, e):
-        """ Actually call preExecute with the appropriate safeguards amd emit singals before and afterwards.
-
-          @param object e: Fysom state transition description
-        """
-        self.sigPreExecStart.emit()
-        try:
-            self.preExecute()
-        except Exception as e:
-            self.log.exception('Exception during task {0}. {1}'.format(
-                self.name, e))
-
-        self.sigPreExecFinish.emit()
-
-    def _post(self, e):
-        """ Actually call postExecute with the appropriate safeguards amd emit singals before and afterwards.
-
-          @param object e: Fysom state transition description
-        """
-        self.sigPostExecStart.emit()
-        try:
-            self.postExecute()
-        except Exception as e:
-            self.log.exception('Exception during task {0}. {1}'.format(
-                self.name, e))
-
-        self.sigPostExecFinish.emit()
-
+# class InterruptableTask(QtCore.QObject, metaclass=TaskMetaclass):
+#     """
+#     This class represents a task in a module that can be safely executed by checking
+#     preconditions and pausing other tasks that are being executed as well.
+#     The task can also be paused, given that the preconditions for pausing are met.
+#
+#     State diagram for InterruptableTask:
+#
+#         stopped -> starting -----------> running ---------> finishing -*
+#            ^          |            _______|   ^_________               |
+#            |<---------*            v                   |               v
+#            |                   pausing -> paused -> resuming           |
+#            |                      |                    |               |
+#            ^                      v                    v               |
+#            |-------------<--------|----------<---------|--------<-------
+#
+#     Each state has a transition state that allow for checks, synchronization and for parts of the
+#     task to influence its own execution via signals.
+#     This also allows the TaskRunner to be informed about what the task is doing and ensuring that a
+#     task is executed in the correct thread.
+#     """
+#     sigAbort = QtCore.Signal()
+#     sigStarted = QtCore.Signal()
+#     sigNextTaskStep = QtCore.Signal()
+#     sigDoPause = QtCore.Signal()
+#     sigPaused = QtCore.Signal()
+#     sigDoResume = QtCore.Signal()
+#     sigResumed = QtCore.Signal()
+#     sigDoFinish = QtCore.Signal()
+#     sigFinished = QtCore.Signal()
+#     sigStateChanged = QtCore.Signal(TaskState, TaskState)  # new state, old state
+#
+#     scripts = dict()
+#
+#     def __init__(self, name, runner, references, config, **kwargs):
+#         """ Create an Interruptable task.
+#           @param str name: unique task name
+#           @param object runner: reference to the TaskRunner managing this task
+#           @param dict references: a dictionary of all required modules
+#           @param dict config: configuration dictionary
+#         """
+#         super().__init__(**kwargs)
+#         fsm_callbacks = {'onchangestate': self._state_change_callback,
+#                          # 'onrun': self._start,
+#                          # 'onpause': self._pause,
+#                          # 'onresume': self._resume,
+#                          # 'onfinish': self._finish
+#                          }
+#
+#         self.task_state = TaskStateMachine(parent=self, callbacks=fsm_callbacks)
+#
+#         self.lock = Mutex()
+#         self.name = name
+#         self.interruptable = False
+#         self.success = False
+#         self.runner = runner
+#         self.ref = references
+#         self.config = config
+#
+#         self.sigDoStart.connect(self._doStart, QtCore.Qt.QueuedConnection)
+#         self.sigDoPause.connect(self._doPause, QtCore.Qt.QueuedConnection)
+#         self.sigDoResume.connect(self._doResume, QtCore.Qt.QueuedConnection)
+#         self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
+#         self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
+#
+#     @property
+#     def log(self):
+#         """
+#         Returns a logger object
+#         """
+#         return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
+#
+#     def _state_change_callback(self, e):
+#         """ Fysom callback for state transition.
+#
+#           @param object e: Fysom state transition description
+#         """
+#         old = TaskState[e.src]
+#         new = TaskState[e.dst]
+#         if old != new:
+#             self.sigStateChanged.emit(new, old)
+#
+#     def _startup_callback(self, e):
+#         """
+#           @param object e: Fysom state transition description
+#
+#           @return bool: True if task was started, False otherwise
+#         """
+#         self.result = TaskResult()
+#         if self.checkStartPrerequisites():
+#             #print('_run', QtCore.QThread.currentThreadId(), self.current)
+#             self.sigDoStart.emit()
+#             #print('_runemit', QtCore.QThread.currentThreadId(), self.current)
+#             return True
+#         else:
+#             return False
+#
+#     @abc.abstractmethod
+#     def task_preparation(self):
+#         pass
+#
+#     @abc.abstractmethod
+#     def task_cleanup(self):
+#         pass
+#
+#     def _doStart(self):
+#         """ Starting prerequisites were met, now do the actual start action.
+#         """
+#         try:
+#             #print('dostart', QtCore.QThread.currentThreadId(), self.current)
+#             self.runner.pause_pause_tasks(self)
+#             self.runner.pre_run_prepost_tasks(self)
+#             self.startTask()
+#             self.startingFinished()
+#             self.sigStarted.emit()
+#             self.sigNextTaskStep.emit()
+#         except Exception as e:
+#             self.log.exception('Exception during task {0}. {1}'.format(
+#                 self.name, e))
+#             self.result.update(None, False)
+#
+#     def _doTaskStep(self):
+#         """ Check for state transitions to pause or stop and execute one step of the task work function.
+#         """
+#         try:
+#             if self.runTaskStep():
+#                 if self.isstate('pausing') and self.checkPausePrerequisites():
+#                     self.sigDoPause.emit()
+#                 elif self.isstate('finishing'):
+#                     self.sigDoFinish.emit()
+#                 else:
+#                     self.sigNextTaskStep.emit()
+#             else:
+#                 self.finish()
+#                 self.sigDoFinish.emit()
+#         except Exception as e:
+#             self.log.exception('Exception during task step {0}. {1}'.format(
+#                 self.name, e))
+#             self.result.update(None, False)
+#             self.finish()
+#             self.sigDoFinish.emit()
+#
+#     def _pause(self, e):
+#         """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step.
+#         """
+#         pass
+#
+#     def _doPause(self):
+#         """ Prerequisites for pausing were checked by Task runner and met, so execute the actual pausing action.
+#         """
+#         try:
+#             self.pauseTask()
+#             self.runner.post_run_prepost_tasks(self)
+#             self.pausingFinished()
+#             self.sigPaused.emit()
+#         except Exception as e:
+#             self.log.exception('Exception while pausing task {}. '
+#                     '{}'.format(self.name, e))
+#             self.result.update(None, False)
+#
+#     def _resume(self, e):
+#         """ Trigger resuming action.
+#         """
+#         self.sigDoResume.emit()
+#
+#     def _doResume(self):
+#         """ Actually execute resuming action.
+#         """
+#         try:
+#             self.runner.pre_run_prepost_tasks(self)
+#             self.resumeTask()
+#             self.resumingFinished()
+#             self.sigResumed.emit()
+#             self.sigNextTaskStep.emit()
+#         except Exception as e:
+#             self.log.exception('Exception while resuming task {}. '
+#                     '{}'.format(self.name, e))
+#             self.result.update(None, False)
+#
+#     def _finish(self, e):
+#         """ Do nothing, it is up to the TaskRunner to trigger the next step.
+#         """
+#         pass
+#
+#     def _doFinish(self):
+#         """ Actually finish execution.
+#         """
+#         self.cleanupTask()
+#         self.runner.resume_pause_tasks(self)
+#         self.runner.post_run_prepost_tasks(self)
+#         self.finishingFinished()
+#         self.sigFinished.emit()
+#
+#     def checkStartPrerequisites(self):
+#         """ Check whether this task can be started by checking if all tasks to be paused are either stopped or can be paused.
+#             Also check custom prerequisites.
+#
+#           @return bool: True if task can be stated, False otherwise
+#         """
+#         for task in self.prePostTasks:
+#             if not ( isinstance(self.prePostTasks[task], PrePostTask) and self.prePostTasks[task].can('prerun') ):
+#                 self.log('Cannot start task {0} as pre/post task {1} is not in a state to run.'.format(self.name, task), msgType='error')
+#                 return False
+#         for task in self.pauseTasks:
+#             if not (isinstance(self.pauseTasks[task], InterruptableTask)
+#                     and (
+#                         self.pauseTasks[task].can('pause')
+#                         or self.pauseTasks[task].isstate('stopped')
+#                     )):
+#                 self.log('Cannot start task {0} as interruptable task {1} is not stopped or able to pause.'.format(self.name, task), msgType='error')
+#                 return False
+#         if not self.checkExtraStartPrerequisites():
+#             return False
+#         return True
+#
+#     def checkExtraStartPrerequisites(self):
+#         """ If your task has extra prerequisites that are not covered by
+#             checking if a certain task can be paused, overwrite this function
+#             when sub-classing.
+#
+#         @return bool: return True if task can be started, False otherwise
+#         """
+#         return True
+#
+#     def checkPausePrerequisites(self):
+#         """ Check if task is allowed to pause based on external state."""
+#
+#         try:
+#             return self.checkExtraPausePrerequisites()
+#         except Exception as e:
+#             self.log.exception('Exception while checking pause '
+#                     'prerequisites for task {}. {}'.format(self.name, e))
+#             return False
+#
+#     def checkExtraPausePrerequisites(self):
+#         """ If yout task has prerequisites for pausing, overwrite this function when subclassing and put the check here.
+#
+#           @return bool: return True if task can be paused right now, False otherwise
+#         """
+#         return True
+#
+#     def canPause(self):
+#         """ Check if task can pause based on its own state only.
+#         """
+#         return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
+#
+#     @abc.abstractmethod
+#     def startTask(self):
+#         """ Implement the operation to start your task here.
+#         """
+#         pass
+#
+#     @abc.abstractmethod
+#     def runTaskStep(self):
+#         """ Implement one work step of your task here.
+#           @return bool: True if the task should continue running, False if it should finish.
+#         """
+#         return False
+#
+#     @abc.abstractmethod
+#     def pauseTask(self):
+#         """ Implement the operations necessary to pause your task here.
+#         """
+#         pass
+#
+#     @abc.abstractmethod
+#     def resumeTask(self):
+#         """ Implement the operations necessary to resume your task from being paused here.
+#         """
+#         pass
+#
+#     @abc.abstractmethod
+#     def cleanupTask(self):
+#         """ If your task leaves behind any undesired state, take care to remove it in this function.
+#             It is called after a task has finished.
+#         """
+#         pass
+#
+# class PrePostTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
+#     """ Represents a task that creates the necessary conditions for a different task
+#         and reverses its own actions afterwards.
+#     """
+#
+#     sigPreExecStart = QtCore.Signal()
+#     sigPreExecFinish = QtCore.Signal()
+#     sigPostExecStart = QtCore.Signal()
+#     sigPostExecFinish = QtCore.Signal()
+#     sigStateChanged = QtCore.Signal(object)
+#
+#     requiredModules = []
+#
+#     def __init__(self, name, runner, references, config, **kwargs):
+#         """ Create a PrePostTask.
+#           @param str name: unique name of the task
+#           @param object runner: TaskRunner that manages this task
+#           @param dict references: contains references to all required modules
+#           @param dict config: configuration parameter dictionary
+#         """
+#         _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
+#         _stateList = {
+#             'initial': 'stopped',
+#             'events': [
+#                 {'name': 'prerun', 'src': 'stopped', 'dst': 'paused'},
+#                 {'name': 'postrun', 'src': 'paused', 'dst': 'stopped'}
+#             ],
+#             'callbacks': _default_callbacks
+#         }
+#         if 'PyQt5' in sys.modules:
+#             super().__init__(cfg=_stateList, **kwargs)
+#         else:
+#             QtCore.QObject.__init__(self)
+#             Fysom.__init__(self, _stateList)
+#         self.lock = Mutex()
+#         self.name = name
+#         self.runner = runner
+#         self.ref = references
+#         self.config = config
+#
+#     @property
+#     def log(self):
+#         """
+#         Returns a logger object
+#         """
+#         return logging.getLogger("{0}.{1}".format(
+#             self.__module__,self.__class__.__name__))
+#
+#     def onchangestate(self, e):
+#         """ Fysom callback for all state transitions.
+#           @param object e: Fysom state transition description
+#
+#           This just emits a signal so external components can react.
+#         """
+#         self.sigStateChanged.emit(e)
+#
+#     @abc.abstractmethod
+#     def preExecute(self):
+#         """ This method contains any action that should be done before some task.
+#             It needs to be overwritten in every subclass.
+#         """
+#         pass
+#
+#     @abc.abstractmethod
+#     def postExecute(self):
+#         """ This method needs to undo any actions in preExecute() after a task has been finished.
+#             It needs to be overwritten in every subclass.
+#         """
+#         pass
+#
+#     def _pre(self, e):
+#         """ Actually call preExecute with the appropriate safeguards amd emit singals before and afterwards.
+#
+#           @param object e: Fysom state transition description
+#         """
+#         self.sigPreExecStart.emit()
+#         try:
+#             self.preExecute()
+#         except Exception as e:
+#             self.log.exception('Exception during task {0}. {1}'.format(
+#                 self.name, e))
+#
+#         self.sigPreExecFinish.emit()
+#
+#     def _post(self, e):
+#         """ Actually call postExecute with the appropriate safeguards amd emit singals before and afterwards.
+#
+#           @param object e: Fysom state transition description
+#         """
+#         self.sigPostExecStart.emit()
+#         try:
+#             self.postExecute()
+#         except Exception as e:
+#             self.log.exception('Exception during task {0}. {1}'.format(
+#                 self.name, e))
+#
+#         self.sigPostExecFinish.emit()
+#
