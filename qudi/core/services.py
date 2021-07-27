@@ -24,6 +24,8 @@ __all__ = ('RemoteModulesService', 'QudiNamespaceService')
 import rpyc
 import weakref
 import numpy as np
+from functools import wraps
+from inspect import signature, isfunction, ismethod
 
 from qudi.util.mutex import Mutex
 from qudi.util.models import DictTableModel
@@ -218,7 +220,12 @@ class Test:
         print(type(self.arr))
         print(self.arr)
 
-    def set_arr(self, new_arr):
+    def set_arr(self, new_arr=0):
+        """ Yep, that's it
+
+        @param numpy.ndarray new_arr: This is an array
+        """
+        print(type(new_arr))
         self.arr = new_arr
 
 
@@ -233,6 +240,7 @@ class Test2:
         print(self.arr)
 
     def set_arr(self, new_arr):
+        print(type(new_arr))
         self.arr = new_arr
 
 
@@ -256,11 +264,19 @@ class ModuleRpycProxy:
     def __getattribute__(self, name):
         obj = object.__getattribute__(self, '_obj_ref')()
         attr = getattr(obj, name)
-        if not name.startswith('__'):
-            try:
-                return ModuleRpycProxy(attr)
-            except TypeError:
-                pass
+        if not name.startswith('__') and ismethod(attr) or isfunction(attr):
+            sig = signature(attr)
+            if len(sig.parameters) > 0:
+
+                @wraps(attr)
+                def wrapped(*args, **kwargs):
+                    sig.bind(*args, **kwargs)
+                    args = [netobtain(arg) for arg in args]
+                    kwargs = {name: netobtain(arg) for name, arg in kwargs.items()}
+                    return attr(*args, **kwargs)
+
+                wrapped.__signature__ = sig
+                return wrapped
         return attr
 
     def __delattr__(self, name):
@@ -271,18 +287,9 @@ class ModuleRpycProxy:
         obj = object.__getattribute__(self, '_obj_ref')()
         return setattr(obj, name, netobtain(value))
 
-    def __nonzero__(self):
-        return bool(object.__getattribute__(self, '_obj_ref')())
-
-    def __str__(self):
-        return str(object.__getattribute__(self, '_obj_ref')())
-
-    def __repr__(self):
-        return repr(object.__getattribute__(self, '_obj_ref')())
-
     # factories
     _special_names = (
-        '__abs__', '__add__', '__and__', '__cmp__', '__coerce__', '__contains__',
+        '__abs__', '__add__', '__and__', '__call__', '__cmp__', '__coerce__', '__contains__',
         '__delitem__', '__delslice__', '__div__', '__divmod__', '__eq__', '__float__',
         '__floordiv__', '__ge__', '__getitem__', '__getslice__', '__gt__', '__hash__', '__hex__',
         '__iadd__', '__iand__', '__idiv__', '__idivmod__', '__ifloordiv__', '__ilshift__',
@@ -293,6 +300,7 @@ class ModuleRpycProxy:
         '__reduce_ex__', '__repr__', '__reversed__', '__rfloorfiv__', '__rlshift__', '__rmod__',
         '__rmul__', '__ror__', '__rpow__', '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
         '__rxor__', '__setitem__', '__setslice__', '__sub__', '__truediv__', '__xor__', 'next',
+        '__str__', '__nonzero__'
     )
 
     @classmethod
@@ -304,26 +312,17 @@ class ModuleRpycProxy:
 
             def method(self, *args, **kw):
                 obj = object.__getattribute__(self, '_obj_ref')()
+                args = [netobtain(arg) for arg in args]
+                kw = {key: netobtain(val) for key, val in kw.items()}
                 return getattr(obj, method_name)(*args, **kw)
 
             return method
 
         # Add all special names to this wrapper class if they are present in the original class
-        namespace = {}
+        namespace = dict()
         for name in cls._special_names:
             if hasattr(theclass, name):
                 namespace[name] = make_method(name)
-
-        # special handling of __call__ method in order to wrap arguments and return values
-        if hasattr(theclass, '__call__'):
-
-            def method(self, *args, **kw):
-                obj = object.__getattribute__(self, '_obj_ref')()
-                args = [netobtain(arg) for arg in args]
-                kw = {key: netobtain(val) for key, val in kw.items()}
-                return getattr(obj, '__call__')(*args, **kw)
-
-            namespace['__call__'] = method
 
         return type(f'{cls.__name__}({theclass.__name__})', (cls,), namespace)
 
