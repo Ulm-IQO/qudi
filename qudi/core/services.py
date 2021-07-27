@@ -111,7 +111,7 @@ class RemoteModulesService(rpyc.Service):
                     logger.error(f'Unable to share requested module "{name}" with client. Module '
                                  f'can not be activated.')
                     return None
-            return module.instance
+            return ModuleRpycProxy(module.instance)
 
     def exposed_get_available_module_names(self):
         """ Returns the currently shared module names independent of the current module state.
@@ -154,9 +154,6 @@ class QudiNamespaceService(rpyc.Service):
         super().__init__(*args, **kwargs)
         self.__qudi_ref = weakref.ref(qudi)
         self._notifier_callbacks = dict()
-
-        self.test = Test(111, 222)
-        self.test_wrapper = ModuleRpycProxy(self.test)
 
     @property
     def _qudi(self):
@@ -201,47 +198,10 @@ class QudiNamespaceService(rpyc.Service):
 
         @return dict: Names (keys) and object references (values)
         """
-        # self._module_wrappers = {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}
-        # self._module_wrappers['qudi'] = self._qudi
-        mods = {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}
+        mods = {name: ModuleRpycProxy(mod.instance) for name, mod in self._module_manager.items() if
+                mod.is_active}
         mods['qudi'] = self._qudi
-        mods['test_wrapper'] = self.test_wrapper
         return mods
-
-
-class Test:
-    def __init__(self, a=42, b=96):
-        self.a = a
-        self.b = b
-        self.arr = np.random.rand(100)
-        self.test = Test2()
-
-    def __call__(self):
-        print(type(self.arr))
-        print(self.arr)
-
-    def set_arr(self, new_arr=0):
-        """ Yep, that's it
-
-        @param numpy.ndarray new_arr: This is an array
-        """
-        print(type(new_arr))
-        self.arr = new_arr
-
-
-class Test2:
-    def __init__(self, a=42, b=96):
-        self.a = a
-        self.b = b
-        self.arr = np.random.rand(100)
-
-    def __call__(self):
-        print(type(self.arr))
-        print(self.arr)
-
-    def set_arr(self, new_arr):
-        print(type(new_arr))
-        self.arr = new_arr
 
 
 class ModuleRpycProxy:
