@@ -23,9 +23,11 @@ __all__ = ('RemoteModulesService', 'QudiNamespaceService')
 
 import rpyc
 import weakref
+import numpy as np
 
 from qudi.util.mutex import Mutex
 from qudi.util.models import DictTableModel
+from qudi.util.network import netobtain
 from qudi.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -151,6 +153,9 @@ class QudiNamespaceService(rpyc.Service):
         self.__qudi_ref = weakref.ref(qudi)
         self._notifier_callbacks = dict()
 
+        self.test = Test(111, 222)
+        self.test_wrapper = ModuleRpycProxy(self.test)
+
     @property
     def _qudi(self):
         qudi = self.__qudi_ref()
@@ -194,6 +199,139 @@ class QudiNamespaceService(rpyc.Service):
 
         @return dict: Names (keys) and object references (values)
         """
+        # self._module_wrappers = {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}
+        # self._module_wrappers['qudi'] = self._qudi
         mods = {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}
         mods['qudi'] = self._qudi
+        mods['test_wrapper'] = self.test_wrapper
         return mods
+
+
+class Test:
+    def __init__(self, a=42, b=96):
+        self.a = a
+        self.b = b
+        self.arr = np.random.rand(100)
+        self.test = Test2()
+
+    def __call__(self):
+        print(type(self.arr))
+        print(self.arr)
+
+    def set_arr(self, new_arr):
+        self.arr = new_arr
+
+
+class Test2:
+    def __init__(self, a=42, b=96):
+        self.a = a
+        self.b = b
+        self.arr = np.random.rand(100)
+
+    def __call__(self):
+        print(type(self.arr))
+        print(self.arr)
+
+    def set_arr(self, new_arr):
+        self.arr = new_arr
+
+
+class ModuleRpycProxy:
+    """ Instances of this class serve as proxies for objects containing attributes of type
+    OverloadedAttribute. It can be used to hide the overloading mechanism by fixing the overloaded
+    attribute access key in a OverloadProxy instance. This allows for interfacing an overloaded
+    attribute in the object represented by this proxy by normal "pythonic" means without the
+    additional key-mapping lookup usually required by OverloadedAttribute.
+
+    Heavily inspired by this python recipe under PSF License:
+    https://code.activestate.com/recipes/496741-object-proxying/
+    """
+
+    __slots__ = ['_obj_ref', '__weakref__']
+
+    def __init__(self, obj):
+        object.__setattr__(self, '_obj_ref', weakref.ref(obj))
+
+    # proxying (special cases)
+    def __getattribute__(self, name):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        attr = getattr(obj, name)
+        if not name.startswith('__'):
+            try:
+                return ModuleRpycProxy(attr)
+            except TypeError:
+                pass
+        return attr
+
+    def __delattr__(self, name):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        return delattr(obj, name)
+
+    def __setattr__(self, name, value):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        return setattr(obj, name, netobtain(value))
+
+    def __nonzero__(self):
+        return bool(object.__getattribute__(self, '_obj_ref')())
+
+    def __str__(self):
+        return str(object.__getattribute__(self, '_obj_ref')())
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, '_obj_ref')())
+
+    # factories
+    _special_names = (
+        '__abs__', '__add__', '__and__', '__cmp__', '__coerce__', '__contains__',
+        '__delitem__', '__delslice__', '__div__', '__divmod__', '__eq__', '__float__',
+        '__floordiv__', '__ge__', '__getitem__', '__getslice__', '__gt__', '__hash__', '__hex__',
+        '__iadd__', '__iand__', '__idiv__', '__idivmod__', '__ifloordiv__', '__ilshift__',
+        '__imod__', '__imul__', '__int__', '__invert__', '__ior__', '__ipow__', '__irshift__',
+        '__isub__', '__iter__', '__itruediv__', '__ixor__', '__le__', '__len__', '__long__',
+        '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__', '__neg__', '__oct__', '__or__',
+        '__pos__', '__pow__', '__radd__', '__rand__', '__rdiv__', '__rdivmod__', '__reduce__',
+        '__reduce_ex__', '__repr__', '__reversed__', '__rfloorfiv__', '__rlshift__', '__rmod__',
+        '__rmul__', '__ror__', '__rpow__', '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
+        '__rxor__', '__setitem__', '__setslice__', '__sub__', '__truediv__', '__xor__', 'next',
+    )
+
+    @classmethod
+    def _create_class_proxy(cls, theclass):
+        """ creates a proxy for the given class
+        """
+
+        def make_method(method_name):
+
+            def method(self, *args, **kw):
+                obj = object.__getattribute__(self, '_obj_ref')()
+                return getattr(obj, method_name)(*args, **kw)
+
+            return method
+
+        # Add all special names to this wrapper class if they are present in the original class
+        namespace = {}
+        for name in cls._special_names:
+            if hasattr(theclass, name):
+                namespace[name] = make_method(name)
+
+        # special handling of __call__ method in order to wrap arguments and return values
+        if hasattr(theclass, '__call__'):
+
+            def method(self, *args, **kw):
+                obj = object.__getattribute__(self, '_obj_ref')()
+                args = [netobtain(arg) for arg in args]
+                kw = {key: netobtain(val) for key, val in kw.items()}
+                return getattr(obj, '__call__')(*args, **kw)
+
+            namespace['__call__'] = method
+
+        return type(f'{cls.__name__}({theclass.__name__})', (cls,), namespace)
+
+    def __new__(cls, obj, *args, **kwargs):
+        """ creates an proxy instance referencing `obj`. (obj, *args, **kwargs) are passed to this
+        class' __init__, so deriving classes can define an __init__ method of their own.
+
+        note: _class_proxy_cache is unique per class (each deriving class must hold its own cache)
+        """
+        theclass = cls._create_class_proxy(obj.__class__)
+        return object.__new__(theclass)
