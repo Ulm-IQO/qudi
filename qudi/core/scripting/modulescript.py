@@ -28,6 +28,7 @@ from PySide2 import QtCore
 
 from qudi.util.mutex import Mutex, RecursiveMutex
 from qudi.core.connector import Connector
+from qudi.core.module import LogicBase
 from fysom import Fysom
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
 
     def __init__(self, module_connections=None, run_function=None, args=None, kwargs=None):
         super().__init__()
+        self.setAutoDelete(False)  # Application programmer is responsible for ownership/lifetime
 
         # Create connector copies for this script instance and connect them to the modules
         if module_connections is None:
@@ -146,85 +148,69 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
         )
 
 
-class ScriptRunner(QtCore.QObject):
+class ScriptRunnerLogic(LogicBase):
     """
     ToDo: Document
     """
 
-    _instance = None  # Only class instance created will be stored here as weakref
-    _lock = RecursiveMutex()
-
     sigScriptsChanged = QtCore.Signal(dict)
     sigScriptFinished = QtCore.Signal(str, object, bool)
 
-    def __new__(cls, *args, **kwargs):
-        with cls._lock:
-            if cls._instance is None or cls._instance() is None:
-                obj = super().__new__(cls, *args, **kwargs)
-                cls._instance = weakref.ref(obj)
-                return obj
-            raise RuntimeError(
-                'ScriptRunner is a singleton. An instance has already been created in this process.'
-                ' Please use ScriptRunner.instance() instead.'
-            )
-
-    def __init__(self, *args, qudi_main, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._qudi_main_ref = weakref.ref(qudi_main, self._qudi_main_ref_dead_callback)
+
+        self._thread_lock = Mutex()
         self._scripts = dict()
         self._async_running = set()
-        self.thread_pool = QtCore.QThreadPool.globalInstance()
-
-    @classmethod
-    def instance(cls):
-        with cls._lock:
-            if cls._instance is None:
-                return None
-            return cls._instance()
+        self._thread_pool = QtCore.QThreadPool.globalInstance()
 
     @property
     def script_names(self):
-        with self._lock:
-            return tuple(self._scripts)
+        with self._thread_lock:
+            return list(self._scripts)
 
     @property
     def scripts(self):
-        with self._lock:
+        with self._thread_lock:
             return self._scripts.copy()
 
-    def remove_script(self, script_name, ignore_missing=False, emit_change=True):
-        with self._lock:
-            if script_name not in self._scripts:
+    def remove_script(self, name: str, ignore_missing: bool = False):
+        with self._thread_lock:
+            script = self._scripts.pop(name, None)
+            if script is None:
                 if not ignore_missing:
-                    logger.error('No script with name "{0}" registered. Unable to remove script.'
-                                 ''.format(script_name))
+                    raise KeyError(
+                        f'No script with name "{name}" registered. Unable to remove script.'
+                    )
                 return
-            if script_name in self._async_running:
-                logger.warning('Script "{0}" about to be removed is still running in thread pool.'
-                               ''.format(script_name))
-                self._scripts[script_name].abort()
-            self._scripts[script_name].sigFinished.disconnect()
-            del self._scripts[script_name]
-            if emit_change:
-                self.sigScriptsChanged.emit(self.scripts)
+            if name in self._async_running:
+                logger.warning(
+                    f'Script "{name}" about to be removed is still running in thread pool.'
+                )
+                script.abort()
+                self._async_running.discard(name)
+            else:
+                script.sigFinished.disconnect()
+            self.sigScriptsChanged.emit(self.scripts)
 
-    def add_script(self, name, configuration, allow_overwrite=False, emit_change=True):
-        with self._lock:
+    def register_script(self, name: str, configuration: dict, allow_overwrite: bool = False):
+        with self._thread_lock:
             if not isinstance(name, str) or not name:
                 raise TypeError('Script name must be non-empty str type')
 
-            if allow_overwrite:
-                self.remove_script(name, ignore_missing=True)
-            elif name in self._scripts:
-                logger.error('Script with name "{0}" already registered. '
-                             'Unable to add script of same name.'.format(name))
-                return
-            module, class_name = configuration.get('module.Class').rsplit('.', 1)
-            mod = importlib.import_module('script.{0}'.format(module))
-            importlib.reload(mod)
+            if name in self._scripts:
+                if allow_overwrite:
+                    self.remove_script(name)
+                else:
+                    raise ValueError(f'Script with name "{name}" already registered. Unable to add '
+                                     f'script of same name.')
 
+            module, class_name = configuration.get('module.Class').rsplit('.', 1)
+            mod = importlib.import_module(module)
+            importlib.reload(mod)
             script_cls = getattr(mod, class_name)
-            if isinstance(script_cls, ModuleScript):
+
+            if issubclass(script_cls, ModuleScript):
                 script = script_cls(conn_modules=modules, fn=fn)
             elif callable(script_cls):
                 script = ModuleScript(conn_modules=modules, fn=fn)
@@ -238,6 +224,10 @@ class ScriptRunner(QtCore.QObject):
             self._scripts[name] = script
             if emit_change:
                 self.sigManagedModulesChanged.emit(self.modules)
+
+    def _get_modules_from_connector_config(self, conn_config: dict):
+        module_manager = self._qudi_main.module_manager
+        return {conn: module_manager[]}
 
     @QtCore.Slot(str, object, bool)
     def _script_finished_callback(self, script_name, result, success):
