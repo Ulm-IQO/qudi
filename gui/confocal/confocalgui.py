@@ -712,7 +712,8 @@ class ConfocalGui(GUIBase):
         # Otherwise, calculate cb range from percentiles.
         else:
             # Exclude any zeros (which are typically due to unfinished scan)
-            xy_image_nonzero = self.xy_image.image[np.nonzero(self.xy_image.image)]
+            xy_image_flat = self.xy_image.image.flatten() #[np.nonzero(self.xy_image.image)]
+            xy_image_nonzero = xy_image_flat[np.nonzero(xy_image_flat)]
 
             # Read centile range
             low_centile = self._mw.xy_cb_low_percentile_DoubleSpinBox.value()
