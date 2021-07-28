@@ -218,6 +218,12 @@ class Qudi(QtCore.QObject):
         self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
+    def _start_startup_modules(self):
+        for module in self.configuration.startup_modules:
+            print(f'> Loading startup module: {module}')
+            self.log.info(f'Loading startup module: {module}')
+            self.module_manager.activate_module(module)
+
     def run(self):
         """
         """
@@ -271,6 +277,9 @@ class Qudi(QtCore.QObject):
 
             # Start GUI if needed
             self._start_gui()
+
+            # Start the startup modules defined in the config file
+            self._start_startup_modules()
 
             # Start Qt event loop unless running in interactive mode
             self._is_running = True
