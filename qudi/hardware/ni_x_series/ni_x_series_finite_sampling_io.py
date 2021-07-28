@@ -60,6 +60,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         frame_size_limits: [1, 1e9]  # optional #TODO actual HW constraint?
         output_mode: 'JUMP_LIST' # optional, must be name of SamplingOutputMode
         read_write_timeout: 10  # optional
+        sample_clock_output: '/Dev1/PFI20' # optional
 
     """
 
@@ -79,7 +80,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     _default_output_mode = ConfigOption(name='output_mode', default='JUMP_LIST',
                                         constructor=lambda x: SamplingOutputMode[x.upper()], missing='nothing')
 
-    # Todo: How to deal with current output value of the AO? Status var? "Safe" shutdown after deactivation?
+    _physical_sample_clock_output = ConfigOption(name='sample_clock_output',
+                                                 default=None)
 
     # Hardcoded data type
     __data_type = np.float64
@@ -199,7 +201,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             analog_outputs = natural_sort(source_set.difference(invalid_sources))
 
         # Check if all input channels fit in the device
-        if len(digital_sources) > 3:  # TODO is it just 2, due to clocks for a scanner?
+        if len(digital_sources) > 3:  # TODO is it just 2, since a clock is needed for a scanner?
             raise ValueError(
                 'Too many digital channels specified. Maximum number of digital channels is 3.'
             )
@@ -219,6 +221,12 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
             )
+
+        # Check Physical clock output if specified
+        if self._physical_sample_clock_output is not None:
+            self._physical_sample_clock_output = self._extract_terminal(self._physical_sample_clock_output)
+            assert self._physical_sample_clock_output in self.__all_digital_terminals, \
+                f'Physical sample clock terminal specified in config is invalid'
 
         # Get correct sampling frequency limits based on config specified channels
         if analog_sources and len(analog_sources) > 1:  # Probably "Slowest" case
@@ -456,26 +464,33 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
 
         assert self.frame_size != 0, f'No frame data set, can not start buffered frame'
+        assert not self.is_running, f'Frame IO already running. Can not start'
 
         all_active_channels_set = frozenset(self.active_channels[0].union(self.active_channels[1]))
         assert all_active_channels_set == set(self.__frame_buffer), \
             f'Channels in active channels and frame buffer do not coincide'
 
+        self.module_state.lock()
+
         # # set up all tasks
         if self._init_sample_clock() < 0:
             self.terminate_all_tasks()
+            self.module_state.unlock()
             raise NiInitError('Sample clock initialization failed; all tasks terminated')
 
         if self._init_digital_tasks() < 0:
             self.terminate_all_tasks()
+            self.module_state.unlock()
             raise NiInitError('Counter task initialization failed; all tasks terminated')
 
         if self._init_analog_in_task() < 0:
             self.terminate_all_tasks()
+            self.module_state.unlock()
             raise NiInitError('Analog in task initialization failed; all tasks terminated')
 
         if self._init_analog_out_task() < 0:
             self.terminate_all_tasks()
+            self.module_state.unlock()
             raise NiInitError('Analog out task initialization failed; all tasks terminated')
 
         output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
@@ -487,6 +502,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             self._ao_writer.write_many_sample(output_data)
         except ni.DaqError:
             self.terminate_all_tasks()
+            self.module_state.unlock()
             raise
 
         if self._ao_task_handle is not None:
@@ -494,6 +510,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 self._ao_task_handle.start()
             except ni.DaqError:
                 self.terminate_all_tasks()
+                self.module_state.unlock()
                 raise
 
         if self._ai_task_handle is not None:
@@ -501,6 +518,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 self._ai_task_handle.start()
             except ni.DaqError:
                 self.terminate_all_tasks()
+                self.module_state.unlock()
                 raise
 
         if len(self._di_task_handles) > 0:
@@ -509,15 +527,15 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                     di_task.start()
             except ni.DaqError:
                 self.terminate_all_tasks()
+                self.module_state.unlock()
                 raise
 
         try:
             self._clk_task_handle.start()
         except ni.DaqError:
             self.terminate_all_tasks()
+            self.module_state.unlock()
             raise
-
-        self.module_state.lock()
 
     def stop_buffered_frame(self):
         """ Will abort the currently running data frame input and output.
@@ -531,9 +549,9 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         Must NOT raise exceptions if no frame output is running.
         """
 
+        # TODO Read avail samples into buffer before termination
         if self.is_running:
             self.terminate_all_tasks()
-
             self.module_state.unlock()
 
     def get_buffered_samples(self, number_of_samples=None):
@@ -771,7 +789,12 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 continue
             break
         self._clk_task_handle = task
-        # ni.system.System.connect_terms() # TODO: connect VI terminal to physical channel if defined in config
+
+        if self._physical_sample_clock_output is not None:
+            clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
+            ni.system.System().connect_terms(source_terminal=clock_channel,
+                                             destination_terminal='/{0}/{1}'.format(
+                                                 self._device_name, self._physical_sample_clock_output))
         return 0
 
     def _init_digital_tasks(self):
