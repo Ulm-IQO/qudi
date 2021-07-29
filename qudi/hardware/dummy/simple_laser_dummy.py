@@ -24,6 +24,7 @@ import math
 import time
 import random
 
+from qudi.core.configoption import ConfigOption
 from qudi.interface.simple_laser_interface import SimpleLaserInterface
 from qudi.interface.simple_laser_interface import LaserState, ShutterState, ControlMode
 
@@ -68,7 +69,13 @@ class SimpleLaserDummy(SimpleLaserInterface):
 
         @return float: Laser power in watts
         """
-        return self.power_setpoint * random.gauss(1, 0.01)
+        if self.get_laser_state() and self.get_shutter_state():
+            current_power=self.power_setpoint * random.gauss(1, 0.01)
+        elif self.get_laser_state() and not self.get_shutter_state():
+            current_power=0
+        else:
+            current_power=0
+        return current_power
 
     def get_power_setpoint(self):
         """ Return optical power setpoint.
@@ -104,7 +111,7 @@ class SimpleLaserDummy(SimpleLaserInterface):
 
         @return float: laser current in current units
         """
-        return self.current_setpoint * random.gauss(1, 0.05)
+        return self.current_setpoint * random.gauss(1, 0.01) if self.get_laser_state() else 0
 
     def get_current_setpoint(self):
         """ Get laser current setpoint
@@ -199,7 +206,7 @@ class SimpleLaserDummy(SimpleLaserInterface):
         """
         return {
             'psu': 32.2 * random.gauss(1, 0.1),
-            'head': 42.0 * random.gauss(1, 0.2)
+            'head': 42.0 * random.gauss(1, 0.2),
         }
 
     def get_extra_info(self):
