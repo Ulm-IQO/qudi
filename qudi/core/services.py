@@ -62,10 +62,11 @@ class RemoteModulesService(rpyc.Service):
     """
     ALIASES = ['RemoteModules']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, force_remote_calls_by_value=False, **kwargs):
         super().__init__(*args, **kwargs)
         self._thread_lock = Mutex()
         self.shared_modules = _SharedModulesModel()
+        self._force_remote_calls_by_value = force_remote_calls_by_value
 
     def share_module(self, module):
         with self._thread_lock:
@@ -110,7 +111,9 @@ class RemoteModulesService(rpyc.Service):
                     logger.error(f'Unable to share requested module "{name}" with client. Module '
                                  f'can not be activated.')
                     return None
-            return ModuleRpycProxy(module.instance)
+            if self._force_remote_calls_by_value:
+                return ModuleRpycProxy(module.instance)
+            return module.instance
 
     def exposed_get_available_module_names(self):
         """ Returns the currently shared module names independent of the current module state.
@@ -149,10 +152,11 @@ class QudiNamespaceService(rpyc.Service):
     """
     ALIASES = ['QudiNamespace']
 
-    def __init__(self, *args, qudi, **kwargs):
+    def __init__(self, *args, qudi, force_remote_calls_by_value=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.__qudi_ref = weakref.ref(qudi)
         self._notifier_callbacks = dict()
+        self._force_remote_calls_by_value = force_remote_calls_by_value
 
     @property
     def _qudi(self):
@@ -197,8 +201,12 @@ class QudiNamespaceService(rpyc.Service):
 
         @return dict: Names (keys) and object references (values)
         """
-        mods = {name: ModuleRpycProxy(mod.instance) for name, mod in self._module_manager.items() if
-                mod.is_active}
+        if self._force_remote_calls_by_value:
+            mods = {name: ModuleRpycProxy(mod.instance) for name, mod in
+                    self._module_manager.items() if mod.is_active}
+        else:
+            mods = {name: mod.instance for name, mod in self._module_manager.items() if
+                    mod.is_active}
         mods['qudi'] = self._qudi
         return mods
 

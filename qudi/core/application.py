@@ -101,7 +101,8 @@ class Qudi(QtCore.QObject):
                 protocol_config=remote_server_config.get('protocol_config', None),
                 ssl_version=remote_server_config.get('ssl_version', None),
                 cert_reqs=remote_server_config.get('cert_reqs', None),
-                ciphers=remote_server_config.get('ciphers', None)
+                ciphers=remote_server_config.get('ciphers', None),
+                force_remote_calls_by_value=self.configuration.force_remote_calls_by_value
             )
         else:
             self.remote_modules_server = None
@@ -109,7 +110,8 @@ class Qudi(QtCore.QObject):
             parent=self,
             qudi=self,
             name='local-namespace-server',
-            port=self.configuration.namespace_server_port
+            port=self.configuration.namespace_server_port,
+            force_remote_calls_by_value=self.configuration.force_remote_calls_by_value
         )
         self.watchdog = None
         self.gui = None
