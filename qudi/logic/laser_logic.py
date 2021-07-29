@@ -322,6 +322,9 @@ class LaserLogic(LogicBase):
                 except:
                     self.log.exception('Error while setting laser state:')
             self.sigLaserStateChanged.emit(self.laser_state)
+        #TODO change here to a query to the user
+        if not self.shutter_state and self.laser_state:
+            self._send_pop_up_message('Warning','Laser is running but the shutter is still closed')
 
     @QtCore.Slot(object)
     def set_shutter_state(self, state):
@@ -336,6 +339,8 @@ class LaserLogic(LogicBase):
             else:
                 self.log.error(f'Invalid shutter state to set: "{state}"')
             self.sigShutterStateChanged.emit(self.shutter_state)
+        if not self.shutter_state and self.laser_state:
+            self._send_pop_up_message('Warning', 'Laser is running but the shutter is closed')
 
     @QtCore.Slot(float, object)
     def set_power(self, power, caller_id=None):
