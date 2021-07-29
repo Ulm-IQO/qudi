@@ -365,6 +365,16 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
+    def force_remote_calls_by_value(self):
+        return self._global_config.get('force_remote_calls_by_value', True)
+
+    @force_remote_calls_by_value.setter
+    def force_remote_calls_by_value(self, flag):
+        assert isinstance(flag, bool), 'force_remote_calls_by_value flag must be bool type.'
+        self._global_config['force_remote_calls_by_value'] = flag
+        self.sigConfigChanged.emit(self)
+
+    @property
     def stylesheet(self):
         """ Absolute .qss file path used as stylesheet for qudi Qt application.
 
@@ -631,6 +641,8 @@ class Configuration(QtCore.QObject):
         new_config.daily_data_dirs = global_cfg.pop('daily_data_dirs', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
         new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
+        new_config.force_remote_calls_by_value = global_cfg.pop('force_remote_calls_by_value',
+                                                                True)
         new_config.remote_modules_server = global_cfg.pop('remote_modules_server', None)
         if global_cfg:
             warn(f'Found additional entries in global config. The following entries will be '
