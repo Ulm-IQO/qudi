@@ -97,17 +97,19 @@ class LaserTemperatureDockWidget(AdvancedDockWidget):
         super().__init__(*args, **kwargs)
         self.plot_widget = pg.PlotWidget(axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_widget.setLabel('bottom', 'Time', units=None)
-        self.plot_widget.setLabel('left', 'Temperature', units='°C', color=palette.c1.name())
+        self.plot_widget.setLabel('left', 'Temperature', units='°C')
         self.plot_widget.setMouseEnabled(x=False, y=False)
         self.plot_widget.setMouseTracking(False)
         self.plot_widget.setMenuEnabled(False)
         self.plot_widget.hideButtons()
         self.plot_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.plot_widget.setMinimumSize(200, 200)
+        #TODO figure out how the offset is defined / shift the legend below the Graph
+        self.plot_widget.addLegend(offset=(1.0,0.5),colCount=len(curve_names))
         self.temperature_data_items = dict()
         for ii, name in enumerate(curve_names):
             color = getattr(palette, 'c{0:d}'.format((ii % 6) + 1))
-            self.temperature_data_items[name] = pg.PlotCurveItem(pen=pg.mkPen(color, cosmetic=True),
+            self.temperature_data_items[name] = pg.PlotCurveItem(name=name, pen=pg.mkPen(color, cosmetic=True),
                                                                  antialias=True)
             self.plot_widget.addItem(self.temperature_data_items[name])
         self.setWidget(self.plot_widget)
