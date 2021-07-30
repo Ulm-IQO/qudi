@@ -100,11 +100,9 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def remove_action(self, label):
         action = self._actions.pop(label, None)
-        if action is None:
-            logger.warning(f'Action "{label}" does not exist, nothing to do.')
-            return
-        action.triggered.disconnect()
-        self.left_menu.removeAction(action)
+        if action is not None:
+            action.triggered.disconnect()
+            self.left_menu.removeAction(action)
 
 
 class Gui(QtCore.QObject):

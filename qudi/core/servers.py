@@ -224,8 +224,10 @@ class RemoteModulesServer(BaseServer):
     """
     """
 
-    def __init__(self, **kwargs):
-        kwargs['service_instance'] = RemoteModulesService()
+    def __init__(self, force_remote_calls_by_value=False, **kwargs):
+        kwargs['service_instance'] = RemoteModulesService(
+            force_remote_calls_by_value=force_remote_calls_by_value
+        )
         super().__init__(**kwargs)
 
     def share_module(self, module):
@@ -244,16 +246,20 @@ class QudiNamespaceServer(BaseServer):
     Actual rpyc server runs in a QThread.
     """
 
-    def __init__(self, qudi, name, port, parent=None):
+    def __init__(self, qudi, name, port, force_remote_calls_by_value=False, parent=None):
         """
         @param qudi.Qudi qudi: The governing qudi main application instance
         @param str name: Server name (used as name for the associated QThread)
         @param int port: port the RPyC server should listen to
         @param PySide2.QtCore.QObject parent: optional, parent Qt QObject
         """
+        service_instance = QudiNamespaceService(
+            qudi=qudi,
+            force_remote_calls_by_value=force_remote_calls_by_value
+        )
         super().__init__(parent=parent,
                          qudi=qudi,
-                         service_instance=QudiNamespaceService(qudi=qudi),
+                         service_instance=service_instance,
                          name=name,
                          host='localhost',
                          port=port)
