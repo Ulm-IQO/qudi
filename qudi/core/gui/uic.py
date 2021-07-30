@@ -59,11 +59,14 @@ def loadUi(file_path, base_widget):
         try:
             with open(fd, mode='w', closefd=True) as tmp_file:
                 tmp_file.write(converted)
-            compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
+            stream = os.popen('pyside2-uic "{0}"'.format(file_path))
         finally:
             os.remove(file_path)
     else:
-        compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
+        stream = os.popen('pyside2-uic "{0}"'.format(file_path))
+
+    compiled = stream.read()
+    stream.close()
 
     # Find class name
     match = __ui_class_pattern.search(compiled)
