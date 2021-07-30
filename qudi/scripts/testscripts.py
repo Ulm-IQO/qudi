@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ToDo: Document
+This file contains scripts for testing the qudi.core.scripting package.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,19 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from PySide2 import QtCore
-from typing import Iterable
-
 from qudi.core.scripting.modulescript import ModuleScript
+from qudi.core.connector import Connector
 
 
-class ModuleScriptSequence(QtCore.QObject):
-    """
-    """
+class TestScript(ModuleScript):
 
-    def __int__(self, *args, script_sequence: Iterable[ModuleScript] = None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if script_sequence is not None:
-            assert all(isinstance(scr, ModuleScript) for scr in script_sequence), \
-                'script_sequence must be sequence of ModuleScript instances'
-        self._script_sequence = list()
+    def _run(self, pos_arg, kw_arg=42):
+        print('TestScript executing:', pos_arg, kw_arg)

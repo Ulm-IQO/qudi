@@ -23,8 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from enum import Enum
 from fysom import Fysom
 from functools import partial
-from typing import Any
-from collections.abc import Sequence, Mapping, Iterable
+from typing import Any, Sequence, Mapping, Iterable
 from PySide2 import QtCore
 
 from qudi.util.mutex import Mutex
