@@ -127,7 +127,7 @@ class ModuleScript(QtCore.QObject):
         @return Any: The result of the script
         """
         raise NotImplementedError(
-            f'No _run method implemented for ModuleScript "{self.__class__.__name__}".'
+            f'No _run() method implemented for ModuleScript "{self.__class__.__name__}".'
         )
 
 
@@ -136,7 +136,7 @@ class ModuleScriptImporter:
     dict.
     """
 
-    def __init__(self, script_config: dict):
+    def __init__(self, script_config: Mapping[str, Any]):
         super().__init__()
         self.module, self.object_name = script_config['module.Class'].rsplit('.', 1)
 
@@ -146,19 +146,19 @@ class ModuleScriptImporter:
             importlib.reload(mod)
         script = getattr(mod, self.object_name)
         if not issubclass(script, ModuleScript):
-            raise TypeError('Module script to import must be a subclass of '
-                            'qudi.core.scripting.modulescript.ModuleScript.')
+            raise TypeError(f'Module script to import must be a subclass of '
+                            f'{ModuleScript.__module__}.ModuleScript')
         return script
 
 
 class ScriptsTableModel(DictTableModel):
     """ Qt compatible table model holding all configured and available ModuleScript QRunnables.
     """
-    def __init__(self, script_configurations: Optional[dict] = None):
+    def __init__(self, script_config: Optional[Mapping[str, dict]] = None):
         super().__init__(headers='Module Scripts')
-        if script_configurations is None:
-            script_configurations = dict()
-        for name, config in script_configurations.items():
+        if script_config is None:
+            script_config = dict()
+        for name, config in script_config.items():
             self.register_script(name, config)
 
     def register_script(self, name: str, config: dict) -> None:
@@ -173,18 +173,17 @@ class ModuleScriptFactory:
     """
 
     def __init__(self, module_manager: ModuleManager, scripts_model: ScriptsTableModel,
-                 scripts_config: Mapping[str, str]):
+                 connector_config: Mapping[str, Mapping[str, str]]):
         super().__init__()
         if not isinstance(module_manager, ModuleManager):
-            raise TypeError('"module_manager" must be a ModuleManager instance')
+            raise TypeError(f'"module_manager" must be an instance of '
+                            f'{ModuleManager.__module__}.ModuleManager')
         if not isinstance(scripts_model, ScriptsTableModel):
-            raise TypeError('"scripts_model" must be a ScriptsTableModel instance')
-        if not set(scripts_model).issubset(scripts_config):
-            raise ValueError('"scripts_config" does not contain configs for all ModuleScripts '
-                             'contained in "scripts_model".')
+            raise TypeError(f'"scripts_model" must be an instance of '
+                            f'{ScriptsTableModel.__module__}.ScriptsTableModel')
         self._module_manager = module_manager
         self._scripts_model = scripts_model
-        self._scripts_config = scripts_config
+        self._connector_config = connector_config
 
     def _activate_modules(self, module_names: Iterable[str]) -> Mapping[str, Any]:
         """ Activate all qudi modules with their configured names listed in module_names.
@@ -203,7 +202,7 @@ class ModuleScriptFactory:
         if script_cls is None:
             raise KeyError(f'No module script found by name "{name}"')
         # activate all necessary modules and connect them to the ModuleScript instance created
-        module_names = list(self._scripts_config[name]['connect'])
+        module_names = list(self._connector_config[name])
         module_instances = self._activate_modules(module_names)
         return script_cls(module_instances=module_instances)
 
@@ -212,12 +211,12 @@ class ModuleScriptRunner:
     """ This class is responsible for running ModuleScript instances.
     """
 
-    def __init__(self, module_manager: ModuleManager, scripts_config: dict):
+    def __init__(self, module_script_factory: ModuleScriptFactory):
         super().__init__()
-        self._scripts_model = ScriptsTableModel(scripts_config)
-        self._scripts_factory = ModuleScriptFactory(module_manager=module_manager,
-                                                    scripts_model=self._scripts_model,
-                                                    scripts_config=scripts_config)
+        if not isinstance(module_script_factory, ModuleScriptFactory):
+            raise TypeError(f'"module_script_factory" must be an instance of '
+                            f'{ModuleScriptFactory.__module__}.ModuleScriptFactory')
+        self._scripts_factory = module_script_factory
 
     def run_script(self, name: str, /, *args, **kwargs) -> Any:
         script = self._scripts_factory.get_script(name)
