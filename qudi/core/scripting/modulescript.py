@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains a basic script class to run with qudi module dependencies.
-Also contains a Qt TableModel class to store and handle available ModuleScript classes and
-compatible generic callables.
+This file contains a basic script class to run with qudi module dependencies as well as various
+helper classes to run and manage these scripts.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,86 +21,83 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ['ModuleScript', 'ModuleScriptImporter', 'ScriptsTableModel']
+__all__ = ['ModuleScript', 'ModuleScriptImporter', 'ScriptsTableModel', 'ModuleScriptFactory',
+           'ModuleScriptRunner']
 
-import logging
 import importlib
 from PySide2 import QtCore
-from typing import Union, Callable
+from logging import getLogger, Logger
+from typing import Mapping, Any, Type, Sequence, Optional, Iterable
 
 from qudi.core.connector import Connector
+from qudi.core.modulemanager import ModuleManager
 from qudi.util.models import DictTableModel
 
 
-class ModuleScript(QtCore.QRunnable, QtCore.QObject):
+class ModuleScript(QtCore.QObject):
     """
-
     """
-    # Declare all module connectors used in this script
-    # _my_example_module = Connector(name='example_module', interface='MyModuleClassName')
+    # Declare all module connectors used in this script here
 
     sigFinished = QtCore.Signal(object)
 
-    def __init__(self, module_connections=None, run_function=None, args=None, kwargs=None):
-        super().__init__()
-        self.setAutoDelete(False)  # Application programmer is responsible for ownership/lifetime
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        # Create instance copies of all Connector meta objects for this ModuleScript (sub-)class
+        connectors = dict()
+        for attr_name in [name for name in dir(obj) if not name.startswith('__')]:
+            attr = getattr(obj, attr_name)
+            if isinstance(attr, Connector):
+                conn_name = attr.name
+                if conn_name in connectors:
+                    raise ValueError(f'Multiple definitions of Connector with name "{conn_name}"')
+                setattr(obj, attr_name, attr.copy())
+                connectors[conn_name] = getattr(obj, attr_name)
+        setattr(obj, '_named_connectors', connectors)
+        print(connectors)
+        return obj
 
-        # Create connector copies for this script instance and connect them to the modules
-        if module_connections is None:
-            module_connections = dict()
+    def __init__(self, module_instances: Optional[Mapping[str, Any]] = None,
+                 args: Optional[Sequence[Any]] = None, kwargs: Optional[Mapping[str, Any]] = None,
+                 parent: Optional[QtCore.QObject] = None):
+        super().__init__(parent=parent)
 
-        connectors = self.module_connectors()
-        conn_name_attr_mapping = {conn.name: attr_name for attr_name, conn in connectors.items()}
-        missing_mandatory_conn = {conn.name for conn in connectors.values() if not conn.optional}
+        # Connect module connectors as specified in module_instances
+        if module_instances is None:
+            module_instances = dict()
+        self.__connect_modules(module_instances)
 
-        for name, module in module_connections.items():
-            attr_name = conn_name_attr_mapping.get(name, None)
-            if attr_name is None:
-                raise ValueError(f'Unknown module connector "{name}" encountered.\n'
-                                 f'Valid connections are: {list(conn_name_attr_mapping)}')
-            conn = connectors[attr_name].copy()
-            conn.connect(module)
-            setattr(self, attr_name, conn)
-            if name in missing_mandatory_conn:
-                missing_mandatory_conn.remove(name)
-        if missing_mandatory_conn:
-            raise ValueError(f'Missing mandatory connections:\n{missing_mandatory_conn}')
+        # cache arguments for script (if given)
+        self.args = tuple() if args is None else tuple(args)
+        self.kwargs = dict() if kwargs is None else dict(kwargs)
 
-        # cache arguments for run method (if given)
-        self.args = tuple() if args is None else args
-        self.kwargs = dict() if kwargs is None else kwargs
-
-        # Set run_function as _run bound method
-        if callable(run_function):
-            self._run = run_function.__get__(self)
-
-        # run method result cache
+        # script result cache
         self.result = None
 
-    @classmethod
-    def module_connectors(cls):
-        """ Returns all Connector objects for this script class.
-        DO NOT OVERRIDE IN SUBCLASS!
+    def __connect_modules(self, module_instances: Mapping[str, Any]):
+        """ Connect all Connector meta objects of this instance to qudi module instances.
 
-        @return dict: Dict with all Connector objects (values) and their attribute names (keys)
+        @param dict module_instances: Connector names (keys) and qudi module instances (values) to
+                                      connect
         """
-        connectors = dict()
-        for c in reversed(cls.mro()[:-4]):
-            connectors.update(
-                {name: attr for name, attr in vars(c).items() if isinstance(attr, Connector)}
-            )
-        return connectors
+        for conn_name, connector in self._named_connectors.items():
+            module = module_instances.get(conn_name, None)
+            if module is not None:
+                connector.connect(module)
+            elif not connector.optional:
+                raise RuntimeError(f'Mandatory module connection "{conn_name}" missing for '
+                                   f'ModuleScript "{self.__class__.__name__}"')
 
     @property
-    def log(self):
+    def log(self) -> Logger:
         """ Returns a logger object.
         DO NOT OVERRIDE IN SUBCLASS!
 
-        @return logging.Logger: Logger object for this script class
+        @return Logger: Logger object for this script class
         """
-        return logging.getLogger(f'{self.__module__}.{self.__class__.__name__}')
+        return getLogger(f'{self.__module__}.{self.__class__.__name__}')
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Any:
         """ Convenience magic method to run this script like a function
         DO NOT OVERRIDE IN SUBCLASS!
 
@@ -110,69 +106,119 @@ class ModuleScript(QtCore.QRunnable, QtCore.QObject):
 
         @return object: Result of the script method
         """
-        self.args = args
-        self.kwargs = kwargs
+        self.cache_arguments(*args, **kwargs)
         self.run()
         return self.result
 
     @QtCore.Slot()
-    def run(self):
+    def run(self) -> None:
         """ Check run prerequisites and execute _run method with pre-cached arguments.
         DO NOT OVERRIDE IN SUBCLASS!
         """
         self.result = None
-
-        if not self.can_run():
-            raise RuntimeError(f'Prerequisites to run ModuleScript "{self.__class__.__name__}" '
-                               f'not fulfilled.')
-
+        self.log.debug(f'Starting to run ModuleScript "{self.__class__.__name__}" with positional '
+                       f'arguments {self.args} and keyword arguments {self.kwargs}.')
         self.result = self._run(*self.args, **self.kwargs)
         self.sigFinished.emit(self.result)
 
-    def can_run(self):
-        """ Implement this method in a subclass if you need to check prerequisites before running.
+    def _run(self, *args, **kwargs) -> Any:
+        """ The actual script to be run. Implement only this method in a subclass.
 
-        @return bool: Indicator if the script can be run (default: True) or not (False)
-        """
-        return True
-
-    def _run(self, *args, **kwargs):
-        """ Implement this method in a subclass or provide a callable to the __init__ argument
-        "run_function" to be bound as this method.
-
-        @return object: The result of the script (default: None)
+        @return Any: The result of the script
         """
         raise NotImplementedError(
-            f'No run method configured for ModuleScript "{self.__class__.__name__}".'
+            f'No _run method implemented for ModuleScript "{self.__class__.__name__}".'
         )
 
 
 class ModuleScriptImporter:
+    """ Helper class to import ModuleScript sub-classes from locations specified in a qudi config
+    dict.
+    """
+
     def __init__(self, script_config: dict):
+        super().__init__()
         self.module, self.object_name = script_config['module.Class'].rsplit('.', 1)
 
-    def import_script(self, reload: bool = True) -> Union[ModuleScript, Callable]:
+    def import_script(self, reload: bool = True) -> Type[ModuleScript]:
         mod = importlib.import_module(self.module)
         if reload:
             importlib.reload(mod)
         script = getattr(mod, self.object_name)
-        if not issubclass(script, ModuleScript) and not callable(script):
-            raise TypeError('Module script to import must be either a subclass of '
-                            'qudi.core.scripting.modulescript.ModuleScript or a callable.')
+        if not issubclass(script, ModuleScript):
+            raise TypeError('Module script to import must be a subclass of '
+                            'qudi.core.scripting.modulescript.ModuleScript.')
         return script
 
 
 class ScriptsTableModel(DictTableModel):
     """ Qt compatible table model holding all configured and available ModuleScript QRunnables.
     """
-    def __init__(self, script_configurations: dict = None):
+    def __init__(self, script_configurations: Optional[dict] = None):
         super().__init__(headers='Module Scripts')
         if script_configurations is None:
             script_configurations = dict()
         for name, config in script_configurations.items():
             self.register_script(name, config)
 
-    def register_script(self, name, config):
+    def register_script(self, name: str, config: dict) -> None:
         if name in self:
             raise KeyError(f'Multiple module script with name "{name}" configured.')
         self[name] = ModuleScriptImporter(config).import_script()
+
+
+class ModuleScriptFactory:
+    """ This class is responsible for creating ModuleScript instances with active and connected
+    qudi modules.
+    """
+
+    def __init__(self, module_manager: ModuleManager, scripts_model: ScriptsTableModel,
+                 scripts_config: Mapping[str, str]):
+        super().__init__()
+        if not isinstance(module_manager, ModuleManager):
+            raise TypeError('"module_manager" must be a ModuleManager instance')
+        if not isinstance(scripts_model, ScriptsTableModel):
+            raise TypeError('"scripts_model" must be a ScriptsTableModel instance')
+        if not set(scripts_model).issubset(scripts_config):
+            raise ValueError('"scripts_config" does not contain configs for all ModuleScripts '
+                             'contained in "scripts_model".')
+        self._module_manager = module_manager
+        self._scripts_model = scripts_model
+        self._scripts_config = scripts_config
+
+    def _activate_modules(self, module_names: Iterable[str]) -> Mapping[str, Any]:
+        """ Activate all qudi modules with their configured names listed in module_names.
+        """
+        modules = dict()
+        for name in module_names:
+            self._module_manager.activate_module(name)
+            modules[name] = self._module_manager[name].instance
+        return modules
+
+    def get_script(self, name: str) -> ModuleScript:
+        """ Creates an instance of a ModuleScript sub-class by name, activates all necessary
+        modules and connects them to the ModuleScript instance.
+        """
+        script_cls = self._scripts_model.get(name, None)
+        if script_cls is None:
+            raise KeyError(f'No module script found by name "{name}"')
+        # activate all necessary modules and connect them to the ModuleScript instance created
+        module_names = list(self._scripts_config[name]['connect'])
+        module_instances = self._activate_modules(module_names)
+        return script_cls(module_instances=module_instances)
+
+
+class ModuleScriptRunner:
+    """ This class is responsible for running ModuleScript instances.
+    """
+
+    def __init__(self, module_manager: ModuleManager, scripts_config: dict):
+        super().__init__()
+        self._scripts_model = ScriptsTableModel(scripts_config)
+        self._scripts_factory = ModuleScriptFactory(module_manager=module_manager,
+                                                    scripts_model=self._scripts_model,
+                                                    scripts_config=scripts_config)
+
+    def run_script(self, name: str, /, *args, **kwargs) -> Any:
+        script = self._scripts_factory.get_script(name)
+        return script(*args, **kwargs)

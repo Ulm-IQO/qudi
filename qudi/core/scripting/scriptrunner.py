@@ -20,140 +20,78 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from enum import Enum
-from fysom import Fysom
-from functools import partial
-from typing import Any, Sequence, Mapping, Iterable
-from PySide2 import QtCore
+__all__ = []
+
+from typing import Any, Sequence, Mapping, Iterable, Optional
 
 from qudi.util.mutex import Mutex
 from qudi.core.scripting.modulescript import ScriptsTableModel, ModuleScript
 from qudi.core.modulemanager import ModuleManager
 
 
-class ModuleScriptRunner(QtCore.QObject):
-    """ This object is responsible for running ModuleScript objects and ensures that all module
-    dependencies are met and active before running.
-    """
-
-    sigScriptFinished = QtCore.Signal(int, str, object)  # id, name, result
-
-    def __init__(self, scripts_model: ScriptsTableModel, module_manager: ModuleManager,
-                 parent: QtCore.QObject = None):
-        super().__init__(parent=parent)
-        self._thread_lock = Mutex()
-        self._scripts_model = scripts_model
-        self._module_manager = module_manager
-        self._running_scripts = set()
-
-    def run_script(self, name: str, args: Sequence[Any], kwargs: Mapping[str, Any],
-                   module_connections: dict = None) -> int:
-        with self._thread_lock:
-            if name in self._running_scripts:
-                raise RuntimeError(f'Script "{name}" is already running.')
-            if module_connections is None:
-                module_connections = dict()
-            script = self._create_script_instance(name, module_connections, args, kwargs)
-            script_id = id(script)
-            script.sigFinished.connect(partial(self._script_finished, script_id, name),
-                                       QtCore.Qt.QueuedConnection)
-            self._running_scripts.add(name)
-            try:
-                thread_pool = QtCore.QThreadPool.globalInstance()
-                thread_pool.start(runnable=script)
-            except:
-                self._running_scripts.remove(name)
-                raise
-            return script_id
-
-    def _script_finished(self, script_id: int, name: str, result: Any) -> None:
-        with self._thread_lock:
-            self._running_scripts.discard((script_id, name))
-            self.sigScriptFinished.emit(script_id, name, result)
-
-    def _create_script_instance(self, script_name: str, module_connections: Mapping[str, str],
-                                args: Sequence[Any], kwargs: Mapping[str, Any]) -> ModuleScript:
-        script_obj = self._scripts_model.get(script_name, None)
-        if script_obj is None:
-            raise KeyError(f'No module script found by name "{script_name}"')
-        self._activate_modules(list(module_connections.values()))
-        # Create a ModuleScript instance either from a direct subclass or from a generic callable
-        if issubclass(script_obj, ModuleScript):
-            script = script_obj(module_connections=module_connections, args=args, kwargs=kwargs)
-        else:
-            script = ModuleScript(run_function=script_obj,
-                                  module_connections=module_connections,
-                                  args=args,
-                                  kwargs=kwargs)
-        return script
-
-    def _activate_modules(self, module_names: Iterable[str]) -> None:
-        """ Activate all qudi modules with their configured names listed in module_names.
-        """
-        for name in module_names:
-            self._module_manager.activate_module(name)
 
 
-class TaskState(Enum):
-    stopped = 0
-    starting = 1
-    running = 2
-    pausing = 3
-    paused = 4
-    resuming = 5
-    finishing = 6
 
-
-class TaskStateMachine(Fysom):
-    """ Finite state machine for an interruptable task.
-
-    State diagram for this FSM:
-
-        stopped -> starting -----------> running ---------> finishing ->-
-            ^          |            _______|   ^_________               |
-            |<---------            v                    |               |
-            |                   pausing -> paused -> resuming           v
-            ^                      |                    |               |
-            |                      v                    v               |
-            --------------<-------------------<------------------<-------
-    """
-
-    def __init__(self, callbacks: dict = None, **kwargs):
-        if 'cfg' in kwargs:
-            raise TypeError('__init__() got an unexpected keyword argument "cfg"')
-        if callbacks is None:
-            callbacks = dict()
-
-        # State machine definition
-        # the abbreviations for the event list are the following:
-        #   name:   event name,
-        #   src:    source state,
-        #   dst:    destination state
-        fsm_cfg = {
-            'initial': 'stopped',
-            'events': [
-                {'name': 'run',                 'src': 'stopped',   'dst': 'starting'},
-                {'name': 'startup_complete',    'src': 'starting',  'dst': 'running'},
-                {'name': 'pause',               'src': 'running',   'dst': 'pausing'},
-                {'name': 'pausing_complete',    'src': 'pausing',   'dst': 'paused'},
-                {'name': 'finish',              'src': 'running',   'dst': 'finishing'},
-                {'name': 'finishing_complete',  'src': 'finishing', 'dst': 'stopped'},
-                {'name': 'resume',              'src': 'paused',    'dst': 'resuming'},
-                {'name': 'resuming_complete',   'src': 'resuming',  'dst': 'running'},
-                {'name': 'abort',               'src': '*',         'dst': 'stopped'}
-            ],
-            'callbacks': callbacks
-        }
-
-        # Initialise state machine:
-        super().__init__(cfg=fsm_cfg, **kwargs)
-
-    def __call__(self) -> str:
-        """ Returns the current state.
-
-        @return str: The current state name
-        """
-        return self.current
+# class TaskState(Enum):
+#     stopped = 0
+#     starting = 1
+#     running = 2
+#     pausing = 3
+#     paused = 4
+#     resuming = 5
+#     finishing = 6
+#
+#
+# class TaskStateMachine(Fysom):
+#     """ Finite state machine for an interruptable task.
+#
+#     State diagram for this FSM:
+#
+#         stopped -> starting -----------> running ---------> finishing ->-
+#             ^          |            _______|   ^_________               |
+#             |<---------            v                    |               |
+#             |                   pausing -> paused -> resuming           v
+#             ^                      |                    |               |
+#             |                      v                    v               |
+#             --------------<-------------------<------------------<-------
+#     """
+#
+#     def __init__(self, callbacks: dict = None, **kwargs):
+#         if 'cfg' in kwargs:
+#             raise TypeError('__init__() got an unexpected keyword argument "cfg"')
+#         if callbacks is None:
+#             callbacks = dict()
+#
+#         # State machine definition
+#         # the abbreviations for the event list are the following:
+#         #   name:   event name,
+#         #   src:    source state,
+#         #   dst:    destination state
+#         fsm_cfg = {
+#             'initial': 'stopped',
+#             'events': [
+#                 {'name': 'run',                 'src': 'stopped',   'dst': 'starting'},
+#                 {'name': 'startup_complete',    'src': 'starting',  'dst': 'running'},
+#                 {'name': 'pause',               'src': 'running',   'dst': 'pausing'},
+#                 {'name': 'pausing_complete',    'src': 'pausing',   'dst': 'paused'},
+#                 {'name': 'finish',              'src': 'running',   'dst': 'finishing'},
+#                 {'name': 'finishing_complete',  'src': 'finishing', 'dst': 'stopped'},
+#                 {'name': 'resume',              'src': 'paused',    'dst': 'resuming'},
+#                 {'name': 'resuming_complete',   'src': 'resuming',  'dst': 'running'},
+#                 {'name': 'abort',               'src': '*',         'dst': 'stopped'}
+#             ],
+#             'callbacks': callbacks
+#         }
+#
+#         # Initialise state machine:
+#         super().__init__(cfg=fsm_cfg, **kwargs)
+#
+#     def __call__(self) -> str:
+#         """ Returns the current state.
+#
+#         @return str: The current state name
+#         """
+#         return self.current
 
 
 # class InterruptableTask(QtCore.QObject, metaclass=TaskMetaclass):
