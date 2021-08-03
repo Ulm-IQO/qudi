@@ -4,6 +4,20 @@
 This module controls the AMI Model 430 Power Supply Programmer.
 
 Config for copy paste:
+    magnet_x:
+        module.Class:'magnet.ami.AMI430'
+        ip: '192.168.202.102'
+        port: '7180'
+
+    magnet_y:
+        module.Class:'magnet.ami.AMI430'
+        ip: '192.168.202.101'
+        port: '7180'
+
+    magnet_z:
+        module.Class:'magnet.ami.AMI430'
+        ip: '192.168.202.100'
+        port: '7180'
 
 
 Qudi is free software: you can redistribute it and/or modify
@@ -27,13 +41,19 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import socket
 
 from core.module import Base
+from core.configoption import ConfigOption
 
 class AMI430(Base):
 
-    def __init__(self, ip, port=7180):
-        self._ip = ip
-        self._port = port
-        super().__init__(ip,port)
+    _ip = ConfigOption(name='ip', missing='warn')
+    _port = ConfigOption(name='port', missing='warn')
+
+    def __init__(self, ip=None, port=None,**kwargs):
+        if ip:
+            self._ip = ip
+        if port:
+            self._port = port
+        super().__init__(**kwargs)
 
     def on_activate(self):
         self.connect()
@@ -281,7 +301,7 @@ class AMI430(Base):
             E.g. putting 55 for segment 1 will result in a segment that runs from 0 to 55
             and putting 58 for segment 2 will result in a segment that runs from 55 to 58.
         """
-        self._write('CONF:RAMP:RATE:CURR ' + str(segment) , + ',' + str(rate) + ',' + str(upper_bound))
+        self._write('CONF:RAMP:RATE:CURR ' + str(segment) + ',' + ',' + str(rate) + ',' + str(upper_bound))
     
     def set_ramp_rates_current(self, ramp_rates):
         """Specifies the ramp rates according to ramp_rates.
@@ -321,7 +341,7 @@ class AMI430(Base):
             E.g. putting 55 for segment 1 will result in a segment that runs from 0 to 55
             and putting 58 for segment 2 will result in a segment that runs from 55 to 58.
         """
-        self._write('CONF:RAMP:RATE:FIELD ' + str(segment) , + ',' + str(rate) + ',' + str(upper_bound))
+        self._write('CONF:RAMP:RATE:FIELD ' + str(segment) + ',' + ',' + str(rate) + ',' + str(upper_bound))
 
     def set_ramp_rates_field(self, ramp_rates):
         """Specifies the ramp rates according to ramp_rates.
