@@ -5,19 +5,19 @@ This module controls the AMI Model 430 Power Supply Programmer.
 
 Config for copy paste:
     magnet_x:
-        module.Class:'magnet.ami.AMI430'
+        module.Class: 'magnet.ami.AMI430'
         ip: '192.168.202.102'
-        port: '7180'
+        port: 7180
 
     magnet_y:
-        module.Class:'magnet.ami.AMI430'
+        module.Class: 'magnet.ami.AMI430'
         ip: '192.168.202.101'
-        port: '7180'
+        port: 7180
 
     magnet_z:
-        module.Class:'magnet.ami.AMI430'
+        module.Class: 'magnet.ami.AMI430'
         ip: '192.168.202.100'
-        port: '7180'
+        port: 7180
 
 
 Qudi is free software: you can redistribute it and/or modify
@@ -60,6 +60,7 @@ class AMI430(Base):
         self.remote()
 
     def on_deactivate(self):
+        self.ramp_to_zero()
         self.local()
         self.disconnect()
 
@@ -253,7 +254,8 @@ class AMI430(Base):
     def get_target_field(self):
         """Returns the target field in kilogauss or tesla, depending on the selected field units.
         
-        A coil constant needs to be defined for this command.
+        A coil constant needs to be defined for this command. 
+        This is because field gets calculated from current via coil constant.
         """
         ans = self._query('FIELD:TARG?')
         return ans
@@ -441,14 +443,12 @@ class AMI430(Base):
         """
         
         #make sure that only one parameter is specified
-        if field_target==None and current_target==None:
-            raise RuntimeError('You need to give one target, none were given.')
-        elif field_target==None and not current_target==None:
+        if field_target==None and not current_target==None:
             self.set_target_current(current_target)
         elif current_target==None and not field_target==None:
             self.set_target_field(field_target)
         else:
-            raise RuntimeError('You need to give one target, two were given.')
+            raise RuntimeError('You need to give either field or current target.')
         
         self.continue_ramp()
 
