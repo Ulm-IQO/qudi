@@ -119,6 +119,7 @@ class AMI430(Base):
         All non-volatile calibration data and battery-backed memory is restored. 
         Status is cleared according to the *PSC setting.
         
+        FOr explanation of individual erroes see manual  section 4.6 (page 153).
         """
 
         self._write('RST')
@@ -252,14 +253,14 @@ class AMI430(Base):
 
     def get_number_ramp_rate_segments(self):
         """Returns the number of ramp segments."""
-        ans = self._write('AMP:RATE:SEG?')
+        ans = self._query('AMP:RATE:SEG?')
         return ans
     
     def set_number_ramp_rate_segments(self, number):
         """Sets the number of ramp segments"""
         self._write('CONF:RAMP:RATE:SEG ' + str(number))
     
-    def get_ramp_rate_current(self,segment):
+    def get_ramp_rate_segment_current(self,segment):
         """Returns the ramp rate (in ramp rate units) for the specified segment.
         
         Segment numbering starts at 1.
@@ -269,7 +270,7 @@ class AMI430(Base):
         ans = self._query('RAMP:RATE:CURRENT:' + str(segment) + '?')
         return ans
 
-    def set_ramp_rate_current(self, segment, rate, upper_bound):
+    def set_ramp_rate_segment_current(self, segment, rate, upper_bound):
         """Sets the ramp rate (in ramp rate units) for the specified segment.
         
         @param segment: number (starting with 1) of the segment that one want s to modify.
@@ -282,7 +283,22 @@ class AMI430(Base):
         """
         self._write('CONF:RAMP:RATE:CURR ' + str(segment) , + ',' + str(rate) + ',' + str(upper_bound))
     
-    def get_ramp_rate_field(self,segment):
+    def set_ramp_rates_current(self, ramp_rates):
+        """Specifies the ramp rates according to ramp_rates.
+        
+        @param ramp_rates: iterable of tupels. Each tuple consists of the ramp rate and the upper bound for the segent.
+        """
+        n_segments_old = self.get_number_ramp_rate_segments()
+        n_segments = len(ramp_rates)
+        if not n_segments_old == n_segments:
+            print('Number of elements in new segment does not match old number of segments. Overwriting old length.')
+            self.set_number_ramp_rate_segments(n_segments)
+        for i in range(n_segments):
+            rate,upper_bound = ramp_rates[i]
+            segment = i+1
+            self.set_ramp_rate_segment_current(segment, rate, upper_bound)
+
+    def get_ramp_rate_segment_field(self,segment):
         """Returns the ramp rate (in ramp rate units) for the specified segment.
         
         Segment numbering starts at 1.
@@ -292,7 +308,7 @@ class AMI430(Base):
         ans = self._query('RAMP:RATE:FIELD:' + str(segment) + '?')
         return ans
 
-    def set_ramp_rate_field(self, segment, rate, upper_bound):
+    def set_ramp_rate_segment_field(self, segment, rate, upper_bound):
         """Sets the ramp rate (in ramp rate units) for the specified segment.
 
         A coil constant needs to be defined for this command to work.
@@ -307,6 +323,20 @@ class AMI430(Base):
         """
         self._write('CONF:RAMP:RATE:FIELD ' + str(segment) , + ',' + str(rate) + ',' + str(upper_bound))
 
+    def set_ramp_rates_field(self, ramp_rates):
+        """Specifies the ramp rates according to ramp_rates.
+        
+        @param ramp_rates: iterable of tupels. Each tuple consists of the ramp rate and the upper bound for the segent.
+        """
+        n_segments_old = self.get_number_ramp_rate_segments()
+        n_segments = len(ramp_rates)
+        if not n_segments_old == n_segments:
+            print('Number of elements in new segment does not match old number of segments. Overwriting old length.')
+            self.set_number_ramp_rate_segments(n_segments)
+        for i in range(n_segments):
+            rate,upper_bound = ramp_rates[i]
+            segment = i+1
+            self.set_ramp_rate_segment_field(segment, rate, upper_bound)
 
     def get_magnet_current(self):
         """Returns the current flowing in the magnet.
@@ -335,11 +365,71 @@ class AMI430(Base):
 
     def ext_rampdown(self):
         """For rampdown see page 147. Sth with external trigger (e.g. Helium failure) for rampdown."""
-        #TODO: DO we need this one?
+        #TODO: DO we need this one? Commands are on page 147 of the manual.
         pass
 
-    def ramp(self):
-        pass
+    def continue_ramp(self):
+        """Resumes ramping.
+        
+        Puts the power supply in automatic ramping mode. Ramping resumes until target field/current is reached.
+        """
+        self._write('RAMP')
+    
+    def pause_ramp(self):
+        """Pauses the ramping process.
+        
+        The current/field will stay at the level it has now.
+        """
+        self._write('PAUSE')
 
     def ramp_to_zero(self):
-        pass
+        """Places the Model 430 Programmer in ZEROING CURRENT mode:
+        
+        Ramping automatically initiates and continues at the ramp rate until the power supply output current is less than 0.1% of Imax,
+        at which point the AT ZERO status becomes active.
+        """
+        self._write('ZERO')
+
+    def get_ramping_state(self):
+        """Returns the integer value of the current ramping state.
+
+        integers mean the following:
+            1:  RAMPING to target field/current
+            2:  HOLDING at the target field/current
+            3:  PAUSED
+            4:  Ramping in MANUAL UP mode
+            5:  Ramping in MANUAL DOWN mode
+            6:  ZEROING CURRENT (in progress)
+            7:  Quench detected
+            8:  At ZERO current
+            9:  Heating persistent switch
+            10: Cooling persistent switch
+        """
+        ans = self._query('STATE?')
+        return ans
+
+    #TODO: add PSwitch functionality (manual page 149).
+
+    #TODO: add Quench State functionality (manual page 150).
+
+    def ramp(self, field_target=None, current_target=None):
+        """ Starts ramping towards the voltage/current limit.
+
+        The ramp needs to be set up beforehand (ramp rate, limits ,etc.).
+
+        You can only choose a voltage ramp or a current ramp.
+        """
+        
+        #make sure that only one parameter is specified
+        if field_target==None and current_target==None:
+            raise RuntimeError('You need to give one target, none were given.')
+        elif field_target==None and not current_target==None:
+            self.set_target_current(current_target)
+        elif current_target==None and not field_target==None:
+            self.set_target_field(field_target)
+        else:
+            raise RuntimeError('You need to give one target, two were given.')
+        
+        self.continue_ramp()
+
+
