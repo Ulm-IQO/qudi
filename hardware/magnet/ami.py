@@ -43,8 +43,10 @@ import socket
 from core.module import Base
 from core.configoption import ConfigOption
 
-class AMI430(Base):
+from interface.magnet_1d_interface import Magnet1DInterface
 
+class AMI430(Base, Magnet1DInterface):
+    #If you do not give the interface here, you will get an error.
     _ip = ConfigOption(name='ip', missing='warn')
     _port = ConfigOption(name='port', missing='warn')
 
@@ -58,6 +60,8 @@ class AMI430(Base):
     def on_activate(self):
         self.connect()
         self.remote()
+        self.set_field_units('T')
+        self.set_ramp_rate_units('s')
 
     def on_deactivate(self):
         self.ramp_to_zero()
@@ -453,3 +457,21 @@ class AMI430(Base):
         self.continue_ramp()
 
 
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the magnet controller.
+
+        @return dict: dict with constraints for the magnet hardware. 
+        """
+
+        coil_constant = self.get_coil_constant()
+        current_limit = self.get_current_limit()
+        voltage_limit = self.get_voltage_limit()
+        field_limit = coil_constant * current_limit
+
+        constraints = {
+            'current_limit' : current_limit,
+            'voltage_limit' : voltage_limit,
+            'field_limit' : field_limit
+            }
+
+        return constraints
