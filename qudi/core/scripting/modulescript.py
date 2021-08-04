@@ -207,17 +207,17 @@ class ModuleScriptFactory:
         return script_cls(module_instances=module_instances)
 
 
-class ModuleScriptRunner:
+class ModuleScriptRunner(QtCore.QObject):
     """ This class is responsible for running ModuleScript instances.
     """
 
-    def __init__(self, module_script_factory: ModuleScriptFactory):
-        super().__init__()
-        if not isinstance(module_script_factory, ModuleScriptFactory):
-            raise TypeError(f'"module_script_factory" must be an instance of '
-                            f'{ModuleScriptFactory.__module__}.ModuleScriptFactory')
-        self._scripts_factory = module_script_factory
+    def __init__(self, module_manager: ModuleManager, scripts_model: ScriptsTableModel,
+                 connector_config: Mapping[str, Mapping[str, str]],
+                 parent: Optional[QtCore.QObject] = None):
+        super().__init__(parent=parent)
+        self._scripts_factory = ModuleScriptFactory(module_manager, scripts_model, connector_config)
 
     def run_script(self, name: str, /, *args, **kwargs) -> Any:
         script = self._scripts_factory.get_script(name)
+        script.setParent(self)
         return script(*args, **kwargs)
