@@ -96,7 +96,7 @@ class magnet_3d(Base):
         #start ramping on this axis
         axis = self.order_axes[self.current_axis_index]
         target = str(self.target_field[self.current_axis_index])
-        eval('magnet_' + axis + '.ramp(field_target=' + target + ')')
+        eval('self._magnet_' + axis + '.ramp(field_target=' + target + ')')
 
         #start timer
         self.ramping_timer = QtCore.QTimer()
@@ -109,14 +109,24 @@ class magnet_3d(Base):
         """ Internal function to ramp in a save way
         """
         axis = self.order_axes[self.current_axis_index]
-        status = eval('magnet_' + axis + '.get_ramping_state()')
-        if status == '[2]': #HOLDING at the target field/current
-            self.current_axis_index += 1 #go to next axis
+        status = eval('self._magnet_' + axis + '.get_ramping_state()')
+        if status == ['2']: #HOLDING at the target field/current
+            #go to next axis
+            self.current_axis_index += 1
+            # end timer if all axes are finished
+            if self.current_axis_index == 3:
+                self.ramping_timer.stop()
+                del self.ramping_timer
+                del self.target_field
+                return 0
+            #update parameters
+            axis = self.order_axes[self.current_axis_index]
+            target = str(self.target_field[self.current_axis_index])
+            #start ramping there
+            eval('self._magnet_' + axis + '.ramp(field_target=' + target + ')')
+        else:
+            print(status)
 
-        # end timer if all axes are finished
-        if self.current_axis_index == 3:
-            self.ramping_timer.stop()
-            del self.ramping_timer
-            del self.target_field
+        
         
             
