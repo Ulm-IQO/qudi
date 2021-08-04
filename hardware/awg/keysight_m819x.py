@@ -1551,7 +1551,7 @@ class AWGM819X(Base, PulserInterface):
 
                 # delete if the segment is already existing
                 loaded_segments_id = self.get_loaded_assets_id(ch_num)
-                if str(segment_id) in loaded_segments_id:
+                if segment_id in loaded_segments_id:
                     # clear the segment
                     self.write(':TRAC:DEL {0}'.format(segment_id))
 
@@ -2180,9 +2180,9 @@ class AWGM8195A(AWGM819X):
         # manual 1.5.4: Depending on the Sample Rate Divider, the 256 sample wide output of the sequencer
         # is divided by 1, 2 or 4.
         constraints.waveform_length.step = 256 / self._sample_rate_div
-        constraints.waveform_length.min = 1280  # != p 108 manual, but tested manually ('MARK')
+        constraints.waveform_length.min = 1280 / self._sample_rate_div
         constraints.waveform_length.max = int(16e9)
-        constraints.waveform_length.default = 1280
+        constraints.waveform_length.default = 1280 / self._sample_rate_div
 
         # analog channel
         constraints.a_ch_amplitude.min = 0.075   # from soft frontpanel
