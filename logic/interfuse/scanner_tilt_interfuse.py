@@ -218,5 +218,9 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
             return dz
 
     def set_voltage_limits(self,RTLT):
+<<<<<<< HEAD
+        """Passes signal from interfuse to hardware."""
+=======
         """Sends signal to hardware."""
+>>>>>>> 56a786491676cb40392e5d0431aa7327ee5b9729
         self.sigChangeLimits.emit(RTLT)

@@ -30,13 +30,14 @@ ScanningMode_dict = {'SAWTOOTH':0,
 RegMode = SimpleNamespace(**RegMode_dict)
 MonitorOut = SimpleNamespace(**MonitorOut_dict)
 ScanningMode = SimpleNamespace(**ScanningMode_dict)
+
 def laser_is_connected(func):
     def wrapper(self, *arg, **kw):
         if self.cwstate == 1:
             res = func(self, *arg, **kw)
             return res
         else:
-            pass
+            pass#print("Cwave is not connected!")
     return wrapper
 
 
@@ -60,9 +61,6 @@ class CwaveLaser(Base):
         super().__init__(**kwargs)
         self.VoltRange = (0, 100)
 
-        self.reg_modes = {'opo': RegMode.CONTROL,
-                        'shg': RegMode.CONTROL,
-                        'eta': RegMode.CONTROL}
         self.wavelength = 0
 
 
@@ -90,6 +88,10 @@ class CwaveLaser(Base):
                             'lock_shg':False,
                             'lock_etalon': False
                             }
+        self._reg_modes = {'opo': RegMode.CONTROL,
+                        'shg': RegMode.CONTROL,
+                        'eta': RegMode.CONTROL}
+        
         self.cwstate = 0
 
     def connect(self):
@@ -198,8 +200,17 @@ class CwaveLaser(Base):
         eta = self.get_int_value('regeta_on')
         for p in ['opo', 'shg', 'eta']:
             stat = self.get_int_value(f'reg{p}_on')
-            self.reg_modes.update({p:stat})
-        return self.reg_modes
+            self._reg_modes.update({p:stat})
+        return self._reg_modes
+    
+    @laser_is_connected 
+    def set_regmode_control(self, param):
+        self.set_int_value(f'reg{param}_on', RegMode.CONTROL)
+
+    @laser_is_connected 
+    def set_regmode_manual(self, param):
+        self.set_int_value(f'reg{param}_on', RegMode.OFF)
+
     @laser_is_connected
     def set_command(self, cmd):
         return self.cwave_dll.set_command(f"{cmd}".encode('utf-8'))
