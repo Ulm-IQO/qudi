@@ -20,11 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from qudi.hardware.magnet.magnet_3d import magnet_3d
+import time
 
 import numpy as np
 from qtpy import QtCore
 
 from core.connector import Connector
+from core.pi3_utils import delay
 from logic.generic_logic import GenericLogic
 
 
@@ -32,9 +35,12 @@ class MagnetLogic(GenericLogic):
 
     # declare connectors
     magnet_3d = Connector(interface='magnet_3d')
+    timetagger = Connector(interface='TT')
 
     # create signals
     sigScanNextLine = QtCore.Signal()
+    sigInitNextPixel = QtCore.Signal()
+    sigScanPixel = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -46,21 +52,24 @@ class MagnetLogic(GenericLogic):
 
         #initialize hardware
         self._magnet_3d = self.magnet_3d()
+        self._timetagger = self.timetagger()
 
         #connect signals to hardware
 
         #connect signals internally
         self.sigScanNextLine.connect(self._scan_line)
+        self.sigInitNextPixel.connect(self._init_pixel)
+        self.sigScanPixel.connect(self._scan_pixel)
 
         # initialize variables with standard values
         # the GUI takes these as initial values as well
         self.phi_min = 0
         self.phi_max = 360
-        self.n_phi = 20
+        self.n_phi = 5
         self.phi = 0
         self.theta_min = 0
         self.theta_max = 180
-        self.n_theta = 20
+        self.n_theta = 5
         self.theta = 0
         self.B = 0.01
         self.int_time = 1
@@ -69,7 +78,7 @@ class MagnetLogic(GenericLogic):
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
-        self._magnet_3d.on_deactivate()
+        # self._magnet_3d.on_deactivate()
         print('deactivating magnet')
 
     #--------------------------------------------
@@ -137,22 +146,96 @@ class MagnetLogic(GenericLogic):
         #set up the array for the angles
         self.thetas = np.linspace(self.theta_min, self.theta_max, self.n_theta)
         self.phis = np.linspace(self.phi_min, self.phi_max, self.n_phi)
-        self._scan_counter = 0
+        #calculate dimension of the image
+        self.n_lines = len(self.thetas)
+        self.n_pixels = len(self.phis)
+        # set index of the scan line to -1, goes to n_lines
+        # we don't use zero because it will be increased by 1 before it is used the first time
+        self._line_counter = 0
+        # index of the pixel in the current line. It goes up to n_pixels.
+        self._pixel_counter = 0
 
         #set up the array for the plot
-        self.thetaPhiImage = np.zeros(len(self.thetas),len(self.phis))
+        self.thetaPhiImage = np.zeros((self.n_lines,self.n_pixels))
 
         #start scan of first line
-        self.sigScanLine.emit()
+        self.sigScanNextLine.emit()
 
         return 0
     
     def _scan_line(self):
         """Scans one line along phi for fixed theta."""
-        #SCAN THE LINE
-        #RETURN THE COUNTS FOR THE LINES
-        #WRITE THE COUNTS IN THE IMAGE MATRIX
-        self._scan_counter += 1
-        self.sigScanNextLine.emit()
-    
+        print('Scanning line %i'%self._line_counter)
+
+        # stop if last line is done
+        if self._line_counter == self.n_lines:
+            print('Scan done')
+            return 0
+        # else go to next line
+        else:
+            # set pixel counter to 0.
+            self._pixel_counter = 0
+            # scan first pixel in next line
+            self.sigInitNextPixel.emit()
+
+    def _init_pixel(self):
+        # change B field
+        B = self.B
+        theta = self.thetas[self._line_counter]
+        phi = self.phis[self._pixel_counter]
+        self.ramp(target_field_polar=[B,theta,phi])
+        
+        #start timer
+        self._pixel_timer = QtCore.QTimer()
+        self._pixel_timer.timeout.connect(self._check_ramp)
+        self._pixel_timer.setInterval(1000)
+        self._pixel_timer.start()
+
+
+    def _check_ramp(self):
+        """Checks the ramping state of the magnet and sends signal if all are done.
+        
+        Also stops the timer.
+        """
+        status = self._magnet_3d.get_ramping_state()
+        if status == ['2','2','2']:
+            self._pixel_timer.stop()
+            del self._pixel_timer
+            self.sigScanPixel.emit()
+
+
+    def _scan_pixel(self):
+        """Gets countrate for current pixel.
+        
+        Countrate gets recorded in image matrix.
+        """
+        # ask TT for countrate
+        ctr = self._timetagger.countrate()
+        if self.int_time == 0:
+            # take only one measurement
+            # position 2 gives sum of both APDs
+            counts = ctr.getData()[2]
+        else:
+            #get countrate every 0.1 s
+            delay_time = 0.1
+            n_points = round(self.int_time/delay_time)
+            counts = 0
+            for i in range(n_points):
+                # position 2 gives sum of both APDs
+                counts += ctr.getData()[2]
+                delay(delay_time)
+            counts = counts/n_points
+
+        # write counts to pixel in image matrix
+        self.thetaPhiImage[self._pixel_counter, self._line_counter] = counts
+
+        # increase pixel counter
+        self._pixel_counter += 1
+        #go to next line if line is finished
+        if self._pixel_counter == self.n_pixels:
+            self._line_counter += 1
+            self.sigScanNextLine.emit()
+        # else, go to next pixel
+        else:
+            self.sigInitNextPixel.emit()
     

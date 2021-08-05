@@ -218,15 +218,15 @@ class MagnetGui(GUIBase):
         self._mw.pushButton_start.setEnabled(False)
         self._mw.pushButton_stop.setEnabled(True)
         self._mw.pushButton_set.setEnabled(False)
-        self._mw.sigStart.emit()
+        self.sigStart.emit()
 
     def stop_pressed(self):
         #TODO: dis-/enable buttons once scan has finished
         self._mw.pushButton_start.setEnabled(True)
         self._mw.pushButton_stop.setEnabled(False)
         self._mw.pushButton_set.setEnabled(True)
-        self._mw.sigStop.emit()
+        self.sigStop.emit()
 
     def set_pressed(self):
-        self._mw.sigSet.emit()
+        self.sigSet.emit()
 
