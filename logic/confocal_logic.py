@@ -286,6 +286,8 @@ class ConfocalLogic(GenericLogic):
 
     signal_history_event = QtCore.Signal()
 
+    sigChangeLimits = QtCore.Signal(str)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -346,6 +348,8 @@ class ConfocalLogic(GenericLogic):
 
         self._signal_save_xy.connect(self._save_xy_data, QtCore.Qt.QueuedConnection)
         self._signal_save_depth.connect(self._save_depth_data, QtCore.Qt.QueuedConnection)
+
+        self.sigChangeLimits.connect(self._scanning_device.set_voltage_limits)
 
         self._change_position('activation')
 
@@ -1269,3 +1273,7 @@ class ConfocalLogic(GenericLogic):
             self._change_position('history')
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
+
+    def set_voltage_limits(self,RTLT):
+        """Passes signal from gui to interfuse."""
+        self.sigChangeLimits.emit(RTLT)

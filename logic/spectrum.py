@@ -51,6 +51,7 @@ class SpectrumLogic(GenericLogic):
     odmrlogic = Connector(interface='ODMRLogic', optional=True)
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')
+    nicard = Connector(interface='NationalInstrumentsXSeries')
 
     # declare status variables
     _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
@@ -93,6 +94,7 @@ class SpectrumLogic(GenericLogic):
         self.integration_time = self._spectrometer_device._integration_time
         self._odmr_logic = self.odmrlogic()
         self._save_logic = self.savelogic()
+        self._nicard = self.nicard()
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
         self.sig_specdata_updated.emit()
@@ -129,9 +131,14 @@ class SpectrumLogic(GenericLogic):
         else:
             return None
 
+    def flip_mirror(self, mode = True):
+	    self._nicard.digital_channel_switch(self._nicard._flip_mirror_channel, mode=mode)
+
     def get_single_spectrum(self, background=False):
         """ Record a single spectrum from the spectrometer.
         """
+        #self._nicard.digital_channel_switch(self._nicard._flip_mirror_channel, mode=True)
+        #sleep(1)
         # Clear any previous fit
         self.fc.clear_result()
         # clear spectro,eter buffer
@@ -149,6 +156,8 @@ class SpectrumLogic(GenericLogic):
         self.diff_spec_data_mod_on = np.array([])
         self.diff_spec_data_mod_off = np.array([])
 
+        #self._nicard.digital_channel_switch(self._nicard._flip_mirror_channel, mode=False)
+        
         self.sig_specdata_updated.emit()
 
     def _calculate_corrected_spectrum(self):
