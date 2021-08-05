@@ -184,7 +184,4 @@ class magnet_3d(Base):
             eval('self._magnet_' + axis + '.ramp(field_target=' + target + ')')
         else:
             print(status)
-
-        
-        
             
