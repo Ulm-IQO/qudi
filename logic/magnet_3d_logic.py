@@ -22,11 +22,19 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import numpy as np
+from qtpy import QtCore
 
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 
 
 class MagnetLogic(GenericLogic):
+
+    # declare connectors
+    magnet_3d = Connector(interface='magnet_3d')
+
+    # create signals
+    sigScanNextLine = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -35,6 +43,15 @@ class MagnetLogic(GenericLogic):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
+
+        #initialize hardware
+        self._magnet_3d = self.magnet_3d()
+
+        #connect signals to hardware
+
+        #connect signals internally
+        self.sigScanNextLine.connect(self._scan_line)
+
         # initialize variables with standard values
         # the GUI takes these as initial values as well
         self.phi_min = 0
@@ -52,7 +69,7 @@ class MagnetLogic(GenericLogic):
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
-        #self._magnet_3d.on_deactivate()
+        self._magnet_3d.on_deactivate()
         print('deactivating magnet')
 
     #--------------------------------------------
@@ -101,6 +118,41 @@ class MagnetLogic(GenericLogic):
         z = B * np.cos(2*np.pi/360*theta)
         return [x,y,z]
     
+
+    def ramp(self,target_field_polar=[0,0,0]):
+        """Tells the magnet to ramp the B-field to the specified value.
+        
+        @param target_field_polar: iterable with the spherical parameters [B,theta,phi].
+        """
+        B = target_field_polar[0]
+        theta = target_field_polar[1]
+        phi = target_field_polar[2]
+        target_field_cartesian = self.calc_xyz_from_angle(B,theta,phi)
+        self._magnet_3d.ramp(target_field_cartesian)
+
+        return 0
+
     def start_scan(self):
-        """Scans the B-field directions in theta and phi."""
-        #TODO: return sth one scan has finished.
+        """"""
+        #set up the array for the angles
+        self.thetas = np.linspace(self.theta_min, self.theta_max, self.n_theta)
+        self.phis = np.linspace(self.phi_min, self.phi_max, self.n_phi)
+        self._scan_counter = 0
+
+        #set up the array for the plot
+        self.thetaPhiImage = np.zeros(len(self.thetas),len(self.phis))
+
+        #start scan of first line
+        self.sigScanLine.emit()
+
+        return 0
+    
+    def _scan_line(self):
+        """Scans one line along phi for fixed theta."""
+        #SCAN THE LINE
+        #RETURN THE COUNTS FOR THE LINES
+        #WRITE THE COUNTS IN THE IMAGE MATRIX
+        self._scan_counter += 1
+        self.sigScanNextLine.emit()
+    
+    
