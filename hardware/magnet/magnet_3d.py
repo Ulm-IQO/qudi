@@ -6,6 +6,12 @@ This module controls a 3D magnet.
 The 3D magnet consists of three 1D magnets, to which it needs to be connected to.
 
 Config for copy paste:
+    magnet_3d:
+        module.Class: 'magnet.3dmagnet.magnet_3d'
+        connect:
+            magnet_x: 'magnet_x'
+            magnet_y: 'magnet_y'
+            magnet_z: 'magnet_z'
 
 
 Qudi is free software: you can redistribute it and/or modify
@@ -50,7 +56,11 @@ class magnet_3d(Base):
         self._magnet_z = self.magnet_z()
 
     def on_deactivate(self):
-        pass
+        # Deactivate the individual 1D magnets.
+        # This is important because this rmaps the field to zero.
+        self._magnet_x.on_deactivate()
+        self._magnet_y.on_deactivate()
+        self._magnet_z.on_deactivate()
 
 
     def get_field(self):
@@ -61,24 +71,57 @@ class magnet_3d(Base):
         field_z = self._magnet_z.get_field()
         return[field_x,field_y,field_z]
 
-    def fast_ramp(sef):
-        pass
+    def ramp(self, target_field=[0,0,0]):
+        """Ramps to the desired field.
+
+        If there is no danger of exceeding the max vectorial field, fast ramp is used. Otherwise safe ramp.
+
+        Calculations are done in T.
+        """
+
+        #check if field exceeds specs
+        self.check_field(target_field)
+
+        # check for danger of exceeding max vectorial field 
+        worst_case_field = [0,0,0]
+        current_field = self.get_field()
+        for i in range(target_field):
+            t = target_field[i]
+            c = current_field[i]
+            w =  max(abs(t),abs(c))
+            worst_case_field[i] = w
+        worst_case_amplitude = np.linalg.norm(worst_case_field)
+
+        # ramp fast or slow
+        if worst_case_amplitude < 1:
+            self.fast_ramp(target_field)
+        else:
+            self.safe_ramp(target_field)
+        return 0
+
+
+    def fast_ramp(self, target_field=[0,0,0]):
+        """Ramps all three axes at once."""
+
+        #check if field exceeds specs
+        self.check_field(target_field)
+
+        #ramp
+        self._magnet_x.ramp(field_target=target_field[0])
+        self._magnet_y.ramp(field_target=target_field[1])
+        self._magnet_z.ramp(field_target=target_field[2])
 
     def safe_ramp(self, target_field=[0,0,0]):
-        """Ramps to the target in a safe way.
+        """Ramps to the target field in a safe way.
         
         Calculations are done for field units in Tesla. 
         If you want to use kG, change factor.
         """
 
-        self.target_field = target_field
-
         #check if field exceeds specs
-        target_amplitude = np.linalg.norm(self.target_field)
-        if target_amplitude > 1 and self.target_field[0] !=0 and self.target_field[1] != 0:
-            raise RuntimeError('Max vector field 1T exceeded')
-        elif self.target_field[2] > 6:
-            raise RuntimeError('Max z-field 6T exceeded')
+        self.check_field(target_field)
+
+        self.target_field = target_field
         
         # define the order of the axes for the magnetic field
         indices = np.argsort(self.target_field)
@@ -103,6 +146,21 @@ class magnet_3d(Base):
         self.ramping_timer.timeout.connect(self._safe_ramp_loop)
         self.ramping_timer.setInterval(1000)
         self.ramping_timer.start()
+
+
+    def check_field(self,target_field):
+        """Checks if the given field exceeds the constraints.
+        
+        Returns 0 if everything is okay.
+        """
+
+        target_amplitude = np.linalg.norm(target_field)
+        if target_amplitude > 1 and target_field[0] !=0 and target_field[1] != 0:
+            raise RuntimeError('Max vector field 1T exceeded')
+        elif abs(target_field[2]) > 6:
+            raise RuntimeError('Max z-field 6T exceeded')
+        else:
+            return 0
 
 
     def _safe_ramp_loop(self):
