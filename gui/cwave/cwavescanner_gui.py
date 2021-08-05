@@ -19,6 +19,8 @@ def wavelength_to_freq(wavelength):
     freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
     return freqs
 
+
+
 class ScannerWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
 
@@ -57,6 +59,8 @@ class CwaveScanGui(GUIBase):
     sigOptimize = QtCore.Signal(str)
     sigUpdateLaserStatus = QtCore.Signal()
     sigStartScan = QtCore.Signal()
+    sigChangeLockMode = QtCore.Signal(str, str)
+
     def on_deactivate(self):
         """ Reverse steps of activation
 
@@ -142,27 +146,10 @@ class CwaveScanGui(GUIBase):
         self._plot_item.setLabel('top', 'Wavelength', units='nm')
         self._plot_item.setLabel('bottom', 'Relative Frequency', units='Hz')
 
-
-        # handle resizing of any of the elements
-        # self._update_plot_views()
-        # self._plot_item.vb.sigResized.connect(self._update_plot_views)
-
-        # self._plot_item.setLabel('left', 'Fluorescence', units='counts/s')
-        # self._plot_item.setLabel('right', 'Number of Points', units='#')
-        # self._plot_item.setLabel('bottom', 'Wavelength', units='nm')
-        # self._plot_item.setLabel('top', 'Relative Frequency', units='Hz')
-
-
-
-
-
         self._mw.shgPD_ViewWidget.addItem(self.shgPD_image)
         self._mw.shgPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.opoPD_ViewWidget.addItem(self.opoPD_image)
         self._mw.opoPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-        #self._mw.wavemeter_ViewWidget.addItem(self.wavemeter_image)
-        #self._mw.wavemeter_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-        #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
         self._mw.scan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
 
         self.lr = pg.LinearRegionItem([0, 100], bounds=[0, 100])#, pen=pg.mkPen({'color': "E8C4F7", alpha=0.3}))
@@ -199,6 +186,8 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
         self._mw.scan_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
 
+
+
         #! set initial values
         self._mw.startDoubleSpinBox.setValue(self._cwavescan_logic.scan_range[0])
         self._mw.stopDoubleSpinBox.setValue(self._cwavescan_logic.scan_range[1])
@@ -213,7 +202,9 @@ class CwaveScanGui(GUIBase):
         self._mw.numberOfBinsSpinBox.editingFinished.connect(self.change_numer_of_bins)
         self._mw.constDoubleSpinBox.editingFinished.connect(self.update_setpoint)
 
-        self._mw.spinBox_ThickEtalon.editingFinished.connect(self.set_thick_etalon)
+        self._mw.eta_lock_checkBox.clicked.connect(self.change_lock_mode)
+        self._mw.opo_lock_checkBox.clicked.connect(self.change_lock_mode)
+
 
         self._mw.scan_cb_max_InputWidget.valueChanged.connect(self.refresh_matrix)
         self._mw.scan_cb_min_InputWidget.valueChanged.connect(self.refresh_matrix)
@@ -221,6 +212,10 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_cb_low_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
 
         self._mw.refresh_pushButton.clicked.connect(self.refresh_wlm)
+        #self._mw.thick_eta_spinBox.lineEdit().setReadOnly(True)
+
+        self._mw.thick_eta_spinBox.editingFinished.connect(self.adjust_thick_etalon)
+        self._mw.opo_lambda_spinBox.editingFinished.connect(self.adjust_opo_lambda)
 
         #! Configure laser control panel:
         #? Connect buttons
@@ -253,7 +248,11 @@ class CwaveScanGui(GUIBase):
         self._cwavescan_logic.sigScanFinished.connect(self.scan_stopped)
         self._cwavescan_logic.sigScanStarted.connect(self.scan_started)
 
+        self.sigChangeLockMode.connect(self._cwavescan_logic.change_lock_mode)
+
         self.sigAdjThickEtalon.connect(self._cwavescan_logic.adj_thick_etalon)
+
+ 
 
         #! Scan control panel
         self.sigStartScan.connect(self._cwavescan_logic.start_scanning)
@@ -273,6 +272,10 @@ class CwaveScanGui(GUIBase):
         self.refresh_plots()
     
     @QtCore.Slot()
+    def change_lock_mode(self, param):
+        return 
+
+    @QtCore.Slot()
     def change_scan_mode(self):
         sender = self.sender()
         if "radioButtonMode_" in sender.objectName():
@@ -288,13 +291,6 @@ class CwaveScanGui(GUIBase):
             self.sigOptimize.emit(opt_param)
         else:
             print("Wrong button for this function!")
-
-
-    def set_thick_etalon(self):
-        eta = self._mw.spinBox_ThickEtalon.value()
-        # print("Aga!", eta)
-        self.sigAdjThickEtalon.emit(eta)
-
     #TODO!:
     # def set_frequency()
 
@@ -337,8 +333,14 @@ class CwaveScanGui(GUIBase):
         self._mw.label_laserPD.setText(f"{self._cwavescan_logic.laserPD}")
         self._mw.label_opoPD.setText(f"{self._cwavescan_logic.opoPD}")
         self._mw.label_shgPD.setText(f"{self._cwavescan_logic.shgPD}")
-
-
+        if self._cwavescan_logic.reg_modes is not None:
+            self._mw.eta_lock_checkBox.setEnabled(True)
+            self._mw.opo_lock_checkBox.setEnabled(True)
+            self._mw.eta_lock_checkBox.setChecked(True if self._cwavescan_logic.reg_modes['eta'] == 2 else False)
+            self._mw.opo_lock_checkBox.setChecked(True if self._cwavescan_logic.reg_modes['opo'] == 2 else False)
+        else:
+            self._mw.eta_lock_checkBox.setEnabled(False)
+            self._mw.opo_lock_checkBox.setEnabled(False)
     @QtCore.Slot()
     def changeCwaveState(self):
         # print(self._cwavescan_logic.cwstate)
@@ -547,5 +549,24 @@ class CwaveScanGui(GUIBase):
 
         self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
 
+    @QtCore.Slot()
+    def adjust_thick_etalon(self):
+        delta_eta = int(self._mw.thick_eta_spinBox.value())
+        self._cwavescan_logic.sigAdjEta.emit(delta_eta) 
+
+    @QtCore.Slot()
+    def adjust_opo_lambda(self):
+        delta_lam = int(self._mw.opo_lambda_spinBox.value())
+        self._cwavescan_logic.sigOpoLambda.emit(delta_lam) 
+
+    @QtCore.Slot()
+    def change_lock_mode(self):
+        sender = self.sender()
+        if "_lock_checkBox" in sender.objectName():
+                _param = sender.objectName().split('_lock_checkBox')[0].strip()
+                _mode = 'control' if sender.isChecked() else 'manual'
+                print(_param, _mode)
+                self.sigChangeLockMode.emit(_param, _mode)
 #! Control panel:
-    
+    #def plot_wavelength_to_countrate(self):
+        

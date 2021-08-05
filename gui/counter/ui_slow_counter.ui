@@ -17,8 +17,8 @@
    <widget class="QDockWidget" name="trace_selection_DockWidget">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>50</y>
+      <x>20</x>
+      <y>0</y>
       <width>421</width>
       <height>109</height>
      </rect>
@@ -118,7 +118,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>18</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -275,6 +275,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </widget>
   </widget>
   <widget class="QToolBar" name="counting_control_ToolBar">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="windowTitle">
     <string>Counting Controls</string>
    </property>

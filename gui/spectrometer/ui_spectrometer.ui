@@ -260,7 +260,7 @@
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>147</height>
+     <height>156</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -330,13 +330,13 @@
             <double>0.500000000000000</double>
            </property>
            <property name="maximum">
-            <double>50.000000000000000</double>
+            <double>100.000000000000000</double>
            </property>
            <property name="singleStep">
             <double>0.500000000000000</double>
            </property>
            <property name="value">
-            <double>1.000000000000000</double>
+            <double>10.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -369,6 +369,40 @@
          </property>
          <property name="format">
           <string>%p%</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="3" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_6">
+       <item>
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Range</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="spec_range_left_doubleSpinBox">
+         <property name="minimum">
+          <double>400.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>800.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="spec_range_right_doubleSpinBox">
+         <property name="minimum">
+          <double>400.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>800.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>800.000000000000000</double>
          </property>
         </widget>
        </item>

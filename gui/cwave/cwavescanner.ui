@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>879</width>
-    <height>808</height>
+    <width>1109</width>
+    <height>780</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -23,7 +23,7 @@
       <x>10</x>
       <y>0</y>
       <width>630</width>
-      <height>711</height>
+      <height>751</height>
      </rect>
     </property>
     <property name="minimumSize">
@@ -382,35 +382,6 @@
        </item>
       </layout>
      </widget>
-     <widget class="QLabel" name="label">
-      <property name="geometry">
-       <rect>
-        <x>540</x>
-        <y>10</y>
-        <width>81</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Thick etalon, pm</string>
-      </property>
-     </widget>
-     <widget class="QSpinBox" name="spinBox_ThickEtalon">
-      <property name="geometry">
-       <rect>
-        <x>540</x>
-        <y>30</y>
-        <width>42</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="minimum">
-       <number>-100</number>
-      </property>
-      <property name="maximum">
-       <number>100</number>
-      </property>
-     </widget>
      <widget class="QPushButton" name="refresh_pushButton">
       <property name="geometry">
        <rect>
@@ -488,8 +459,8 @@
        <rect>
         <x>100</x>
         <y>260</y>
-        <width>77</width>
-        <height>131</height>
+        <width>88</width>
+        <height>217</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -513,6 +484,84 @@
           <string>Stop</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_12">
+         <item>
+          <widget class="QLabel" name="label_14">
+           <property name="text">
+            <string>λ, nm</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_wavelength">
+           <property name="text">
+            <string>0 </string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Thick etalon, pm</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="thick_eta_spinBox">
+             <property name="wrapping">
+              <bool>false</bool>
+             </property>
+             <property name="frame">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::UpDownArrows</enum>
+             </property>
+             <property name="minimum">
+              <number>-1000</number>
+             </property>
+             <property name="maximum">
+              <number>1000</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <item>
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>OPO lambda, pm</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="opo_lambda_spinBox">
+               <property name="wrapping">
+                <bool>false</bool>
+               </property>
+               <property name="frame">
+                <bool>true</bool>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::UpDownArrows</enum>
+               </property>
+               <property name="minimum">
+                <number>-1000</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
@@ -659,7 +708,7 @@
         <x>10</x>
         <y>260</y>
         <width>79</width>
-        <height>211</height>
+        <height>221</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -855,32 +904,6 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="layoutWidget_10">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>170</y>
-        <width>91</width>
-        <height>51</height>
-       </rect>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_12">
-       <item>
-        <widget class="QLabel" name="label_14">
-         <property name="text">
-          <string>Wavelength, nm</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_wavelength">
-         <property name="text">
-          <string>0 </string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
      <widget class="QLabel" name="label_15">
       <property name="geometry">
        <rect>
@@ -920,6 +943,32 @@
        <string>Optimize</string>
       </property>
      </widget>
+     <widget class="QWidget" name="verticalLayoutWidget_3">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>170</y>
+        <width>91</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QCheckBox" name="opo_lock_checkBox">
+         <property name="text">
+          <string>OPO lock</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="eta_lock_checkBox">
+         <property name="text">
+          <string>Etalon lock</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </widget>
   </widget>
@@ -928,7 +977,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>879</width>
+     <width>1109</width>
      <height>21</height>
     </rect>
    </property>

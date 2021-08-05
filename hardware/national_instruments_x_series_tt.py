@@ -24,7 +24,6 @@ import numpy as np
 import re
 import time
 import PyDAQmx as daq
-from TimeTagger import *
 from core.module import Base
 from core.configoption import ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
@@ -117,10 +116,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _pixel_stop_ch = ConfigOption('timetagger_pixel_stop_ch', missing='error')
     _sum_channels = ConfigOption('timetagger_sum_channels', True)
 
+    _flip_mirror_channel = ConfigOption('flip_mirror_channel', 'Dev1/port0/line1', missing='warn')
+
     # odmr
     _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
     _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
-    _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line1', missing='warn')
+    _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line2', missing='warn')
 
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
@@ -137,7 +138,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         """ Starts up the NI Card at activation.
         """
         self._timetagger = self.timetagger()
-        self._tagger = self._timetagger.tagger
         # the tasks used on that hardware device:
         self._counter_daq_tasks = list()
         self._counter_analog_daq_task = None
@@ -936,12 +936,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         #Create TimeTagger object and combine channels
         self._count_frequency = self._scanner_clock_frequency
-
-        if self._sum_channels:
-            self._channel_combined = Combiner(self._tagger, [self._channel_apd_0, self._channel_apd_1])
-            self._channel_apd = self._channel_combined.getChannel()
-        else:
-            self._channel_apd = self._channel_apd_0
         
         # try:
         #     # Set the Sample Timing Type. Task timing to use a sampling clock:
@@ -1170,7 +1164,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         self._line_length = length
         #Start instance of TimeTagger.CountBetweenMarkers with the correct channels. Does this every time a line is scanned
-        self.cbm = self._timetagger.count_between_markers(self._channel_apd, self._pixel_start_ch, self._pixel_stop_ch, self._line_length)
+        self.cbm = self._timetagger.count_between_markers(self._timetagger._combined_channels.getChannel(), self._pixel_start_ch, self._pixel_stop_ch, self._line_length)
 
         try:
             # Just a formal check whether length is not a too huge number
@@ -1398,11 +1392,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             #TimeTagger object is created for ODMR and channels are combined.
             self._count_frequency = self._scanner_clock_frequency
 
-            if self._sum_channels:
-                self._channel_combined = Combiner(self._tagger, [self._channel_apd_0, self._channel_apd_1])
-                self._channel_apd = self._channel_combined.getChannel()
-            else:
-                self._channel_apd = self._channel_apd_0
             # Analog task
             if self._scanner_ai_channels:
                 atask = daq.TaskHandle()
@@ -1552,7 +1541,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         try:
             #Initialises the actual CountBetweenMarkers object with the correct length and channels. Does this for every pass.
-            self.cbm = self._timetagger.count_between_markers(self._channel_apd, self._pixel_start_ch, self._pixel_stop_ch, self._odmr_length)
+            self.cbm = self._timetagger.count_between_markers(self._timetagger._combined_channels.getChannel(), self._pixel_start_ch, self._pixel_stop_ch, self._odmr_length)
             # start the scanner counting task that acquires counts synchronously
             # if self._scanner_counter_channels:
             #     daq.DAQmxStartTask(self._scanner_counter_daq_tasks[0])
@@ -2030,6 +2019,20 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         return retval
 
 
+    def set_voltage_limits(self,RTLT):
+        """Changes voltage limits."""
+        if RTLT == 'LT':
+            # changes limits
+            self.set_voltage_range(myrange=[[0, 10], [0, 10], [0, 10], [0, 10]])
+            # resets the analog output. This reloads the new limits
+            self._start_analog_output()
+        elif RTLT == 'RT':
+            self.set_voltage_range(myrange=[[0, 4], [0, 4], [0, 4], [0, 10]])
+            self._start_analog_output()
+        else:
+            print('Limit needs to be either LT or RT')
+
+
     # ======================== Digital channel control ==========================
 
     def digital_channel_switch(self, channel_name, mode=True):
@@ -2067,3 +2070,4 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return 0
 
 
+    

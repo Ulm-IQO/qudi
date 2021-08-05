@@ -26,6 +26,7 @@ import numpy as np
 
 from core.module import Base
 from core.configoption import ConfigOption
+from core.connector import Connector
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
@@ -46,27 +47,19 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
     _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
     _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', None, missing='warn')
-    _sum_channels = ConfigOption('timetagger_sum_channels', False)
+    timetagger = Connector(interface='TT')
 
     def on_activate(self):
         """ Start up TimeTagger interface
         """
-        self._tagger = tt.createTimeTagger()
+        
+        self._tagger = self.timetagger()
         self._count_frequency = 50  # Hz
-
-        if self._sum_channels and self._channel_apd_1 is None:
-            self.log.error('Cannot sum channels when only one apd channel given')
 
         ## self._mode can take 3 values:
         # 0: single channel, no summing
         # 1: single channel, summed over apd_0 and apd_1
         # 2: dual channel for apd_0 and apd_1
-        if self._sum_channels:
-            self._mode = 1
-        elif self._channel_apd_1 is None:
-            self._mode = 0
-        else:
-            self._mode = 2
         self.set_up_counter()
 
     def on_deactivate(self):
@@ -113,47 +106,19 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
         # currently, parameters passed to this function are ignored -- the channels used and clock frequency are
         # set at startup
-        if self._mode == 1:
-            channel_combined = tt.Combiner(self._tagger, channels = [self._channel_apd_0, self._channel_apd_1])
-            self._channel_apd = channel_combined.getChannel()
-
-            self.counter = tt.Counter(
-                self._tagger,
-                channels=[self._channel_apd],
-                binwidth=int((1 / self._count_frequency) * 1e12),
-                n_values=1
-            )
-        elif self._mode == 2:
-            self.counter0 = tt.Counter(
-                self._tagger,
-                channels=[self._channel_apd_0],
-                binwidth=int((1 / self._count_frequency) * 1e12),
-                n_values=1
-            )
-
-            self.counter1 = tt.Counter(
-                self._tagger,
-                channels=[self._channel_apd_1],
-                binwidth=int((1 / self._count_frequency) * 1e12),
-                n_values=1
-            )
-        else:
-            self._channel_apd = self._channel_apd_0
-            self.counter = tt.Counter(
-                self._tagger,
-                channels=[self._channel_apd],
-                binwidth=int((1 / self._count_frequency) * 1e12),
-                n_values=1
-            )
+       
+        
+        self.counter = self._tagger.counter(
+            channels=[self._channel_apd_0, self._channel_apd_1, self._tagger._combined_channels.getChannel()],
+            bins_width=int((1 / self._count_frequency) * 1e12),
+            n_values=1)
+    
 
         self.log.info('set up counter with {0}'.format(self._count_frequency))
         return 0
 
     def get_counter_channels(self):
-        if self._mode < 2:
-            return [self._channel_apd]
-        else:
-            return [self._channel_apd_0, self._channel_apd_1]
+            return [self._channel_apd_0, self._channel_apd_1, self._tagger._combined_channels.getChannel()]
 
     def get_constraints(self):
         """ Get hardware limits the device
@@ -178,18 +143,14 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         """
 
         time.sleep(2 / self._count_frequency)
-        if self._mode < 2:
-            return self.counter.getData() * self._count_frequency
-        else:
-            return np.array([self.counter0.getData() * self._count_frequency,
-                             self.counter1.getData() * self._count_frequency])
+        return np.array(self.counter.getData()) * self._count_frequency
 
     def close_counter(self):
         """ Closes the counter and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-        self._tagger.reset()
+        self._tagger.tagger.reset()
         return 0
 
     def close_clock(self):

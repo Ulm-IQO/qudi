@@ -110,7 +110,7 @@ class SpectrometerGui(GUIBase):
 
         self._curve2 = self._pw.plot()
         self._curve2.setPen(palette.c2, width=2)
-
+        self.set_plot_domain()
         self.update_data()
 
         # Connect singals
@@ -129,7 +129,9 @@ class SpectrometerGui(GUIBase):
         self._spectrum_logic.sig_specdata_updated.connect(self.update_data)
         self._spectrum_logic.spectrum_fit_updated_Signal.connect(self.update_fit)
         self._spectrum_logic.fit_domain_updated_Signal.connect(self.update_fit_domain)
-
+        
+        
+ 
         self._mw.show()
 
         self._save_PNG = True
@@ -137,6 +139,9 @@ class SpectrometerGui(GUIBase):
         # Internal user input changed signals
         self._mw.fit_domain_min_doubleSpinBox.valueChanged.connect(self.set_fit_domain)
         self._mw.fit_domain_max_doubleSpinBox.valueChanged.connect(self.set_fit_domain)
+
+        self._mw.spec_range_left_doubleSpinBox.valueChanged.connect(self.set_plot_domain)
+        self._mw.spec_range_right_doubleSpinBox.valueChanged.connect(self.set_plot_domain)
 
         # Internal trigger signals
         self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
@@ -172,7 +177,9 @@ class SpectrometerGui(GUIBase):
         self._curve2.setData(x=[], y=[])
         
         # draw new data
-        self._curve1.setData(x=data[0, :], y=data[1, :])
+        lam, spec = data[0, :], data[1, :]
+        plot_range = (lam > self.plot_domain[0]) * (lam < self.plot_domain[1])
+        self._curve1.setData(x=lam[plot_range], y=spec[plot_range])
 
     def update_fit(self, fit_data, result_str_dict, current_fit):
         """ Update the drawn fit curve and displayed fit results.
@@ -207,6 +214,7 @@ class SpectrometerGui(GUIBase):
         if self.time_passed >= int_time:
             self.timer.stop()
             self._mw.progressBar.setValue(int_time)
+            self.update_data()
             return
         self._mw.progressBar.setValue(self.time_passed)
 
@@ -255,6 +263,13 @@ class SpectrometerGui(GUIBase):
 
     def save_background_data(self):
         self._spectrum_logic.save_spectrum_data(background=True)
+
+    def set_plot_domain(self):
+       lambda_min = self._mw.spec_range_left_doubleSpinBox.value() * 1e-9 #nm
+       lambda_max = self._mw.spec_range_right_doubleSpinBox.value() * 1e-9 #nm
+
+       self.plot_domain = np.array([lambda_min, lambda_max])
+
 
     def do_fit(self):
         """ Command spectrum logic to do the fit with the chosen fit function.
