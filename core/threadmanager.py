@@ -41,7 +41,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
         """ Create a new thread with a name, return its object
           @param str name: unique name of thread
 
-          @return QThread: new thred, none if failed
+          @return QThread: new thread, none if failed
         """
         logger.debug('Creating thread: \"{0}\".'.format(name))
         with self.lock:

@@ -118,7 +118,7 @@ class CounterGui(GUIBase):
         self._mw.count_length_SpinBox.setValue(self._counting_logic.get_count_length())
         self._mw.count_freq_SpinBox.setValue(self._counting_logic.get_count_frequency())
         self._mw.oversampling_SpinBox.setValue(self._counting_logic.get_counting_samples())
-        self._display_trace = 1
+        self._display_trace = 3
         self._trace_selection = [True, True, True, True]
 
         #####################
@@ -192,32 +192,32 @@ class CounterGui(GUIBase):
         self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
         self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
 
-        # Throw a deprecation warning pop-up to encourage users to switch to
-        # TimeSeriesGui/TimeSeriesReaderLogic
-        dialog = QtWidgets.QDialog(self._mw)
-        dialog.setWindowTitle('Deprecation warning')
-        label1 = QtWidgets.QLabel('Deprecation Warning:')
-        label1.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-        font = label1.font()
-        font.setPointSize(12)
-        label1.setFont(font)
-        label2 = QtWidgets.QLabel('The modules CounterGui, CounterLogic and '
-                                  'NationalInstrumentsXSeries are deprecated for time series '
-                                  'streaming (also called "slow counting") and will be removed in '
-                                  'the future.\nPlease consider switching to TimeSeriesGui, '
-                                  'TimeSeriesReaderLogic and NIXSeriesInStreamer.\nSee default.cfg '
-                                  'for a configuration template.')
-        label2.setAlignment(QtCore.Qt.AlignVCenter)
-        label2.setWordWrap(True)
-        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
-        button_box.setCenterButtons(True)
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(label1)
-        layout.addWidget(label2)
-        layout.addWidget(button_box)
-        button_box.accepted.connect(dialog.accept)
-        dialog.setLayout(layout)
-        dialog.exec()
+        # # Throw a deprecation warning pop-up to encourage users to switch to
+        # # TimeSeriesGui/TimeSeriesReaderLogic
+        # dialog = QtWidgets.QDialog(self._mw)
+        # dialog.setWindowTitle('Deprecation warning')
+        # label1 = QtWidgets.QLabel('Deprecation Warning:')
+        # label1.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        # font = label1.font()
+        # font.setPointSize(12)
+        # label1.setFont(font)
+        # label2 = QtWidgets.QLabel('The modules CounterGui, CounterLogic and '
+        #                           'NationalInstrumentsXSeries are deprecated for time series '
+        #                           'streaming (also called "slow counting") and will be removed in '
+        #                           'the future.\nPlease consider switching to TimeSeriesGui, '
+        #                           'TimeSeriesReaderLogic and NIXSeriesInStreamer.\nSee default.cfg '
+        #                           'for a configuration template.')
+        # label2.setAlignment(QtCore.Qt.AlignVCenter)
+        # label2.setWordWrap(True)
+        # button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
+        # button_box.setCenterButtons(True)
+        # layout = QtWidgets.QVBoxLayout()
+        # layout.addWidget(label1)
+        # layout.addWidget(label2)
+        # layout.addWidget(button_box)
+        # button_box.accepted.connect(dialog.accept)
+        # dialog.setLayout(layout)
+        # dialog.exec()
         return 0
 
     def show(self):
@@ -363,7 +363,7 @@ class CounterGui(GUIBase):
                 self._pw.removeItem(self.curves[2*i + 1])
 
     def trace_display_changed(self):
-        """ Handling of a change in teh selection of which counts should be shown.
+        """ Handling of a change in the selection of which counts should be shown.
         """
 
         if self._mw.trace_1_radiobutton.isChecked():

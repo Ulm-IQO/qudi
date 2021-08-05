@@ -317,7 +317,7 @@ class CounterLogic(GenericLogic):
             data = {header: self._data_to_save}
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
-            if save_figure:
+            if save_figure and len(self._data_to_save) > 0:
                 fig = self.draw_figure(data=np.array(self._data_to_save))
             else:
                 fig = None

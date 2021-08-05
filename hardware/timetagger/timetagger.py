@@ -1,7 +1,7 @@
 
 from os.path import join, getsize, isfile
 import numpy as np
-from TimeTagger import createTimeTagger, Dump, Correlation, Histogram, Counter, CountBetweenMarkers, FileWriter, Countrate
+from TimeTagger import createTimeTagger, Dump, Correlation, Histogram, Counter, CountBetweenMarkers, FileWriter, Countrate, Combiner
 from core.configoption import ConfigOption
 from core.module import Base
 
@@ -9,7 +9,9 @@ from core.module import Base
 class TT(Base):
     _hist = ConfigOption('hist', False, missing='warn')
     _corr = ConfigOption('corr', False, missing='warn')
+    _combiner = ConfigOption('combiner', False, missing='warn')
     _counter = ConfigOption('counter', False, missing='warn')
+    _combiner = ConfigOption('combiner', False, missing='warn')
     _test_channels = ConfigOption('test_channels', False, missing='warn')
     _channels_params = ConfigOption('channels_params', False, missing='warn')
 
@@ -37,6 +39,10 @@ class TT(Base):
         for i in self._test_channels:
             print(f"RUNNING CHANNEL {i} WITH TEST SIGNAL!")
             self.tagger.setTestSignal(i, True)
+
+        #Create combine channels:
+
+        self._combined_channels = self.combiner(self._combiner["channels"])
 
         # # set specified in the params.yaml channels params
         # for channel, params in self._channels_params.items():
@@ -121,6 +127,8 @@ class TT(Base):
                                 self._counter['bins_width'],
                                 self._counter['n_values'])
 
+    def combiner(self, channels):
+        return Combiner(self.tagger, channels)
 
     def count_between_markers(self, click_channel, begin_channel, end_channel, n_values):
         return CountBetweenMarkers(self.tagger,
