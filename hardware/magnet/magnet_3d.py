@@ -57,7 +57,7 @@ class magnet_3d(Base):
 
     def on_deactivate(self):
         # Deactivate the individual 1D magnets.
-        # This is important because this rmaps the field to zero.
+        # This is important because this ramps the field to zero.
         self._magnet_x.on_deactivate()
         self._magnet_y.on_deactivate()
         self._magnet_z.on_deactivate()
@@ -85,7 +85,7 @@ class magnet_3d(Base):
         # check for danger of exceeding max vectorial field 
         worst_case_field = [0,0,0]
         current_field = self.get_field()
-        for i in range(target_field):
+        for i in range(len(target_field)):
             t = target_field[i]
             c = current_field[i]
             w =  max(abs(t),abs(c))
@@ -182,7 +182,7 @@ class magnet_3d(Base):
         """
         axis = self.order_axes[self.current_axis_index]
         status = eval('self._magnet_' + axis + '.get_ramping_state()')
-        if status == ['2']: #HOLDING at the target field/current
+        if status == 2: #HOLDING at the target field/current
             #go to next axis
             self.current_axis_index += 1
             # end timer if all axes are finished

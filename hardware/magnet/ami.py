@@ -64,6 +64,7 @@ class AMI430(Base, Magnet1DInterface):
         self.set_ramp_rate_units('s')
 
     def on_deactivate(self):
+        print('deactivating 1D magnet "' + str(self) + '"')
         self.ramp_to_zero()
         self.local()
         self.disconnect()
@@ -152,6 +153,7 @@ class AMI430(Base, Magnet1DInterface):
     def get_coil_constant(self):
         """Returns the coil constant setting in kG/A or T/A per the selected field units."""
         ans = self._query('COIL?')
+        ans=float(ans[0])
         return ans
     
     def set_coil_constant(self, constant):
@@ -166,6 +168,7 @@ class AMI430(Base, Magnet1DInterface):
     def get_current_limit(self):
         """Returns the Current Limit in Amperes."""
         ans = self._query('CURR:LIM?')
+        ans=float(ans[0])
         return ans
 
     def set_current_limit(self,limit):
@@ -177,6 +180,7 @@ class AMI430(Base, Magnet1DInterface):
         
         Returns 1 if one is connected, 0 if not."""
         ans = self._query('PS:INST?')
+        ans=int(ans[0])
         return ans
 
     def get_ramp_rate_units(self):
@@ -184,6 +188,7 @@ class AMI430(Base, Magnet1DInterface):
         "0" means 1/s, "1" means 1/min.
         """
         ans = self._query('RAMP:RATE:UNITS?')
+        ans=int(ans[0])
         return ans
     
     def set_ramp_rate_units(self, unit='0'):
@@ -210,6 +215,7 @@ class AMI430(Base, Magnet1DInterface):
         "0" means kilogauss, "1" means tesla.
         """
         ans = self._query('FIELD:UNITS?')
+        ans=int(ans[0])
         return ans
     
     def set_field_units(self, unit='0'):
@@ -237,6 +243,7 @@ class AMI430(Base, Magnet1DInterface):
         It must not exceed the voltage limit if the power supply.
         """
         ans = self._query('VOLT:LIM?')
+        ans=float(ans[0])
         return ans
 
     def set_voltage_limit(self, limit):
@@ -249,6 +256,7 @@ class AMI430(Base, Magnet1DInterface):
     def get_target_current(self):
         """Returns the target current in amperes."""
         ans = self._query('CURR:TARG?')
+        ans=float(ans[0])
         return ans
 
     def set_target_current(self, target):
@@ -262,6 +270,7 @@ class AMI430(Base, Magnet1DInterface):
         This is because field gets calculated from current via coil constant.
         """
         ans = self._query('FIELD:TARG?')
+        ans=float(ans[0])
         return ans
 
     def set_target_field(self,target,unit=None):
@@ -280,6 +289,7 @@ class AMI430(Base, Magnet1DInterface):
     def get_number_ramp_rate_segments(self):
         """Returns the number of ramp segments."""
         ans = self._query('AMP:RATE:SEG?')
+        ans=int(ans[0])
         return ans
     
     def set_number_ramp_rate_segments(self, number):
@@ -294,6 +304,7 @@ class AMI430(Base, Magnet1DInterface):
         Return is tuple of ramp rate and upper bound for the segment.
         """
         ans = self._query('RAMP:RATE:CURRENT:' + str(segment) + '?')
+        ans=float(ans[0])
         return ans
 
     def set_ramp_rate_segment_current(self, segment, rate, upper_bound):
@@ -332,6 +343,7 @@ class AMI430(Base, Magnet1DInterface):
         Return is tuple of ramp rate and upper bound for the segment.
         """
         ans = self._query('RAMP:RATE:FIELD:' + str(segment) + '?')
+        ans=float(ans[0])
         return ans
 
     def set_ramp_rate_segment_field(self, segment, rate, upper_bound):
@@ -372,11 +384,13 @@ class AMI430(Base, Magnet1DInterface):
         If the magnet is in persistent mode, the command returns the current that was flowing in the magnet when persistent mode was entered.
         """
         ans = self._query('CURR:MAG?')
+        ans=float(ans[0])
         return ans
     
     def get_supply_current(self):
         """Returns the measured power supply current in amperes."""
         ans = self._query('CURR:SUPP?')
+        ans=float(ans[0])
         return ans
 
     def get_field(self):
@@ -387,6 +401,7 @@ class AMI430(Base, Magnet1DInterface):
         If the magnet is in persistent mode, the command returns the field that was present when persistent mode was entered.
         """
         ans = self._query('FIELD:MAG?')
+        ans=float(ans[0])
         return ans
 
     def ext_rampdown(self):
@@ -432,6 +447,7 @@ class AMI430(Base, Magnet1DInterface):
             10: Cooling persistent switch
         """
         ans = self._query('STATE?')
+        ans=int(ans[0])
         return ans
 
     #TODO: add PSwitch functionality (manual page 149).

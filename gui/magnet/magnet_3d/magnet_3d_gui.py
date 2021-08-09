@@ -30,8 +30,9 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from qtpy import QtCore
 from qtpy import QtWidgets
-from qtwidgets.scientific_spinbox import ScienDSpinBox
+# from qtwidgets.scientific_spinbox import ScienDSpinBox
 from qtwidgets.scan_plotwidget import ScanImageItem
+import pyqtgraph as pg
 
 
 
@@ -69,7 +70,6 @@ class MagnetGui(GUIBase):
     sigReps = QtCore.Signal(float)
     
     sigStart = QtCore.Signal()
-    sigStop = QtCore.Signal()
     sigSet = QtCore.Signal()
     
 
@@ -100,8 +100,7 @@ class MagnetGui(GUIBase):
         self.sigReps.connect(self._magnetlogic.set_reps)
         
         self.sigStart.connect(self._magnetlogic.start_scan)
-        #self.sigStop.connect()
-        #self.sigSet.connect()
+        self.sigSet.connect(self._magnetlogic._set_B_field)
 
 
 
@@ -150,6 +149,56 @@ class MagnetGui(GUIBase):
         self._mw.doubleSpinBox_set_phi.setValue(self.phi)
         self._mw.doubleSpinBox_set_theta.setValue(self.theta)
 
+        # plot 
+
+        self.scan_matrix_image = pg.ImageItem(
+            self._magnetlogic.thetaPhiImage,
+            axisOrder='row-major')
+
+        # params for the borders of the plot
+        # borders need to be extended by half a pixel to center pixel around its value
+        x_hp = 0.5 * (self.phi_max-self.phi_min)/self.n_phi
+        y_hp = 0.5 * (self.theta_max-self.theta_min)/self.n_theta
+        x0 = self.phi_min - x_hp
+        y0 = self.theta_min - y_hp
+        w = self.phi_max-self.phi_min +2*x_hp
+        h = self.theta_max-self.theta_min + 2* y_hp
+
+        #set border params for plot
+        self.scan_matrix_image.setRect(QtCore.QRectF(x0, y0, w, h))
+
+        # add image to the plot widget
+        self._mw.phitheta_ViewWidget.addItem(self.scan_matrix_image)
+
+        # get colorscale
+        my_colors = ColorScaleViridis()
+        self.scan_matrix_image.setLookupTable(my_colors.lut)
+
+        # tell the image where to get the data
+        self.scan_matrix_image.setImage(self._magnetlogic.thetaPhiImage, axisOrder='row-major')
+
+        # label plot axes
+        self._mw.phitheta_ViewWidget.setLabel(axis='left', text='theta', units='°')
+        self._mw.phitheta_ViewWidget.setLabel(axis='bottom', text='phi', units='°')
+
+        # create colorbar
+        self.scan_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
+
+        # add colorbar to widget
+        self._mw.scan_cb_ViewWidget.addItem(self.scan_cb)
+        self._mw.scan_cb_ViewWidget.hideAxis('bottom')
+        self._mw.scan_cb_ViewWidget.hideAxis('left')
+        self._mw.scan_cb_ViewWidget.setLabel('right', 'Fluorescence', units='c/s')
+
+        #TODO: Same stuff as above but this time for the colorbar
+
+        # start update timer
+        timer_interval = 1000
+        self._update_gui_timer = QtCore.QTimer()
+        self._update_gui_timer.timeout.connect(self._update_gui)
+        self._update_gui_timer.setInterval(timer_interval)
+        self._update_gui_timer.start()
+
 
     def on_deactivate(self):
         """ Deactivate the module properly.
@@ -161,6 +210,18 @@ class MagnetGui(GUIBase):
         """Make window visible and put it above all other windows. """
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
+
+    def _update_gui(self):
+        # update plot
+        self._mw.scan_cb_ViewWidget.update()
+
+        #update colorbar
+
+        # (de)activate buttons once scan has finished
+        if self._magnetlogic.scanning_finished:
+            self._mw.pushButton_start.setEnabled(True)
+            self._mw.pushButton_stop.setEnabled(False)
+            self._mw.pushButton_set.setEnabled(True)
 
     def changed_phi_min(self):
         self.phi_min = self._mw.doubleSpinBox_scan_phi_min.value()
@@ -221,11 +282,10 @@ class MagnetGui(GUIBase):
         self.sigStart.emit()
 
     def stop_pressed(self):
-        #TODO: dis-/enable buttons once scan has finished
         self._mw.pushButton_start.setEnabled(True)
         self._mw.pushButton_stop.setEnabled(False)
         self._mw.pushButton_set.setEnabled(True)
-        self.sigStop.emit()
+        self._magnetlogic.abort_scan = True
 
     def set_pressed(self):
         self.sigSet.emit()
