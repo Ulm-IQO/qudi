@@ -1131,7 +1131,7 @@ class ODMRLogic(GenericLogic):
                 return tuple()
 
         # set all relevant parameter:
-        self.set_sweep_parameters(freq_start, freq_stop, freq_step, power)
+        self.set_sweep_parameters([freq_start], [freq_stop], [freq_step], [power])
         self.set_runtime(runtime)
 
         # start the scan

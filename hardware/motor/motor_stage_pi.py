@@ -106,6 +106,7 @@ class MotorStagePI(Base, MotorInterface):
     _vel_step_first = ConfigOption('vel_first_axis_step', 1e-5, missing='warn')
     _vel_step_second = ConfigOption('vel_second_axis_step', 1e-5, missing='warn')
     _vel_step_third = ConfigOption('vel_third_axis_step', 1e-5, missing='warn')
+    _vel_default = ConfigOption('vel_default', 3e-3, missing='nothing')
 
 
     def __init__(self, **kwargs):
@@ -122,6 +123,10 @@ class MotorStagePI(Base, MotorInterface):
             baud_rate=self._pi_xyz_baud_rate,
             timeout=self._pi_xyz_timeout)
             #read_termination=b'\x03')
+
+        self.set_velocity({'x': self._vel_default,
+                           'y': self._vel_default,
+                           'z': self._vel_default})
 
         return 0
 
@@ -195,7 +200,6 @@ class MotorStagePI(Base, MotorInterface):
         constraints[axis2['label']] = axis2
 
         return constraints
-
 
     def move_rel(self, param_dict):
         """Moves stage in given direction (relative movement)
@@ -373,22 +377,21 @@ class MotorStagePI(Base, MotorInterface):
                     param_dict[axis_label] = status
 
                     #self.log.debug(f"return code in movevement: {status}")
-                    self.log.debug(f"Updating status dict: {param_dict}")
+                    #self.log.debug(f"Updating status dict: {param_dict}")
             else:
                 for axis_label in constraints:
                     status = self._ask_xyz(axis_label, 'TS', nchunks=3).split(":",1)[1]
                     param_dict[axis_label] = status
 
                     #self.log.debug(f"return code in movevement: {status}")
-                    self.log.debug(f"Updating status dict: {param_dict}")
+                    #self.log.debug(f"Updating status dict: {param_dict}")
 
             return param_dict
         except:
             self.log.error('Status request unsuccessful')
             return -1
 
-
-    def calibrate(self, param_list=None):
+    def calibrate(self, param_list=None, direction=1):
         """ Calibrates the stage.
 
         @param dict param_list: param_list: optional, if a specific calibration
@@ -396,6 +399,10 @@ class MotorStagePI(Base, MotorInterface):
                                 needed axis should be passed in the param_list.
                                 If nothing is passed, then all connected axis
                                 will be calibrated.
+        @param int direction:   0: positive
+                                1: negative
+                                2: auto (standard stages)
+                                3: negative auto
 
         After calibration the stage moves to home position which will be the
         zero point for the passed axis.
@@ -403,18 +410,17 @@ class MotorStagePI(Base, MotorInterface):
         @return dict pos: dictionary with the current position of the ac#xis
         """
 
+        if direction not in [0,1,2,3]:
+            raise ValueError(f"Unsupported direction id {direction}. Check manual!")
 
-        #constraints = self.get_constraints()
         param_dict = {}
         try:
             for axis_label in param_list:
-                self._write_xyz(axis_label,'FE2')
-            while not self._motor_stopped():
-                time.sleep(0.2)
-            for axis_label in param_list:
-                self._write_xyz(axis_label,'DH')
+                self._write_xyz(axis_label,f'FE{int(direction)}')
+            self.log.info(f"Motors {param_list} are now slowly homing."
+                          " Remember to finish_calibrate() afterwards!")
         except:
-            self.log.error('Calibration did not work')
+            self.log.exception('Calibration did not work: ')
 
         for axis_label in param_list:
             param_dict[axis_label] = 0.0
@@ -422,6 +428,26 @@ class MotorStagePI(Base, MotorInterface):
 
         pos = self.get_pos()
         return pos
+
+    def finish_calibrate(self, param_list=None):
+        """
+        Sets the current position as zero. Should be called after the motors
+        have stopped after calibrate().
+        :param param_list:
+        :return:
+        """
+
+        if not self._motor_stopped():
+            self.log.warning("Motors still moving. Couldn't finish calibration.")
+            pos = self.get_pos()
+            return pos
+
+        for axis_label in param_list:
+            self._write_xyz(axis_label, 'DH')
+
+        pos = self.get_pos()
+        return pos
+
 
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes in m/s.
@@ -608,7 +634,7 @@ class MotorStagePI(Base, MotorInterface):
                 self.log.exception("Failed: ")
             #self.log.debug(f"return code in movevement: {tmp0}")
             param_dict[axis_label] = tmp0%2
-            self.log.debug(f"Updating movement dict: {param_dict}")
+            #self.log.debug(f"Updating movement dict: {param_dict}")
 
         return param_dict
 

@@ -172,8 +172,8 @@ class MotorRotationZaber(Base, MotorInterface):
                 self._write_rot([1,20,data])
                 pos[axis_label] = self._read_answer_rot() * self._micro_step_size  # stage sends signal after motion finished
         except:
-            self.log.error('absolute movement of zaber rotation stage is not possible')
             pos = self.get_pos(param_dict.keys())
+            self.log.exception(f'Absolute movement to {angle}° ({data}) is not possible, pos: {pos}: ')
         return pos
 
 

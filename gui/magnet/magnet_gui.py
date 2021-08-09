@@ -308,8 +308,11 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_odmr_low_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_low_fitfunction_list)
         self._mw.align_2d_odmr_low_fit_func_ComboBox.setCurrentIndex(1)
         self._mw.align_2d_odmr_low_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_center_freq)
+        self._mw.align_2d_odmr_low_center_freq_DSpinBox.setMaximum(10e9)
         self._mw.align_2d_odmr_low_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_range_freq)
+        self._mw.align_2d_odmr_low_range_freq_DSpinBox.setMaximum(10e9)
         self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq)
+        self._mw.align_2d_odmr_low_step_freq_DSpinBox.setMaximum(1e9)
         self._mw.align_2d_odmr_low_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_power)
         self._mw.align_2d_odmr_low_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_runtime)
 
@@ -1132,7 +1135,9 @@ class MagnetGui(GUIBase):
             self._magnet_logic.odmr_2d_single_trans = self._mw.odmr_2d_single_trans_CheckBox.isChecked()
 
             if self._mw.odmr_2d_single_trans_CheckBox.isChecked():
-                self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'ODMR transition contrast', units='%')
+                self._mw.alignment_2d_cb_GraphicsView.setLabel('right',
+                                                               f'ODMR {self._magnet_logic._2d_odmr_measure}',
+                                                               units='')
             else:
                 self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Half ODMR splitting', units='Hz')
 
@@ -1420,10 +1425,13 @@ class MagnetGui(GUIBase):
     def _odmr_single_trans_alignment_changed(self):
         """ Adjust the GUI display if only one ODMR transition is used. """
 
+        """
         if self._mw.odmr_2d_single_trans_CheckBox.isChecked():
             self._mw.odmr_2d_high_trans_GroupBox.setVisible(False)
         else:
             self._mw.odmr_2d_high_trans_GroupBox.setVisible(True)
+        """
+
 
     def update_from_roi_magnet(self, pos):
         """The user manually moved the XY ROI, adjust all other GUI elements accordingly
