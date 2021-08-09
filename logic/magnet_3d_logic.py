@@ -20,8 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.hardware.magnet.magnet_3d import magnet_3d
-import time
+import numpy as np
 
 import numpy as np
 from qtpy import QtCore
@@ -43,6 +42,33 @@ class MagnetLogic(GenericLogic):
     sigScanPixel = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
+
+        # initialize variables with standard values
+        # the GUI takes these as initial values as well
+        self.phi_min = 0
+        self.phi_max = 360
+        self.n_phi = 10
+        self.phi = 0
+        self.theta_min = 0
+        self.theta_max = 100
+        self.n_theta = 6
+        self.theta = 0
+        self.B = 0.01
+        self.int_time = 1
+        self.reps = 1
+
+        # booleans for the scan
+        self.abort_scan = False
+        self.scanning_finished = False
+
+        # set up the image array for the plot
+        self.thetaPhiImage = np.zeros((self.n_theta,self.n_phi))
+        # matrix for testing
+        self.thetaPhiImage = np.random.rand(self.n_theta,self.n_phi)
+        for i in range(self.n_theta):
+            for j in range(self.n_phi):
+                self.thetaPhiImage[i,j] = 10*i+j
+
         super().__init__(config=config, **kwargs)
 
 
@@ -61,25 +87,13 @@ class MagnetLogic(GenericLogic):
         self.sigInitNextPixel.connect(self._init_pixel)
         self.sigScanPixel.connect(self._scan_pixel)
 
-        # initialize variables with standard values
-        # the GUI takes these as initial values as well
-        self.phi_min = 0
-        self.phi_max = 360
-        self.n_phi = 5
-        self.phi = 0
-        self.theta_min = 0
-        self.theta_max = 180
-        self.n_theta = 5
-        self.theta = 0
-        self.B = 0.01
-        self.int_time = 1
-        self.reps = 1
+        
 
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
-        # self._magnet_3d.on_deactivate()
-        print('deactivating magnet')
+        # deactivates 3d magnet, rmaps it back to zero
+        self._magnet_3d.on_deactivate()
 
     #--------------------------------------------
     #functions to store values as class objects
@@ -147,15 +161,14 @@ class MagnetLogic(GenericLogic):
         self.thetas = np.linspace(self.theta_min, self.theta_max, self.n_theta)
         self.phis = np.linspace(self.phi_min, self.phi_max, self.n_phi)
         #calculate dimension of the image
-        self.n_lines = len(self.thetas)
-        self.n_pixels = len(self.phis)
-        # set index of the scan line to -1, goes to n_lines
-        # we don't use zero because it will be increased by 1 before it is used the first time
+        self.n_lines = self.n_theta
+        self.n_pixels = self.n_phi
+        # set index of the scan line to 0, goes to n_lines
         self._line_counter = 0
         # index of the pixel in the current line. It goes up to n_pixels.
         self._pixel_counter = 0
 
-        #set up the array for the plot
+        # set up the array for the plot
         self.thetaPhiImage = np.zeros((self.n_lines,self.n_pixels))
 
         #start scan of first line
@@ -170,6 +183,7 @@ class MagnetLogic(GenericLogic):
         # stop if last line is done
         if self._line_counter == self.n_lines:
             print('Scan done')
+            self.scanning_finished = True
             return 0
         # else go to next line
         else:
@@ -179,6 +193,9 @@ class MagnetLogic(GenericLogic):
             self.sigInitNextPixel.emit()
 
     def _init_pixel(self):
+        if self.abort_scan:
+            self.scanning_finished = True
+            return
         # change B field
         B = self.B
         theta = self.thetas[self._line_counter]
@@ -238,4 +255,12 @@ class MagnetLogic(GenericLogic):
         # else, go to next pixel
         else:
             self.sigInitNextPixel.emit()
+
+    def _set_B_field(self):
+        """Calls ramp with class values."""
+        B = self.B
+        phi = self.phi
+        theta = self.theta
+        target_field_polar = [B,theta,phi]
+        self.ramp(target_field_polar)
     
