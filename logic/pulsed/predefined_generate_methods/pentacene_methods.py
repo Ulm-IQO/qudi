@@ -1065,7 +1065,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
 
     def generate_pol_ise(self, name='ise_pen', t_laser=1e-6, f_res='', df_mw_sweep=10e6,
-                                    mw_sweep_speed=3e12,
+                                    mw_sweep_speed=3e12, amp_mw_sweep=0.25,
                                    jump_channel='', add_gate_ch='d_ch4', both_sweep_polarities=False):
 
         created_blocks = list()
@@ -1101,14 +1101,14 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         mw_sweep_element = self._get_mw_element_linearchirp(length=t_mw_ramp,
                                                           increment=0,
-                                                          amplitude=self.microwave_amplitude,
+                                                          amplitude=amp_mw_sweep,
                                                           start_freq=mw_freq_start,
                                                           stop_freq=mw_freq_end,
                                                           phase=0)
 
         mw_sweep_depol_element = self._get_mw_element_linearchirp(length=t_mw_ramp,
                                                                  increment=0,
-                                                                 amplitude=self.microwave_amplitude,
+                                                                 amplitude=amp_mw_sweep,
                                                                  start_freq=mw_freq_end,
                                                                  stop_freq=mw_freq_start,
                                                                  phase=0)
@@ -1439,9 +1439,9 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
 
     def generate_pol_ramsey_rf_dd(self, name='ise+ramsey_pen', t_laser=1e-6, mw_sweep_speed=3e12, f_ise_res=2e9,
-                                df_mw_sweep=10e6, jump_channel='',
+                                df_mw_sweep=10e6, amp_mw_sweep=0.25, jump_channel='',
                                 tau=1.0e-6, n_tau=1,
-                                n_order_pi_rf=2, f_rf=100e6, t_pi_rf=10e-6, rf_channel="a_ch2", dd_type=DDMethods.SE,
+                                n_order_pi_rf=2, f_rf=100e6, amp_rf=0.25, t_pi_rf=10e-6, rf_channel="a_ch2", dd_type=DDMethods.SE,
                                 alternating=False):
 
         def get_pi_rf_element(xphase):
@@ -1450,7 +1450,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
             return self._get_rf_element(length=t_pi_rf,
                                         increment=0,
                                         pulse_ch=rf_channel,
-                                        amp=self.microwave_amplitude,
+                                        amp=amp_rf,
                                         freq=f_rf,
                                         phase=xphase)
 
@@ -1463,10 +1463,12 @@ class PentaceneMethods(PredefinedGeneratorBase):
         delay_element = self._get_delay_gate_element()
 
         ise_block, _, _ = self.generate_pol_ise(name='ise', t_laser=t_laser, f_res=f_ise_res, df_mw_sweep=df_mw_sweep,
-                                                mw_sweep_speed=mw_sweep_speed,
+                                                mw_sweep_speed=mw_sweep_speed, amp_mw_sweep=amp_mw_sweep,
                                                 jump_channel=jump_channel, add_gate_ch='',
                                                 both_sweep_polarities=False)
         # Ramsey, -90° readout
+        init_nv_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0, add_gate_ch="")
         ramsey_block, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=tau, tau_step=0,
                                                       num_of_points=1,
                                                       alternating=False, read_phases_degree="-90, 90",
@@ -1489,15 +1491,28 @@ class PentaceneMethods(PredefinedGeneratorBase):
         ramsey_block_alt = ramsey_block_alt[0]
 
         seq_block = PulseBlock(name=name)
+        i_laser = 0
+        laser_ignore = []
         for n in range(n_order_pi_rf):
             for pulse_number in range(dd_type.suborder):
                 # single order of rf dd includes multiple NV Ramseys and readouts
                 for i in range(n_tau):
                     seq_block.extend(ramsey_block.element_list)
+                    i_laser += 1
                     if alternating:
                         seq_block.extend(ramsey_block_alt.element_list)
-                    seq_block.append(get_pi_rf_element(dd_type.phases[pulse_number]))
-                    seq_block.append(idle_pi_element)
+                        i_laser += 1
+                seq_block.append(get_pi_rf_element(dd_type.phases[pulse_number]))
+                # to mitigate ring down of rf amp: short wait time between rf and mw
+                # not sure whether effective
+                seq_block.append(idle_pi_element)
+                # laser init, because we can't use the last readout (before rf pi)
+                seq_block.append(init_nv_element)
+                seq_block.append(delay_element)
+                seq_block.append(waiting_element)
+                laser_ignore.append(i_laser)
+                i_laser += 1
+
 
         n_rf_pi = n_order_pi_rf * dd_type.suborder
 
@@ -1509,6 +1524,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         # ise block
         seq_block.extend(ise_block.element_list)
+        laser_ignore.append(i_laser)
+        i_laser += 1
         seq_block.append(delay_element)
         seq_block.append(waiting_element)
 
@@ -1516,7 +1533,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_blocks.append(seq_block)
 
         # Create block ensemble and append to created_ensembles list
-        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
         block_ensemble.append((seq_block.name, 0))
 
         # Create and append sync trigger block if needed
@@ -1527,7 +1544,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         number_of_lasers = 2*number_of_lasers if alternating else number_of_lasers
 
         block_ensemble.measurement_information['alternating'] = alternating
-        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore  # last laser is ise!
         block_ensemble.measurement_information['controlled_variable'] = np.arange(0, n_datapoints, 1)
         block_ensemble.measurement_information['controlled_variable_real'] = np.repeat(tau, n_datapoints)
         block_ensemble.measurement_information['units'] = ('a.u.', '')
