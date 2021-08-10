@@ -36,10 +36,20 @@ class MagnetLogic(GenericLogic):
     magnet_3d = Connector(interface='magnet_3d')
     timetagger = Connector(interface='TT')
 
-    # create signals
+    # create signals internal
     sigScanNextLine = QtCore.Signal()
     sigInitNextPixel = QtCore.Signal()
     sigScanPixel = QtCore.Signal()
+
+    # create signals to hardware
+    sigPause = QtCore.Signal()
+    sigContinue = QtCore.Signal()
+    sigRampZero = QtCore.Signal()
+    sigGetPos = QtCore.Signal()
+
+    # create signals to gui
+    sigAngleChanged = QtCore.Signal()
+    sigGotPos = QtCore.Signal(list)
 
     def __init__(self, config, **kwargs):
 
@@ -48,10 +58,12 @@ class MagnetLogic(GenericLogic):
         self.phi_min = 0
         self.phi_max = 360
         self.n_phi = 10
+        self.phis = np.linspace(self.phi_min, self.phi_max, self.n_phi)
         self.phi = 0
         self.theta_min = 0
         self.theta_max = 100
         self.n_theta = 6
+        self.thetas = np.linspace(self.theta_min, self.theta_max, self.n_theta)
         self.theta = 0
         self.B = 0.01
         self.int_time = 1
@@ -81,6 +93,10 @@ class MagnetLogic(GenericLogic):
         self._timetagger = self.timetagger()
 
         #connect signals to hardware
+        self.sigPause.connect(self._magnet_3d.pause_ramp)
+        self.sigContinue.connect(self._magnet_3d.continue_ramp)
+        self.sigRampZero.connect(self._magnet_3d.ramp_to_zero)
+        
 
         #connect signals internally
         self.sigScanNextLine.connect(self._scan_line)
@@ -154,6 +170,18 @@ class MagnetLogic(GenericLogic):
         self._magnet_3d.ramp(target_field_cartesian)
 
         return 0
+
+    def pause_ramp(self):
+        """Pauses the ramp."""
+        self.sigPause.emit()
+
+    def continue_ramp(self):
+        """Continues the ramp."""
+        self.sigContinue.emit()
+
+    def ramp_to_zero(self):
+        """Tells the hardware to ramp the B field to zero."""
+        self.sigRampZero.emit()
 
     def start_scan(self):
         """"""
@@ -263,4 +291,63 @@ class MagnetLogic(GenericLogic):
         theta = self.theta
         target_field_polar = [B,theta,phi]
         self.ramp(target_field_polar)
+
+    def get_field_cartesian(self):
+        """Returns list with field in x,y,z direction."""
+        field_xyz = self._magnet_3d.get_field()
+        return field_xyz
+
+    def get_field_spherical(self):
+        """Returns list with spherical field parameters [B,theta,phi]."""
+        [x,y,z] = self._magnet_3d.get_field()
+
+        B = (x**2 + y**2 + z**2)**0.5
+
+        if z == 0:
+            theta = 90
+        else:
+            theta = 180/np.pi*np.arctan((x**2 + y**2)**0.5/z)
+
+        if x==0:
+            if y >= 0:
+                phi = 90
+            else:
+                phi = 270
+        else:
+            phi = 180/np.pi*np.arctan(y/x)
+
+        return [B,theta,phi]
+
+    def _get_field_spherical_clicked(self):
+        field_spherical = self.get_field_spherical()
+        self.sigGotPos.emit()
     
+    def _decrease_B(self,step):
+        field_spherical = self.get_field_spherical()
+        field_spherical[0] = field_spherical[0] - step
+        self.ramp(target_field_polar=field_spherical)
+
+    def _increase_B(self,step):
+        field_spherical = self.get_field_spherical()
+        field_spherical[0] = field_spherical[0] + step
+        self.ramp(target_field_polar=field_spherical)
+
+    def _decrease_theta(self,step):
+        field_spherical = self.get_field_spherical()
+        field_spherical[1] = field_spherical[1] - step
+        self.ramp(target_field_polar=field_spherical)
+
+    def _increase_theta(self,step):
+        field_spherical = self.get_field_spherical()
+        field_spherical[1] = field_spherical[1] + step
+        self.ramp(target_field_polar=field_spherical)
+
+    def _decrease_phi(self,step):
+        field_spherical = self.get_field_spherical()
+        field_spherical[2] = field_spherical[2] - step
+        self.ramp(target_field_polar=field_spherical)
+
+    def _increase_phi(self,step):
+        field_spherical = self.get_field_spherical()
+        field_spherical[2] = field_spherical[2] + step
+        self.ramp(target_field_polar=field_spherical)
