@@ -99,6 +99,25 @@ class magnet_3d(Base):
             self.safe_ramp(target_field)
         return 0
 
+    def pause_ramp(self):
+        """Pauses the ramping process."""
+        self._magnet_x.pause_ramp()
+        self._magnet_y.pause_ramp()
+        self._magnet_z.pause_ramp()
+        return 0
+    
+    def continue_ramp(self):
+        """Continues the ramping process."""
+        self._magnet_x.continue_ramp()
+        self._magnet_y.continue_ramp()
+        self._magnet_z.continue_ramp()
+
+    def ramp_to_zero(self):
+        """Ramps all three 1D magnets to zero."""
+        self._magnet_x.ramp_to_zero()
+        self._magnet_y.ramp_to_zero()
+        self._magnet_z.ramp_to_zero()
+        
 
     def fast_ramp(self, target_field=[0,0,0]):
         """Ramps all three axes at once."""
