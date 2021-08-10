@@ -132,7 +132,7 @@ class MagnetGui(GUIBase):
         self.sigChangeB.connect(self._magnetlogic.ramp)
         self.sigStopRamp.connect(self._magnetlogic.pause_ramp)
         self.sigRampZero.connect(self._magnetlogic.ramp_to_zero)
-        self.sigGetPos.connect(self._magnetlogic.get_field_spherical)
+        self.sigGetPos.connect(self._magnetlogic.get_field_spherical_clicked)
         self.sigDecreaseB.connect(self._magnetlogic._decrease_B)
         self.sigIncreaseB.connect(self._magnetlogic._increase_B)
         self.sigDecreaseTheta.connect(self._magnetlogic._decrease_theta)
@@ -383,9 +383,9 @@ class MagnetGui(GUIBase):
 
     def change_abs_B_field(self):
         """Tells the logic to change the B field."""
-        B = self._mw.rotate_abs_B_DoubleSpinBox.getValue()
-        theta = self._mw.rotate_abs_theta_DoubleSpinBox.getValue()
-        phi = self._mw.rotate_abs_phi_DoubleSpinBox.getValue()
+        B = self._mw.rotate_abs_B_DoubleSpinBox.value()
+        theta = self._mw.rotate_abs_theta_DoubleSpinBox.value()
+        phi = self._mw.rotate_abs_phi_DoubleSpinBox.value()
 
         self.sigChangeB.emit([B,theta,phi])
 
@@ -400,44 +400,50 @@ class MagnetGui(GUIBase):
     def get_pos_clicked(self):
         self.sigGetPos.emit()
     
-    def update_current_pos_display(self,curr_pos):
+    def update_current_pos_display(self,curr_pos_spherical,curr_pos_cartesian):
         """Updates the current pos in the gui."""
-        B = curr_pos[0]
-        theta = curr_pos[1]
-        phi = curr_pos[2]
+        B = curr_pos_spherical[0]
+        theta = curr_pos_spherical[1]
+        phi = curr_pos_spherical[2]
+        Bx = curr_pos_cartesian[0]
+        By = curr_pos_cartesian[1]
+        Bz = curr_pos_cartesian[2]
 
         self._mw.curr_pos_B_DoubleSpinBox.setValue(B)
         self._mw.curr_pos_theta_DoubleSpinBox.setValue(theta)
         self._mw.curr_pos_phi_DoubleSpinBox.setValue(phi)
+        self._mw.curr_pos_Bx_DoubleSpinBox.setValue(Bx)
+        self._mw.curr_pos_By_DoubleSpinBox.setValue(By)
+        self._mw.curr_pos_Bz_DoubleSpinBox.setValue(Bz)
         
     def rotate_rel_B_m_PushButton_clicked(self):
         """Tells the logic decrease B by a single step."""
-        step = self._mw.rotate_rel_B_DoubleSpinBox.getValue()
+        step = self._mw.rotate_rel_B_DoubleSpinBox.value()
         self.sigDecreaseB.emit(step)
     
     def rotate_rel_B_p_PushButton_clicked(self):
         """Tells the logic increase B by a single step."""
-        step = self._mw.rotate_rel_B_DoubleSpinBox.getValue()
+        step = self._mw.rotate_rel_B_DoubleSpinBox.value()
         self.sigIncreaseB.emit(step)
 
     def rotate_rel_theta_m_PushButton_clicked(self):
         """Tells the logic decrease theta by a single step."""
-        step = self._mw.rotate_rel_theta_DoubleSpinBox.getValue()
+        step = self._mw.rotate_rel_theta_DoubleSpinBox.value()
         self.sigDecreaseTheta.emit(step)
     
     def rotate_rel_theta_p_PushButton_clicked(self):
         """Tells the logic increase theta by a single step."""
-        step = self._mw.rotate_rel_theta_DoubleSpinBox.getValue()
+        step = self._mw.rotate_rel_theta_DoubleSpinBox.value()
         self.sigIncreaseTheta.emit(step)
 
     def rotate_rel_phi_m_PushButton_clicked(self):
         """Tells the logic decrease phi by a single step."""
-        step = self._mw.rotate_rel_phi_DoubleSpinBox.getValue()
+        step = self._mw.rotate_rel_phi_DoubleSpinBox.value()
         self.sigDecreasePhi.emit(step)
     
     def rotate_rel_phi_p_PushButton_clicked(self):
         """Tells the logic increase phi by a single step."""
-        step = self._mw.rotate_rel_phi_DoubleSpinBox.getValue()
+        step = self._mw.rotate_rel_phi_DoubleSpinBox.value()
         self.sigIncreasePhi.emit(step)
     
     #########################################################################
