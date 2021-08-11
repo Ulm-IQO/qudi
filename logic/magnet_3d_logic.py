@@ -320,7 +320,7 @@ class MagnetLogic(GenericLogic):
 
     def _get_field_spherical_clicked(self):
         field_spherical = self.get_field_spherical()
-        field_cartesian = self.get_field_cartesian
+        field_cartesian = self.get_field_cartesian()
         self.sigGotPos.emit(field_spherical, field_cartesian)
     
     def _decrease_B(self,step):
