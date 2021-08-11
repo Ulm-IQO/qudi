@@ -213,7 +213,7 @@ class magnet_3d(Base):
         status_x = self._magnet_x.get_ramping_state()
         status_y = self._magnet_y.get_ramping_state()
         status_z = self._magnet_z.get_ramping_state()
-        status = [status_x[0],status_y[0],status_z[0]]
+        status = [status_x,status_y,status_z]
         return status
 
 

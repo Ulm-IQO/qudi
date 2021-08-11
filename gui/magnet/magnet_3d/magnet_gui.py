@@ -406,21 +406,27 @@ class MagnetGui(GUIBase):
     def start_2d_alignment_clicked(self):
         """Sends the params for the 2d scan to the logic and tells it to start a scan.
         """
+        # deactivate magnet field control buttons
+        self.deactivate_control_buttons()
+
         # change the parameters in the logic
         self._magnetlogic.B = self._mw.scan_B_doubleSpinBox.value()
         self._magnetlogic.theta_min = self._mw.theta_min_doubleSpinBox.value()
         self._magnetlogic.theta_max = self._mw.theta_max_doubleSpinBox.value()
-        self._magnetlogic.n_theta = self._mw.n_theta_doubleSpinBox.value()
+        self._magnetlogic.n_theta = int(self._mw.n_theta_doubleSpinBox.value())
         self._magnetlogic.phi_min = self._mw.phi_min_doubleSpinBox.value()
         self._magnetlogic.phi_max = self._mw.phi_max_doubleSpinBox.value()
-        self._magnetlogic.n_phi = self._mw.n_phi_doubleSpinBox.value()
+        self._magnetlogic.n_phi = int(self._mw.n_phi_doubleSpinBox.value())
         self.int_time = self._mw.int_time_doubleSpinBox.value()
-        self.reps = self._mw.reps_doubleSpinBox.value()
+        self.reps = int(self._mw.reps_doubleSpinBox.value())
+
         # start scan
         self.sigStartScan.emit()
 
     def abort_2d_alignment_clicked(self):
-        """Does nothing so far"""
+        """ """
+        # reactivate magnet field control buttons
+        self.reactivate_control_buttons()
         # This variable is checked before every pixel.
         # Pixel is only scanned if variable is True.
         self._magnetlogic.abort_scan = True
@@ -1430,7 +1436,7 @@ class MagnetGui(GUIBase):
         self._continue_2d_fluorescence_alignment = True
         self.start_2d_alignment_clicked()
 
-    def abort_2d_alignment_clicked(self):
+    def abort_2d_alignment_clicked_ulm(self):
         """ Stops the current Fluorescence alignment. """
 
         self._change_display_to_stop_2d_alignment()

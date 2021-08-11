@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+import time
 
 import numpy as np
 from qtpy import QtCore
@@ -41,6 +42,7 @@ class MagnetLogic(GenericLogic):
     sigScanNextLine = QtCore.Signal()
     sigInitNextPixel = QtCore.Signal()
     sigScanPixel = QtCore.Signal()
+    sigCheckRampDone = QtCore.Signal()
 
     # create signals to hardware
     sigPause = QtCore.Signal()
@@ -107,6 +109,7 @@ class MagnetLogic(GenericLogic):
         self.sigScanNextLine.connect(self._scan_line)
         self.sigInitNextPixel.connect(self._init_pixel)
         self.sigScanPixel.connect(self._scan_pixel)
+        self.sigCheckRampDone.connect(self._check_ramp_done)
 
         
 
@@ -194,6 +197,7 @@ class MagnetLogic(GenericLogic):
 
     def start_scan(self):
         """"""
+        self.abort_scan = False
         #set up the array for the angles
         self.thetas = np.linspace(self.theta_min, self.theta_max, self.n_theta)
         self.phis = np.linspace(self.phi_min, self.phi_max, self.n_phi)
@@ -232,6 +236,7 @@ class MagnetLogic(GenericLogic):
     def _init_pixel(self):
         if self.abort_scan:
             self.scanning_finished = True
+            print('stopping the scan')
             return
         # change B field
         B = self.B
@@ -253,10 +258,18 @@ class MagnetLogic(GenericLogic):
         """
         status = self._magnet_3d.get_ramping_state()
         if status == [2,2,2]:
-            self._pixel_timer.stop()
-            del self._pixel_timer
-            self.sigScanPixel.emit()
-
+            self.sigCheckRampDone.emit()
+        
+    
+    def _check_ramp_done(self):
+        """Kills the timer and sends signal to scan next pixel.
+        
+        We need a second function that is not inside the event loop to kill the timer.
+        """
+        print('stopping timer')
+        self._pixel_timer.stop()
+        del self._pixel_timer
+        self.sigScanPixel.emit()
 
     def _scan_pixel(self):
         """Gets countrate for current pixel.
@@ -268,15 +281,17 @@ class MagnetLogic(GenericLogic):
         if self.int_time == 0:
             # take only one measurement
             # position 2 gives sum of both APDs
-            counts = ctr.getData()[2]
+            counts = ctr.getData()[-1]
         else:
+            print('averaging')
             #get countrate every 0.1 s
             delay_time = 0.1
             n_points = round(self.int_time/delay_time)
             counts = 0
             for i in range(n_points):
                 # position 2 gives sum of both APDs
-                counts += ctr.getData()[2]
+                counts += ctr.getData()[-1]
+                time.sleep(delay_time)
                 delay(delay_time)
             counts = counts/n_points
 
