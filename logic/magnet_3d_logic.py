@@ -36,6 +36,7 @@ class MagnetLogic(GenericLogic):
     magnet_3d = Connector(interface='magnet_3d')
     timetagger = Connector(interface='TT')
 
+
     # create signals internal
     sigScanNextLine = QtCore.Signal()
     sigInitNextPixel = QtCore.Signal()
@@ -51,6 +52,7 @@ class MagnetLogic(GenericLogic):
     sigAngleChanged = QtCore.Signal()
     sigGotPos = QtCore.Signal(list,list)
     sigRampFinished = QtCore.Signal()
+    sigPixelFinished = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
 
@@ -62,8 +64,8 @@ class MagnetLogic(GenericLogic):
         self.phis = np.linspace(self.phi_min, self.phi_max, self.n_phi)
         self.phi = 0
         self.theta_min = 0
-        self.theta_max = 100
-        self.n_theta = 6
+        self.theta_max = 180
+        self.n_theta = 10
         self.thetas = np.linspace(self.theta_min, self.theta_max, self.n_theta)
         self.theta = 0
         self.B = 0.01
@@ -250,7 +252,7 @@ class MagnetLogic(GenericLogic):
         Also stops the timer.
         """
         status = self._magnet_3d.get_ramping_state()
-        if status == ['2','2','2']:
+        if status == [2,2,2]:
             self._pixel_timer.stop()
             del self._pixel_timer
             self.sigScanPixel.emit()
@@ -281,6 +283,9 @@ class MagnetLogic(GenericLogic):
         # write counts to pixel in image matrix
         self.thetaPhiImage[self._pixel_counter, self._line_counter] = counts
 
+        # hopefully this does not break anything
+        self.sigPixelFinished.emit()
+
         # increase pixel counter
         self._pixel_counter += 1
         #go to next line if line is finished
@@ -310,12 +315,12 @@ class MagnetLogic(GenericLogic):
 
         B = (x**2 + y**2 + z**2)**0.5
 
-        if z == 0:
+        if np.isclose(z, 0.0):
             theta = 90
         else:
             theta = 180/np.pi*np.arctan((x**2 + y**2)**0.5/z)
 
-        if x==0:
+        if np.isclose(x, 0.0):
             if y >= 0:
                 phi = 90
             else:
