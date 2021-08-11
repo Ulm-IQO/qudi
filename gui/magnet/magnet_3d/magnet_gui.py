@@ -144,6 +144,7 @@ class MagnetGui(GUIBase):
         # connect signals from logic
         # self._magnetlogic.sigAngleChanged.connect()
         self._magnetlogic.sigGotPos.connect(self.update_current_pos_display)
+        self._magnetlogic.sigRampFinished.connect(self.reactivate_control_buttons)
 
         # make the window for the fluorescence plot appear
         self._create_move_abs_control() 
@@ -231,6 +232,17 @@ class MagnetGui(GUIBase):
 
         return 0
         
+    def on_deactivate(self):
+        """ Deactivate the module properly.
+        """
+        self._mw.close()
+
+    def show(self):
+        """Make window visible and put it above all other windows. """
+        QtWidgets.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
+
     def update_from_roi_magnet(self, pos):
         """The user manually moved the XY ROI, position label accordingly
 
@@ -383,6 +395,8 @@ class MagnetGui(GUIBase):
 
     def change_abs_B_field(self):
         """Tells the logic to change the B field."""
+        self.deactivate_control_buttons()
+
         B = self._mw.rotate_abs_B_DoubleSpinBox.value()
         theta = self._mw.rotate_abs_theta_DoubleSpinBox.value()
         phi = self._mw.rotate_abs_phi_DoubleSpinBox.value()
@@ -391,6 +405,7 @@ class MagnetGui(GUIBase):
 
     def stop_ramp_clicked(self):
         """Tells the logic to stop the ramping."""
+        self.reactivate_control_buttons()
         self.sigStopRamp.emit()
 
     def ramp_to_zero_clicked(self):
@@ -418,34 +433,64 @@ class MagnetGui(GUIBase):
         
     def rotate_rel_B_m_PushButton_clicked(self):
         """Tells the logic decrease B by a single step."""
+        self.deactivate_control_buttons()
         step = self._mw.rotate_rel_B_DoubleSpinBox.value()
         self.sigDecreaseB.emit(step)
     
     def rotate_rel_B_p_PushButton_clicked(self):
         """Tells the logic increase B by a single step."""
+        self.deactivate_control_buttons()
         step = self._mw.rotate_rel_B_DoubleSpinBox.value()
         self.sigIncreaseB.emit(step)
 
     def rotate_rel_theta_m_PushButton_clicked(self):
         """Tells the logic decrease theta by a single step."""
+        self.deactivate_control_buttons()
         step = self._mw.rotate_rel_theta_DoubleSpinBox.value()
         self.sigDecreaseTheta.emit(step)
     
     def rotate_rel_theta_p_PushButton_clicked(self):
         """Tells the logic increase theta by a single step."""
+        self.deactivate_control_buttons()
         step = self._mw.rotate_rel_theta_DoubleSpinBox.value()
         self.sigIncreaseTheta.emit(step)
 
     def rotate_rel_phi_m_PushButton_clicked(self):
         """Tells the logic decrease phi by a single step."""
+        self.deactivate_control_buttons()
         step = self._mw.rotate_rel_phi_DoubleSpinBox.value()
         self.sigDecreasePhi.emit(step)
     
     def rotate_rel_phi_p_PushButton_clicked(self):
         """Tells the logic increase phi by a single step."""
+        self.deactivate_control_buttons()
         step = self._mw.rotate_rel_phi_DoubleSpinBox.value()
         self.sigIncreasePhi.emit(step)
     
+    def reactivate_control_buttons(self):
+        """Reactivates the buttons in the gui that control the B field.
+        """
+        status = True
+        self._mw.rotate_rel_B_m_PushButton.setEnabled(status)
+        self._mw.rotate_rel_B_p_PushButton.setEnabled(status)
+        self._mw.rotate_rel_theta_m_PushButton.setEnabled(status)
+        self._mw.rotate_rel_theta_p_PushButton.setEnabled(status)
+        self._mw.rotate_rel_phi_m_PushButton.setEnabled(status)
+        self._mw.rotate_rel_phi_p_PushButton.setEnabled(status)
+        self._mw.rotate_abs_PushButton.setEnabled(status)
+
+    def deactivate_control_buttons(self):
+        """Reactivates the buttons in the gui that control the B field.
+        """
+        status = False
+        self._mw.rotate_rel_B_m_PushButton.setEnabled(status)
+        self._mw.rotate_rel_B_p_PushButton.setEnabled(status)
+        self._mw.rotate_rel_theta_m_PushButton.setEnabled(status)
+        self._mw.rotate_rel_theta_p_PushButton.setEnabled(status)
+        self._mw.rotate_rel_phi_m_PushButton.setEnabled(status)
+        self._mw.rotate_rel_phi_p_PushButton.setEnabled(status)
+        self._mw.rotate_abs_PushButton.setEnabled(status)
+
     #########################################################################
     #                                                                       #
     #   EVERYTHING BELOW HERE IS ULM STUFF THAT I DID NOT WRITE AND/OR USE  #
@@ -710,7 +755,7 @@ class MagnetGui(GUIBase):
 
    
 
-    def on_deactivate(self):
+    def on_deactivate_ulm(self):
         """ Deactivate the module properly.
         """
         self._statusVariables['measurement_type'] = self.measurement_type
@@ -718,12 +763,6 @@ class MagnetGui(GUIBase):
         self._alignment_2d_cb_units = self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
 
         self._mw.close()
-
-    def show(self):
-        """Make window visible and put it above all other windows. """
-        QtWidgets.QMainWindow.show(self._mw)
-        self._mw.activateWindow()
-        self._mw.raise_()
 
    
 

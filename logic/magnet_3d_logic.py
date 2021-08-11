@@ -50,6 +50,7 @@ class MagnetLogic(GenericLogic):
     # create signals to gui
     sigAngleChanged = QtCore.Signal()
     sigGotPos = QtCore.Signal(list,list)
+    sigRampFinished = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
 
@@ -97,6 +98,8 @@ class MagnetLogic(GenericLogic):
         self.sigContinue.connect(self._magnet_3d.continue_ramp)
         self.sigRampZero.connect(self._magnet_3d.ramp_to_zero)
         
+        # connect signals from hardware
+        self._magnet_3d.sigRampFinished.connect(self._ramp_finished)
 
         #connect signals internally
         self.sigScanNextLine.connect(self._scan_line)
@@ -182,6 +185,10 @@ class MagnetLogic(GenericLogic):
     def ramp_to_zero(self):
         """Tells the hardware to ramp the B field to zero."""
         self.sigRampZero.emit()
+
+    def _ramp_finished(self):
+        """Takes the signal from hardware and passes it on to the gui."""
+        self.sigRampFinished.emit()
 
     def start_scan(self):
         """"""
