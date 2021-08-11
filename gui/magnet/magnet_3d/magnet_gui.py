@@ -98,6 +98,7 @@ class MagnetGui(GUIBase):
     sigIncreaseTheta = QtCore.Signal(float)
     sigDecreasePhi= QtCore.Signal(float) # float: how much (in degree) should phi decreased
     sigIncreasePhi = QtCore.Signal(float)
+    sigStartScan = QtCore.Signal()
 
     # status var
     _alignment_2d_cb_label = StatusVar('alignment_2d_cb_GraphicsView_text', 'Fluorescence')
@@ -139,27 +140,37 @@ class MagnetGui(GUIBase):
         self.sigIncreaseTheta.connect(self._magnetlogic._increase_theta)
         self.sigDecreasePhi.connect(self._magnetlogic._decrease_phi)
         self.sigIncreasePhi.connect(self._magnetlogic._increase_phi)
+        self.sigStartScan.connect(self._magnetlogic.start_scan)
 
 
         # connect signals from logic
         # self._magnetlogic.sigAngleChanged.connect()
         self._magnetlogic.sigGotPos.connect(self.update_current_pos_display)
         self._magnetlogic.sigRampFinished.connect(self.reactivate_control_buttons)
-
-        # make the window for the fluorescence plot appear
-        self._create_move_abs_control() 
+        self._magnetlogic.sigPixelFinished.connect(self._update_2d_graph_data)
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
         self.set_default_view_main_window()
 
+        # display default values
+        params = ['theta_min','theta_max', 'n_theta', 'phi_min', 'phi_max', 'n_phi', 'int_time', 'reps']
+        for param in params:
+            eval('self._mw.' + param + '_doubleSpinBox.setValue(self._magnetlogic.' + param + ')')
+        # B is named a bit differently
+        self._mw.scan_B_doubleSpinBox.setValue(self._magnetlogic.B)
+
         # connect the actions of the toolbar:
-        # TODO: adjust to my needs
         self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
 
         # get current magnet field
-        curr_pos_spherical = self._magnetlogic.get_field_spherical()
+        # THIS TRY STATEMENT IS JUST FOR DEBUGGING; REMOVE LATER
+        # TODO: remove Try statement
+        try:
+            curr_pos_spherical = self._magnetlogic.get_field_spherical()
+        except:
+            curr_pos_spherical = [0,0,0]
 
         # display current B field
         self._mw.curr_pos_B_DoubleSpinBox.setValue(curr_pos_spherical[0])
@@ -167,18 +178,15 @@ class MagnetGui(GUIBase):
         self._mw.curr_pos_phi_DoubleSpinBox.setValue(curr_pos_spherical[2])
 
         # update the values also of the absolute rotation display:
-        self._mw.rotete_abs_B_DoubleSpinBox.setValue(curr_pos_spherical[0])
+        self._mw.rotate_abs_B_DoubleSpinBox.setValue(curr_pos_spherical[0])
         self._mw.rotate_abs_theta_DoubleSpinBox.setValue(curr_pos_spherical[1])
         self._mw.rotate_abs_phi_DoubleSpinBox.setValue(curr_pos_spherical[2])
 
-        
-        # Connect signals
-
-
-        # TODO: adjust to my needs
-        self._2d_alignment_ImageItem = ScanImageItem(image=self._magnetlogic.get_2d_data_matrix())
+        # I copied this from the ulm version and just replaces axis0 and axis1
+        self._2d_alignment_ImageItem = ScanImageItem(image=self._magnetlogic.thetaPhiImage)
         self._mw.alignment_2d_GraphicsView.addItem(self._2d_alignment_ImageItem)
-        axis0, axis1 = self._magnetlogic.get_2d_axis_arrays()
+        axis0 = self._magnetlogic.phis
+        axis1 = self._magnetlogic.thetas
         step0 = axis0[1] - axis0[0]
         step1 = axis1[1] - axis1[0]
         self._2d_alignment_ImageItem.set_image_extent([[axis0[0]-step0/2, axis0[-1]+step0/2],
@@ -193,7 +201,7 @@ class MagnetGui(GUIBase):
 
         # make crosshair one pixel wide
         ini_width_crosshair = [
-            (self._magnetlogic.phiss[-1] - self._magnetlogic.phis[0]) / len(self._magnetlogic.phis),
+            (self._magnetlogic.phis[-1] - self._magnetlogic.phis[0]) / len(self._magnetlogic.phis),
             (self._magnetlogic.thetas[-1] - self._magnetlogic.thetas[0]) / len(self._magnetlogic.thetas)]
         self._mw.alignment_2d_GraphicsView.toggle_crosshair(True, movable=True)
         self._mw.alignment_2d_GraphicsView.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
@@ -226,7 +234,8 @@ class MagnetGui(GUIBase):
         # self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
         # self._mw.save_Action.triggered.connect(self.save_2d_plots_and_data)
 
-        # self._mw.run_stop_2d_alignment_Action.triggered.connect(self.run_stop_2d_alignment)
+        # trigger actions for 2d alignment
+        self._mw.run_stop_2d_alignment_Action.triggered.connect(self.run_stop_2d_alignment)
         # self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_2d_alignment)
         # # till here--------------------
 
@@ -254,117 +263,6 @@ class MagnetGui(GUIBase):
         y_pos = pos.y()
 
         self._mw.pos_show.setText('({0:.6f}, {1:.6f})'.format(x_pos, y_pos))
-
-
-    def _create_move_abs_control(self):
-        """ Create all the GUI elements to control a relative movement.
-
-        The generic variable name for a created QLable is:
-            move_abs_axis_{0}_Label
-        The generic variable name for a created QLable is:
-            move_abs_axis_{0}_Slider
-        The generic variable name for a created ScienDSpinBox is:
-            move_abs_axis_{0}_ScienDSpinBox
-        The generic variable name for a created QPushButton for move is:
-            move_abs_PushButton
-
-        These methods should not be called:
-        The generic variable name for a update method for the ScienDSpinBox:
-            _update_move_abs_{0}_dspinbox
-        The generic variable name for a update method for the QSlider:
-            _update_move_abs_{0}_slider
-
-        DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_move_abs_ScienDSpinBox with the appropriated
-        label, otherwise you will break the generality.
-        """
-
-        # TODO: Probably have to change quite a bit in here
-
-        constraints = self._magnetlogic.get_hardware_constraints()
-
-        for index, axis_label in enumerate(constraints):
-
-            label_var_name = 'move_abs_axis_{0}_Label'.format(axis_label)
-            setattr(self._mw, label_var_name, QtWidgets.QLabel(self._mw.move_abs_DockWidgetContents))
-            label_var = getattr(self._mw, label_var_name) # get the reference
-            # set axis_label for the label:
-            label_var.setObjectName(label_var_name)
-            label_var.setText(axis_label)
-
-            # make the steps of the splider as a multiple of 10
-            # smallest_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
-            smallest_step_slider = constraints[axis_label]['pos_step']
-
-            # add the label to the grid:
-            self._mw.move_abs_GridLayout.addWidget(label_var, index, 0, 1, 1)
-
-            # Set the ScienDSpinBox according to the grid
-            # this is the name prototype for the relative movement display
-            slider_obj_name = 'move_abs_axis_{0}_Slider'.format(axis_label)
-            setattr(self._mw, slider_obj_name, QtWidgets.QSlider(self._mw.move_abs_DockWidgetContents))
-            slider_obj = getattr(self._mw, slider_obj_name)
-            slider_obj.setObjectName(slider_obj_name)
-            slider_obj.setOrientation(QtCore.Qt.Horizontal)
-            #               dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
-
-            max_val = abs(constraints[axis_label]['pos_max'] - constraints[axis_label]['pos_min'])
-
-            # set the step size of the slider to a fixed resolution, that
-            # prevents really ugly rounding error behaviours in display.
-            # Set precision to nanometer scale, which is actually never reached.
-            max_steps = int(max_val/smallest_step_slider)
-
-            slider_obj.setMaximum(max_steps)
-            slider_obj.setMinimum(0)
-            #TODO: set the decimals also from the constraints!
-            #            slider_obj.setDecimals(3)
-            slider_obj.setSingleStep(1)
-            # slider_obj.setEnabled(False)
-
-            self._mw.move_abs_GridLayout.addWidget(slider_obj, index, 1, 1, 1)
-
-            # Set the ScienDSpinBox according to the grid
-            # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_abs_axis_{0}_ScienDSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.move_abs_DockWidgetContents))
-            dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
-            dspinbox_ref.setObjectName(dspinbox_ref_name)
-            #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
-
-            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
-            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
-
-            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
-            dspinbox_ref.setSingleStep(0.001, dynamic_stepping=False)
-            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
-
-            # set the horizontal size to 100 pixel:
-            dspinbox_ref.setMaximumSize(QtCore.QSize(80, 16777215))
-
-            self._mw.move_abs_GridLayout.addWidget(dspinbox_ref, index, 2, 1, 1)
-
-            # build a function to change the dspinbox value and connect a
-            # slidermove event to it:
-            func_name = '_update_move_abs_{0}_dspinbox'.format(axis_label)
-            setattr(self, func_name, self._function_builder_update_viewbox(func_name, axis_label, dspinbox_ref))
-            update_func_dspinbox_ref = getattr(self, func_name)
-            slider_obj.valueChanged.connect(update_func_dspinbox_ref)
-
-            # build a function to change the slider value and connect a
-            # spinbox value change event to it:
-            func_name = '_update_move_abs_{0}_slider'.format(axis_label)
-            setattr(self, func_name, self._function_builder_update_slider(func_name, axis_label, slider_obj))
-            update_func_slider_ref = getattr(self, func_name)
-            # dspinbox_ref.valueChanged.connect(update_func_slider_ref)
-
-            # the editingFinished idea has to be implemented properly at first:
-            dspinbox_ref.editingFinished.connect(update_func_slider_ref)
-
-        extension = len(constraints)
-        self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
-        self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
-        self._mw.move_abs_PushButton.clicked.connect(self.update_roi_from_abs_movement)
 
 
     def set_default_view_main_window(self):
@@ -397,11 +295,11 @@ class MagnetGui(GUIBase):
         """Tells the logic to change the B field."""
         self.deactivate_control_buttons()
 
-        B = self._mw.rotate_abs_B_DoubleSpinBox.value()
-        theta = self._mw.rotate_abs_theta_DoubleSpinBox.value()
-        phi = self._mw.rotate_abs_phi_DoubleSpinBox.value()
+        self.B = self._mw.rotate_abs_B_DoubleSpinBox.value()
+        self.theta = self._mw.rotate_abs_theta_DoubleSpinBox.value()
+        self.phi = self._mw.rotate_abs_phi_DoubleSpinBox.value()
 
-        self.sigChangeB.emit([B,theta,phi])
+        self.sigChangeB.emit([self.B,self.theta,self.phi])
 
     def stop_ramp_clicked(self):
         """Tells the logic to stop the ramping."""
@@ -490,6 +388,134 @@ class MagnetGui(GUIBase):
         self._mw.rotate_rel_phi_m_PushButton.setEnabled(status)
         self._mw.rotate_rel_phi_p_PushButton.setEnabled(status)
         self._mw.rotate_abs_PushButton.setEnabled(status)
+
+    def run_stop_2d_alignment(self, is_checked):
+        """ Manage what happens if 2d magnet scan is started/stopped
+
+        @param bool is_checked: state if the current scan, True = started,
+                                False = stopped
+        """
+
+        # param 'is_checked' probably is emitted by the QAction
+        if is_checked:
+            self.start_2d_alignment_clicked()
+
+        else:
+            self.abort_2d_alignment_clicked()
+
+    def start_2d_alignment_clicked(self):
+        """Sends the params for the 2d scan to the logic and tells it to start a scan.
+        """
+        # change the parameters in the logic
+        self._magnetlogic.B = self._mw.scan_B_doubleSpinBox.value()
+        self._magnetlogic.theta_min = self._mw.theta_min_doubleSpinBox.value()
+        self._magnetlogic.theta_max = self._mw.theta_max_doubleSpinBox.value()
+        self._magnetlogic.n_theta = self._mw.n_theta_doubleSpinBox.value()
+        self._magnetlogic.phi_min = self._mw.phi_min_doubleSpinBox.value()
+        self._magnetlogic.phi_max = self._mw.phi_max_doubleSpinBox.value()
+        self._magnetlogic.n_phi = self._mw.n_phi_doubleSpinBox.value()
+        self.int_time = self._mw.int_time_doubleSpinBox.value()
+        self.reps = self._mw.reps_doubleSpinBox.value()
+        # start scan
+        self.sigStartScan.emit()
+
+    def abort_2d_alignment_clicked(self):
+        """Does nothing so far"""
+        # This variable is checked before every pixel.
+        # Pixel is only scanned if variable is True.
+        self._magnetlogic.abort_scan = True
+
+    def _update_2d_graph_data(self):
+        """ Refresh the 2D-matrix image. """
+        matrix_data = self._magnetlogic.thetaPhiImage
+
+        if self._mw.alignment_2d_centiles_RadioButton.isChecked():
+
+            low_centile = self._mw.alignment_2d_cb_low_centiles_DSpinBox.value()
+            high_centile = self._mw.alignment_2d_cb_high_centiles_DSpinBox.value()
+
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array in order to mark the values which are zeros with
+            # True, the rest with False:
+            masked_image = np.ma.masked_equal(matrix_data, 0.0)
+
+            # compress the 2D masked array to a 1D array where the zero values
+            # are excluded:
+            if len(masked_image.compressed()) == 0:
+                cb_min = np.percentile(self._2d_alignment_ImageItem.image, low_centile)
+                cb_max = np.percentile(self._2d_alignment_ImageItem.image, high_centile)
+            else:
+                cb_min = np.percentile(masked_image.compressed(), low_centile)
+                cb_max = np.percentile(masked_image.compressed(), high_centile)
+        else:
+            cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
+            cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()
+
+
+        self._2d_alignment_ImageItem.setImage(image=matrix_data, levels=(cb_min, cb_max))
+        self._update_2d_graph_axis()
+
+        self._update_2d_graph_cb()
+        # ulm did not have this but I think this is needed.
+        self._mw.alignment_2d_GraphicsView.update()
+
+
+    def _update_2d_graph_axis(self):
+        
+        axis0_name = 'phi'
+        axis0_unit = '°'
+        axis1_name = 'theta'
+        axis1_unit = '°'
+
+        axis0_array = self._magnetlogic.phis
+        axis1_array = self._magnetlogic.thetas
+
+        step0 = axis0_array[1] - axis0_array[0]
+        step1 = axis1_array[1] - axis1_array[0]
+
+        self._2d_alignment_ImageItem.set_image_extent([[axis0_array[0]-step0/2, axis0_array[-1]+step0/2],
+                                                       [axis1_array[0]-step1/2, axis1_array[-1]+step1/2]])
+
+        self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
+        self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
+
+    def _update_2d_graph_cb(self):
+        """ Update the colorbar to a new scaling.
+
+        That function alters the color scaling of the colorbar next to the main
+        picture.
+        """
+
+        # If "Centiles" is checked, adjust colour scaling automatically to
+        # centiles. Otherwise, take user-defined values.
+
+        if self._mw.alignment_2d_centiles_RadioButton.isChecked():
+
+            low_centile = self._mw.alignment_2d_cb_low_centiles_DSpinBox.value()
+            high_centile = self._mw.alignment_2d_cb_high_centiles_DSpinBox.value()
+
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array such that the arrays will be
+            masked_image = np.ma.masked_equal(self._2d_alignment_ImageItem.image, 0.0)
+
+            if len(masked_image.compressed()) == 0:
+                cb_min = np.percentile(self._2d_alignment_ImageItem.image, low_centile)
+                cb_max = np.percentile(self._2d_alignment_ImageItem.image, high_centile)
+            else:
+                cb_min = np.percentile(masked_image.compressed(), low_centile)
+                cb_max = np.percentile(masked_image.compressed(), high_centile)
+
+        else:
+            cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
+            cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()
+
+        self._2d_alignment_cb.refresh_colorbar(cb_min, cb_max)
+        self._mw.alignment_2d_cb_GraphicsView.update()
+
 
     #########################################################################
     #                                                                       #
@@ -1289,7 +1315,7 @@ class MagnetGui(GUIBase):
         self._mw.run_stop_2d_alignment_Action.blockSignals(False)
         self._mw.continue_2d_alignment_Action.blockSignals(False)
 
-    def start_2d_alignment_clicked(self):
+    def start_2d_alignment_clicked_ulm(self):
         """ Start the 2d alignment. """
 
         if self.measurement_type == '2d_fluorescence':
@@ -1481,7 +1507,7 @@ class MagnetGui(GUIBase):
         else:
             self._mw.align_2d_axis1_vel_DSpinBox.setVisible(False)
 
-    def _update_2d_graph_axis(self):
+    def _update_2d_graph_axis_ulm(self):
 
         constraints = self._magnetlogic.get_hardware_constraints()
 
@@ -1501,7 +1527,7 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
         self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
 
-    def _update_2d_graph_cb(self):
+    def _update_2d_graph_cb_ulm(self):
         """ Update the colorbar to a new scaling.
 
         That function alters the color scaling of the colorbar next to the main
@@ -1536,7 +1562,7 @@ class MagnetGui(GUIBase):
         self._2d_alignment_cb.refresh_colorbar(cb_min, cb_max)
         self._mw.alignment_2d_cb_GraphicsView.update()
 
-    def _update_2d_graph_data(self):
+    def _update_2d_graph_data_ulm(self):
         """ Refresh the 2D-matrix image. """
         matrix_data = self._magnetlogic.get_2d_data_matrix()
 
