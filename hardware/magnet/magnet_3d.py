@@ -41,10 +41,13 @@ from core.connector import Connector
 class magnet_3d(Base):
 
     # declare connector
-    #Note: you must create the interface file and give it to the class in the hardware file.
+    # Note: you must create the interface file and give it to the class in the hardware file.
     magnet_x = Connector(interface='Magnet1DInterface')
     magnet_y = Connector(interface='Magnet1DInterface')
     magnet_z = Connector(interface='Magnet1DInterface')
+
+    # create signal to logic
+    sigRampFinished = QtCore.Signal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -54,6 +57,7 @@ class magnet_3d(Base):
         self._magnet_x = self.magnet_x()
         self._magnet_y = self.magnet_y()
         self._magnet_z = self.magnet_z()
+
 
     def on_deactivate(self):
         # Deactivate the individual 1D magnets.
@@ -97,7 +101,24 @@ class magnet_3d(Base):
             self.fast_ramp(target_field)
         else:
             self.safe_ramp(target_field)
+
+        #start timer
+        self.ramping_state_timer = QtCore.QTimer()
+        self.ramping_state_timer.timeout.connect(self._ramp_loop)
+        self.ramping_state_timer.setInterval(1000)
+        self.ramping_state_timer.start()
+
         return 0
+
+    def _ramp_loop(self):
+        """Periodically checks the ramping state, emits a signal once all three axes are finished.
+        """
+        state = self.get_ramping_state()
+        if state == [2,2,2]:
+            self.ramping_state_timer.stop()
+            del self.ramping_state_timer
+            self.sigRampFinished.emit()
+
 
     def pause_ramp(self):
         """Pauses the ramping process."""
