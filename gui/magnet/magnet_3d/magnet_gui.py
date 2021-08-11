@@ -132,7 +132,7 @@ class MagnetGui(GUIBase):
         self.sigChangeB.connect(self._magnetlogic.ramp)
         self.sigStopRamp.connect(self._magnetlogic.pause_ramp)
         self.sigRampZero.connect(self._magnetlogic.ramp_to_zero)
-        self.sigGetPos.connect(self._magnetlogic.get_field_spherical_clicked)
+        self.sigGetPos.connect(self._magnetlogic._get_field_spherical_clicked)
         self.sigDecreaseB.connect(self._magnetlogic._decrease_B)
         self.sigIncreaseB.connect(self._magnetlogic._increase_B)
         self.sigDecreaseTheta.connect(self._magnetlogic._decrease_theta)
