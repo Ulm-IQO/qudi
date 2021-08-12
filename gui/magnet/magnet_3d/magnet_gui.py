@@ -92,11 +92,11 @@ class MagnetGui(GUIBase):
     sigStopRamp = QtCore.Signal()
     sigRampZero = QtCore.Signal()
     sigGetPos = QtCore.Signal()
-    sigDecreaseB = QtCore.Signal(float) # float: how much (in T) should B decreased
-    sigIncreaseB = QtCore.Signal(float) # float: how much (in T) should B increased
-    sigDecreaseTheta = QtCore.Signal(float) # float: how much (in degree) should theta decreased
+    sigDecreaseB = QtCore.Signal(float) # float: how much (in T) should B decrease
+    sigIncreaseB = QtCore.Signal(float) # float: how much (in T) should B increase
+    sigDecreaseTheta = QtCore.Signal(float) # float: how much (in degree) should theta decrease
     sigIncreaseTheta = QtCore.Signal(float)
-    sigDecreasePhi= QtCore.Signal(float) # float: how much (in degree) should phi decreased
+    sigDecreasePhi= QtCore.Signal(float) # float: how much (in degree) should phi decrease
     sigIncreasePhi = QtCore.Signal(float)
     sigStartScan = QtCore.Signal()
 
@@ -464,8 +464,6 @@ class MagnetGui(GUIBase):
         self._update_2d_graph_axis()
 
         self._update_2d_graph_cb()
-        # ulm did not have this but I think this is needed.
-        self._mw.alignment_2d_GraphicsView.update()
 
 
     def _update_2d_graph_axis(self):
