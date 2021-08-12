@@ -171,12 +171,8 @@ class MagnetGui(GUIBase):
         self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
 
         # get current magnet field
-        # THIS TRY STATEMENT IS JUST FOR DEBUGGING; REMOVE LATER
-        # TODO: remove Try statement
-        try:
-            curr_pos_spherical = self._magnetlogic.get_field_spherical()
-        except:
-            curr_pos_spherical = [0,0,0]
+        curr_pos_spherical = self._magnetlogic.get_field_spherical()
+
 
         # display current B field
         self._mw.curr_pos_B_DoubleSpinBox.setValue(curr_pos_spherical[0])
@@ -229,21 +225,19 @@ class MagnetGui(GUIBase):
             self._alignment_2d_cb_label,
             units=self._alignment_2d_cb_units)
 
+        # Add save file tag input box
+        # This can not be done in designer, therefore we do it via code
+        self._mw.alignment_2d_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
+        self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
+        self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag which will be\n'
+                                                          'added to the filename.')
 
-        # # maybe I need it?
-        # # Add save file tag input box
-        # self._mw.alignment_2d_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
-        # self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
-        # self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag which will be\n'
-        #                                                   'added to the filename.')
-
-        # self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
-        # self._mw.save_Action.triggered.connect(self.save_2d_plots_and_data)
+        self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
+        self._mw.save_Action.triggered.connect(self.save_2d_plots_and_data)
 
         # trigger actions for 2d alignment
         self._mw.run_stop_2d_alignment_Action.triggered.connect(self.run_stop_2d_alignment)
         # self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_2d_alignment)
-        # # till here--------------------
 
         return 0
 
@@ -577,6 +571,24 @@ class MagnetGui(GUIBase):
 
         self._2d_alignment_cb.refresh_colorbar(cb_min, cb_max)
         self._mw.alignment_2d_cb_GraphicsView.update()
+
+
+    def save_2d_plots_and_data(self):
+        """ Save the sum plot, the scan marix plot and the scan data """
+        timestamp = datetime.datetime.now()
+        filetag = self._mw.alignment_2d_nametag_LineEdit.text()
+        filepath = self._savelogic.get_path_for_module(module_name='Magnet')
+
+        if len(filetag) > 0:
+            filename = os.path.join(filepath, '{0}_{1}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+        else:
+            filename = os.path.join(filepath, '{0}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+
+        exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
+        exporter_graph.export(filename  + '.svg')
+
+        self._magnetlogic.save_2d_data(filetag, timestamp)
+
 
 
     #########################################################################
@@ -1661,23 +1673,7 @@ class MagnetGui(GUIBase):
 
         # get data from logic
 
-    def save_2d_plots_and_data(self):
-        """ Save the sum plot, the scan marix plot and the scan data """
-        timestamp = datetime.datetime.now()
-        filetag = self._mw.alignment_2d_nametag_LineEdit.text()
-        filepath = self._savelogic.get_path_for_module(module_name='Magnet')
-
-        if len(filetag) > 0:
-            filename = os.path.join(filepath, '{0}_{1}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
-        else:
-            filename = os.path.join(filepath, '{0}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
-
-        exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
-        #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
-        exporter_graph.export(filename  + '.svg')
-
-        # self._save_logic.
-        self._magnetlogic.save_2d_data(filetag, timestamp)
+    
 
     def set_measurement_type(self):
         """ According to the selected Radiobox a measurement type will be chosen."""
