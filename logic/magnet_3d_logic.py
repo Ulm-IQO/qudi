@@ -112,7 +112,6 @@ class MagnetLogic(GenericLogic):
         self.sigInitNextPixel.connect(self._init_pixel)
         self.sigScanPixel.connect(self._scan_pixel)
         self.sigCheckRampDone.connect(self._check_ramp_done)
-
         
 
     def on_deactivate(self):
@@ -227,6 +226,7 @@ class MagnetLogic(GenericLogic):
         if self._line_counter == self.n_lines:
             print('Scan done')
             self.scanning_finished = True
+            self.ramp_to_zero()
             self.sigScanFinished.emit()
             return 0
         # else go to next line
@@ -347,7 +347,7 @@ class MagnetLogic(GenericLogic):
 
         return [B,theta,phi]
 
-    def _get_field_spherical_clicked(self):
+    def _get_field_clicked(self):
         field_spherical = self.get_field_spherical()
         field_cartesian = self.get_field_cartesian()
         self.sigGotPos.emit(field_spherical, field_cartesian)
