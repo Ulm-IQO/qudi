@@ -148,6 +148,7 @@ class MagnetGui(GUIBase):
         self._magnetlogic.sigGotPos.connect(self.update_current_pos_display)
         self._magnetlogic.sigRampFinished.connect(self.reactivate_control_buttons)
         self._magnetlogic.sigPixelFinished.connect(self._update_2d_graph_data)
+        self._magnetlogic.sigScanFinished.connect(self._scan_finished)
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
@@ -240,17 +241,20 @@ class MagnetGui(GUIBase):
         # # till here--------------------
 
         return 0
-        
+
+
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
         self._mw.close()
+
 
     def show(self):
         """Make window visible and put it above all other windows. """
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+
 
     def update_from_roi_magnet(self, pos):
         """The user manually moved the XY ROI, position label accordingly
@@ -301,18 +305,22 @@ class MagnetGui(GUIBase):
 
         self.sigChangeB.emit([self.B,self.theta,self.phi])
 
+
     def stop_ramp_clicked(self):
         """Tells the logic to stop the ramping."""
         self.reactivate_control_buttons()
         self.sigStopRamp.emit()
 
+
     def ramp_to_zero_clicked(self):
         """Tells the logic to ramp the magnetic field to zero"""
         self.sigRampZero.emit()
-    
+
+
     def get_pos_clicked(self):
         self.sigGetPos.emit()
-    
+
+
     def update_current_pos_display(self,curr_pos_spherical,curr_pos_cartesian):
         """Updates the current pos in the gui."""
         B = curr_pos_spherical[0]
@@ -328,43 +336,50 @@ class MagnetGui(GUIBase):
         self._mw.curr_pos_Bx_DoubleSpinBox.setValue(Bx)
         self._mw.curr_pos_By_DoubleSpinBox.setValue(By)
         self._mw.curr_pos_Bz_DoubleSpinBox.setValue(Bz)
-        
+
+
     def rotate_rel_B_m_PushButton_clicked(self):
         """Tells the logic decrease B by a single step."""
         self.deactivate_control_buttons()
         step = self._mw.rotate_rel_B_DoubleSpinBox.value()
         self.sigDecreaseB.emit(step)
-    
+
+
     def rotate_rel_B_p_PushButton_clicked(self):
         """Tells the logic increase B by a single step."""
         self.deactivate_control_buttons()
         step = self._mw.rotate_rel_B_DoubleSpinBox.value()
         self.sigIncreaseB.emit(step)
 
+
     def rotate_rel_theta_m_PushButton_clicked(self):
         """Tells the logic decrease theta by a single step."""
         self.deactivate_control_buttons()
         step = self._mw.rotate_rel_theta_DoubleSpinBox.value()
         self.sigDecreaseTheta.emit(step)
-    
+
+
     def rotate_rel_theta_p_PushButton_clicked(self):
         """Tells the logic increase theta by a single step."""
         self.deactivate_control_buttons()
         step = self._mw.rotate_rel_theta_DoubleSpinBox.value()
         self.sigIncreaseTheta.emit(step)
 
+
     def rotate_rel_phi_m_PushButton_clicked(self):
         """Tells the logic decrease phi by a single step."""
         self.deactivate_control_buttons()
         step = self._mw.rotate_rel_phi_DoubleSpinBox.value()
         self.sigDecreasePhi.emit(step)
-    
+
+
     def rotate_rel_phi_p_PushButton_clicked(self):
         """Tells the logic increase phi by a single step."""
         self.deactivate_control_buttons()
         step = self._mw.rotate_rel_phi_DoubleSpinBox.value()
         self.sigIncreasePhi.emit(step)
-    
+
+
     def reactivate_control_buttons(self):
         """Reactivates the buttons in the gui that control the B field.
         """
@@ -377,6 +392,7 @@ class MagnetGui(GUIBase):
         self._mw.rotate_rel_phi_p_PushButton.setEnabled(status)
         self._mw.rotate_abs_PushButton.setEnabled(status)
 
+
     def deactivate_control_buttons(self):
         """Reactivates the buttons in the gui that control the B field.
         """
@@ -388,6 +404,7 @@ class MagnetGui(GUIBase):
         self._mw.rotate_rel_phi_m_PushButton.setEnabled(status)
         self._mw.rotate_rel_phi_p_PushButton.setEnabled(status)
         self._mw.rotate_abs_PushButton.setEnabled(status)
+
 
     def run_stop_2d_alignment(self, is_checked):
         """ Manage what happens if 2d magnet scan is started/stopped
@@ -403,11 +420,14 @@ class MagnetGui(GUIBase):
         else:
             self.abort_2d_alignment_clicked()
 
+
     def start_2d_alignment_clicked(self):
         """Sends the params for the 2d scan to the logic and tells it to start a scan.
         """
         # deactivate magnet field control buttons
         self.deactivate_control_buttons()
+        # deactivate the SpinBoxes for scanning parameters
+        self.deactivate_scan_spinboxes()
 
         # change the parameters in the logic
         self._magnetlogic.B = self._mw.scan_B_doubleSpinBox.value()
@@ -417,19 +437,46 @@ class MagnetGui(GUIBase):
         self._magnetlogic.phi_min = self._mw.phi_min_doubleSpinBox.value()
         self._magnetlogic.phi_max = self._mw.phi_max_doubleSpinBox.value()
         self._magnetlogic.n_phi = int(self._mw.n_phi_doubleSpinBox.value())
-        self.int_time = self._mw.int_time_doubleSpinBox.value()
-        self.reps = int(self._mw.reps_doubleSpinBox.value())
+        self._magnetlogic.int_time = self._mw.int_time_doubleSpinBox.value()
+        self._magnetlogic.reps = int(self._mw.reps_doubleSpinBox.value())
 
         # start scan
         self.sigStartScan.emit()
+
 
     def abort_2d_alignment_clicked(self):
         """ """
         # reactivate magnet field control buttons
         self.reactivate_control_buttons()
+        # reactivate the SpinBoxes for scanning parameters
+        self.reactivate_scan_spinboxes()
+
         # This variable is checked before every pixel.
         # Pixel is only scanned if variable is True.
         self._magnetlogic.abort_scan = True
+
+
+    def _scan_finished(self):
+        """Sets the gui to the state before the start of the measurement."""
+        self.reactivate_scan_spinboxes()
+        self.reactivate_control_buttons()
+
+
+    def reactivate_scan_spinboxes(self):
+        """reactivates the SpinBoxes for scanning parameters"""
+        boxes = ['scan_B', 'theta_min', 'theta_max', 'n_theta', 
+                'phi_min', 'phi_max', 'n_phi', 'int_time', 'reps']
+        for box in boxes:
+            eval('self._mw.' + box + '_doubleSpinBox.setDisabled(False)')
+
+
+    def deactivate_scan_spinboxes(self):
+        """deactivates the SpinBoxes for scanning parameters"""
+        boxes = ['scan_B', 'theta_min', 'theta_max', 'n_theta', 
+                'phi_min', 'phi_max', 'n_phi', 'int_time', 'reps']
+        for box in boxes:
+            eval('self._mw.' + box + '_doubleSpinBox.setDisabled(True)')    
+
 
     def _update_2d_graph_data(self):
         """ Refresh the 2D-matrix image. """
@@ -484,6 +531,7 @@ class MagnetGui(GUIBase):
 
         self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
         self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
+
 
     def _update_2d_graph_cb(self):
         """ Update the colorbar to a new scaling.
@@ -1318,6 +1366,7 @@ class MagnetGui(GUIBase):
 
         self._mw.run_stop_2d_alignment_Action.blockSignals(False)
         self._mw.continue_2d_alignment_Action.blockSignals(False)
+
 
     def start_2d_alignment_clicked_ulm(self):
         """ Start the 2d alignment. """
