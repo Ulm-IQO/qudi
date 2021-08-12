@@ -128,11 +128,11 @@ class MagnetGui(GUIBase):
         self._mw.rotate_rel_phi_m_PushButton.clicked.connect(self.rotate_rel_phi_m_PushButton_clicked)
         self._mw.rotate_rel_phi_p_PushButton.clicked.connect(self.rotate_rel_phi_p_PushButton_clicked)
         self._mw.curr_pos_get_pos_PushButton.clicked.connect(self.get_pos_clicked)
-        # changes to scaling of colorbar
-        self._mw.alignment_2d_cb_max_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
-        self._mw.alignment_2d_cb_high_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
-        self._mw.alignment_2d_cb_min_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
-        self._mw.alignment_2d_cb_low_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
+        # changes to scaling of colorbar and image
+        self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_low_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_high_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
 
         # connect signals to logic
         self.sigChangeB.connect(self._magnetlogic.ramp)
