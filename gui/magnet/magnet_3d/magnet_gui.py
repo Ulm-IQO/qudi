@@ -128,12 +128,17 @@ class MagnetGui(GUIBase):
         self._mw.rotate_rel_phi_m_PushButton.clicked.connect(self.rotate_rel_phi_m_PushButton_clicked)
         self._mw.rotate_rel_phi_p_PushButton.clicked.connect(self.rotate_rel_phi_p_PushButton_clicked)
         self._mw.curr_pos_get_pos_PushButton.clicked.connect(self.get_pos_clicked)
+        # changes to scaling of colorbar
+        self._mw.alignment_2d_cb_max_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
+        self._mw.alignment_2d_cb_high_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
+        self._mw.alignment_2d_cb_min_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
+        self._mw.alignment_2d_cb_low_centiles_DSpinBox.editingFinished.connect(self._update_2d_graph_cb)
 
         # connect signals to logic
         self.sigChangeB.connect(self._magnetlogic.ramp)
         self.sigStopRamp.connect(self._magnetlogic.pause_ramp)
         self.sigRampZero.connect(self._magnetlogic.ramp_to_zero)
-        self.sigGetPos.connect(self._magnetlogic._get_field_spherical_clicked)
+        self.sigGetPos.connect(self._magnetlogic._get_field_clicked)
         self.sigDecreaseB.connect(self._magnetlogic._decrease_B)
         self.sigIncreaseB.connect(self._magnetlogic._increase_B)
         self.sigDecreaseTheta.connect(self._magnetlogic._decrease_theta)
@@ -246,6 +251,7 @@ class MagnetGui(GUIBase):
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
+        self._magnetlogic.on_deactivate()
         self._mw.close()
 
 
@@ -458,8 +464,12 @@ class MagnetGui(GUIBase):
 
     def _scan_finished(self):
         """Sets the gui to the state before the start of the measurement."""
+        # reactivate spin boxes for input
         self.reactivate_scan_spinboxes()
+        # reactivate buttons 
         self.reactivate_control_buttons()
+        # change icon of QAction
+        self._mw.run_stop_2d_alignment_Action.setChecked(False)
 
 
     def reactivate_scan_spinboxes(self):
