@@ -22,11 +22,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import time
+import datetime
 
-import numpy as np
-from numpy.core.numeric import isclose
 from qtpy import QtCore
-
+from collections import OrderedDict
 from core.connector import Connector
 from core.pi3_utils import delay
 from logic.generic_logic import GenericLogic
@@ -37,6 +36,7 @@ class MagnetLogic(GenericLogic):
     # declare connectors
     magnet_3d = Connector(interface='magnet_3d')
     timetagger = Connector(interface='TT')
+    savelogic = Connector(interface='SaveLogic')
 
 
     # create signals internal
@@ -98,6 +98,7 @@ class MagnetLogic(GenericLogic):
         #initialize hardware
         self._magnet_3d = self.magnet_3d()
         self._timetagger = self.timetagger()
+        self._savelogic = self.savelogic()
 
         #connect signals to hardware
         self.sigPause.connect(self._magnet_3d.pause_ramp)
@@ -381,3 +382,38 @@ class MagnetLogic(GenericLogic):
         field_spherical = self.get_field_spherical()
         field_spherical[2] = field_spherical[2] + step
         self.ramp(target_field_polar=field_spherical)
+
+
+    def save_2d_data(self, tag=None, timestamp=None):
+        """Saves the data of the 2d magnet scan"""
+
+        # create file and retun path to it
+        filepath = self._save_logic.get_path_for_module(module_name='Magnet')
+
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        if tag is not None and len(tag) > 0:
+            filelabel = tag + '_magnet_alignment_data'
+        else:
+            filelabel = 'magnet_alignment_data'
+
+        # prepare the data in a dict or in an OrderedDict:
+        matrix_data = OrderedDict()
+        matrix_data['Alignment Matrix'] = self.thetaPhiImage
+        matrix_data['thetas (°)'] = self.thetas
+        matrix_data['phis (°)'] = self.phis
+
+        parameters = OrderedDict()
+        parameters['Time at Data save'] = timestamp
+        parameters['absolute B field'] = self.B
+        parameters['B field units'] = 'Tesla'
+
+
+        self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp)
+
+        # not absolutely necessary, kill it if it breaks anything
+        self.log.debug('Magnet 2D data saved to:\n{0}'.format(filepath))
+
+       
