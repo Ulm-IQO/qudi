@@ -988,7 +988,7 @@
   <action name="save_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
+     <normaloff>../../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>Save</string>
@@ -1006,8 +1006,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+     <normaloff>../../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
+     <normalon>../../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>run_stop_2d_alignment</string>
@@ -1022,8 +1022,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/restart-counter.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/restart-counter.png</iconset>
+     <normaloff>../../../artwork/icons/qudiTheme/22x22/restart-counter.png</normaloff>
+     <normalon>../../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../../artwork/icons/qudiTheme/22x22/restart-counter.png</iconset>
    </property>
    <property name="text">
     <string>continue_2d_alignment</string>
