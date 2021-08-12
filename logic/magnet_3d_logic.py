@@ -24,6 +24,7 @@ import numpy as np
 import time
 
 import numpy as np
+from numpy.core.numeric import isclose
 from qtpy import QtCore
 
 from core.connector import Connector
@@ -55,6 +56,7 @@ class MagnetLogic(GenericLogic):
     sigGotPos = QtCore.Signal(list,list)
     sigRampFinished = QtCore.Signal()
     sigPixelFinished = QtCore.Signal()
+    sigScanFinished = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
 
@@ -225,6 +227,7 @@ class MagnetLogic(GenericLogic):
         if self._line_counter == self.n_lines:
             print('Scan done')
             self.scanning_finished = True
+            self.sigScanFinished.emit()
             return 0
         # else go to next line
         else:
@@ -278,22 +281,21 @@ class MagnetLogic(GenericLogic):
         """
         # ask TT for countrate
         ctr = self._timetagger.countrate()
-        if self.int_time == 0:
-            # take only one measurement
-            # position 2 gives sum of both APDs
-            counts = ctr.getData()[-1]
-        else:
-            print('averaging')
-            #get countrate every 0.1 s
-            delay_time = 0.1
-            n_points = round(self.int_time/delay_time)
-            counts = 0
-            for i in range(n_points):
-                # position 2 gives sum of both APDs
-                counts += ctr.getData()[-1]
-                time.sleep(delay_time)
-                delay(delay_time)
-            counts = counts/n_points
+
+        #get countrate every 0.1 s
+        delay_time = 0.1
+        n_points = round(self.int_time/delay_time)
+        if np.isclose(n_points, 0.0):
+            # avoid 0 for small integration times
+            n_points = 1
+        counts = 0
+        for i in range(n_points):
+            # last position gives sum of both APDs
+            counts += ctr.getData()[-1]
+            # with delay it is not working, we need to put sleep
+            time.sleep(delay_time)
+            # delay(delay_time)
+        counts = counts/n_points
 
         # write counts to pixel in image matrix
         self.thetaPhiImage[self._pixel_counter, self._line_counter] = counts
