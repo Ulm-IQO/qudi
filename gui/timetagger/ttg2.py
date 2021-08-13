@@ -5,6 +5,7 @@ import pyqtgraph as pg
 import time
 import datetime
 import pyqtgraph
+import pyqtgraph.exporters
 
 from core.connector import Connector
 from gui.colordefs import QudiPalettePale as palette
@@ -303,7 +304,7 @@ class TTGui(GUIBase):
             else:
                 filename = os.path.join(filepath, '{0}_g2function'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
-            exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.widget_corr.plotItem.scene())
+            exporter_graph = pyqtgraph.exporters.SVGExporter(self.p2)
             exporter_graph.export(filename  + '.svg')
 
             data = self.curve_corr.getData()
@@ -325,10 +326,7 @@ class TTGui(GUIBase):
 
             self._savelogic.save_data(data_dict, filepath=filepath, parameters=param_dict,
                                    filename=filename_ending, timestamp=timestamp)
-
-
-            
-       
+        
         else:
             print('Save functionality for opened tab is not implemented')
             return
