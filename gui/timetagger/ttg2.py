@@ -3,6 +3,8 @@ import numpy as np
 import os
 import pyqtgraph as pg
 import time
+import datetime
+import pyqtgraph
 
 from core.connector import Connector
 from gui.colordefs import QudiPalettePale as palette
@@ -149,6 +151,9 @@ class TTGui(GUIBase):
         # self._mw.saveDumpCheckBox.toggled.connect(self.dumpData)
         # self._mw.actionNew_cooldown.triggered.connect(self.new_cooldown)
 
+        # SAVE DATA
+        self._mw.save_g2_pushButton.clicked.connect(self.save_data_g2)
+
         # SELECT CHANNEL1
         self._mw.hist_channel_ComboBox.setCurrentIndex(self.currentChan - 1)
         self._mw.hist_channel_ComboBox.currentTextChanged.connect(self.setChannel)
@@ -269,3 +274,61 @@ class TTGui(GUIBase):
         ind = self._mw.tabsWidget.currentIndex()
         attr = ["counter", "hist", "corr", "hist"][ind]
         self.sigUpdatePlotParams.emit(attr, number_of_bins, bin_width)
+
+
+
+    def save_data_g2(self):
+        """Saves the data.
+        
+        Saves the plot as a figure and the data including axes in a dict.
+        """
+
+        # get index of tab for correlation
+        page_corr = self._mw.tabsWidget.findChild(QtWidgets.QWidget, 'corr_tab')
+        index_corr = self._mw.tabsWidget.indexOf(page_corr)
+
+        # get index of current tab
+        index_current = self._mw.tabsWidget.currentIndex()
+
+        # atm only save function for g2 is implemented
+        if index_current == index_corr:
+
+            timestamp = datetime.datetime.now()
+            filetag = self._mw.save_g2_nametag_lineEdit.text()
+
+            filepath = self._savelogic.get_path_for_module(module_name='g2function')
+
+            if len(filetag) > 0:
+                filename = os.path.join(filepath, '{0}_{1}_g2function'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+            else:
+                filename = os.path.join(filepath, '{0}_g2function'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+
+            exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.widget_corr.plotItem.scene())
+            exporter_graph.export(filename  + '.svg')
+
+            data = self.curve_corr.getData()
+
+            # data to save
+            data_dict = {}
+            data_dict['axis0'] = data[0]
+            data_dict['axis1'] = data[1]
+            # current params
+            param_dict = {}
+            param_dict['binWidth'] = self.binWidth
+            param_dict['numBins'] = self.numBins
+            param_dict['delayTimes'] = self.delayTimes
+            param_dict['refreshTime'] = self.refreshTime
+            param_dict['currentChan'] = self.currentChan
+            param_dict['corrChans'] = self.corrChans
+            
+            filename_ending = filename + '.dat'
+
+            self._savelogic.save_data(data_dict, filepath=filepath, parameters=param_dict,
+                                   filename=filename_ending, timestamp=timestamp)
+
+
+            
+       
+        else:
+            print('Save functionality for opened tab is not implemented')
+            return
