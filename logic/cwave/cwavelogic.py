@@ -43,7 +43,7 @@ class CwaveLogic(GenericLogic):
     # declare connectors
     timetagger = Connector(interface='TT')
     cwavelaser = Connector(interface='CwaveLaser')
-    wavemeter = Connector(interface='HighFinesseWavemeter')
+    wavemeter = Connector(interface='HighFinesseWavemeterClient')
     savelogic = Connector(interface='SaveLogic')
     nicard = Connector(interface='NationalInstrumentsXSeries')
     counterlogic = Connector(interface='CounterLogic')
