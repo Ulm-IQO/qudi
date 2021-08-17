@@ -36,6 +36,7 @@ from qtpy import QtCore
 
 from core.module import Base
 from core.connector import Connector
+from core.pi3_utils import delay
 
 
 class magnet_3d(Base):
@@ -49,6 +50,9 @@ class magnet_3d(Base):
     # create signal to logic
     sigRampFinished = QtCore.Signal()
 
+    # create internal signals
+    sigRampLoop = QtCore.Signal()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -57,6 +61,9 @@ class magnet_3d(Base):
         self._magnet_x = self.magnet_x()
         self._magnet_y = self.magnet_y()
         self._magnet_z = self.magnet_z()
+
+        # connect signals internally
+        self.sigRampLoop.connect(self._ramp_loop)
 
 
     def on_deactivate(self):
@@ -69,7 +76,6 @@ class magnet_3d(Base):
 
     def get_field(self):
         """Returns field in x,y,z direction."""
-        #TODO: get value from hardware
         field_x = self._magnet_x.get_field()
         field_y = self._magnet_y.get_field()
         field_z = self._magnet_z.get_field()
@@ -102,22 +108,27 @@ class magnet_3d(Base):
         else:
             self.safe_ramp(target_field)
 
-        #start timer
-        self.ramping_state_timer = QtCore.QTimer()
-        self.ramping_state_timer.timeout.connect(self._ramp_loop)
-        self.ramping_state_timer.setInterval(1000)
-        self.ramping_state_timer.start()
+        #start makeshift "timer".
+        # this function calls sends a signal to itself at the end.
+        self.sigRampLoop.emit()
 
         return 0
 
     def _ramp_loop(self):
-        """Periodically checks the ramping state, emits a signal once all three axes are finished.
+        """Periodically checks the ramping state, sends signal depending on state.
+        
+        If ramping is finished: send signal that ramping is finished and stop.
+        If still ramping: Wait a bit and then sen signal to itself.
         """
         state = self.get_ramping_state()
         if state == [2,2,2]:
-            self.ramping_state_timer.stop()
-            del self.ramping_state_timer
             self.sigRampFinished.emit()
+            return
+        else:
+            delay(1)
+            self.sigRampLoop.emit()
+            return
+            
 
 
     def pause_ramp(self):
@@ -237,5 +248,6 @@ class magnet_3d(Base):
             #start ramping there
             eval('self._magnet_' + axis + '.ramp(field_target=' + target + ')')
         else:
-            print(status)
+            # print(status)
+            return
             
