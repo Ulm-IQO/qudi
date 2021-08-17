@@ -118,6 +118,63 @@
               <string>Fluorescence</string>
              </attribute>
              <layout class="QGridLayout" name="gridLayout_13">
+              <item row="5" column="2">
+               <widget class="QLabel" name="n_theta_label">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;n&lt;span style=&quot; vertical-align:sub;&quot;&gt;&amp;theta;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>B</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="2">
+               <widget class="QLabel" name="n_phi_label">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;n&lt;span style=&quot; vertical-align:sub;&quot;&gt;&amp;phi;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="3">
+               <widget class="QDoubleSpinBox" name="int_time_doubleSpinBox">
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <double>10000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>5.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QLabel" name="theta_max_label">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;θ&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="3">
+               <widget class="QDoubleSpinBox" name="n_theta_doubleSpinBox">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="value">
+                 <double>10.000000000000000</double>
+                </property>
+               </widget>
+              </item>
               <item row="6" column="3">
                <widget class="QDoubleSpinBox" name="phi_min_doubleSpinBox">
                 <property name="suffix">
@@ -175,60 +232,16 @@
                 </property>
                </widget>
               </item>
-              <item row="9" column="3">
-               <widget class="QDoubleSpinBox" name="int_time_doubleSpinBox">
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+              <item row="4" column="3">
+               <widget class="QDoubleSpinBox" name="theta_max_doubleSpinBox">
+                <property name="inputMethodHints">
+                 <set>Qt::ImhFormattedNumbersOnly</set>
                 </property>
                 <property name="suffix">
-                 <string>s</string>
-                </property>
-                <property name="decimals">
-                 <number>1</number>
+                 <string>°</string>
                 </property>
                 <property name="maximum">
-                 <double>10000.000000000000000</double>
-                </property>
-                <property name="value">
-                 <double>5.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="2">
-               <widget class="QLabel" name="label_3">
-                <property name="text">
-                 <string>B</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="2">
-               <widget class="QLabel" name="n_theta_label">
-                <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;n&lt;span style=&quot; vertical-align:sub;&quot;&gt;&amp;theta;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="2">
-               <widget class="QLabel" name="n_phi_label">
-                <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;n&lt;span style=&quot; vertical-align:sub;&quot;&gt;&amp;phi;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="2">
-               <widget class="QLabel" name="theta_max_label">
-                <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;θ&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="3">
-               <widget class="QDoubleSpinBox" name="n_theta_doubleSpinBox">
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="value">
-                 <double>10.000000000000000</double>
+                 <double>180.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -255,30 +268,10 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="3">
-               <widget class="QDoubleSpinBox" name="theta_max_doubleSpinBox">
-                <property name="inputMethodHints">
-                 <set>Qt::ImhFormattedNumbersOnly</set>
-                </property>
-                <property name="suffix">
-                 <string>°</string>
-                </property>
-                <property name="maximum">
-                 <double>180.000000000000000</double>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="2">
                <widget class="QLabel" name="theta_min_label">
                 <property name="text">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;θ&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="2">
-               <widget class="QLabel" name="label_4">
-                <property name="text">
-                 <string>reps</string>
                 </property>
                </widget>
               </item>
@@ -289,6 +282,27 @@
                 </property>
                 <property name="value">
                  <double>1.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="2">
+               <widget class="QLabel" name="label_4">
+                <property name="text">
+                 <string>reps</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="2">
+               <widget class="QLabel" name="label_5">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;refocus&lt;br/&gt;at zero field&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="3">
+               <widget class="QCheckBox" name="refocus_at_zero_field_checkBox">
+                <property name="text">
+                 <string/>
                 </property>
                </widget>
               </item>

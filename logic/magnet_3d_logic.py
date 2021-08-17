@@ -37,6 +37,8 @@ class MagnetLogic(GenericLogic):
     magnet_3d = Connector(interface='magnet_3d')
     timetagger = Connector(interface='TT')
     savelogic = Connector(interface='SaveLogic')
+    optimizerlogic = Connector(interface='OptimizerLogic')
+    confocallogic = Connector(interface='ConfocalLogic')
 
 
     # create signals internal
@@ -44,7 +46,10 @@ class MagnetLogic(GenericLogic):
     sigInitNextPixel = QtCore.Signal()
     sigScanPixel = QtCore.Signal()
     # sigCheckRampDone = QtCore.Signal()
-    sigCheckRampAlternate = QtCore.Signal()
+    sigCheckRamp = QtCore.Signal()
+    sigRefocusAtZeroRampToZero = QtCore.Signal()
+    sigRefocusAtZeroCheckRamp = QtCore.Signal()
+    sigRefocusAtZeroRefocus = QtCore.Signal()
 
     # create signals to hardware
     sigPause = QtCore.Signal()
@@ -58,6 +63,9 @@ class MagnetLogic(GenericLogic):
     sigRampFinished = QtCore.Signal()
     sigPixelFinished = QtCore.Signal()
     sigScanFinished = QtCore.Signal()
+
+    # create signals to optimizer logic
+    sigStartOptimizer = QtCore.Signal(list, str)
 
     def __init__(self, config, **kwargs):
 
@@ -80,6 +88,10 @@ class MagnetLogic(GenericLogic):
         # booleans for the scan
         self.abort_scan = False
         self.scanning_finished = False
+        self.refocus_at_zero_field = False
+
+        # other booleans
+        self.refocusInitiatedByLogic = True
 
         # set up the image array for the plot
         self.thetaPhiImage = np.zeros((self.n_theta,self.n_phi))
@@ -101,6 +113,10 @@ class MagnetLogic(GenericLogic):
         self._timetagger = self.timetagger()
         self._savelogic = self.savelogic()
 
+        # initialize other logic
+        self._optimizerlogic = self.optimizerlogic()
+        self._scanninglogic = self.confocallogic()
+
         #connect signals to hardware
         self.sigPause.connect(self._magnet_3d.pause_ramp)
         self.sigContinue.connect(self._magnet_3d.continue_ramp)
@@ -109,12 +125,21 @@ class MagnetLogic(GenericLogic):
         # connect signals from hardware
         self._magnet_3d.sigRampFinished.connect(self._ramp_finished)
 
+        # connect signals to optimizer logic
+        self.sigStartOptimizer.connect(self._optimizerlogic.start_refocus)
+
+        # connect signals from optimizerlogic
+        self._optimizerlogic._sigFinishedAllOptimizationSteps.connect(self._refocus_at_zero_field_optimizer_done)
+
         #connect signals internally
         self.sigScanNextLine.connect(self._scan_line)
         self.sigInitNextPixel.connect(self._init_pixel)
         self.sigScanPixel.connect(self._scan_pixel)
         # self.sigCheckRampDone.connect(self._check_ramp_done)
-        self.sigCheckRampAlternate.connect(self._check_ramp_alternate)
+        self.sigCheckRamp.connect(self._check_ramp)
+        self.sigRefocusAtZeroRampToZero.connect(self._refocus_at_zero_field_ramp_to_zero)
+        self.sigRefocusAtZeroCheckRamp.connect(self._refocus_at_zero_field_check_ramp)
+        self.sigRefocusAtZeroRefocus.connect(self._refocus_at_zero_field_refocus)
         
 
     def on_deactivate(self):
@@ -237,7 +262,53 @@ class MagnetLogic(GenericLogic):
             # set pixel counter to 0.
             self._pixel_counter = 0
             # scan first pixel in next line
+            if self.refocus_at_zero_field:
+                # signal to refocus at zero field
+                self.sigRefocusAtZeroRampToZero.emit()
+            else:
+                # go straight to next pixel
+                self.sigInitNextPixel.emit()
+    
+    
+    def _refocus_at_zero_field_ramp_to_zero(self):
+        # ramp B to zero
+        self.ramp_to_zero()
+        self.sigRefocusAtZeroCheckRamp.emit()
+
+
+    def _refocus_at_zero_field_check_ramp(self):
+        """Checks ramp status and acts accordingly.
+        
+        If ramp is still in progress: wait a bit and then check again (sends signal to itself).
+        If ramp is done: sends Signal to start refocus and stops.
+        """
+        status = self._magnet_3d.get_ramping_state()
+        if status == [2,2,2]:
+            self.sigRefocusAtZeroRefocus.emit()
+            return
+        else:
+            delay(1)
+            self.sigRefocusAtZeroCheckRamp.emit()
+            return 
+
+
+    def _refocus_at_zero_field_refocus(self):
+        # start refocus
+        # set flag to know that magnetlogic initiated refocus
+        self.refocusInitiatedByLogic = True
+        crosshair_pos = self._scanninglogic.get_position()
+        self.sigStartOptimizer.emit(crosshair_pos, 'magnetlogic')
+        # once refocus is done, scanner logic will emit 
+        # _sigFinishedAllOptimizationSteps
+
+
+    def _refocus_at_zero_field_optimizer_done(self):
+        # only act, if refocus was initiated by magnet logic.
+        # Otherwise this will trigger also on manual refocus from confocal gui.
+        if self.refocusInitiatedByLogic:
+            self.refocusInitiatedByLogic = False
             self.sigInitNextPixel.emit()
+
 
     def _init_pixel(self):
         if self.abort_scan:
@@ -250,10 +321,10 @@ class MagnetLogic(GenericLogic):
         phi = self.phis[self._pixel_counter]
         self.ramp(target_field_polar=[B,theta,phi])
         
-        self.sigCheckRampAlternate.emit()
+        self.sigCheckRamp.emit()
         return
 
-    def _check_ramp_alternate(self):
+    def _check_ramp(self):
         """Checks ramp status and acts accordingly.
         
         If ramp is still in progress: wait a bit and then check again (sends signal to itself).
@@ -266,7 +337,7 @@ class MagnetLogic(GenericLogic):
             return
         else:
             delay(1)
-            self.sigCheckRampAlternate.emit()
+            self.sigCheckRamp.emit()
             return
 
     # def _check_ramp(self):
@@ -328,7 +399,12 @@ class MagnetLogic(GenericLogic):
             return
         # else, go to next pixel
         else:
-            self.sigInitNextPixel.emit()
+            if self.refocus_at_zero_field:
+                # ramp to zero, refocus and the scan pixel
+                self.sigRefocusAtZeroRampToZero.emit()
+            else:
+                # scan pixel directly
+                self.sigInitNextPixel.emit()
             return
 
     def _set_B_field(self):

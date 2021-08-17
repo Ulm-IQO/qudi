@@ -439,6 +439,7 @@ class MagnetGui(GUIBase):
         self._magnetlogic.n_phi = int(self._mw.n_phi_doubleSpinBox.value())
         self._magnetlogic.int_time = self._mw.int_time_doubleSpinBox.value()
         self._magnetlogic.reps = int(self._mw.reps_doubleSpinBox.value())
+        self._magnetlogic.refocus_at_zero_field = self._mw.refocus_at_zero_field_checkBox.isChecked()
 
         # start scan
         self.sigStartScan.emit()
