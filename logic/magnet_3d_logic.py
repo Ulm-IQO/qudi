@@ -499,6 +499,7 @@ class MagnetLogic(GenericLogic):
         parameters['Time at Data save'] = timestamp
         parameters['absolute B field'] = self.B
         parameters['B field units'] = 'Tesla'
+        parameters['refocus at zero field'] = self.refocus_at_zero_field
         parameters['theta_min (°)'] = self.theta_min
         parameters['theta_max (°)'] = self.theta_max
         parameters['n_theta'] = self.n_theta
