@@ -78,6 +78,24 @@ class TTGui(GUIBase):
         self.maxDumps = 1000000000
         self.maxStream = 1000000000
 
+        # list of all the parameter names
+        self.list_params = ['self.currentChan',
+                    'binWidth',
+                    'numBins',
+                    'refreshTime',
+                    'corrChans'{"start":1, "stop":2},
+                    'delayTimes',
+                    'chanTrig',
+                    'apdChands',
+                    'allChans',
+                    'trigChans',
+                    'dataChans',
+                    'dataDir',
+                    'saveDir',
+                    'maxDumps',
+                    'maxStream'
+                ]
+
         self._mw = TTWindow()
         self.init_connections_ui()
         self.init_params_ui()
@@ -167,10 +185,12 @@ class TTGui(GUIBase):
         self.lr42.sigRegionChanged.connect(self.regionChanged42)
         self.lr41.sigRegionChanged.connect(self.regionChanged41)
 
-        # # SAVE PARAMS
+        # SAVE PARAMS
+        self._mw.saveParams_PushButton.clicked.connect(self.save_parmas)
         # self._mw.saveButt.clicked.connect(self.save_Params)
 
-        # #LOAD PARAMS
+        # LOAD PARAMS
+        self._mw.loadParams_PushButton.clicked.connect(self.load_params)
         # self._mw.loadButt.clicked.connect(self.load_Params)
 
         # PLOT DATA
@@ -297,7 +317,7 @@ class TTGui(GUIBase):
             timestamp = datetime.datetime.now()
             filetag = self._mw.save_g2_nametag_lineEdit.text()
 
-            filepath = self._savelogic.get_path_for_module(module_name='g2function')
+            filepath = self._savelogic.get_path_for_module(module_name='timetagger')
 
             if len(filetag) > 0:
                 filename = os.path.join(filepath, '{0}_{1}_g2function'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
@@ -330,3 +350,31 @@ class TTGui(GUIBase):
         else:
             print('Save functionality for opened tab is not implemented')
             return
+
+
+    def save_parmas(self):
+        """Saves all parameters as a dict."""
+        # create the dict and store parameter values
+        parameters = {}
+        for param in self.list_params:
+            parameters[param] = eval('self.' + param)
+
+        #create filename and filepath
+        timestamp = datetime.datetime.now()
+        filetag = self._mw.save_g2_nametag_lineEdit.text()
+
+        filepath = self._savelogic.get_path_for_module(module_name='timetagger')
+
+        if len(filetag) > 0:
+            filename = os.path.join(filepath, '{0}_{1}_parameters'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+        else:
+            filename = os.path.join(filepath, '{0}_parameters'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+
+        self._savelogic.save_dict(dic=parameters,filename=filename, filepath=filepath)
+
+        
+
+
+    def load_params(self, path_to_file):
+        # TODO: write this, use load_dict from savelogic.
+        pass
