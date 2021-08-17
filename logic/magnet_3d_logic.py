@@ -282,8 +282,10 @@ class MagnetLogic(GenericLogic):
         If ramp is still in progress: wait a bit and then check again (sends signal to itself).
         If ramp is done: sends Signal to start refocus and stops.
         """
+        if self.abort_scan:
+            return
         status = self._magnet_3d.get_ramping_state()
-        if status == [2,2,2]:
+        if status == [2,2,2] or status == [8,8,8]:
             self.sigRefocusAtZeroRefocus.emit()
             return
         else:
@@ -330,6 +332,8 @@ class MagnetLogic(GenericLogic):
         If ramp is still in progress: wait a bit and then check again (sends signal to itself).
         If ramp is done: sends Signal to start next pixel and stops.
         """
+        if self.abort_scan:
+            return
         status = self._magnet_3d.get_ramping_state()
         if status == [2,2,2]:
             # self.sigCheckRampDone.emit()

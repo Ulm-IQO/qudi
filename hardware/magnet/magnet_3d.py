@@ -55,6 +55,7 @@ class magnet_3d(Base):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.abortRampLoop = False
 
 
     def on_activate(self):
@@ -120,6 +121,8 @@ class magnet_3d(Base):
         If ramping is finished: send signal that ramping is finished and stop.
         If still ramping: Wait a bit and then sen signal to itself.
         """
+        if self.abortRampLoop:
+            return
         state = self.get_ramping_state()
         if state == [2,2,2]:
             self.sigRampFinished.emit()
