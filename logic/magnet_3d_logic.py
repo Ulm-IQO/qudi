@@ -43,7 +43,8 @@ class MagnetLogic(GenericLogic):
     sigScanNextLine = QtCore.Signal()
     sigInitNextPixel = QtCore.Signal()
     sigScanPixel = QtCore.Signal()
-    sigCheckRampDone = QtCore.Signal()
+    # sigCheckRampDone = QtCore.Signal()
+    sigCheckRampAlternate = QtCore.Signal()
 
     # create signals to hardware
     sigPause = QtCore.Signal()
@@ -112,7 +113,8 @@ class MagnetLogic(GenericLogic):
         self.sigScanNextLine.connect(self._scan_line)
         self.sigInitNextPixel.connect(self._init_pixel)
         self.sigScanPixel.connect(self._scan_pixel)
-        self.sigCheckRampDone.connect(self._check_ramp_done)
+        # self.sigCheckRampDone.connect(self._check_ramp_done)
+        self.sigCheckRampAlternate.connect(self._check_ramp_alternate)
         
 
     def on_deactivate(self):
@@ -248,32 +250,45 @@ class MagnetLogic(GenericLogic):
         phi = self.phis[self._pixel_counter]
         self.ramp(target_field_polar=[B,theta,phi])
         
-        #start timer
-        self._pixel_timer = QtCore.QTimer()
-        self._pixel_timer.timeout.connect(self._check_ramp)
-        self._pixel_timer.setInterval(1000)
-        self._pixel_timer.start()
+        self.sigCheckRampAlternate.emit()
+        return
 
-
-    def _check_ramp(self):
-        """Checks the ramping state of the magnet and sends signal if all are done.
+    def _check_ramp_alternate(self):
+        """Checks ramp status and acts accordingly.
         
-        Also stops the timer.
+        If ramp is still in progress: wait a bit and then check again (sends signal to itself).
+        If ramp is done: sends Signal to start next pixel and stops.
         """
         status = self._magnet_3d.get_ramping_state()
         if status == [2,2,2]:
-            self.sigCheckRampDone.emit()
+            # self.sigCheckRampDone.emit()
+            self.sigScanPixel.emit()
+            return
+        else:
+            delay(1)
+            self.sigCheckRampAlternate.emit()
+            return
+
+    # def _check_ramp(self):
+    #     """Checks the ramping state of the magnet and sends signal if all are done.
+
+    #     NOT USED ANYMORE
+
+    #     Also stops the timer.
+    #     """
+    #     status = self._magnet_3d.get_ramping_state()
+    #     if status == [2,2,2]:
+    #         self.sigCheckRampDone.emit()
         
     
-    def _check_ramp_done(self):
-        """Kills the timer and sends signal to scan next pixel.
+    # def _check_ramp_done(self):
+    #     """Kills the timer and sends signal to scan next pixel.
         
-        We need a second function that is not inside the event loop to kill the timer.
-        """
-        print('stopping timer')
-        self._pixel_timer.stop()
-        del self._pixel_timer
-        self.sigScanPixel.emit()
+    #     We need a second function that is not inside the event loop to kill the timer.
+    #     """
+    #     # I think this function serves only the purpose of emitting this signal. 
+    #     # Can we move the contents to the function that calls it?
+    #     self.sigScanPixel.emit()
 
     def _scan_pixel(self):
         """Gets countrate for current pixel.
@@ -310,9 +325,11 @@ class MagnetLogic(GenericLogic):
         if self._pixel_counter == self.n_pixels:
             self._line_counter += 1
             self.sigScanNextLine.emit()
+            return
         # else, go to next pixel
         else:
             self.sigInitNextPixel.emit()
+            return
 
     def _set_B_field(self):
         """Calls ramp with class values."""
