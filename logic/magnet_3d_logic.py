@@ -401,13 +401,19 @@ class MagnetLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         matrix_data = OrderedDict()
         matrix_data['Alignment Matrix'] = self.thetaPhiImage
-        matrix_data['thetas (°)'] = self.thetas
-        matrix_data['phis (°)'] = self.phis
 
         parameters = OrderedDict()
         parameters['Time at Data save'] = timestamp
         parameters['absolute B field'] = self.B
         parameters['B field units'] = 'Tesla'
+        parameters['theta_min (°)'] = self.theta_min
+        parameters['theta_max (°)'] = self.theta_max
+        parameters['n_theta'] = self.n_theta
+        parameters['phi_min (°)'] = self.phi_min
+        parameters['phi_max (°)'] = self.phi_max
+        parameters['n_phi'] = self.n_phi
+        parameters['thetas (°)'] = self.thetas
+        parameters['phis (°)'] = self.phis
 
 
         self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
