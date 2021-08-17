@@ -388,7 +388,7 @@ class MagnetLogic(GenericLogic):
         """Saves the data of the 2d magnet scan"""
 
         # create file and retun path to it
-        filepath = self._save_logic.get_path_for_module(module_name='Magnet')
+        filepath = self._savelogic.get_path_for_module(module_name='Magnet')
 
         if timestamp is None:
             timestamp = datetime.datetime.now()
@@ -416,7 +416,7 @@ class MagnetLogic(GenericLogic):
         parameters['phis (°)'] = self.phis
 
 
-        self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
+        self._savelogic.save_data(matrix_data, filepath=filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp)
 
         # not absolutely necessary, kill it if it breaks anything
