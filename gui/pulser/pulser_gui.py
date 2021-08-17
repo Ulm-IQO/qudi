@@ -71,6 +71,7 @@ class PulserGUI(GUIBase):
     # signals to logic
     sigPattern = QtCore.Signal(str,list)
     sigConst = QtCore.Signal(str)
+    sigLow = QtCore.Signal(str)
     sigDelPattern = QtCore.Signal(str)
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
@@ -106,6 +107,15 @@ class PulserGUI(GUIBase):
         self._pw.pushButton_const_d5.clicked.connect(partial(self.const_clicked,'d5'))
         self._pw.pushButton_const_d6.clicked.connect(partial(self.const_clicked,'d6'))
         self._pw.pushButton_const_d7.clicked.connect(partial(self.const_clicked,'d7'))
+        #low buttons
+        self._pw.pushButton_low_d0.clicked.connect(partial(self.low_clicked,'d0'))
+        self._pw.pushButton_low_d1.clicked.connect(partial(self.low_clicked,'d1'))
+        self._pw.pushButton_low_d2.clicked.connect(partial(self.low_clicked,'d2'))
+        self._pw.pushButton_low_d3.clicked.connect(partial(self.low_clicked,'d3'))
+        self._pw.pushButton_low_d4.clicked.connect(partial(self.low_clicked,'d4'))
+        self._pw.pushButton_low_d5.clicked.connect(partial(self.low_clicked,'d5'))
+        self._pw.pushButton_low_d6.clicked.connect(partial(self.low_clicked,'d6'))
+        self._pw.pushButton_low_d7.clicked.connect(partial(self.low_clicked,'d7'))
         # delete pattern buttons
         self._pw.pushButton_delete_d0.clicked.connect(partial(self.del_ch_clicked,'d0'))
         self._pw.pushButton_delete_d1.clicked.connect(partial(self.del_ch_clicked,'d1'))
@@ -122,6 +132,7 @@ class PulserGUI(GUIBase):
         # connect signals to logic file
         self.sigPattern.connect(self._pulserlogic.store_pattern)
         self.sigConst.connect(self._pulserlogic.set_constant)
+        self.sigLow.connect(self._pulserlogic.set_low)
         self.sigDelPattern.connect(self._pulserlogic.delete_pattern)
         self.sigStart.connect(self._pulserlogic.run_sequence)
         self.sigStop.connect(self._pulserlogic.stop_sequence)
@@ -238,30 +249,29 @@ class PulserGUI(GUIBase):
         pattern , fname = self.get_pattern_from_file(ch)
         # display path to file
         eval('self._pw.label_path_' + ch + '.setText(fname)')
-        # deactivate const button
-        eval('self._pw.pushButton_const_' + ch + '.setEnabled(False)')
-        # deactivate load pattern button
-        eval('self._pw.pushButton_path_' + ch + '.setEnabled(False)')
-        # activate removal button
-        eval('self._pw.pushButton_delete_' + ch + '.setEnabled(True)')
+        self.deactivate_input_buttons(ch)
         # send pattern to logic
         self.sigPattern.emit(ch,pattern)
     
 
     def const_clicked(self,ch):
         """Tells the logic which channel needs a constant output.
-        """
-        
+        """        
         #display const
         eval('self._pw.label_path_' + ch + '.setText("HIGH")')
-        # deactivate const button
-        eval('self._pw.pushButton_const_' + ch + '.setEnabled(False)')
-        # deactivate load pattern button
-        eval('self._pw.pushButton_path_' + ch + '.setEnabled(False)')
-        # activate removal button
-        eval('self._pw.pushButton_delete_' + ch + '.setEnabled(True)')
+        self.deactivate_input_buttons(ch)
         # tell logic
         self.sigConst.emit(ch)
+
+
+    def low_clicked(self,ch):
+        """Tells the logic which channel needs a constant output.
+        """
+        #display const low
+        eval('self._pw.label_path_' + ch + '.setText("LOW")')
+        self.deactivate_input_buttons(ch)
+        # tell logic
+        self.sigLow.emit(ch)
 
 
     def del_ch_clicked(self,ch):
@@ -270,15 +280,9 @@ class PulserGUI(GUIBase):
         @param ch: channel for which to delete the pattern.
 
         """
-
         # remove old path from display
         eval('self._pw.label_path_' + ch + '.setText("")')
-        # activate load pattern button
-        eval('self._pw.pushButton_path_' + ch + '.setEnabled(True)')
-        # activate constant output button
-        eval('self._pw.pushButton_const_' + ch + '.setEnabled(True)')
-        # deactivate remove pattern button
-        eval('self._pw.pushButton_delete_' + ch + '.setEnabled(False)')
+        self.reactivate_input_buttons(ch)
         # send signal to logic
         self.sigDelPattern.emit(ch)
 
@@ -316,3 +320,23 @@ class PulserGUI(GUIBase):
             status = eval('ui.%s.isEnabled()' % name)
             status_dict[name]=status
         return status_dict
+
+    def deactivate_input_buttons(self, ch):
+        # deactivate load pattern button
+        eval('self._pw.pushButton_path_' + ch + '.setEnabled(False)')
+        # deactivate constant output button
+        eval('self._pw.pushButton_const_' + ch + '.setEnabled(False)')
+        # deactivate low output button
+        eval('self._pw.pushButton_const_' + ch + '.setEnabled(False)')
+        # activate remove pattern button
+        eval('self._pw.pushButton_delete_' + ch + '.setEnabled(True)')
+
+    def reactivate_input_buttons(self, ch):
+        # activate load pattern button
+        eval('self._pw.pushButton_path_' + ch + '.setEnabled(True)')
+        # activate constant output button
+        eval('self._pw.pushButton_const_' + ch + '.setEnabled(True)')
+        # activate low output button
+        eval('self._pw.pushButton_const_' + ch + '.setEnabled(True)')
+        # deactivate remove pattern button
+        eval('self._pw.pushButton_delete_' + ch + '.setEnabled(False)')
