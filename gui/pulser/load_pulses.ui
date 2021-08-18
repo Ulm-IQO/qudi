@@ -29,14 +29,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d5">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d5">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d5">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -81,8 +88,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>351</width>
-           <height>111</height>
+           <width>348</width>
+           <height>100</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -113,8 +120,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>350</width>
-           <height>111</height>
+           <width>348</width>
+           <height>100</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_16">
@@ -141,14 +148,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d0">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d0">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d0">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -193,8 +207,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>351</width>
-           <height>112</height>
+           <width>348</width>
+           <height>100</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_18">
@@ -221,14 +235,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d1">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d1">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d1">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -269,14 +290,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d4">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d4">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d4">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -321,8 +349,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>350</width>
-           <height>112</height>
+           <width>348</width>
+           <height>100</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_15">
@@ -353,8 +381,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>350</width>
-           <height>111</height>
+           <width>348</width>
+           <height>100</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -385,8 +413,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>351</width>
-           <height>111</height>
+           <width>348</width>
+           <height>100</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_14">
@@ -413,14 +441,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d2">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d2">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d2">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -465,8 +500,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>351</width>
-           <height>112</height>
+           <width>348</width>
+           <height>99</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_10">
@@ -506,8 +541,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>350</width>
-           <height>112</height>
+           <width>348</width>
+           <height>99</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_17">
@@ -540,14 +575,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d3">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d3">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d3">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -605,14 +647,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d6">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d6">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d6">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -653,14 +702,21 @@
         <item>
          <widget class="QPushButton" name="pushButton_path_d7">
           <property name="text">
-           <string>load pattern</string>
+           <string>load ptn</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_const_d7">
           <property name="text">
-           <string>const</string>
+           <string>high</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_low_d7">
+          <property name="text">
+           <string>low</string>
           </property>
          </widget>
         </item>
@@ -700,7 +756,7 @@
      <x>0</x>
      <y>0</y>
      <width>731</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
