@@ -6,6 +6,8 @@ import time
 import datetime
 import pyqtgraph
 import pyqtgraph.exporters
+from tkinter import Tk
+import tkinter.filedialog as fd
 
 from core.connector import Connector
 from gui.colordefs import QudiPalettePale as palette
@@ -304,6 +306,8 @@ class TTGui(GUIBase):
         Saves the plot as a figure and the data including axes in a dict.
         """
 
+        # TODO: This should be moved to logic along with the storage of the values.
+
         # get index of tab for correlation
         page_corr = self._mw.tabsWidget.findChild(QtWidgets.QWidget, 'corr_tab')
         index_corr = self._mw.tabsWidget.indexOf(page_corr)
@@ -333,14 +337,9 @@ class TTGui(GUIBase):
             data_dict = {}
             data_dict['axis0'] = data[0]
             data_dict['axis1'] = data[1]
+
             # current params
-            param_dict = {}
-            param_dict['binWidth'] = self.binWidth
-            param_dict['numBins'] = self.numBins
-            param_dict['delayTimes'] = self.delayTimes
-            param_dict['refreshTime'] = self.refreshTime
-            param_dict['currentChan'] = self.currentChan
-            param_dict['corrChans'] = self.corrChans
+            param_dict = self.create_param_dict()
             
             filename_ending = filename + '.dat'
 
@@ -352,12 +351,20 @@ class TTGui(GUIBase):
             return
 
 
-    def save_parmas(self):
-        """Saves all parameters as a dict."""
+    def create_param_dict(self):
+        """Takes the parameters specified in self.list_params and returns them as dict.
+        """
         # create the dict and store parameter values
         parameters = {}
         for param in self.list_params:
             parameters[param] = eval('self.' + param)
+
+        return parameters
+
+
+    def save_parmas(self):
+        """Saves all parameters as a dict."""
+        parameters = self.create_param_dict()
 
         #create filename and filepath
         timestamp = datetime.datetime.now()
@@ -375,6 +382,15 @@ class TTGui(GUIBase):
         
 
 
-    def load_params(self, path_to_file):
-        # TODO: write this, use load_dict from savelogic.
-        pass
+    def load_params(self):
+        root = Tk()
+        root.withdraw() # we don't want a full GUI, so keep the root window from appearing
+        root.wm_attributes('-topmost', 1) # push to front
+        fname = fd.askopenfilename() # show an "Open" dialog box and return the path to the selected file
+        # load parameter dict from file
+        parameters = self._savelogic.load_dict(fname)
+        # set parameters
+        for key in parameters.keys():
+            eval('self.' + key) = parameters[key]
+        # update parameters in gui
+        self.init_params_ui()
