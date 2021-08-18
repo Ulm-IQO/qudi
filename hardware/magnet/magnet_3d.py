@@ -39,6 +39,15 @@ from core.connector import Connector
 from core.pi3_utils import delay
 
 
+
+# I am quite positive that this should run just fine.
+# However, we did not test if a magnetic field is produced.
+# We just observed the display on the AMI 430 controller unit and saw stuff changing.
+# Therefore, if you trust that the AMI displays reflects what is goin on, the file should work.
+# In any case, it would be nice to actually test this on an NV (or sth. similar).
+
+
+
 class magnet_3d(Base):
 
     # declare connector
