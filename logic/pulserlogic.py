@@ -58,10 +58,17 @@ class PulserLogic(GenericLogic):
         self.sigStart.connect(self._pulser.run_sequence)
         self.sigStop.connect(self._pulser.stop_sequence)
 
+        # list of the channel names
+        self.list_ch_names = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
+
         #create sequence dict
         self.sequence_dict = {}
         #create dict with the channels for constant output
+        # label is ch name, value determines state (True = high)
         self.constant_dict = {}
+        # create dict with the channels for constant low output
+        # label is ch name, value determines state (True = low)
+        self.low_dict = {}
 
 
     def on_deactivate(self):
@@ -90,6 +97,14 @@ class PulserLogic(GenericLogic):
         """
         self.constant_dict[ch] = True
 
+    def set_low(self,ch):
+        """ Recodrs that channel ch needs to output constant high.
+        
+        @param ch: channel in question
+
+        """
+        self.low_dict[ch] = True
+
 
     def run_sequence(self):
         """Tells the pulser to run the sequence indefinitely."""
@@ -106,6 +121,11 @@ class PulserLogic(GenericLogic):
         #set pattern to be constant output for each ch mentioned in constant dict
         for key in self.constant_dict.keys():
             self.sequence_dict[key] = [(dur,1)]
+        # set pattern to be constant low output for the rest of the channels
+        for ch in self.list_ch_names:
+            if not ch in self.sequence_dict.keys():
+                self.low_dict[ch] = True # this dict is not used, just for documentation purposes
+                self.sequence_dict[key] = [(dur,0)]
         #run the sequence
         self.sigStart.emit(self.sequence_dict,-1)
 
