@@ -83,7 +83,7 @@ class TTGui(GUIBase):
                     'binWidth',
                     'numBins',
                     'refreshTime',
-                    'corrChans'{"start":1, "stop":2},
+                    'corrChans',
                     'delayTimes',
                     'chanTrig',
                     'apdChands',
