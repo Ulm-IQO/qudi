@@ -62,7 +62,7 @@ class MagnetLogic(GenericLogic):
     drastic changes.
 
     ---
-    """
+    """get_path
 
     # declare connectors
     magnetstage = Connector(interface='MagnetInterface')

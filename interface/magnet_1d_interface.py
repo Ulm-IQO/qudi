@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi Interface file for control wavemeter hardware.
+This file contains the Qudi Interface file to control 1d magnets.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,37 +24,24 @@ from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
-class WavemeterInterface(metaclass=InterfaceMetaclass):
-    """ Define the controls for a wavemeter hardware.
-
-    Note: This interface is very similar in feature with slow counter
-    """
-
+class Magnet1DInterface(metaclass=InterfaceMetaclass):
+    # This class needs to be imported in the hardware file and given to the class.
     @abstract_interface_method
-    def start_acqusition(self):
-        """ Method to start the wavemeter software.
-
-        @return (int): error code (0:OK, -1:error)
-
-        Also the actual threaded method for getting the current wavemeter
-        reading is started.
-        """
+    def ramp(self, field_target=None, current_target=None):
         pass
 
     @abstract_interface_method
-    def stop_acqusition(self):
-        """ Stops the Wavemeter from measuring and kills the thread that queries the data.
-
-        @return (int): error code (0:OK, -1:error)
-        """
+    def get_field(self):
         pass
 
     @abstract_interface_method
-    def get_current_wavelength(self, kind="air"):
-        """ This method returns the current wavelength.
+    def ramp_to_zero(self):
+        pass
 
-        @param (str) kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
+    @abstract_interface_method
+    def get_ramping_state(self):
+        pass
 
-        @return (float): wavelength (or negative value for errors)
-        """
+    @abstract_interface_method
+    def get_constraints(self):
         pass
