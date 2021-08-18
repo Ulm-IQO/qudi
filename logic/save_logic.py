@@ -700,8 +700,7 @@ class SaveLogic(GenericLogic):
             filename = timestamp.strftime('%Y%m%d-%H%M-%S' + '_' + filelabel + '.dat')
 
         # pickle the dict
-        fname = filepath + '/' + filename
-        outfile = open(fname, 'wb')
+        outfile = open(filename, 'wb')
         pickle.dump(dic, outfile)
         outfile.close()
 
