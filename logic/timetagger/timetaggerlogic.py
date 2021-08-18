@@ -83,7 +83,9 @@ class TimeTaggerLogic(GenericLogic):
     def init_plots(self):
         self.time_counter = np.linspace(0, self.counter_params['n_values']*self.counter_params['bins_width']/1000, self.counter_params['n_values'])
         self.time_hist = np.linspace(0, self.hist_params['number_of_bins']*self.hist_params['bins_width']/1000, self.hist_params['number_of_bins'])
-        self.time_corr = np.linspace(0, self.corr_params['number_of_bins']*self.corr_params['bins_width']/1000, self.corr_params['number_of_bins'])
+        self.time_corr = np.linspace(-0.5*self.corr_params['number_of_bins']*self.corr_params['bins_width']/1000,
+                                        0.5*self.corr_params['number_of_bins']*self.corr_params['bins_width']/1000,
+                                        self.corr_params['number_of_bins'])
 
         self.hist_tt = self._timetagger.histogram(**self.hist_params)
         self.corr_tt = self._timetagger.correlation(**self.corr_params)

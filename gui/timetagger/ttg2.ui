@@ -51,7 +51,7 @@
      <enum>QTabWidget::East</enum>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>2</number>
     </property>
     <widget class="QWidget" name="counter_tab">
      <attribute name="title">
@@ -119,7 +119,7 @@
      <rect>
       <x>10</x>
       <y>70</y>
-      <width>84</width>
+      <width>97</width>
       <height>277</height>
      </rect>
     </property>
@@ -347,6 +347,23 @@
        </property>
       </widget>
      </item>
+     <item row="3" column="3">
+      <widget class="QLabel" name="save_g2_name_label">
+       <property name="text">
+        <string>file name</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="4">
+      <widget class="QLineEdit" name="save_g2_nametag_lineEdit"/>
+     </item>
+     <item row="3" column="5">
+      <widget class="QPushButton" name="save_g2_pushButton">
+       <property name="text">
+        <string>save g2</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
    <widget class="QWidget" name="layoutWidget">
@@ -354,7 +371,7 @@
      <rect>
       <x>20</x>
       <y>350</y>
-      <width>67</width>
+      <width>70</width>
       <height>49</height>
      </rect>
     </property>
@@ -419,7 +436,7 @@
      <x>0</x>
      <y>0</y>
      <width>900</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCool_down">
