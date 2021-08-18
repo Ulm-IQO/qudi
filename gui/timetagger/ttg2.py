@@ -81,7 +81,7 @@ class TTGui(GUIBase):
         self.maxStream = 1000000000
 
         # list of all the parameter names
-        self.list_params = ['self.currentChan',
+        self.list_params = ['currentChan',
                     'binWidth',
                     'numBins',
                     'refreshTime',
@@ -391,6 +391,6 @@ class TTGui(GUIBase):
         parameters = self._savelogic.load_dict(fname)
         # set parameters
         for key in parameters.keys():
-            eval('self.' + key) = parameters[key]
+            exec('self.' + key + '= parameters[key]')
         # update parameters in gui
         self.init_params_ui()
