@@ -261,7 +261,7 @@ class TTGui(GUIBase):
             self.curve_hist.setData(self._timetaggerlogic.time_hist, self._timetaggerlogic.hist_tt.getData())
 
         def plot_correlation():
-            self.curve_corr.setData(self._timetaggerlogic.corr_tt.getData())
+            self.curve_corr.setData(self._timetaggerlogic.time_corr, self._timetaggerlogic.corr_tt.getData())
 
         def plot_freeze():
             if self.freeze:
