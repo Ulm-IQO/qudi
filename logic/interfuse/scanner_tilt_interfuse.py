@@ -35,6 +35,9 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     # signal to hardware
     sigChangeLimits = QtCore.Signal(str)
 
+    #signals to interfuse
+    sigLimitsChanged = QtCore.Signal()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -42,6 +45,9 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
         self._scanning_device = self.confocalscanner1()
+
+        # connect signals from hardware
+        self._scanning_device.sigLimitsChanged.connect(self.limits_changed)
 
         self.tilt_variable_ax = 1
         self.tilt_variable_ay = 1
@@ -218,5 +224,9 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
             return dz
 
     def set_voltage_limits(self,RTLT):
-        """Passes signal from interfuse to hardware."""
+        """Passes signal from logic to hardware."""
         self.sigChangeLimits.emit(RTLT)
+
+    def limits_changed(self):
+        """Passes signal from hardware to logic."""
+        self.sigLimitsChanged.emit()

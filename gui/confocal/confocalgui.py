@@ -175,6 +175,9 @@ class ConfocalGui(GUIBase):
         self._save_logic = self.savelogic()
         self._optimizer_logic = self.optimizerlogic1()
 
+        # connecting signals from logic
+        self._scanning_logic.sigLimitsChanged.connect(self.limits_changed)
+
         self._hardware_state = True
 
         self.initMainUI()      # initialize the main GUI
@@ -1381,6 +1384,17 @@ class ConfocalGui(GUIBase):
         self._mw.actionUse_LT_limits.setChecked(False)
         self._clt.close()
     
+    def limits_changed(self):
+        """Updates the plot with the new limits from hardware.
+        
+        Note: While the axes will be relabeled, the images won't. 
+        This might lead to features appearing to be bigger than they actually are.
+        """
+        # updates the limits on the xy scan
+        self.adjust_xy_window()
+        # updates the limits on the depth scan.
+        # We won't use it, since we do not know the scale of the depth scan.
+        # self.adjust_depth_window()
 
     def close_confirmation_window(self):
         self._ltconf.close()
