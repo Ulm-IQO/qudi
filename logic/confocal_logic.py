@@ -286,7 +286,11 @@ class ConfocalLogic(GenericLogic):
 
     signal_history_event = QtCore.Signal()
 
+    # signals to hardware
     sigChangeLimits = QtCore.Signal(str)
+
+    #signals to gui
+    sigLimitsChanged = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -349,7 +353,11 @@ class ConfocalLogic(GenericLogic):
         self._signal_save_xy.connect(self._save_xy_data, QtCore.Qt.QueuedConnection)
         self._signal_save_depth.connect(self._save_depth_data, QtCore.Qt.QueuedConnection)
 
+        # connect signals to hardware
         self.sigChangeLimits.connect(self._scanning_device.set_voltage_limits)
+
+        # connect signals fro hardware
+        self._scanning_device.sigLimitsChanged.connect(self.limits_changed)
 
         self._change_position('activation')
 
@@ -1277,3 +1285,18 @@ class ConfocalLogic(GenericLogic):
     def set_voltage_limits(self,RTLT):
         """Passes signal from gui to interfuse."""
         self.sigChangeLimits.emit(RTLT)
+
+    def limits_changed(self):
+        """Passes signal from interfuse to gui and updates ranges."""
+
+        # Reads in the maximal scanning range. The unit of that scan range is meters!
+        self.x_range = self._scanning_device.get_position_range()[0]
+        self.y_range = self._scanning_device.get_position_range()[1]
+        self.z_range = self._scanning_device.get_position_range()[2]
+
+        # Sets the size of the image to the maximal scanning range
+        self.image_x_range = self.x_range
+        self.image_y_range = self.y_range
+        self.image_z_range = self.z_range
+
+        self.sigLimitsChanged.emit()
