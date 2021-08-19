@@ -2023,11 +2023,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         """Changes voltage limits."""
         if RTLT == 'LT':
             # changes limits
-            self.set_voltage_range(myrange=[[0, 10], [0, 10], [0, 10], [0, 10]])
+            self.set_voltage_range(myrange=[[0, 10], [0, 10], [0, 10]])
             # resets the analog output. This reloads the new limits
             self._start_analog_output()
         elif RTLT == 'RT':
-            self.set_voltage_range(myrange=[[0, 4], [0, 4], [0, 4], [0, 10]])
+            self.set_voltage_range(myrange=[[0, 4], [0, 4], [0, 4]])
             self._start_analog_output()
         else:
             print('Limit needs to be either LT or RT')
