@@ -1362,7 +1362,7 @@ class ConfocalGui(GUIBase):
     
     def change_piezo_voltage_limits_to_LT(self):
         """ Sets the voltage limits for the piezos to LT (0 to 10 V). """
-        print('LT, were we go')
+        print('LT, here we go')
         self._clt.close() #close previous window
         # emit signal to change limits to LT logic
         self.sigChangeLimits.emit('LT')
