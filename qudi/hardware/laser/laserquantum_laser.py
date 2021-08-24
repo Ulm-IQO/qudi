@@ -212,7 +212,7 @@ class LaserQuantumLaser(SimpleLaserInterface):
 
         @return ShutterState: laser shutter state
         """
-        return ShutterState.NOSHUTTER
+        return ShutterState.NO_SHUTTER
 
     def set_shutter_state(self, state):
         """ Set the desired laser shutter state.
@@ -334,9 +334,6 @@ class LaserQuantumLaser(SimpleLaserInterface):
         extra = ''
         extra += '\n'.join(self.get_firmware_version())
         extra += '\n'
-        if self.psu == PSUTypes.FPU:
-            extra += '\n'.join(self.dump())
-            extra += '\n'
         extra += '\n'.join(self.timers())
         extra += '\n'
         return extra
