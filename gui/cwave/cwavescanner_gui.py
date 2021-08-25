@@ -73,11 +73,14 @@ class CwaveScanGui(GUIBase):
     sig_start_sweep = QtCore.Signal()
     sig_stop_sweep = QtCore.Signal()
     sig_set_zpl_sweep_params = QtCore.Signal(float, float, int)
-    sig_set_zpl_search = QtCore.Signal(float, float, float)
+    sig_update_zpl_search_params = QtCore.Signal(float, float, float)
     sig_save_measurement = QtCore.Signal()
     sig_regulation_mode = QtCore.Signal(bool)
-    sig_refresh_zpl_search = QtCore.Signal()
+    
     sig_refresh_sweep_zpl = QtCore.Signal()
+    
+    sig_refresh_zpl_search = QtCore.Signal()
+    sig_reset_zpl_search = QtCore.Signal()
     wl_beam = 0.005
 
     def on_deactivate(self):
@@ -85,6 +88,8 @@ class CwaveScanGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
+        #turn off the regulation 
+        self.regulate_wavelength(mode_manual = False)
         self._mw.close()
         return 0
     def on_activate(self):
@@ -99,8 +104,13 @@ class CwaveScanGui(GUIBase):
         self.set_up_images()
         self.set_up_cwave_control_panel()
         self.set_up_scanner_panel()
+        
+        #turn off the regulation 
+        self.regulate_wavelength(mode_manual = False)
+
         self._mw.refresh_pushButton.clicked.connect(self.refresh_wlm)
         self._cwavescan_logic.sig_update_gui.connect(self.update_gui)
+
         #! set initial values
         # self._mw.wl1DoubleSpinBox.setValue(self._cwavescan_logic.scan_range[0])
         # self._mw.wl2DoubleSpinBox.setValue(self._cwavescan_logic.scan_range[1])
@@ -215,8 +225,9 @@ class CwaveScanGui(GUIBase):
         # self._mw.action_run_stop.triggered.connect(self.run_stop)
         self._mw.action_Save.triggered.connect(self.save_data)
         self._mw.action_search_zpl.triggered.connect(self.open_zpl_search)
-        self.sig_set_zpl_search.connect(self._cwavescan_logic.start_zpl_search)
+        self.sig_update_zpl_search_params.connect(self._cwavescan_logic.update_zpl_search_params)
         self.sig_refresh_zpl_search.connect(self._cwavescan_logic.refresh_search_zpl)
+        self.sig_reset_zpl_search.connect(self._cwavescan_logic.reset_search_zpl)
         self.open_zpl_search()   
         self._zplw.close()
     def open_zpl_search(self):
@@ -224,11 +235,12 @@ class CwaveScanGui(GUIBase):
         self._zplw.show()
         self._zplw.sig_stop_zpl_search.connect(self._cwavescan_logic.stop_zpl_search)
         self._zplw.refresh_pushButton.clicked.connect(self.refresh_search_zpl)
+        self._zplw.reset_pushButton.clicked.connect(self.reset_search_zpl)
         self._zplw.binWidthdoubleSpinBox.editingFinished.connect(self.update_zpl_search_params)
         #!TBD 
         # self._zplw.reset_pushButton
-        # self._zplw.wl1DoubleSpinBox.editingFinished.connect(self.update_zpl_search_params)
-        # self._zplw.wl2DoubleSpinBox.editingFinished.connect(self.update_zpl_search_params) 
+        self._zplw.wl1DoubleSpinBox.editingFinished.connect(self.update_zpl_search_params)
+        self._zplw.wl2DoubleSpinBox.editingFinished.connect(self.update_zpl_search_params) 
         self.update_zpl_search_params()
         self._zplw.search_image = pg.PlotDataItem(self._cwavescan_logic.plot_xs, 
         self._cwavescan_logic.plot_ys, 
@@ -245,7 +257,7 @@ class CwaveScanGui(GUIBase):
         w2 = self._zplw.wl2DoubleSpinBox.value()
         binWidth = self._zplw.binWidthdoubleSpinBox.value()
         self.wl_beam = binWidth
-        self.sig_set_zpl_search.emit(w1, w2, binWidth)
+        self.sig_update_zpl_search_params.emit(w1, w2, binWidth)
     def update_zpl_sweep_params(self):
         amplitude = self._mw.sweepAmplitudeDoubleSpinBox.value()
         if amplitude > 0.01:
@@ -257,6 +269,8 @@ class CwaveScanGui(GUIBase):
             self._mw.sweepCenterDoubleSpinBox.setValue(center_wl)
         sweep_speed = self._mw.sweepSpeedSpinBox.value()
         self.sig_set_zpl_sweep.emit(amplitude, center_wl,sweep_speed)
+    def reset_search_zpl(self):
+        self.sig_reset_zpl_search.emit()
     def refresh_search_zpl(self):
         self.sig_refresh_zpl_search.emit()
     def refresh_sweep_zpl(self):
@@ -265,7 +279,7 @@ class CwaveScanGui(GUIBase):
         self._cwavescan_logic.plot_y_wlm = np.array([])
         self.refresh_plots()
     def regulate_wavelength(self, mode_manual = None):
-        if mode_manual not None:
+        if mode_manual is not None:
             mode = mode_manual
             self._mw.regulate_checkBox.setChecked(mode_manual)
         else:
@@ -465,7 +479,7 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_cb_ViewWidget.update()
 
 
-        def refresh_matrix(self):
+    def refresh_matrix(self):
         """ Refresh the xy-matrix image """
         self.scan_matrix_image.setImage(self._cwavescan_logic.scan_matrix, axisOrder='row-major')
         scan_image_data = self._cwavescan_logic.scan_matrix

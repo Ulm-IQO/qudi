@@ -1,10 +1,10 @@
-import socketserver
+import SocketServer
 import time, pickle, ctypes, cwavelaser, errno
 import numpy as np
 from core.module import Base
 from hardware.cwave import cwave_api
 
-class Handler_TCPServer(socketserver.BaseRequestHandler):
+class Handler_TCPServer(SocketServer.BaseRequestHandler):
     """
     The TCP Server class for demonstration.
 
@@ -63,7 +63,7 @@ class Handler_TCPServer(socketserver.BaseRequestHandler):
         self.send_object(time.time(), flag='u')
     
     def unknown(self):
-        self.send_object(f"No command. Try one of these {self.api_.keys()}")
+        self.send_object("No command. Try one of these" + self.api_.keys())
         
     def send_object(self, obj, flag = 'u'):
         msg = pickle.dumps(obj)
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     wlm_time = np.zeros((1, 2))
     time_ = time.time()
     # Init the TCP server object, bind it to the localhost on 9999 port
-    tcp_server = socketserver.TCPServer((HOST, PORT), Handler_TCPServer)
+    tcp_server = SocketServer.TCPServer((HOST, PORT), Handler_TCPServer)
 
     # Activate the TCP server.
     # To abort the TCP server, press Ctrl-C.

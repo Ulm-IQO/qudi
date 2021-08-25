@@ -364,8 +364,8 @@
               <number>100</number>
              </property>
              <property name="value">
-           <double>10</double>
-          </property>
+              <number>10</number>
+             </property>
             </widget>
            </item>
           </layout>
@@ -397,8 +397,8 @@
               <double>0.000100000000000</double>
              </property>
              <property name="value">
-           <double>0.001000000000000</double>
-          </property>
+              <double>0.001000000000000</double>
+             </property>
             </widget>
            </item>
           </layout>
@@ -462,7 +462,7 @@
       <property name="geometry">
        <rect>
         <x>430</x>
-        <y>100</y>
+        <y>80</y>
         <width>91</width>
         <height>20</height>
        </rect>

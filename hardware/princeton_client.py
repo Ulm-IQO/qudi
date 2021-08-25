@@ -1,7 +1,7 @@
-# from qtpy import QtCore
-
-# from core.module import Base
-# from core.configoption import ConfigOption
+from qtpy import QtCore
+from interface.spectrometer_interface import SpectrometerInterface
+from core.module import Base
+from core.configoption import ConfigOption
 
 import socket
 import numpy as np
@@ -21,7 +21,7 @@ def connect(func):
     return wrapper
 
     
-class PrincetonSpectrometerClient():
+class PrincetonSpectrometerClient(Base, SpectrometerInterface):
     def __init__(self):#, config, **kwargs):
         #super().__init__(config=config, **kwargs)
         #locking for thread safety
@@ -49,7 +49,15 @@ class PrincetonSpectrometerClient():
     
     def on_deactivate(self):
         self.tcp_client.close()
-    def get_spectrum(self):
-        return self.send_request("get_spectrum")
-    def get_wavelength(self):
-        return self.send_request("get_wavelength")
+    def recordSpectrum(self):
+        wavelengths = self.send_request("get_wavelength")
+        specdata = np.empty((2, len(wavelengths)), dtype=np.double)
+        specdata[0] = wavelengths
+        specdata[1] = self.send_request("get_spectrum")
+        return specdata
+
+    def setExposure(self, exposureTime):
+        return self.send_request("set_exposure", action=exposureTime)
+    def getExposure(self):
+        return self.send_request("get_exposure")
+    

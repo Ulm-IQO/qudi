@@ -62,7 +62,7 @@
         <item>
          <widget class="ScienDSpinBox" name="wl1DoubleSpinBox">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="suffix">
            <string>nm</string>
@@ -98,7 +98,7 @@
         <item>
          <widget class="ScienDSpinBox" name="wl2DoubleSpinBox">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="suffix">
            <string>nm</string>
@@ -153,7 +153,7 @@
     </item>
    </layout>
   </widget>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>170</x>
@@ -173,7 +173,7 @@
     <item>
      <widget class="QPushButton" name="reset_pushButton">
       <property name="enabled">
-       <bool>false</bool>
+       <bool>true</bool>
       </property>
       <property name="text">
        <string>reset</string>
