@@ -65,11 +65,11 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     def get_regulation_mode(self):
         return self.send_request("get_regulation_mode")
     def set_regulation_mode(self, mode):
-        return self.send_request("set_regulation_mode", mode)
+        return self.send_request("set_regulation_mode", action=mode)
     def get_reference_course(self):
         return self.send_request("get_reference_course")
     def set_reference_course(self, course):
-        return self.send_request("get_reference_course", course)
+        return self.send_request("set_reference_course", action=course)
     def get_server_time(self):
         return self.send_request("get_server_time")
     

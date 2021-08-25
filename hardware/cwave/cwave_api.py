@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.module import Base
-from core.configoption import ConfigOption
-import math
-import random
+
 import time
 from ctypes import c_char_p, CDLL, c_int
 import os
@@ -39,54 +36,12 @@ def laser_is_connected(func):
         else:
             pass#print("Cwave is not connected!")
     return wrapper
-class CwaveDLL_dummy():
+
+class CwaveLaserAPI():
+    ip = 'default ip'
     def __init__(self):
-        pass
-    def cwave_connect(self): return 0
-    def cwave_disconnect(self):return 0
-    def set_regopo_extramp(self):return 0
-    def get_status_laser (self):return 0
-    def get_status_temp_ref (self):return 0
-    def get_status_temp_opo (self):return 0
-    def get_status_temp_shg (self):return 0
-    def get_status_lock_opo (self):return 0
-    def get_status_lock_shg (self):return 0
-    def get_status_lock_etalon (self):return 0
-    def get_photodiode_shg(self):return 0
-    def get_photodiode_opo(self):return 0
-    def get_photodiode_laser(self):return 0
-    def set_command(self):return 0
-    def set_intvalue(self):return 0
-    def get_intvalue(self):return 0
-    def get_photodiode_laser(self):return 0
-    def get_photodiode_opo(self):return 0
-    def get_photodiode_shg(self):return 0
-class CwaveLaser(Base):
-    """ Lazor dummy
-
-    Example config for copy-paste:
-
-    laser_dummy:
-        module.Class: 'laser.cwave_laser.CwaveLaser'
-        cwave_ip: '192.168.202.52 :10001 '
-        cwave_dll: './cwave/CWAVE_DLL.dll'
-    """
-    _cwave_ip = ConfigOption('cwave_ip', '192.168.202.52 :10001', missing='warn')
-   
-# self.status_keys = ['ready', 'OPOstepper', 'OPOtemp', 'SHGstepper', 'SHGtemp', 'Thin etalon', 'lockOPO', 'lockSHG', 'lockEtalon', 'laserEmission', 'refTemp']
-
-
-    def __init__(self, **kwargs):
-        """ """
-        super().__init__(**kwargs)
         self.VoltRange = (0, 100)
-
         self.wavelength = 0
-
-
-    def on_activate(self):
-        """ Activate module.
-        """
         this_dir = os.path.dirname(__file__)
         prev_dir = os.getcwd()
         os.chdir(this_dir)
@@ -119,7 +74,7 @@ class CwaveLaser(Base):
 
             @return LaserState: actual laser state
         """
-        self.cwstate = self.cwave_dll.cwave_connect(c_char_p(self._cwave_ip.encode('utf-8')))
+        self.cwstate = self.cwave_dll.cwave_connect(c_char_p(self.ip))
         if self.cwstate != 1:
             raise Exception('Apparently cwave is connected somewhere else.')
         self.cwstate = 1
