@@ -22,6 +22,7 @@ class SearchZPLplotThread(QtCore.QObject):
     """ Helper class for running the hardware communication in a separate thread. """
     # signal to deliver the wavelength to the parent class
     sig_search_plot = QtCore.Signal(list, list, list)
+    sig_data_added = QtCOre.Signal()
     def __init__(self, parentclass):
         super().__init__()
         # remember the reference to the parent class to access functions ad settings
@@ -29,55 +30,51 @@ class SearchZPLplotThread(QtCore.QObject):
         self.h5f = h5py.File('search_zpl.h5', 'w')
         self.h5f.create_dataset('search_zpl_dataset', data=np.zeros((2, 3)), chunks=True, maxshape=(None,3))
         self.h5f.close()
-
+    #save counts and wavelength to file for further plotting
     def _add_data_to_file(self):
         new_data = self._parentclass._cts_wlm_time
+        new_data = np.nan_to_num(new_data)
         with h5py.File('search_zpl.h5', 'a') as hf:
             hf['search_zpl_dataset'].resize(((hf['search_zpl_dataset'].shape[0]) + new_data.shape[0]), axis=0)
             hf['search_zpl_dataset'][-new_data.shape[0]:] = new_data
-
+        self.sig_data_added.emit()
+    #plot from file
     def _calculate_search_plot(self):
         """ The threaded method querying the data from the wavemeter and calculating the serach scan.
         """
         cts_wlm_time_s = self._parentclass._cts_wlm_time
-        if cts_wlm_time_s.shape[0] > 1400:
-            with h5py.File('search_zpl.h5', 'r') as hf:
-                cts_wlm_time_s = hf['search_zpl_dataset'][:]
-            if cts_wlm_time_s is None:
-                return
-        else:
-            cts_wlm_time_s = np.nan_to_num(cts_wlm_time_s)
-            cts_wlm = cts_wlm_time_s[:,:2][cts_wlm_time_s[:,1] > 0]
-            if len(cts_wlm) > 0:
-                discrete_wls = ((cts_wlm[:,1] - np.min(cts_wlm[:,1])) * 1e6 // int(1e6 * self._parentclass.bin_width)).astype(int)
-                y = np.bincount(discrete_wls, weights = cts_wlm[:,0])
-                norm = np.bincount(discrete_wls)
-                x = np.linspace(np.min(cts_wlm[:,1]), np.max(cts_wlm[:,1]), len(y))
-                # send the data to the parent via a signal
-                norm[norm == 0] = norm[norm == 0] + 1 
-                deviance = self._parentclass.dy / np.sqrt(norm)
-                self.sig_search_plot.emit(list(x), list(y/norm), list(deviance))
+        cts_wlm_time_s = np.nan_to_num(cts_wlm_time_s)
+
+        with h5py.File('search_zpl.h5', 'r') as hf:
+            cts_wlm_time_s_hf = hf['search_zpl_dataset'][:]
+
+        #stack current and saved data together
+        cts_wlm_time_s = np.vstack((cts_wlm_time_s_hf, cts_wlm_time_s))
+        
+        cts_wlm = cts_wlm_time_s[:,:2][cts_wlm_time_s[:,1] > 0]
+        if len(cts_wlm) > 0:
+            discrete_wls = ((cts_wlm[:,1] - np.min(cts_wlm[:,1])) * 1e6 // int(1e6 * self._parentclass.zpl_bin_width)).astype(int)
+            y = np.bincount(discrete_wls, weights = cts_wlm[:,0])
+            norm = np.bincount(discrete_wls)
+            x = np.linspace(np.min(cts_wlm[:,1]), np.max(cts_wlm[:,1]), len(y))
+            # send the data to the parent via a signal
+            norm[norm == 0] = norm[norm == 0] + 1 
+            deviance = self._parentclass.dy / np.sqrt(norm)
+            self.sig_search_plot.emit(list(x), list(y/norm), list(deviance))
     
     def stop(self):
         self._isRunning = False
-
-
 class CwaveLogic(GenericLogic):
-
-
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
-
     sig_data_updated = QtCore.Signal()
-
     # declare connectors
     cwavelaser = Connector(interface='CwaveLaser')
     timetagger = Connector(interface='TT')
     wavemeter = Connector(interface='HighFinesseWavemeterClient')
-
     savelogic = Connector(interface='SaveLogic')
-
+    
     queryInterval = ConfigOption('query_interval', 100)
     _go_to_freq = StatusVar('go_to_freq', 25)
     _pix_integration = StatusVar('pix_integration', 0.5)
@@ -87,16 +84,15 @@ class CwaveLogic(GenericLogic):
     count_freq = 50
     _search_query_time = 2000
     _scan_query_time = 0.1
+    sweep_speed = 10
+    amplitude = 0.001
+    zpl_bin_width = 0.001
+    center_wl = None
 
     sig_update_gui = QtCore.Signal()
 
     sig_update_cwave_states = QtCore.Signal()
 
-    sigGoToVoltage = QtCore.Signal(float)
-    sigSetpointChanged = QtCore.Signal(float)
-
-    sigAdjEta = QtCore.Signal(int)
-    sigOpoLambda = QtCore.Signal(int)
     sig_update_guiPanelPlots = QtCore.Signal()
     sig_update_guiPlotsRefInt = QtCore.Signal()
     sig_update_guiPlotsOpoReg = QtCore.Signal()
@@ -104,6 +100,8 @@ class CwaveLogic(GenericLogic):
 
     sig_calculate_search_scan = QtCore.Signal()
     sig_start_add_zpl_hdf5 = QtCore.Signal()
+
+
     def __init__(self, **kwargs):
         """ Create CwaveScannerLogic object with connectors.
 
@@ -112,11 +110,10 @@ class CwaveLogic(GenericLogic):
         super().__init__(**kwargs)
         self.fit_x = []
         self.fit_y = []
-        self.plot_x = np.zeros(10)
-        self.plot_y = np.zeros(10)
+        self.plot_x, self.plot_y,self.plot_xs,self.plot_ys = np.zeros(10),np.zeros(10),np.zeros(10),np.zeros(10)
         self.deviance_ys =  np.zeros(10)
         self.max_len = 10
-        self._cts_wlm_counter = 0
+        self.w1, self.w2 = 0, 0
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -132,6 +129,10 @@ class CwaveLogic(GenericLogic):
         self.time_sync = lambda _: time.time() - delta_t #returns time synced with the server
         self.wavelength = self._wavemeter.get_current_wavelength()
         self._cts_wlm_time = np.zeros((2,3)) #np.array([self.counter.getData()[-1][-1].mean(), self._wavemeter.get_current_wavelength(), self.time_sync(0)])
+        self._cts_wlm_time[:, 2] = np.ones(2) * self.time_sync(0)
+        
+        self._cts_wlm_time_s = self._cts_wlm_time
+        
         if wlm_res != 0 and self.wavelength <= 0:
             self.wavelength = self._cwavelaser.wavelength if self._cwavelaser.wavelength is not None else 0 
         self.wlm_regmode = True if self._wavemeter.get_regulation_mode() == 'on' else False
@@ -145,16 +146,6 @@ class CwaveLogic(GenericLogic):
         self.reg_modes = self._cwavelaser.get_regmodes()
 
         self.mode_zpl = None#'sweep'
-        self.amplitude = 0
-        self.center_wl = None
-        self.sweep_speed = 0
-        self.plot_x = np.array([0])
-        self.plot_y = np.array([0])
-        self.plot_xs = np.array([0])
-        self.plot_ys = np.array([0])
-        self.w1, self.w2, self.bin_width = 0, 0, 1
-
-
         self.sig_update_cwave_states.connect(self.update_cwave_states)
 
         self._initialise_data_matrix()
@@ -177,11 +168,10 @@ class CwaveLogic(GenericLogic):
         # connect the signals in and out of the threade
         self.sig_calculate_search_scan.connect(self._zpl_serach_thread_pull._calculate_search_plot, QtCore.Qt.QueuedConnection)
         self._zpl_serach_thread_pull.sig_search_plot.connect(self.handle_search_plot)
+        self._zpl_serach_thread_pull.sig_data_added.connect(self.data_was_added)
         self.sig_start_add_zpl_hdf5.connect(self._zpl_serach_thread_pull._add_data_to_file, QtCore.Qt.QueuedConnection)
         
         self.zpl_serach_thread.start()
-
-
         return 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -237,7 +227,7 @@ class CwaveLogic(GenericLogic):
 
     @QtCore.Slot()
     def start_scanning(self):
-        self._cts_wlm_time = self._cts_wlm_time[2:] #empty buffer
+        self._cts_wlm_time = self._cts_wlm_time[self._cts_wlm_time[:, 2] > 0][:1] #empty buffer
         center_wl = self._wavemeter.get_current_wavelength() if self.center_wl is None else self.center_wl 
         self._wavemeter.set_reference_course(f"{center_wl} + {self.amplitude} * triangle(t/{self.sweep_speed})")
         self._wavemeter.set_regulation_mode("on")
@@ -276,17 +266,25 @@ class CwaveLogic(GenericLogic):
             wavelength = self._wavemeter.get_current_wavelength()
         else:
             wavelength = 0
-        self._cts_wlm_counter += 1 
-        self._cts_wlm_time = np.vstack((self._cts_wlm_time, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))
-        self._cts_wlm_time = self._cts_wlm_time[-1500:]
-        if self._cts_wlm_counter > 1400:
-            self._cts_wlm_counter = 0
+
+        self._cts_wlm_time = np.vstack((self._cts_wlm_time, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))[-1500:]
+        dt = self._cts_wlm_time[:, 2] - self._cts_wlm_time[:, 2][0]
+        #take only counts whithin the past 60 / sweep speed * 2 sec
+        self._cts_wlm_time = self._cts_wlm_time[dt < (60 / self.sweep_speed) * 2]
+
+        self._cts_wlm_time_s = np.vstack((self._cts_wlm_time_s, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))
+        if self._cts_wlm_time_s > 2000:
             self.sig_start_add_zpl_hdf5.emit()
+
         if self.mode_zpl == 'sweep':
             self.scanQueryTimer.start(self._scan_query_time)
 
+    @QtCore.Slot()
+    def data_was_added(self):
+        self._cts_wlm_time_s = self._cts_wlm_time_s[1:]
+
     @QtCore.Slot(float, float, int)
-    def set_zpl_sweep(self, amplitude, center_wl, sweep_speed):
+    def set_zpl_sweep_params(self, amplitude, center_wl, sweep_speed):
         self.amplitude = amplitude
         self.center_wl = center_wl
         self.sweep_speed = sweep_speed
@@ -303,10 +301,10 @@ class CwaveLogic(GenericLogic):
     #ZPL search
     
     @QtCore.Slot(float, float, float)
-    def start_zpl_search(self, w1,w2,bin_width):
+    def start_zpl_search(self, w1,w2, zpl_bin_width):
         self.w1 = w1
         self.w2 = w2
-        self.bin_width = bin_width
+        self.zpl_bin_width = zpl_bin_width
 
 
     @QtCore.Slot(list, list, list)
@@ -361,7 +359,7 @@ class CwaveLogic(GenericLogic):
         self.plot_y_opo_pd = np.delete(self.plot_y_opo_pd, -1)
 
         #if wavelength changes a lot calculate the search scan
-        if self._wavemeter.get_current_wavelength() - self.wavelength > 0.0001:
+        if self._wavemeter.get_current_wavelength() - self.wavelength > 0.0015:
             self.sig_calculate_search_scan.emit()
         self.wavelength = self._wavemeter.get_current_wavelength()
         if self.wavelength <= 500:
@@ -371,15 +369,8 @@ class CwaveLogic(GenericLogic):
         # self.plot_y_wlm = np.delete(self.plot_y_wlm, -1)
         self.plot_x_wlm = np.linspace(0, len(self.plot_y_wlm) , len(self.plot_y_wlm))[:250]
         
-        
-        x_scan = self._cts_wlm_time[2:,1] #wlm
-        y_scan = self._cts_wlm_time[2:, 0]#[x > 0] #cts
-        # rl = np.roll(x_scan[2:,1], 50) - x_scan[2:,1]
-        # rl = rl/max(rl)
-        # np.where(rl, (rl < -0.05) & (rl > -0.1))
-        # np.diff(x_scan)
-        self.plot_x = x_scan
-        self.plot_y = y_scan
+        self.plot_x = self._cts_wlm_time[2:,1] #wlm
+        self.plot_y = self._cts_wlm_time[2:, 0]#[x > 0] #cts
 
         self.sig_update_gui.emit()
     
