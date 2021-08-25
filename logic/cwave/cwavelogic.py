@@ -64,24 +64,17 @@ class SearchZPLplotThread(QtCore.QObject):
     
     def stop(self):
         self._isRunning = False
-
-
 class CwaveLogic(GenericLogic):
-
-
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
-
     sig_data_updated = QtCore.Signal()
-
     # declare connectors
     cwavelaser = Connector(interface='CwaveLaser')
     timetagger = Connector(interface='TT')
     wavemeter = Connector(interface='HighFinesseWavemeterClient')
-
     savelogic = Connector(interface='SaveLogic')
-
+    
     queryInterval = ConfigOption('query_interval', 100)
     _go_to_freq = StatusVar('go_to_freq', 25)
     _pix_integration = StatusVar('pix_integration', 0.5)
@@ -291,7 +284,7 @@ class CwaveLogic(GenericLogic):
         self._cts_wlm_time_s = self._cts_wlm_time_s[1:]
 
     @QtCore.Slot(float, float, int)
-    def set_zpl_sweep(self, amplitude, center_wl, sweep_speed):
+    def set_zpl_sweep_params(self, amplitude, center_wl, sweep_speed):
         self.amplitude = amplitude
         self.center_wl = center_wl
         self.sweep_speed = sweep_speed
@@ -376,15 +369,8 @@ class CwaveLogic(GenericLogic):
         # self.plot_y_wlm = np.delete(self.plot_y_wlm, -1)
         self.plot_x_wlm = np.linspace(0, len(self.plot_y_wlm) , len(self.plot_y_wlm))[:250]
         
-        
-        x_scan = self._cts_wlm_time[2:,1] #wlm
-        y_scan = self._cts_wlm_time[2:, 0]#[x > 0] #cts
-        # rl = np.roll(x_scan[2:,1], 50) - x_scan[2:,1]
-        # rl = rl/max(rl)
-        # np.where(rl, (rl < -0.05) & (rl > -0.1))
-        # np.diff(x_scan)
-        self.plot_x = x_scan
-        self.plot_y = y_scan
+        self.plot_x = self._cts_wlm_time[2:,1] #wlm
+        self.plot_y = self._cts_wlm_time[2:, 0]#[x > 0] #cts
 
         self.sig_update_gui.emit()
     
