@@ -58,7 +58,6 @@ class CwaveScanGui(GUIBase):
     """
 
     """
-    
     # declare connectors
     cwavelogic = Connector(interface='CwaveLogic')
     savelogic = Connector(interface='SaveLogic')
@@ -73,7 +72,7 @@ class CwaveScanGui(GUIBase):
     sig_change_lock_mode = QtCore.Signal(str, str)
     sig_start_sweep = QtCore.Signal()
     sig_stop_sweep = QtCore.Signal()
-    sig_set_zpl_sweep = QtCore.Signal(float, float, int)
+    sig_set_zpl_sweep_params = QtCore.Signal(float, float, int)
     sig_set_zpl_search = QtCore.Signal(float, float, float)
     sig_save_measurement = QtCore.Signal()
     sig_regulation_mode = QtCore.Signal(bool)
@@ -88,7 +87,6 @@ class CwaveScanGui(GUIBase):
         """
         self._mw.close()
         return 0
-
     def on_activate(self):
         """ 
 
@@ -178,7 +176,7 @@ class CwaveScanGui(GUIBase):
         self._mw.scan_cb_max_InputWidget.valueChanged.connect(self.refresh_matrix)
         self._mw.scan_cb_min_InputWidget.valueChanged.connect(self.refresh_matrix)
         self._mw.scan_cb_high_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
-        self._mw.scan_cb_low_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
+        self._mw.scan_cb_low_centile_InputWidget.valueChanged.connect(self.refresh_matrix) 
     def set_up_cwave_control_panel(self):
         self._mw.pushButton_connectCwave.clicked.connect(self.changeCwaveState)
         for shutter in self._cwavescan_logic.shutters.keys():
@@ -203,46 +201,26 @@ class CwaveScanGui(GUIBase):
     def set_up_scanner_panel(self):
         self.sig_start_sweep.connect(self._cwavescan_logic.start_sweep)
         self.sig_stop_sweep.connect(self._cwavescan_logic.stop_sweep)
-
         self.sig_set_refcav.connect(self._cwavescan_logic.refcav_setpoint)
-        
         self.sig_save_measurement.connect(self._cwavescan_logic.save_data)
-
-        self.sig_set_zpl_sweep.connect(self._cwavescan_logic.set_zpl_sweep)
-        self._mw.zpl_sweep_pushButton.clicked.connect(self.set_zpl_sweep)
         self.sig_refresh_sweep_zpl.connect(self._cwavescan_logic.refresh_sweep_zpl)
         self._mw.refresh_zpl_sweep_pushButton.clicked.connect(self.refresh_sweep_zpl)
-
-
         self._mw.sweepCenterDoubleSpinBox.editingFinished.connect(self.update_zpl_sweep_params)
         self._mw.sweepSpeedSpinBox.editingFinished.connect(self.update_zpl_sweep_params)
         self._mw.sweepAmplitudeDoubleSpinBox.editingFinished.connect(self.update_zpl_sweep_params)
-
         self.sig_regulation_mode.connect(self._cwavescan_logic.regulate_wavelength)
         self._mw.regulate_checkBox.toggled.connect(self.regulate_wavelength)
-
         #run_stop_sweeping
         self._mw.sweep_checkBox.toggled.connect(self.run_stop_sweep)
-
-        self.set_zpl_sweep()
-
         # self._mw.action_run_stop.triggered.connect(self.run_stop)
         self._mw.action_Save.triggered.connect(self.save_data)
-
         self._mw.action_search_zpl.triggered.connect(self.open_zpl_search)
-
         self.sig_set_zpl_search.connect(self._cwavescan_logic.start_zpl_search)
         self.sig_refresh_zpl_search.connect(self._cwavescan_logic.refresh_search_zpl)
-
         self.open_zpl_search()   
         self._zplw.close()
-        
-        
-
     def open_zpl_search(self):
-
         self._zplw = SearchZPL() 
-        
         self._zplw.show()
         self._zplw.sig_stop_zpl_search.connect(self._cwavescan_logic.stop_zpl_search)
         self._zplw.refresh_pushButton.clicked.connect(self.refresh_search_zpl)
@@ -252,42 +230,22 @@ class CwaveScanGui(GUIBase):
         # self._zplw.wl1DoubleSpinBox.editingFinished.connect(self.update_zpl_search_params)
         # self._zplw.wl2DoubleSpinBox.editingFinished.connect(self.update_zpl_search_params) 
         self.update_zpl_search_params()
-
         self._zplw.search_image = pg.PlotDataItem(self._cwavescan_logic.plot_xs, 
         self._cwavescan_logic.plot_ys, 
         symbol='o', 
         symbolSize=4,
         pen={'color': 0.6, 'width': 1})
-       
         self._zplw.err = pg.ErrorBarItem(x=self._cwavescan_logic.plot_xs, y=self._cwavescan_logic.plot_ys,
          height = self._cwavescan_logic.deviance_ys,  
          beam=self.wl_beam)
-
         self._zplw.search_ViewWidget.addItem(self._zplw.search_image)
         self._zplw.search_ViewWidget.addItem(self._zplw.err)
-        
-    
-    def refresh_search_zpl(self):
-        self.sig_refresh_zpl_search.emit()
-    def refresh_sweep_zpl(self):
-        self.sig_refresh_sweep_zpl.emit()
-
     def update_zpl_search_params(self):
         w1 = self._zplw.wl1DoubleSpinBox.value()
         w2 = self._zplw.wl2DoubleSpinBox.value()
         binWidth = self._zplw.binWidthdoubleSpinBox.value()
         self.wl_beam = binWidth
         self.sig_set_zpl_search.emit(w1, w2, binWidth)
-        
-
-    def refresh_wlm(self):
-        self._cwavescan_logic.plot_y_wlm = np.array([])
-        self.refresh_plots()
-        
-    def set_zpl_sweep(self):
-        self._mw.zpl_sweep_pushButton.setChecked(True)
-        self.update_zpl_sweep_params()
-
     def update_zpl_sweep_params(self):
         amplitude = self._mw.sweepAmplitudeDoubleSpinBox.value()
         if amplitude > 0.01:
@@ -299,18 +257,113 @@ class CwaveScanGui(GUIBase):
             self._mw.sweepCenterDoubleSpinBox.setValue(center_wl)
         sweep_speed = self._mw.sweepSpeedSpinBox.value()
         self.sig_set_zpl_sweep.emit(amplitude, center_wl,sweep_speed)
-
+    def refresh_search_zpl(self):
+        self.sig_refresh_zpl_search.emit()
+    def refresh_sweep_zpl(self):
+        self.sig_refresh_sweep_zpl.emit()
+    def refresh_wlm(self):
+        self._cwavescan_logic.plot_y_wlm = np.array([])
+        self.refresh_plots()
     def regulate_wavelength(self, mode_manual = None):
         if mode_manual not None:
             mode = mode_manual
+            self._mw.regulate_checkBox.setChecked(mode_manual)
         else:
             mode = self.sender().isChecked()
         self.sig_regulation_mode.emit(mode)   
+    def displayRegion(self):
+        reg = self.lr.getRegion()
+        #self._mw.startDoubleSpinBox.setValue(np.round(reg[0], 2))
+        #self._mw.stopDoubleSpinBox.setValue(np.round(reg[1], 2))
+    def regionChanged(self):
+        region = self.lr.getRegion()
+        r1 = 0#self._mw.startDoubleSpinBox.value()
+        r2 = 0#self._mw.stopDoubleSpinBox.value()
+        self.lr.setRegion([r1, r2])
+        # self.sigChangeRange.emit([
+        #     r1,
+        #     r2
+        # ])
+        # print(region)
+    def show(self):
+        """Make window visible and put it above all other windows. """
+        self._mw.show()
+        self._mw.activateWindow()
+        self._mw.raise_()
+    def run_stop_sweep(self, is_checked):
+        """ Manages what happens if scan is started/stopped """
+        # self._mw.action_run_stop.setEnabled(False)
+        if self._mw.sweep_checkBox.isChecked():
+            self._mw.regulate_checkBox.setChecked(False)
+            self._mw.regulate_checkBox.setEnabled(False)
+            self.sig_start_sweep.emit()
+        else:
+            print("stopiing")
+            self._cwavescan_logic.stopRequested = True
+            self._mw.regulate_checkBox.setEnabled(True)
+            self._mw.regulate_checkBox.setChecked(True)
+            self.regulate_wavelength(mode_manual = True)
+            self.sig_stop_sweep.emit()
+    def refresh_plots(self):
+        """ Refresh the xy-plot image """
+        self.scan_image.setData(self._cwavescan_logic.plot_x, self._cwavescan_logic.plot_y)
+        self.shgPD_image.setData(self._cwavescan_logic.plot_x_shg_pd, self._cwavescan_logic.plot_y_shg_pd[-len(self._cwavescan_logic.plot_x_shg_pd):])
+        self.opoPD_image.setData(self._cwavescan_logic.plot_x_opo_pd, self._cwavescan_logic.plot_y_opo_pd[-len(self._cwavescan_logic.plot_x_opo_pd):])
+        wlm_y = self._cwavescan_logic.plot_y_wlm
+        wlm_y = wavelength_to_freq(wlm_y)
+        if len(wlm_y) > 0:
+            self.wavemeter_image.setData(wlm_y - wlm_y[-1], np.linspace(0, len(wlm_y), len(wlm_y)))
 
-
+        #Refresh search:
+        if self._zplw.search_image is not None:
+            self._zplw.search_image.setData(self._cwavescan_logic.plot_xs, self._cwavescan_logic.plot_ys)
+            self._zplw.err.setData(x=self._cwavescan_logic.plot_xs,
+            y = self._cwavescan_logic.plot_ys,
+            height = self._cwavescan_logic.deviance_ys,
+            beam=self.wl_beam)
     @QtCore.Slot()
-    def change_lock_mode(self, param):
-        return 
+    def update_gui(self):
+        self.refresh_plots()
+        self.refresh_matrix()
+        self.refresh_scan_colorbar()
+        self.update_cwave_panel()
+    def save_data(self):
+        """ Save the sum plot, the scan marix plot and the scan data """
+        filetag = self._mw.save_tag_LineEdit.text()
+        cb_range = self.get_matrix_cb_range()
+
+        # Percentile range is None, unless the percentile scaling is selected in GUI.
+        pcile_range = None
+        if self._mw.scan_cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.scan_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.scan_cb_high_centile_InputWidget.value()
+            pcile_range = [low_centile, high_centile]
+
+        self.sig_save_measurement.emit(filetag, cb_range, pcile_range)
+    @QtCore.Slot()
+    def adjust_thick_etalon(self):
+        delta_eta = int(self._mw.thick_eta_spinBox.value())
+        if delta_eta > 0 :
+            self.regulate_wavelength(mode_manual = False)
+
+        self.sig_adj_thick_etalon.emit(delta_eta) 
+    @QtCore.Slot()
+    def adjust_opo_lambda(self):
+        delta_lam = int(self._mw.opo_lambda_spinBox.value())
+        if delta_lam > 0 :
+            self.regulate_wavelength(mode_manual = False)
+        self.sig_adj_opo.emit(delta_lam) 
+    @QtCore.Slot()
+    def update_setpoint(self):
+        self.sig_set_refcav.emit(self._mw.constDoubleSpinBox.value())
+    @QtCore.Slot()
+    def change_lock_mode(self):
+        sender = self.sender()
+        if "_lock_checkBox" in sender.objectName():
+                _param = sender.objectName().split('_lock_checkBox')[0].strip()
+                _mode = 'control' if sender.isChecked() else 'manual'
+                print(_param, _mode)
+                self.sig_change_lock_mode.emit(_param, _mode)
     @QtCore.Slot()
     def optimizing(self):
         sender = self.sender()
@@ -319,9 +372,6 @@ class CwaveScanGui(GUIBase):
             self.sig_optimize_cwave.emit(opt_param)
         else:
             print("Wrong button for this function!")
-    #TODO!:
-    # def set_frequency()
-
     @QtCore.Slot()
     def flip_shutter(self):
         sender = self.sender()
@@ -334,7 +384,6 @@ class CwaveScanGui(GUIBase):
             self.sig_set_shutter_state.emit(_pump, state)
         else:
             print("Wrong button for this function!")
-
     @QtCore.Slot()
     def update_cwave_panel(self):
         """ Logic told us to update our button states, so set the buttons accordingly. """
@@ -373,65 +422,50 @@ class CwaveScanGui(GUIBase):
     def changeCwaveState(self):
         # print(self._cwavescan_logic.cwstate)
         self.sig_connect_cwave.emit()
+    def get_matrix_cb_range(self):
+        """
+        Determines the cb_min and cb_max values for the matrix plot
+        """
+        matrix_image = self.scan_matrix_image.image
 
-    def displayRegion(self):
-        reg = self.lr.getRegion()
-        #self._mw.startDoubleSpinBox.setValue(np.round(reg[0], 2))
-        #self._mw.stopDoubleSpinBox.setValue(np.round(reg[1], 2))
-
-    def regionChanged(self):
-        region = self.lr.getRegion()
-        r1 = 0#self._mw.startDoubleSpinBox.value()
-        r2 = 0#self._mw.stopDoubleSpinBox.value()
-        self.lr.setRegion([r1, r2])
-        # self.sigChangeRange.emit([
-        #     r1,
-        #     r2
-        # ])
-        # print(region)
-
-    def show(self):
-        """Make window visible and put it above all other windows. """
-        self._mw.show()
-        self._mw.activateWindow()
-        self._mw.raise_()
-
-    def run_stop_sweep(self, is_checked):
-        """ Manages what happens if scan is started/stopped """
-        # self._mw.action_run_stop.setEnabled(False)
-        if self._mw.sweep_checkBox.isChecked():
-            self._mw.regulate_checkBox.setChecked(False)
-            self._mw.regulate_checkBox.setEnabled(False)
-            self.sig_start_sweep.emit()
+        # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
+        # Otherwise, calculate cb range from percentiles.
+        if self._mw.scan_cb_manual_RadioButton.isChecked() or np.max(matrix_image) < 0.1:
+            cb_min = self._mw.scan_cb_min_InputWidget.value()
+            cb_max = self._mw.scan_cb_max_InputWidget.value()
         else:
-            print("stopiing")
-            self._cwavescan_logic.stopRequested = True
-            self._mw.regulate_checkBox.setEnabled(True)
-            self._mw.regulate_checkBox.setChecked(True)
-            self.regulate_wavelength(mode_manual = True)
-            self.sig_stop_sweep.emit()
+            # Exclude any zeros (which are typically due to unfinished scan)
+            matrix_image_nonzero = matrix_image[np.nonzero(matrix_image)]
+
+            # Read centile range
+            low_centile = self._mw.scan_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.scan_cb_high_centile_InputWidget.value()
+
+            cb_min = np.percentile(matrix_image_nonzero, low_centile)
+            cb_max = np.percentile(matrix_image_nonzero, high_centile)
+
+        cb_range = [cb_min, cb_max]
+        return cb_range
+    def refresh_scan_colorbar(self):
+        """ Update the colorbar to a new scaling."""
+
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
+        # Otherwise, take user-defined values.
+        if self._mw.scan_cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.scan_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.scan_cb_high_centile_InputWidget.value()
+
+            cb_min = np.percentile(self.scan_matrix_image.image, low_centile)
+            cb_max = np.percentile(self.scan_matrix_image.image, high_centile)
+        else:
+            cb_min = self._mw.scan_cb_min_InputWidget.value()
+            cb_max = self._mw.scan_cb_max_InputWidget.value()
+
+        self.scan_cb.refresh_colorbar(cb_min, cb_max)
+        self._mw.scan_cb_ViewWidget.update()
 
 
-    def refresh_plots(self):
-        """ Refresh the xy-plot image """
-        self.scan_image.setData(self._cwavescan_logic.plot_x, self._cwavescan_logic.plot_y)
-        self.shgPD_image.setData(self._cwavescan_logic.plot_x_shg_pd, self._cwavescan_logic.plot_y_shg_pd[-len(self._cwavescan_logic.plot_x_shg_pd):])
-        self.opoPD_image.setData(self._cwavescan_logic.plot_x_opo_pd, self._cwavescan_logic.plot_y_opo_pd[-len(self._cwavescan_logic.plot_x_opo_pd):])
-        wlm_y = self._cwavescan_logic.plot_y_wlm
-        wlm_y = wavelength_to_freq(wlm_y)
-        if len(wlm_y) > 0:
-            self.wavemeter_image.setData(wlm_y - wlm_y[-1], np.linspace(0, len(wlm_y), len(wlm_y)))
-
-        #Refresh search:
-        if self._zplw.search_image is not None:
-            self._zplw.search_image.setData(self._cwavescan_logic.plot_xs, self._cwavescan_logic.plot_ys)
-            self._zplw.err.setData(x=self._cwavescan_logic.plot_xs,
-            y = self._cwavescan_logic.plot_ys,
-            height = self._cwavescan_logic.deviance_ys,
-            beam=self.wl_beam)
-
-
-    def refresh_matrix(self):
+        def refresh_matrix(self):
         """ Refresh the xy-matrix image """
         self.scan_matrix_image.setImage(self._cwavescan_logic.scan_matrix, axisOrder='row-major')
         scan_image_data = self._cwavescan_logic.scan_matrix
@@ -457,94 +491,3 @@ class CwaveScanGui(GUIBase):
             axisOrder='row-major')
 
         self.refresh_scan_colorbar()
-
-    def refresh_scan_colorbar(self):
-        """ Update the colorbar to a new scaling."""
-
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # Otherwise, take user-defined values.
-        if self._mw.scan_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.scan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.scan_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile(self.scan_matrix_image.image, low_centile)
-            cb_max = np.percentile(self.scan_matrix_image.image, high_centile)
-        else:
-            cb_min = self._mw.scan_cb_min_InputWidget.value()
-            cb_max = self._mw.scan_cb_max_InputWidget.value()
-
-        self.scan_cb.refresh_colorbar(cb_min, cb_max)
-        self._mw.scan_cb_ViewWidget.update()
-
-    def update_setpoint(self):
-        self.sig_set_refcav.emit(self._mw.constDoubleSpinBox.value())
-
-
-    def get_matrix_cb_range(self):
-        """
-        Determines the cb_min and cb_max values for the matrix plot
-        """
-        matrix_image = self.scan_matrix_image.image
-
-        # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
-        # Otherwise, calculate cb range from percentiles.
-        if self._mw.scan_cb_manual_RadioButton.isChecked() or np.max(matrix_image) < 0.1:
-            cb_min = self._mw.scan_cb_min_InputWidget.value()
-            cb_max = self._mw.scan_cb_max_InputWidget.value()
-        else:
-            # Exclude any zeros (which are typically due to unfinished scan)
-            matrix_image_nonzero = matrix_image[np.nonzero(matrix_image)]
-
-            # Read centile range
-            low_centile = self._mw.scan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.scan_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile(matrix_image_nonzero, low_centile)
-            cb_max = np.percentile(matrix_image_nonzero, high_centile)
-
-        cb_range = [cb_min, cb_max]
-        return cb_range
-
-    @QtCore.Slot()
-    def update_gui(self):
-        self.refresh_plots()
-        self.refresh_matrix()
-        self.refresh_scan_colorbar()
-        self.update_cwave_panel()
-
-
-    def save_data(self):
-        """ Save the sum plot, the scan marix plot and the scan data """
-        filetag = self._mw.save_tag_LineEdit.text()
-        cb_range = self.get_matrix_cb_range()
-
-        # Percentile range is None, unless the percentile scaling is selected in GUI.
-        pcile_range = None
-        if self._mw.scan_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.scan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.scan_cb_high_centile_InputWidget.value()
-            pcile_range = [low_centile, high_centile]
-
-        self.sig_save_measurement.emit(filetag, cb_range, pcile_range)
-
-    @QtCore.Slot()
-    def adjust_thick_etalon(self):
-        delta_eta = int(self._mw.thick_eta_spinBox.value())
-        self.sig_adj_thick_etalon.emit(delta_eta) 
-
-    @QtCore.Slot()
-    def adjust_opo_lambda(self):
-        delta_lam = int(self._mw.opo_lambda_spinBox.value())
-        self.sig_adj_opo.emit(delta_lam) 
-
-    @QtCore.Slot()
-    def change_lock_mode(self):
-        sender = self.sender()
-        if "_lock_checkBox" in sender.objectName():
-                _param = sender.objectName().split('_lock_checkBox')[0].strip()
-                _mode = 'control' if sender.isChecked() else 'manual'
-                print(_param, _mode)
-                self.sig_change_lock_mode.emit(_param, _mode)
-#! Control panel:
-    #def plot_wavelength_to_countrate(self):
-        
