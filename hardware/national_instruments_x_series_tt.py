@@ -24,6 +24,7 @@ import numpy as np
 import re
 import time
 import PyDAQmx as daq
+from qtpy import QtCore
 from core.module import Base
 from core.configoption import ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
@@ -89,6 +90,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     """
 
+
+    # signals to interfuse
+    # this signl gets passed from layer to layer until it reaches the gui.
+    sigLimitsChanged = QtCore.Signal()
+    
     # config options
     _photon_sources = ConfigOption('photon_sources', list(), missing='warn')
 
@@ -109,6 +115,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _scanner_counter_channels = ConfigOption('scanner_counter_channels', list(), missing='warn')
     _scanner_voltage_ranges = ConfigOption('scanner_voltage_ranges', missing='error')
     _scanner_position_ranges = ConfigOption('scanner_position_ranges', missing='error')
+    # Note: rt and lt ranges are only specified for x,y and z. 
+    # This might result in problems when 4 inputs are expected.
+    # In this case simply add "- [0, 100]"" beneath the xyz ranges in the config file.
+    _scanner_position_ranges_rt = ConfigOption('scanner_position_ranges_rt', missing='error')
+    _scanner_position_ranges_lt = ConfigOption('scanner_position_ranges_lt', missing='error')
 
     _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
     _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', missing='warn')
@@ -2026,11 +2037,19 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self.set_voltage_range(myrange=[[0, 10], [0, 10], [0, 10]])
             # resets the analog output. This reloads the new limits
             self._start_analog_output()
+            # update scanner position range to LT
+            self.set_position_range(self._scanner_position_ranges_lt)
         elif RTLT == 'RT':
             self.set_voltage_range(myrange=[[0, 4], [0, 4], [0, 4]])
             self._start_analog_output()
+            # update scanner position range to RT
+            self.set_position_range(self._scanner_position_ranges_rt)
         else:
             print('Limit needs to be either LT or RT')
+            return
+        # signal to gui (via rest of the layers).
+        # this provokes an update of the axes.
+        self.sigLimitsChanged.emit()
 
 
     # ======================== Digital channel control ==========================
