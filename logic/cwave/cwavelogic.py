@@ -14,8 +14,6 @@ from qtpy import QtCore
 from PyQt5.QtCore import QObject
 from core.threadmanager import ThreadManager
 from core.pi3_utils import delay
-
-import h5py
 import numpy as np
 
 class SearchZPLplotThread(QtCore.QObject):
