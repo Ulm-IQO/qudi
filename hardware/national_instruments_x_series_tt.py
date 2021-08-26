@@ -766,8 +766,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
+        n_ch = len(self.get_scanner_axes())
         if myrange is None:
-            myrange = [[0, 1e-6], [0, 1e-6], [0, 1e-6], [0, 1e-6]]
+            myrange = [[0, 1e-6], [0, 1e-6], [0, 1e-6], [0, 1e-6]][0:n_ch]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')

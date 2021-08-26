@@ -23,7 +23,7 @@ def connect(func):
     
 class PrincetonSpectrometerClient(Base, SpectrometerInterface):
     _integration_time = 10
-    _shift_wavelength = 0 
+    _shift_wavelength = 0.57274
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
         #locking for thread safety
