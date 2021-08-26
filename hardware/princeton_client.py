@@ -60,9 +60,9 @@ class PrincetonSpectrometerClient(Base, SpectrometerInterface):
         return specdata
 
     def setExposure(self, exposureTime):
-        return self.send_request("set_exposure", action=exposureTime)
+        return self.send_request("set_exposure_time", action=str(exposureTime* 1000))
     def getExposure(self):
-        return self.send_request("get_exposure")
+        return self.send_request("get_exposure_time") / 1000
     
     def clearBuffer(self):
         pass

@@ -203,6 +203,8 @@ class SpectrometerGui(GUIBase):
         self.time_passed = 0
         self._mw.progressBar.setMaximum(int_time)
         self.sigRecordSpectrum.emit(background)
+        self._mw.rec_single_spectrum_Action.setEnabled(False)
+        self._mw.acquire_background_Action.setEnabled(False)
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateProgress)
         self.update_time = 500
@@ -214,6 +216,8 @@ class SpectrometerGui(GUIBase):
         if self.time_passed >= int_time:
             self.timer.stop()
             self._mw.progressBar.setValue(int_time)
+            self._mw.rec_single_spectrum_Action.setEnabled(True)
+            self._mw.acquire_background_Action.setEnabled(True)
             self.update_data()
             return
         self._mw.progressBar.setValue(self.time_passed)
@@ -265,8 +269,8 @@ class SpectrometerGui(GUIBase):
         self._spectrum_logic.save_spectrum_data(background=True)
 
     def set_plot_domain(self):
-       lambda_min = self._mw.spec_range_left_doubleSpinBox.value() * 1e-9 #nm
-       lambda_max = self._mw.spec_range_right_doubleSpinBox.value() * 1e-9 #nm
+       lambda_min = self._mw.spec_range_left_doubleSpinBox.value()  #nm
+       lambda_max = self._mw.spec_range_right_doubleSpinBox.value()  #nm
 
        self.plot_domain = np.array([lambda_min, lambda_max])
 
