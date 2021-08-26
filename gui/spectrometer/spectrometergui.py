@@ -55,7 +55,7 @@ class SpectrometerGui(GUIBase):
     # declare connectors
     spectrumlogic = Connector(interface='SpectrumLogic')
     sigRecordSpectrum = QtCore.Signal(bool)
-
+    
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -80,8 +80,10 @@ class SpectrometerGui(GUIBase):
 
         # giving the plots names allows us to link their axes together
         self._pw = self._mw.plotWidget  # pg.PlotWidget(name='Counter1')
+        
         self._plot_item = self._pw.plotItem
-
+        self._plot_item.scene().sigMouseClicked.connect(self.onClick)
+        self.vb = self._plot_item.vb
         # create a new ViewBox, link the right axis to its coordinate system
         self._right_axis = pg.ViewBox()
         self._plot_item.showAxis('right')
@@ -161,6 +163,21 @@ class SpectrometerGui(GUIBase):
 
         self._mw.close()
 
+    def onClick(self, event):
+        items = self._plot_item.scene().items(event.scenePos())
+        mousePoint = self.vb.mapSceneToView(event._scenePos)
+        print(mousePoint.x(), mousePoint.y())
+        # if self._plot_item.sceneBoundingRect().contains(event._scenePos):
+        #     mousePoint = self.vb.mapSceneToView(event._scenePos)
+        #     index = int(mousePoint.x())
+        #     print(index, mousePoint.x(), mousePoint.y())
+        #     data = self._spectrum_logic.spectrum_data
+        #     lam, spec = data[0, :], data[1, :]
+        #     if index > 0 and index < len(self._spectrum_logic.spectrum_data):
+        #         self.label.setText(
+        #             "<span style='font-size: 12pt'>x=%0.1f,   <span style='color: red'>y1=%0.1f</span>,   <span style='color: green'>y2=%0.1f</span>" % (
+        #             mousePoint.x(), lam[index], spec[index]))
+
     def show(self):
         """Make window visible and put it above all other windows.
         """
@@ -213,7 +230,7 @@ class SpectrometerGui(GUIBase):
     def updateProgress(self):
         int_time = self._mw.integration_time_doubleSpinBox.value()
         self.time_passed += self.update_time/1000
-        if self.time_passed >= int_time:
+        if self.time_passed > int_time:
             self.timer.stop()
             self._mw.progressBar.setValue(int_time)
             self._mw.rec_single_spectrum_Action.setEnabled(True)

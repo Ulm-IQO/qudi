@@ -58,7 +58,7 @@ class SpectrumLogic(GenericLogic):
     _spectrum_background = StatusVar('spectrum_background', np.empty((2, 0)))
     _background_correction = StatusVar('background_correction', False)
     fc = StatusVar('fits', None)
-
+    
     # Internal signals
     sig_specdata_updated = QtCore.Signal()
     sig_next_diff_loop = QtCore.Signal()
@@ -143,11 +143,11 @@ class SpectrumLogic(GenericLogic):
         self.fc.clear_result()
         # clear spectro,eter buffer
         self._spectrometer_device.clearBuffer()
-        sleep(self._spectrometer_device._integration_time)
+        # sleep(self._spectrometer_device._integration_time)
         if background:
-            self._spectrum_background = netobtain(self._spectrometer_device.recordSpectrum())
+            self._spectrum_background = self._spectrometer_device.recordSpectrum()
         else:
-            self._spectrum_data = netobtain(self._spectrometer_device.recordSpectrum())
+            self._spectrum_data = self._spectrometer_device.recordSpectrum()
 
         self._calculate_corrected_spectrum()
 

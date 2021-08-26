@@ -23,6 +23,7 @@ def connect(func):
     
 class PrincetonSpectrometerClient(Base, SpectrometerInterface):
     _integration_time = 10
+    _shift_wavelength = 0 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
         #locking for thread safety
@@ -55,7 +56,7 @@ class PrincetonSpectrometerClient(Base, SpectrometerInterface):
     def recordSpectrum(self):
         wavelengths = self.send_request("get_wavelength", recv_bytes = 32768)
         specdata = np.empty((2, len(wavelengths)), dtype=np.double)
-        specdata[0] = wavelengths
+        specdata[0] = wavelengths + self._shift_wavelength
         specdata[1] = self.send_request("get_spectrum", recv_bytes = 32768)
         return specdata
 
