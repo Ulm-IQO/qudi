@@ -2,38 +2,23 @@
 
 import os
 from core.module import Base
-from core.configoption import ConfigOption
+
 from serial import Serial, EIGHTBITS,STOPBITS_ONE,PARITY_NONE
 
 
-class ThorlabsElloDevice(Base):
-	""" This class implements communication with the Rotation Mount ELL14.
-
-	Example config for copy-paste:
-
-	--- TODO: PUT IT HERE ---
-
-	"""
-	_port = ConfigOption('port', False, missing='warn')
-	
+class ThorlabsElloRotation():	
 	revelation = 262144
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
 
-	def on_activate(self):
-		""" Activate module.
-		"""
-		pass
-
-	def on_deactivate(self):
-		""" Disconnect from hardware on deactivation.
-		"""
-		pass
+	def __init__(self, port, ell=None):
+		if ell is None:
+			self.connect()
+		else:
+			self.ell = ell
 
 	def connect(self):
 		""" Connects to the stage.
 		"""
-		self.ell = Serial('COM5', baudrate=9600, bytesize=EIGHTBITS, stopbits=STOPBITS_ONE,parity= PARITY_NONE, timeout=2)pass
+		self.ell = Serial('COM5', baudrate=9600, bytesize=EIGHTBITS, stopbits=STOPBITS_ONE,parity= PARITY_NONE, timeout=2)
 
 	def move_forward(self):
 		self.ell.write(bytes(f"{self._port}fw", 'ascii'))
@@ -46,9 +31,7 @@ class ThorlabsElloDevice(Base):
 	def disconnect(self):
 		""" Disconnects from the stage.
 		"""
-		pass
-#%%
-#%%
+		self.ell.close()
 	def home(self):
 		""" Homes the rotation mount.
 		"""
