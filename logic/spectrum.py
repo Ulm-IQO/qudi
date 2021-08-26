@@ -143,7 +143,7 @@ class SpectrumLogic(GenericLogic):
         self.fc.clear_result()
         # clear spectro,eter buffer
         self._spectrometer_device.clearBuffer()
-        sleep(self._spectrometer_device._integration_time/int(1e6))
+        sleep(self._spectrometer_device._integration_time)
         if background:
             self._spectrum_background = netobtain(self._spectrometer_device.recordSpectrum())
         else:
@@ -259,7 +259,7 @@ class SpectrumLogic(GenericLogic):
         self.sig_next_diff_loop.emit()
 
     def update_integration_time(self, integration_time):
-        self._spectrometer_device._integration_time = integration_time * 1000000
+        self._spectrometer_device._integration_time = integration_time
         self._spectrometer_device.setExposure(self._spectrometer_device._integration_time)
 
 

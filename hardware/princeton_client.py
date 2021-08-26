@@ -22,21 +22,23 @@ def connect(func):
 
     
 class PrincetonSpectrometerClient(Base, SpectrometerInterface):
-    def __init__(self):#, config, **kwargs):
-        #super().__init__(config=config, **kwargs)
+    _integration_time = 10
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
         #locking for thread safety
         self.wavelength = np.linspace(0, 1339, 1340)
         
 
     def on_activate(self):
-        self.host_ip, self.server_port = '192.168.202.81', 3336
+        self.host_ip, self.server_port = '192.168.202.20', 3336
+        self._integration_time = self.getExposure()
         # self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
     @connect
-    def send_request(self, request, action=None):
+    def send_request(self, request, action=None, recv_bytes = 1024):
         self.tcp_client.sendall(request.encode())
-        received = self.tcp_client.recv(1024)
-        response = pickle.loads(received[1:])
+        received = self.tcp_client.recv(recv_bytes)
+        response = pickle.loads(received[1:], encoding="latin1")
         flag = received[:1].decode()
         
         if flag == 'k':
@@ -49,11 +51,12 @@ class PrincetonSpectrometerClient(Base, SpectrometerInterface):
     
     def on_deactivate(self):
         self.tcp_client.close()
+
     def recordSpectrum(self):
-        wavelengths = self.send_request("get_wavelength")
+        wavelengths = self.send_request("get_wavelength", recv_bytes = 32768)
         specdata = np.empty((2, len(wavelengths)), dtype=np.double)
         specdata[0] = wavelengths
-        specdata[1] = self.send_request("get_spectrum")
+        specdata[1] = self.send_request("get_spectrum", recv_bytes = 32768)
         return specdata
 
     def setExposure(self, exposureTime):
@@ -61,3 +64,5 @@ class PrincetonSpectrometerClient(Base, SpectrometerInterface):
     def getExposure(self):
         return self.send_request("get_exposure")
     
+    def clearBuffer(self):
+        pass

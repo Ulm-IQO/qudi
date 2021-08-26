@@ -196,13 +196,13 @@ class SpectrometerGui(GUIBase):
             # redraw the fit curve in the GUI plot.
             self._curve2.setData(x=fit_data[0, :], y=fit_data[1, :])
 
-    def record_single_spectrum(self):
+    def record_single_spectrum(self, background=False):
         """ Handle resume of the scanning without resetting the data.
         """
         int_time = self._mw.integration_time_doubleSpinBox.value()
         self.time_passed = 0
         self._mw.progressBar.setMaximum(int_time)
-        self.sigRecordSpectrum.emit(False)
+        self.sigRecordSpectrum.emit(background)
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateProgress)
         self.update_time = 500
@@ -258,7 +258,7 @@ class SpectrometerGui(GUIBase):
         self._spectrum_logic.background_correction = self._mw.correct_background_Action.isChecked()
 
     def acquire_background(self):
-        self.sigRecordSpectrum.emit(True)
+        self.record_single_spectrum(background=True)
         # self._spectrum_logic.get_single_spectrum(background=True)
 
     def save_background_data(self):

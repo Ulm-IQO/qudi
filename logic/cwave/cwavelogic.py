@@ -327,7 +327,7 @@ class CwaveLogic(GenericLogic):
         self.plot_xs = np.arange(self.w1, self.w2, self.zpl_bin_width)
         self.plot_ys = np.zeros(self.plot_xs.shape[0])
         self.samples_num = np.ones(self.plot_xs.shape[0])
-        self.deviance_ys = self.dy/samples_num
+        self.deviance_ys = self.dy/self.samples_num
         # self.sig_calculate_search_scan.emit()
 
 

@@ -268,7 +268,7 @@ class CwaveScanGui(GUIBase):
             center_wl = self._cwavescan_logic.wavelength
             self._mw.sweepCenterDoubleSpinBox.setValue(center_wl)
         sweep_speed = self._mw.sweepSpeedSpinBox.value()
-        self.sig_set_zpl_sweep.emit(amplitude, center_wl,sweep_speed)
+        self.sig_set_zpl_sweep_params.emit(amplitude, center_wl,sweep_speed)
     def reset_search_zpl(self):
         self.sig_reset_zpl_search.emit()
     def refresh_search_zpl(self):
