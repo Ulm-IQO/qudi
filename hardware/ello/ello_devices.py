@@ -7,8 +7,8 @@ import hardware.ello.ello_rotation as ello_rotor
 from core.configoption import ConfigOption
 from core.module import Base
 class ThorlabsElloDevices(Base):
-    _flipper_port = ConfigOption('flipper_port', False, missing='warn')
-    _rotor_port = ConfigOption('rotor_port', False, missing='warn')
+    _flipper_port = ConfigOption('_flipper_port', False, missing='warn')
+    _rotor_port = ConfigOption('_rotor_port', False, missing='warn')
 	
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -16,9 +16,9 @@ class ThorlabsElloDevices(Base):
     def on_activate(self):
         self.ell = self.connect()
         if self._flipper_port:
-            self.ello_flip = ello_flip.ThorlabsElloFlipper(self._flipper_port, self.ell)
+            self.ello_flip = ello_flip.ThorlabsElloFlipper(port = self._flipper_port, ell=self.ell)
         if self._rotor_port:
-            self.ello_rotor = ello_rotor.ThorlabsElloRotation(self._rotor_port, self.ell)
+            self.ello_rotor = ello_rotor.ThorlabsElloRotation(port = self._rotor_port, ell=self.ell)
 
     def on_deactivate(self):
         self.disconnect()

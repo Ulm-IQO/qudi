@@ -10,6 +10,7 @@ class ThorlabsElloRotation():
 	revelation = 262144
 
 	def __init__(self, port, ell=None):
+		self._port = port
 		if ell is None:
 			self.connect()
 		else:

@@ -7,6 +7,7 @@ from serial import Serial, EIGHTBITS,STOPBITS_ONE,PARITY_NONE
 class ThorlabsElloFlipper():
 	
 	def __init__(self, port, ell=None):
+		self._port = port
 		if ell is None:
 			self.connect()
 		else:
@@ -22,22 +23,22 @@ class ThorlabsElloFlipper():
 
 	def move_forward(self):
 		self.ell.write(bytes(f"{self._port}fw", 'ascii'))
-		return self.ell.read(32)
+		return self.ell.read(5)
 
 	def get_info(self):
 		self.ell.write(bytes(f"{self._port}in", 'ascii'))
-		return self.ell.read(32)
+		return self.ell.read(5)
 
 	def home(self):
 		""" Homes the rotation mount.
 		"""
 		self.ell.write(bytes(f"{self._port}ho0", 'ascii'))
-		self.ell.read(32)
+		self.ell.read(11)
 
 	def get_pos(self):
 		""" Returns the current position of the stage. In degree angle
 		"""
-		ell.write(bytes(f"{_port}gp", 'ascii'))
-		pos16 = ell.read(32)
+		self.ell.write(bytes(f"{self._port}gp", 'ascii'))
+		pos16 = self.ell.read(32)
 		pos10 = int("".join(filter(lambda x: x not in "brn\\'", str(pos16)))[3:], 16)
-		return 1 if pos16 > 0 else 0
+		return 1 if pos10 > 0 else 0
