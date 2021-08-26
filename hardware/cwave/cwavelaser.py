@@ -8,7 +8,7 @@ import time
 from ctypes import c_char_p, CDLL, c_int
 import os
 from types import SimpleNamespace
-
+from qtpy import QtCore
 RegMode_dict = {'OFF':0, 
         'SCAN':1, 
         'CONTROL':2, 
@@ -261,6 +261,7 @@ class CwaveLaser(Base):
         print('C-WAVE disconnected')
 
     @laser_is_connected
+    @QtCore.Slot()
     def set_shutters_states(self):
         for sh_key, sh_val in self.shutters.items():
             shstat = self.set_int_value(f'{sh_key}', sh_val)
