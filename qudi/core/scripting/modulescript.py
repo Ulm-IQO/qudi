@@ -33,6 +33,7 @@ from typing import Mapping, Any, Type, Sequence, Optional, Iterable
 from qudi.core.connector import Connector
 from qudi.core.modulemanager import ModuleManager
 from qudi.util.models import DictTableModel
+from qudi.util.mutex import Mutex
 
 
 class ModuleScript(QtCore.QObject):
@@ -46,6 +47,8 @@ class ModuleScript(QtCore.QObject):
                  parent: Optional[QtCore.QObject] = None):
         super().__init__(parent=parent)
 
+        self._thread_lock = Mutex()
+
         # Connect module connectors as specified in module_instances
         if module_instances is None:
             module_instances = dict()
@@ -55,13 +58,13 @@ class ModuleScript(QtCore.QObject):
         self.__id = str(uuid4())
 
         # script arguments and result cache
-        self.result = None
         self.args = tuple()
         self.kwargs = dict()
+        self.result = None
 
         # Status flags
-        self.success = False
-        self.is_running = False
+        self._success = False
+        self._running = False
 
     def __connect_modules(self, module_instances: Mapping[str, Any]):
         """ Connect all Connector meta objects of this instance to qudi module instances.
@@ -103,12 +106,21 @@ class ModuleScript(QtCore.QObject):
         """
         return getLogger(f'{self.__module__}.{self.__class__.__name__}')
 
+    @property
+    def running(self):
+        with self._thread_lock:
+            return self._running
+
+    @property
+    def success(self):
+        with self._thread_lock:
+            return self._success
+
     def __call__(self, *args, **kwargs) -> Any:
         """ Convenience magic method to run this script like a function
         DO NOT OVERRIDE IN SUBCLASS!
 
-        @param args: Positional arguments passed to run method
-        @param kwargs: Keyword arguments passed to run method
+        Arguments are passed directly to _run() method.
 
         @return object: Result of the script method
         """
@@ -123,26 +135,27 @@ class ModuleScript(QtCore.QObject):
         DO NOT OVERRIDE IN SUBCLASS!
         """
         self.result = None
-        self.success = False
-        self.is_running = True
+        with self._thread_lock:
+            self._success = False
+            self._running = True
         self.log.debug(f'Starting to run ModuleScript "{self.__class__.__name__}" with positional '
                        f'arguments {self.args} and keyword arguments {self.kwargs}.')
         # Emit finished signal even if script execution fails. Check success flag.
         try:
             self.result = self._run(*self.args, **self.kwargs)
-            self.success = True
+            with self._thread_lock:
+                self._success = True
         finally:
-            self.is_running = False
-            self.sigFinished.emit(self.result, self.id, self.success)
+            with self._thread_lock:
+                self._running = False
+                self.sigFinished.emit(self.result, self.id, self._success)
 
     def _run(self, *args, **kwargs) -> Any:
         """ The actual script to be run. Implement only this method in a subclass.
 
         @return Any: The result of the script
         """
-        raise NotImplementedError(
-            f'No _run() method implemented for ModuleScript "{self.__class__.__name__}".'
-        )
+        raise NotImplementedError(f'No _run() method implemented for "{self.__class__.__name__}".')
 
 
 def import_module_script(module: str, cls: str,
