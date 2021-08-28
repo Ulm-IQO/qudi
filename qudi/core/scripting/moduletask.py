@@ -139,6 +139,7 @@ class ModuleTask(ModuleScript):
             raise ModuleTaskInterrupted
 
     def __on_before_start_callback(self, event: Any = None) -> bool:
+        print('on_before')
         with self._thread_lock:
             return not (self._stop_requested or self._running)
 
@@ -197,6 +198,7 @@ class ModuleTask(ModuleScript):
         try:
             self._state_machine.start()
         except Canceled:
+            print('Cancelled')
             self.log.error(f'Unable to start ModuleTask "{self.__class__.__name__}". '
                            f'Task is already running or has been interrupted immediately.')
 

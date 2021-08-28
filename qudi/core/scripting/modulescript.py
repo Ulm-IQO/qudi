@@ -47,12 +47,12 @@ class ModuleScript(QtCore.QObject):
                  parent: Optional[QtCore.QObject] = None):
         super().__init__(parent=parent)
 
-        self._thread_lock = Mutex()
-
         # Connect module connectors as specified in module_instances
         if module_instances is None:
             module_instances = dict()
         self.__connect_modules(module_instances)
+
+        self._thread_lock = Mutex()
 
         # Create unique ID string
         self.__id = str(uuid4())
@@ -73,8 +73,9 @@ class ModuleScript(QtCore.QObject):
                                       connect
         """
         used_connector_names = set()
-        for attr_name in [name for name in dir(self) if not name.startswith('__')]:
-            attr = getattr(self, attr_name)
+        cls = self.__class__
+        for attr_name in [name for name in dir(cls) if not name.startswith('__')]:
+            attr = getattr(cls, attr_name)
             if isinstance(attr, Connector):
                 conn_name = attr.name
                 if conn_name in used_connector_names:
@@ -87,7 +88,7 @@ class ModuleScript(QtCore.QObject):
                     connector.connect(module)
                 elif not connector.optional:
                     raise RuntimeError(f'Mandatory module connection "{conn_name}" missing for '
-                                       f'ModuleScript "{self.__class__.__name__}"')
+                                       f'"{self.__class__.__name__}"')
 
     @property
     def id(self):
