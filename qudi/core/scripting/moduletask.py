@@ -64,11 +64,6 @@ class ModuleTaskStateMachine(Fysom):
 
         super().__init__(cfg=fsm_cfg)
 
-    def __call__(self) -> str:
-        """ Returns the current state.
-        """
-        return self.current
-
 
 class ModuleTask(ModuleScript):
     """ Extends parent ModuleScript class with more functionality like setup, cleanup and interrupt.
@@ -101,76 +96,27 @@ class ModuleTask(ModuleScript):
         with self._thread_lock:
             return self._stop_requested
 
+    @property
+    def state(self):
+        return self._state_machine.current
+
     def interrupt(self):
         with self._thread_lock:
             self._stop_requested = True
 
     def check_interrupt(self) -> None:
+        """ Implementations of _run and _setup should occasionally call this method in order to
+        break execution early if another thread has interrupted this task in the meantime.
+        Interrupting this way will cause _cleanup to be called immediately and terminate the task
+        afterwards.
+        """
         if self.interrupted:
             raise ModuleTaskInterrupted
-
-    def __change_state_callback(self, e: Any = None) -> None:
-        """ General state transition callback
-        """
-        self.sigStateChanged.emit(e)
-
-    def __before_start_callback(self, event: Any = None) -> bool:
-        with self._thread_lock:
-            return not (self._stop_requested or self._running)
-
-    def __starting_callback(self, event: Any = None) -> None:
-        self.result = None
-        with self._thread_lock:
-            self._success = False
-            self._running = True
-        self.log.debug(f'Running setup of ModuleTask "{self.__class__.__name__}" with\n'
-                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
-        skip_run = True
-        try:
-            self._setup()
-            skip_run = False
-        except ModuleTaskInterrupted:
-            self.log.debug(f'Interrupted setup of ModuleTask "{self.__class__.__name__}".')
-        finally:
-            if skip_run:
-                self._state_machine.skip_run()
-            else:
-                self._state_machine.run()
-
-    def __running_callback(self, event: Any = None) -> None:
-        self.log.debug(f'Running main method of ModuleTask "{self.__class__.__name__}" with\n'
-                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
-        try:
-            with self._thread_lock:
-                if self._stop_requested:
-                    raise ModuleTaskInterrupted
-            self.result = self._run(*self.args, **self.kwargs)
-            with self._thread_lock:
-                self._success = True
-        except ModuleTaskInterrupted:
-            self.log.debug(f'Interrupted main method of ModuleTask "{self.__class__.__name__}".')
-        finally:
-            self._state_machine.finish()
-
-    def __finishing_callback(self, event: Any = None) -> None:
-        self.log.debug(f'Running cleanup of ModuleTask "{self.__class__.__name__}" with\n'
-                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
-        try:
-            self._cleanup()
-        except ModuleTaskInterrupted:
-            self.log.debug(f'Interrupted cleanup of ModuleTask "{self.__class__.__name__}".')
-        finally:
-            self._state_machine.terminate()
-
-    def __stopped_callback(self, event: Any = None) -> None:
-        self.log.debug(f'ModuleTask "{self.__class__.__name__}" has been terminated.')
-        with self._thread_lock:
-            self._running = False
-            self.sigFinished.emit(self.result, self.id, self._success)
 
     @QtCore.Slot()
     def run(self) -> None:
         """ Kick-off state machine and start task execution.
+
         DO NOT OVERRIDE IN SUBCLASS!
         """
         try:
@@ -178,6 +124,9 @@ class ModuleTask(ModuleScript):
         except Canceled:
             self.log.error(f'Unable to start ModuleTask "{self.__class__.__name__}". '
                            f'Task is already running or has been interrupted immediately.')
+
+    # Implement _setup and _cleanup in subclass if needed. By default they will simply do nothing.
+    # You MUST in any case implement _run in a subclass (see: ModuleScript._run).
 
     def _setup(self) -> None:
         """ Optional setup procedure to be performed before _run() is called.
@@ -199,3 +148,78 @@ class ModuleTask(ModuleScript):
         Implement in subclass.
         """
         pass
+
+    # Callbacks for FSM below. Ignore this part unless you know what you are doing!
+
+    def __change_state_callback(self, e: Any = None) -> None:
+        """ General state transition callback
+        """
+        self.sigStateChanged.emit(e)
+
+    def __before_start_callback(self, event: Any = None) -> bool:
+        """ Callback to check if the state machine is allowed to start.
+        """
+        with self._thread_lock:
+            return not (self._stop_requested or self._running)
+
+    def __starting_callback(self, event: Any = None) -> None:
+        """ FSM startup callback. This will call _setup and set status flags accordingly.
+        Resets last task result. Handles task interrupts during execution of _setup method.
+        """
+        self.result = None
+        with self._thread_lock:
+            self._success = False
+            self._running = True
+        self.log.debug(f'Running setup of ModuleTask "{self.__class__.__name__}" with\n'
+                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        skip_run = True
+        try:
+            self._setup()
+            skip_run = False
+        except ModuleTaskInterrupted:
+            self.log.debug(f'Interrupted setup of ModuleTask "{self.__class__.__name__}".')
+        finally:
+            if skip_run:
+                self._state_machine.skip_run()
+            else:
+                self._state_machine.run()
+
+    def __running_callback(self, event: Any = None) -> None:
+        """ FSM callback to execute the mein task _run method. Sets success flag and task result.
+        Handles task interrupts during execution of _run method.
+        """
+        self.log.debug(f'Running main method of ModuleTask "{self.__class__.__name__}" with\n'
+                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        try:
+            with self._thread_lock:
+                if self._stop_requested:
+                    raise ModuleTaskInterrupted
+            self.result = self._run(*self.args, **self.kwargs)
+            with self._thread_lock:
+                self._success = True
+        except ModuleTaskInterrupted:
+            self.log.debug(f'Interrupted main method of ModuleTask "{self.__class__.__name__}".')
+        finally:
+            self._state_machine.finish()
+
+    def __finishing_callback(self, event: Any = None) -> None:
+        """ FSM callback to always call _cleanup method in the end regardless of task success.
+        Handles task interrupts during execution of _run method.
+        """
+        self.log.debug(f'Running cleanup of ModuleTask "{self.__class__.__name__}" with\n'
+                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        try:
+            self._cleanup()
+        except ModuleTaskInterrupted:
+            self.log.debug(f'Interrupted cleanup of ModuleTask "{self.__class__.__name__}".')
+        finally:
+            self._state_machine.terminate()
+
+    def __stopped_callback(self, event: Any = None) -> None:
+        """ FSM callback to emit a finished Qt signal and reset the running flag after the task has
+        been terminated.
+        """
+        self.log.debug(f'ModuleTask "{self.__class__.__name__}" has been terminated.')
+        with self._thread_lock:
+            self._running = False
+            self.sigFinished.emit(self.result, self.id, self._success)
