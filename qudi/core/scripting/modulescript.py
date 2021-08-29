@@ -30,7 +30,7 @@ from PySide2 import QtCore
 from logging import getLogger, Logger
 from typing import Mapping, Any, Type, Sequence, Optional, Iterable
 
-from qudi.core.connector import Connector
+from qudi.core.connector import Connector, create_object_connectors
 from qudi.core.modulemanager import ModuleManager
 from qudi.util.models import DictTableModel
 from qudi.util.mutex import Mutex
@@ -43,14 +43,10 @@ class ModuleScript(QtCore.QObject):
 
     sigFinished = QtCore.Signal(object, str, bool)  # result, ID, success
 
-    def __init__(self, module_instances: Optional[Mapping[str, Any]] = None,
-                 parent: Optional[QtCore.QObject] = None):
+    def __init__(self, parent: Optional[QtCore.QObject] = None):
         super().__init__(parent=parent)
 
-        # Connect module connectors as specified in module_instances
-        if module_instances is None:
-            module_instances = dict()
-        self.__connect_modules(module_instances)
+        self.__connectors = create_object_connectors(self)
 
         self._thread_lock = Mutex()
 
@@ -66,7 +62,7 @@ class ModuleScript(QtCore.QObject):
         self._success = False
         self._running = False
 
-    def __connect_modules(self, module_instances: Mapping[str, Any]):
+    def connect_modules(self, module_instances: Mapping[str, Any]) -> None:
         """ Connect all Connector meta objects of this instance to qudi module instances.
 
         @param dict module_instances: Connector names (keys) and qudi module instances (values) to
@@ -91,7 +87,7 @@ class ModuleScript(QtCore.QObject):
                                        f'"{self.__class__.__name__}"')
 
     @property
-    def id(self):
+    def id(self) -> str:
         """ Read-only unique id (uuid4) of this script instance.
 
         @return str: ID of this script instance
@@ -108,12 +104,12 @@ class ModuleScript(QtCore.QObject):
         return getLogger(f'{self.__module__}.{self.__class__.__name__}')
 
     @property
-    def running(self):
+    def running(self) -> bool:
         with self._thread_lock:
             return self._running
 
     @property
-    def success(self):
+    def success(self) -> bool:
         with self._thread_lock:
             return self._success
 
