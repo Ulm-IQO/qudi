@@ -737,53 +737,32 @@ class ManagedModule(QtCore.QObject):
         with self._lock:
             # Check if module has already been loaded/instantiated
             if not self.is_loaded:
-                logger.error(f'Connection failed. No module instance found or module '
+                logger.error(f'Connection failed. No module instance found for module '
                              f'"{self._base}.{self._name}".')
                 return False
 
-            # Get Connector meta objects for this module
-            conn_objects = getattr(self._instance, '_module_meta', dict()).get('connectors', dict())
-            conn_names = set(conn.name for conn in conn_objects.values())
-            mandatory_conn = set(conn.name for conn in conn_objects.values() if not conn.optional)
-            configured_conn = set(self._connect_cfg)
-            if not configured_conn.issubset(conn_names):
-                logger.error(
-                    f'Connection of module "{self._base}.{self._name}" failed. Encountered '
-                    f'mismatch of connectors in configuration {configured_conn} and module '
-                    f'Connector meta objects {conn_names}.'
-                )
-                return False
-            if not mandatory_conn.issubset(configured_conn):
-                logger.error(
-                    f'Connection of module "{self._base}.{self._name}" failed. Not all mandatory '
-                    f'connectors are specified in config.\n'
-                    f'Mandatory connectors are: {mandatory_conn}'
-                )
-                return False
+            # Collect all module instances required by connector config
+            module_instances = {
+                module_ref().name: module_ref().instance for module_ref in self._required_modules
+            }
+            module_connections = {conn_name: module_instances[mod_name] for conn_name, mod_name in
+                                  self._connect_cfg.items()}
 
-            # Iterate through module connectors and try to connect them
+            # Apply module connections
             try:
-                for connector in conn_objects.values():
-                    if connector.name not in configured_conn:
-                        continue
-                    for module_ref in self._required_modules:
-                        if module_ref().name == self._connect_cfg[connector.name]:
-                            break
-                    connector.connect(module_ref().instance)
+                self._instance.connect_modules(module_connections)
             except:
                 logger.exception(f'Something went wrong while trying to connect module '
-                                 f'"{self._base}.{self._name}".')
+                                 f'"{self._base}.{self._name}":')
                 return False
             return True
 
     def _disconnect(self):
         with self._lock:
             try:
-                conn_obj = getattr(self._instance, '_module_meta', dict()).get('connectors', dict())
-                for connector in conn_obj.values():
-                    connector.disconnect()
+                self._instance.disconnect_modules()
             except:
                 logger.exception(f'Something went wrong while trying to disconnect module '
-                                 f'"{self._base}.{self._name}".')
+                                 f'"{self._base}.{self._name}":')
                 return False
             return True
