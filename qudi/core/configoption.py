@@ -22,9 +22,12 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ['ConfigOption', 'MissingOption']
+
 import copy
 import inspect
 from enum import Enum
+from typing import Any, Optional, Callable
 
 
 class MissingOption(Enum):
@@ -40,8 +43,9 @@ class ConfigOption:
         module initalisation.
     """
 
-    def __init__(self, name=None, default=None, *, missing='nothing', constructor=None,
-                 checker=None, converter=None):
+    def __init__(self, name: Optional[str] = None, default: Optional[Any] = None, *,
+                 missing: Optional[str] = 'nothing', constructor: Optional[Callable] = None,
+                 checker: Optional[Callable] = None, converter: Optional[Callable] = None):
         """ Create a ConfigOption object.
 
         @param name: identifier of the option in the configuration file
@@ -86,25 +90,21 @@ class ConfigOption:
         newargs.update(kwargs)
         return ConfigOption(**newargs)
 
-    def check(self, value):
-        """ If checker function set, check value. Else assume everything is ok.
+    def check(self, value: Any) -> bool:
+        """ If checker function set, check value. Assume everything is ok otherwise.
         """
         if callable(self.checker):
             return self.checker(value)
         return True
 
-    def convert(self, value):
-        """ If converter function set, convert value. Needs to raise exception on error.
-
-        @param value: value to convert (or not)
-
-        @return: converted value (or pass-through)
+    def convert(self, value: Any) -> Any:
+        """ If converter function set, convert value (pass-through otherwise).
         """
         if callable(self.converter):
             return self.converter(value)
         return value
 
-    def constructor(self, func):
+    def constructor(self, func: Callable) -> Callable:
         """ This is the decorator for declaring a constructor function for this ConfigOption.
 
         @param func: constructor function for this ConfigOption
@@ -114,7 +114,7 @@ class ConfigOption:
         return func
 
     @staticmethod
-    def _assert_func_signature(func):
+    def _assert_func_signature(func: Callable) -> Callable:
         assert callable(func), 'ConfigOption constructor must be callable'
         params = tuple(inspect.signature(func).parameters)
         assert 0 < len(params) < 3, 'ConfigOption constructor must be function with ' \
