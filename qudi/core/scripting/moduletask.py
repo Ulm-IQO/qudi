@@ -21,19 +21,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ['ModuleTask', 'ModuleTaskInterrupted', 'ModuleTaskStateMachine']
+__all__ = ['ModuleTask', 'ModuleTaskStateMachine']
 
+from abc import abstractmethod
 from fysom import Fysom, Canceled
 from PySide2 import QtCore
-from typing import Mapping, Any, Type, Sequence, Optional, Iterable, Callable
+from typing import Mapping, Any, Optional, Callable
 
-from qudi.core.scripting.modulescript import ModuleScript
-
-
-class ModuleTaskInterrupted(Exception):
-    """ Custom exception class to indicate that a ModuleTask execution has been interrupted.
-    """
-    pass
+from qudi.core.scripting.modulescript import ModuleScript, ModuleScriptInterrupted
 
 
 class ModuleTaskStateMachine(Fysom):
@@ -66,12 +61,12 @@ class ModuleTaskStateMachine(Fysom):
 
 
 class ModuleTask(ModuleScript):
-    """ Extends parent ModuleScript class with more functionality like setup, cleanup and interrupt.
+    """ Extends parent ModuleScript class with more functionality like setup and cleanup.
     Includes a finite state machine for better monitoring and control.
 
-    The only part that can be interrupted is the _run() method (and right before and after).
-    The implementation of _run() must occasionally call check_interrupt() to raise an exception at
-    that point if an interrupt is requested. This should happen at points where _cleanup() can
+    The only part that can be interrupted are the _run() and _setup methods.
+    The implementations must occasionally call _check_interrupt() to raise an exception at that
+    point if an interrupt is requested. This should happen at points where _cleanup() can
     properly terminate the task afterwards.
     """
 
@@ -79,8 +74,6 @@ class ModuleTask(ModuleScript):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self._stop_requested = False
 
         # Set up state machine
         fsm_callbacks = {'on_change_state': self.__change_state_callback,
@@ -92,26 +85,8 @@ class ModuleTask(ModuleScript):
         self._state_machine = ModuleTaskStateMachine(parent=self, callbacks=fsm_callbacks)
 
     @property
-    def interrupted(self):
-        with self._thread_lock:
-            return self._stop_requested
-
-    @property
     def state(self):
         return self._state_machine.current
-
-    def interrupt(self):
-        with self._thread_lock:
-            self._stop_requested = True
-
-    def check_interrupt(self) -> None:
-        """ Implementations of _run and _setup should occasionally call this method in order to
-        break execution early if another thread has interrupted this task in the meantime.
-        Interrupting this way will cause _cleanup to be called immediately and terminate the task
-        afterwards.
-        """
-        if self.interrupted:
-            raise ModuleTaskInterrupted
 
     @QtCore.Slot()
     def run(self) -> None:
@@ -128,6 +103,7 @@ class ModuleTask(ModuleScript):
     # Implement _setup and _cleanup in subclass if needed. By default they will simply do nothing.
     # You MUST in any case implement _run in a subclass (see: ModuleScript._run).
 
+    @abstractmethod
     def _setup(self) -> None:
         """ Optional setup procedure to be performed before _run() is called.
         Raising an exception in here will cause the task to directly call _cleanup() and skip the
@@ -139,6 +115,7 @@ class ModuleTask(ModuleScript):
         """
         pass
 
+    @abstractmethod
     def _cleanup(self) -> None:
         """ Optional cleanup procedure to be performed after _setup() and _run() have been called.
         This method will be called even if _setup() or _run() have raised an exception.
@@ -176,7 +153,7 @@ class ModuleTask(ModuleScript):
         try:
             self._setup()
             skip_run = False
-        except ModuleTaskInterrupted:
+        except ModuleScriptInterrupted:
             self.log.debug(f'Interrupted setup of ModuleTask "{self.__class__.__name__}".')
         finally:
             if skip_run:
@@ -191,13 +168,11 @@ class ModuleTask(ModuleScript):
         self.log.debug(f'Running main method of ModuleTask "{self.__class__.__name__}" with\n'
                        f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
         try:
-            with self._thread_lock:
-                if self._stop_requested:
-                    raise ModuleTaskInterrupted
+            self._check_interrupt()
             self.result = self._run(*self.args, **self.kwargs)
             with self._thread_lock:
                 self._success = True
-        except ModuleTaskInterrupted:
+        except ModuleScriptInterrupted:
             self.log.debug(f'Interrupted main method of ModuleTask "{self.__class__.__name__}".')
         finally:
             self._state_machine.finish()
@@ -210,7 +185,7 @@ class ModuleTask(ModuleScript):
                        f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
         try:
             self._cleanup()
-        except ModuleTaskInterrupted:
+        except ModuleScriptInterrupted:
             self.log.debug(f'Interrupted cleanup of ModuleTask "{self.__class__.__name__}".')
         finally:
             self._state_machine.terminate()

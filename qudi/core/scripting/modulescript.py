@@ -22,36 +22,59 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 __all__ = ['import_module_script', 'ModuleScript', 'ModuleScriptsTableModel', 'ModuleScriptFactory',
-           'ModuleScriptRunner']
+           'ModuleScriptRunner', 'ModuleScriptInterrupted']
 
 import importlib
+import copy
+from abc import abstractmethod
 from uuid import uuid4
 from PySide2 import QtCore
 from logging import getLogger, Logger
-from typing import Mapping, Any, Type, Sequence, Optional, Iterable
+from typing import Mapping, Any, Type, Optional, Iterable
 
-from qudi.core.connector import Connector, create_object_connectors
 from qudi.core.modulemanager import ModuleManager
+from qudi.core.meta import QudiObjectMeta
 from qudi.util.models import DictTableModel
 from qudi.util.mutex import Mutex
 
 
-class ModuleScript(QtCore.QObject):
+class ModuleScriptInterrupted(Exception):
+    """ Custom exception class to indicate that a ModuleScript execution has been interrupted.
     """
+    pass
+
+
+class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
+    """
+    The only part that can be interrupted is the _run() method.
+    The implementations must occasionally call _check_interrupt() to raise an exception at that
+    point if an interrupt is requested.
     """
     # Declare all module connectors used in this script here
 
     sigFinished = QtCore.Signal(object, str, bool)  # result, ID, success
 
+    # FIXME: This __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
+    #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
+    def __new__(cls, *args, **kwargs):
+        abstract = getattr(cls, '__abstractmethods__', frozenset())
+        if abstract:
+            raise TypeError(f'Can\'t instantiate abstract class "{cls.__name__}" '
+                            f'with abstract methods {set(abstract)}')
+        return super().__new__(cls, *args, **kwargs)
+
     def __init__(self, parent: Optional[QtCore.QObject] = None):
         super().__init__(parent=parent)
 
-        self.__connectors = create_object_connectors(self)
+        # Create a copy of the _meta class dict and attach it to this instance
+        self._meta = copy.deepcopy(self._meta)
+        # Create unique ID string and attach to _meta dict
+        self._meta['uuid'] = uuid4()
+        # set instance attributes according to connector meta objects
+        for attr_name, conn in self._meta['connectors'].items():
+            setattr(self, attr_name, conn)
 
         self._thread_lock = Mutex()
-
-        # Create unique ID string
-        self.__id = str(uuid4())
 
         # script arguments and result cache
         self.args = tuple()
@@ -59,32 +82,25 @@ class ModuleScript(QtCore.QObject):
         self.result = None
 
         # Status flags
+        self._stop_requested = False
         self._success = False
         self._running = False
 
-    def connect_modules(self, module_instances: Mapping[str, Any]) -> None:
-        """ Connect all Connector meta objects of this instance to qudi module instances.
+    @property
+    def interrupted(self):
+        with self._thread_lock:
+            return self._stop_requested
 
-        @param dict module_instances: Connector names (keys) and qudi module instances (values) to
-                                      connect
+    def interrupt(self):
+        with self._thread_lock:
+            self._stop_requested = True
+
+    def _check_interrupt(self) -> None:
+        """ Implementations of _run should occasionally call this method in order to break
+        execution early if another thread has interrupted this script in the meantime.
         """
-        used_connector_names = set()
-        cls = self.__class__
-        for attr_name in [name for name in dir(cls) if not name.startswith('__')]:
-            attr = getattr(cls, attr_name)
-            if isinstance(attr, Connector):
-                conn_name = attr.name
-                if conn_name in used_connector_names:
-                    raise KeyError(f'Multiple definitions of Connector with name "{conn_name}"')
-                used_connector_names.add(conn_name)
-                connector = attr.copy()
-                setattr(self, attr_name, connector)
-                module = module_instances.get(conn_name, None)
-                if module is not None:
-                    connector.connect(module)
-                elif not connector.optional:
-                    raise RuntimeError(f'Mandatory module connection "{conn_name}" missing for '
-                                       f'"{self.__class__.__name__}"')
+        if self.interrupted:
+            raise ModuleScriptInterrupted
 
     @property
     def id(self) -> str:
@@ -92,7 +108,7 @@ class ModuleScript(QtCore.QObject):
 
         @return str: ID of this script instance
         """
-        return self.__id
+        return str(self._meta['uuid'])
 
     @property
     def log(self) -> Logger:
@@ -142,15 +158,52 @@ class ModuleScript(QtCore.QObject):
             self.result = self._run(*self.args, **self.kwargs)
             with self._thread_lock:
                 self._success = True
+        except ModuleScriptInterrupted:
+            self.log.debug(f'Interrupted main method of ModuleScript "{self.__class__.__name__}".')
         finally:
             with self._thread_lock:
                 self._running = False
                 self.sigFinished.emit(self.result, self.id, self._success)
 
+    def connect_modules(self, connector_targets: Mapping[str, Any]) -> None:
+        """ Connects given modules (values) to their respective Connector (keys).
+
+        DO NOT CALL THIS METHOD UNLESS YOU KNOW WHAT YOU ARE DOING!
+        """
+        # Sanity checks
+        conn_names = set(conn.name for conn in self._meta['connectors'].values())
+        mandatory_conn = set(
+            conn.name for conn in self._meta['connectors'].values() if not conn.optional
+        )
+        configured_conn = set(connector_targets)
+        if not configured_conn.issubset(conn_names):
+            raise KeyError(f'Mismatch of connectors in configuration {configured_conn} and '
+                           f'Connector meta objects {conn_names}.')
+        if not mandatory_conn.issubset(configured_conn):
+            raise ValueError(f'Not all mandatory connectors are specified.\n'
+                             f'Mandatory connectors are: {mandatory_conn}')
+
+        # Iterate through module connectors and connect them if possible
+        for conn in self._meta['connectors'].values():
+            target = connector_targets.get(conn.name, None)
+            if target is None:
+                continue
+            if conn.is_connected:
+                raise RuntimeError(f'Connector "{conn.name}" already connected.\n'
+                                   f'Call "disconnect_modules()" before trying to reconnect.')
+            conn.connect(target)
+
+    def disconnect_modules(self) -> None:
+        """ Disconnects all Connector instances for this object.
+
+        DO NOT CALL THIS METHOD UNLESS YOU KNOW WHAT YOU ARE DOING!
+        """
+        for conn in self._meta['connectors'].values():
+            conn.disconnect()
+
+    @abstractmethod
     def _run(self, *args, **kwargs) -> Any:
         """ The actual script to be run. Implement only this method in a subclass.
-
-        @return Any: The result of the script
         """
         raise NotImplementedError(f'No _run() method implemented for "{self.__class__.__name__}".')
 
