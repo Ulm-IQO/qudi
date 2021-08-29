@@ -21,8 +21,11 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ['StatusVar']
+
 import copy
 import inspect
+from typing import Callable, Any, Optional
 
 
 class StatusVar:
@@ -30,7 +33,8 @@ class StatusVar:
     deactivation.
     """
 
-    def __init__(self, name=None, default=None, *, constructor=None, representer=None):
+    def __init__(self, name: Optional[str] = None, default: Optional[Any] = None, *,
+                 constructor: Optional[Callable] = None, representer: Optional[Callable] = None):
         """
         @param name: identifier of the status variable when stored
         @param default: default value for the status variable when a saved version is not present
@@ -68,7 +72,7 @@ class StatusVar:
         newargs.update(kwargs)
         return StatusVar(**newargs)
 
-    def constructor(self, func):
+    def constructor(self, func: Callable) -> Callable:
         """ This is the decorator for declaring constructor function for this StatusVar.
 
         @param func: constructor function for this StatusVar
@@ -77,7 +81,7 @@ class StatusVar:
         self.constructor_function = self._assert_func_signature(func)
         return func
 
-    def representer(self, func):
+    def representer(self, func: Callable) -> Callable:
         """ This is the decorator for declaring a representer function for this StatusVar.
 
         @param func: representer function for this StatusVar
@@ -87,7 +91,7 @@ class StatusVar:
         return func
 
     @staticmethod
-    def _assert_func_signature(func):
+    def _assert_func_signature(func: Callable) -> Callable:
         assert callable(func), 'StatusVar constructor/representer must be callable'
         params = tuple(inspect.signature(func).parameters)
         assert 0 < len(params) < 3, 'StatusVar constructor/representer must be function with ' \
@@ -98,4 +102,3 @@ class StatusVar:
 
             return wrapper
         return func
-
