@@ -137,7 +137,7 @@ class ModuleTask(ModuleScript):
         """ Callback to check if the state machine is allowed to start.
         """
         with self._thread_lock:
-            return not (self._stop_requested or self._running)
+            return not self._running
 
     def __starting_callback(self, event: Any = None) -> None:
         """ FSM startup callback. This will call _setup and set status flags accordingly.
@@ -145,12 +145,14 @@ class ModuleTask(ModuleScript):
         """
         self.result = None
         with self._thread_lock:
+            self._stop_requested = False
             self._success = False
             self._running = True
         self.log.debug(f'Running setup of ModuleTask "{self.__class__.__name__}" with\n'
                        f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
         skip_run = True
         try:
+            self._check_interrupt()
             self._setup()
             skip_run = False
         except ModuleScriptInterrupted:

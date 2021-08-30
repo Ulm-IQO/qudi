@@ -82,7 +82,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         self.result = None
 
         # Status flags
-        self._stop_requested = False
+        self._stop_requested = True
         self._success = False
         self._running = False
 
@@ -157,6 +157,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         """
         self.result = None
         with self._thread_lock:
+            self._stop_requested = False
             self._success = False
             self._running = True
         self.log.debug(f'Starting to run ModuleScript "{self.__class__.__name__}" with positional '
