@@ -88,6 +88,7 @@ class AWGM819X(Base, PulserInterface):
     def interleaved_wavefile(self):
         pass
 
+
     def on_activate(self):
         """Initialisation performed during activation of the module.
         """
@@ -113,10 +114,7 @@ class AWGM819X(Base, PulserInterface):
         # additional connection via IVI-COM
         if self._ivi_address != '':
             try:
-                comtypes.client.GetModule('AgM8190_64.dll')
-                self.awg_ivi = comtypes.client.CreateObject('AgM8190.AgM8190')
-                self.awg_ivi.Initialize(self._ivi_address, False, False, '')
-
+                self.connect_ivi()
             except:
                 self.log.exception("IVI driver init failed: ")
         else:
@@ -180,6 +178,10 @@ class AWGM819X(Base, PulserInterface):
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
         sequence mode) just leave it out so that the default is used (only zeros).
         """
+        pass
+
+    @abstractmethod
+    def connect_ivi(self):
         pass
 
     def pulser_on(self):
@@ -2204,6 +2206,12 @@ class AWGM8195A(AWGM819X):
         """
         return self.marker_on
 
+    def connect_ivi(self):
+
+        comtypes.client.GetModule('KtM8195_64.dll')
+        self.awg_ivi = comtypes.client.CreateObject('KtM8195.KtM8195')
+        self.awg_ivi.Initialize(self._ivi_address, False, False, '')
+
     def get_constraints(self):
         """
         Retrieve the hardware constrains from the Pulsing device.
@@ -2571,6 +2579,11 @@ class AWGM8190A(AWGM819X):
     @property
     def interleaved_wavefile(self):
         return False
+
+    def connect_ivi(self):
+        comtypes.client.GetModule('AgM8190_64.dll')
+        self.awg_ivi = comtypes.client.CreateObject('AgM8190.AgM8190')
+        self.awg_ivi.Initialize(self._ivi_address, False, False, '')
 
     def get_constraints(self):
         """
