@@ -1551,7 +1551,7 @@ class AWGM819X(Base, PulserInterface):
 
                 # delete if the segment is already existing
                 loaded_segments_id = self.get_loaded_assets_id(ch_num)
-                if str(segment_id) in loaded_segments_id:
+                if segment_id in loaded_segments_id:
                     # clear the segment
                     self.write(':TRAC:DEL {0}'.format(segment_id))
 
@@ -1561,7 +1561,7 @@ class AWGM819X(Base, PulserInterface):
                 self.write(':TRAC{0}:DEF {1}, {2}, {3}'.format(int(ch_num), segment_id, len(analog_samples[ch_str]), 0))
 
                 # name the segment
-                self.write(':TRAC{0}:NAME {1}, "{2}"'.format(int(ch_num), segment_id, wave_name))  # name the segment
+                self.write(':TRAC{0}:NAME {1}, "{2}"'.format(int(ch_num), segment_id, wave_name))
                 # upload
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(int(ch_num), segment_id, 0), comb_samples)
 
