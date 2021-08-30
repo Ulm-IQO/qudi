@@ -30,6 +30,8 @@ from fnmatch import fnmatch
 from collections import OrderedDict
 from abc import abstractmethod
 import re
+from comtypes import client
+
 
 from core.module import Base
 from core.configoption import ConfigOption
@@ -44,6 +46,8 @@ class AWGM819X(Base, PulserInterface):
     """
 
     _visa_address = ConfigOption(name='awg_visa_address', default='TCPIP0::localhost::hislip0::INSTR', missing='warn')
+    _ivi_address = ConfigOption(name='awg_ivi_address', default='', missing='warn')
+
     _awg_timeout = ConfigOption(name='awg_timeout', default=20, missing='warn')
     _pulsed_file_dir = ConfigOption(name='pulsed_file_dir', default=os.path.join(get_home_dir(), 'pulsed_file_dir'),
                                         missing='warn')
@@ -106,6 +110,18 @@ class AWGM819X(Base, PulserInterface):
                            ''.format(self._visa_address))
             return
 
+        # additional connection via IVI-COM
+        if self._ivi_address != '':
+            try:
+                comtypes.client.GetModule('AgM8190_64.dll')
+                self.awg_ivi = comtypes.client.CreateObject('AgM8190.AgM8190')
+                self.awg_ivi.Initialize(self._ivi_address, False, False, '')
+
+            except:
+                self.log.exception("IVI driver init failed: ")
+        else:
+            self.awg_ivi = None
+
         if self.awg is not None:
             mess = self.query('*IDN?').split(',')
             self._BRAND = mess[0]
@@ -113,11 +129,12 @@ class AWGM819X(Base, PulserInterface):
             self._SERIALNUMBER = mess[2]
             self._FIRMWARE_VERSION = mess[3]
 
-            self.log.info('Load the device model "{0}" from "{1}" with '
+            self.log.info('Loaded "{1}" "{0}" with '
                           'serial number "{2}" and firmware version "{3}" '
-                          'successfully.'.format(self._MODEL, self._BRAND,
+                          'successfully. IVI available: {4}'.format(self._MODEL, self._BRAND,
                                                  self._SERIALNUMBER,
-                                                 self._FIRMWARE_VERSION))
+                                                 self._FIRMWARE_VERSION,
+                                                 self.awg_ivi is not None))
             self._sequence_mode = 'SEQ' in self.query('*OPT?').split(',')
         self._init_device()
 
@@ -126,9 +143,12 @@ class AWGM819X(Base, PulserInterface):
 
         try:
             self.awg.close()
+            if self.awg_ivi:
+                self.awg_ivi.Close()
             self.connected = False
         except:
-            self.log.warning('Closing AWG connection using pyvisa failed.')
+            self.log.exception('Closing AWG connection failed:')
+            return
         self.log.info('Closed connection to AWG')
 
     @abstractmethod
@@ -815,7 +835,7 @@ class AWGM819X(Base, PulserInterface):
             return -1, waveforms
 
         to_segment_id = 1  # pc_hdd mode
-        if self._wave_mem_mode == 'awg_segments':
+        if self._wave_mem_mode == 'awg_segments' or self._wave_mem_mode == "awg_segments_ivi":
             to_segment_id = -1
 
         waveforms = self._write_wave_to_memory(name, analog_samples, digital_samples, active_analog,
@@ -889,7 +909,7 @@ class AWGM819X(Base, PulserInterface):
                         wave_ch1, wave_ch2, name))
 
             self.log.debug("Loading of waveforms for sequence write finished.")
-        elif self._wave_mem_mode == 'awg_segments':
+        elif self._wave_mem_mode == 'awg_segments' or self._wave_mem_mode == 'awg_segments_ivi':
             # all segments must be present on device mem already
             pass
         else:
@@ -985,7 +1005,7 @@ class AWGM819X(Base, PulserInterface):
 
         if self._wave_mem_mode == 'pc_hdd':
             names = self.query('MMEM:CAT?').replace('"', '').replace("'", "").split(",")[2::3]
-        elif self._wave_mem_mode == 'awg_segments':
+        elif self._wave_mem_mode == 'awg_segments' or self._wave_mem_mode == 'awg_segments_ivi':
 
             active_analog = self._get_active_d_or_a_channels(only_analog=True)
             channel_numbers = self.chstr_2_chnum(active_analog, return_list=True)
@@ -1018,7 +1038,7 @@ class AWGM819X(Base, PulserInterface):
                 if filename.endswith(('.seq', '.seqx', '.sequence')):
                     if filename not in sequence_list:
                         sequence_list.append(self._remove_file_extension(filename))
-        elif self._wave_mem_mode == 'awg_segments':
+        elif self._wave_mem_mode == 'awg_segments' or self._wave_mem_mode == 'awg_segments_ivi':
             seqs_ch1 = self.get_loaded_assets_name(1, 'sequence')
             seqs_ch2 = self.get_loaded_assets_name(2, 'sequence')
 
@@ -1298,7 +1318,7 @@ class AWGM819X(Base, PulserInterface):
                 self.log.debug("Loading waveform {} of len {} to AWG ch {}, segment {}.".format(
                     name, n_samples, chnl_num, segment_id_per_ch))
 
-        elif self._wave_mem_mode == 'awg_segments':
+        elif self._wave_mem_mode == 'awg_segments' or self._wave_mem_mode == 'awg_segments_ivi':
 
             if to_nextfree_segment:
                 self.log.warning("In awg_segments memory mode, 'to_nextfree_segment' has no effect."
@@ -1539,7 +1559,7 @@ class AWGM819X(Base, PulserInterface):
                     # todo: this breaks if there is a , in the name without number
                     segment_id = np.int(name.split(',')[0])
                     self.log.warning("Loading wave to specified segment ({}) via name will deprecate.".format(segment_id))
-                if segment_id == -1:
+                if to_segment_id == -1:
                     # to next free segment
                     segment_id = self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(analog_samples[ch_str])))
                     # only need the next free id, definition and writing is performed below again
@@ -1569,6 +1589,56 @@ class AWGM819X(Base, PulserInterface):
 
                 waveforms.append(wave_name)
                 self._flag_segment_table_req_update = True
+
+            elif self._wave_mem_mode == 'awg_segments_ivi':
+
+                if not self.awg_ivi:
+                    raise RuntimeError("IVI driver not present. Can't use for upload.")
+
+                if wave_name in self.get_loaded_assets_name(ch_num):
+                    seg_id_exist = self.asset_name_2_id(wave_name, ch_num, mode='segment')
+                    self.write("TRAC{:d}:DEL {}".format(ch_num, seg_id_exist))
+                    self.log.debug(
+                        "Deleting segment {} ch {} for existing wave {}".format(seg_id_exist, ch_num, wave_name))
+
+                if to_segment_id != -1:
+                    raise ValueError(f"IVI upload only supports to next segment (id =-1), not {to_segment_id}!")
+                else:
+                    # to next free segment
+                    segment_id = int(self.query('TRAC{0:d}:DEF:NEW? {1:d}'.format(ch_num, len(analog_samples[ch_str]))))
+                    # only need the next free id, definition and writing is performed below again
+                    # so delete defined segment again
+                    self.write("TRAC{:d}:DEL {}".format(ch_num, segment_id))
+
+                segment_id_ch = str(segment_id) + '_ch{:d}'.format(ch_num)
+                self.log.debug("Writing wave {} to ch {} segment_id {}".format(wave_name, ch_str, segment_id_ch))
+
+                # delete if the segment is already existing
+                loaded_segments_id = self.get_loaded_assets_id(ch_num)
+                if segment_id in loaded_segments_id:
+                    # clear the segment
+                    self.write(':TRAC:DEL {0}'.format(segment_id))
+
+                # define the size of a waveform segment, marker samples do not count. If the channel is sourced from
+                # Extended Memory, the same segment is defined on all other channels sourced from Extended Memory.
+                # Comb samples written, but len(comb_samples) doesn't know whether interleaved data.
+
+                # TODO: this discards the marker:
+                comb_samples = np.asarray(analog_samples[ch_str], dtype=float)
+
+                # upload, probably to next free segment
+                issued_seg_id = self.awg_ivi.Arbitrary.Waveform.CreateChannelWaveform(str(ch_num), comb_samples)
+                if int(segment_id) != int(issued_seg_id):
+                    self.log.error(f"Unexpectedly the upload issued a new segment id "
+                                       f"{issued_seg_id}(!={segment_id})")
+
+                # name segment_id
+                self.awg_ivi.Arbitrary.Waveform.Name[str(ch_num), segment_id] = wave_name
+                self._check_uploaded_wave_name(ch_num, wave_name, segment_id)
+
+                waveforms.append(wave_name)
+                self._flag_segment_table_req_update = True
+
 
             else:
                 raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
