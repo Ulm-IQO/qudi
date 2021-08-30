@@ -54,22 +54,36 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     
     def on_deactivate(self):
         self.tcp_client.close()
+
     def start_acqusition(self):
         return self.send_request("start_measurements")
+
     def stop_acqusition(self):
         return self.send_request("stop_measurements")
+
+    def start_trigger(self):
+        return self.send_request("start_trigger")
+
+    def stop_trigger(self):
+        return self.send_request("stop_trigger")
+
     def get_current_wavelength(self):
         """ This method returns the current wavelength in air.
         """
         return self.send_request("get_wavelength")
+
     def get_regulation_mode(self):
         return self.send_request("get_regulation_mode")
+
     def set_regulation_mode(self, mode):
         return self.send_request("set_regulation_mode", action=mode)
+
     def get_reference_course(self):
         return self.send_request("get_reference_course")
+
     def set_reference_course(self, course):
         return self.send_request("set_reference_course", action=course)
+        
     def get_server_time(self):
         return self.send_request("get_server_time")
     

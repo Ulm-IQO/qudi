@@ -44,8 +44,9 @@ class SearchZPLplotThread(QtCore.QObject):
         plot_ys[ind] = plot_ys[ind] + cts_wlm[:,0]
         vls, norm = np.unique(ind, return_counts = True)
         norm[norm == 0] += 1 
-        plot_ys[vls] = plot_ys[vls] / norm
+        plot_ys[vls] = plot_ys[vls]
         samples_num[vls] = norm
+        plot_ys = plot_ys / samples_num
         self.sig_search_plot.emit(list(plot_xs), list(plot_ys), list(samples_num))
     
     def stop(self):
@@ -117,6 +118,7 @@ class CwaveLogic(GenericLogic):
         self._save_logic = self.savelogic()
 
         self.counter = self._timetagger.counter(binwidth = int((1 / self.count_freq) * 1e12), n_values=1) #counts per second
+        self.cbm = self._timetagger.count_between_markers(self, 2, 8, -8, 1000)
         wlm_res = self._wavemeter.start_acqusition()
         delta_t = self._wavemeter.sync_clocks()
         self.time_sync = lambda _: time.time() - delta_t #returns time synced with the server
@@ -222,6 +224,7 @@ class CwaveLogic(GenericLogic):
         center_wl = self._wavemeter.get_current_wavelength() if self.center_wl is None else self.center_wl 
         self._wavemeter.set_reference_course(f"{center_wl} + {self.amplitude} * triangle(t/{self.sweep_speed})")
         self._wavemeter.set_regulation_mode("on")
+        self._wavemeter.start_trigger()
         #set_timer
         self.scanQueryTimer = QtCore.QTimer()
         self.scanQueryTimer.setInterval(self._scan_query_time)
