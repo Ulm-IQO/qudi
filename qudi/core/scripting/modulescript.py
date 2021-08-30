@@ -26,6 +26,7 @@ __all__ = ['import_module_script', 'ModuleScript', 'ModuleScriptsTableModel',
 
 import importlib
 import copy
+import inspect
 from abc import abstractmethod
 from uuid import uuid4
 from PySide2 import QtCore
@@ -127,6 +128,14 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
     def success(self) -> bool:
         with self._thread_lock:
             return self._success
+
+    @property
+    def call_signature(self) -> inspect.Signature:
+        """ Signature of the _run method implementation.
+        Override in subclass if you want anything else than this default implementation.
+        Make sure custom implementations of this property are compatible with _run.
+        """
+        return inspect.signature(self._run)
 
     def __call__(self, *args, **kwargs) -> Any:
         """ Convenience magic method to run this script like a function
