@@ -291,33 +291,90 @@ class KeysightPlotter():
 
 # debug code
 if __name__ == "__main__":
+    import copy
+
+    def get_sample_rate(wave_dict):
+        return wave_dict['t'][1] - wave_dict['t'][0]
+
+
+    def subtract(wave_dict_1, wave_dict_2):
+        wave_diff = {}
+        for key, val in wave_dict_1.items():
+            n_diff_sa = len(wave_dict_2[key]) - len(wave_dict_1[key])
+
+            if key == "t":
+                if get_sample_rate(wave_dict_1) != get_sample_rate(wave_dict_2):
+                    raise ValueError("Can only subtract waves with same sample rate")
+                if n_diff_sa >= 0:
+                    wave_diff[key] = wave_dict_2[key]
+                elif n_diff_sa < 0:
+                    wave_diff[key] = wave_dict_1[key]
+                continue
+
+            if n_diff_sa > 0:
+                wave_dict_tmp = copy.deepcopy(wave_dict_1[key])
+                wave_dict_tmp = np.pad(wave_dict_tmp, (0,abs(n_diff_sa)),
+                                       mode='constant', constant_values=0)
+                wave_dict2_tmp = wave_dict_2[key]
+            elif n_diff_sa < 0:
+                wave_dict_tmp = wave_dict_1[key]
+                wave_dict2_tmp = copy.deepcopy(wave_dict_2[key])
+                wave_dict2_tmp = np.pad(wave_dict2_tmp, (0,abs(n_diff_sa)),
+                                        mode='constant', constant_values=0)
+            try:
+                wave_diff[key] = wave_dict2_tmp - wave_dict_tmp
+            except TypeError:
+                # catch boolean subtraction
+                wave_diff[key] = np.asarray(wave_dict2_tmp, dtype=np.int) - np.asarray(wave_dict_tmp, dtype=np.int)
+
+        return wave_diff
+
+    def plot(wave_dict, title=None):
+        t = wave_dict['t'] * 1e6
+
+        plt.figure()
+        plt.plot(t, wave_dict['a_ch1'], label="a_ch1", color="blue")
+        plt.plot(t, wave_dict['d_ch1'] - 2, label="d_ch1", color="orange")
+        plt.plot(t, wave_dict['d_ch2'] - 3, label="d_ch2", color="green")
+
+        try:
+            plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
+            plt.plot(t, wave_dict['d_ch3'] - 6, label="d_ch3", color="orange")
+            plt.plot(t, wave_dict['d_ch4'] - 7, label="d_ch4", color="green")
+        except:
+            pass  # no a_ch2 for bin8
+
+        if title:
+            plt.title(title)
+        plt.xlabel("t (us)")
+        plt.legend()
+        #plt.show()
+
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     file = r"C:\qudi\pulsed_files" + "/" + "ise+ramsey_pen_ch1.bin"
+    file2 = r"C:\qudi\pulsed_files" + "/" + "ramsey_ch1.bin"
     file = os.path.abspath(file)
+    file2 = os.path.abspath(file2)
 
     plotter = KeysightPlotter(14, 8e9)
     wave_dict = plotter.load_data(file)
+    if file2:
+        wave_dict2 = plotter.load_data(file2)
+        wave_diff = subtract(wave_dict, wave_dict2)
+    else:
+        wave_dict2 = None
+        wave_diff = None
 
     print(wave_dict.keys())
 
-    t = wave_dict['t'] * 1e6
+    plot(wave_dict, title="1")
+    if file2:
+        plot(wave_dict2, title="2")
+        plot(wave_diff, title="diff")
 
-    plt.plot(t, wave_dict['a_ch1'], label="a_ch1", color="blue")
-    plt.plot(t, wave_dict['d_ch1'] - 2, label="d_ch1", color="orange")
-    plt.plot(t, wave_dict['d_ch2'] - 3, label="d_ch2", color="green")
-
-    try:
-        plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
-        plt.plot(t, wave_dict['d_ch3'] - 6, label="d_ch3", color="orange")
-        plt.plot(t, wave_dict['d_ch4'] - 7, label="d_ch4", color="green")
-    except:
-        pass  # no a_ch2 for bin8
-
-    plt.xlabel("t (us)")
-    plt.legend()
     plt.show()
 
     print("Closing")
