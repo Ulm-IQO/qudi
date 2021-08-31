@@ -420,6 +420,7 @@ class CwaveScanGui(GUIBase):
         #! wavelength
         #TODO: read wavelength from the wavelengthmeter
         self._mw.label_wavelength.setText(f"{self._cwavescan_logic.wavelength}")
+        self._mw.sweepCenterDoubleSpinBox.setValue(round(self._cwavescan_logic.wavelength, 3))
         #! photodiodes  
         self._mw.label_laserPD.setText(f"{self._cwavescan_logic.laserPD}")
         self._mw.label_opoPD.setText(f"{self._cwavescan_logic.opoPD}")

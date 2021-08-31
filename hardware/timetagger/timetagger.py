@@ -1,7 +1,7 @@
 
 from os.path import join, getsize, isfile
 import numpy as np
-from TimeTagger import createTimeTagger, Dump, Correlation, Histogram, Counter, CountBetweenMarkers, FileWriter, Countrate, Combiner
+from TimeTagger import createTimeTagger, Dump, Correlation, Histogram, Counter, CountBetweenMarkers, FileWriter, Countrate, Combiner, TimeDifferences
 from core.configoption import ConfigOption
 from core.module import Base
 
@@ -136,6 +136,15 @@ class TT(Base):
                                 begin_channel,
                                 end_channel,
                                 n_values)     
+
+    def time_differences(self, click_channel, start_channel, next_channel, binwidth,n_bins, n_histograms):
+        return TimeDifferences(self.tagger, 
+                            click_channel=click_channel,
+                            start_channel=start_channel,
+                            next_channel=next_channel,
+                            binwidth=binwidth,
+                            n_bins=n_bins,
+                            n_histograms=n_histograms)
 
     def write_into_file(self, filename, channels):
         return FileWriter(self.tagger,

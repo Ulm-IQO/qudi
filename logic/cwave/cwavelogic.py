@@ -68,6 +68,10 @@ class CwaveLogic(GenericLogic):
     _static_v = StatusVar('goto_voltage', 0)
     
     dy = 1000 #dark counts -- initial error of the countrate
+    n_scan_bins = 500
+    n_scan_lines = 10
+
+
     count_freq = 50
     _search_query_time = 2000
     _scan_query_time = 0.1
@@ -104,6 +108,7 @@ class CwaveLogic(GenericLogic):
         self.w1, self.w2 = 619.0, 619.01
         
         self.plot_x, self.plot_y = np.zeros(10),np.zeros(10)
+        self.scan_matrix = np.zeros((2,2))
         xx = np.arange(self.w1, self.w2, self.zpl_bin_width)
         self.plot_xs = xx
         self.plot_ys = np.zeros(len(xx))
@@ -118,7 +123,17 @@ class CwaveLogic(GenericLogic):
         self._save_logic = self.savelogic()
 
         self.counter = self._timetagger.counter(binwidth = int((1 / self.count_freq) * 1e12), n_values=1) #counts per second
-        self.cbm = self._timetagger.count_between_markers(self, 2, 8, -8, 1000)
+        self.n_scan_bins = 500
+        self.bins_width_scan = int(1e12 * 60 / (self.sweep_speed * self.n_scan_bins))
+        self.time_diff = self._timetagger.time_differences(click_channel=2, 
+        start_channel=8, 
+        next_channel=-8, 
+        binwidth=self.bins_width_scan,
+        n_bins = self.n_scan_bins,
+        n_histograms = self.n_scan_lines)
+        self.time_diff.setMaxCounts(1)
+        self.time_diff.stop()
+
         wlm_res = self._wavemeter.start_acqusition()
         delta_t = self._wavemeter.sync_clocks()
         self.time_sync = lambda _: time.time() - delta_t #returns time synced with the server
@@ -196,8 +211,8 @@ class CwaveLogic(GenericLogic):
     def _initialise_data_matrix(self):
         """ Initializing the matrix plot. """
 
+        
         self.scan_matrix = np.zeros((2,2))
-    
  
         pd_len = 60000 # 60 sec
         self.plot_x_shg_pd = np.linspace(0,int(pd_len/1000) , int(pd_len/self.queryInterval))
@@ -224,20 +239,35 @@ class CwaveLogic(GenericLogic):
         center_wl = self._wavemeter.get_current_wavelength() if self.center_wl is None else self.center_wl 
         self._wavemeter.set_reference_course(f"{center_wl} + {self.amplitude} * triangle(t/{self.sweep_speed})")
         self._wavemeter.set_regulation_mode("on")
+        try:
+            self._wavemeter.stop_trigger()
+        except:
+            print("OIOI! trigger WLM")
         self._wavemeter.start_trigger()
         #set_timer
+        self.time_diff = self._timetagger.time_differences( 
+        click_channel=2, 
+        start_channel=8, 
+        next_channel=-8, 
+        binwidth=self.bins_width_scan,
+        n_bins = self.n_scan_bins,
+        n_histograms = self.n_scan_lines)
+        self.time_diff.setMaxCounts(1)
+
         self.scanQueryTimer = QtCore.QTimer()
         self.scanQueryTimer.setInterval(self._scan_query_time)
         self.scanQueryTimer.setSingleShot(True)
         self.mode_zpl = 'sweep'
-        self.scanQueryTimer.timeout.connect(self.get_cts_wlm_data)#, QtCore.Qt.QueuedConnection)     
+        self.scanQueryTimer.timeout.connect(self.get_cts_wlm_data, QtCore.Qt.QueuedConnection)     
         self.scanQueryTimer.start(self._scan_query_time)
 
     @QtCore.Slot()
     def stop_sweep(self):
         self.regulate_wavelength(True)
         self._cts_wlm_time = self._cts_wlm_time[1:] #empty buffer
-        self.scanQueryTimer.stop()
+        self.time_diff.stop()
+        # self.time_diff.clear()
+        self.scanQueryTimer = QtCore.QTimer()
         for i in range(5):
             QtCore.QCoreApplication.processEvents()
             time.sleep(self.queryInterval/1000)
@@ -256,20 +286,24 @@ class CwaveLogic(GenericLogic):
 
     @QtCore.Slot()
     def get_cts_wlm_data(self):
-        if self._wavemeter.get_current_wavelength() is not None:
-            wavelength = self._wavemeter.get_current_wavelength()
-        else:
-            wavelength = 0
+        # if self._wavemeter.get_current_wavelength() is not None:
+        #     wavelength = self._wavemeter.get_current_wavelength()
+        # else:
+        #     wavelength = 0
 
-        self._cts_wlm_time = np.vstack((self._cts_wlm_time, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))[-1500:]
-        cts_times =  self._cts_wlm_time[:, 2]
-        dt = cts_times[-1] - cts_times
-        #take only counts whithin the past 60 / sweep speed * 2 sec
-        self._cts_wlm_time = self._cts_wlm_time[dt < (60 / self.sweep_speed) * 2]
+        if self.time_diff.ready():
+            print("SAVE PLOT!")
+            self.time_diff.clear()
 
-        self._cts_wlm_time_s = np.vstack((self._cts_wlm_time_s, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))
-        if len(self._cts_wlm_time_s) > 500:
-            self.sig_calculate_search_scan.emit()
+        # self._cts_wlm_time = np.vstack((self._cts_wlm_time, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))[-1500:]
+        # cts_times =  self._cts_wlm_time[:, 2]
+        # dt = cts_times[-1] - cts_times
+        # #take only counts whithin the past 60 / sweep speed * 2 sec
+        # self._cts_wlm_time = self._cts_wlm_time[dt < (60 / self.sweep_speed) * 2]
+
+        # self._cts_wlm_time_s = np.vstack((self._cts_wlm_time_s, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))
+        # if len(self._cts_wlm_time_s) > 500:
+        #     self.sig_calculate_search_scan.emit()
 
         if self.mode_zpl == 'sweep':
             self.scanQueryTimer.start(self._scan_query_time)
@@ -382,8 +416,15 @@ class CwaveLogic(GenericLogic):
         # self.plot_y_wlm = np.delete(self.plot_y_wlm, -1)
         self.plot_x_wlm = np.linspace(0, len(self.plot_y_wlm) , len(self.plot_y_wlm))[:250]
         
-        self.plot_x = self._cts_wlm_time[2:,1] #wlm
-        self.plot_y = self._cts_wlm_time[2:, 0]#[x > 0] #cts
+        scan_data = self.time_diff.getData()  / (60 / (self.sweep_speed * self.n_scan_bins))
+        self.scan_matrix = scan_data
+        scan_line = scan_data.flatten()
+        scan_line = scan_line[scan_line > 0][-self.n_scan_bins:]
+        self.plot_x = range(len(scan_line))#self._cts_wlm_time[2:,1] #wlm
+        self.plot_y = scan_line#self._cts_wlm_time[2:, 0]#[x > 0] #cts
+
+        
+
 
         self.sig_update_gui.emit()
     
