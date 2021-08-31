@@ -103,7 +103,6 @@ class ModuleTask(ModuleScript):
     # Implement _setup and _cleanup in subclass if needed. By default they will simply do nothing.
     # You MUST in any case implement _run in a subclass (see: ModuleScript._run).
 
-    @abstractmethod
     def _setup(self) -> None:
         """ Optional setup procedure to be performed before _run() is called.
         Raising an exception in here will cause the task to directly call _cleanup() and skip the
@@ -115,7 +114,6 @@ class ModuleTask(ModuleScript):
         """
         pass
 
-    @abstractmethod
     def _cleanup(self) -> None:
         """ Optional cleanup procedure to be performed after _setup() and _run() have been called.
         This method will be called even if _setup() or _run() have raised an exception.
