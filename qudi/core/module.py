@@ -66,6 +66,28 @@ class ModuleStateMachine(Fysom, QtCore.QObject):
         # Initialise state machine:
         super().__init__(parent=parent, cfg=fsm_cfg, **kwargs)
 
+    def _build_event(self, event):
+        """
+        Overrides Fysom _build_event to wrap on_activate and on_deactivate to catch and log
+        exceptions.
+        @param str event: Event name to build the Fysom event for
+        @return function: The event handler used by Fysom for the given event
+        """
+        base_event = super()._build_event(event)
+        if event in ('activate', 'deactivate'):
+            noun = 'activation' if event == 'activate' else 'deactivation'
+
+            def wrap_event(*args, **kwargs):
+                try:
+                    base_event(*args, **kwargs)
+                except:
+                    self.parent().log.exception('Error during {0}'.format(noun))
+                    return False
+                return True
+
+            return wrap_event
+        return base_event
+
     def __call__(self) -> str:
         """
         Returns the current state.
