@@ -88,6 +88,10 @@ class AWGM819X(Base, PulserInterface):
     def interleaved_wavefile(self):
         pass
 
+    @property
+    @abstractmethod
+    def _ivi_driver_config(self):
+        pass
 
     def on_activate(self):
         """Initialisation performed during activation of the module.
@@ -178,10 +182,6 @@ class AWGM819X(Base, PulserInterface):
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
         sequence mode) just leave it out so that the default is used (only zeros).
         """
-        pass
-
-    @abstractmethod
-    def connect_ivi(self):
         pass
 
     def pulser_on(self):
@@ -1178,6 +1178,10 @@ class AWGM819X(Base, PulserInterface):
     ###                         Non interface methods                            ###
     ################################################################################
 
+    @abstractmethod
+    def _upload_wave_ivi(self, ch_num, comb_samples_bin):
+        pass
+
     def set_seq_mode(self, mode):
         self.write_all_ch(":FUNC{}:MODE {}", mode, all_by_one={'m8195a': True})
 
@@ -1215,6 +1219,27 @@ class AWGM819X(Base, PulserInterface):
 
     def _define_new_sequence(self, name, n_steps):
         pass
+
+    def connect_ivi(self):
+        """
+        Connect to the fast IVI driver.
+        :return:
+        """
+
+        cfg = self._ivi_driver_config
+
+        comtypes.client.GetModule(cfg['fname_dll'])
+
+        if hasattr(self, 'awg_ivi'):
+            if self.awg_ivi:
+                raise RuntimeError("Close already active handle to driver first!")
+
+        self.awg_ivi = comtypes.client.CreateObject(cfg['com_class'])
+
+        option_str = "RangeCheck=false"
+        id_query = True
+        reset_on_init = False
+        self.awg_ivi.Initialize(self._ivi_address, id_query, reset_on_init, option_str)
 
     def _init_device(self):
         """ Run those methods during the initialization process."""
@@ -1621,15 +1646,8 @@ class AWGM819X(Base, PulserInterface):
                     # clear the segment
                     self.write(':TRAC:DEL {0}'.format(segment_id))
 
-                # define the size of a waveform segment, marker samples do not count. If the channel is sourced from
-                # Extended Memory, the same segment is defined on all other channels sourced from Extended Memory.
-                # Comb samples written, but len(comb_samples) doesn't know whether interleaved data.
-
-                # TODO: this discards the marker:
-                comb_samples = np.asarray(analog_samples[ch_str], dtype=float)
-
                 # upload, probably to next free segment
-                issued_seg_id = self.awg_ivi.Arbitrary.Waveform.CreateChannelWaveform(str(ch_num), comb_samples)
+                issued_seg_id = self._upload_wave_ivi(ch_num, comb_samples)
                 if int(segment_id) != int(issued_seg_id):
                     self.log.error(f"Unexpectedly the upload issued a new segment id "
                                        f"{issued_seg_id}(!={segment_id})")
@@ -2206,11 +2224,27 @@ class AWGM8195A(AWGM819X):
         """
         return self.marker_on
 
-    def connect_ivi(self):
+    @property
+    def _ivi_driver_config(self):
+        cfg = {'fname_dll': 'KtM8195_64.dll',
+                'com_class': 'KtM8195.KtM8195'}
 
-        comtypes.client.GetModule('KtM8195_64.dll')
-        self.awg_ivi = comtypes.client.CreateObject('KtM8195.KtM8195')
-        self.awg_ivi.Initialize(self._ivi_address, False, False, '')
+        return cfg
+
+    def _upload_wave_ivi(self, ch_num, comb_samples_bin):
+        """
+        Upload a waveform to the next free segment through a call to the (fast) IVI driver.
+        :param ch_num:
+        :param comb_samples_bin: array of combined binary samples of analog + digital data
+        :return:
+        """
+        # upload one big chunk
+        # method is the only one supporting binary data
+        issued_seg_id = self.awg_ivi.Arbitrary.Waveform.CreateChannelWaveformChunk(str(ch_num), 0,
+                                                                                   0,
+                                                                                   len(comb_samples_bin),
+                                                                                   comb_samples_bin)
+        return issued_seg_id
 
     def get_constraints(self):
         """
@@ -2580,10 +2614,22 @@ class AWGM8190A(AWGM819X):
     def interleaved_wavefile(self):
         return False
 
-    def connect_ivi(self):
-        comtypes.client.GetModule('AgM8190_64.dll')
-        self.awg_ivi = comtypes.client.CreateObject('AgM8190.AgM8190')
-        self.awg_ivi.Initialize(self._ivi_address, False, False, '')
+    @property
+    def _ivi_driver_config(self):
+        cfg = {'fname_dll': 'AgM8190_64.dll',
+               'com_class': 'AgM8190.AgM8190'}
+
+        return cfg
+
+    def _upload_wave_ivi(self, ch_num, comb_samples_bin):
+        """
+        Upload a waveform to the next free segment through a call to the (fast) IVI driver.
+        :param ch_num:
+        :param comb_samples_bin: array of combined binary samples of analog + digital data
+        :return:
+        """
+        issued_seg_id = self.awg_ivi.Arbitrary.Waveform.CreateChannelWaveformInt16(str(ch_num), comb_samples_bin)
+        return issued_seg_id
 
     def get_constraints(self):
         """
