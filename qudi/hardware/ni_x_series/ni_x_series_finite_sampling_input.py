@@ -456,7 +456,6 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             return data
 
 
-
     # =============================================================================================
     def _init_sample_clock(self):
         """
@@ -748,60 +747,6 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
 
         self._ai_task_handle = ai_task
         return 0
-
-    # def _init_trigger_task(self):
-    #     """
-    #     Set up task for digital output of trigger signal for ODMR counter.
-    #
-    #     @return int: error code (0:OK, -1:error)
-    #     """
-    #     if self._trigger_task_handle:
-    #         self.log.error('Trigger task has already been generated. '
-    #                        'Setting up trigger task has failed.')
-    #         self.terminate_all_tasks()
-    #         return -1
-    #
-    #     if self._clk_task_handle is None and self._external_sample_clock_source is None:
-    #         self.log.error(
-    #             'No sample clock task has been generated and no external clock source specified. '
-    #             'Unable to create trigger task.')
-    #         self.terminate_all_tasks()
-    #         return -1
-    #
-    #     clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
-    #     sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
-    #
-    #     # Set up trigger task
-    #     task_name = 'ODMRTrigger'
-    #     try:
-    #         task = ni.Task(task_name)
-    #     except ni.DaqError:
-    #         self.log.error('Could not create task with name "{0}"'.format(task_name))
-    #         self.terminate_all_tasks()
-    #         return -1
-    #
-    #     try:
-    #         task.do_channels.add_do_chan(
-    #             '{0:s}, {1:s}'.format(self._odmr_trigger_line, self._odmr_switch_line),
-    #             'ODMRTriggerChannel',
-    #             ni.constants.LineGrouping.CHAN_FOR_ALL_LINES)
-    #
-    #         # connect the clock to the trigger channel to give triggers for the
-    #         # microwave
-    #         task.system.connect_terms(
-    #             clock_channel,
-    #             self._odmr_trigger_channel,
-    #             ni.constants.SignalModifiers.DO_NOT_INVERT_POLARITY)
-    #     except ni.DaqError:
-    #         try:
-    #             del task
-    #         except NameError:
-    #             pass
-    #         self.terminate_all_tasks()
-    #         self.log.exception('Something went wrong while configuring the ODMR trigger.')
-    #         return -1
-    #     self._trigger_task_handle = task
-    #     return 0
 
     def reset_hardware(self):
         """
