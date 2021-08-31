@@ -384,7 +384,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
         with self._lock:
             if 0 <= n < len(self._storage):
                 self.beginRemoveRows(QtCore.QModelIndex(), n, n)
-                ret = self.storage.pop(n)
+                ret = self._storage.pop(n)
                 self.endRemoveRows()
                 return ret
             else:
