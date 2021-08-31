@@ -2033,15 +2033,16 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     def set_voltage_limits(self,RTLT):
         """Changes voltage limits."""
+        n_ch = len(self.get_scanner_axes())
         if RTLT == 'LT':
             # changes limits
-            self.set_voltage_range(myrange=[[0, 10], [0, 10], [0, 10]])
+            self.set_voltage_range(myrange=[[0, 10], [0, 10], [0, 10], [0, 10]][0:n_ch])
             # resets the analog output. This reloads the new limits
             self._start_analog_output()
             # update scanner position range to LT
             self.set_position_range(self._scanner_position_ranges_lt)
         elif RTLT == 'RT':
-            self.set_voltage_range(myrange=[[0, 4], [0, 4], [0, 4]])
+            self.set_voltage_range(myrange=[[0, 4], [0, 4], [0, 4], [0, 10]][0:n_ch])
             self._start_analog_output()
             # update scanner position range to RT
             self.set_position_range(self._scanner_position_ranges_rt)
