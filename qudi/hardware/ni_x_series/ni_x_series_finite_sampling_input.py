@@ -362,6 +362,69 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             self.terminate_all_tasks()
             self.module_state.unlock()
 
+    def get_buffered_samples(self, number_of_samples=None):
+        """ Returns a chunk of the current data frame for all active channels read from the frame
+        buffer.
+        If parameter <number_of_samples> is omitted, this method will return the currently
+        available samples within the frame buffer (i.e. the value of property <samples_in_buffer>).
+        If <number_of_samples> is exceeding the currently available samples in the frame buffer,
+        this method will block until the requested number of samples is available.
+        If the explicitly requested number of samples is exceeding the number of samples pending
+        for acquisition in the rest of this frame, raise an exception.
+
+        Samples that have been already returned from an earlier call to this method are not
+        available anymore and can be considered discarded by the hardware. So this method is
+        effectively decreasing the value of property <samples_in_buffer> (until new samples have
+        been read).
+
+        If the data acquisition has been stopped before the frame has been acquired completely,
+        this method must still return all available samples already read into buffer.
+
+        @param int number_of_samples: optional, the number of samples to read from buffer
+
+        @return dict: Sample arrays (values) for each active channel (keys)
+        """
+        data = dict()
+        if not self.is_running and self.samples_in_buffer < 1:
+            self.log.error('Unable to read data. Device is not running and no data in buffer.')
+            return data
+
+        number_of_samples = self.samples_in_buffer if number_of_samples is None else number_of_samples
+
+        if number_of_samples > self._frame_size:
+            raise ValueError(
+                f'Number of requested samples ({number_of_samples}) exceeds number of samples '
+                f'pending for acquisition ({self._frame_size}).'
+            )
+
+        try:
+            #TODO: What if counter stops while waiting for samples?
+
+            # Read digital channels
+            for i, reader in enumerate(self._di_readers):
+                data_buffer = np.zeros(number_of_samples)
+                # read the counter value. This function is blocking.
+                read_samples = reader.read_many_sample_double(
+                    data_buffer,
+                    number_of_samples_per_channel=number_of_samples,
+                    timeout=self._rw_timeout)
+                if read_samples != number_of_samples:
+                    return data
+                data[reader._task.channel_names[0]] = data_buffer
+            # Read analog channels
+            if self._ai_reader is not None:
+                data_buffer = np.zeros(number_of_samples)
+                read_samples = self._ai_reader.read_many_sample(
+                    data_buffer,
+                    number_of_samples_per_channel=number_of_samples,
+                    timeout=self._rw_timeout)
+                if read_samples != number_of_samples:
+                    return data
+                data[self._ai_reader._task.channel_names[0]] = data_buffer
+        except ni.DaqError:
+            self.log.exception('Getting samples from streamer failed.')
+            return data
+        return data
 
     def acquire_frame(self, frame_size=None):
         """ Acquire a single data frame for all active channels.
@@ -385,6 +448,12 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                 self.set_frame_size(frame_size)
 
             self.start_buffered_acquisition()
+            data = self.get_buffered_samples(self._frame_size)
+            self.stop_buffered_acquisition()
+
+            if buffered_frame_size is not None:
+                self._frame_size = buffered_frame_size
+            return data
 
 
 
