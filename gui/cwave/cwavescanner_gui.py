@@ -200,6 +200,7 @@ class CwaveScanGui(GUIBase):
         self._mw.opo_lock_checkBox.clicked.connect(self.change_lock_mode)
         self._mw.thick_eta_spinBox.editingFinished.connect(self.adjust_thick_etalon)
         self._mw.opo_lambda_spinBox.editingFinished.connect(self.adjust_opo_lambda)
+        self._mw.ref_cav_doubleSpinBox.editingFinished.connect(self.update_setpoint)
 
         #? Connect signals
         self.sig_set_shutter_state.connect(self._cwavescan_logic.change_shutter_state)
@@ -369,7 +370,7 @@ class CwaveScanGui(GUIBase):
         self.sig_adj_opo.emit(delta_lam) 
     @QtCore.Slot()
     def update_setpoint(self):
-        self.sig_set_refcav.emit(self._mw.constDoubleSpinBox.value())
+        self.sig_set_refcav.emit(self._mw.ref_cav_doubleSpinBox.value())
     @QtCore.Slot()
     def change_lock_mode(self):
         sender = self.sender()

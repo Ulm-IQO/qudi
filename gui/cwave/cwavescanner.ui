@@ -445,7 +445,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="doubleSpinBox">
+          <widget class="QDoubleSpinBox" name="ref_cav_doubleSpinBox">
            <property name="suffix">
             <string> V</string>
            </property>

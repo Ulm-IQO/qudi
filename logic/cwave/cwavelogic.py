@@ -253,6 +253,7 @@ class CwaveLogic(GenericLogic):
         n_bins = self.n_scan_bins,
         n_histograms = self.n_scan_lines)
         self.time_diff.setMaxCounts(1)
+        self.scan_full_matrix = np.zeros(self.n_scan_lines)
 
         self.scanQueryTimer = QtCore.QTimer()
         self.scanQueryTimer.setInterval(self._scan_query_time)
@@ -263,7 +264,7 @@ class CwaveLogic(GenericLogic):
 
     @QtCore.Slot()
     def stop_sweep(self):
-        self.regulate_wavelength(True)
+        self.regulate_wavelength(False)
         self._cts_wlm_time = self._cts_wlm_time[1:] #empty buffer
         self.time_diff.stop()
         # self.time_diff.clear()
@@ -417,7 +418,16 @@ class CwaveLogic(GenericLogic):
         self.plot_x_wlm = np.linspace(0, len(self.plot_y_wlm) , len(self.plot_y_wlm))[:250]
         
         scan_data = self.time_diff.getData()  / (60 / (self.sweep_speed * self.n_scan_bins))
-        self.scan_matrix = scan_data
+        
+        if not self.time_diff.ready():
+            self.scan_matrix = np.vstack((self.scan_full_matrix, scan_data))
+        else:
+            self.scan_full_matrix = self.scan_matrix
+            self.time_diff.clear()
+            scan_new_data = self.time_diff.getData()  / (60 / (self.sweep_speed * self.n_scan_bins))
+            self.scan_matrix = np.vstack((self.scan_full_matrix, scan_new_data))
+
+
         scan_line = scan_data.flatten()
         scan_line = scan_line[scan_line > 0][-self.n_scan_bins:]
         self.plot_x = range(len(scan_line))#self._cts_wlm_time[2:,1] #wlm
@@ -456,7 +466,7 @@ class CwaveLogic(GenericLogic):
         # print("New setpoint:", new_voltage)
         new_voltage_hex = int(65535 * new_voltage / 100)
         res = self._cwavelaser.set_int_value('x', new_voltage_hex)
-        delay(wait_time = 1)
+        # delay(wait_time = 1)
         if res == 1:
             return
         else:
