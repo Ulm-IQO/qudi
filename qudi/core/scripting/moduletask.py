@@ -59,24 +59,6 @@ class ModuleTaskStateMachine(Fysom):
 
         super().__init__(cfg=fsm_cfg)
 
-    def _build_event(self, event):
-        """
-        Overrides Fysom _build_event to wrap on_activate and on_deactivate to catch and log
-        exceptions.
-        @param str event: Event name to build the Fysom event for
-        @return function: The event handler used by Fysom for the given event
-        """
-        base_event = super()._build_event(event)
-        def wrap_event(*args, **kwargs):
-            try:
-                base_event(*args, **kwargs)
-            except:
-                self.parent().log.exception('Error during {0}'.format(noun))
-                return False
-            return True
-
-        return wrap_event
-
 
 class ModuleTask(ModuleScript):
     """ Extends parent ModuleScript class with more functionality like setup and cleanup.
