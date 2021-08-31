@@ -20,11 +20,22 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qudi.core.scripting.modulescript import ModuleScript
+from qudi.core.scripting.moduletask import ModuleTask
 from qudi.core.connector import Connector
 
 
-class TestScript(ModuleScript):
+class TestTask(ModuleTask):
 
-    def _run(self, pos_arg, kw_arg=42):
-        print('TestScript executing:', pos_arg, kw_arg)
+    _derp = Connector(name='derp', interface='TemplateLogic')
+
+    def _setup(self) -> None:
+        print(f'Setup: {self.id}')
+
+    def _cleanup(self) -> None:
+        print(f'Cleanup: {self.id}')
+
+    def _run(self, pos_arg='abc', kw_arg=42):
+        print(f'{self.id} executing:', pos_arg, kw_arg)
+        i = 0
+        for i in range(100000000):
+            i += 1

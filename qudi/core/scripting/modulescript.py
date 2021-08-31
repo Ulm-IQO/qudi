@@ -21,7 +21,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ['import_module_script', 'ModuleScript', 'ModuleScriptsTableModel',
+__all__ = ['import_module_script', 'ModuleScript', 'ModuleScriptsDictTableModel',
            'ModuleScriptInterrupted']
 
 import importlib
@@ -31,7 +31,7 @@ from abc import abstractmethod
 from uuid import uuid4
 from PySide2 import QtCore
 from logging import getLogger, Logger
-from typing import Mapping, Any, Type, Optional
+from typing import Mapping, Any, Type, Optional, Union, Iterable
 
 from qudi.core.meta import QudiObjectMeta
 from qudi.util.models import DictTableModel
@@ -52,7 +52,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
     """
     # Declare all module connectors used in this script here
 
-    sigFinished = QtCore.Signal(object, str, bool)  # result, ID, success
+    sigFinished = QtCore.Signal(object, bool, str)  # result, success, ID
 
     # FIXME: This __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
     #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
@@ -137,6 +137,14 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         """
         return inspect.signature(self._run)
 
+    @property
+    def connected_modules(self) -> Mapping[str, Union[str, None]]:
+        """ Mapping of Connector names (keys) to connected module target names (values).
+        Unconnected Connectors are indicated by None target.
+        """
+        return {conn.name: None if conn() is None else conn().module_name for conn in
+                self._meta['connectors']}
+
     def __call__(self, *args, **kwargs) -> Any:
         """ Convenience magic method to run this script like a function
         DO NOT OVERRIDE IN SUBCLASS!
@@ -172,7 +180,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         finally:
             with self._thread_lock:
                 self._running = False
-                self.sigFinished.emit(self.result, self.id, self._success)
+                self.sigFinished.emit(self.result, self._success, self.id)
 
     def connect_modules(self, connector_targets: Mapping[str, Any]) -> None:
         """ Connects given modules (values) to their respective Connector (keys).
@@ -231,18 +239,18 @@ def import_module_script(module: str, cls: str,
     return script
 
 
-class ModuleScriptsTableModel(DictTableModel):
+class ModuleScriptsDictTableModel(DictTableModel):
     """ Qt compatible table model holding all configured and available ModuleScript subclasses.
     """
-    def __init__(self, script_config: Optional[Mapping[str, dict]] = None):
-        super().__init__(headers='Module Scripts')
-        if script_config is None:
-            script_config = dict()
-        for name, config in script_config.items():
+    def __init__(self, scripts_config: Optional[Mapping[str, dict]] = None):
+        super().__init__(headers=['Name', 'Class'])
+        if scripts_config is None:
+            scripts_config = dict()
+        for name, config in scripts_config.items():
             self.register_script(name, config)
 
     def register_script(self, name: str, config: dict) -> None:
         if name in self:
             raise KeyError(f'Multiple module script with name "{name}" configured.')
         module, cls = config['module.Class'].rsplit('.', 1)
-        self[name] = import_module_script(module, cls, reload=True)
+        self[name] = import_module_script(module, cls, reload=False)
