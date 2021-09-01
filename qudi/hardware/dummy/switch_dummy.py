@@ -46,6 +46,7 @@ class SwitchDummy(SwitchInterface):
     _hardware_name = ConfigOption(name='name', default=None, missing='nothing')
     # if remember_states is True the last state will be restored at reloading of the module
     _remember_states = ConfigOption(name='remember_states', default=True, missing='nothing')
+    _throw_error = ConfigOption(name='throw_error', default='', missing='nothing')
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
@@ -97,6 +98,8 @@ class SwitchDummy(SwitchInterface):
         @return str: The current switch state
         """
         assert switch in self.available_states, f'Invalid switch name: "{switch}"'
+        if self._throw_error and self._throw_error.__contains__('get'):
+            raise AssertionError(f'This is an error thrown by get_state of {self.name}')
         return self._states[switch]
 
     def set_state(self, switch, state):
@@ -108,4 +111,6 @@ class SwitchDummy(SwitchInterface):
         avail_states = self.available_states
         assert switch in avail_states, f'Invalid switch name: "{switch}"'
         assert state in avail_states[switch], f'Invalid state name "{state}" for switch "{switch}"'
+        if self._throw_error and self._throw_error.__contains__('set'):
+            raise AssertionError(f'This is an error thrown by set_state of {self.name}')
         self._states[switch] = state
