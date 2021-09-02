@@ -127,6 +127,14 @@ class TT(Base):
                                 self._counter['bins_width'],
                                 self._counter['n_values'])
 
+    def time_differences(click_channel, start_channel, next_channel, binwidth, n_bins,n_histograms)
+        return TimeDifferences(self.tagger, 
+                                click_channel, 
+                                start_channel, 
+                                next_channel,
+                                binwidth, 
+                                n_bins,
+                                n_histograms)
     def combiner(self, channels):
         return Combiner(self.tagger, channels)
 
