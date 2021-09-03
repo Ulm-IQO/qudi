@@ -22,128 +22,87 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ('DictTableModel', 'ListTableModel')
 
 from PySide2 import QtCore
+from typing import Any, Optional, Union, Sequence
 from .mutex import RecursiveMutex
 
 
 class DictTableModel(QtCore.QAbstractTableModel):
     """ Qt model storing a table in dictionaries
     """
-    def __init__(self, headers):
+    def __init__(self, headers: Union[str, Sequence[str]]):
         super().__init__()
         self._lock = RecursiveMutex()
         if isinstance(headers, str):
             self._headers = [headers]
-        elif len(headers) > 2:
-            raise ValueError(
-                'DictTableModel can only support up to 2 columns and associated headers.'
-            )
         elif not all(isinstance(h, str) for h in headers):
             raise TypeError('DictTableModel header entries must be str type.')
         else:
             self._headers = list(headers)
         self._storage = dict()
 
-    def rowCount(self, parent=QtCore.QModelIndex()):
-        """ Gives the number of stored items.
-
-          @return int: number of items
+    def rowCount(self, parent: Optional[QtCore.QModelIndex] = None) -> int:
+        """ Returns the number of stored items (rows)
         """
         with self._lock:
             return len(self._storage)
 
-    def columnCount(self, parent=QtCore.QModelIndex()):
-        """ Gives the number of data fields.
-
-          @return int: number of data fields
+    def columnCount(self, parent: Optional[QtCore.QModelIndex] = None) -> int:
+        """ Returns the number of data fields (columns)
         """
         with self._lock:
             return len(self._headers)
 
-    def flags(self, index):
-        """ Determines what can be done with entry cells in the table view.
-
-        @param QModelIndex index: cell fo which the flags are requested
-
-        @return Qt.ItemFlags: actions allowed for this cell
+    def flags(self, index: Optional[QtCore.QModelIndex] = None) -> QtCore.Qt.ItemFlags:
+        """ Determines what can be done with the given indexed cell.
         """
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
-    def data(self, index, role):
+    def data(self, index: QtCore.QModelIndex, role: QtCore.Qt.ItemDataRole) -> Any:
         """ Get data from model for a given cell. Data can have a role that affects display.
-
-        @param QModelIndex index: cell for which data is requested
-        @param ItemDataRole role: role for which data is requested
-
-        @return QVariant: data for given cell and role
+        Re-Implement in subclass in order to support anything else than the 2 default columns.
         """
         with self._lock:
-            if not index.isValid():
-                return None
-            elif role == QtCore.Qt.DisplayRole:
+            if index.isValid() and role == QtCore.Qt.DisplayRole:
                 key = self.get_key_by_index(index.row())
                 if index.column() == 0:
                     return key
                 elif index.column() == 1:
                     return self._storage[key]
-                else:
-                    return None
             return None
 
-    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-        """ Data for the table view headers.
-
-        @param int section: number of the column to get header data for
-        @param Qt.Orientation orientation: orientation of header (horizontal or vertical)
-        @param ItemDataRole role: role for which to get data
-
-        @return QVariant: header data for given column and role
-        """
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation,
+                   role: Optional[QtCore.Qt.ItemDataRole] = QtCore.Qt.DisplayRole) -> Any:
+        """ Data for the table view headers """
         with self._lock:
-            if not(0 <= section < len(self._headers)):
-                return None
-            elif role != QtCore.Qt.DisplayRole:
-                return None
-            elif orientation != QtCore.Qt.Horizontal:
-                return None
-            return self._headers[section]
+            if role == QtCore.Qt.DisplayRole:
+                if orientation == QtCore.Qt.Horizontal:
+                    return self._headers[section]
+            return None
 
-    def get_key_by_index(self, n):
-        """ Get a dict key by index number
-
-        @param int n: index number for element
-
-        @return key: key at index
-        """
+    def get_key_by_index(self, n: int) -> Any:
+        """ Get a dict key by index number """
         with self._lock:
-            if not(0 <= n < len(self._storage)):
-                raise IndexError
-            i = 0
             it = iter(self._storage)
-            key = next(it)
-            while i < n:
-                key = next(it)
-                i += 1
+            key = None
+            try:
+                for i in range(n):
+                    key = next(it)
+            except StopIteration:
+                pass
+            if key is None:
+                raise IndexError
             return key
 
-    def get_index_by_key(self, key):
-        """ Get index number for dict key.
+    def get_index_by_key(self, key: Any) -> int:
+        """ Get row index for dict key.
 
-        @param key: dict key
-
-        @return int: index number for key
-
-        Warning: index number for a key changes when keys with lower numbers are removed.
+        Warning: Row index for a key changes when keys with lower index are removed.
         """
         with self._lock:
-            if key not in self._storage or len(self._storage) < 1:
-                raise KeyError
-            i = 0
-            it = iter(self._storage)
-            newkey = next(it)
-            while key != newkey:
-                newkey = next(it)
-                i += 1
-            return i
+            for i, storage_key in enumerate(self._storage.keys()):
+                if key == storage_key:
+                    return i
+            raise KeyError
 
     def __setitem__(self, key, value):
         with self._lock:
@@ -245,84 +204,60 @@ class ListTableModel(QtCore.QAbstractTableModel):
     """ Qt model storing a table in lists.
     """
 
-    def __init__(self, header):
+    def __init__(self, headers: Union[str, Sequence[str]]):
         super().__init__()
         self._lock = RecursiveMutex()
-        if isinstance(header, str):
-            self._header = header
-        elif len(header) > 1:
-            raise IndexError(
-                'ListTableModel can only support a single column with associated header.')
+        if isinstance(headers, str):
+            self._headers = headers
+        elif not all(isinstance(h, str) for h in headers):
+            raise TypeError('DictTableModel header entries must be str type.')
         else:
-            self._header = str(header[0])
+            self._headers = list(headers)
         self._storage = list()
 
-    def rowCount(self, parent=QtCore.QModelIndex()):
-        """ Gives the number of stored items.
-
-        @return int: number of items
+    def rowCount(self, parent: Optional[QtCore.QModelIndex] = None):
+        """ Gives the number of stored items (rows)
         """
         with self._lock:
             return len(self._storage)
 
-    def columnCount(self, parent=QtCore.QModelIndex()):
-        """ Gives the number of data fields.
-
-        @return int: number of data fields
+    def columnCount(self, parent: Optional[QtCore.QModelIndex] = None):
+        """ Gives the number of data fields (columns)
         """
-        return 1
+        return len(self._headers)
 
-    def flags(self, index):
+    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlags:
         """ Determines what can be done with entry cells in the table view.
-
-        @param QModelIndex index: cell fo which the flags are requested
-
-        @return Qt.ItemFlags: actins allowed fotr this cell
         """
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
-    def data(self, index, role):
+    def data(self, index: QtCore.QModelIndex, role: QtCore.Qt.ItemDataRole) -> Any:
         """ Get data from model for a given cell. Data can have a role that affects display.
-
-        @param QModelIndex index: cell for which data is requested
-        @param ItemDataRole role: role for which data is requested
-
-        @return QVariant: data for given cell and role
         """
         with self._lock:
-            if not index.isValid() or role != QtCore.Qt.DisplayRole:
-                return None
-            if index.column() == 0:
+            if index.isValid() and role == QtCore.Qt.DisplayRole:
                 return self._storage[index.row()]
             return None
 
-    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-        """ Data for the table view headers.
-
-        @param int section: number of the column to get header data for
-        @param Qt.Orientation orientation: orientation of header (horizontal or vertical)
-        @param ItemDataRole role: role for which to get data
-
-        @return QVariant: header data for given column and role
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation,
+                   role: Optional[QtCore.Qt.ItemDataRole] = QtCore.Qt.DisplayRole) -> Any:
+        """ Data for the table view headers
         """
-        if section != 0 or role != QtCore.Qt.DisplayRole or orientation != QtCore.Qt.Horizontal:
-            return None
-        return self._header
+        if role == QtCore.Qt.DisplayRole:
+            if orientation == QtCore.Qt.Horizontal:
+                return self._headers[section]
+        return None
 
     def __setitem__(self, key, value):
         with self._lock:
             if key < 0:
                 key = key + len(self._storage)
-            if 0 <= key < len(self._storage):
-                self._storage[key] = value
-                index = self.index(key, 0)
-                self.dataChanged.emit(index, index)
-                return
-            raise IndexError
+            self._storage[key] = value
+            self.dataChanged.emit(self.index(key, 0), self.index(key, len(self._headers) - 1))
 
-    def __getitem__(self, item):
+    def __getitem__(self, key):
         with self._lock:
-            return self._storage.__getitem__(item)
+            return self._storage[key]
 
     def __repr__(self):
         with self._lock:
@@ -336,14 +271,11 @@ class ListTableModel(QtCore.QAbstractTableModel):
         with self._lock:
             if key < 0:
                 key = key + len(self._storage)
-            if 0 <= key < len(self._storage):
-                self.pop(key)
-                return
-            raise IndexError
+            self.pop(key)
 
     def __iter__(self):
         with self._lock:
-            return self._storage.__iter__()
+            return iter(self._storage)
 
     def __contains__(self, item):
         with self._lock:
@@ -409,6 +341,6 @@ class ListTableModel(QtCore.QAbstractTableModel):
             return self._storage.count(value)
 
     def copy(self):
-        model = ListTableModel(self._header)
+        model = ListTableModel(self._headers)
         model._storage = self._storage.copy()
         return model
