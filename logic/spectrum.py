@@ -53,7 +53,7 @@ class SpectrumLogic(GenericLogic):
     fitlogic = Connector(interface='FitLogic')
     nicard = Connector(interface='NationalInstrumentsXSeries')
     ello_devices = Connector(interface='ThorlabsElloDevices')
-    cwavelaser = Connector(interface='CwaveLaser')
+    # cwavelaser = Connector(interface='CwaveLaser')
 
     # declare status variables
     _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
@@ -64,7 +64,7 @@ class SpectrumLogic(GenericLogic):
     # Internal signals
     sig_specdata_updated = QtCore.Signal()
     sig_next_diff_loop = QtCore.Signal()
-    sig_cwave_shutter = QtCore.Signal()
+    # sig_cwave_shutter = QtCore.Signal()
     # External signals eg for GUI module
     spectrum_fit_updated_Signal = QtCore.Signal(np.ndarray, dict, str)
     fit_domain_updated_Signal = QtCore.Signal(np.ndarray)
@@ -97,8 +97,8 @@ class SpectrumLogic(GenericLogic):
         self._odmr_logic = self.odmrlogic()
         self._save_logic = self.savelogic()
         self._ello_flipper = self.ello_devices().ello_flip
-        self._cwave = self.cwavelaser()
-        self.sig_cwave_shutter.connect(self._cwave.set_shutters_states)
+        # self._cwave = self.cwavelaser()
+        # self.sig_cwave_shutter.connect(self._cwave.set_shutters_states)
         self._nicard = self.nicard()
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
@@ -147,10 +147,10 @@ class SpectrumLogic(GenericLogic):
         # Clear any previous fit
 
         #PREPARE ALL FILTERS
-        if self._cwave.shutters['shtter_shg_out']:
-            #TURN OFF THE RED LASER!
-            self._cwave.shutters['shtter_shg_out'] = False
-            self.sig_cwave_shutter.emit()
+        # if self._cwave.shutters['shtter_shg_out']:
+        #     #TURN OFF THE RED LASER!
+        #     self._cwave.shutters['shtter_shg_out'] = False
+            # self.sig_cwave_shutter.emit()
         self._ello_flipper.move_forward()
 
         self.fc.clear_result()
