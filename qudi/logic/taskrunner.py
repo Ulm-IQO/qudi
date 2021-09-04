@@ -34,8 +34,7 @@ class TaskInstanceListTableModel(ListTableModel):
     """ An extension of the ListTableModel for keeping ModuleTask instances.
     """
     def __init__(self):
-        super().__init__(header='Task Name')
-        # super().__init__(header=['Task Name', 'Current State', 'Result', 'Involved Modules'])
+        super().__init__(headers=['Task Name', 'Current State', 'Result', 'Involved Modules'])
 
     def data(self, index: QtCore.QModelIndex, role: QtCore.Qt.ItemDataRole) -> Any:
         """ Get data from model for a given cell. Data can have a role that affects display.
