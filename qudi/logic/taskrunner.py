@@ -31,14 +31,15 @@ from qudi.core.module import LogicBase
 class TaskListTableModel(ListTableModel):
     """ An extension of the ListTableModel for keeping a task list in a TaskRunner.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.headers = ['Task Name',
-                        'Task State',
-                        'Pre/Post actions',
-                        'Pauses',
-                        'Needs modules',
-                        'is ok']
+    def __init__(self):
+        super().__init__(
+            headers=['Task Name',
+                     'Task State',
+                     'Pre/Post actions',
+                     'Pauses',
+                     'Needs modules',
+                     'is ok']
+        )
 
     def data(self, index, role):
         """
