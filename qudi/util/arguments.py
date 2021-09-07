@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This file contains utility methods for GUI widgets.
+This file contains utility methods to annotate arguments for which the user can potentially edit
+values via GUI. These arguments are boiled down to simple builtin types that can be represented by
+a GUI editor:
+      int: qudi.core.gui.qtwidgets.scientific_spinbox.ScienSpinBox
+    float: qudi.core.gui.qtwidgets.scientific_spinbox.ScienDSpinbox
+      str: PySide2.QtWidgets.QLineEdit
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,9 +31,9 @@ from PySide2 import QtWidgets
 from typing import Callable, List, Type, Any, Set, FrozenSet, Iterable, Mapping, _SpecialForm
 from typing import get_args, get_origin
 
-from qudi.util.helpers import is_complex, is_float, is_integer, is_string, is_number_type
+from qudi.util.helpers import is_float, is_integer
 from qudi.util.helpers import is_complex_type, is_float_type, is_integer_type, is_string_type
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienSpinBox, ScienDSpinBox
+from qudi.util.widgets.scientific_spinbox import ScienSpinBox, ScienDSpinBox
 
 
 class ParameterWidgetMapper:
@@ -70,6 +75,7 @@ class ParameterWidgetMapper:
             return set
         elif issubclass(typ, Mapping):
             return dict
+        elif issubclass(typ, )
         elif issubclass(typ, Iterable):
             return list
         return None

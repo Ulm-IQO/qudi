@@ -20,14 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('ScanImageItem', 'ScanPlotWidget', 'ScanViewBox', 'ScanWidget')
+__all__ = ['ScanImageItem', 'ScanPlotWidget', 'ScanViewBox', 'ScanWidget']
 
 import numpy as np
 from PySide2 import QtCore, QtWidgets
 from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
 
-from .colorbar import ColorBarWidget, ColorBarMode
-from ..colordefs import ColorScaleInferno
+from qudi.util.widgets.colorbar import ColorBarWidget, ColorBarMode
+from qudi.util.colordefs import ColorScaleInferno
 
 
 class ScanImageItem(ImageItem):

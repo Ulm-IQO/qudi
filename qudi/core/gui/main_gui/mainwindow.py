@@ -27,7 +27,7 @@ from qudi.core.gui.main_gui.aboutqudidialog import AboutQudiDialog
 from qudi.core.gui.main_gui.settingsdialog import SettingsDialog
 from qudi.core.gui.main_gui.modulewidget import ModuleWidget
 from qudi.core.paths import get_artwork_dir
-from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 
