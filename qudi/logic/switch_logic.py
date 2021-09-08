@@ -107,7 +107,12 @@ class SwitchLogic(LogicBase):
             try:
                 states = self.switch().states
             except:
-                self.log.exception(f'Error during query of all switch states.')
+                if self._watchdog_active:
+                    self.toggle_watchdog(False)
+                    self.log.exception(f'Error during query of all switch states. '
+                                       f'Deactivating watchdog to avoid constant errors.')
+                else:
+                    self.log.exception(f'Error during query of all switch states.')
                 states = dict()
             return states
 

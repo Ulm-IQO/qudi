@@ -24,6 +24,7 @@ import weakref
 import platform
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.main_gui.main_gui import QudiMainGui
+from qudi.core.modulemanager import ModuleManager
 from qudi.core.paths import get_artwork_dir
 from qudi.core.logger import get_logger
 
@@ -38,24 +39,37 @@ logger = get_logger(__name__)
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray icon class subclassing QSystemTrayIcon for custom functionality.
     """
+
     def __init__(self):
         """Tray icon constructor.
         Adds all the appropriate menus and actions.
         """
         super().__init__()
+        self._actions = dict()
         self.setIcon(QtWidgets.QApplication.instance().windowIcon())
         self.right_menu = QtWidgets.QMenu('Quit')
         self.left_menu = QtWidgets.QMenu('Manager')
+
         iconpath = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
         self.managericon = QtGui.QIcon()
         self.managericon.addFile(os.path.join(iconpath, 'go-home.png'), QtCore.QSize(16, 16))
+        self.managerAction = QtWidgets.QAction(self.managericon, 'Manager', self.left_menu)
+
         self.exiticon = QtGui.QIcon()
         self.exiticon.addFile(os.path.join(iconpath, 'application-exit.png'), QtCore.QSize(16, 16))
         self.quitAction = QtWidgets.QAction(self.exiticon, 'Quit', self.right_menu)
-        self.managerAction = QtWidgets.QAction(self.managericon, 'Manager', self.left_menu)
+
+        self.restarticon = QtGui.QIcon()
+        self.restarticon.addFile(os.path.join(iconpath, 'view-refresh.png'), QtCore.QSize(16, 16))
+        self.restartAction = QtWidgets.QAction(self.restarticon, 'Restart', self.right_menu)
+
         self.left_menu.addAction(self.managerAction)
+        self.left_menu.addSeparator()
+
         self.right_menu.addAction(self.quitAction)
+        self.right_menu.addAction(self.restartAction)
         self.setContextMenu(self.right_menu)
+
         self.activated.connect(self.handle_activation)
 
     @QtCore.Slot(QtWidgets.QSystemTrayIcon.ActivationReason)
@@ -68,6 +82,27 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         """
         if reason == self.Trigger:
             self.left_menu.exec_(QtGui.QCursor.pos())
+
+    def add_action(self, label, callback, icon=None):
+        if label in self._actions:
+            raise ValueError(f'Action "{label}" already exists in system tray.')
+
+        if not isinstance(icon, QtGui.QIcon):
+            icon = QtGui.QIcon()
+            iconpath = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
+            icon.addFile(os.path.join(iconpath, 'go-next.png'), QtCore.QSize(16, 16))
+
+        action = QtWidgets.QAction(label)
+        action.setIcon(icon)
+        action.triggered.connect(callback)
+        self.left_menu.addAction(action)
+        self._actions[label] = action
+
+    def remove_action(self, label):
+        action = self._actions.pop(label, None)
+        if action is not None:
+            action.triggered.disconnect()
+            self.left_menu.removeAction(action)
 
 
 class Gui(QtCore.QObject):
@@ -108,7 +143,6 @@ class Gui(QtCore.QObject):
         if stylesheet_path is not None:
             self.set_style_sheet(stylesheet_path)
         self.system_tray_icon = SystemTrayIcon()
-        self.show_system_tray_icon()
 
         self._sigPopUpMessage.connect(self.pop_up_message, QtCore.Qt.QueuedConnection)
         self._sigBalloonMessage.connect(self.balloon_message, QtCore.Qt.QueuedConnection)
@@ -116,6 +150,14 @@ class Gui(QtCore.QObject):
         self._configure_pyqtgraph(use_opengl)
         self.main_gui_module = QudiMainGui(qudi_main_weakref=weakref.ref(qudi_instance),
                                            name='qudi_main_gui')
+        self.system_tray_icon.managerAction.triggered.connect(self.main_gui_module.show,
+                                                              QtCore.Qt.QueuedConnection)
+        self.system_tray_icon.quitAction.triggered.connect(qudi_instance.quit,
+                                                           QtCore.Qt.QueuedConnection)
+        self.system_tray_icon.restartAction.triggered.connect(qudi_instance.restart,
+                                                              QtCore.Qt.QueuedConnection)
+        qudi_instance.module_manager.sigModuleStateChanged.connect(self._tray_module_action_changed)
+        self.show_system_tray_icon()
 
     @classmethod
     def instance(cls):
@@ -245,6 +287,7 @@ class Gui(QtCore.QObject):
         """
         self.hide_system_tray_icon()
         self.system_tray_icon.quitAction.triggered.disconnect()
+        self.system_tray_icon.restartAction.triggered.disconnect()
         self.system_tray_icon.managerAction.triggered.disconnect()
         self.system_tray_icon = None
 
@@ -334,3 +377,16 @@ class Gui(QtCore.QObject):
             return
         self.system_tray_notification_bubble(title, message, time=time, icon=icon)
         return
+
+    @QtCore.Slot(str, str, str)
+    def _tray_module_action_changed(self, base, module_name, state):
+        if self.system_tray_icon and base == 'gui':
+            if state == 'deactivated':
+                self.system_tray_icon.remove_action(module_name)
+            else:
+                mod_manager = ModuleManager.instance()
+                try:
+                    module_inst = mod_manager[module_name].instance
+                except KeyError:
+                    return
+                self.system_tray_icon.add_action(module_name, module_inst.show)

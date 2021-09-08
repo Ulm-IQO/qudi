@@ -20,7 +20,10 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
+__all__ = ['Connector']
+
 import weakref
+from typing import Any, Type, Union
 from qudi.util.overload import OverloadProxy
 
 
@@ -28,7 +31,7 @@ class Connector:
     """ A connector used to connect qudi modules with each other.
     """
 
-    def __init__(self, interface, name=None, optional=False):
+    def __init__(self, interface: Union[str, Type], name: str = None, optional: bool = False):
         """
         @param str interface: name of the interface class to connect to
         @param str name: optional, name of the connector in qudi config. Will set attribute name if
@@ -50,7 +53,7 @@ class Connector:
         if self.name is None:
             self.name = name
 
-    def __call__(self):
+    def __call__(self) -> Any:
         """ Return reference to the module that this connector is connected to. """
         if self.is_connected:
             return self._obj_proxy
@@ -67,20 +70,20 @@ class Connector:
         return self.copy()
 
     def __repr__(self):
-        return f'qudi.core.connector.Connector("{self.interface}", "{self.name}", {self.optional})'
+        return f'{self.__module__}.Connector("{self.interface}", "{self.name}", {self.optional})'
 
     def __module_died_callback(self, ref=None):
         self.disconnect()
 
     @property
-    def is_connected(self):
+    def is_connected(self) -> bool:
         """ Read-only property to check if the Connector instance is connected to a target module.
 
         @return bool: Connection status flag (True: connected, False: disconnected)
         """
         return self._obj_proxy is not None
 
-    def connect(self, target):
+    def connect(self, target: Any) -> None:
         """ Check if target is connectible by this connector and connect.
         """
         bases = {cls.__name__ for cls in target.__class__.mro()}
@@ -92,7 +95,7 @@ class Connector:
         self._obj_proxy = OverloadProxy(target, self.interface)
         self._obj_ref = weakref.ref(target, self.__module_died_callback)
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """ Disconnect connector.
         """
         self._obj_proxy = None
