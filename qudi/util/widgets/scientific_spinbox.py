@@ -34,7 +34,9 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'(\s*([+-]?)(\d+\.\d+|\.\d+|\d+\.?)([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)')
+    float_re = re.compile(
+        r'(\s*([+-]?)(\d+\.\d+|\.\d+|\d+\.?)([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)'
+    )
     group_map = {'match': 0,
                  'sign': 1,
                  'mantissa': 2,
