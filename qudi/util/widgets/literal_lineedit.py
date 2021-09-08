@@ -18,15 +18,13 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ['ComplexLineEdit', 'ComplexValidator', 'DictLineEdit', 'DictValidator',
-           'LiteralLineEdit', 'LiteralValidator', 'SetLineEdit', 'SetValidator', 'TupleLineEdit',
-           'TupleValidator']
+__all__ = ['ComplexLineEdit', 'ComplexValidator', 'DictLineEdit', 'DictValidator', 'ListLineEdit',
+           'ListValidator', 'LiteralLineEdit', 'LiteralValidator', 'SetLineEdit', 'SetValidator',
+           'TupleLineEdit', 'TupleValidator']
 
 from PySide2 import QtCore, QtGui, QtWidgets
 from typing import Any, Optional, Mapping, MutableSequence, Sequence, Set, FrozenSet, Union, List
 from typing import Tuple, Dict
-from copy import deepcopy
-from qudi.util.helpers import is_complex
 
 
 class LiteralValidator(QtGui.QValidator):
