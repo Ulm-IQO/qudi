@@ -31,7 +31,7 @@ from typing import Any, Mapping, Optional, Callable, Union
 from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
-from qudi.core.config import load, save
+from qudi.util.yaml import yaml_load, yaml_dump
 from qudi.core.meta import ModuleMeta
 from qudi.core.logger import get_logger
 
@@ -317,7 +317,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         base = self.module_base
         file_path = get_module_app_data_path(class_name, base, name)
         try:
-            variables = load(file_path) if os.path.isfile(file_path) else dict()
+            variables = yaml_load(file_path, ignore_missing=True)
         except:
             variables = dict()
             self.log.exception(
@@ -364,7 +364,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         # Save to file if any StatusVars have been found
         if variables:
             try:
-                save(file_path, variables)
+                yaml_dump(file_path, variables)
             except:
                 self.log.exception(
                     f'Failed to save status variables for module "{class_name}.{base}.{name}".'
