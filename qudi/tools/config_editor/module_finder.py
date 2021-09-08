@@ -10,7 +10,7 @@ import sys
 import importlib
 import inspect
 import logging
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.core.module import Base, LogicBase, GuiBase
 
 

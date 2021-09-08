@@ -30,7 +30,7 @@ from typing import Any, Mapping, Optional, Callable, Union
 
 from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
+from qudi.util.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
 from qudi.core.config import load, save
 from qudi.core.meta import ModuleMeta
 from qudi.core.logger import get_logger

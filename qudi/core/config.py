@@ -41,7 +41,7 @@ from collections import OrderedDict
 from io import BytesIO, TextIOWrapper
 from PySide2 import QtCore
 
-import qudi.core.paths as _paths
+import qudi.util.paths as _paths
 
 
 class QudiSafeRepresenter(_yaml.SafeRepresenter):

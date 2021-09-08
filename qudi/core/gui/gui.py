@@ -25,7 +25,7 @@ import platform
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.gui.main_gui.main_gui import QudiMainGui
 from qudi.core.modulemanager import ModuleManager
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 from qudi.core.logger import get_logger
 
 try:

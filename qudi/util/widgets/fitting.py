@@ -26,7 +26,7 @@ import os
 import weakref
 from PySide2 import QtCore, QtWidgets, QtGui
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel, FitConfiguration
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
 
 
