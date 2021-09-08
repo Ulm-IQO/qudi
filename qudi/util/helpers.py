@@ -26,7 +26,8 @@ import os
 import pkgutil
 import numpy as np
 from typing import Union, Optional, Iterable, List, Any, Type, Tuple, Callable
-from qudi.util.parameters import RealNumber
+
+_RealNumber = Union[int, float]
 
 
 def iter_modules_recursive(paths: Union[str, Iterable[str]],
@@ -132,8 +133,8 @@ def is_string_type(test_obj: Type) -> bool:
     return issubclass(test_obj, (str, np.str_, np.string_))
 
 
-def in_range(value: RealNumber, lower_limit: RealNumber,
-             upper_limit: RealNumber) -> Tuple[bool, RealNumber]:
+def in_range(value: _RealNumber, lower_limit: _RealNumber,
+             upper_limit: _RealNumber) -> Tuple[bool, _RealNumber]:
     """ Check if a value is in a given range an return closest possible value in range.
     Also check the range.
     Return value is clipped to range.

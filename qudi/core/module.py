@@ -214,6 +214,14 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         for attr_name, conn in self._meta['connectors'].items():
             setattr(self, attr_name, conn)
 
+    def __eq__(self, other):
+        if isinstance(other, Base):
+            return self.module_uuid == other.module_uuid
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return self.module_uuid.int
+
     @QtCore.Slot()
     def move_to_main_thread(self) -> None:
         """ Method that will move this module into the main/manager thread.
