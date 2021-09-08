@@ -206,15 +206,19 @@ class LiteralLineEdit(QtWidgets.QLineEdit):
             validator = LiteralValidator()
         self._last_valid_text = ''
         self.setValidator(validator)
-        self.textChanged.connect(self._on_text_changed, QtCore.Qt.DirectConnection)
         self.setValue(value)
 
     def setValue(self, value: Any) -> None:
         """
         """
-        text = '' if value is None else self.validator().text_from_value(value)
-        if text != self._last_valid_text:
+        validator = self.validator()
+        text = validator.fixup(validator.text_from_value(value))
+        if self._new_text_valid(text):
             self.setText(text)
+            self._last_valid_text = text
+            self.valueChanged.emit(self.value())
+        elif text != self._last_valid_text:
+            raise ValueError
 
     def value(self) -> Any:
         """
@@ -226,23 +230,31 @@ class LiteralLineEdit(QtWidgets.QLineEdit):
         return super().focusOutEvent(event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        check_text = True
         if event.key() in (QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return):
             self._revert_text()
-        return super().keyPressEvent(event)
+            check_text = False
+        ret_val = super().keyPressEvent(event)
+        if check_text:
+            text = self.text()
+            if self._new_text_valid(text):
+                self._last_valid_text = text
+                self.valueChanged.emit(self.value())
+        return ret_val
 
     def _revert_text(self) -> None:
         text = self.text()
         if self.validator().validate(text, len(text)) != QtGui.QValidator.Acceptable:
             self.setText(self._last_valid_text)
 
-    @QtCore.Slot(str)
-    def _on_text_changed(self, text: Optional[str] = None) -> None:
-        validator = self.validator()
-        text = validator.fixup(text)
+    def _new_text_valid(self, text: str) -> bool:
+        """ Helper method to check if the given text is suitable to replace the current text as
+        valid value.
+        """
         if text != self._last_valid_text:
-            if validator.validate(text, len(text)) == QtGui.QValidator.Acceptable:
-                self._last_valid_text = text
-                self.valueChanged.emit(validator.value_from_text(text))
+            validator = self.validator()
+            return validator.validate(text, len(text)) == QtGui.QValidator.Acceptable
+        return False
 
 
 class ComplexLineEdit(LiteralLineEdit):
@@ -252,6 +264,8 @@ class ComplexLineEdit(LiteralLineEdit):
     valueChanged = QtCore.Signal(complex)
 
     def __init__(self, value: Optional[complex] = None, parent: Optional[QtWidgets.QWidget] = None):
+        if value is None:
+            value = complex()
         super().__init__(value=value, parent=parent, validator=ComplexValidator())
 
 
@@ -263,6 +277,8 @@ class ListLineEdit(LiteralLineEdit):
 
     def __init__(self, value: Optional[MutableSequence] = None,
                  parent: Optional[QtWidgets.QWidget] = None):
+        if value is None:
+            value = list()
         super().__init__(value=value, parent=parent, validator=ListValidator())
 
 
@@ -274,6 +290,8 @@ class TupleLineEdit(LiteralLineEdit):
 
     def __init__(self, value: Optional[Sequence] = None,
                  parent: Optional[QtWidgets.QWidget] = None):
+        if value is None:
+            value = tuple()
         super().__init__(value=value, parent=parent, validator=TupleValidator())
 
 
@@ -285,6 +303,8 @@ class SetLineEdit(LiteralLineEdit):
 
     def __init__(self, value: Optional[Union[Set, FrozenSet]] = None,
                  parent: Optional[QtWidgets.QWidget] = None):
+        if value is None:
+            value = set()
         super().__init__(value=value, parent=parent, validator=SetValidator())
 
 
@@ -295,4 +315,6 @@ class DictLineEdit(LiteralLineEdit):
     valueChanged = QtCore.Signal(dict)
 
     def __init__(self, value: Optional[Mapping] = None, parent: Optional[QtWidgets.QWidget] = None):
+        if value is None:
+            value = dict()
         super().__init__(value=value, parent=parent, validator=DictValidator())
