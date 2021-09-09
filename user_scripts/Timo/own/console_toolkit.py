@@ -1,6 +1,8 @@
 import pickle
 import numpy as np
 import os
+import re
+import pandas as pd
 
 qudi_path = "C:/Users/Setup3-PC/Desktop/qudi"
 os.chdir(qudi_path)
@@ -9,10 +11,10 @@ try:
     from logic.mfl_irq_driven import MFL_IRQ_Driven
     from logic.mfl_xy8_irq_driven import MFL_IRQ_Driven as MFL_XY8_IRQ_Driven
     from logic.mfl_multi_irq_driven import MFL_Multi_IRQ_Driven
-except: pass
+except:
+    pass
 
 from abc import abstractstaticmethod
-
 
 class Tk_file():
 
@@ -89,10 +91,56 @@ class Tk_file():
 
     @staticmethod
     def load_pulsed_result(fname):
-        import pandas as pd
-        mes = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "z2", "std1", "std2"])
+
+        data = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "z2", "std1", "std2"])
+        meta = Tk_file.load_pulsed_metadata(fname)
+
+        mes = {'data': data,
+               'file': fname}
+        mes = {**mes, **meta}
 
         return mes
+
+    @staticmethod
+    def load_pulsed_metadata(fname):
+
+        header_lines = Tk_file.read_file_header(fname)
+        meta = Tk_file.extract_header(header_lines)
+
+        return meta
+
+    @staticmethod
+    def read_file_header(fname, comment_char='#'):
+        with open(fname, "r") as fi:
+            id = []
+            for ln in fi:
+                if ln.startswith(comment_char):
+                    id.append(ln[1:])
+                # id.append(ln.startswith(comment_char))
+
+        return id
+
+    @staticmethod
+    def extract_header(header_lines):
+
+        header_flat = ' '.join([line for line in header_lines])
+        text = header_flat
+
+        # time of experiment
+        m = re.search('on(.+?)\n', text)
+        if m:
+            found = m.group(1)
+        date = pd.to_datetime(found)
+
+        # poi
+        m = re.search('POI:(.+?)\n', text)
+        if m:
+            found = m.group(1)
+        poi = found.lstrip()
+
+        meta = {'date': date,
+                'poi': poi}
+        return meta
 
     @staticmethod
     def get_dir_items(dir=None, incl_subdir=False):
