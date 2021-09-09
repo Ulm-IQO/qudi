@@ -453,6 +453,7 @@ class GuiBase(Base):
     """
     _threaded = False
     __window_geometry = StatusVar(name='_GuiBase__window_geometry', default=None)
+    __window_state = StatusVar(name='_GuiBase__window_state', default=None)
 
     @abstractmethod
     def show(self) -> None:
@@ -460,15 +461,27 @@ class GuiBase(Base):
 
     def _save_window_geometry(self, window: QtWidgets.QMainWindow) -> None:
         try:
-            self.__window_geometry = window.saveGeometry().toHex().data().decode()
+            self.__window_geometry = window.saveGeometry().toHex().data().decode('utf-8')
         except:
             self.log.exception('Unable to save window geometry:')
             self.__window_geometry = None
+        try:
+            self.__window_state = window.saveState().toHex().data().decode('utf-8')
+        except:
+            self.log.exception('Unable to save window geometry:')
+            self.__window_state = None
 
-    def _restore_window_geometry(self, window: QtWidgets.QMainWindow) -> None:
+    def _restore_window_geometry(self, window: QtWidgets.QMainWindow) -> bool:
         if isinstance(self.__window_geometry, str):
             try:
                 encoded = QtCore.QByteArray(self.__window_geometry.encode('utf-8'))
                 window.restoreGeometry(QtCore.QByteArray.fromHex(encoded))
             except:
                 self.log.exception('Unable to restore window geometry:')
+        if isinstance(self.__window_state, str):
+            try:
+                encoded = QtCore.QByteArray(self.__window_state.encode('utf-8'))
+                return window.restoreState(QtCore.QByteArray.fromHex(encoded))
+            except:
+                self.log.exception('Unable to restore window state:')
+        return False
