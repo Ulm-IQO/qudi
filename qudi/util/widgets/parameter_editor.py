@@ -46,6 +46,7 @@ class ParameterEditor(QtWidgets.QWidget):
             editor = ParameterWidgetMapper.widget_for_parameter(param)
             if editor is None:
                 editor = QtWidgets.QLabel('Unknown argument type!')
+                editor.setAlignment(QtCore.Qt.AlignCenter)
             else:
                 editor = editor()
                 # Attempt to set default value
