@@ -32,7 +32,7 @@ from qudi.core.logger import init_rotating_file_handler, init_record_model_handl
 from qudi.core.logger import get_logger, set_log_level
 from qudi.util.paths import get_main_dir, get_default_log_dir
 from qudi.util.mutex import Mutex
-from qudi.util.mpl_qudi_style import mpl_qudi_style
+from qudi.util.colordefs import QudiMatplotlibStyle
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
@@ -123,7 +123,7 @@ class Qudi(QtCore.QObject):
         # Set qudi style for matplotlib
         try:
             import matplotlib.pyplot as plt
-            plt.style.use(mpl_qudi_style)
+            plt.style.use(QudiMatplotlibStyle.style)
         except ImportError:
             pass
 
