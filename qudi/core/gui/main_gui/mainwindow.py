@@ -127,6 +127,7 @@ class QudiMainWindow(QtWidgets.QMainWindow):
 
         # Create toolbar
         self.toolbar = QtWidgets.QToolBar()
+        self.toolbar.setObjectName('QudiMainWindow Toolbar')
         self.toolbar.setOrientation(QtCore.Qt.Horizontal)
         self.toolbar.addAction(self.action_open_configuration_editor)
         self.toolbar.addAction(self.action_load_configuration)

@@ -28,6 +28,10 @@ class AdvancedDockWidget(QtWidgets.QDockWidget):
 
     sigClosed = QtCore.Signal()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName(self.windowTitle())
+
     def closeEvent(self, event):
         self.sigClosed.emit()
         return super().closeEvent(event)
