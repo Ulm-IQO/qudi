@@ -4,6 +4,11 @@
 
 Changes/New features:
 
+* Added visual indication of ongoing waveform upload in pulsed gui. 
+* Added benchmarking of the upload times of pulse generator devices in pulsed gui.
+* Added estimated time for waveform upload, issued for long expected upload times (threshold value configurable). 
+* Changed all pulser hardware to return only a dict on loading of waveform and sequences. This was previously 
+guaranteed by the pulser interface, but not consistently implemented. 
 * Added support for Keysight M8195A and M8190A AWGs.
 * Added functionality to simultaneously record multiple frequency ranges in the ODMR toolchain 
 in case the hardware supports it.
