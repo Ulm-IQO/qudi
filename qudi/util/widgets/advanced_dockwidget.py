@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ('AdvancedDockWidget',)
+__all__ = ['AdvancedDockWidget']
 
 from PySide2 import QtCore, QtWidgets
 
@@ -27,6 +27,10 @@ class AdvancedDockWidget(QtWidgets.QDockWidget):
     """
 
     sigClosed = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName(self.windowTitle())
 
     def closeEvent(self, event):
         self.sigClosed.emit()

@@ -148,7 +148,6 @@ class TemplateGui(GuiBase):
         self._my_status_variable += 1
         self._mw.spinbox.setValue(self._my_status_variable)
 
-    @QtCore.Slot()
     @QtCore.Slot(object)
     def my_slot_for_stuff(self, val=None):
         """Dummy slot that gets called every time sigStuffDone is emitted and connected.

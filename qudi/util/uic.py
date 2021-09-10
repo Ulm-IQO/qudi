@@ -24,14 +24,14 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ('loadUi',)
+__all__ = ['loadUi']
 
 import os
 import re
 import tempfile
 import subprocess
 from importlib.util import spec_from_loader, module_from_spec
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 
 __ui_class_pattern = re.compile(r'class (Ui_.*?)\(')
 __artwork_path_pattern = re.compile(r'>(.*?/artwork/.*?)</')

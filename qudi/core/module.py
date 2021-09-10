@@ -30,8 +30,8 @@ from typing import Any, Mapping, Optional, Callable, Union
 
 from qudi.core.configoption import MissingOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
-from qudi.core.config import load, save
+from qudi.util.paths import get_module_app_data_path, get_daily_directory, get_default_data_dir
+from qudi.util.yaml import yaml_load, yaml_dump
 from qudi.core.meta import ModuleMeta
 from qudi.core.logger import get_logger
 
@@ -214,6 +214,14 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         for attr_name, conn in self._meta['connectors'].items():
             setattr(self, attr_name, conn)
 
+    def __eq__(self, other):
+        if isinstance(other, Base):
+            return self.module_uuid == other.module_uuid
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return self.module_uuid.int
+
     @QtCore.Slot()
     def move_to_main_thread(self) -> None:
         """ Method that will move this module into the main/manager thread.
@@ -317,7 +325,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         base = self.module_base
         file_path = get_module_app_data_path(class_name, base, name)
         try:
-            variables = load(file_path) if os.path.isfile(file_path) else dict()
+            variables = yaml_load(file_path, ignore_missing=True)
         except:
             variables = dict()
             self.log.exception(
@@ -364,7 +372,7 @@ class Base(QtCore.QObject, metaclass=ModuleMeta):
         # Save to file if any StatusVars have been found
         if variables:
             try:
-                save(file_path, variables)
+                yaml_dump(file_path, variables)
             except:
                 self.log.exception(
                     f'Failed to save status variables for module "{class_name}.{base}.{name}".'
@@ -453,6 +461,7 @@ class GuiBase(Base):
     """
     _threaded = False
     __window_geometry = StatusVar(name='_GuiBase__window_geometry', default=None)
+    __window_state = StatusVar(name='_GuiBase__window_state', default=None)
 
     @abstractmethod
     def show(self) -> None:
@@ -460,15 +469,27 @@ class GuiBase(Base):
 
     def _save_window_geometry(self, window: QtWidgets.QMainWindow) -> None:
         try:
-            self.__window_geometry = window.saveGeometry().toHex().data().decode()
+            self.__window_geometry = window.saveGeometry().toHex().data().decode('utf-8')
         except:
             self.log.exception('Unable to save window geometry:')
             self.__window_geometry = None
+        try:
+            self.__window_state = window.saveState().toHex().data().decode('utf-8')
+        except:
+            self.log.exception('Unable to save window geometry:')
+            self.__window_state = None
 
-    def _restore_window_geometry(self, window: QtWidgets.QMainWindow) -> None:
+    def _restore_window_geometry(self, window: QtWidgets.QMainWindow) -> bool:
         if isinstance(self.__window_geometry, str):
             try:
                 encoded = QtCore.QByteArray(self.__window_geometry.encode('utf-8'))
                 window.restoreGeometry(QtCore.QByteArray.fromHex(encoded))
             except:
                 self.log.exception('Unable to restore window geometry:')
+        if isinstance(self.__window_state, str):
+            try:
+                encoded = QtCore.QByteArray(self.__window_state.encode('utf-8'))
+                return window.restoreState(QtCore.QByteArray.fromHex(encoded))
+            except:
+                self.log.exception('Unable to restore window state:')
+        return False
