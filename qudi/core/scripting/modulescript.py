@@ -82,18 +82,18 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         self.result = None
 
         # Status flags
-        self._stop_requested = True
+        self._interrupted = True
         self._success = False
         self._running = False
 
     @property
     def interrupted(self):
         with self._thread_lock:
-            return self._stop_requested
+            return self._interrupted
 
     def interrupt(self):
         with self._thread_lock:
-            self._stop_requested = True
+            self._interrupted = True
 
     def _check_interrupt(self) -> None:
         """ Implementations of _run should occasionally call this method in order to break
@@ -165,7 +165,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         """
         self.result = None
         with self._thread_lock:
-            self._stop_requested = False
+            self._interrupted = False
             self._success = False
             self._running = True
         self.log.debug(f'Starting to run ModuleScript "{self.__class__.__name__}" with positional '
