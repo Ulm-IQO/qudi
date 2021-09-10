@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import visa
+import pyvisa as visa
 from enum import Enum
 
 from qudi.core.configoption import ConfigOption
@@ -38,6 +38,10 @@ class PSUTypes(Enum):
 
 class LaserQuantumLaser(SimpleLaserInterface):
     """ ToDo: describe
+    At least for SMD6000 it is not possible to change control in the current mode. It is also not
+    possible to use query as the buffer fills up. There write and read commands should be used.
+
+    TODO check if it is not possible to set the power to 0 (did not work out for smd6000)
 
     Example config for copy-paste:
 
