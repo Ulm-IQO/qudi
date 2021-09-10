@@ -3,14 +3,14 @@
 This file contains utility methods to annotate arguments for which the user can potentially edit
 values via GUI. These arguments are boiled down to simple builtin types that can be represented by
 a GUI editor:
-                            int: qudi.core.gui.qtwidgets.scientific_spinbox.ScienSpinBox
-                          float: qudi.core.gui.qtwidgets.scientific_spinbox.ScienDSpinbox
+                            int: qudi.util.widgets.scientific_spinbox.ScienSpinBox
+                          float: qudi.util.widgets.scientific_spinbox.ScienDSpinbox
                             str: PySide2.QtWidgets.QLineEdit
-                        complex: qudi.core.gui.qtwidgets.literal_lineedit.ComplexLineEdit
-                            set: qudi.core.gui.qtwidgets.literal_lineedit.SetLineEdit
-                           dict: qudi.core.gui.qtwidgets.literal_lineedit.DictLineEdit
-                           list: qudi.core.gui.qtwidgets.literal_lineedit.ListLineEdit
-                          tuple: qudi.core.gui.qtwidgets.literal_lineedit.TupleLineEdit
+                        complex: qudi.util.widgets.literal_lineedit.ComplexLineEdit
+                            set: qudi.util.widgets.literal_lineedit.SetLineEdit
+                           dict: qudi.util.widgets.literal_lineedit.DictLineEdit
+                           list: qudi.util.widgets.literal_lineedit.ListLineEdit
+                          tuple: qudi.util.widgets.literal_lineedit.TupleLineEdit
 
 Here defined are also custom generic types that can be used like any other type from
 the typing module.
