@@ -17,7 +17,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ['ParameterEditor']
+__all__ = ['ParameterEditor', 'ParameterEditorDialog']
 
 import inspect
 from typing import Any, Optional, Dict, Mapping, Callable
@@ -90,3 +90,29 @@ class ParameterEditor(QtWidgets.QWidget):
                         except AttributeError:
                             pass
         return values
+
+
+class ParameterEditorDialog(QtWidgets.QDialog):
+    """ QDialog containing a ParameterEditor widget and OK, Cancel and Apply buttons.
+    Is non-modal by default but can be configured like any other QDialog.
+    """
+    def __init__(self, *args, func: Callable, values: Optional[Mapping[str, Any]] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setModal(False)
+        self.parameter_editor = ParameterEditor(func=func, values=values)
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setWidget(self.parameter_editor)
+        self.button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok |
+            QtWidgets.QDialogButtonBox.Cancel |
+            QtWidgets.QDialogButtonBox.Apply,
+            orientation=QtCore.Qt.Horizontal
+        )
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.scroll_area)
+        layout.addWidget(self.button_box)
+        self.setLayout(layout)
+
+        # Connect signals
+        self.button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.accept)
+        self.button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.reject)
