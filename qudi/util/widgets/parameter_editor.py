@@ -94,11 +94,9 @@ class ParameterEditor(QtWidgets.QWidget):
 
 class ParameterEditorDialog(QtWidgets.QDialog):
     """ QDialog containing a ParameterEditor widget and OK, Cancel and Apply buttons.
-    Is non-modal by default but can be configured like any other QDialog.
     """
     def __init__(self, *args, func: Callable, values: Optional[Mapping[str, Any]] = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setModal(False)
         self.parameter_editor = ParameterEditor(func=func, values=values)
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidget(self.parameter_editor)
@@ -108,11 +106,14 @@ class ParameterEditorDialog(QtWidgets.QDialog):
             QtWidgets.QDialogButtonBox.Apply,
             orientation=QtCore.Qt.Horizontal
         )
+        self.ok_button = self.button_box.button(QtWidgets.QDialogButtonBox.Ok)
+        self.cancel_button = self.button_box.button(QtWidgets.QDialogButtonBox.Cancel)
+        self.apply_button = self.button_box.button(QtWidgets.QDialogButtonBox.Apply)
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.scroll_area)
         layout.addWidget(self.button_box)
         self.setLayout(layout)
 
         # Connect signals
-        self.button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.accept)
-        self.button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
