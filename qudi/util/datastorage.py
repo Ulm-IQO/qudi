@@ -645,6 +645,7 @@ class CsvDataStorage(TextDataStorage):
     includes column headers uncommented in the first row of data. This is the standard format for
     importing a table into e.g. MS Excel.
     """
+
     def __init__(self, *, file_extension='.csv', **kwargs):
         """ See: qudi.util.datastorage.TextDataStorage
         """
@@ -712,6 +713,7 @@ class CsvDataStorage(TextDataStorage):
 class NpyDataStorage(DataStorageBase):
     """ Helper class to store (measurement)data on disk as binary .npy file.
     """
+
     def __init__(self, *, root_dir, **kwargs):
         super().__init__(root_dir=root_dir, **kwargs)
 
