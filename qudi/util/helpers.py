@@ -17,17 +17,21 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('csv_2_list', 'in_range', 'is_complex', 'is_complex_type', 'is_float', 'is_float_type',
+__all__ = ['csv_2_list', 'in_range', 'is_complex', 'is_complex_type', 'is_float', 'is_float_type',
            'is_integer', 'is_integer_type', 'is_number', 'is_number_type', 'is_string',
-           'is_string_type', 'iter_modules_recursive', 'natural_sort', 'str_to_number')
+           'is_string_type', 'iter_modules_recursive', 'natural_sort', 'str_to_number']
 
 import re
 import os
 import pkgutil
 import numpy as np
+from typing import Union, Optional, Iterable, List, Any, Type, Tuple, Callable
+
+_RealNumber = Union[int, float]
 
 
-def iter_modules_recursive(path, prefix=''):
+def iter_modules_recursive(paths: Union[str, Iterable[str]],
+                           prefix: Optional[str] = '') -> List[pkgutil.ModuleInfo]:
     """ Has the same signature as pkgutil.iter_modules() but extends the functionality by walking
     through the entire directory tree and concatenating the return values of pkgutil.iter_modules()
     for each directory.
@@ -36,13 +40,13 @@ def iter_modules_recursive(path, prefix=''):
     - Directories starting with "_" or "." are ignored (also including their sub-directories)
     - Python modules starting with a double-underscore ("__") are excluded in the result
 
-    @param iterable path: Iterable of root directories to start the search for modules
+    @param iterable paths: Iterable of root directories to start the search for modules
     @param str prefix: optional, prefix to prepend to all module names.
     """
-    if isinstance(path, str):
-        path = [path]
+    if isinstance(paths, str):
+        paths = [paths]
     module_infos = list()
-    for search_top in list(path):
+    for search_top in paths:
         for root, dirs, files in os.walk(search_top):
             rel_path = os.path.relpath(root, search_top)
             if rel_path and rel_path != '.' and rel_path[0] in '._':
@@ -63,7 +67,7 @@ def iter_modules_recursive(path, prefix=''):
     return module_infos
 
 
-def natural_sort(iterable):
+def natural_sort(iterable: Iterable[Any]) -> List[Any]:
     """
     Sort an iterable of str in an intuitive, natural way (human/natural sort).
     Use this to sort alphanumeric strings containing integers.
@@ -79,95 +83,61 @@ def natural_sort(iterable):
         return sorted(iterable)
 
 
-def is_number(test_value):
-    """ Check whether passed value is a number
-
-    @return bool: True if the passed value is a number, otherwise False.
-    """
+def is_number(test_value: Any) -> bool:
+    """ Check whether passed value is a number """
     return is_integer(test_value) or is_float(test_value) or is_complex(test_value)
 
 
-def is_number_type(test_obj):
-    """ Check whether passed object is a number type
-
-    @return bool: True if the passed object is a number type, otherwise False.
-    """
+def is_number_type(test_obj: Type) -> bool:
+    """ Check whether passed object is a number type """
     return is_integer_type(test_obj) or is_float_type(test_obj) or is_complex_type(test_obj)
 
 
-def is_integer(test_value):
-    """ Check all available integer representations.
-
-    @return bool: True if the passed value is a integer, otherwise False.
-    """
-
+def is_integer(test_value: Any) -> bool:
+    """ Check all available integer representations """
     return isinstance(test_value, (int, np.integer))
 
 
-def is_integer_type(test_obj):
-    """ Check if passed object is an integer type.
-
-    @return bool: True if the passed value is a integer, otherwise False.
-    """
+def is_integer_type(test_obj: Type) -> bool:
+    """ Check if passed object is an integer type """
     return issubclass(test_obj, (int, np.integer))
 
 
-def is_float(test_value):
-    """ Check all available float representations.
-
-    @return bool: True if the passed object is a float type, otherwise False.
-    """
+def is_float(test_value: Any) -> bool:
+    """ Check all available float representations """
     return isinstance(test_value, (float, np.floating))
 
 
-def is_float_type(test_obj):
-    """ Check if passed object is a float type.
-
-    @return bool: True if the passed object is a float type, otherwise False.
-    """
+def is_float_type(test_obj: Type) -> bool:
+    """ Check if passed object is a float type """
     return issubclass(test_obj, (float, np.floating))
 
 
-def is_complex(test_value):
-    """ Check all available complex representations.
-
-    @return bool: True if the passed value is a complex value, otherwise False.
-    """
+def is_complex(test_value: Any) -> bool:
+    """ Check all available complex representations """
     return isinstance(test_value, (complex, np.complexfloating))
 
 
-def is_complex_type(test_obj):
-    """ Check if passed object is a complex type.
-
-    @return bool: True if the passed object is a complex type, otherwise False.
-    """
+def is_complex_type(test_obj: Type) -> bool:
+    """ Check if passed object is a complex type """
     return issubclass(test_obj, (complex, np.complexfloating))
 
 
-def is_string(test_value):
-    """ Check all available string representations.
-
-    @return bool: True if the passed value is a string value, otherwise False.
-    """
+def is_string(test_value: Any) -> bool:
+    """ Check all available string representations """
     return isinstance(test_value, (str, np.str_, np.string_))
 
 
-def is_string_type(test_obj):
-    """ Check if passed object is a string type.
-
-    @return bool: True if the passed object is a string type, otherwise False.
-    """
+def is_string_type(test_obj: Type) -> bool:
+    """ Check if passed object is a string type """
     return issubclass(test_obj, (str, np.str_, np.string_))
 
 
-def in_range(value, lower_limit, upper_limit):
+def in_range(value: _RealNumber, lower_limit: _RealNumber,
+             upper_limit: _RealNumber) -> Tuple[bool, _RealNumber]:
     """ Check if a value is in a given range an return closest possible value in range.
     Also check the range.
-
-    @param value: value to be checked
-    @param lower_limit: lowest allowed value
-    @param upper_limit: highest allowed value
-    @return (bool, type(value)): in_range indicator, value closest to value in range
+    Return value is clipped to range.
     """
     if upper_limit < lower_limit:
         lower_limit, upper_limit = upper_limit, lower_limit
@@ -179,7 +149,7 @@ def in_range(value, lower_limit, upper_limit):
     return True, value
 
 
-def csv_2_list(csv_string, str_2_val=None):
+def csv_2_list(csv_string: str, str_2_val: Optional[Callable[[str], Any]] = None) -> List[Any]:
     """
     Parse a list literal (with or without square brackets) given as string containing
     comma-separated int or float values to a python list.
@@ -208,9 +178,9 @@ def csv_2_list(csv_string, str_2_val=None):
     return csv_list
 
 
-def str_to_number(str_value, return_failed=False):
-    """ Parse a string into either int, float or complex (in that order).
-    """
+def str_to_number(str_value: str,
+                  return_failed: Optional[bool] = False) -> Union[int, float, complex, str]:
+    """ Parse a string into either int, float or complex (in that order) """
     try:
         return int(str_value)
     except ValueError:

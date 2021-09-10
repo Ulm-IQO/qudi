@@ -23,10 +23,12 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more information.
 """
 
-__all__ = ('Mutex', 'RecursiveMutex')
+__all__ = ['Mutex', 'RecursiveMutex']
 
 from PySide2.QtCore import QMutex as _QMutex
 from PySide2.QtCore import QRecursiveMutex as _QRecursiveMutex
+from typing import Optional
+from qudi.util.parameters import RealNumber
 
 
 class Mutex(_QMutex):
@@ -37,7 +39,7 @@ class Mutex(_QMutex):
     * Context management (enter/exit)
     """
 
-    def acquire(self, blocking=True, timeout=-1):
+    def acquire(self, blocking: Optional[bool] = True, timeout: Optional[RealNumber] = -1) -> bool:
         """ Mimics threading.Lock.acquire() to allow this class as a drop-in replacement.
 
         @param bool blocking: If True, this method will be blocking (indefinitely or for up to
@@ -52,7 +54,7 @@ class Mutex(_QMutex):
             return self.tryLock(max(-1, int(timeout * 1000)))
         return self.tryLock()
 
-    def release(self):
+    def release(self) -> None:
         """ Mimics threading.Lock.release() to allow this class as a drop-in replacement.
         """
         self.unlock()
@@ -88,7 +90,8 @@ if all(hasattr(_QRecursiveMutex, attr) for attr in ('lock', 'unlock', 'tryLock')
         refactoring your code to use a simple mutex before using this object.
         """
 
-        def acquire(self, blocking=True, timeout=-1):
+        def acquire(self, blocking: Optional[bool] = True,
+                    timeout: Optional[RealNumber] = -1) -> bool:
             """ Mimics threading.Lock.acquire() to allow this class as a drop-in replacement.
 
             @param bool blocking: If True, this method will be blocking (indefinitely or for up to
@@ -103,7 +106,7 @@ if all(hasattr(_QRecursiveMutex, attr) for attr in ('lock', 'unlock', 'tryLock')
                 return self.tryLock(max(-1, int(timeout * 1000)))
             return self.tryLock()
 
-        def release(self):
+        def release(self) -> None:
             """ Mimics threading.Lock.release() to allow this class as a drop-in replacement.
             """
             self.unlock()

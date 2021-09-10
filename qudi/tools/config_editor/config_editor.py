@@ -9,7 +9,7 @@ import os
 import sys
 from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.core.configoption import MissingOption
-from qudi.core.paths import get_main_dir, get_default_config_dir, get_artwork_dir
+from qudi.util.paths import get_main_dir, get_default_config_dir, get_artwork_dir
 from qudi.core.config import Configuration
 
 from qudi.tools.config_editor.module_selector import ModuleSelector

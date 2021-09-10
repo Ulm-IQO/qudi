@@ -20,9 +20,10 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('OverloadedAttribute', 'OverloadProxy')
+__all__ = ['OverloadedAttribute', 'OverloadProxy']
 
 import weakref
+from typing import Any, Callable
 
 
 class _OverloadedAttributeMapper:
@@ -30,21 +31,21 @@ class _OverloadedAttributeMapper:
         self._map_dict = dict()
         self._parent = lambda: None
 
-    def add_mapping(self, key, obj):
+    def add_mapping(self, key: str, obj: Any) -> None:
         self._map_dict[key] = obj
 
-    def remove_mapping(self, key):
+    def remove_mapping(self, key: str) -> None:
         del self._map_dict[key]
 
     @property
-    def parent(self):
+    def parent(self) -> Any:
         return self._parent()
 
     @parent.setter
-    def parent(self, obj):
+    def parent(self, obj: Any) -> None:
         self._parent = weakref.ref(obj)
 
-    def get_mapped(self, key):
+    def get_mapped(self, key: str) -> Any:
         if key not in self._map_dict:
             raise KeyError(f'No attribute overload found for key "{key}"')
         return self._map_dict[key]
@@ -75,7 +76,7 @@ class OverloadedAttribute:
     def __init__(self):
         self._attr_mapper = _OverloadedAttributeMapper()
 
-    def overload(self, key):
+    def overload(self, key: str) -> Callable[[Any], Any]:
         def decorator(attr):
             self._attr_mapper.add_mapping(key, attr)
             return self
@@ -93,7 +94,7 @@ class OverloadedAttribute:
     def __delete__(self, instance):
         raise AttributeError('can\'t delete attribute')
 
-    def setter(self, key):
+    def setter(self, key: str) -> Callable[[Any], Any]:
         obj = self._attr_mapper.get_mapped(key)
 
         def decorator(attr):
@@ -102,7 +103,7 @@ class OverloadedAttribute:
 
         return decorator
 
-    def getter(self, key):
+    def getter(self, key: str) -> Callable[[Any], Any]:
         obj = self._attr_mapper.get_mapped(key)
 
         def decorator(attr):
@@ -111,7 +112,7 @@ class OverloadedAttribute:
 
         return decorator
 
-    def deleter(self, key):
+    def deleter(self, key: str) -> Callable[[Any], Any]:
         obj = self._attr_mapper.get_mapped(key)
 
         def decorator(attr):
@@ -134,7 +135,7 @@ class OverloadProxy:
 
     __slots__ = ['_obj_ref', '_overload_key', '__weakref__']
 
-    def __init__(self, obj, overload_key):
+    def __init__(self, obj: Any, overload_key: str):
         object.__setattr__(self, '_obj_ref', weakref.ref(obj))
         object.__setattr__(self, '_overload_key', overload_key)
 
