@@ -74,6 +74,8 @@ class ComplexValidator(QtGui.QValidator):
         return complex(text)
 
     def text_from_value(self, value: complex) -> str:
+        if value is None:
+            value = complex()
         return repr(complex(value))
 
 
@@ -102,6 +104,8 @@ class ListValidator(QtGui.QValidator):
         raise ValueError
 
     def text_from_value(self, value: MutableSequence[Any]) -> str:
+        if value is None:
+            value = list()
         return repr(list(value))
 
 
@@ -130,6 +134,8 @@ class TupleValidator(QtGui.QValidator):
         raise ValueError
 
     def text_from_value(self, value: Sequence[Any]) -> str:
+        if value is None:
+            value = tuple()
         return repr(tuple(value))
 
 
@@ -158,6 +164,8 @@ class SetValidator(QtGui.QValidator):
         raise ValueError
 
     def text_from_value(self, value: Union[Set[Any], FrozenSet[Any]]) -> str:
+        if value is None:
+            value = set()
         return repr(set(value))
 
 
@@ -188,6 +196,8 @@ class DictValidator(QtGui.QValidator):
         raise ValueError
 
     def text_from_value(self, value: Mapping[Any, Any]) -> str:
+        if value is None:
+            value = dict()
         return repr(dict(value))
 
 
