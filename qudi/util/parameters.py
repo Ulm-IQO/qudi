@@ -40,10 +40,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ['FilePath', 'RealNumber', 'ParameterWidgetMapper']
 
 import inspect
+import typing
 from os import PathLike
 from PySide2 import QtWidgets
 from typing import Callable, Any, Set, FrozenSet, MutableSequence, Mapping, Tuple, Dict, Type, Union
-from typing import get_origin
+from typing import get_origin, get_args
 
 from qudi.util.helpers import is_complex_type, is_float_type, is_integer_type, is_string_type
 from qudi.util.widgets.scientific_spinbox import ScienSpinBox, ScienDSpinBox
@@ -137,13 +138,31 @@ class ParameterWidgetMapper:
         """ Converts a type annotation (e.g. from a callable signature) to a normalized type.
         See ParameterWidgetMapper._normalize_type for more information.
         """
+        # If annotation is optional, call this method again on the first argument in order to get a
+        # type
+        if cls._is_optional_annotation(annotation):
+            return cls._annotation_to_type(get_args(annotation)[0])
+
         if annotation == RealNumber:
             return float
         elif annotation == FilePath:
             return PathLike
         else:
             try:
-                return cls._normalize_type(get_origin(annotation))
+                if inspect.isclass(annotation):
+                    return cls._normalize_type(annotation)
+                else:
+                    return cls._normalize_type(get_origin(annotation))
             except TypeError:
                 pass
         return None
+
+    @staticmethod
+    def _is_optional_annotation(annotation: Any) -> bool:
+        """ Check if an annotation is optional, i.e. if it is typing.Union with two arguments,
+        the second one being NoneType
+        """
+        if get_origin(annotation) == typing.Union:
+            args = get_args(annotation)
+            return len(args) == 2 and issubclass(args[1], type(None))
+        return False
