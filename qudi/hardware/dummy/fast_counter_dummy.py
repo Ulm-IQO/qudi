@@ -25,7 +25,7 @@ import os
 import numpy as np
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.interface.fast_counter_interface import FastCounterInterface
 
 

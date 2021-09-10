@@ -24,7 +24,7 @@ __all__ = ('QDPlotMainWindow',)
 import os
 from PySide2 import QtCore, QtWidgets, QtGui
 
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 
 
 class QDPlotMainWindow(QtWidgets.QMainWindow):

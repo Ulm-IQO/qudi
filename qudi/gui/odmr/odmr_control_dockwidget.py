@@ -25,8 +25,8 @@ __all__ = ('OdmrCwControlDockWidget', 'OdmrScanControlDockWidget')
 import numpy as np
 from PySide2 import QtCore, QtWidgets, QtGui
 
-from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
+from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
 
 
 # Determine minimal spinbox width from current default metrics

@@ -29,7 +29,7 @@ from ftplib import FTP
 from lxml import etree as ET
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_appdata_dir
+from qudi.util.paths import get_appdata_dir
 from qudi.util.helpers import natural_sort
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 

@@ -28,7 +28,7 @@ import importlib
 import numpy as np
 
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.util.helpers import natural_sort
 
 
