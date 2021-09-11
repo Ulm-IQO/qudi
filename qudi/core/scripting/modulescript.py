@@ -29,11 +29,12 @@ import copy
 import inspect
 from abc import abstractmethod
 from PySide2 import QtCore
-from logging import getLogger, Logger
+from logging import Logger
 from typing import Mapping, Any, Type, Optional, Union, Dict
 
 from qudi.core.meta import QudiObjectMeta
 from qudi.core.module import Base
+from qudi.core.logger import get_logger
 from qudi.util.models import DictTableModel
 from qudi.util.mutex import Mutex
 
@@ -52,7 +53,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
     """
     # Declare all module connectors used in this script here
 
-    sigFinished = QtCore.Signal(object, bool)  # result, success
+    sigFinished = QtCore.Signal()
 
     # FIXME: This __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
     #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
@@ -74,7 +75,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
             setattr(self, attr_name, conn)
 
         self._thread_lock = Mutex()
-        self.__logger = getLogger(f'{self.__module__}.{self.__class__.__name__}')
+        self.__logger = get_logger(f'{self.__module__}.{self.__class__.__name__}')
 
         # script arguments and result cache
         self.args = tuple()
@@ -182,7 +183,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         finally:
             with self._thread_lock:
                 self._running = False
-                self.sigFinished.emit(self.result, self._success)
+                self.sigFinished.emit()
 
     def connect_modules(self, connector_targets: Mapping[str, Base]) -> None:
         """ Connects given modules (values) to their respective Connector (keys).

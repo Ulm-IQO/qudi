@@ -21,8 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import importlib
 from uuid import uuid4
+from functools import partial
 from PySide2 import QtCore, QtWidgets
-from typing import Any, Optional, Sequence, Iterable, Mapping, Tuple, Union
+from typing import Any, Optional, Type, Iterable, Mapping, Tuple, Union, List, Dict
 
 from qudi.util.mutex import Mutex
 from qudi.core.module import LogicBase
@@ -138,142 +139,147 @@ class TaskRunner(LogicBase):
 
     _module_task_configs = ConfigOption(name='module_tasks', default=dict(), missing='warn')
 
+    sigTaskStarted = QtCore.Signal(str)  # task name
+    sigTaskStateChanged = QtCore.Signal(str, str)  # task name, task state
+    sigTaskFinished = QtCore.Signal(str, object, bool)  # task name, result, success flag
+    _sigStartTask = QtCore.Signal(str, tuple, dict)  # task name, args, kwargs
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.task_instances_model = None
-        self.configured_task_types = None
+        self._thread_lock = Mutex()
+        self._running_tasks = dict()
+        self._configured_task_types = dict()
 
     def on_activate(self) -> None:
         """ Initialise task runner """
-        self.task_instances_model = ModuleTasksTableModel(parent=self)
-        self.configured_task_types = dict()
+        self._running_tasks = dict()
+        self._configured_task_types = dict()
         for name, task_cfg in self._module_task_configs.items():
-            if name in self.configured_task_types:
+            if name in self._configured_task_types:
                 raise KeyError(f'Duplicate task name "{name}" encountered in config')
             module, cls = task_cfg['module.Class'].rsplit('.', 1)
             task = import_module_script(module, cls, reload=False)
-            if not isinstance(task, ModuleTask):
+            if not issubclass(task, ModuleTask):
                 raise TypeError('Configured task is not a ModuleTask (sub)class')
-            self.configured_task_types[name] = task
+            self._configured_task_types[name] = task
+        self._sigStartTask.connect(self._run_task, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self) -> None:
         """ Shut down task runner """
+        self._sigStartTask.disconnect()
+        for task in self._running_tasks.values():
+            task.interrupt
+        self._configured_task_types = dict()
+
+    @property
+    def running_tasks(self) -> List[str]:
+        with self._thread_lock:
+            return list(self._running_tasks)
+
+    @property
+    def configured_task_types(self) -> Dict[str, Type[ModuleTask]]:
+        return self._configured_task_types.copy()
+
+    def run_task(self, name: str, args: Iterable[Any], kwargs: Mapping[str, Any]):
+        with self._thread_lock:
+            self._sigStartTask.emit(name, tuple(args), dict(kwargs))
+
+    def interrupt_task(self, name: str) -> None:
+        with self._thread_lock:
+            task = self._running_tasks.get(name, None)
+            if task is None:
+                raise RuntimeError(f'No ModuleTask with name "{name}" running')
+            task.interrupt()
+
+    @QtCore.Slot(str, tuple, dict)
+    def _run_task(self, name: str, args: Iterable, kwargs: Mapping[str, Any]) -> None:
+        with self._thread_lock:
+            task = self.__init_task(name)
+            self.__set_task_arguments(task, args, kwargs)
+            self.__activate_connect_task_modules(name, task)
+            self.__move_task_into_thread(name, task)
+            self.__connect_task_signals(name, task)
+            self.__start_task(name, task)
+            self.sigTaskStarted.emit(name)
+
+    def _task_finished_callback(self, name: str) -> None:
+        """ Called every time a task finishes """
+        with self._thread_lock:
+            task = self._running_tasks.get(name, None)
+            if task is not None:
+                task.sigFinished.disconnect()
+                task.sigStateChanged.disconnect()
+                task.disconnect_modules()
+                thread_manager = self._qudi_main.thread_manager
+                thread_manager.quit_thread(task.thread())
+                thread_manager.join_thread(task.thread())
+
+    def _thread_finished_callback(self, name: str) -> None:
+        with self._thread_lock:
+            task = self._running_tasks.pop(name, None)
+            if task is not None:
+                self.sigTaskFinished.emit(name, task.result, task.success)
+
+    def _task_state_changed_callback(self, state: str, name: str) -> None:
+        self.sigTaskStateChanged.emit(name, state)
+
+    def __init_task(self, name: str) -> ModuleTask:
+        """ Create a ModuleTask instance """
         try:
-            self.task_instances_model.clear_tasks()
-        finally:
-            self.task_instances_model = None
-            self.configured_task_types = None
+            if name in self._running_tasks:
+                raise RuntimeError(f'ModuleTask "{name}" is already initialized')
+            return self._configured_task_types[name]()
+        except:
+            self.log.exception(f'Exception during initialization of ModuleTask "{name}":')
+            raise
 
-    def _initialize_task(self, name: str):
-        task = self.configured_task_types[name]
-
-
-    @QtCore.Slot()
-    def test(self):
-        if QtCore.QThread.currentThread() is not self.thread():
-            QtCore.QMetaObject.invokeMethod(self, 'test', QtCore.Qt.BlockingQueuedConnection)
-            return
-        self.start_task_by_index(0)
-        self.set_task_arguments()
-
-    @QtCore.Slot(int)
-    def start_task_by_index(self, index: int) -> None:
-        """ Try starting a task identified by its list index """
-        name, task = self.tasks_model.task_from_index(index)
-        if task.running:
-            raise RuntimeError(f'Unable to start task "{name}". It is still running.')
-        self._start_task_thread(name, task)
-        self._connect_activate_task_modules(name, task)
-        task.sigFinished.connect(self._task_finished_callback, QtCore.Qt.QueuedConnection)
-        QtCore.QMetaObject.invokeMethod(task, 'run', QtCore.Qt.QueuedConnection)
-
-    @QtCore.Slot(str)
-    def start_task_by_name(self, name: str) -> None:
-        """ Try starting a task identified by its name """
-        index = self.tasks_model.index_from_name(name)
-        return self.start_task_by_index(index)
-
-    def start_task(self, task_id: Union[str, int]) -> None:
-        """ Convenience method for starting a task either by name or by index """
-        if isinstance(task_id, str):
-            return self.start_task_by_name(task_id)
-        else:
-            return self.start_task_by_index(task_id)
-
-    @QtCore.Slot(int)
-    def interrupt_task_by_index(self, index: int) -> None:
-        """ Try interrupting a task identified by its list index.
-        """
-        name, task = self.tasks_model.task_from_index(index)
-        task.interrupt()
-
-    @QtCore.Slot(str)
-    def interrupt_task_by_name(self, name: str) -> None:
-        """ Try interrupting a task identified by its name """
-        index = self.tasks_model.index_from_name(name)
-        return self.interrupt_task_by_index(index)
-
-    def interrupt_task(self, task_id: Union[str, int]) -> None:
-        """ Convenience method for interrupting a task either by name or by index """
-        if isinstance(task_id, str):
-            return self.interrupt_task_by_name(task_id)
-        else:
-            return self.interrupt_task_by_index(task_id)
-
-    @QtCore.Slot(int, object, object)
-    def set_task_arguments_by_index(self, index: int, args: Optional[Iterable[Any]] = None,
-                                    kwargs: Optional[Mapping[str, Any]] = None) -> None:
-        """ Try setting the arguments for a task identified by its list index """
-        name, task = self.tasks_model.task_from_index(index)
-        if task.running:
-            raise RuntimeError(f'Unable to set arguments for task "{name}" while it is running.')
-        if args is not None:
+    def __set_task_arguments(self, task: ModuleTask, args: Iterable, kwargs: Mapping[str, Any]) -> None:
+        """ Set arguments for ModuleTask instance """
+        try:
+            if not isinstance(args, Iterable):
+                raise TypeError('ModuleTask args must be iterable')
+            if not isinstance(kwargs, Mapping) or not all(isinstance(kw, str) for kw in kwargs):
+                raise TypeError('ModuleTask kwargs must be mapping with str type keys')
             task.args = args
-        if kwargs is not None:
             task.kwargs = kwargs
+        except:
+            self.log.exception(f'Exception during setting of arguments for ModuleTask:')
+            raise
 
-    @QtCore.Slot(str, object, object)
-    def set_task_arguments_by_name(self, name: str, args: Optional[Iterable[Any]] = None,
-                                   kwargs: Optional[Mapping[str, Any]] = None) -> None:
-        """ Try setting the arguments for a task identified by its name """
-        index = self.tasks_model.index_from_name(name)
-        return self.set_task_arguments_by_index(index)
+    def __activate_connect_task_modules(self, name: str, task: ModuleTask) -> None:
+        """ Activate and connect all configured module connectors for ModuleTask """
+        try:
+            module_manager = self._qudi_main.module_manager
+            connect_targets = dict()
+            for conn_name, module_name in self._module_task_configs[name]['connect'].items():
+                module = module_manager[module_name]
+                module.activate()
+                connect_targets[conn_name] = module.instance
+            task.connect_modules(connect_targets)
+        except:
+            self.log.exception(f'Exception during modules connection for ModuleTask "{name}":')
+            task.disconnect_modules()
+            raise
 
-    def set_task_arguments(self, task_id: Union[str, int], args: Optional[Iterable[Any]] = None,
-                           kwargs: Optional[Mapping[str, Any]] = None) -> None:
-        """ Convenience method for setting the task arguments either by name or by index """
-        if isinstance(task_id, str):
-            return self.set_task_arguments_by_name(task_id)
-        else:
-            return self.set_task_arguments_by_index(task_id)
-
-    def _connect_activate_task_modules(self, name: str, task: ModuleTask) -> None:
-        """  """
-        module_manager = self._qudi_main.module_manager
-        connect_targets = dict()
-        for conn_name, module_name in self._module_task_configs[name]['connect'].items():
-            module = module_manager[module_name]
-            module.activate()
-            connect_targets[conn_name] = module.instance
-        task.connect_modules(connect_targets)
-
-    def _start_task_thread(self, name: str, task: ModuleTask) -> None:
-        """  """
-        thread = self._qudi_main.thread_manager.get_new_thread(name=f'ModuleTask-{name}')
+    def __move_task_into_thread(self, name: str, task: ModuleTask) -> None:
+        """ Create a new QThread via qudi thread manager and move ModuleTask instance into it """
+        try:
+            thread = self._qudi_main.thread_manager.get_new_thread(name=f'ModuleTask-{name}')
+            if thread is None:
+                raise RuntimeError(f'Unable to create QThread with name "ModuleTask-{name}"')
+        except RuntimeError:
+            self.log.exception('Exception during thread creation:')
+            raise
         task.moveToThread(thread)
-        thread.start()
+        thread.started.connect(task.run, QtCore.Qt.QueuedConnection)
+        thread.finished.connect(partial(self._thread_finished_callback, name=name))
 
-    def _stop_task_thread(self, task: ModuleTask) -> None:
-        thread_manager = self._qudi_main.thread_manager
-        thread_manager.quit_thread(task.thread())
-        thread_manager.join_thread(task.thread())
-        task.moveToThread(self.thread())
+    def __connect_task_signals(self, name: str, task: ModuleTask) -> None:
+        task.sigFinished.connect(partial(self._task_finished_callback, name=name),
+                                 QtCore.Qt.QueuedConnection)
+        task.sigStateChanged.connect(partial(self._task_state_changed_callback, name=name),
+                                     QtCore.Qt.QueuedConnection)
 
-    @QtCore.Slot(object, bool)
-    def _task_finished_callback(self, result: Any, success: bool) -> None:
-        """ Called every time a task finishes.
-        """
-        task = self.sender()
-        task.sigFinished.disconnect(self._task_finished_callback)
-        task.disconnect_modules()
-        self._stop_task_thread(task)
+    def __start_task(self, name: str, task: ModuleTask) -> None:
+        self._running_tasks[name] = task
+        task.thread().start()

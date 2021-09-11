@@ -26,12 +26,12 @@ __all__ = ['ModuleTask', 'ModuleTaskStateMachine']
 
 from fysom import Fysom, Canceled
 from PySide2 import QtCore
-from typing import Mapping, Any, Optional, Callable
+from typing import Mapping, Any, Optional, Callable, Union
 
 from qudi.core.scripting.modulescript import ModuleScript, ModuleScriptInterrupted
 
 
-class ModuleTaskStateMachine(Fysom):
+class ModuleTaskStateMachine(Fysom, QtCore.QObject):
     """ Finite state machine for ModuleTask.
     State diagram for this FSM:
 
@@ -43,21 +43,46 @@ class ModuleTaskStateMachine(Fysom):
            |                                      |
            -------------------<--------------------
     """
+    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
+    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
 
-    def __init__(self, callbacks: Mapping[str, Callable]):
-        # State transition events definition
-        #   name: event name,
-        #    src: source state,
-        #    dst: destination state
-        fsm_cfg = {'initial': 'stopped',
-                   'events': [{'name': 'start', 'src': 'stopped', 'dst': 'starting'},
-                              {'name': 'run', 'src': 'starting', 'dst': 'running'},
-                              {'name': 'finish', 'src': 'running', 'dst': 'finishing'},
-                              {'name': 'terminate', 'src': 'finishing', 'dst': 'stopped'},
-                              {'name': 'skip_run', 'src': 'starting', 'dst': 'finishing'}],
-                   'callbacks': callbacks}
+    def __init__(self, callbacks: Mapping[str, Callable[[Any], Union[None, bool]]],
+                 parent: Optional[QtCore.QObject] = None):
+        # State machine definition
+        # the abbreviations for the event list are the following:
+        #   name:   event name,
+        #   src:    source state,
+        #   dst:    destination state
+        fsm_cfg = {'initial'  : 'stopped',
+                   'events'   : [{'name': 'start', 'src': 'stopped', 'dst': 'starting'},
+                                 {'name': 'run', 'src': 'starting', 'dst': 'running'},
+                                 {'name': 'finish', 'src': 'running', 'dst': 'finishing'},
+                                 {'name': 'terminate', 'src': 'finishing', 'dst': 'stopped'},
+                                 {'name': 'skip_run', 'src': 'starting', 'dst': 'finishing'}],
+                   'callbacks': dict() if callbacks is None else callbacks}
 
-        super().__init__(cfg=fsm_cfg)
+        # Initialise state machine:
+        super().__init__(parent=parent, cfg=fsm_cfg)
+
+    @QtCore.Slot()
+    def start(self) -> None:
+        super().start()
+
+    @QtCore.Slot()
+    def run(self) -> None:
+        super().run()
+
+    @QtCore.Slot()
+    def finish(self) -> None:
+        super().finish()
+
+    @QtCore.Slot()
+    def terminate(self) -> None:
+        super().terminate()
+
+    @QtCore.Slot()
+    def skip_run(self) -> None:
+        super().skip_run()
 
 
 class ModuleTask(ModuleScript):
@@ -70,19 +95,17 @@ class ModuleTask(ModuleScript):
     properly terminate the task afterwards.
     """
 
-    sigStateChanged = QtCore.Signal(object)  # Fysom event
+    sigStateChanged = QtCore.Signal(str)  # new state name
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Set up state machine
-        fsm_callbacks = {'on_change_state': self.__change_state_callback,
-                         'on_before_start': self.__before_start_callback,
-                         'on_starting': self.__starting_callback,
+        fsm_callbacks = {'on_starting': self.__starting_callback,
                          'on_running': self.__running_callback,
                          'on_finishing': self.__finishing_callback,
                          'on_stopped': self.__stopped_callback}
-        self._state_machine = ModuleTaskStateMachine(parent=self, callbacks=fsm_callbacks)
+        self._state_machine = ModuleTaskStateMachine(callbacks=fsm_callbacks, parent=self)
 
     @property
     def state(self):
@@ -94,12 +117,12 @@ class ModuleTask(ModuleScript):
 
         DO NOT OVERRIDE IN SUBCLASS!
         """
-        try:
-            self._state_machine.start()
-        except Canceled:
+        if self.running:
             self.log.error(
                 f'Unable to run. Task is already running or has been interrupted immediately.'
             )
+        else:
+            self._state_machine.start()
 
     # Implement _setup and _cleanup in subclass if needed. By default they will simply do nothing.
     # You MUST in any case implement _run in a subclass (see: ModuleScript._run).
@@ -125,26 +148,17 @@ class ModuleTask(ModuleScript):
         pass
 
     # Callbacks for FSM below. Ignore this part unless you know what you are doing!
-    def __change_state_callback(self, e: Any = None) -> None:
-        """ General state transition callback
-        """
-        self.sigStateChanged.emit(e)
-
-    def __before_start_callback(self, event: Any) -> bool:
-        """ Callback to check if the state machine is allowed to start.
-        """
-        return not self.running
-
     def __starting_callback(self, event: Any) -> None:
         """ FSM startup callback. This will call _setup and set status flags accordingly.
         Resets last task result. Handles task interrupts during execution of _setup method.
         """
+        self.log.debug(f'Running setup')
+        self.sigStateChanged.emit(event.dst)
         self.result = None
         with self._thread_lock:
             self._interrupted = False
             self._success = False
             self._running = True
-        self.log.debug(f'Running setup')
         skip_run = True
         try:
             self._check_interrupt()
@@ -167,6 +181,7 @@ class ModuleTask(ModuleScript):
         Handles task interrupts during execution of _run method.
         """
         self.log.debug(f'Running main method with\n\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        self.sigStateChanged.emit(event.dst)
         try:
             self._check_interrupt()
             self.result = self._run(*self.args, **self.kwargs)
@@ -185,6 +200,7 @@ class ModuleTask(ModuleScript):
         Handles task interrupts during execution of _run method.
         """
         self.log.debug(f'Running cleanup')
+        self.sigStateChanged.emit(event.dst)
         try:
             self._cleanup()
         except ModuleScriptInterrupted:
@@ -200,6 +216,7 @@ class ModuleTask(ModuleScript):
         been terminated.
         """
         self.log.debug(f'ModuleTask "{self.__class__.__name__}" has been terminated.')
+        self.sigStateChanged.emit(event.dst)
         with self._thread_lock:
             self._running = False
-            self.sigFinished.emit(self.result, self._success)
+        self.sigFinished.emit()

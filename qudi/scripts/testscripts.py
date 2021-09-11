@@ -30,13 +30,17 @@ class TestTask(ModuleTask):
     _derp = Connector(name='derp', interface='TemplateLogic')
 
     def _setup(self) -> None:
-        print('Running _setup')
-
-    def _cleanup(self) -> None:
-        print(f'Running _cleanup')
-
-    def _run(self, pos_arg='abc', kw_arg=42):
-        print(f'Running _run with arguments:', pos_arg, kw_arg)
         i = 0
         for i in range(100000000):
+            i += 1
+
+    def _cleanup(self) -> None:
+        i = 0
+        for i in range(100000000):
+            i += 1
+
+    def _run(self, pos_arg='abc', kw_arg=42):
+        i = 0
+        for i in range(10000000):
+            self._check_interrupt()
             i += 1
