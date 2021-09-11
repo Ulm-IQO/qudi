@@ -168,15 +168,17 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
             self._interrupted = False
             self._success = False
             self._running = True
-        self.log.debug(f'Starting to run ModuleScript "{self.__class__.__name__}" with positional '
-                       f'arguments {self.args} and keyword arguments {self.kwargs}.')
+        self.log.debug(f'Running main method with\n\targs: {self.args}\n\tkwargs: {self.kwargs}.')
         # Emit finished signal even if script execution fails. Check success flag.
         try:
             self.result = self._run(*self.args, **self.kwargs)
             with self._thread_lock:
                 self._success = True
         except ModuleScriptInterrupted:
-            self.log.debug(f'Interrupted main method of ModuleScript "{self.__class__.__name__}".')
+            self.log.info(f'Main run method interrupted')
+        except:
+            self.log.exception('Exception during main run method:')
+            raise
         finally:
             with self._thread_lock:
                 self._running = False
