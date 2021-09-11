@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ['ModuleTask', 'ModuleTaskStateMachine']
 
-from abc import abstractmethod
 from fysom import Fysom, Canceled
 from PySide2 import QtCore
 from typing import Mapping, Any, Optional, Callable
@@ -70,7 +69,7 @@ class ModuleTask(ModuleScript):
     properly terminate the task afterwards.
     """
 
-    sigStateChanged = QtCore.Signal(object, str)  # Fysom event,
+    sigStateChanged = QtCore.Signal(object)  # Fysom event
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -102,7 +101,6 @@ class ModuleTask(ModuleScript):
 
     # Implement _setup and _cleanup in subclass if needed. By default they will simply do nothing.
     # You MUST in any case implement _run in a subclass (see: ModuleScript._run).
-
     def _setup(self) -> None:
         """ Optional setup procedure to be performed before _run() is called.
         Raising an exception in here will cause the task to directly call _cleanup() and skip the
@@ -112,6 +110,7 @@ class ModuleTask(ModuleScript):
 
         Implement in subclass.
         """
+        print('Task running in thread:', QtCore.QThread.currentThread().objectName())
         pass
 
     def _cleanup(self) -> None:
@@ -129,7 +128,7 @@ class ModuleTask(ModuleScript):
     def __change_state_callback(self, e: Any = None) -> None:
         """ General state transition callback
         """
-        self.sigStateChanged.emit(e, self.id)
+        self.sigStateChanged.emit(e)
 
     def __before_start_callback(self, event: Any = None) -> bool:
         """ Callback to check if the state machine is allowed to start.
@@ -197,4 +196,4 @@ class ModuleTask(ModuleScript):
         self.log.debug(f'ModuleTask "{self.__class__.__name__}" has been terminated.')
         with self._thread_lock:
             self._running = False
-            self.sigFinished.emit(self.result, self.id, self._success)
+            self.sigFinished.emit(self.result, self._success)

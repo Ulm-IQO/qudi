@@ -31,7 +31,7 @@ class TaskMainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None, **kwargs):
         super().__init__(parent, **kwargs)
 
-        self.setWindowTitle('qudi: task runner')
+        self.setWindowTitle('qudi: Taskrunner')
         self.setAcceptDrops(False)
 
         # Create actions

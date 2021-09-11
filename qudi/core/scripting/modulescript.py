@@ -28,7 +28,6 @@ import importlib
 import copy
 import inspect
 from abc import abstractmethod
-from uuid import uuid4
 from PySide2 import QtCore
 from logging import getLogger, Logger
 from typing import Mapping, Any, Type, Optional, Union, Iterable
@@ -52,7 +51,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
     """
     # Declare all module connectors used in this script here
 
-    sigFinished = QtCore.Signal(object, bool, str)  # result, success, ID
+    sigFinished = QtCore.Signal(object, bool)  # result, success
 
     # FIXME: This __new__ implementation has the sole purpose to circumvent a known PySide2(6) bug.
     #  See https://bugreports.qt.io/browse/PYSIDE-1434 for more details.
@@ -68,8 +67,6 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
 
         # Create a copy of the _meta class dict and attach it to this instance
         self._meta = copy.deepcopy(self._meta)
-        # Create unique ID string and attach to _meta dict
-        self._meta['uuid'] = uuid4()
         # set instance attributes according to connector meta objects
         for attr_name, conn in self._meta['connectors'].items():
             setattr(self, attr_name, conn)
@@ -101,14 +98,6 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         """
         if self.interrupted:
             raise ModuleScriptInterrupted
-
-    @property
-    def id(self) -> str:
-        """ Read-only unique id (uuid4) of this script instance.
-
-        @return str: ID of this script instance
-        """
-        return str(self._meta['uuid'])
 
     @property
     def log(self) -> Logger:
@@ -180,7 +169,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         finally:
             with self._thread_lock:
                 self._running = False
-                self.sigFinished.emit(self.result, self._success, self.id)
+                self.sigFinished.emit(self.result, self._success)
 
     def connect_modules(self, connector_targets: Mapping[str, Any]) -> None:
         """ Connects given modules (values) to their respective Connector (keys).
