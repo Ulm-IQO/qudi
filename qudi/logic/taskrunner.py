@@ -140,26 +140,33 @@ class TaskRunner(LogicBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.tasks_model = None
+        self.task_instances_model = None
+        self.configured_task_types = None
 
     def on_activate(self) -> None:
         """ Initialise task runner """
-        self.tasks_model = ModuleTasksTableModel(parent=self)
+        self.task_instances_model = ModuleTasksTableModel(parent=self)
+        self.configured_task_types = dict()
         for name, task_cfg in self._module_task_configs.items():
+            if name in self.configured_task_types:
+                raise KeyError(f'Duplicate task name "{name}" encountered in config')
             module, cls = task_cfg['module.Class'].rsplit('.', 1)
-            task = import_module_script(module, cls, reload=False)()
-            try:
-                if isinstance(task, ModuleTask):
-                    self.tasks_model.add_task(name, task)
-                else:
-                    raise TypeError('Configured task is not a ModuleTask (sub)class')
-            except (KeyError, TypeError):
-                self.tasks_model.clear_tasks()
-                raise
+            task = import_module_script(module, cls, reload=False)
+            if not isinstance(task, ModuleTask):
+                raise TypeError('Configured task is not a ModuleTask (sub)class')
+            self.configured_task_types[name] = task
 
     def on_deactivate(self) -> None:
         """ Shut down task runner """
-        self.tasks_model.clear_tasks()
+        try:
+            self.task_instances_model.clear_tasks()
+        finally:
+            self.task_instances_model = None
+            self.configured_task_types = None
+
+    def _initialize_task(self, name: str):
+        task = self.configured_task_types[name]
+
 
     @QtCore.Slot()
     def test(self):
@@ -167,6 +174,7 @@ class TaskRunner(LogicBase):
             QtCore.QMetaObject.invokeMethod(self, 'test', QtCore.Qt.BlockingQueuedConnection)
             return
         self.start_task_by_index(0)
+        self.set_task_arguments()
 
     @QtCore.Slot(int)
     def start_task_by_index(self, index: int) -> None:
