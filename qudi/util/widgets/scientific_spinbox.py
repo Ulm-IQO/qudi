@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ('ScienDSpinBox', 'ScienSpinBox')
+__all__ = ['ScienDSpinBox', 'ScienSpinBox']
 
 from PySide2 import QtCore, QtGui, QtWidgets
 import numpy as np
@@ -34,7 +34,9 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'(\s*([+-]?)(\d+\.\d+|\.\d+|\d+\.?)([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)')
+    float_re = re.compile(
+        r'(\s*([+-]?)(\d+\.\d+|\.\d+|\d+\.?)([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)'
+    )
     group_map = {'match': 0,
                  'sign': 1,
                  'mantissa': 2,

@@ -28,7 +28,7 @@ from fnmatch import fnmatch
 from collections import OrderedDict
 from socket import socket, AF_INET, SOCK_STREAM
 
-from qudi.core.paths import get_appdata_dir
+from qudi.util.paths import get_appdata_dir
 from qudi.core.configoption import ConfigOption
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 

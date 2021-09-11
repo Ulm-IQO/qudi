@@ -24,7 +24,7 @@ import sys
 import inspect
 import importlib
 
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.util.helpers import natural_sort
 
 

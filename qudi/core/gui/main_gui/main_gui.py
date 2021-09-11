@@ -29,7 +29,7 @@ from qtconsole.manager import QtKernelManager
 
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
-from qudi.core.paths import get_main_dir, get_default_config_dir
+from qudi.util.paths import get_main_dir, get_default_config_dir
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase

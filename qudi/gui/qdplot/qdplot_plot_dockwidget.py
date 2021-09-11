@@ -24,9 +24,9 @@ __all__ = ('PlotDockWidget',)
 
 import pyqtgraph as pg
 from qtpy import QtWidgets, QtCore
-from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
-from qudi.core.gui.qtwidgets.fitting import FitWidget
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
+from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.util.widgets.fitting import FitWidget
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
 
 
 class CustomAxis(pg.AxisItem):

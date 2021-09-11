@@ -25,9 +25,9 @@ __all__ = ('OptimizerDockWidget',)
 import numpy as np
 from PySide2 import QtCore, QtWidgets
 from pyqtgraph import PlotDataItem, mkPen
-from qudi.core.gui.qtwidgets.scan_2d_widget import Scan2DPlotWidget, ScanImageItem
-from qudi.core.gui.qtwidgets.scan_1d_widget import Scan1DPlotWidget
-from qudi.core.gui.colordefs import QudiPalette
+from qudi.util.widgets.scan_2d_widget import Scan2DPlotWidget, ScanImageItem
+from qudi.util.widgets.scan_1d_widget import Scan1DPlotWidget
+from qudi.util.colordefs import QudiPalette
 
 
 class OptimizerDockWidget(QtWidgets.QDockWidget):

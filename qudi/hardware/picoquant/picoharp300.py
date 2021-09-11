@@ -25,7 +25,7 @@ import time
 from qtpy import QtCore
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.util.mutex import Mutex
 from qudi.interface.fast_counter_interface import FastCounterInterface
 

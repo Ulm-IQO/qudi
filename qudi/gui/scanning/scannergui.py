@@ -24,7 +24,7 @@ import os
 import numpy as np
 from PySide2 import QtCore, QtGui, QtWidgets
 
-import qudi.core.gui.uic as uic
+import qudi.util.uic as uic
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption

@@ -7,7 +7,7 @@ __all__ = ('ModuleConfigurationWidget',)
 
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 
 
 class ModuleConfigurationWidget(QtWidgets.QWidget):

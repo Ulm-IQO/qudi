@@ -28,23 +28,21 @@ import copy
 import traceback
 import datetime
 
-from qtpy import QtCore
-from collections import OrderedDict
-from core.statusvariable import StatusVar
-from core.connector import Connector
-from core.configoption import ConfigOption
-from core.util.modules import get_main_dir, get_home_dir
-from core.util.helpers import natural_sort
-from core.util.network import netobtain
-from core.util.benchmark import BenchmarkTool
-from logic.generic_logic import GenericLogic
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
-from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
-from logic.pulsed.sampling_functions import SamplingFunctions
-from interface.pulser_interface import SequenceOption
+from PySide2 import QtCore
+from qudi.core.statusvariable import StatusVar
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.paths import get_main_dir, get_home_dir
+from qudi.util.helpers import natural_sort
+from qudi.util.network import netobtain
+from qudi.core.module import LogicBase
+from qudi.logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from qudi.logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
+from qudi.logic.pulsed.sampling_functions import SamplingFunctions
+from qudi.interface.pulser_interface import SequenceOption
 
 
-class SequenceGeneratorLogic(GenericLogic):
+class SequenceGeneratorLogic(LogicBase):
     """
     This is the Logic class for the pulse (sequence) generation.
 
@@ -80,17 +78,19 @@ class SequenceGeneratorLogic(GenericLogic):
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
     # generation for predefined methods.
-    _generation_parameters = StatusVar(default=OrderedDict([('laser_channel', 'd_ch1'),
-                                                            ('sync_channel', ''),
-                                                            ('gate_channel', ''),
-                                                            ('microwave_channel', 'a_ch1'),
-                                                            ('microwave_frequency', 2.87e9),
-                                                            ('microwave_amplitude', 0.0),
-                                                            ('rabi_period', 100e-9),
-                                                            ('laser_length', 3e-6),
-                                                            ('laser_delay', 500e-9),
-                                                            ('wait_time', 1e-6),
-                                                            ('analog_trigger_voltage', 0.0)]))
+    _generation_parameters = StatusVar(
+        default={'laser_channel': 'd_ch1',
+                 'sync_channel': '',
+                 'gate_channel': '',
+                 'microwave_channel': 'a_ch1',
+                 'microwave_frequency': 2.87e9,
+                 'microwave_amplitude': 0.0,
+                 'rabi_period': 100e-9,
+                 'laser_length': 3e-6,
+                 'laser_delay': 500e-9,
+                 'wait_time': 1e-6,
+                 'analog_trigger_voltage': 0.0}
+    )
 
     # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
     # these dictionaries. The keys are the names.
@@ -147,9 +147,9 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
         # these dictionaries. The keys are the names.
-        self._saved_pulse_blocks = OrderedDict()
-        self._saved_pulse_block_ensembles = OrderedDict()
-        self._saved_pulse_sequences = OrderedDict()
+        self._saved_pulse_blocks = dict()
+        self._saved_pulse_block_ensembles = dict()
+        self._saved_pulse_sequences = dict()
         return
 
     def on_activate(self):
@@ -200,9 +200,9 @@ class SequenceGeneratorLogic(GenericLogic):
         self._read_settings_from_device()
 
         # Update saved blocks/ensembles/sequences from serialized files
-        self._saved_pulse_blocks = OrderedDict()
-        self._saved_pulse_block_ensembles = OrderedDict()
-        self._saved_pulse_sequences = OrderedDict()
+        self._saved_pulse_blocks = dict()
+        self._saved_pulse_block_ensembles = dict()
+        self._saved_pulse_sequences = dict()
         self._update_blocks_from_file()
         self._update_ensembles_from_file()
         self._update_sequences_from_file()
@@ -211,7 +211,6 @@ class SequenceGeneratorLogic(GenericLogic):
         self._pog = PulseObjectGenerator(sequencegeneratorlogic=self)
 
         self.__sequence_generation_in_progress = False
-
         return
 
     def on_deactivate(self):
@@ -221,7 +220,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
     # @_saved_pulse_blocks.constructor
     # def _restore_saved_blocks(self, block_list):
-    #     return_block_dict = OrderedDict()
+    #     return_block_dict = dict()
     #     if block_list is not None:
     #         for block_dict in block_list:
     #             return_block_dict[block_dict['name']] = PulseBlock.block_from_dict(block_dict)
@@ -240,7 +239,7 @@ class SequenceGeneratorLogic(GenericLogic):
     #
     # @_saved_pulse_block_ensembles.constructor
     # def _restore_saved_ensembles(self, ensemble_list):
-    #     return_ensemble_dict = OrderedDict()
+    #     return_ensemble_dict = dict()
     #     if ensemble_list is not None:
     #         for ensemble_dict in ensemble_list:
     #             return_ensemble_dict[ensemble_dict['name']] = PulseBlockEnsemble.ensemble_from_dict(
@@ -259,7 +258,7 @@ class SequenceGeneratorLogic(GenericLogic):
     #
     # @_saved_pulse_sequences.constructor
     # def _restore_saved_sequences(self, sequence_list):
-    #     return_sequence_dict = OrderedDict()
+    #     return_sequence_dict = dict()
     #     if sequence_list is not None:
     #         for sequence_dict in sequence_list:
     #             return_sequence_dict[sequence_dict['name']] = PulseBlockEnsemble.ensemble_from_dict(
@@ -1205,7 +1204,6 @@ class SequenceGeneratorLogic(GenericLogic):
             return 0.0, 0, 0
 
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
-        # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
         ens_lasers = min(len(info_dict['laser_rising_bins']), len(info_dict['laser_falling_bins']))
