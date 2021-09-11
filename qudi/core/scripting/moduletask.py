@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ['ModuleTask', 'ModuleTaskStateMachine']
 
-import weakref
 
 from fysom import Fysom, Canceled
 from PySide2 import QtCore
@@ -45,7 +44,7 @@ class ModuleTaskStateMachine(Fysom):
            -------------------<--------------------
     """
 
-    def __init__(self, callbacks: Mapping[str, Callable], parent: Optional[QtCore.QObject] = None):
+    def __init__(self, callbacks: Mapping[str, Callable]):
         # State transition events definition
         #   name: event name,
         #    src: source state,
@@ -59,21 +58,6 @@ class ModuleTaskStateMachine(Fysom):
                    'callbacks': callbacks}
 
         super().__init__(cfg=fsm_cfg)
-        self._parent = weakref.ref(parent)
-
-    def _build_event(self, event: str) -> Callable:
-        """ Overrides Fysom _build_event to wrap callbacks to catch and log exceptions """
-        base_event = super()._build_event(event)
-
-        def wrap_event(*args, **kwargs):
-            try:
-                base_event(*args, **kwargs)
-            except:
-                self._parent().log.exception(f'Error during {event} of ModuleTask:')
-                return False
-            return True
-
-        return wrap_event
 
 
 class ModuleTask(ModuleScript):
@@ -113,8 +97,9 @@ class ModuleTask(ModuleScript):
         try:
             self._state_machine.start()
         except Canceled:
-            self.log.error(f'Unable to start ModuleTask "{self.__class__.__name__}". '
-                           f'Task is already running or has been interrupted immediately.')
+            self.log.error(
+                f'Unable to run. Task is already running or has been interrupted immediately.'
+            )
 
     # Implement _setup and _cleanup in subclass if needed. By default they will simply do nothing.
     # You MUST in any case implement _run in a subclass (see: ModuleScript._run).
@@ -140,19 +125,17 @@ class ModuleTask(ModuleScript):
         pass
 
     # Callbacks for FSM below. Ignore this part unless you know what you are doing!
-
     def __change_state_callback(self, e: Any = None) -> None:
         """ General state transition callback
         """
         self.sigStateChanged.emit(e)
 
-    def __before_start_callback(self, event: Any = None) -> bool:
+    def __before_start_callback(self, event: Any) -> bool:
         """ Callback to check if the state machine is allowed to start.
         """
-        with self._thread_lock:
-            return not self._running
+        return not self.running
 
-    def __starting_callback(self, event: Any = None) -> None:
+    def __starting_callback(self, event: Any) -> None:
         """ FSM startup callback. This will call _setup and set status flags accordingly.
         Resets last task result. Handles task interrupts during execution of _setup method.
         """
@@ -161,8 +144,7 @@ class ModuleTask(ModuleScript):
             self._interrupted = False
             self._success = False
             self._running = True
-        self.log.debug(f'Running setup of ModuleTask "{self.__class__.__name__}" with\n'
-                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        self.log.debug(f'Running setup')
         skip_run = True
         try:
             self._check_interrupt()
@@ -170,43 +152,50 @@ class ModuleTask(ModuleScript):
             self._check_interrupt()
             skip_run = False
         except ModuleScriptInterrupted:
-            self.log.debug(f'Interrupted setup of ModuleTask "{self.__class__.__name__}".')
+            self.log.info(f'Setup interrupted')
+        except:
+            self.log.exception('Exception during setup:')
+            raise
         finally:
             if skip_run:
                 self._state_machine.skip_run()
             else:
                 self._state_machine.run()
 
-    def __running_callback(self, event: Any = None) -> None:
+    def __running_callback(self, event: Any) -> None:
         """ FSM callback to execute the mein task _run method. Sets success flag and task result.
         Handles task interrupts during execution of _run method.
         """
-        self.log.debug(f'Running main method of ModuleTask "{self.__class__.__name__}" with\n'
-                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        self.log.debug(f'Running main method with\n\targs: {self.args}\n\tkwargs: {self.kwargs}.')
         try:
             self._check_interrupt()
             self.result = self._run(*self.args, **self.kwargs)
             with self._thread_lock:
                 self._success = True
         except ModuleScriptInterrupted:
-            self.log.debug(f'Interrupted main method of ModuleTask "{self.__class__.__name__}".')
+            self.log.info(f'Main run method interrupted')
+        except:
+            self.log.exception('Exception during main run method:')
+            raise
         finally:
             self._state_machine.finish()
 
-    def __finishing_callback(self, event: Any = None) -> None:
+    def __finishing_callback(self, event: Any) -> None:
         """ FSM callback to always call _cleanup method in the end regardless of task success.
         Handles task interrupts during execution of _run method.
         """
-        self.log.debug(f'Running cleanup of ModuleTask "{self.__class__.__name__}" with\n'
-                       f'\targs: {self.args}\n\tkwargs: {self.kwargs}.')
+        self.log.debug(f'Running cleanup')
         try:
             self._cleanup()
         except ModuleScriptInterrupted:
-            self.log.debug(f'Interrupted cleanup of ModuleTask "{self.__class__.__name__}".')
+            self.log.info('Cleanup interrupted')
+        except:
+            self.log.exception('Exception during cleanup:')
+            raise
         finally:
             self._state_machine.terminate()
 
-    def __stopped_callback(self, event: Any = None) -> None:
+    def __stopped_callback(self, event: Any) -> None:
         """ FSM callback to emit a finished Qt signal and reset the running flag after the task has
         been terminated.
         """

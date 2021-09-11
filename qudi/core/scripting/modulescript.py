@@ -30,9 +30,10 @@ import inspect
 from abc import abstractmethod
 from PySide2 import QtCore
 from logging import getLogger, Logger
-from typing import Mapping, Any, Type, Optional, Union, Iterable
+from typing import Mapping, Any, Type, Optional, Union, Dict
 
 from qudi.core.meta import QudiObjectMeta
+from qudi.core.module import Base
 from qudi.util.models import DictTableModel
 from qudi.util.mutex import Mutex
 
@@ -73,6 +74,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
             setattr(self, attr_name, conn)
 
         self._thread_lock = Mutex()
+        self.__logger = getLogger(f'{self.__module__}.{self.__class__.__name__}')
 
         # script arguments and result cache
         self.args = tuple()
@@ -89,17 +91,6 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         with self._thread_lock:
             return self._interrupted
 
-    def interrupt(self):
-        with self._thread_lock:
-            self._interrupted = True
-
-    def _check_interrupt(self) -> None:
-        """ Implementations of _run should occasionally call this method in order to break
-        execution early if another thread has interrupted this script in the meantime.
-        """
-        if self.interrupted:
-            raise ModuleScriptInterrupted
-
     @property
     def log(self) -> Logger:
         """ Returns a logger object.
@@ -107,7 +98,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
 
         @return Logger: Logger object for this script class
         """
-        return getLogger(f'{self.__module__}.{self.__class__.__name__}')
+        return self.__logger
 
     @property
     def running(self) -> bool:
@@ -120,20 +111,39 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
             return self._success
 
     @property
-    def call_signature(self) -> inspect.Signature:
-        """ Signature of the _run method implementation.
-        Override in subclass if you want anything else than this default implementation.
-        Make sure custom implementations of this property are compatible with _run.
-        """
-        return inspect.signature(self._run)
-
-    @property
     def connected_modules(self) -> Mapping[str, Union[str, None]]:
         """ Mapping of Connector names (keys) to connected module target names (values).
         Unconnected Connectors are indicated by None target.
         """
         return {conn.name: None if conn() is None else conn().module_name for conn in
                 self._meta['connectors']}
+
+    @classmethod
+    def call_parameters(cls) -> Dict[str, inspect.Parameter]:
+        """ Call parameters of the _run method implementation.
+
+        Override in subclass if you want anything else than this default implementation.
+        Make sure custom implementations of this property are compatible with _run!
+        """
+        parameters = dict(inspect.signature(cls._run).parameters)
+        # Remove first parameter if it is a bound instance method
+        if not isinstance(inspect.getattr_static(cls, '_run'), (classmethod, staticmethod)):
+            try:
+                del parameters[next(iter(parameters))]
+            except StopIteration:
+                pass
+        return parameters
+
+    @classmethod
+    def result_annotation(cls) -> Union[Any, inspect.Signature.empty]:
+        """ Return type annotation for the _run method implementation.
+        Will return inspect.Signature.empty if _run return value is not annotated.
+        """
+        return inspect.signature(cls._run).return_annotation
+
+    def interrupt(self):
+        with self._thread_lock:
+            self._interrupted = True
 
     def __call__(self, *args, **kwargs) -> Any:
         """ Convenience magic method to run this script like a function
@@ -172,7 +182,7 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
                 self._running = False
                 self.sigFinished.emit(self.result, self._success)
 
-    def connect_modules(self, connector_targets: Mapping[str, Any]) -> None:
+    def connect_modules(self, connector_targets: Mapping[str, Base]) -> None:
         """ Connects given modules (values) to their respective Connector (keys).
 
         DO NOT CALL THIS METHOD UNLESS YOU KNOW WHAT YOU ARE DOING!
@@ -207,6 +217,13 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
         """
         for conn in self._meta['connectors'].values():
             conn.disconnect()
+
+    def _check_interrupt(self) -> None:
+        """ Implementations of _run should occasionally call this method in order to break
+        execution early if another thread has interrupted this script in the meantime.
+        """
+        if self.interrupted:
+            raise ModuleScriptInterrupted
 
     @abstractmethod
     def _run(self, *args, **kwargs) -> Any:
