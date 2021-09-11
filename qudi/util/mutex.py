@@ -27,8 +27,10 @@ __all__ = ['Mutex', 'RecursiveMutex']
 
 from PySide2.QtCore import QMutex as _QMutex
 from PySide2.QtCore import QRecursiveMutex as _QRecursiveMutex
-from typing import Optional
-from qudi.util.parameters import RealNumber
+from typing import Optional, Union
+
+
+_RealNumber = Union[int, float]
 
 
 class Mutex(_QMutex):
@@ -39,7 +41,7 @@ class Mutex(_QMutex):
     * Context management (enter/exit)
     """
 
-    def acquire(self, blocking: Optional[bool] = True, timeout: Optional[RealNumber] = -1) -> bool:
+    def acquire(self, blocking: Optional[bool] = True, timeout: Optional[_RealNumber] = -1) -> bool:
         """ Mimics threading.Lock.acquire() to allow this class as a drop-in replacement.
 
         @param bool blocking: If True, this method will be blocking (indefinitely or for up to
@@ -91,7 +93,7 @@ if all(hasattr(_QRecursiveMutex, attr) for attr in ('lock', 'unlock', 'tryLock')
         """
 
         def acquire(self, blocking: Optional[bool] = True,
-                    timeout: Optional[RealNumber] = -1) -> bool:
+                    timeout: Optional[_RealNumber] = -1) -> bool:
             """ Mimics threading.Lock.acquire() to allow this class as a drop-in replacement.
 
             @param bool blocking: If True, this method will be blocking (indefinitely or for up to

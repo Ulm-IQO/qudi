@@ -28,8 +28,10 @@ import numpy as np
 import ruamel.yaml as _yaml
 from collections import OrderedDict
 from io import BytesIO, TextIOWrapper
-from typing import Optional, Any, Mapping, Dict
-from qudi.util.parameters import FilePath
+from typing import Optional, Any, Mapping, Dict, Union
+
+
+_FilePath = Union[str, bytes, os.PathLike]
 
 
 class SafeRepresenter(_yaml.SafeRepresenter):
@@ -174,7 +176,7 @@ class YAML(_yaml.YAML):
         self.Constructor = SafeConstructor
 
 
-def yaml_load(file_path: FilePath, ignore_missing: Optional[bool] = False) -> Dict[str, Any]:
+def yaml_load(file_path: _FilePath, ignore_missing: Optional[bool] = False) -> Dict[str, Any]:
     """ Loads a qudi style YAML file.
     Raises OSError if the file does not exist or can not be accessed.
 
@@ -195,7 +197,7 @@ def yaml_load(file_path: FilePath, ignore_missing: Optional[bool] = False) -> Di
             raise
 
 
-def yaml_dump(file_path: FilePath, data: Mapping[str, Any]) -> None:
+def yaml_dump(file_path: _FilePath, data: Mapping[str, Any]) -> None:
     """ Saves data to file_path in qudi style YAML format. Creates subdirectories if needed.
 
     @param str file_path: path to YAML file to save data into
