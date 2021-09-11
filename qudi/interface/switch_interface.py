@@ -18,11 +18,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.interface import abstract_interface_method, interface_method
-from core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import Base
 
 
-class SwitchInterface(metaclass=InterfaceMetaclass):
+class SwitchInterface(Base):
     """ Methods to control slow (mechanical) switching devices.
 
     Getter and setter functions to control single switches need to be implemented by the hardware
@@ -32,7 +32,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
     """
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def name(self):
         """ Name of the hardware as string.
 
@@ -41,7 +41,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abstract_interface_method
+    @abstractmethod
     def available_states(self):
         """ Names of the states as a dict of tuples.
 
@@ -52,7 +52,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_state(self, switch):
         """ Query state of single switch by name
 
@@ -61,7 +61,7 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_state(self, switch, state):
         """ Query state of single switch by name
 
@@ -73,7 +73,6 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
     # Non-abstract default implementations below
 
     @property
-    @interface_method
     def number_of_switches(self):
         """ Number of switches provided by the hardware.
 
@@ -82,7 +81,6 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         return len(self.available_states)
 
     @property
-    @interface_method
     def switch_names(self):
         """ Names of all available switches as tuple.
 
@@ -91,7 +89,6 @@ class SwitchInterface(metaclass=InterfaceMetaclass):
         return tuple(self.available_states)
 
     @property
-    @interface_method
     def states(self):
         """ The current states the hardware is in as state dictionary with switch names as keys and
         state names as values.

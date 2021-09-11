@@ -20,13 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.connector import Connector
-from logic.generic_logic import GenericLogic
-from qtpy import QtCore
 import numpy as np
+from PySide2 import QtCore
+
+from qudi.core.connector import Connector
+from qudi.core.module import LogicBase
 
 
-class PulsedMasterLogic(GenericLogic):
+class PulsedMasterLogic(LogicBase):
     """
     This logic module combines the functionality of two modules.
 
@@ -69,7 +70,7 @@ class PulsedMasterLogic(GenericLogic):
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
+    sigFitUpdated = QtCore.Signal(str, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -384,8 +385,16 @@ class PulsedMasterLogic(GenericLogic):
         return self.pulsedmeasurementlogic().alternative_data_type
 
     @property
-    def fit_container(self):
-        return self.pulsedmeasurementlogic().fc
+    def fit_containers(self):
+        return self.pulsedmeasurementlogic().fc, self.pulsedmeasurementlogic().alt_fc
+
+    @property
+    def fit_config_model(self):
+        return self.pulsedmeasurementlogic().fit_config_model
+
+    @property
+    def default_data_dir(self):
+        return self.pulsedmeasurementlogic().module_default_data_dir
 
     #######################################################################
     ###             Pulsed measurement methods                          ###
@@ -573,37 +582,46 @@ class PulsedMasterLogic(GenericLogic):
             self.sigDoFit.emit(fit_function, use_alternative_data)
         return
 
-    @QtCore.Slot(str, np.ndarray, object, bool)
-    def fit_updated(self, fit_name, fit_data, fit_result, use_alternative_data):
+    @QtCore.Slot(str, object, bool)
+    def fit_updated(self, fit_name, fit_result, use_alternative_data):
         """
 
         @return:
         """
         self.status_dict['fitting_busy'] = False
-        self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
+        self.sigFitUpdated.emit(fit_name, fit_result, use_alternative_data)
         return
 
     @QtCore.Slot()
     def benchmark_completed(self):
         self.status_dict['benchmark_busy'] = False
 
-    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
-        """
-        Prepare data to be saved and create a proper plot of the data.
+    def save_measurement_data(self, tag=None, notes=None, file_path=None, storage_cls=None,
+                              with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+                              save_figure=None):
+        """ Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
-        @param str tag: a filetag which will be included in the filename
+        @param str tag: a name tag which will be included in the filename if file_path is None
+        @param str file_path: optional, custom full file path including file extension to use.
+                              If given, tag is ignored.
+        @param type storage_cls: optional, the explicit data storage class to use
         @param bool with_error: select whether errors should be saved/plotted
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
-        @param bool save_figure: select whether png and pdf should be saved
-
-        @return str: filepath where data were saved
+        @param bool save_figure: select whether a thumbnail plot should be saved
+        @param str notes: optional, string that is included in the metadata "as-is" without a field
         """
-        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
-                                                            save_figure)
-        return
+        return self.pulsedmeasurementlogic().save_measurement_data(
+            tag=tag,
+            file_path=file_path,
+            storage_cls=storage_cls,
+            with_error=with_error,
+            save_laser_pulses=save_laser_pulses,
+            save_pulsed_measurement=save_pulsed_measurement,
+            save_figure=save_figure,
+            notes=notes
+        )
 
     #######################################################################
     ###             Sequence generator properties                       ###
