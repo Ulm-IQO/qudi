@@ -31,14 +31,13 @@ from qudi.core.statusvariable import StatusVar
 from qudi.util.helpers import natural_sort
 from qudi.util.datastorage import get_timestamp_filename
 from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
-from qudi.core.gui.colordefs import QudiPalettePale as palette
-from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
+from qudi.util.colordefs import QudiPalettePale as palette
+from qudi.util.widgets.fitting import FitConfigurationDialog
 from qudi.core.module import GuiBase
-from qudi.core.gui import uic
+from qudi.util import uic
 from PySide2 import QtCore, QtWidgets
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-
-# TODO: Display the Pulse graphically (similar to AWG application)
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qudi.util.widgets.loading_indicator import CircleLoadingIndicator
 
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):

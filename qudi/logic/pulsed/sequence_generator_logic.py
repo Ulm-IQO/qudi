@@ -40,6 +40,7 @@ from qudi.logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, Puls
 from qudi.logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
 from qudi.interface.pulser_interface import SequenceOption
+from qudi.util.benchmark import BenchmarkTool
 
 
 class SequenceGeneratorLogic(LogicBase):
