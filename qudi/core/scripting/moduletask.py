@@ -23,6 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ['ModuleTask', 'ModuleTaskStateMachine']
 
+import weakref
+
 from fysom import Fysom, Canceled
 from PySide2 import QtCore
 from typing import Mapping, Any, Optional, Callable
@@ -57,6 +59,21 @@ class ModuleTaskStateMachine(Fysom):
                    'callbacks': callbacks}
 
         super().__init__(cfg=fsm_cfg)
+        self._parent = weakref.ref(parent)
+
+    def _build_event(self, event: str) -> Callable:
+        """ Overrides Fysom _build_event to wrap callbacks to catch and log exceptions """
+        base_event = super()._build_event(event)
+
+        def wrap_event(*args, **kwargs):
+            try:
+                base_event(*args, **kwargs)
+            except:
+                self._parent().log.exception(f'Error during {event} of ModuleTask:')
+                return False
+            return True
+
+        return wrap_event
 
 
 class ModuleTask(ModuleScript):
@@ -110,7 +127,6 @@ class ModuleTask(ModuleScript):
 
         Implement in subclass.
         """
-        print('Task running in thread:', QtCore.QThread.currentThread().objectName())
         pass
 
     def _cleanup(self) -> None:
@@ -142,7 +158,7 @@ class ModuleTask(ModuleScript):
         """
         self.result = None
         with self._thread_lock:
-            self._stop_requested = False
+            self._interrupted = False
             self._success = False
             self._running = True
         self.log.debug(f'Running setup of ModuleTask "{self.__class__.__name__}" with\n'
@@ -151,6 +167,7 @@ class ModuleTask(ModuleScript):
         try:
             self._check_interrupt()
             self._setup()
+            self._check_interrupt()
             skip_run = False
         except ModuleScriptInterrupted:
             self.log.debug(f'Interrupted setup of ModuleTask "{self.__class__.__name__}".')

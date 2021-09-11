@@ -62,8 +62,9 @@ class ModuleScript(QtCore.QObject, metaclass=QudiObjectMeta):
                             f'with abstract methods {set(abstract)}')
         return super().__new__(cls, *args, **kwargs)
 
-    def __init__(self, parent: Optional[QtCore.QObject] = None):
-        super().__init__(parent=parent)
+    def __init__(self):
+        # ModuleScript QObjects must not have a parent in order to be used as threaded workers
+        super().__init__()
 
         # Create a copy of the _meta class dict and attach it to this instance
         self._meta = copy.deepcopy(self._meta)
