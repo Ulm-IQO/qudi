@@ -266,7 +266,7 @@ class AWGM819X(PulserInterface):
                            'One or more channels to set are not active.\n'
                            'channels_to_set are: ', channels_to_set, 'and\n'
                            'analog_channels are: ', active_analog)
-            return self.get_loaded_assets()[0]
+            return self.get_loaded_assets()
 
         # Check if all waveforms to load are present on device memory
         if not set(load_dict.values()).issubset(self.get_waveform_names()):
@@ -274,19 +274,19 @@ class AWGM819X(PulserInterface):
                            'One or more waveforms to load are missing: {}'.format(
                                                                             set(load_dict.values())
             ))
-            return self.get_loaded_assets()[0]
+            return self.get_loaded_assets()
 
         if load_dict == {}:
             self.log.warning('No file and channel provided for load!\n'
                              'Correct that!\nCommand will be ignored.')
-            return self.get_loaded_assets()[0]
+            return self.get_loaded_assets()
 
         self._load_wave_from_memory(load_dict, to_nextfree_segment=to_nextfree_segment)
 
         self.set_trigger_mode('cont')
         self.check_dev_error()
 
-        return self.get_loaded_assets()[0]
+        return self.get_loaded_assets()
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -310,7 +310,7 @@ class AWGM819X(PulserInterface):
         if not (set(self.get_loaded_assets()[0].values())).issubset(set([sequence_name])):
             self.log.error('Unable to load sequence into channels.\n'
                            'Make sure to call write_sequence() first.')
-            return self.get_loaded_assets()[0]
+            return self.get_loaded_assets()
 
         self.write_all_ch(':FUNC{}:MODE STS', all_by_one={'m8195a': True})  # activate the sequence mode
         """
@@ -1484,7 +1484,7 @@ class AWGM819X(PulserInterface):
         if incl_ch_postfix:
             return fname.split(".")[0]
         else:
-            return re.split("(_ch[0-9])", fname)[0]
+            return fname.split("_ch")[0].split(".")[0]
 
     def _check_uploaded_wave_name(self, ch_num, wave_name, segment_id):
 
@@ -1515,7 +1515,7 @@ class AWGM819X(PulserInterface):
 
             comb_samples = self._compile_bin_samples(analog_samples, digital_samples, ch_str)
 
-            t_start = time.perf_counter()
+            t_start = time.time()
 
             if self._wave_mem_mode == 'pc_hdd':
                 # todo: check if working for awg8195a
@@ -1578,16 +1578,13 @@ class AWGM819X(PulserInterface):
 
             else:
                 raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
-            try:
-                transfer_speed_mbs = (comb_samples.nbytes/(1024*1024))/(time.perf_counter() - t_start)
-                self.log.debug('Written ({2:.1f} MB/s) to ch={0}: max ampl: {1}'.format(ch_str,
+
+            transfer_speed_mbs = (comb_samples.nbytes/(1024*1024))/(time.time() - t_start)
+            self.log.debug('Written ({2:.1f} MB/s) to ch={0}: max ampl: {1}'.format(ch_str,
                                                                                 analog_samples[ch_str].max(),
                                                                                 transfer_speed_mbs))
-            except ZeroDivisionError:
-                pass
-            
-        return waveforms
 
+        return waveforms
 
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.

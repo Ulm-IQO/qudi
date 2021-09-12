@@ -268,14 +268,14 @@ class M3202A(Base, PulserInterface):
             self.loaded_waveforms[chnl_num] = waveform
 
         self.last_sequence = None
-        return self.get_loaded_assets()[0]
+        return self.get_loaded_assets()
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
         @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
-        return self.get_loaded_assets()[0]
+        return self.get_loaded_assets()
 
     def get_loaded_assets(self):
         """
