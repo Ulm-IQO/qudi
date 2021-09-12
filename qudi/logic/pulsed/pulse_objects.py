@@ -26,7 +26,6 @@ import sys
 import inspect
 import importlib
 import numpy as np
-from collections import OrderedDict
 
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
 from qudi.util.paths import get_main_dir
