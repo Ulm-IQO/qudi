@@ -2481,7 +2481,6 @@ class PulsedMeasurementGui(GuiBase):
         @param bool use_alternative_data:
         @return:
         """
-        print('fit_data_updated')
 
         # Update plot.
         if use_alternative_data:
@@ -2496,12 +2495,12 @@ class PulsedMeasurementGui(GuiBase):
         else:
             if not fit_config or fit_config == 'No Fit':
                 if self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
-                    self._pa.pulse_analysis_PlotWidget.removeItem(self.second_fit_image)
+                    self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
             else:
                 self.fit_image.setData(x=result.high_res_best_fit[0],
                                        y=result.high_res_best_fit[1])
                 if self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
-                    self._pa.pulse_analysis_PlotWidget.addItem(self.second_fit_image)
+                    self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
         return
 
     @QtCore.Slot()
