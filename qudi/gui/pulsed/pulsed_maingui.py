@@ -1996,10 +1996,7 @@ class PulsedMeasurementGui(GuiBase):
             self._mw.action_run_stop.setEnabled(True)
             self._mw.loading_indicator_action.setVisible(False)
 
-
-
-    @QtCore.Slot(bool)
-    def generate_predefined_clicked(self, button_obj=None):
+    def generate_predefined_clicked(self, method_name, sample_and_load=False):
         """
 
         @param str method_name:

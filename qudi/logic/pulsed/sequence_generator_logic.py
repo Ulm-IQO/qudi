@@ -2192,7 +2192,7 @@ class SequenceGeneratorLogic(LogicBase):
                 # ignore datapoint on first run to warm up caches, etc.
                 rescode, _, _, = self._sample_load_benchmark_chunk(n_samples, waveform_name,
                                                                    persistent_datapoint=True,
-                                                                   ignore_datapoint=(i is 0))
+                                                                   ignore_datapoint=(i==0))
 
                 time_fraction = time_fraction / 2. if time_fraction > 2 else 2
                 i += 1
