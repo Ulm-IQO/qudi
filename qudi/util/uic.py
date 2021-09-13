@@ -24,13 +24,14 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 """
 
-__all__ = ('loadUi',)
+__all__ = ['loadUi']
 
 import os
 import re
 import tempfile
+import subprocess
 from importlib.util import spec_from_loader, module_from_spec
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 
 __ui_class_pattern = re.compile(r'class (Ui_.*?)\(')
 __artwork_path_pattern = re.compile(r'>(.*?/artwork/.*?)</')
@@ -59,11 +60,18 @@ def loadUi(file_path, base_widget):
         try:
             with open(fd, mode='w', closefd=True) as tmp_file:
                 tmp_file.write(converted)
-            compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
-        finally:
+        except:
             os.remove(file_path)
-    else:
-        compiled = os.popen('pyside2-uic "{0}"'.format(file_path)).read()
+            raise
+    try:
+        result = subprocess.run(f'pyside2-uic "{file_path}"',
+                                capture_output=True,
+                                text=True,
+                                check=True)
+        compiled = result.stdout
+    finally:
+        if converted is not None:
+            os.remove(file_path)
 
     # Find class name
     match = __ui_class_pattern.search(compiled)

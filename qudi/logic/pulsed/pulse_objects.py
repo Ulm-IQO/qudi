@@ -28,7 +28,7 @@ import importlib
 import numpy as np
 
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.util.helpers import natural_sort
 
 
@@ -737,7 +737,7 @@ class PulseSequence(object):
         self.is_finite = True
         self.refresh_parameters()
 
-        # self.sampled_ensembles = dict()
+        # self.sampled_ensembles = OrderedDict()
         # Dictionary container to store information related to the actually sampled
         # Waveforms like pulser settings used during sampling (sample_rate, activation_config etc.)
         # and additional information about the discretization of the waveform (timebin positions of
@@ -1098,6 +1098,52 @@ class PredefinedGeneratorBase:
     ################################################################################################
     #                                   Helper methods                                          ####
     ################################################################################################
+
+    def tau_2_pulse_spacing(self, t, inverse=False,
+                           custom_func=[None, None], **custom_kwargs):
+        """
+        Converts tau to the physical pulse spacing between (microwave) pulses.
+        By definition, tau = 1/f where f is the filter frequency of a dynamical decoupling
+        experiment. For many cases this tau equals the time between the center of
+        consecutive pi pulses.
+        Thus, the default behavior is to subtract the duration of a pi pulse from tau.
+
+        :param t: tau (or tau_pulse_spacing, if inverse==True) to be converted.
+        :param bool inverse: do the inverse transformation tau -> tau_pulse_spacing
+        :param [func, inv_func] custom_func: provide function pointers for custom transformations
+        :param custom_kwargs: kwargs to the custom transformation functions
+        :return:
+        """
+
+        def subtract_pi(t, **kwargs):
+            return t - np.asarray(self.rabi_period) / 2
+
+        def add_pi(t, **kwargs):
+            return t + np.asarray(self.rabi_period) / 2
+
+        def check_sanity(tau, t_phys):
+            t_phys = np.asarray(t_phys)
+            tau = np.asarray(tau)
+            if np.any(t_phys < 0):
+                self.log.warning("Adjusting negative physical pulse spacing to 0. Affected tau: {}."
+                                 "Depending on generate method, more taus might be invalid!"
+                                 .format(tau[t_phys < 0]))
+                t_phys[t_phys < 0] = 0
+
+            return t_phys
+
+        func = subtract_pi
+        func_inverse = add_pi
+
+        if custom_func[0] is not None:
+            func = custom_func[0]
+        if custom_func[1] is not None:
+            func_inverse = custom_func[1]
+
+        if inverse:
+            return func_inverse(t, **custom_kwargs)
+        return check_sanity(t, func(t, **custom_kwargs))
+
     def _get_idle_element(self, length, increment):
         """
         Creates an idle pulse PulseBlockElement

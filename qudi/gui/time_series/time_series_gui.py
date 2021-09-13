@@ -24,10 +24,10 @@ import os
 import pyqtgraph as pg
 from PySide2 import QtCore, QtWidgets
 
-from qudi.core.gui.uic import loadUi
+from qudi.util.uic import loadUi
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-from qudi.core.gui.colordefs import QudiPalettePale as palette
+from qudi.util.colordefs import QudiPalettePale as palette
 from qudi.core.module import GuiBase
 from qudi.interface.data_instream_interface import StreamChannelType
 
@@ -429,7 +429,7 @@ class TimeSeriesGui(GuiBase):
         """
         """
         curr_channels = self._time_series_logic.active_channel_names
-        curr_av_channels = self._time_series_logic.averaged_channels
+        curr_av_channels = self._time_series_logic.averaged_channel_names
         for chnl, widgets in self._csd_widgets.items():
             widgets['checkbox1'].setChecked(chnl in curr_channels)
             widgets['checkbox2'].setChecked(chnl in curr_av_channels)

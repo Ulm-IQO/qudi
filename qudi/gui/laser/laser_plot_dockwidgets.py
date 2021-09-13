@@ -26,8 +26,8 @@ import time
 import pyqtgraph as pg
 from PySide2 import QtCore
 
-from qudi.core.gui.colordefs import QudiPalettePale as palette
-from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.util.colordefs import QudiPalettePale as palette
+from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
 
 
 class LaserOutputDockWidget(AdvancedDockWidget):

@@ -23,7 +23,7 @@ import os
 import numpy as np
 import thirdparty.stuttgart_counter.TimeTagger as tt
 
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.core.configoption import ConfigOption
 from qudi.interface.fast_counter_interface import FastCounterInterface
 

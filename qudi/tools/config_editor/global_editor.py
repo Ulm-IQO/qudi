@@ -7,7 +7,7 @@ __all__ = ('GlobalConfigurationWidget',)
 
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.paths import get_artwork_dir
+from qudi.util.paths import get_artwork_dir
 
 
 class GlobalConfigurationWidget(QtWidgets.QWidget):
@@ -79,6 +79,18 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         layout.addWidget(label, 0, 0)
         layout.addWidget(self.local_port_spinbox, 0, 1)
 
+        # Create flag editor to enforce remote calls by value
+        label = QtWidgets.QLabel('Force remote calls by value:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.force_calls_by_value_checkbox = QtWidgets.QCheckBox()
+        self.force_calls_by_value_checkbox.setToolTip(
+            'Will force all arguments from remote calls to qudi API methods to pass by value '
+            '(serialized -> sent to qudi -> de-serialized).'
+        )
+        self.force_calls_by_value_checkbox.setChecked(True)
+        layout.addWidget(label, 1, 0)
+        layout.addWidget(self.force_calls_by_value_checkbox, 1, 1)
+
         # Create startup modules editor
         label = QtWidgets.QLabel('Startup Modules:')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -86,8 +98,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.startup_lineedit.setPlaceholderText('No startup modules')
         self.startup_lineedit.setToolTip('Modules to be automatically activated on qudi startup.\n'
                                          'Separate multiple module names with commas.')
-        layout.addWidget(label, 1, 0)
-        layout.addWidget(self.startup_lineedit, 1, 1)
+        layout.addWidget(label, 2, 0)
+        layout.addWidget(self.startup_lineedit, 2, 1)
 
         # Create stylesheet file path editor
         label = QtWidgets.QLabel('Stylesheet:')
@@ -98,8 +110,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
             'Absolute file path for qudi QSS stylesheet to use. If just a file name is given '
             'without full path, the file must be located in the "<qudi>/artwork/styles/".'
         )
-        layout.addWidget(label, 2, 0)
-        layout.addWidget(self.stylesheet_lineedit, 2, 1)
+        layout.addWidget(label, 3, 0)
+        layout.addWidget(self.stylesheet_lineedit, 3, 1)
 
         # Create path extensions editor
         label = QtWidgets.QLabel('Extension Paths:')
@@ -108,8 +120,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.extensions_lineedit.setPlaceholderText('No qudi extensions')
         self.extensions_lineedit.setToolTip('Extension module search paths for Qudi.\nSeparate '
                                             'multiple paths with commas.')
-        layout.addWidget(label, 3, 0)
-        layout.addWidget(self.extensions_lineedit, 3, 1)
+        layout.addWidget(label, 4, 0)
+        layout.addWidget(self.extensions_lineedit, 4, 1)
 
         # Create default data path editor
         label = QtWidgets.QLabel('Data Directory:')
@@ -118,8 +130,19 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.data_directory_lineedit.setPlaceholderText('Default "<UserHome>/qudi/Data/"')
         self.data_directory_lineedit.setToolTip('Default data directory for qudi modules to save '
                                                 'measurement data into.')
-        layout.addWidget(label, 4, 0)
-        layout.addWidget(self.data_directory_lineedit, 4, 1)
+        layout.addWidget(label, 5, 0)
+        layout.addWidget(self.data_directory_lineedit, 5, 1)
+
+        # Create flag editor to auomatically create a data sub-directory for each day
+        label = QtWidgets.QLabel('Create daily data directories:')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.daily_data_dirs_checkbox = QtWidgets.QCheckBox()
+        self.daily_data_dirs_checkbox.setToolTip(
+            'Whether to automatically create daily sub-directories in the data directory '
+        )
+        self.daily_data_dirs_checkbox.setChecked(True)
+        layout.addWidget(label, 6, 0)
+        layout.addWidget(self.daily_data_dirs_checkbox, 6, 1)
 
         # Create another layout to hold custom global config options
         self.custom_opt_layout = QtWidgets.QGridLayout()
@@ -169,13 +192,17 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         extensions = [path.strip() for path in self.extensions_lineedit.text().strip().split(',')]
         stylesheet = self.stylesheet_lineedit.text().strip()
         startup = [mod.strip() for mod in self.startup_lineedit.text().strip().split(',')]
+        daily_data_dirs = self.daily_data_dirs_checkbox.isChecked()
+        force_remote_calls_by_value = self.force_calls_by_value_checkbox.isChecked()
 
         # Create config dict
         cfg_dict = {'default_data_dir': default_data_dir if default_data_dir else None,
+                    'daily_data_dirs': daily_data_dirs,
                     'extensions': extensions if extensions else None,
                     'stylesheet': stylesheet if stylesheet else None,
                     'remote_modules_server': remote_modules_server,
                     'namespace_server_port': namespace_server_port,
+                    'force_remote_calls_by_value': force_remote_calls_by_value,
                     'startup': startup if startup else None}
 
         # Add custom config options
@@ -190,6 +217,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         # Create shallow copy of dict
         cfg_dict = cfg_dict.copy()
         default_data_dir = cfg_dict.pop('default_data_dir', None)
+        daily_data_dirs = cfg_dict.pop('daily_data_dirs', True)
         extensions = cfg_dict.pop('extensions', None)
         stylesheet = cfg_dict.pop('stylesheet', None)
         startup = cfg_dict.pop('startup', None)
@@ -199,6 +227,7 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         certfile = remote_modules_server.get('certfile', None)
         keyfile = remote_modules_server.get('keyfile', None)
         namespace_server_port = cfg_dict.pop('namespace_server_port', None)
+        force_remote_calls_by_value = cfg_dict.pop('force_remote_calls_by_value', True)
 
         self.data_directory_lineedit.setText('' if default_data_dir is None else default_data_dir)
         self.stylesheet_lineedit.setText('' if stylesheet is None else stylesheet)
@@ -211,6 +240,8 @@ class GlobalConfigurationWidget(QtWidgets.QWidget):
         self.local_port_spinbox.setValue(
             0 if namespace_server_port is None else int(namespace_server_port)
         )
+        self.force_calls_by_value_checkbox.setChecked(force_remote_calls_by_value)
+        self.daily_data_dirs_checkbox.setChecked(daily_data_dirs)
 
         # Handle custom options (all remaining items in cfg_dict)
         self._clear_custom_widgets()

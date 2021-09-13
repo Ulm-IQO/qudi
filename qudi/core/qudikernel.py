@@ -47,9 +47,9 @@ def install_kernel():
         os.mkdir(path)
 
         kernel_dict = {
-            'argv'        : [sys.executable, kernel_path, '-f', '{connection_file}'],
+            'argv': [sys.executable, kernel_path, '-f', '{connection_file}'],
             'display_name': 'Qudi',
-            'language'    : 'python'
+            'language': 'python'
         }
         # write the kernelspec file
         with open(os.path.join(path, 'kernel.json'), 'w') as f:
@@ -79,6 +79,7 @@ def uninstall_kernel():
 class QudiKernelService(rpyc.Service):
     """
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._background_server = None
@@ -103,6 +104,7 @@ class QudiKernelService(rpyc.Service):
 class QudiKernelClient:
     """
     """
+
     def __init__(self):
         self.service_instance = QudiKernelService()
         self.connection = None
@@ -116,15 +118,6 @@ class QudiKernelClient:
             self.disconnect()
             return dict()
 
-    def get_numpy_module(self):
-        if self.connection is None or self.connection.closed:
-            return None
-        try:
-            return self.connection.root.get_numpy_module()
-        except (ConnectionError, EOFError):
-            self.disconnect()
-            return None
-
     def connect(self):
         config = Configuration()
         config_path = Configuration.get_saved_config()
@@ -134,9 +127,10 @@ class QudiKernelClient:
         port = config.namespace_server_port
         self.connection = rpyc.connect(host='localhost',
                                        config={'allow_all_attrs': True,
-                                               'allow_setattr'  : True,
-                                               'allow_delattr'  : True,
-                                               'allow_pickle'   : True},
+                                               'allow_setattr': True,
+                                               'allow_delattr': True,
+                                               'allow_pickle': True,
+                                               'sync_request_timeout': 3600},
                                        port=port,
                                        service=self.service_instance)
 
@@ -153,6 +147,7 @@ class QudiKernelClient:
 class QudiIPythonKernel(IPythonKernel):
     """
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._qudi_client = QudiKernelClient()
@@ -165,12 +160,6 @@ class QudiIPythonKernel(IPythonKernel):
         removed = self._namespace_qudi_modules.difference(modules)
         for mod in removed:
             self.shell.user_ns.pop(mod, None)
-        for name, obj in self.shell.user_ns.items():
-            if obj is numpy:
-                modules[name] = self._qudi_client.get_numpy_module()
-                if modules[name] is None:
-                    modules.pop(name, None)
-                break
         self.shell.push(modules)
         self._namespace_qudi_modules = set(modules)
 
@@ -192,4 +181,5 @@ if __name__ == '__main__':
         uninstall_kernel()
     else:
         from ipykernel.kernelapp import IPKernelApp
+
         IPKernelApp.launch_instance(kernel_class=QudiIPythonKernel)

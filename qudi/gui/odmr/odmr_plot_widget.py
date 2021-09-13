@@ -25,9 +25,9 @@ __all__ = ('OdmrPlotWidget',)
 import pyqtgraph as pg
 from PySide2 import QtCore, QtWidgets
 
-from qudi.core.gui.qtwidgets.scan_2d_widget import ScanImageItem
-from qudi.core.gui.qtwidgets.colorbar import ColorBarWidget, ColorBarMode
-from qudi.core.gui.colordefs import QudiPalettePale as palette
+from qudi.util.widgets.scan_2d_widget import ScanImageItem
+from qudi.util.widgets.colorbar import ColorBarWidget, ColorBarMode
+from qudi.util.colordefs import QudiPalettePale as palette
 
 
 class OdmrPlotWidget(QtWidgets.QWidget):

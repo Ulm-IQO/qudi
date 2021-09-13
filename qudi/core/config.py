@@ -1,15 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi configuration file module.
-
-A configuration file is saved in YAML format. This module provides a custom loader and a dumper
-using PyYAML.
-Additionally, it fixes a bug in PyYAML with scientific notation and allows
-to dump numpy dtypes and numpy ndarrays.
-
-The fix of the scientific notation is applied globally at module import.
-
+This file contains an object representing a qudi configuration.
+Qudi configurations are stored in YAML file format.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,222 +21,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('Configuration', 'QudiSafeRepresenter', 'QudiSafeConstructor', 'QudiYAML', 'load',
-           'save', 'yaml_load', 'yaml_dump')
+__all__ = ['Configuration']
 
 import os
 import re
 import copy
-import numpy as np
-import ruamel.yaml as _yaml
 from warnings import warn
-from collections import OrderedDict
-from io import BytesIO, TextIOWrapper
 from PySide2 import QtCore
 
-import qudi.core.paths as _paths
-
-
-class QudiSafeRepresenter(_yaml.SafeRepresenter):
-    """ Custom YAML representer for qudi config files
-    """
-    ndarray_max_size = 20
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._extndarray_count = 0
-
-    def ignore_aliases(self, ignore_data):
-        """ Ignore aliases and anchors. Overwrites base class implementation.
-        """
-        return True
-
-    def represent_numpy_int(self, data):
-        """ Representer for numpy int scalars
-        """
-        return self.represent_int(data.item())
-
-    def represent_numpy_float(self, data):
-        """ Representer for numpy float scalars
-        """
-        return self.represent_float(data.item())
-
-    def represent_numpy_complex(self, data):
-        """ Representer for numpy complex scalars
-        """
-        return self.represent_complex(data.item())
-
-    def represent_dict_no_sort(self, data):
-        """ Representer for dict and OrderedDict to prevent ruamel.yaml from sorting keys
-        """
-        return self.represent_dict(data.items())
-
-    def represent_complex(self, data):
-        """ Representer for builtin complex type
-        """
-        return self.represent_scalar(tag='tag:yaml.org,2002:complex', value=str(data))
-
-    def represent_frozenset(self, data):
-        """ Representer for builtin frozenset type
-        """
-        node = self.represent_set(data)
-        node.tag = 'tag:yaml.org,2002:frozenset'
-        return node
-
-    def represent_ndarray(self, data):
-        """ Representer for numpy.ndarrays.
-        Will represent the array in binary representation as ASCII-encoded string by default.
-        If the output stream to dump to is a "regular" open text file handle (io.TextIOWrapper) and
-        the array size exceeds the specified maximum ndarray size, it is dumped into a separate
-        binary .npy file and is represented in YAML as file path string.
-        """
-        # Write to separate file if possible and required (array size > self.ndarray_max_size)
-        # FIXME: Find a better way... this is a mean hack to get the file path to dump,
-        if isinstance(self.dumper._output, TextIOWrapper) and data.size > self.ndarray_max_size:
-            try:
-                out_stream_path = self.dumper._output.name
-                dir_path = os.path.dirname(out_stream_path)
-                file_name = os.path.splitext(os.path.basename(out_stream_path))[0]
-                file_path = f'{os.path.join(dir_path, file_name)}-{self._extndarray_count:06}.npy'
-                np.save(file_path, data, allow_pickle=False, fix_imports=False)
-                self._extndarray_count += 1
-                return self.represent_scalar(tag='tag:yaml.org,2002:extndarray', value=file_path)
-            except:
-                pass
-
-        # Represent as binary stream (ASCII-encoded) by default
-        with BytesIO() as f:
-            np.save(f, data, allow_pickle=False, fix_imports=False)
-            binary_repr = f.getvalue()
-        node = self.represent_binary(binary_repr)
-        node.tag = 'tag:yaml.org,2002:ndarray'
-        return node
-
-
-# register custom representers
-QudiSafeRepresenter.add_representer(frozenset, QudiSafeRepresenter.represent_frozenset)
-QudiSafeRepresenter.add_representer(complex, QudiSafeRepresenter.represent_complex)
-QudiSafeRepresenter.add_representer(dict, QudiSafeRepresenter.represent_dict_no_sort)
-QudiSafeRepresenter.add_representer(OrderedDict, QudiSafeRepresenter.represent_dict_no_sort)
-QudiSafeRepresenter.add_representer(np.ndarray, QudiSafeRepresenter.represent_ndarray)
-QudiSafeRepresenter.add_multi_representer(np.integer, QudiSafeRepresenter.represent_numpy_int)
-QudiSafeRepresenter.add_multi_representer(np.floating, QudiSafeRepresenter.represent_numpy_float)
-QudiSafeRepresenter.add_multi_representer(np.complexfloating,
-                                          QudiSafeRepresenter.represent_numpy_complex)
-
-
-class QudiSafeConstructor(_yaml.SafeConstructor):
-    """ Custom YAML constructor for qudi config files
-    """
-
-    def construct_ndarray(self, node):
-        """ The constructor for a numpy array that is saved as binary string with ASCII-encoding
-        """
-        value = self.construct_yaml_binary(node)
-        with BytesIO(value) as f:
-            return np.load(f)
-
-    def construct_extndarray(self, node):
-        """ The constructor for a numpy array that is saved in a separate file.
-        """
-        return np.load(self.construct_yaml_str(node), allow_pickle=False, fix_imports=False)
-
-    def construct_frozenset(self, node):
-        """ The frozenset constructor.
-        """
-        try:
-            # FIXME: The returned generator does not properly work with iteration using next()
-            return frozenset(tuple(self.construct_yaml_set(node))[0])
-        except IndexError:
-            return frozenset()
-
-    def construct_complex(self, node):
-        """ The complex constructor.
-        """
-        return complex(self.construct_yaml_str(node))
-
-
-# register custom constructors
-QudiSafeConstructor.add_constructor('tag:yaml.org,2002:frozenset',
-                                    QudiSafeConstructor.construct_frozenset)
-QudiSafeConstructor.add_constructor('tag:yaml.org,2002:complex',
-                                    QudiSafeConstructor.construct_complex)
-QudiSafeConstructor.add_constructor('tag:yaml.org,2002:ndarray',
-                                    QudiSafeConstructor.construct_ndarray)
-QudiSafeConstructor.add_constructor('tag:yaml.org,2002:extndarray',
-                                    QudiSafeConstructor.construct_extndarray)
-
-
-class QudiYAML(_yaml.YAML):
-    """ ruamel.yaml.YAML subclass to be used by qudi for all loading/dumping purposes.
-    Will always use the 'safe' option without round-trip functionality.
-    """
-
-    def __init__(self, **kwargs):
-        """
-        @param kwargs: Keyword arguments accepted by ruamel.yaml.YAML(), excluding "typ"
-        """
-        kwargs['typ'] = 'safe'
-        super().__init__(**kwargs)
-        self.default_flow_style = False
-        self.Representer = QudiSafeRepresenter
-        self.Constructor = QudiSafeConstructor
-
-
-def yaml_load(stream):
-    """ Loads YAML formatted data from stream and puts it into a dict.
-    Uses the custom QudiYAML class.
-
-    @param stream: stream the data is read from. Must be compatible to ruamel.yaml.YAML.load().
-
-    @return dict: Dict containing data. If stream is empty then an empty dict is returned
-    """
-    data = QudiYAML().load(stream)
-    # yaml returns None if the stream was empty
-    return dict() if data is None else data
-
-
-def yaml_dump(data, stream):
-    """ Dumps dict data into a YAML formatted stream.
-
-    @param dict data: the data to dump
-    @param stream: stream to dump the data into. Must be compatible to ruamel.yaml.YAML.dump().
-    """
-    return QudiYAML().dump(data, stream)
-
-
-def load(file_path, ignore_missing=False):
-    """ Loads a qudi style YAML file. Throws a FileNotFoundError if the file does not exist
-
-    @param str file_path: path to config file
-    @param bool ignore_missing: optional, flag to suppress FileNotFoundError
-
-    @return dict: The data as python/numpy objects in a dict
-    """
-    try:
-        with open(file_path, 'r') as f:
-            return yaml_load(f)
-    except FileNotFoundError:
-        if ignore_missing:
-            return dict()
-        else:
-            raise
-
-
-def save(file_path, data):
-    """ Saves data to file_path in qudi style YAML format. Creates subdirectories if needed.
-
-    @param str file_path: path to YAML file to save data into
-    @param dict data: Dict containing the data to save to file
-    """
-    file_dir = os.path.dirname(file_path)
-    if file_dir:
-        try:
-            os.makedirs(file_dir)
-        except FileExistsError:
-            pass
-    with open(file_path, 'w') as f:
-        yaml_dump(data, f)
+import qudi.util.paths as _paths
+from qudi.util.yaml import yaml_dump, yaml_load
 
 
 class Configuration(QtCore.QObject):
@@ -362,6 +149,16 @@ class Configuration(QtCore.QObject):
         port = int(port)
         assert 0 <= port <= 65535
         self._global_config['namespace_server_port'] = port
+        self.sigConfigChanged.emit(self)
+
+    @property
+    def force_remote_calls_by_value(self):
+        return self._global_config.get('force_remote_calls_by_value', True)
+
+    @force_remote_calls_by_value.setter
+    def force_remote_calls_by_value(self, flag):
+        assert isinstance(flag, bool), 'force_remote_calls_by_value flag must be bool type.'
+        self._global_config['force_remote_calls_by_value'] = flag
         self.sigConfigChanged.emit(self)
 
     @property
@@ -618,7 +415,7 @@ class Configuration(QtCore.QObject):
                 raise ValueError('Not file path defined for config to load')
 
         # Load YAML file from disk
-        config = load(file_path, ignore_missing=False)
+        config = yaml_load(file_path, ignore_missing=False)
 
         # prepare a new Configuration instance to fill with loaded data first
         new_config = Configuration()
@@ -631,6 +428,8 @@ class Configuration(QtCore.QObject):
         new_config.daily_data_dirs = global_cfg.pop('daily_data_dirs', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
         new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)
+        new_config.force_remote_calls_by_value = global_cfg.pop('force_remote_calls_by_value',
+                                                                True)
         new_config.remote_modules_server = global_cfg.pop('remote_modules_server', None)
         if global_cfg:
             warn(f'Found additional entries in global config. The following entries will be '
@@ -679,7 +478,7 @@ class Configuration(QtCore.QObject):
             file_path = self._file_path
             if file_path is None:
                 raise ValueError('Not file path defined for qudi config to save into')
-        save(file_path, self.config_dict)
+        yaml_dump(file_path, self.config_dict)
         self._file_path = file_path
 
     def is_remote_module(self, name):
@@ -698,14 +497,15 @@ class Configuration(QtCore.QObject):
     @staticmethod
     def set_default_config_path(path):
         # Write current config file path to load.cfg
-        save(file_path=os.path.join(_paths.get_appdata_dir(create_missing=True), 'load.cfg'),
-             data={'load_config_path': path})
+        yaml_dump(os.path.join(_paths.get_appdata_dir(create_missing=True), 'load.cfg'),
+                  {'load_config_path': path})
 
     @staticmethod
     def get_saved_config():
         # Try loading config file path from last session
         try:
-            load_cfg = load(os.path.join(_paths.get_appdata_dir(), 'load.cfg'), ignore_missing=True)
+            load_cfg = yaml_load(os.path.join(_paths.get_appdata_dir(), 'load.cfg'),
+                                 ignore_missing=True)
         except:
             load_cfg = dict()
         file_path = load_cfg.get('load_config_path', '')

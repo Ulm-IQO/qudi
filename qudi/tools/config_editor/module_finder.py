@@ -10,7 +10,7 @@ import sys
 import importlib
 import inspect
 import logging
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.core.module import Base, LogicBase, GuiBase
 
 
@@ -103,7 +103,7 @@ class QudiModules:
         self._qudi_module_classes = ModuleFinder.get_qudi_modules(module_search_paths)
         # Collect all connectors for all modules
         self._module_connectors = {
-            mod: tuple(cls._module_meta['connectors'].values()) for mod, cls in
+            mod: tuple(cls._meta['connectors'].values()) for mod, cls in
             self._qudi_module_classes.items()
         }
         # Get for each connector in each module compatible modules to connect to
@@ -112,7 +112,7 @@ class QudiModules:
         }
         # Get all ConfigOptions for all modules
         self._module_config_options = {
-            mod: tuple(cls._module_meta['config_options'].values()) for mod, cls in
+            mod: tuple(cls._meta['config_options'].values()) for mod, cls in
             self._qudi_module_classes.items()
         }
 

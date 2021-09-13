@@ -25,7 +25,7 @@ import os
 import okfrontpanel as ok
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.util.mutex import RecursiveMutex
 from qudi.interface.switch_interface import SwitchInterface
 

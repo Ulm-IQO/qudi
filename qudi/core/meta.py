@@ -20,7 +20,7 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('ABCQObjectMeta', 'ModuleMeta', 'QObjectMeta')
+__all__ = ('ABCQObjectMeta', 'ModuleMeta', 'QObjectMeta', 'QudiObjectMeta')
 
 from abc import ABCMeta
 from PySide2.QtCore import QObject
@@ -52,43 +52,53 @@ class ABCQObjectMeta(ABCMeta, QObjectMeta):
         return cls
 
 
-class ModuleMeta(ABCQObjectMeta):
+class QudiObjectMeta(ABCQObjectMeta):
+    """ General purpose metaclass for abstract QObject subclasses that include qudi meta objects
+    (Connector, StatusVar, ConfigOption).
+    Collects all meta objects in new "_meta" class variable for easier access.
+    """
+    def __new__(mcs, name, bases, attributes):
+        cls = super().__new__(mcs, name, bases, attributes)
+
+        meta = dict()
+
+        # Collect qudi module meta attributes (Connector, StatusVar, ConfigOption) and put them
+        # in the class variable dict "_meta" for easy bookkeeping and access.
+        connectors = dict()
+        status_vars = dict()
+        config_opt = dict()
+        for attr_name in dir(cls):
+            attr = getattr(cls, attr_name, None)
+            if isinstance(attr, Connector):
+                connectors[attr_name] = attr
+            elif isinstance(attr, StatusVar):
+                status_vars[attr_name] = attr
+            elif isinstance(attr, ConfigOption):
+                config_opt[attr_name] = attr
+        meta.update({'connectors'      : connectors,
+                     'status_variables': status_vars,
+                     'config_options'  : config_opt})
+        setattr(cls, '_meta', meta)
+        return cls
+
+
+class ModuleMeta(QudiObjectMeta):
     """ Metaclass for all qudi modules (GUI, logic and hardware)
     """
 
     def __new__(mcs, name, bases, attributes):
         cls = super().__new__(mcs, name, bases, attributes)
 
-        meta = dict()
-        # Determine module base key and add to _module_meta dict
-        for base in cls.mro():
-            if base.__name__ == 'GuiBase':
-                meta['base'] = 'gui'
-                break
-            elif base.__name__ == 'LogicBase':
-                meta['base'] = 'logic'
-                break
-            elif base.__name__ == 'Base':
-                meta['base'] = 'hardware'
-                break
-
-        # Do not bother to collect meta attributes if created class is no subclass of Base
-        if meta:
-            # Collect qudi module meta attributes (Connector, StatusVar, ConfigOption) and put them
-            # in the class dict "_module_meta" for easy bookkeeping and access.
-            connectors = dict()
-            status_vars = dict()
-            config_opt = dict()
-            for attr_name in dir(cls):
-                attr = getattr(cls, attr_name, None)
-                if isinstance(attr, Connector):
-                    connectors[attr_name] = attr
-                elif isinstance(attr, StatusVar):
-                    status_vars[attr_name] = attr
-                elif isinstance(attr, ConfigOption):
-                    config_opt[attr_name] = attr
-            meta.update({'connectors'      : connectors,
-                         'status_variables': status_vars,
-                         'config_options'  : config_opt})
-            setattr(cls, '_module_meta', meta)
+        # Determine module base key and add to _meta dict
+        if getattr(cls, '_meta', None):
+            for base in cls.mro():
+                if base.__name__ == 'GuiBase':
+                    cls._meta['base'] = 'gui'
+                    break
+                elif base.__name__ == 'LogicBase':
+                    cls._meta['base'] = 'logic'
+                    break
+                elif base.__name__ == 'Base':
+                    cls._meta['base'] = 'hardware'
+                    break
         return cls

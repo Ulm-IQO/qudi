@@ -33,7 +33,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.core.module import GuiBase
 
-from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
+from qudi.util.widgets.fitting import FitConfigurationDialog
 from .qdplot_main_window import QDPlotMainWindow
 from .qdplot_plot_dockwidget import PlotDockWidget
 

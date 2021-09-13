@@ -30,9 +30,9 @@ from PySide2 import QtCore, QtWidgets
 
 from qudi.core.logger import init_rotating_file_handler, init_record_model_handler
 from qudi.core.logger import get_logger, set_log_level
-from qudi.core.paths import get_main_dir, get_default_log_dir
+from qudi.util.paths import get_main_dir, get_default_log_dir
 from qudi.util.mutex import Mutex
-from qudi.util.mpl_qudi_style import mpl_qudi_style
+from qudi.util.colordefs import QudiMatplotlibStyle
 from qudi.core.config import Configuration
 from qudi.core.watchdog import AppWatchdog
 from qudi.core.modulemanager import ModuleManager
@@ -101,7 +101,8 @@ class Qudi(QtCore.QObject):
                 protocol_config=remote_server_config.get('protocol_config', None),
                 ssl_version=remote_server_config.get('ssl_version', None),
                 cert_reqs=remote_server_config.get('cert_reqs', None),
-                ciphers=remote_server_config.get('ciphers', None)
+                ciphers=remote_server_config.get('ciphers', None),
+                force_remote_calls_by_value=self.configuration.force_remote_calls_by_value
             )
         else:
             self.remote_modules_server = None
@@ -109,7 +110,8 @@ class Qudi(QtCore.QObject):
             parent=self,
             qudi=self,
             name='local-namespace-server',
-            port=self.configuration.namespace_server_port
+            port=self.configuration.namespace_server_port,
+            force_remote_calls_by_value=self.configuration.force_remote_calls_by_value
         )
         self.watchdog = None
         self.gui = None
@@ -121,7 +123,7 @@ class Qudi(QtCore.QObject):
         # Set qudi style for matplotlib
         try:
             import matplotlib.pyplot as plt
-            plt.style.use(mpl_qudi_style)
+            plt.style.use(QudiMatplotlibStyle.style)
         except ImportError:
             pass
 
@@ -218,6 +220,12 @@ class Qudi(QtCore.QObject):
         self.gui = Gui(qudi_instance=self, stylesheet_path=self.configuration.stylesheet)
         self.gui.activate_main_gui()
 
+    def _start_startup_modules(self):
+        for module in self.configuration.startup_modules:
+            print(f'> Loading startup module: {module}')
+            self.log.info(f'Loading startup module: {module}')
+            self.module_manager.activate_module(module)
+
     def run(self):
         """
         """
@@ -271,6 +279,9 @@ class Qudi(QtCore.QObject):
 
             # Start GUI if needed
             self._start_gui()
+
+            # Start the startup modules defined in the config file
+            self._start_startup_modules()
 
             # Start Qt event loop unless running in interactive mode
             self._is_running = True

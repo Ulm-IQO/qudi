@@ -26,7 +26,76 @@ import sys
 import inspect
 import copy
 import logging
+import numpy as np
+from enum import Enum
 
+##############################################################
+# Helper class for everything that need dynamical decoupling #
+##############################################################
+
+
+class DDMethods(Enum):
+
+    # define a function to nest the phases of sequence 1 into sequence 2
+    def nest_phases_function(xseq1, xseq2):
+        return [((xseq1[j] + xseq2[k]) % 360.) for k in range(len(xseq2)) for j in range(len(xseq1))]
+
+    # define a function to calculate the phases of the UR sequences,
+    # reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
+    def ur_phases_function(xn):
+        # define phi_large, depending on the number of pulses in the UR sequence
+        if xn % 4 == 0:
+            phi_large = 720./xn
+        elif xn % 4 == 2:
+            phi_large = 180. * (xn - 2) / xn
+        else:
+            phi_large = 0.
+            print("Error: the UR sequence can only have an even number of pulses")
+        # formula for the UR sequences phases, we round the degrees to the 8th digit to avoid some small machine
+        # numbers in the phases when calculated from the formula but such rounding is in principle not necessary
+        ur_phases_array = [(round(k * ((k-1) * phi_large / 2 + phi_large) % 360., 8)) for k in range(xn)]
+        return ur_phases_array
+
+    # # define a function to compare the phases of sequence 1 and sequence 2, useful for testing after uncommenting
+    # def compare_phases_function(xseq1, xseq2):
+    #     return [((xseq1[k] - xseq2[k]) % 360.) for k in range(len(xseq2))]
+
+    SE =    [0., ]
+    CPMG =  [90., 90.]
+    XY4 =   [0., 90., 0., 90.]
+    XY8 =   [0., 90., 0., 90., 90., 0., 90., 0.]
+    XY16 =  [0., 90., 0., 90., 90., 0., 90., 0., 180., -90., 180., -90., -90., 180., -90., 180.]
+    YY8 =   [-90., 90., 90., -90., -90., -90., 90., 90.]
+    KDD =   [30., 0., 90., 0., 30.] # composite pulse (CP) for population inversion, U5b shifted by 30 degrees
+    KDD2 = nest_phases_function(KDD, [0., 0.])
+    KDD4 = nest_phases_function(KDD, XY4)
+    KDD8 = nest_phases_function(KDD, XY8)
+    KDD16 = nest_phases_function(KDD, XY16)
+
+    # define the specific UR sequences to use, reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
+    UR4 = ur_phases_function(4)
+    UR6 = ur_phases_function(6)
+    UR8 = ur_phases_function(8)
+    UR10 = ur_phases_function(10)
+    UR12 = ur_phases_function(12)
+    UR14 = ur_phases_function(14)
+    UR16 = ur_phases_function(16)
+    UR18 = ur_phases_function(18)
+    UR20 = ur_phases_function(20)
+    UR40 = ur_phases_function(40)
+    UR80 = ur_phases_function(80)
+    UR100 = ur_phases_function(100)
+
+    def __init__(self, phases):
+        self._phases = phases
+
+    @property
+    def suborder(self):
+        return len(self._phases)
+
+    @property
+    def phases(self):
+        return np.array(self._phases)
 
 class SamplingBase:
     """
@@ -133,3 +202,6 @@ class SamplingFunctions:
         if inspect.isclass(obj):
             return SamplingBase in inspect.getmro(obj) and object not in obj.__bases__
         return False
+
+
+

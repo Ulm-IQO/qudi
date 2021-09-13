@@ -384,13 +384,13 @@ class AWG7k(PulserInterface):
         if not channels_to_set.issubset(analog_channels):
             self.log.error('Unable to load all waveforms into channels.\n'
                            'One or more channels to set are not active.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Check if all waveforms to load are present on device memory
         if not set(load_dict.values()).issubset(self.get_waveform_names()):
             self.log.error('Unable to load waveforms into channels.\n'
                            'One or more waveforms to load are missing on device memory.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Load waveforms into channels
         for chnl_num, waveform in load_dict.items():
@@ -400,7 +400,7 @@ class AWG7k(PulserInterface):
                 time.sleep(0.1)
 
         self.set_mode('C')
-        return self.get_loaded_assets()
+        return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -423,14 +423,14 @@ class AWG7k(PulserInterface):
         if sequence_name not in self.get_sequence_names():
             self.log.error('Unable to load sequence.\n'
                            'Sequence to load is missing on device memory.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # set the AWG to the event jump mode:
         self.write('AWGC:EVENT:JMODE EJUMP')
         self.set_mode('S')
 
         self._loaded_sequences = [sequence_name]
-        return self.get_loaded_assets()
+        return self.get_loaded_assets()[0]
 
     def get_loaded_assets(self):
         """

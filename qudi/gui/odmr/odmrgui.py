@@ -28,9 +28,9 @@ from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
 from qudi.util import units
 from qudi.core.module import GuiBase
-from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core.paths import get_artwork_dir
+from qudi.util.widgets.fitting import FitConfigurationDialog
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
+from qudi.util.paths import get_artwork_dir
 
 from .odmr_control_dockwidget import OdmrScanControlDockWidget, OdmrCwControlDockWidget
 from .odmr_fit_dockwidget import OdmrFitDockWidget

@@ -470,7 +470,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qudi.core.gui.qtwidgets.scientific_spinbox</header>
+   <header>qudi.util.widgets.scientific_spinbox</header>
   </customwidget>
  </customwidgets>
  <resources/>

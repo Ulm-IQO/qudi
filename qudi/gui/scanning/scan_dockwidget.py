@@ -24,9 +24,9 @@ __all__ = ('Scan1DDockWidget', 'Scan2DDockWidget')
 
 import os
 from PySide2 import QtGui, QtWidgets
-from qudi.core.gui.qtwidgets.scan_2d_widget import Scan2DWidget
-from qudi.core.gui.qtwidgets.scan_1d_widget import Scan1DWidget
-from qudi.core.paths import get_artwork_dir
+from qudi.util.widgets.scan_2d_widget import Scan2DWidget
+from qudi.util.widgets.scan_1d_widget import Scan1DWidget
+from qudi.util.paths import get_artwork_dir
 
 
 class Scan2DDockWidget(QtWidgets.QDockWidget):

@@ -29,7 +29,7 @@ from qtconsole.manager import QtKernelManager
 
 from qudi.core.statusvariable import StatusVar
 from qudi.core.threadmanager import ThreadManager
-from qudi.core.paths import get_main_dir, get_default_config_dir
+from qudi.util.paths import get_main_dir, get_default_config_dir
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
 from qudi.core.module import GuiBase
@@ -249,6 +249,7 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.reset_font()
             self.mw.console_widget.set_default_style(colors='linux')
             kernel_client = kernel_manager.client()
+            kernel_client.hb_channel.time_to_dead = 10.0
             kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
             kernel_client.start_channels()
             self.mw.console_widget.kernel_manager = kernel_manager

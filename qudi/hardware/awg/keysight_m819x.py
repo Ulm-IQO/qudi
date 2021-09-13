@@ -31,7 +31,7 @@ from collections import OrderedDict
 from abc import abstractmethod
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_appdata_dir
+from qudi.util.paths import get_appdata_dir
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 

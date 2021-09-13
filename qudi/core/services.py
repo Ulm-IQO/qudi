@@ -23,9 +23,12 @@ __all__ = ('RemoteModulesService', 'QudiNamespaceService')
 
 import rpyc
 import weakref
+from functools import wraps
+from inspect import signature, isfunction, ismethod
 
 from qudi.util.mutex import Mutex
 from qudi.util.models import DictTableModel
+from qudi.util.network import netobtain
 from qudi.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -59,10 +62,11 @@ class RemoteModulesService(rpyc.Service):
     """
     ALIASES = ['RemoteModules']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, force_remote_calls_by_value=False, **kwargs):
         super().__init__(*args, **kwargs)
         self._thread_lock = Mutex()
         self.shared_modules = _SharedModulesModel()
+        self._force_remote_calls_by_value = force_remote_calls_by_value
 
     def share_module(self, module):
         with self._thread_lock:
@@ -107,6 +111,8 @@ class RemoteModulesService(rpyc.Service):
                     logger.error(f'Unable to share requested module "{name}" with client. Module '
                                  f'can not be activated.')
                     return None
+            if self._force_remote_calls_by_value:
+                return ModuleRpycProxy(module.instance)
             return module.instance
 
     def exposed_get_available_module_names(self):
@@ -146,10 +152,11 @@ class QudiNamespaceService(rpyc.Service):
     """
     ALIASES = ['QudiNamespace']
 
-    def __init__(self, *args, qudi, **kwargs):
+    def __init__(self, *args, qudi, force_remote_calls_by_value=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.__qudi_ref = weakref.ref(qudi)
         self._notifier_callbacks = dict()
+        self._force_remote_calls_by_value = force_remote_calls_by_value
 
     @property
     def _qudi(self):
@@ -194,12 +201,103 @@ class QudiNamespaceService(rpyc.Service):
 
         @return dict: Names (keys) and object references (values)
         """
-        mods = {name: mod.instance for name, mod in self._module_manager.items() if mod.is_active}
+        if self._force_remote_calls_by_value:
+            mods = {name: ModuleRpycProxy(mod.instance) for name, mod in
+                    self._module_manager.items() if mod.is_active}
+        else:
+            mods = {name: mod.instance for name, mod in self._module_manager.items() if
+                    mod.is_active}
         mods['qudi'] = self._qudi
         return mods
 
-    def exposed_get_numpy_module(self):
+
+class ModuleRpycProxy:
+    """ Instances of this class serve as proxies for qudi modules accessed via RPyC.
+    It currently wraps all API methods (none- and single-underscore methods) to only receive
+    parameters "by value", i.e. using qudi.util.network.netobtain. This will only work if all
+    method arguments are "pickle-able".
+    In addition all values passed to __setattr__ are also received "by value".
+
+    Proxy class concept heavily inspired by this python recipe under PSF License:
+    https://code.activestate.com/recipes/496741-object-proxying/
+    """
+
+    __slots__ = ['_obj_ref', '__weakref__']
+
+    def __init__(self, obj):
+        object.__setattr__(self, '_obj_ref', weakref.ref(obj))
+
+    # proxying (special cases)
+    def __getattribute__(self, name):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        attr = getattr(obj, name)
+        if not name.startswith('__') and ismethod(attr) or isfunction(attr):
+            sig = signature(attr)
+            if len(sig.parameters) > 0:
+
+                @wraps(attr)
+                def wrapped(*args, **kwargs):
+                    sig.bind(*args, **kwargs)
+                    args = [netobtain(arg) for arg in args]
+                    kwargs = {name: netobtain(arg) for name, arg in kwargs.items()}
+                    return attr(*args, **kwargs)
+
+                wrapped.__signature__ = sig
+                return wrapped
+        return attr
+
+    def __delattr__(self, name):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        return delattr(obj, name)
+
+    def __setattr__(self, name, value):
+        obj = object.__getattribute__(self, '_obj_ref')()
+        return setattr(obj, name, netobtain(value))
+
+    # factories
+    _special_names = (
+        '__abs__', '__add__', '__and__', '__call__', '__cmp__', '__coerce__', '__contains__',
+        '__delitem__', '__delslice__', '__div__', '__divmod__', '__eq__', '__float__',
+        '__floordiv__', '__ge__', '__getitem__', '__getslice__', '__gt__', '__hash__', '__hex__',
+        '__iadd__', '__iand__', '__idiv__', '__idivmod__', '__ifloordiv__', '__ilshift__',
+        '__imod__', '__imul__', '__int__', '__invert__', '__ior__', '__ipow__', '__irshift__',
+        '__isub__', '__iter__', '__itruediv__', '__ixor__', '__le__', '__len__', '__long__',
+        '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__', '__neg__', '__oct__', '__or__',
+        '__pos__', '__pow__', '__radd__', '__rand__', '__rdiv__', '__rdivmod__', '__reduce__',
+        '__reduce_ex__', '__repr__', '__reversed__', '__rfloorfiv__', '__rlshift__', '__rmod__',
+        '__rmul__', '__ror__', '__rpow__', '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
+        '__rxor__', '__setitem__', '__setslice__', '__sub__', '__truediv__', '__xor__', 'next',
+        '__str__', '__nonzero__'
+    )
+
+    @classmethod
+    def _create_class_proxy(cls, theclass):
+        """ creates a proxy for the given class
         """
+
+        def make_method(method_name):
+
+            def method(self, *args, **kw):
+                obj = object.__getattribute__(self, '_obj_ref')()
+                args = [netobtain(arg) for arg in args]
+                kw = {key: netobtain(val) for key, val in kw.items()}
+                return getattr(obj, method_name)(*args, **kw)
+
+            return method
+
+        # Add all special names to this wrapper class if they are present in the original class
+        namespace = dict()
+        for name in cls._special_names:
+            if hasattr(theclass, name):
+                namespace[name] = make_method(name)
+
+        return type(f'{cls.__name__}({theclass.__name__})', (cls,), namespace)
+
+    def __new__(cls, obj, *args, **kwargs):
+        """ creates an proxy instance referencing `obj`. (obj, *args, **kwargs) are passed to this
+        class' __init__, so deriving classes can define an __init__ method of their own.
+
+        note: _class_proxy_cache is unique per class (each deriving class must hold its own cache)
         """
-        import numpy
-        return numpy
+        theclass = cls._create_class_proxy(obj.__class__)
+        return object.__new__(theclass)
