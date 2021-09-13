@@ -2002,7 +2002,6 @@ class PulsedMeasurementGui(GuiBase):
         @param str method_name:
         @param bool sample_and_load:
         """
-        print('generate_predefined_clicked:', method_name, sample_and_load)
         # get parameters from input widgets
         # Store parameters together with the parameter names in a dictionary
         param_dict = dict()
