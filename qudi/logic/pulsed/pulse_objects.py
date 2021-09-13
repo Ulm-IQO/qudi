@@ -1100,7 +1100,7 @@ class PredefinedGeneratorBase:
     ################################################################################################
 
     def tau_2_pulse_spacing(self, t, inverse=False,
-                           custom_func=[None, None], **custom_kwwargs):
+                           custom_func=[None, None], **custom_kwargs):
         """
         Converts tau to the physical pulse spacing between (microwave) pulses.
         By definition, tau = 1/f where f is the filter frequency of a dynamical decoupling
@@ -1111,7 +1111,7 @@ class PredefinedGeneratorBase:
         :param t: tau (or tau_pulse_spacing, if inverse==True) to be converted.
         :param bool inverse: do the inverse transformation tau -> tau_pulse_spacing
         :param [func, inv_func] custom_func: provide function pointers for custom transformations
-        :param custom_kwwargs: kwargs to the custom transformation functions
+        :param custom_kwargs: kwargs to the custom transformation functions
         :return:
         """
 
@@ -1125,7 +1125,8 @@ class PredefinedGeneratorBase:
             t_phys = np.asarray(t_phys)
             tau = np.asarray(tau)
             if np.any(t_phys < 0):
-                self.log.warning("Adjusting negative physical pulse spacing to 0. Affected tau: {} "
+                self.log.warning("Adjusting negative physical pulse spacing to 0. Affected tau: {}."
+                                 "Depending on generate method, more taus might be invalid!"
                                  .format(tau[t_phys < 0]))
                 t_phys[t_phys < 0] = 0
 
@@ -1140,8 +1141,8 @@ class PredefinedGeneratorBase:
             func_inverse = custom_func[1]
 
         if inverse:
-            return func_inverse(t, **custom_kwwargs)
-        return check_sanity(t, func(t, **custom_kwwargs))
+            return func_inverse(t, **custom_kwargs)
+        return check_sanity(t, func(t, **custom_kwargs))
 
     def _get_idle_element(self, length, increment):
         """
