@@ -30,11 +30,8 @@ import numpy as np
 import ctypes
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 from qudi.interface.fast_counter_interface import FastCounterInterface
-
-
-
 
 """
 Remark to the usage of ctypes:
@@ -75,6 +72,7 @@ c_void_p        void *                  int or None
 # Reconstruct the proper structure of the variables, which can be extracted
 # from the header file 'struct.h'.
 
+
 class AcqStatus(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.
 
@@ -100,6 +98,7 @@ class AcqStatus(ctypes.Structure):
                 ('sweeps', ctypes.c_double),
                 ('stevents', ctypes.c_double),
                 ('maxval', ctypes.c_ulong), ]
+
 
 class AcqSettings(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.
@@ -131,6 +130,7 @@ class AcqSettings(ctypes.Structure):
                 ('fstchan',     ctypes.c_double),
                 ('active',      ctypes.c_long),
                 ('calpoints',   ctypes.c_long), ]
+
 
 class ACQDATA(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.
