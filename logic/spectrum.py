@@ -30,6 +30,16 @@ from core.util.mutex import Mutex
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 
+def automatic_flip(func):
+    def wrapper(self, *arg, **kw):
+        if self._automatic_flip:
+            self._ello_flipper.move_forward()
+            res = func(self, *arg, **kw)
+            self._ello_flipper.home()
+        else:
+            res = func(self, *arg, **kw)
+        return res
+    return wrapper
 
 class SpectrumLogic(GenericLogic):
 
@@ -56,6 +66,7 @@ class SpectrumLogic(GenericLogic):
     # cwavelaser = Connector(interface='CwaveLaser')
 
     # declare status variables
+    _automatic_flip = False
     _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
     _spectrum_background = StatusVar('spectrum_background', np.empty((2, 0)))
     _background_correction = StatusVar('background_correction', False)
@@ -139,20 +150,10 @@ class SpectrumLogic(GenericLogic):
     def flip_mirror(self, mode = True):
 	    self._nicard.digital_channel_switch(self._nicard._flip_mirror_channel, mode=mode)
 
+    @automatic_flip
     def get_single_spectrum(self, background=False):
         """ Record a single spectrum from the spectrometer.
         """
-        #self._nicard.digital_channel_switch(self._nicard._flip_mirror_channel, mode=True)
-        #sleep(1)
-        # Clear any previous fit
-
-        #PREPARE ALL FILTERS
-        # if self._cwave.shutters['shtter_shg_out']:
-        #     #TURN OFF THE RED LASER!
-        #     self._cwave.shutters['shtter_shg_out'] = False
-            # self.sig_cwave_shutter.emit()
-        self._ello_flipper.move_forward()
-
         self.fc.clear_result()
         # clear spectro,eter buffer
         self._spectrometer_device.clearBuffer()
@@ -161,16 +162,11 @@ class SpectrumLogic(GenericLogic):
             self._spectrum_background = self._spectrometer_device.recordSpectrum()
         else:
             self._spectrum_data = self._spectrometer_device.recordSpectrum()
-
         self._calculate_corrected_spectrum()
-
         # Clearing the differential spectra data arrays so that they do not get
         # saved with this single spectrum.
         self.diff_spec_data_mod_on = np.array([])
         self.diff_spec_data_mod_off = np.array([])
-
-        #self._nicard.digital_channel_switch(self._nicard._flip_mirror_channel, mode=False)
-        self._ello_flipper.home()
         self.sig_specdata_updated.emit()
 
     def _calculate_corrected_spectrum(self):

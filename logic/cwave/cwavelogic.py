@@ -43,9 +43,11 @@ class SearchZPLplotThread(QtCore.QObject):
         ind[ind == len(plot_xs)] = len(plot_xs) - 1
         plot_ys[ind] = plot_ys[ind] + cts_wlm[:,0]
         vls, norm = np.unique(ind, return_counts = True)
-        norm[norm == 0] += 1 
-        plot_ys[vls] = plot_ys[vls]
-        samples_num[vls] = norm
+        # norm[norm == 0] += 1 
+        # plot_ys[vls] = plot_ys[vls]
+        samples_num[vls] +=1
+        plot_ys = np.nan_to_num(plot_ys)
+        # samples_num[vls] = norm
         plot_ys = plot_ys / samples_num
         self.sig_search_plot.emit(list(plot_xs), list(plot_ys), list(samples_num))
     
@@ -112,6 +114,7 @@ class CwaveLogic(GenericLogic):
         xx = np.arange(self.w1, self.w2, self.zpl_bin_width)
         self.plot_xs = xx
         self.plot_ys = np.zeros(len(xx))
+        self.scan_full_matrix = np.zeros(self.n_scan_bins)
         self.samples_num = np.ones(len(xx))
         self.deviance_ys =  self.dy / self.samples_num
     def on_activate(self):
@@ -253,7 +256,7 @@ class CwaveLogic(GenericLogic):
         n_bins = self.n_scan_bins,
         n_histograms = self.n_scan_lines)
         self.time_diff.setMaxCounts(1)
-        self.scan_full_matrix = np.zeros(self.n_scan_lines)
+        self.scan_full_matrix = np.zeros(self.n_scan_bins)
 
         self.scanQueryTimer = QtCore.QTimer()
         self.scanQueryTimer.setInterval(self._scan_query_time)
@@ -264,7 +267,6 @@ class CwaveLogic(GenericLogic):
 
     @QtCore.Slot()
     def stop_sweep(self):
-        self.regulate_wavelength(False)
         self._cts_wlm_time = self._cts_wlm_time[1:] #empty buffer
         self.time_diff.stop()
         # self.time_diff.clear()
@@ -287,24 +289,24 @@ class CwaveLogic(GenericLogic):
 
     @QtCore.Slot()
     def get_cts_wlm_data(self):
-        # if self._wavemeter.get_current_wavelength() is not None:
-        #     wavelength = self._wavemeter.get_current_wavelength()
-        # else:
-        #     wavelength = 0
+        if self._wavemeter.get_current_wavelength() is not None:
+            wavelength = self._wavemeter.get_current_wavelength()
+        else:
+            wavelength = 0
 
         if self.time_diff.ready():
             print("SAVE PLOT!")
             self.time_diff.clear()
 
-        # self._cts_wlm_time = np.vstack((self._cts_wlm_time, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))[-1500:]
-        # cts_times =  self._cts_wlm_time[:, 2]
-        # dt = cts_times[-1] - cts_times
-        # #take only counts whithin the past 60 / sweep speed * 2 sec
-        # self._cts_wlm_time = self._cts_wlm_time[dt < (60 / self.sweep_speed) * 2]
+        self._cts_wlm_time = np.vstack((self._cts_wlm_time, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))[-1500:]
+        cts_times =  self._cts_wlm_time[:, 2]
+        dt = cts_times[-1] - cts_times
+        #take only counts whithin the past 60 / sweep speed * 2 sec
+        self._cts_wlm_time = self._cts_wlm_time[dt < (60 / self.sweep_speed) * 2]
 
-        # self._cts_wlm_time_s = np.vstack((self._cts_wlm_time_s, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))
-        # if len(self._cts_wlm_time_s) > 500:
-        #     self.sig_calculate_search_scan.emit()
+        self._cts_wlm_time_s = np.vstack((self._cts_wlm_time_s, np.array([self.counter.getData()[-1][0] * self.count_freq, wavelength, self.time_sync(0)])))
+        if len(self._cts_wlm_time_s) > 500:
+            self.sig_calculate_search_scan.emit()
 
         if self.mode_zpl == 'sweep':
             self.scanQueryTimer.start(self._scan_query_time)

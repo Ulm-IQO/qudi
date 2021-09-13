@@ -317,7 +317,7 @@ class CwaveScanGui(GUIBase):
             self._cwavescan_logic.stopRequested = True
             self._mw.regulate_checkBox.setEnabled(True)
             self._mw.regulate_checkBox.setChecked(True)
-            self.regulate_wavelength(mode_manual = True)
+            self.regulate_wavelength(mode_manual = False)
             self.sig_stop_sweep.emit()
     def refresh_plots(self):
         """ Refresh the xy-plot image """
@@ -420,8 +420,10 @@ class CwaveScanGui(GUIBase):
 
         #! wavelength
         #TODO: read wavelength from the wavelengthmeter
-        self._mw.label_wavelength.setText(f"{self._cwavescan_logic.wavelength}")
-        self._mw.sweepCenterDoubleSpinBox.setValue(round(self._cwavescan_logic.wavelength, 3))
+        wlm = self._cwavescan_logic.wavelength
+        wlm = wlm if wlm is not None else 0
+        self._mw.label_wavelength.setText(f"{wlm}")
+        self._mw.sweepCenterDoubleSpinBox.setValue(np.round(wlm, 3))
         #! photodiodes  
         self._mw.label_laserPD.setText(f"{self._cwavescan_logic.laserPD}")
         self._mw.label_opoPD.setText(f"{self._cwavescan_logic.opoPD}")
