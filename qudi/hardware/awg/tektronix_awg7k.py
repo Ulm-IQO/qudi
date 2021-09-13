@@ -28,14 +28,13 @@ import numpy as np
 from ftplib import FTP
 from collections import OrderedDict
 
-from core.util.modules import get_home_dir
-from core.util.helpers import natural_sort
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
+from qudi.core.paths import get_appdata_dir
+from qudi.util.helpers import natural_sort
+from qudi.core.configoption import ConfigOption
+from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
-class AWG7k(Base, PulserInterface):
+class AWG7k(PulserInterface):
     """ A hardware module for the Tektronix AWG7000 series for generating
         waveforms and sequences thereof.
 
@@ -55,7 +54,7 @@ class AWG7k(Base, PulserInterface):
 
     # config options
     _tmp_work_dir = ConfigOption(name='tmp_work_dir',
-                                 default=os.path.join(get_home_dir(), 'pulsed_files'),
+                                 default=os.path.join(get_appdata_dir(True), 'pulsed_files'),
                                  missing='warn')
     _visa_address = ConfigOption(name='awg_visa_address', missing='error')
     _ip_address = ConfigOption(name='awg_ip_address', missing='error')
@@ -1175,8 +1174,8 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        bytes_written, enum_status_code = self.awg.write(command)
-        return int(enum_status_code)
+        bytes_written = self.awg.write(command)
+        return 0
 
     def query(self, question):
         """ Asks the device a 'question' and receive and return an answer from it.

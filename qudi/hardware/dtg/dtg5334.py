@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import time
-import visa
+import pyvisa as visa
 import numpy as np
 
 from qudi.util.helpers import natural_sort
@@ -70,12 +70,16 @@ class DTG5334(PulserInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+
+        self.log.warning("DTG hardware module is deprecated and not actively supported anymore. "
+                         "Be careful and expect undefined behavior.")
+
         self.current_loaded_assets = {}
 
         # connect to DTG
-        self._rm = visa.ResourceManager('@py')
+        self._rm = visa.ResourceManager()
 
-        self.dtg = self._rm.open_resource(self.visa_address, read_termination='\n\x00')
+        self.dtg = self._rm.open_resource(self.visa_address)
 
         # set timeout by default to 15 sec
         self.dtg.timeout = 15000
@@ -218,7 +222,11 @@ class DTG5334(PulserInterface):
         """
         self.dtg.write('OUTP:STAT:ALL ON;*WAI')
         self.dtg.write('TBAS:RUN ON')
-        state = 0 if int(self.dtg.query('TBAS:RUN?')) == 1 else -1
+        ret = int(self.dtg.query('TBAS:RUN?'))
+        state = 0 if ret == 1 else -1
+
+        self.log.error(f"Turning on error code: {ret}")
+
         return state
 
     def pulser_off(self):
@@ -490,7 +498,7 @@ class DTG5334(PulserInterface):
         # check input
         if not name:
             self.log.error('Please specify a name for waveform creation.')
-            return -1
+            return -1, []
 
         min_samples = 960
         longest_channel = max([len(v) for k, v in digital_samples.items()])
@@ -498,7 +506,7 @@ class DTG5334(PulserInterface):
         if longest_channel < min_samples:
             self.log.error('Minimum waveform length for DTG5334 series is {0} samples.\n'
                            'Direct waveform creation for {1} failed.'.format(min_samples, name))
-            return -1
+            return -1, []
 
         # determine active channels
         activation_dict = self.get_active_channels()
@@ -514,7 +522,7 @@ class DTG5334(PulserInterface):
                 'write.\nChannel activation is: {}.\n'
                 'Sample arrays have: {}.'
                 ''.format(active_digital, list(digital_samples.keys())))
-            return -1
+            return -1, []
 
         self._block_new(name, longest_channel)
         self.log.debug(self.dtg.query('BLOC:SEL?'))
@@ -523,6 +531,7 @@ class DTG5334(PulserInterface):
         self.current_loaded_assets = {int(ch.split('_ch')[1]): name for ch in active_digital}
         self.current_loaded_asset_type = 'waveform'
         self.waveform_names.add(name)
+
         return max(written), [name]
 
     def write_sequence(self, name, sequence_parameters):
@@ -549,7 +558,7 @@ class DTG5334(PulserInterface):
                 line_nr,
                 '{0}'.format(line_nr + 1),
                 0,
-                params['name'][0].rsplit('.')[0],
+                params['ensemble'][0].rsplit('.')[0],
                 reps,
                 jump_to,
                 go_to
@@ -560,7 +569,7 @@ class DTG5334(PulserInterface):
             time.sleep(0.2)
 
         self.sequence_names.add(name)
-        return 0
+        return num_steps
 
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
