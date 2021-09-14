@@ -445,16 +445,18 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 frame_size = 0
             self._set_frame_size(frame_size)
 
-            with self._thread_lock:
-                if data is not None:
-                    if self.output_mode == SamplingOutputMode.JUMP_LIST:
-                        self.__frame_buffer = {output_ch: jump_list for output_ch, jump_list in data.items()}
-                    elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                        self.__frame_buffer = {output_ch: np.linspace(*tup) for output_ch, tup in data.items()}
-                    for input_ch in self.active_channels[0]:
-                        self.__frame_buffer[input_ch] = np.zeros(self.frame_size)
-                if data is None:
-                    self._set_frame_size(0)
+        # set frame buffer
+        with self._thread_lock:
+            if data is not None:
+                if self.output_mode == SamplingOutputMode.JUMP_LIST:
+                    self.__frame_buffer = {output_ch: jump_list for output_ch, jump_list in data.items()}
+                elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
+                    self.__frame_buffer = {output_ch: np.linspace(*tup) for output_ch, tup in data.items()}
+                for input_ch in self.active_channels[0]:
+                    self.__frame_buffer[input_ch] = np.zeros(self.frame_size)
+                    self.__frame_buffer[input_ch].fill(np.nan)  # TODO Ok to fill with nan to track progress of acq?
+            if data is None:
+                self._set_frame_size(0)  # Sets frame buffer to None
 
     def start_buffered_frame(self):
         """ Will start the input and output of the previously set data frame in a non-blocking way.
@@ -551,7 +553,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         # TODO Read avail samples into buffer before termination
         if self.is_running:
-            self.terminate_all_tasks()
+            self.terminate_all_tasks() # TODO: Does this keep the samples?
             self.module_state.unlock()
 
     def get_buffered_samples(self, number_of_samples=None):
@@ -577,7 +579,11 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return dict: Sample arrays (values) for each active input channel (keys)
         """
-        pass
+
+        samples_to_read = number_of_samples if number_of_samples is not None else self.samples_in_buffer
+
+
+
 
     def get_frame(self, data):
         """ Performs io for a single data frame for all active channels.
@@ -607,26 +613,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     ### End of IO Interface methods / Start of old "copied over in streamer methods
 
     @property
-    def available_samples(self):
-        """
-        Read-only property to return the currently available number of samples per channel ready
-        to read from buffer.
-
-        @return int: Number of available samples per channel
-        """
-        if not self.is_running:
-            return 0
-
-        if self._ai_task_handle is None:
-            # avail_samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - \
-            #                 self._di_task_handles[0].in_stream.curr_read_pos
-            return self._di_task_handles[0].in_stream.avail_samp_per_chan
-        else:
-            # avail_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - \
-            #                 self._ai_task_handle.in_stream.curr_read_pos
-            return self._ai_task_handle.in_stream.avail_samp_per_chan
-
-    @property
     def buffer_overflown(self):
         """
         Read-only flag to check if the read buffer has overflown.
@@ -638,14 +624,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         @return bool: Flag indicates if buffer has overflown (True) or not (False)
         """
         return self._has_overflown
-
-    def get_constraints(self):
-        """
-        Return the constraints on the settings for this data streamer.
-
-        @return DataInStreamConstraints: Instance of DataInStreamConstraints containing constraints
-        """
-        return self._constraints.copy()
 
     def read_data_into_buffer(self, buffer, number_of_samples=None):
         """
