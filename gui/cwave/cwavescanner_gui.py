@@ -31,29 +31,6 @@ class ScannerWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-class SearchZPL(QtWidgets.QWidget):
-    """ Create the Main Window based on the *.ui file. """
-
-    sig_stop_zpl_search = QtCore.Signal()
-
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'zpl_search.ui')
-        
-        # Load it
-        super(SearchZPL, self).__init__()
-        self.search_image = None
-        self.err = None
-        uic.loadUi(ui_file, self)
-        self.show()
-    def closeEvent(self, event):
-        self.search_image = None
-        self.err = None
-        self.sig_stop_zpl_search.emit()
-
-
-
 class CwaveScanGui(GUIBase):
     """
 
@@ -81,7 +58,6 @@ class CwaveScanGui(GUIBase):
     
     sig_refresh_zpl_search = QtCore.Signal()
     sig_reset_zpl_search = QtCore.Signal()
-    wl_beam = 0.005
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -372,7 +348,7 @@ class CwaveScanGui(GUIBase):
     def update_setpoint(self):
         self.sig_set_refcav.emit(self._mw.ref_cav_doubleSpinBox.value())
     @QtCore.Slot()
-    def change_lock_mode(self):
+    def change_lock_mode(self, _param=None, _mode=None):
         sender = self.sender()
         if "_lock_checkBox" in sender.objectName():
                 _param = sender.objectName().split('_lock_checkBox')[0].strip()

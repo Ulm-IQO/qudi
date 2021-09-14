@@ -39,28 +39,7 @@ def laser_is_connected(func):
         else:
             pass#print("Cwave is not connected!")
     return wrapper
-class CwaveDLL_dummy():
-    def __init__(self):
-        pass
-    def cwave_connect(self): return 0
-    def cwave_disconnect(self):return 0
-    def set_regopo_extramp(self):return 0
-    def get_status_laser (self):return 0
-    def get_status_temp_ref (self):return 0
-    def get_status_temp_opo (self):return 0
-    def get_status_temp_shg (self):return 0
-    def get_status_lock_opo (self):return 0
-    def get_status_lock_shg (self):return 0
-    def get_status_lock_etalon (self):return 0
-    def get_photodiode_shg(self):return 0
-    def get_photodiode_opo(self):return 0
-    def get_photodiode_laser(self):return 0
-    def set_command(self):return 0
-    def set_intvalue(self):return 0
-    def get_intvalue(self):return 0
-    def get_photodiode_laser(self):return 0
-    def get_photodiode_opo(self):return 0
-    def get_photodiode_shg(self):return 0
+
 class CwaveLaser(Base):
     """ Lazor dummy
 
