@@ -1146,8 +1146,9 @@ class ODMRLogic(GenericLogic):
 
         # Perform fit if requested
         if fit_function != 'No Fit':
-            self.do_fit(fit_function, channel_index=channel)
-            fit_params = self.fc.current_fit_param
+            for n in range(0, self.ranges):
+                self.do_fit(fit_function, channel_index=channel, fit_range=n)
+                fit_params = self.fc.current_fit_param
         else:
             fit_params = None
 
