@@ -24,9 +24,9 @@ __all__ = ('LaserControlDockWidget',)
 
 from PySide2 import QtCore, QtWidgets
 
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core.gui.qtwidgets.slider import DoubleSlider
-from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
+from qudi.util.widgets.slider import DoubleSlider
+from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.interface.simple_laser_interface import ControlMode
 
 

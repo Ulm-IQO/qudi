@@ -36,7 +36,7 @@ from qudi.util.datafitting import FitConfigurationsModel, FitContainer
 from qudi.util.math import compute_ft
 from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
 from qudi.util.units import ScaledFloat
-from qudi.util.mpl_qudi_style import mpl_qudi_style
+from qudi.util.colordefs import QudiMatplotlibStyle
 from qudi.logic.pulsed.pulse_extractor import PulseExtractor
 from qudi.logic.pulsed.pulse_analyzer import PulseAnalyzer
 
@@ -1579,11 +1579,11 @@ class PulsedMeasurementLogic(LogicBase):
 
 
         # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(mpl_qudi_style)
+        plt.style.use(QudiMatplotlibStyle.style)
 
         # extract the possible colors from the colorscheme:
         # todo: still needed or set by core?
-        prop_cycle = mpl_qudi_style['axes.prop_cycle']
+        prop_cycle = QudiMatplotlibStyle.style['axes.prop_cycle']
         colors = {}
         for i, color_setting in enumerate(prop_cycle):
             colors[i] = color_setting['color']

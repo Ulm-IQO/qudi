@@ -29,7 +29,7 @@ from ftplib import FTP
 from lxml import etree as ET
 
 from qudi.core.configoption import ConfigOption
-from qudi.core.paths import get_appdata_dir
+from qudi.util.paths import get_appdata_dir
 from qudi.util.helpers import natural_sort
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
@@ -568,23 +568,32 @@ class AWG70K(PulserInterface):
 
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
-        For devices that have a workspace (i.e. AWG) this will load the waveform from the device
-        workspace into the channel.
-        For a device without mass memory this will make the waveform/pattern that has been
-        previously written with self.write_waveform ready to play.
-
-        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
-
-        @return (dict, str): Dictionary with keys being the channel number and values being the
-                             respective asset loaded into the channel, string describing the asset
-                             type ('waveform' or 'sequence')
+        @param dict|list load_dict: a dictionary with keys being one of the available channel
+                                    index and values being the name of the already written
+                                    waveform to load into the channel.
+                                    Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                {1: rabi_ch2, 2: rabi_ch1}
+                                    If just a list of waveform names if given, the channel
+                                    association will be invoked from the channel
+                                    suffix '_ch1', '_ch2' etc.
+                                        {1: rabi_ch1, 2: rabi_ch2}
+                                    or
+                                        {1: rabi_ch2, 2: rabi_ch1}
+                                    If just a list of waveform names if given,
+                                    the channel association will be invoked from
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
+        @return dict: Dictionary containing the actually loaded waveforms per
+                      channel.
+        For devices that have a workspace (i.e. AWG) this will load the waveform
+        from the device workspace into the channel. For a device without mass
+        memory, this will make the waveform/pattern that has been previously
+        written with self.write_waveform ready to play.
+        Please note that the channel index used here is not to be confused with the number suffix
+        in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
+        highly hardware specific and corresponds to a collection of digital and analog channels
+        being associated to a SINGLE wavfeorm asset.
         """
         if isinstance(load_dict, list):
             new_dict = dict()
@@ -603,13 +612,13 @@ class AWG70K(PulserInterface):
         if not channels_to_set.issubset(analog_channels):
             self.log.error('Unable to load waveforms into channels.\n'
                            'One or more channels to set are not active.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Check if all waveforms to load are present on device memory
         if not set(load_dict.values()).issubset(self.get_waveform_names()):
             self.log.error('Unable to load waveforms into channels.\n'
                            'One or more waveforms to load are missing on device memory.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Load waveforms into channels
         for chnl_num, waveform in load_dict.items():
@@ -617,23 +626,28 @@ class AWG70K(PulserInterface):
             while self.query('SOUR{0:d}:CASS?'.format(chnl_num)) != waveform:
                 time.sleep(0.1)
 
-        return self.get_loaded_assets()
+        return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
         For devices that have a workspace (i.e. AWG) this will load the sequence from the device
         workspace into the channels.
-
-        @param sequence_name:  str, name of the sequence to load
-
-        @return (dict, str): Dictionary with keys being the channel number and values being the
-                             respective asset loaded into the channel, string describing the asset
-                             type ('waveform' or 'sequence')
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
+        @param dict|list sequence_name: a dictionary with keys being one of the available channel
+                                        index and values being the name of the already written
+                                        waveform to load into the channel.
+                                        Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                    {1: rabi_ch2, 2: rabi_ch1}
+                                        If just a list of waveform names if given, the channel
+                                        association will be invoked from the channel
+                                        suffix '_ch1', '_ch2' etc.
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
         if sequence_name not in self.get_sequence_names():
             self.log.error('Unable to load sequence.\n'
                            'Sequence to load is missing on device memory.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
@@ -645,7 +659,7 @@ class AWG70K(PulserInterface):
         if trac_num != len(analog_channels):
             self.log.error('Unable to load sequence.\nNumber of tracks in sequence to load does '
                            'not match the number of active analog channels.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # Load sequence
         for chnl in range(1, trac_num + 1):
@@ -654,7 +668,7 @@ class AWG70K(PulserInterface):
                     sequence_name, chnl):
                 time.sleep(0.2)
 
-        return self.get_loaded_assets()
+        return self.get_loaded_assets()[0]
 
     def get_loaded_assets(self):
         """
@@ -680,7 +694,7 @@ class AWG70K(PulserInterface):
             # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will
             # look like '"waveformname"\n' and for a sequence '"sequencename,1"\n'
             # (where the number is the current track)
-            asset_name = self.query('SOUR1:CASS?')
+            asset_name = self.query(f'SOUR{chnl_num:d}:CASS?')
             # Figure out if a sequence or just a waveform is loaded by splitting after the comma
             splitted = asset_name.rsplit(',', 1)
             # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
@@ -1238,8 +1252,8 @@ class AWG70K(PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        bytes_written, enum_status_code = self.awg.write(command)
-        return int(enum_status_code)
+        bytes_written = self.awg.write(command)
+        return 0
 
     def new_sequence(self, name, steps):
         """

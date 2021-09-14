@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('netobtain',)
+__all__ = ['netobtain']
 
 import rpyc.core.netref as _netref
 import rpyc.utils.classic as _classic

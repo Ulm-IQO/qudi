@@ -187,7 +187,7 @@ class MicrowaveInterface(Base):
             f'{self.constraints.power_limits}'
         # Check mode
         assert isinstance(mode, SamplingOutputMode), \
-            'Scan mode must be Enum type qudi.core.enums.SamplingOutputMode'
+            'Scan mode must be Enum type qudi.util.enums.SamplingOutputMode'
         assert self.constraints.mode_supported(mode), \
             f'Unsupported scan mode "{mode}" encountered'
         # Check sample rate
@@ -232,7 +232,7 @@ class MicrowaveConstraints:
         assert len(sample_rate_limits) == 2, \
             'sample_rate_limits must be iterable of length 2 (min, max)'
         assert all(isinstance(mode, SamplingOutputMode) for mode in scan_modes), \
-            'scan_modes must be iterable containing only qudi.core.enums.SamplingOutputMode Enums'
+            'scan_modes must be iterable containing only qudi.util.enums.SamplingOutputMode Enums'
 
         tmp = [int(lim) for lim in scan_size_limits]
         self._scan_size_limits = (min(tmp), max(tmp))

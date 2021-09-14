@@ -24,10 +24,10 @@ import os
 import pyqtgraph as pg
 from PySide2 import QtCore, QtWidgets
 
-from qudi.core.gui.uic import loadUi
+from qudi.util.uic import loadUi
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-from qudi.core.gui.colordefs import QudiPalettePale as palette
+from qudi.util.colordefs import QudiPalettePale as palette
 from qudi.core.module import GuiBase
 from qudi.interface.data_instream_interface import StreamChannelType
 

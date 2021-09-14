@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from PySide2 import QtWidgets, QtCore, QtGui
-from qudi.core.gui.qtwidgets.toggle_switch import ToggleSwitch
+from qudi.util.widgets.toggle_switch import ToggleSwitch
 
 
 class SwitchRadioButtonWidget(QtWidgets.QWidget):

@@ -73,7 +73,7 @@ class CircleLoadingIndicator(QtWidgets.QWidget):
         return self._indicator_position
 
     @indicator_position.setter
-    def set_indicator_position(self, value):
+    def indicator_position(self, value):
         self._indicator_position = value
         self.update()
 

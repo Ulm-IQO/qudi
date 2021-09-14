@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from enum import Enum
 from PySide2 import QtCore, QtGui
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
 class MultipleCheckboxWidget(QtGui.QWidget):

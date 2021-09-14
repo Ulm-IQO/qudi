@@ -23,8 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 __all__ = ('AxesControlDockWidget', 'AxesControlWidget')
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox
-from qudi.core.gui.qtwidgets.slider import DoubleSlider
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
+from qudi.util.widgets.slider import DoubleSlider
 
 
 class AxesControlDockWidget(QtWidgets.QDockWidget):

@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
-from qudi.core.paths import get_main_dir
+from qudi.util.paths import get_main_dir
 
 
 class TaskMainWindow(QtWidgets.QMainWindow):

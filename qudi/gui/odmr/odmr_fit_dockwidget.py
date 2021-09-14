@@ -22,8 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ('OdmrFitDockWidget',)
 
-from qudi.core.gui.qtwidgets.advanced_dockwidget import AdvancedDockWidget
-from qudi.core.gui.qtwidgets.fitting import FitWidget
+from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
+from qudi.util.widgets.fitting import FitWidget
 
 
 class OdmrFitDockWidget(AdvancedDockWidget):

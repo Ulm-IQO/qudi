@@ -31,14 +31,13 @@ from qudi.core.statusvariable import StatusVar
 from qudi.util.helpers import natural_sort
 from qudi.util.datastorage import get_timestamp_filename
 from qudi.util.datastorage import TextDataStorage, CsvDataStorage, NpyDataStorage
-from qudi.core.gui.colordefs import QudiPalettePale as palette
-from qudi.core.gui.qtwidgets.fitting import FitConfigurationDialog
+from qudi.util.colordefs import QudiPalettePale as palette
+from qudi.util.widgets.fitting import FitConfigurationDialog
 from qudi.core.module import GuiBase
-from qudi.core.gui import uic
+from qudi.util import uic
 from PySide2 import QtCore, QtWidgets
-from qudi.core.gui.qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-
-# TODO: Display the Pulse graphically (similar to AWG application)
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qudi.util.widgets.loading_indicator import CircleLoadingIndicator
 
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
@@ -161,6 +160,10 @@ class PulsedMeasurementGui(GuiBase):
     _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
     _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
 
+    # signals
+    sigPulseGeneratorSettingsUpdated = QtCore.Signal()
+    sigPulseGeneratorRunBenchmark = QtCore.Signal()
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -209,7 +212,36 @@ class PulsedMeasurementGui(GuiBase):
         self._connect_dialog_signals()
         self._connect_logic_signals()
 
+        self.sigPulseGeneratorSettingsUpdated.connect(
+            self.pulsedmasterlogic().refresh_pulse_generator_settings,
+            QtCore.Qt.QueuedConnection)
+        self.sigPulseGeneratorRunBenchmark.connect(
+            self.pulsedmasterlogic().sequencegeneratorlogic().run_pg_benchmark,
+            QtCore.Qt.QueuedConnection)
+        self.sigPulseGeneratorRunBenchmark.connect(
+            self.benchmark_busy,
+            QtCore.Qt.QueuedConnection)
+        self.pulsedmasterlogic().sequencegeneratorlogic().sigBenchmarkComplete.connect(
+            self.sampling_or_loading_finished, QtCore.Qt.QueuedConnection)
+
         self.show()
+
+        if not self.pulsedmasterlogic().sequencegeneratorlogic().has_valid_pg_benchmark():
+            dialog = QtWidgets.QMessageBox()
+            dialog.setWindowTitle("Benchmark missing")
+            dialog.setText("<center><h2>Benchmark missing:</h2></center>")
+            dialog.setInformativeText("Didn't find benchmark data for the pulse generator. "
+                                      "Would you like to run a benchmark now? \n \n"
+                                      "Otherwise, upload time estimation might be unavailable. "
+                                      "Make sure to close the pulsed gui gracefully to save "
+                                      "pulse generator information for future use.")
+            dialog.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            dialog.setDefaultButton(QtWidgets.QMessageBox.Yes)
+
+            ret = dialog.exec()
+            if ret == QtWidgets.QMessageBox.Yes:
+                self.run_pg_benchmark()
+
         return
 
     def on_deactivate(self):
@@ -237,6 +269,9 @@ class PulsedMeasurementGui(GuiBase):
         self._disconnect_sequence_generator_tab_signals()
         self._disconnect_dialog_signals()
         self._disconnect_logic_signals()
+
+        self.sigPulseGeneratorSettingsUpdated.disconnect()
+        self.sigPulseGeneratorRunBenchmark.disconnect()
 
         self._mw.close()
         return
@@ -281,6 +316,7 @@ class PulsedMeasurementGui(GuiBase):
         self._pgs.accepted.connect(self.apply_generator_settings)
         self._pgs.rejected.connect(self.keep_former_generator_settings)
         self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_generator_settings)
+        self._pgs.pg_benchmark.clicked.connect(self.run_pg_benchmark)
         return
 
     def _connect_pulse_generator_tab_signals(self):
@@ -397,6 +433,11 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().sigMeasurementSettingsUpdated.connect(self.measurement_settings_updated)
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated)
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.connect(self.extraction_settings_updated)
+        self.pulsedmasterlogic().sigSampleBlockEnsemble.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigLoadBlockEnsemble.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigLoadSequence.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigSampleSequence.connect(self.sampling_or_loading_busy)
+        self.pulsedmasterlogic().sigLoadedAssetUpdated.connect(self.sampling_or_loading_finished)
 
         self.pulsedmasterlogic().sigBlockDictUpdated.connect(self.update_block_dict)
         self.pulsedmasterlogic().sigEnsembleDictUpdated.connect(self.update_ensemble_dict)
@@ -602,6 +643,12 @@ class PulsedMeasurementGui(GuiBase):
         self._mw.current_loaded_asset_Label.setToolTip('Display the currently loaded asset.')
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
 
+        self._mw.loading_indicator = CircleLoadingIndicator(parent=self._mw)
+        self._mw.loading_indicator_action = self._mw.control_ToolBar.addWidget(
+            self._mw.loading_indicator
+        )  # adding as toolbar's last item
+        self._mw.loading_indicator_action.setVisible(False)
+
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
         # self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
@@ -706,6 +753,7 @@ class PulsedMeasurementGui(GuiBase):
             self._pgs.gen_use_interleave_CheckBox.setEnabled(False)
             self._pgs.gen_sample_freq_DSpinBox.setEnabled(False)
             self._pgs.gen_activation_config_ComboBox.setEnabled(False)
+            self._pgs.pg_benchmark.setEnabled(False)
             for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
                 widget1.setEnabled(False)
                 widget2.setEnabled(False)
@@ -738,6 +786,7 @@ class PulsedMeasurementGui(GuiBase):
             self._pgs.gen_use_interleave_CheckBox.setEnabled(True)
             self._pgs.gen_sample_freq_DSpinBox.setEnabled(True)
             self._pgs.gen_activation_config_ComboBox.setEnabled(True)
+            self._pgs.pg_benchmark.setEnabled(True)
             for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
                 widget1.setEnabled(True)
                 widget2.setEnabled(True)
@@ -1083,6 +1132,7 @@ class PulsedMeasurementGui(GuiBase):
 
     def show_generator_settings(self):
         """ Open the Pulse generator settings window. """
+        self.sigPulseGeneratorSettingsUpdated.emit()
         self._pgs.exec_()
         return
 
@@ -1498,6 +1548,11 @@ class PulsedMeasurementGui(GuiBase):
             self._pgs.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
         if 'flags' in settings_dict:
             self._sg.sequence_editor.set_available_flags(settings_dict['flags'])
+        if 'upload_speed' in settings_dict:
+            if np.isnan(settings_dict['upload_speed']):
+                settings_dict['upload_speed'] = 0.
+            self._pgs.upload_speed_DSpinBox.setValue(settings_dict['upload_speed'])
+
 
         # unblock signals
         self._pgs.gen_sample_freq_DSpinBox.blockSignals(False)
@@ -1917,13 +1972,36 @@ class PulsedMeasurementGui(GuiBase):
         self.pulsedmasterlogic().load_ensemble(ensemble_name)
         return
 
+    @QtCore.Slot()
+    def sampling_or_loading_busy(self):
+        if self.pulsedmasterlogic().status_dict['sampload_busy']:
+            self._mw.action_run_stop.setEnabled(False)
+
+            label = self._mw.current_loaded_asset_Label
+            label.setText('  loading...')
+            self._mw.loading_indicator_action.setVisible(True)
+
+    @QtCore.Slot()
+    def benchmark_busy(self):
+        if self.pulsedmasterlogic().status_dict['benchmark_busy']:
+            self._mw.action_run_stop.setEnabled(False)
+
+            label = self._mw.current_loaded_asset_Label
+            label.setText('  benchmarking...')
+            self._mw.loading_indicator_action.setVisible(True)
+
+    @QtCore.Slot()
+    def sampling_or_loading_finished(self):
+        if not self.pulsedmasterlogic().status_dict['sampload_busy']:
+            self._mw.action_run_stop.setEnabled(True)
+            self._mw.loading_indicator_action.setVisible(False)
+
     def generate_predefined_clicked(self, method_name, sample_and_load=False):
         """
 
         @param str method_name:
         @param bool sample_and_load:
         """
-        print('generate_predefined_clicked:', method_name, sample_and_load)
         # get parameters from input widgets
         # Store parameters together with the parameter names in a dictionary
         param_dict = dict()
@@ -2326,12 +2404,10 @@ class PulsedMeasurementGui(GuiBase):
         if mw_constraints is None:
             self._pa.extrnal_control_groupbox.hide()
         else:
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(
-                *mw_constraints.channel_limits['Frequency']
-            )
-            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(
-                *mw_constraints.channel_limits['Power']
-            )
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(mw_constraints.min_frequency,
+                                                                mw_constraints.max_frequency)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(mw_constraints.min_power,
+                                                                 mw_constraints.max_power)
         self._pa.ana_param_fc_bins_ComboBox.clear()
         for binwidth in fc_constraints['hardware_binwidth_list']:
             self._pa.ana_param_fc_bins_ComboBox.addItem(str(binwidth))
@@ -2405,7 +2481,6 @@ class PulsedMeasurementGui(GuiBase):
         @param bool use_alternative_data:
         @return:
         """
-        print('fit_data_updated')
 
         # Update plot.
         if use_alternative_data:
@@ -2420,12 +2495,12 @@ class PulsedMeasurementGui(GuiBase):
         else:
             if not fit_config or fit_config == 'No Fit':
                 if self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
-                    self._pa.pulse_analysis_PlotWidget.removeItem(self.second_fit_image)
+                    self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
             else:
                 self.fit_image.setData(x=result.high_res_best_fit[0],
                                        y=result.high_res_best_fit[1])
                 if self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
-                    self._pa.pulse_analysis_PlotWidget.addItem(self.second_fit_image)
+                    self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
         return
 
     @QtCore.Slot()
@@ -3121,3 +3196,10 @@ class PulsedMeasurementGui(GuiBase):
         def slot():
             self.generate_predefined_clicked(method_name, sample_and_load)
         return slot
+
+    @QtCore.Slot()
+    def run_pg_benchmark(self):
+
+        self.pulsedmasterlogic().status_dict['benchmark_busy'] = True
+        self.sigPulseGeneratorRunBenchmark.emit()
+        self.sigPulseGeneratorSettingsUpdated.emit()
