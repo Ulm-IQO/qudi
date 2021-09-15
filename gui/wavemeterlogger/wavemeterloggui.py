@@ -26,7 +26,7 @@ import numpy as np
 import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
-
+import time
 from core.connector import Connector
 from core.util import units
 from gui.guibase import GUIBase
@@ -55,13 +55,8 @@ class WavemeterLogGui(GUIBase):
     """
     """
     # declare connectors
-    wavemeterloggerlogic1 = Connector(interface='WavemeterLoggerLogic')
+    wavemeterloggerlogic1 = Connector(interface='WlmLogger')
     savelogic = Connector(interface='SaveLogic')
-
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
-    sigFitChanged = QtCore.Signal(str)
-    sigDoFit = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -75,7 +70,7 @@ class WavemeterLogGui(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-
+        self.time_0 = time.time()
         self._wm_logger_logic = self.wavemeterloggerlogic1()
         self._save_logic = self.savelogic()
 
@@ -110,19 +105,18 @@ class WavemeterLogGui(GUIBase):
         self._pw.setLabel('bottom', 'Wavelength', units='nm')
         self._pw.setLabel('top', 'Relative Frequency', units='Hz')
 
-        self._mw.actionStop_resume_scan.triggered.connect(self.stop_resume_clicked)
+        
         self._mw.actionSave_histogram.triggered.connect(self.save_clicked)
-        self._mw.actionStart_scan.triggered.connect(self.start_clicked)
         self._mw.actionAuto_range.triggered.connect(self.set_auto_range)
-
+        self._mw.actionReset.triggered.connect(self.reset_plot)
         # defining the parameters to edit
-        self._mw.binSpinBox.setValue(self._wm_logger_logic.get_bins())
+        self._mw.binSpinBox.setValue(self._wm_logger_logic.zpl_bin_width)
         self._mw.binSpinBox.editingFinished.connect(self.recalculate_histogram)
 
-        self._mw.minDoubleSpinBox.setValue(self._wm_logger_logic.get_min_wavelength())
+        self._mw.minDoubleSpinBox.setValue(self._wm_logger_logic.intern_xmin)
         self._mw.minDoubleSpinBox.editingFinished.connect(self.recalculate_histogram)
 
-        self._mw.maxDoubleSpinBox.setValue(self._wm_logger_logic.get_max_wavelength())
+        self._mw.maxDoubleSpinBox.setValue(self._wm_logger_logic.intern_xmax)
         self._mw.maxDoubleSpinBox.editingFinished.connect(self.recalculate_histogram)
 
         self._mw.show()
@@ -130,56 +124,54 @@ class WavemeterLogGui(GUIBase):
         ## Create an empty plot curve to be filled later, set its pen
         self.curve_data_points = pg.PlotDataItem(
             pen=pg.mkPen(palette.c1),
-            symbol=None
+            symbol='+'
             )
 
-        self.curve_nm_counts = pg.PlotDataItem(
-            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
-            symbol=None
-            )
+        # self.curve_nm_counts = pg.PlotDataItem(
+        #     pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+        #     symbol=None
+        #     )
 
-        self.curve_hz_counts = pg.PlotDataItem(
-            pen=pg.mkPen(palette.c6, style=QtCore.Qt.DotLine),
-            symbol=None
-            )
+        # self.curve_hz_counts = pg.PlotDataItem(
+        #     pen=pg.mkPen(palette.c6, style=QtCore.Qt.DotLine),
+        #     symbol=None
+        #     )
 
-        self.curve_envelope = pg.PlotDataItem(
-            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-            symbol=None
-            )
-
-        self.curve_fit = pg.PlotDataItem(
-            pen=pg.mkPen(palette.c2, width=3),
-            symbol=None
-            )
 
         self._pw.addItem(self.curve_data_points)
-        self._pw.addItem(self.curve_envelope)
-        self._right_axis.addItem(self.curve_nm_counts)
-        self._top_axis.addItem(self.curve_hz_counts)
+        # self._right_axis.addItem(self.curve_nm_counts)
+        # self._top_axis.addItem(self.curve_hz_counts)
 
         # scatter plot for time series
-        self._spw = self._mw.scatterPlotWidget
-        self._spi = self._spw.plotItem
-        self._spw.setLabel('bottom', 'Wavelength', units='nm')
-        self._spw.setLabel('left', 'Time', units='s')
-        self._scatterplot =  pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 20))
-        self._spw.addItem(self._scatterplot)
-        self._spw.setXLink(self._plot_item)
-        self._wm_logger_logic.sig_new_data_point.connect(self.add_data_point)
+        # self._spw = self._mw.scatterPlotWidget
+        # self._spi = self._spw.plotItem
+        # self._spw.setLabel('bottom', 'Wavelength', units='nm')
+        # self._spw.setLabel('left', 'Time', units='s')
+        # self._scatterplot =  pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 20))
+        # self._spw.addItem(self._scatterplot)
+        # self._spw.setXLink(self._plot_item)
+        self._wlth_item = self._mw.wavelength_ViewWidget.plotItem
+        ## create a new ViewBox, link the right axis to its coordinate system
+        self._top_axis = pg.ViewBox()
+        self._wlth_item.showAxis('top')
+        self._wlth_item.scene().addItem(self._top_axis)
+        self._wlth_item.getAxis('top').linkToView(self._top_axis)
+        self._top_axis.setYLink(self._plot_item)
+        self._top_axis.invertX(b=True)
+        self._wlth_item.setLabel('left', 'Time', units='s')
+        # self._plot_item.setLabel('right', 'Number of Points', units='#')
+        self._wlth_item.setLabel('bottom', 'Wavelength', units='nm')
+        # self._wlth_item.setLabel('bottom', 'Relative Frequency', units='Hz')
 
-        self._wm_logger_logic.sig_data_updated.connect(self.updateData)
+        self._wlth_item.setXLink(self._plot_item)
 
-        # fit settings
-        self._fsd = FitSettingsDialog(self._wm_logger_logic.fc)
-        self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
-        self._fsd.applySettings()
+        y_wlm, time_wlm = self._wm_logger_logic.get_wavelengths()
+        self.wavemeter_image = pg.PlotDataItem(y_wlm,time_wlm,
+        pen="w", symbol=None)
+        self._mw.wavelength_ViewWidget.addItem(self.wavemeter_image)
 
-        self._mw.actionFit_settings.triggered.connect(self._fsd.show)
-        self._mw.do_fit_PushButton.clicked.connect(self.doFit)
-        self.sigDoFit.connect(self._wm_logger_logic.do_fit)
-        self.sigFitChanged.connect(self._wm_logger_logic.fc.set_current_fit)
-        self._wm_logger_logic.sig_fit_updated.connect(self.updateFit)
+        # self._wm_logger_logic.sig_new_data_point.connect(self.add_data_point)
+        self._wm_logger_logic.sig_update_gui.connect(self.updateData)
 
     def on_deactivate(self):
         """ Deactivate the module properly.
@@ -196,98 +188,24 @@ class WavemeterLogGui(GUIBase):
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
         """
+        x_axis, y_axis = self._wm_logger_logic.get_xy()
         self._mw.wavelengthLabel.setText('{0:,.6f} nm '.format(self._wm_logger_logic.current_wavelength))
         self._mw.autoMinLabel.setText('Minimum: {0:3.6f} (nm)   '.format(self._wm_logger_logic.intern_xmin))
         self._mw.autoMaxLabel.setText('Maximum: {0:3.6f} (nm)   '.format(self._wm_logger_logic.intern_xmax))
 
-        x_axis = self._wm_logger_logic.histogram_axis
-        x_axis_hz = (
-                3.0e17 / x_axis
-                - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
-            )
+        x_axis_hz = x_axis
+        # (
+        #         3.0e17 / x_axis
+        #         - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
+        #     )
 
-        plotdata = np.array(self._wm_logger_logic.counts_with_wavelength)
-        if len(plotdata.shape) > 1 and plotdata.shape[1] == 3:
-            self.curve_data_points.setData(plotdata[:, 2:0:-1])
+        self.curve_data_points.setData(x_axis, y_axis)
+        y_wlm, time_wlm = self._wm_logger_logic.get_wavelengths()
+        self.wavemeter_image.setData(y_wlm, time_wlm)
+        # self.curve_nm_counts.setData(x=x_axis, y=self._wm_logger_logic.histogram)
+        # self.curve_hz_counts.setData(x=x_axis_hz, y=self._wm_logger_logic.histogram)
 
-        self.curve_nm_counts.setData(x=x_axis, y=self._wm_logger_logic.histogram)
-        self.curve_hz_counts.setData(x=x_axis_hz, y=self._wm_logger_logic.histogram)
-        self.curve_envelope.setData(x=x_axis, y=self._wm_logger_logic.envelope_histogram)
 
-    @QtCore.Slot()
-    def doFit(self):
-        self.sigFitChanged.emit(self._mw.fit_methods_ComboBox.getCurrentFit()[0])
-        self.sigDoFit.emit()
-
-    @QtCore.Slot()
-    def updateFit(self):
-        """ Do the configured fit and show it in the plot """
-        fit_name = self._wm_logger_logic.fc.current_fit
-        fit_result = self._wm_logger_logic.fc.current_fit_result
-        fit_param = self._wm_logger_logic.fc.current_fit_param
-
-        if fit_result is not None:
-            # display results as formatted text
-            self._mw.fit_results_DisplayWidget.clear()
-            try:
-                formated_results = units.create_formatted_output(fit_result.result_str_dict)
-            except:
-                formated_results = 'this fit does not return formatted results'
-            self._mw.fit_results_DisplayWidget.setPlainText(formated_results)
-
-        if fit_name is not None:
-            self._mw.fit_methods_ComboBox.setCurrentFit(fit_name)
-
-        # check which fit method is used and show the curve in the plot accordingly
-        if fit_name != 'No Fit':
-            self.curve_fit.setData(
-                x=self._wm_logger_logic.wlog_fit_x,
-                y=self._wm_logger_logic.wlog_fit_y)
-
-            if self.curve_fit not in self._mw.plotWidget.listDataItems():
-                self._mw.plotWidget.addItem(self.curve_fit)
-        else:
-            if self.curve_fit in self._mw.plotWidget.listDataItems():
-                self._mw.plotWidget.removeItem(self.curve_fit)
-
-    def add_data_point(self, point):
-        if len(point) >= 3:
-            if point[0] * point[1] > 0:
-                spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor(point[2]/100, 255)}]
-                self._scatterplot.addPoints(spts)
-
-    def stop_resume_clicked(self):
-        """ Handling the Start button to stop and restart the counter.
-        """
-        # If running, then we stop the measurement and enable inputs again
-        if self._wm_logger_logic.module_state() == 'running':
-            self._mw.actionStop_resume_scan.setText('Resume')
-            self._wm_logger_logic.stop_scanning()
-            self._mw.actionStop_resume_scan.setEnabled(True)
-            self._mw.actionStart_scan.setEnabled(True)
-            self._mw.binSpinBox.setEnabled(True)
-        # Otherwise, we start a measurement and disable some inputs.
-        else:
-            self._mw.actionStop_resume_scan.setText('Stop')
-            self._wm_logger_logic.start_scanning(resume=True)
-            self._mw.actionStart_scan.setEnabled(False)
-            self._mw.binSpinBox.setEnabled(False)
-
-    def start_clicked(self):
-        """ Handling resume of the scanning without resetting the data.
-        """
-        if self._wm_logger_logic.module_state() == 'idle':
-            self._scatterplot.clear()
-            self._wm_logger_logic.start_scanning()
-
-            # Enable the stop button once a scan starts.
-            self._mw.actionStop_resume_scan.setText('Stop')
-            self._mw.actionStop_resume_scan.setEnabled(True)
-            self._mw.actionStart_scan.setEnabled(False)
-            self._mw.binSpinBox.setEnabled(False)
-            self.recalculate_histogram()
-        else:
-            self.log.error('Cannot scan, since a scan is alredy running.')
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -309,6 +227,9 @@ class WavemeterLogGui(GUIBase):
             xmin=self._mw.minDoubleSpinBox.value(),
             xmax=self._mw.maxDoubleSpinBox.value()
         )
+    def reset_plot(self):
+        self._scatterplot.clear()
+        self.recalculate_histogram()
 
     def set_auto_range(self):
         self._mw.minDoubleSpinBox.setValue(self._wm_logger_logic.intern_xmin)

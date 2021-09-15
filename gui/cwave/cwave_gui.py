@@ -13,11 +13,8 @@ from qtpy import QtGui
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
+from core.pi3_utils import delay, wavelength_to_freq
 
-def wavelength_to_freq(wavelength):
-    aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
-    freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
-    return freqs
 
 class CwaveWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -85,18 +82,18 @@ class CwaveGui(GUIBase):
         self.opoPD_image = pg.PlotDataItem(self._cwavelogic.plot_x_opo_pd,self._cwavelogic.plot_y_opo_pd)
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
-        self._plot_item = self._mw.wavemeter_ViewWidget.plotItem
+        # self._plot_item = self._mw.wavemeter_ViewWidget.plotItem
         ## create a new ViewBox, link the right axis to its coordinate system
-        self._top_axis = pg.ViewBox()
-        self._plot_item.showAxis('top')
-        self._plot_item.scene().addItem(self._top_axis)
-        self._plot_item.getAxis('top').linkToView(self._top_axis)
-        self._top_axis.setYLink(self._plot_item)
-        self._top_axis.invertX(b=True)
-        self._plot_item.setLabel('left', 'Time', units='s')
-        # self._plot_item.setLabel('right', 'Number of Points', units='#')
-        self._plot_item.setLabel('top', 'Wavelength', units='nm')
-        self._plot_item.setLabel('bottom', 'Relative Frequency', units='Hz')
+        # self._top_axis = pg.ViewBox()
+        # self._plot_item.showAxis('top')
+        # self._plot_item.scene().addItem(self._top_axis)
+        # self._plot_item.getAxis('top').linkToView(self._top_axis)
+        # self._top_axis.setYLink(self._plot_item)
+        # self._top_axis.invertX(b=True)
+        # self._plot_item.setLabel('left', 'Time', units='s')
+        # # self._plot_item.setLabel('right', 'Number of Points', units='#')
+        # self._plot_item.setLabel('top', 'Wavelength', units='nm')
+        # self._plot_item.setLabel('bottom', 'Relative Frequency', units='Hz')
         self._mw.shgPD_ViewWidget.addItem(self.shgPD_image)
         self._mw.shgPD_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.opoPD_ViewWidget.addItem(self.opoPD_image)
@@ -138,9 +135,7 @@ class CwaveGui(GUIBase):
         self.shgPD_image.setData(self._cwavelogic.plot_x_shg_pd, self._cwavelogic.plot_y_shg_pd[-len(self._cwavelogic.plot_x_shg_pd):])
         self.opoPD_image.setData(self._cwavelogic.plot_x_opo_pd, self._cwavelogic.plot_y_opo_pd[-len(self._cwavelogic.plot_x_opo_pd):])
         wlm_y = self._cwavelogic.plot_y_wlm
-        wlm_y = wavelength_to_freq(wlm_y)
-        if len(wlm_y) > 0:
-            self.wavemeter_image.setData(wlm_y - wlm_y[-1], np.linspace(0, len(wlm_y), len(wlm_y)))
+        self.wavemeter_image.setData(wlm_y[-150:])#, np.linspace(0, len(wlm_y), len(wlm_y)))
 
     @QtCore.Slot()
     def update_gui(self):

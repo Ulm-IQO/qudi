@@ -4,7 +4,7 @@ from interface.wavemeter_interface import WavemeterInterface
 from core.module import Base
 from core.configoption import ConfigOption
 from core.pi3_utils import delay
-
+from logic.generic_logic import GenericLogic
 import socket
 import numpy as np
 import pickle
@@ -24,6 +24,10 @@ def connect(func):
 
     
 class HighFinesseWavemeterClient(Base, WavemeterInterface):
+    wavelengths = np.array([])
+    queryInterval = 25
+    buffer_length = 10000
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
         #locking for thread safety
@@ -33,7 +37,20 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     def on_activate(self):
         self.host_ip, self.server_port = '129.69.46.209', 1243
         # self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
+        self.queryTimer = QtCore.QTimer()
+        self.queryTimer.setInterval(self.queryInterval)
+        self.queryTimer.setSingleShot(True)
+        self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
+        self.queryTimer.start(self.queryInterval)
+
+    @QtCore.Slot()
+    def loop_body(self):
+        self.queryTimer.start(self.queryInterval)
+        self.wavelengths = np.append(self.wavelengths, self.__get_wavelength())[-self.buffer_length:]
+
+    def get_current_wavelength(self):
+        return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
+
     @connect
     def send_request(self, request, action=None):
         self.tcp_client.sendall(request.encode())
@@ -67,7 +84,7 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     def stop_trigger(self):
         return self.send_request("stop_trigger")
 
-    def get_current_wavelength(self):
+    def __get_wavelength(self):
         """ This method returns the current wavelength in air.
         """
         return self.send_request("get_wavelength")

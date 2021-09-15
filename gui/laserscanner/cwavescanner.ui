@@ -1,0 +1,1092 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>878</width>
+    <height>780</height>
+   </rect>
+  </property>
+  <property name="contextMenuPolicy">
+   <enum>Qt::DefaultContextMenu</enum>
+  </property>
+  <property name="windowTitle">
+   <string>qudi: Scanner (cwave)</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QDockWidget" name="dockWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>0</y>
+      <width>651</width>
+      <height>751</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>630</width>
+      <height>711</height>
+     </size>
+    </property>
+    <property name="acceptDrops">
+     <bool>false</bool>
+    </property>
+    <property name="floating">
+     <bool>false</bool>
+    </property>
+    <widget class="QWidget" name="dockWidgetContents">
+     <widget class="PlotWidget" name="scan_ViewWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>120</y>
+        <width>511</width>
+        <height>201</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>1</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="PlotWidget" name="scan_matrix_ViewWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>330</y>
+        <width>511</width>
+        <height>221</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>1</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="QWidget" name="layoutWidget_7">
+      <property name="geometry">
+       <rect>
+        <x>530</x>
+        <y>120</y>
+        <width>108</width>
+        <height>371</height>
+       </rect>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="4" column="0" colspan="2">
+        <widget class="QSpinBox" name="scan_cb_min_InputWidget">
+         <property name="maximum">
+          <number>999999999</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="2">
+        <widget class="QRadioButton" name="scan_cb_manual_RadioButton">
+         <property name="text">
+          <string>Man&amp;ual</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="2">
+        <widget class="QRadioButton" name="scan_cb_centiles_RadioButton">
+         <property name="text">
+          <string>&amp;Centiles</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <widget class="PlotWidget" name="scan_cb_ViewWidget">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="percentLabel2">
+         <property name="maximumSize">
+          <size>
+           <width>30</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="scan_cb_high_centile_InputWidget">
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="scan_cb_low_centile_InputWidget">
+         <property name="maximum">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="percentLabel1">
+         <property name="maximumSize">
+          <size>
+           <width>30</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QSpinBox" name="scan_cb_max_InputWidget">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimum">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <number>999999999</number>
+         </property>
+         <property name="value">
+          <number>100000</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="PlotWidget" name="wavelength_ViewWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>560</y>
+        <width>511</width>
+        <height>131</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>1</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="refresh_pushButton">
+      <property name="geometry">
+       <rect>
+        <x>530</x>
+        <y>500</y>
+        <width>75</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Refresh</string>
+      </property>
+     </widget>
+     <widget class="QWidget" name="layoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>200</x>
+        <y>10</y>
+        <width>91</width>
+        <height>101</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_12">
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Thick etalon, pm</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="thick_eta_spinBox">
+           <property name="wrapping">
+            <bool>false</bool>
+           </property>
+           <property name="frame">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::UpDownArrows</enum>
+           </property>
+           <property name="minimum">
+            <number>-1000</number>
+           </property>
+           <property name="maximum">
+            <number>1000</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QLabel" name="label_4">
+             <property name="text">
+              <string>OPO lambda, pm</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="opo_lambda_spinBox">
+             <property name="wrapping">
+              <bool>false</bool>
+             </property>
+             <property name="frame">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::UpDownArrows</enum>
+             </property>
+             <property name="minimum">
+              <number>-1000</number>
+             </property>
+             <property name="maximum">
+              <number>1000</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>175</width>
+        <height>99</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_6">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QCheckBox" name="sweep_checkBox">
+           <property name="text">
+            <string>sweep</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="regulate_checkBox">
+           <property name="text">
+            <string>lock at current</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_5">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QLabel" name="constLabel_2">
+             <property name="text">
+              <string>center lambda:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ScienDSpinBox" name="sweepCenterDoubleSpinBox">
+             <property name="suffix">
+              <string>nm</string>
+             </property>
+             <property name="decimals">
+              <number>4</number>
+             </property>
+             <property name="minimum">
+              <double>515.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1000.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+             <property name="value">
+              <double>619.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item>
+            <widget class="QLabel" name="speedLabel">
+             <property name="text">
+              <string>sweeps/min :</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="sweepSpeedSpinBox">
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>10</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QLabel" name="constLabel">
+             <property name="text">
+              <string>amplitude:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ScienDSpinBox" name="sweepAmplitudeDoubleSpinBox">
+             <property name="suffix">
+              <string>nm</string>
+             </property>
+             <property name="decimals">
+              <number>5</number>
+             </property>
+             <property name="minimum">
+              <double>0.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>0.010000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.000100000000000</double>
+             </property>
+             <property name="value">
+              <double>0.001000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>300</x>
+        <y>10</y>
+        <width>66</width>
+        <height>83</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_14">
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_8">
+         <item>
+          <widget class="QLabel" name="label_14">
+           <property name="text">
+            <string>λ, nm</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_wavelength">
+           <property name="text">
+            <string>0 </string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_13">
+         <item>
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Ref cavity, V</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="ref_cav_doubleSpinBox">
+           <property name="suffix">
+            <string> V</string>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QPushButton" name="refresh_zpl_sweep_pushButton">
+      <property name="geometry">
+       <rect>
+        <x>430</x>
+        <y>80</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>refresh_sweep</string>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QDockWidget" name="scan_control_DockWidget">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>0</y>
+      <width>210</width>
+      <height>691</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>210</width>
+      <height>510</height>
+     </size>
+    </property>
+    <widget class="QWidget" name="controlDockWidgetContents">
+     <widget class="QPushButton" name="pushButton_connectCwave">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>30</y>
+        <width>81</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Connect</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radioButton_connectCwave">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>90</x>
+        <y>10</y>
+        <width>111</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Cwave connected</string>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
+      <property name="autoExclusive">
+       <bool>false</bool>
+      </property>
+     </widget>
+     <widget class="QWidget" name="layoutWidget_5">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>260</y>
+        <width>81</width>
+        <height>83</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_9">
+       <item>
+        <widget class="QPushButton" name="pushButtonOpt_opt_tempshg">
+         <property name="text">
+          <string>SHG Temp</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButtonOpt_regeta_catch">
+         <property name="text">
+          <string>Etalon</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButtonOpt_opt_stop">
+         <property name="text">
+          <string>Stop</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layoutWidget_6">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>60</y>
+        <width>96</width>
+        <height>101</height>
+       </rect>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_7">
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Laser:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_11">
+         <property name="text">
+          <string>SHG: </string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_12">
+         <property name="text">
+          <string>OPO: </string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="label_opoPD">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_laserPD">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLabel" name="label_shgPD">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QLabel" name="label_13">
+         <property name="text">
+          <string>Photodiodes:</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>500</y>
+        <width>191</width>
+        <height>141</height>
+       </rect>
+      </property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="shgPD">
+       <attribute name="title">
+        <string>SHG photodiode</string>
+       </attribute>
+       <widget class="PlotWidget" name="shgPD_ViewWidget">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>181</width>
+          <height>111</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="opoPD">
+       <attribute name="title">
+        <string>OPO photodiode</string>
+       </attribute>
+       <widget class="PlotWidget" name="opoPD_ViewWidget">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>181</width>
+          <height>111</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="wavemeter">
+       <attribute name="title">
+        <string>wavelength</string>
+       </attribute>
+       <widget class="PlotWidget" name="wavemeter_ViewWidget">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>181</width>
+          <height>111</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="layoutWidget_8">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>260</y>
+        <width>81</width>
+        <height>221</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_10">
+       <item>
+        <widget class="QRadioButton" name="radioButton_laser">
+         <property name="text">
+          <string>Pump laser</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_temp_opo">
+         <property name="text">
+          <string>OPO temp</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_lock_opo">
+         <property name="text">
+          <string>Lock OPO</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_temp_shg">
+         <property name="text">
+          <string>SHG temp</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_lock_shg">
+         <property name="text">
+          <string>Lock SHG</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_temp_ref">
+         <property name="text">
+          <string>Ref temp</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_lock_etalon">
+         <property name="text">
+          <string>Lock etalon</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layoutWidget_9">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>84</width>
+        <height>201</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_11">
+       <item>
+        <widget class="QCheckBox" name="checkBox_laser_en">
+         <property name="text">
+          <string>pump on</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_shtter_las">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="text">
+          <string> laser</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_shtter_shg">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="text">
+          <string> SHG</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_shtter_las_out">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="text">
+          <string> laser Out</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_shtter_opo_out">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="text">
+          <string> OPO Out</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_shtter_shg_out">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="text">
+          <string> SHG Out</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QLabel" name="label_15">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>240</y>
+        <width>77</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Laser status</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_laserandshutters">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>0</y>
+        <width>70</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Shutters</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_16">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>240</y>
+        <width>77</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Optimize</string>
+      </property>
+     </widget>
+     <widget class="QWidget" name="verticalLayoutWidget_3">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>170</y>
+        <width>92</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QCheckBox" name="opo_lock_checkBox">
+         <property name="text">
+          <string>OPO lock</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="eta_lock_checkBox">
+         <property name="text">
+          <string>Etalon lock</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>878</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="action_Save"/>
+    <addaction name="action_Exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Options">
+    <property name="title">
+     <string>O&amp;ptions</string>
+    </property>
+    <addaction name="action_Settings"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_Options"/>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_run_stop"/>
+   <addaction name="separator"/>
+   <addaction name="action_Save"/>
+   <addaction name="action_search_zpl"/>
+  </widget>
+  <action name="action_Settings">
+   <property name="icon">
+    <iconset>
+     <normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/configure.png</normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Settings</string>
+   </property>
+  </action>
+  <action name="action_Save">
+   <property name="icon">
+    <iconset>
+     <normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/document-save.png</normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/document-save.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save odmr data</string>
+   </property>
+  </action>
+  <action name="action_Exit">
+   <property name="icon">
+    <iconset>
+     <normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/application-exit.png</normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Close</string>
+   </property>
+  </action>
+  <action name="action_run_stop">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>C:/Users/YY3/artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>C:/Users/YY3/artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>run_stop</string>
+   </property>
+  </action>
+  <action name="action_search_zpl">
+   <property name="text">
+    <string>search ZPL</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>action_Exit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>531</x>
+     <y>347</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

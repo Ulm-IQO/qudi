@@ -1,3 +1,4 @@
 {
-    "jupyter.jupyterServerType": "remote"
+    "jupyter.jupyterServerType": "remote",
+    "python.linting.enabled": false
 }
