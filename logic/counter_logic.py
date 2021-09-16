@@ -574,10 +574,10 @@ class CounterLogic(GenericLogic):
                 # check for aborts of the thread in break if necessary
                 if self.stopRequested:
                     # close off the actual counter
-                    cnt_err = self._counting_device.close_counter()
-                    clk_err = self._counting_device.close_clock()
-                    if cnt_err < 0 or clk_err < 0:
-                        self.log.error('Could not even close the hardware, giving up.')
+                    # cnt_err = self._counting_device.close_counter()
+                    # clk_err = self._counting_device.close_clock()
+                    # if cnt_err < 0 or clk_err < 0:
+                    #     self.log.error('Could not even close the hardware, giving up.')
                     # switch the state variable off again
                     self.stopRequested = False
                     self.module_state.unlock()
@@ -764,7 +764,7 @@ class CounterLogic(GenericLogic):
 
         @return: error code
         """
-        self.stopCount()
+        # self.stopCount()
         start_time = time.time()
         while self.module_state() == 'locked':
             time.sleep(0.1)

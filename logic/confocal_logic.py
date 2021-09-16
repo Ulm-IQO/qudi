@@ -375,6 +375,15 @@ class ConfocalLogic(GenericLogic):
             histindex += 1
         return 0
 
+    def save_history_config(self):
+        state_config = ConfocalHistoryEntry(self)
+        state_config.snapshot(self)
+        self.history.append(state_config)
+        histindex = 0
+        for state in reversed(self.history):
+            self._statusVariables['history_{0}'.format(histindex)] = state.serialize()
+            histindex += 1
+
     def switch_hardware(self, to_on=False):
         """ Switches the Hardware off or on.
 

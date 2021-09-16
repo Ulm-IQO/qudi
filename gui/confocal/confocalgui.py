@@ -464,6 +464,8 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self.change_y_image_range)
         self._scanning_logic.signal_history_event.connect(self.change_z_image_range)
 
+        self._mw.actionSave_config.triggered.connect(self._scanning_logic.save_history_config)
+
         # set voltage limits
         self._mw.actionUse_LT_limits.changed.connect(self.change_piezo_voltage_limits)
         self.sigChangeLimits.connect(self._scanning_logic.set_voltage_limits)
