@@ -228,7 +228,7 @@
        <rect>
         <x>10</x>
         <y>10</y>
-        <width>175</width>
+        <width>193</width>
         <height>99</height>
        </rect>
       </property>
@@ -271,7 +271,7 @@
               <string>nm</string>
              </property>
              <property name="decimals">
-              <number>4</number>
+              <number>6</number>
              </property>
              <property name="minimum">
               <double>515.000000000000000</double>
@@ -280,7 +280,7 @@
               <double>1000.000000000000000</double>
              </property>
              <property name="singleStep">
-              <double>0.001000000000000</double>
+              <double>0.000100000000000</double>
              </property>
              <property name="value">
               <double>619.000000000000000</double>
@@ -331,13 +331,13 @@
               <double>0.000000000000000</double>
              </property>
              <property name="maximum">
-              <double>0.010000000000000</double>
+              <double>0.080000000000000</double>
              </property>
              <property name="singleStep">
               <double>0.000100000000000</double>
              </property>
              <property name="value">
-              <double>0.001000000000000</double>
+              <double>0.005000000000000</double>
              </property>
             </widget>
            </item>

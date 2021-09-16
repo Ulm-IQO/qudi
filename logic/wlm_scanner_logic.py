@@ -30,7 +30,7 @@ class WlmScannerLogic(GenericLogic):
     n_scan_lines = 10
     count_freq = 50
     sweep_speed = 10
-    amplitude = 0.001
+    amplitude = 0.005
     center_wl = None
 
     sig_update_gui = QtCore.Signal()
