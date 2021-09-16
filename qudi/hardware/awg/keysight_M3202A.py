@@ -26,6 +26,8 @@ import datetime
 import numpy as np
 from collections import OrderedDict
 from qudi.util.helpers import natural_sort
+from qudi.core.configoption import ConfigOption
+from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 import sys
 
@@ -37,9 +39,6 @@ else:
     raise Exception('Unknown platform, please add path to library.')
 
 import keysightSD1 as ksd1
-
-from qudi.core.configoption import ConfigOption
-from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class M3202A(PulserInterface):
