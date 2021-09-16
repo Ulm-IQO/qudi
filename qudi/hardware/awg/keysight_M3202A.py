@@ -21,13 +21,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 import ctypes
-import os
 import datetime
 import numpy as np
 from collections import OrderedDict
-from core.util.helpers import natural_sort
+from qudi.util.helpers import natural_sort
 
 import sys
 
@@ -40,12 +38,11 @@ else:
 
 import keysightSD1 as ksd1
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
+from qudi.core.configoption import ConfigOption
+from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
-class M3202A(Base, PulserInterface):
+class M3202A(PulserInterface):
     """ Qudi module for the Keysight M3202A PXIe AWG card (1GHz sampling frequency)
 
     Example config for copy-paste:
@@ -311,7 +308,7 @@ class M3202A(Base, PulserInterface):
             2: 'Two channels running',
             3: 'Three channels running',
             4: 'Four channels running'
-            }
+        }
 
         current_status = 0
         for ch in self.get_active_channels():
@@ -614,7 +611,6 @@ class M3202A(Base, PulserInterface):
             self.log.debug('channelAmpliude {}'.format(
                 self.awg.channelAmplitude(self.__ch_map[a_ch], self.analog_amplitudes[a_ch])))
 
-
         if num_steps == steps_written:
             self.last_sequence = name
             self.loaded_waveforms = wfms_added
@@ -694,7 +690,8 @@ class M3202A(Base, PulserInterface):
         """
         return ''
 
-    def _fast_newFromArrayDouble(self, wfm, waveformType, waveformDataA, waveformDataB=None):
+    @staticmethod
+    def _fast_newFromArrayDouble(wfm, waveformType, waveformDataA, waveformDataB=None):
         """ Reimplement newArrayFromDouble() for numpy arrays for massive speed gains.
         Original signature:
         int SD_Wave::newFromArrayDouble(
@@ -797,7 +794,7 @@ class M3202A(Base, PulserInterface):
                 self.chcfg[ch].mark_length,
                 self.chcfg[ch].mark_delay,
                 mark_err
-                ))
+            ))
             self.log.debug('QueueSyncMode {}'.format(
                 self.awg.AWGqueueSyncMode(self.__ch_map[ch], self.chcfg[ch].queue_sync)))
 
