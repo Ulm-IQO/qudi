@@ -22,6 +22,8 @@ class WlmLogger(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
 
     queryInterval = ConfigOption('query_interval', 100)
+    wavelength_buffer = 2000
+    skip_rate = 3
     count_freq = 50
     intern_xmin = 500.00
     intern_xmax = 800.00
@@ -71,12 +73,13 @@ class WlmLogger(GenericLogic):
         qi = self.queryInterval
         self.queryTimer.start(qi)
         self.current_wavelength = self._wavemeter.get_current_wavelength()
-        self.cts = self.counter.getData()[-1]
-        self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
-        self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
-        
-        self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
-        self.sig_update_gui.emit()
+        if self.current_wavelength > 0:
+            self.cts = self.counter.getData()[-1]
+            self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
+            self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
+            
+            self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+            self.sig_update_gui.emit()
 
     def get_xy(self):
         if len(self.plot_y[self.plot_y > 0]) > 0:
@@ -88,7 +91,8 @@ class WlmLogger(GenericLogic):
         else:
             return self.plot_x[:10], self.plot_y[:10]
     def get_wavelengths(self):
-        wlth = self._wavemeter.wavelengths[-500:][::5]
+        wlth = self._wavemeter.wavelengths[-self.wavelength_buffer:][::self.skip_rate]
+        wlth = wlth[wlth > 0]
         time_wlm = np.linspace(0, len(wlth) * self.queryInterval,len(wlth))
         return wlth, time_wlm
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):

@@ -276,7 +276,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
   </widget>
   <widget class="QToolBar" name="counting_control_ToolBar">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="windowTitle">
     <string>Counting Controls</string>

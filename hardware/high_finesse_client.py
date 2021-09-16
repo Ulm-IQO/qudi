@@ -27,6 +27,7 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     wavelengths = np.array([])
     queryInterval = 25
     buffer_length = 10000
+    sig_send_request = QtCore.Signal(str, str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -37,6 +38,7 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     def on_activate(self):
         self.host_ip, self.server_port = '129.69.46.209', 1243
         # self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sig_send_request.connect(self.send_request, QtCore.Qt.QueuedConnection)
         self.queryTimer = QtCore.QTimer()
         self.queryTimer.setInterval(self.queryInterval)
         self.queryTimer.setSingleShot(True)
@@ -52,7 +54,9 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
         return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
 
     @connect
+    @QtCore.Slot(str, str)
     def send_request(self, request, action=None):
+        action = None if action == '' else action
         self.tcp_client.sendall(request.encode())
         received = self.tcp_client.recv(1024)
         response = pickle.loads(received[1:])

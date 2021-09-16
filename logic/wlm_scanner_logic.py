@@ -57,7 +57,6 @@ class WlmScannerLogic(GenericLogic):
         self.sig_update_plots.connect(self.update_plots)
         self.sig_set_sweep_params.connect(self.set_sweep_params)
 
-
         # self.counter = self._timetagger.counter(binwidth = int((1 / self.count_freq) * 1e12), n_values=1) #counts per second
         self.bins_width_scan = int(1e12 * 60 / (self.sweep_speed * self.n_scan_bins))
         self.time_diff = self._timetagger.time_differences(click_channel=2, 
@@ -69,11 +68,11 @@ class WlmScannerLogic(GenericLogic):
         self.time_diff.setMaxCounts(1)
         self.time_diff.stop()
 
-        wlm_res = self._wavemeter.start_acqusition()
+        wlm_res = self._wavemeter.sig_send_request.emit("start_acqusition", "")#self._wavemeter.start_acqusition()
         self.wavelength = self._wavemeter.get_current_wavelength()
         if wlm_res != 0 and self.wavelength <= 0:
             self.wavelength = self._cwavelaser.wavelength if self._cwavelaser.wavelength is not None else 0 
-
+        self.cwl = self._wavemeter.get_current_wavelength()
         self.wlm_regmode = True if self._wavemeter.get_regulation_mode() == 'on' else False
 
         self._initialize_plots()
@@ -125,9 +124,10 @@ class WlmScannerLogic(GenericLogic):
 
     @QtCore.Slot()
     def start_sweep(self):
-        center_wl = self._wavemeter.get_current_wavelength() if self.center_wl is None else self.center_wl 
-        self._wavemeter.set_reference_course(f"{center_wl} + {self.amplitude} * triangle(t/{self.sweep_speed})")
-        self._wavemeter.set_regulation_mode("on")
+        self.cwl = self._wavemeter.get_current_wavelength()#if self.center_wl is None else self.center_wl 
+        # self._wavemeter.set_reference_course(f"{center_wl} + {self.amplitude} * triangle(t/{self.sweep_speed})")
+        self._wavemeter.sig_send_request.emit("set_reference_course", f"{self.cwl} + {self.amplitude} * triangle(t/{self.sweep_speed})")
+        self._wavemeter.sig_send_request.emit("set_regulation_mode", "on")
         #set_timer
         self.time_diff = self._timetagger.time_differences( 
         click_channel=2, 
@@ -187,8 +187,10 @@ class WlmScannerLogic(GenericLogic):
     def regulate_wavelength(self, mode):
         mode_str = "on" if mode else "off"
         if mode_str == "on":
-            cwl = self._wavemeter.get_current_wavelength()
-            self._wavemeter.set_reference_course(str(cwl))
-        self._wavemeter.set_regulation_mode(mode_str)
+            self.cwl = self._wavemeter.get_current_wavelength()
+            self._wavemeter.sig_send_request.emit("set_reference_course", str(self.cwl))
+            # self._wavemeter.set_reference_course(str(cwl))
+        # self._wavemeter.set_regulation_mode(mode_str)
+        self._wavemeter.sig_send_request.emit("set_regulation_mode", str(mode_str))
         self.wlm_regmode = mode
 

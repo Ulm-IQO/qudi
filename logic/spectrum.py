@@ -71,7 +71,7 @@ class SpectrumLogic(GenericLogic):
     _spectrum_background = StatusVar('spectrum_background', np.empty((2, 0)))
     _background_correction = StatusVar('background_correction', False)
     fc = StatusVar('fits', None)
-    
+    plot_domain = (450, 900)
     # Internal signals
     sig_specdata_updated = QtCore.Signal()
     sig_next_diff_loop = QtCore.Signal()
@@ -162,6 +162,11 @@ class SpectrumLogic(GenericLogic):
             self._spectrum_background = self._spectrometer_device.recordSpectrum()
         else:
             self._spectrum_data = self._spectrometer_device.recordSpectrum()
+        
+        lam, spec = self._spectrum_data[0, :], self._spectrum_data[1, :]
+        plot_range = (lam > self.plot_domain[0]) * (lam < self.plot_domain[1])
+        self._spectrum_data = self._spectrum_data[plot_range]
+
         self._calculate_corrected_spectrum()
         # Clearing the differential spectra data arrays so that they do not get
         # saved with this single spectrum.
@@ -360,7 +365,7 @@ class SpectrumLogic(GenericLogic):
 
         @return fig fig: a matplotlib figure object to be saved to file.
         """
-        wavelength = self.spectrum_data[0, :] * 1e9 # convert m to nm for plot
+        wavelength = self.spectrum_data[0, :] # convert m to nm for plot
         spec_data = self.spectrum_data[1, :]
 
         prefix = ['', 'k', 'M', 'G', 'T']
@@ -381,13 +386,13 @@ class SpectrumLogic(GenericLogic):
 
         ax1.plot(wavelength,
                  spec_data / rescale_factor,
-                 linestyle=':',
-                 linewidth=0.5
-                )
-        
+                 linestyle='-')
+                #  linewidth=1
+                # )
+        # ax1.grid('--', )
         # If there is a fit, plot it also
         if self.fc.current_fit_result is not None:
-            ax1.plot(self.spectrum_fit[0] * 1e9,  # convert m to nm for plot
+            ax1.plot(self.spectrum_fit[0],  # convert m to nm for plot
                      self.spectrum_fit[1] / rescale_factor,
                      marker='None'
                     )

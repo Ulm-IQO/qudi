@@ -171,7 +171,9 @@ class WlmScanGui(GUIBase):
     def regulate_wavelength(self, mode = None):
         if mode is None:
             mode = self.sender().isChecked()
+        
         self._mw.regulate_checkBox.setChecked(mode)    
+        self._mw.sweepCenterDoubleSpinBox.setValue(self._wlm_scanner_logic.cwl)
         self.sig_regulation_mode.emit(mode)   
 
     def refresh_wlm(self):
@@ -203,6 +205,7 @@ class WlmScanGui(GUIBase):
         if self._mw.sweep_checkBox.isChecked():
             self._mw.regulate_checkBox.setChecked(False)
             self._mw.regulate_checkBox.setEnabled(False)
+            self._mw.sweepCenterDoubleSpinBox.setValue(self._wlm_scanner_logic.cwl)
             self.sig_start_sweep.emit()
         else:
             print("stopiing")

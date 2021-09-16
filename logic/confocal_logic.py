@@ -1143,7 +1143,7 @@ class ConfocalLogic(GenericLogic):
 
         # Create image plot
         cfimage = ax.imshow(image_data,
-                            cmap=plt.get_cmap('inferno'), # reference the right place in qd
+                            cmap=plt.cm.RdBu_r,#plt.get_cmap('coolwarm'), # reference the right place in qd
                             origin="lower",
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],

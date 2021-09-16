@@ -162,7 +162,7 @@ class WavemeterLogGui(GUIBase):
         # self._plot_item.setLabel('right', 'Number of Points', units='#')
         self._wlth_item.setLabel('bottom', 'Wavelength', units='nm')
         # self._wlth_item.setLabel('bottom', 'Relative Frequency', units='Hz')
-
+# scatterPlotWidget
         self._wlth_item.setXLink(self._plot_item)
 
         y_wlm, time_wlm = self._wm_logger_logic.get_wavelengths()
@@ -228,7 +228,7 @@ class WavemeterLogGui(GUIBase):
             xmax=self._mw.maxDoubleSpinBox.value()
         )
     def reset_plot(self):
-        self._scatterplot.clear()
+        # self.wavemeter_image.clear()
         self.recalculate_histogram()
 
     def set_auto_range(self):
