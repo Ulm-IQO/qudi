@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import ctypes
 import datetime
+import os
 import numpy as np
 from collections import OrderedDict
 from qudi.util.helpers import natural_sort
@@ -32,7 +33,8 @@ from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, 
 import sys
 
 if sys.platform == 'win32':
-    sys.path.append('C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
+    sys.path.append(r'C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
+    os.add_dll_directory(r'C:\Program Files\Keysight\SD1\shared')
 elif sys.platform == 'linux':
     sys.path.append('/usr/local/Keysight/SD1')
 else:

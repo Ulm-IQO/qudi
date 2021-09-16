@@ -21,11 +21,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from enum import Enum
-from PySide2 import QtCore, QtGui
+from PySide2 import QtCore, QtGui, QtWidgets
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
-class MultipleCheckboxWidget(QtGui.QWidget):
+class MultipleCheckboxWidget(QtWidgets.QWidget):
     """
     """
     stateChanged = QtCore.Signal()
@@ -39,13 +39,13 @@ class MultipleCheckboxWidget(QtGui.QWidget):
         self._checkbox_width = 30
         self._width_hint = self._checkbox_width * len(checkbox_labels)
 
-        main_layout = QtGui.QHBoxLayout()
+        main_layout = QtWidgets.QHBoxLayout()
         for box_label in checkbox_labels:
             # Create QLabel and QCheckBox for each checkbox label given in init
-            label = QtGui.QLabel(box_label)
+            label = QtWidgets.QLabel(box_label)
             label.setFixedWidth(self._checkbox_width)
             label.setAlignment(QtCore.Qt.AlignCenter)
-            widget = QtGui.QCheckBox()
+            widget = QtWidgets.QCheckBox()
             widget.setFixedWidth(19)
             widget.setChecked(False)
             self._checkboxes[box_label] = {'label': label, 'widget': widget}
@@ -54,7 +54,7 @@ class MultipleCheckboxWidget(QtGui.QWidget):
             widget.stateChanged.connect(self.stateChanged)
 
             # Arrange CheckBoxes and Labels in a layout
-            v_layout = QtGui.QVBoxLayout()
+            v_layout = QtWidgets.QVBoxLayout()
             v_layout.addWidget(label)
             v_layout.addWidget(widget)
             v_layout.setAlignment(label, QtCore.Qt.AlignHCenter)
@@ -81,7 +81,7 @@ class MultipleCheckboxWidget(QtGui.QWidget):
         return QtCore.QSize(self._width_hint, 50)
 
 
-class AnalogParametersWidget(QtGui.QWidget):
+class AnalogParametersWidget(QtWidgets.QWidget):
     """
     """
     editingFinished = QtCore.Signal()
@@ -96,9 +96,9 @@ class AnalogParametersWidget(QtGui.QWidget):
         self._width_hint = 90 * len(self._parameters)
         self._ach_widgets = dict()
 
-        main_layout = QtGui.QHBoxLayout()
+        main_layout = QtWidgets.QHBoxLayout()
         for param in self._parameters:
-            label = QtGui.QLabel(param)
+            label = QtWidgets.QLabel(param)
             label.setAlignment(QtCore.Qt.AlignCenter)
             if self._parameters[param]['type'] == float:
                 widget = ScienDSpinBox()
@@ -122,21 +122,21 @@ class AnalogParametersWidget(QtGui.QWidget):
                 # Forward editingFinished signal of child widget
                 widget.editingFinished.connect(self.editingFinished)
             elif self._parameters[param]['type'] == str:
-                widget = QtGui.QLineEdit()
+                widget = QtWidgets.QLineEdit()
                 widget.setText(self._parameters[param]['init'])
                 # Set size constraints
                 widget.setFixedWidth(90)
                 # Forward editingFinished signal of child widget
                 widget.editingFinished.connect(self.editingFinished)
             elif self._parameters[param]['type'] == bool:
-                widget = QtGui.QCheckBox()
+                widget = QtWidgets.QCheckBox()
                 widget.setChecked(self._parameters[param]['init'])
                 # Set size constraints
                 widget.setFixedWidth(90)
                 # Forward editingFinished signal of child widget
                 widget.stateChanged.connect(self.editingFinished)
             elif issubclass(self._parameters[param]['type'], Enum):
-                widget = QtGui.QComboBox()
+                widget = QtWidgets.QComboBox()
                 for option in self._parameters[param]['type']:
                     widget.addItem(option.name, option)
                 widget.setCurrentText(self._parameters[param]['init'].name)
@@ -144,10 +144,12 @@ class AnalogParametersWidget(QtGui.QWidget):
                 widget.setFixedWidth(90)
                 # Forward editingFinished signal of child widget
                 widget.currentIndexChanged.connect(self.editingFinished)
+            else:
+                widget = None
 
             self._ach_widgets[param] = {'label': label, 'widget': widget}
 
-            v_layout = QtGui.QVBoxLayout()
+            v_layout = QtWidgets.QVBoxLayout()
             v_layout.addWidget(label)
             v_layout.addWidget(widget)
             v_layout.setAlignment(label, QtCore.Qt.AlignHCenter)
