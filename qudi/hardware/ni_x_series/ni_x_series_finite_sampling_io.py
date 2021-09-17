@@ -579,11 +579,49 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return dict: Sample arrays (values) for each active input channel (keys)
         """
+        #TODO Threadlock
+
+        #assert self.is_running, f'IO not runnning, cannot get any buffered samples'
+        # How to deal with unread samples after IO was stopped? They should not be discarded.
+
+        if number_of_samples is not None:
+            assert isinstance(number_of_samples, (int, np.integer)), f'Number of requested samples not integer'
 
         samples_to_read = number_of_samples if number_of_samples is not None else self.samples_in_buffer
 
+        number_of_pending_samples = np.isnan(self.__frame_buffer[next(iter(self.active_channels[0]))]).sum()
+        assert samples_to_read <= number_of_pending_samples, f'Requested samples are more than the pending in frame'
 
+        if number_of_samples is not None:
+            #Block till there are enough. Also check that not to much are requested
+            pass
 
+        acquired_samples = self.frame_size - number_of_pending_samples
+
+        if self._di_readers:
+            write_offset = 0
+            di_data = np.zeros(len(self.__active_channels['di_channels']) * samples_to_read)
+            # TODO: Can I prevent this somehow and write directly into __frame_buffer?
+            for di_reader in self._di_readers:
+                di_reader.read_many_sample_double(
+                    di_data[write_offset:],
+                    number_of_samples_per_channel=samples_to_read)
+                write_offset += samples_to_read
+
+            di_data = di_data.reshape(len(self.__active_channels['di_channels']), samples_to_read)
+            for num, di_channel in enumerate(self.__active_channels['di_channels']):
+                self.__frame_buffer[di_channel][acquired_samples:acquired_samples + samples_to_read]\
+                    = di_data[num]
+
+        if self._ai_reader is not None:
+            ai_data = np.zeros((len(self.__active_channels['ai_channels']), samples_to_read))
+            # TODO: Can I prevent this somehow and write directly into __frame_buffer?
+            self._ai_reader.read_many_sample(
+                    ai_data,
+                    number_of_samples_per_channel=samples_to_read)
+            for num, ai_channel in enumerate(self.__active_channels['ai_channels']):
+                self.__frame_buffer[ai_channel][acquired_samples:acquired_samples + samples_to_read]\
+                    = ai_data[num]
 
     def get_frame(self, data):
         """ Performs io for a single data frame for all active channels.
@@ -609,96 +647,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             return True
         else:
             return False
-
-    ### End of IO Interface methods / Start of old "copied over in streamer methods
-
-    @property
-    def buffer_overflown(self):
-        """
-        Read-only flag to check if the read buffer has overflown.
-        In case of a circular buffer it indicates data loss.
-        In case of a non-circular buffer the data acquisition should have stopped if this flag is
-        coming up.
-        Flag will only be reset after starting a new data acquisition.
-
-        @return bool: Flag indicates if buffer has overflown (True) or not (False)
-        """
-        return self._has_overflown
-
-    def read_data_into_buffer(self, buffer, number_of_samples=None):
-        """
-        Read data from the stream buffer into a 1D/2D numpy array given as parameter.
-        In case of a single data channel the numpy array can be either 1D or 2D. In case of more
-        channels the array must be 2D with the first index corresponding to the channel number and
-        the second index serving as sample index:
-            buffer.shape == (self.number_of_channels, number_of_samples)
-        The numpy array must have the same data type as self.data_type.
-        If number_of_samples is omitted it will be derived from buffer.shape[1]
-
-        This method will not return until all requested samples have been read or a timeout occurs.
-
-        @param numpy.ndarray buffer: The numpy array to write the samples to
-        @param int number_of_samples: optional, number of samples to read per channel. If omitted,
-                                      this number will be derived from buffer axis 1 size.
-
-        @return int: Number of samples per channel read into buffer; negative value indicates error
-                     (e.g. read timeout)
-        """
-        if not self.is_running:
-            self.log.error('Unable to read data. Device is not running.')
-            return -1
-
-        if not isinstance(buffer, np.ndarray) or buffer.dtype != self.__data_type:
-            self.log.error('buffer must be numpy.ndarray with dtype {0}. Read failed.'
-                           ''.format(self.__data_type))
-            return -1
-
-        if buffer.ndim == 2:
-            if buffer.shape[0] != self.number_of_channels:
-                self.log.error('Configured number of channels ({0:d}) does not match first '
-                               'dimension of 2D buffer array ({1:d}).'
-                               ''.format(self.number_of_channels, buffer.shape[0]))
-                return -1
-            number_of_samples = buffer.shape[1] if number_of_samples is None else number_of_samples
-            buffer = buffer.flatten()
-        elif buffer.ndim == 1:
-            if number_of_samples is None:
-                number_of_samples = buffer.size // self.number_of_channels
-        else:
-            self.log.error('Buffer must be a 1D or 2D numpy.ndarray.')
-            return -1
-
-        if number_of_samples < 1:
-            return 0
-
-        # Check for buffer overflow
-        if self.available_samples > self.buffer_size:
-            self._has_overflown = True
-
-        try:
-            write_offset = 0
-            # Read digital channels
-            for i, reader in enumerate(self._di_readers):
-                # read the counter value. This function is blocking.
-                read_samples = reader.read_many_sample_double(
-                    buffer[write_offset:],
-                    number_of_samples_per_channel=number_of_samples,
-                    timeout=self._rw_timeout)
-                if read_samples != number_of_samples:
-                    return -1
-                write_offset += number_of_samples
-            # Read analog channels
-            if self._ai_reader is not None:
-                read_samples = self._ai_reader.read_many_sample(
-                    buffer[write_offset:],
-                    number_of_samples_per_channel=number_of_samples,
-                    timeout=self._rw_timeout)
-            if read_samples != number_of_samples:
-                return -1
-        except ni.DaqError:
-            self.log.exception('Getting samples from streamer failed.')
-            return -1
-        return read_samples
 
     # =============================================================================================
     def _init_sample_clock(self):
