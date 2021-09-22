@@ -33,6 +33,7 @@ from qudi.util.helpers import natural_sort
 from qudi.interface.finite_sampling_io_interface import FiniteSamplingIOInterface, FiniteSamplingIOConstraints
 from qudi.util.enums import SamplingOutputMode
 from qudi.util.mutex import RecursiveMutex
+import time
 
 
 class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
@@ -49,18 +50,18 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         module.Class: 'ni_x_series.ni_x_series_finite_sampling_io.NIXSeriesFiniteSamplingIO'
         device_name: 'Dev1'
         input_channel_units:  # optional
-            'PFI15': 'c/s'
+            'PFI8': 'c/s'
             'ai0': 'V'
             'ai1': 'V'
         output_channel_units:
             'ao0': 'V'
             'ao1': 'V'
-        adc_voltage_range: [-10, 10]  # optional #TODO adapt interface for limits
+        adc_voltage_range: [-10, 10]  # optional #TODO adapt interface for limits; and for each channel independently?
         #TODO output range, also limits need to be included in constraints
         frame_size_limits: [1, 1e9]  # optional #TODO actual HW constraint?
         output_mode: 'JUMP_LIST' # optional, must be name of SamplingOutputMode
         read_write_timeout: 10  # optional
-        sample_clock_output: '/Dev1/PFI20' # optional
+        sample_clock_output: '/Dev1/PFI15' # optional
 
     """
 
@@ -70,7 +71,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         'max_channel_samples_buffer', default=25e6, missing='info')
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
 
-    # Finite Sampling #TODO check for hardware limits?
+    # Finite Sampling #TODO Frame size hardware limits?
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
     _input_channel_units = ConfigOption(name='input_channel_units',
                                         missing='error')
@@ -105,14 +106,13 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self.__output_mode = None
         self.__sample_rate = -1.0
 
-        # Internal settings in streamer
+        # Internal settings
         self.__frame_size = -1
         self.__frame_buffer = -1
-        self.__use_circular_buffer = False
 
-        # Data buffer
-        self._data_buffer = np.empty(0, dtype=self.__data_type)
-        self._has_overflown = False
+        # unread samples buffer
+        self.__unread_samples_buffer = None
+        self.__number_of_unread_samples = 0
 
         # List of all available counters and terminals for this device
         self.__all_counters = tuple()
@@ -242,7 +242,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         else:  # Only ao and di, therefore probably the fastest possible
             sample_rate_limits = (
                 self._device_handle.ao_min_rate,
-                # TODO: What is the minimum frequency for the digital counter timebase?
                 min(self._device_handle.ao_max_rate, self._device_handle.ci_max_timebase)
             )
 
@@ -267,7 +266,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         self.terminate_all_tasks()
         # Free memory if possible while module is inactive
-        self._data_buffer = np.empty(0, dtype=self.__data_type)
+        self.__frame_buffer = np.empty(0, dtype=self.__data_type)
         return
 
     @property
@@ -337,15 +336,15 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         assert not self.is_running, \
             'Unable to set sample rate while IO is running. New settings ignored.'
+        in_range_flag, rate_val = self._constraints.sample_rate_in_range(rate)
         min_val, max_val = self._constraints.sample_rate_limits
-        if not min_val <= rate <= max_val:
+        if not in_range_flag:
             self.log.warning(
-                'Sample rate requested ({0:.3e}Hz) is out of bounds. Please choose '
-                'a value between {1:.3e}Hz and {2:.3e}Hz. Value will be clipped to '
-                'the closest boundary.'.format(rate, min_val, max_val))
-            rate = max(min(max_val, rate), min_val)
+                f'Sample rate requested ({rate:.3e}Hz) is out of bounds.'
+                f'Please choose a value between {min_val:.3e}Hz and {max_val:.3e}Hz.'
+                f'Value will be clipped to {rate_val:.3e}Hz.')
         with self._thread_lock:
-            self.__sample_rate = float(rate)
+            self.__sample_rate = float(rate_val)
 
     def set_output_mode(self, mode):
         """ Setter for the current output mode.
@@ -390,8 +389,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         return self.__frame_size
 
     def _set_frame_size(self, size):
-        samples_per_channel = int(round(size))
-        assert self._constraints.frame_size_in_range(samples_per_channel), f'Frame size "{size}" is out of range'
+        samples_per_channel = int(round(size))  # TODO Warn if not integer
+        assert self._constraints.frame_size_in_range(samples_per_channel)[0], f'Frame size "{size}" is out of range'
         assert not self.is_running, f'Module is running. Cannot set frame size'
 
         with self._thread_lock:
@@ -443,18 +442,15 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 frame_size = next(iter(data.values()))[-1]
             else:
                 frame_size = 0
-            self._set_frame_size(frame_size)
 
-        # set frame buffer
         with self._thread_lock:
+            self._set_frame_size(frame_size)
+            # set frame buffer
             if data is not None:
                 if self.output_mode == SamplingOutputMode.JUMP_LIST:
                     self.__frame_buffer = {output_ch: jump_list for output_ch, jump_list in data.items()}
                 elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
                     self.__frame_buffer = {output_ch: np.linspace(*tup) for output_ch, tup in data.items()}
-                for input_ch in self.active_channels[0]:
-                    self.__frame_buffer[input_ch] = np.zeros(self.frame_size)
-                    self.__frame_buffer[input_ch].fill(np.nan)  # TODO Ok to fill with nan to track progress of acq?
             if data is None:
                 self._set_frame_size(0)  # Sets frame buffer to None
 
@@ -465,11 +461,12 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         Must raise exception if frame output can not be started.
         """
 
+        assert self._constraints.sample_rate_in_range(self.sample_rate)[0],\
+            f'Cannot start frame as sample rate {self.sample_rate:.2g}Hz not valid'
         assert self.frame_size != 0, f'No frame data set, can not start buffered frame'
         assert not self.is_running, f'Frame IO already running. Can not start'
 
-        all_active_channels_set = frozenset(self.active_channels[0].union(self.active_channels[1]))
-        assert all_active_channels_set == set(self.__frame_buffer), \
+        assert self.active_channels[1] == set(self.__frame_buffer), \
             f'Channels in active channels and frame buffer do not coincide'
 
         self.module_state.lock()
@@ -496,6 +493,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             raise NiInitError('Analog out task initialization failed; all tasks terminated')
 
         output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
+
+        self.__number_of_unread_samples = self.frame_size  # TODO thread lock? When to use?
 
         for num, output_channel in enumerate(self.active_channels[1]):
             output_data[num] = self.__frame_buffer[output_channel]
@@ -550,10 +549,12 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         Must NOT raise exceptions if no frame output is running.
         """
-
-        # TODO Read avail samples into buffer before termination
         if self.is_running:
-            self.terminate_all_tasks() # TODO: Does this keep the samples?
+            with self._thread_lock:
+                self.__unread_samples_buffer = self.get_buffered_samples()
+                self.__number_of_unread_samples = 0
+
+            self.terminate_all_tasks()
             self.module_state.unlock()
 
     def get_buffered_samples(self, number_of_samples=None):
@@ -579,51 +580,69 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return dict: Sample arrays (values) for each active input channel (keys)
         """
-        #TODO Threadlock
-
-        #assert self.is_running, f'IO not runnning, cannot get any buffered samples'
-        # How to deal with unread samples after IO was stopped? They should not be discarded.
 
         if number_of_samples is not None:
-            assert isinstance(number_of_samples, (int, np.integer)), f'Number of requested samples not integer'
-
+            assert isinstance(number_of_samples, (int, np.integer)), f'Number of requested samples not integer'#
+        
         samples_to_read = number_of_samples if number_of_samples is not None else self.samples_in_buffer
 
-        number_of_pending_samples = np.isnan(self.__frame_buffer[next(iter(self.active_channels[0]))]).sum()
-        assert samples_to_read <= number_of_pending_samples, f'Requested samples are more than the pending in frame'
+        assert samples_to_read <= self.__number_of_unread_samples,\
+            f'Requested samples are more than the pending in frame'
 
-        if number_of_samples is not None:
-            #Block till there are enough. Also check that not to much are requested
-            pass
+        if number_of_samples is not None and self.is_running:
+            request_time = time.time()
+            while number_of_samples > self.samples_in_buffer:  # TODO: Check whether this works with a real HW
+                # TODO could one use the ni timeout of the reader class here?
+                if time.time() - request_time < 1.1*self.frame_size*self.sample_rate:  # TODO Is this timeout ok?
+                    time.sleep(0.05)
+                else:
+                    raise TimeoutError(f'Acquiring {number_of_samples} samples took longer then the whole frame')
 
-        acquired_samples = self.frame_size - number_of_pending_samples
+        data = dict()
 
-        if self._di_readers:
-            write_offset = 0
-            di_data = np.zeros(len(self.__active_channels['di_channels']) * samples_to_read)
-            # TODO: Can I prevent this somehow and write directly into __frame_buffer?
-            for di_reader in self._di_readers:
-                di_reader.read_many_sample_double(
-                    di_data[write_offset:],
-                    number_of_samples_per_channel=samples_to_read)
-                write_offset += samples_to_read
+        if samples_to_read == 0:
+            return dict.fromkeys(self.__frame_buffer)
 
-            di_data = di_data.reshape(len(self.__active_channels['di_channels']), samples_to_read)
-            for num, di_channel in enumerate(self.__active_channels['di_channels']):
-                self.__frame_buffer[di_channel][acquired_samples:acquired_samples + samples_to_read]\
-                    = di_data[num]
+        with self._thread_lock:
+            if not self.is_running:
+                # When the IO was stopped with samples in buffer, return the ones in
+                if number_of_samples is None:
+                    data = self.__unread_samples_buffer.copy()
+                    self.__unread_samples_buffer = dict.fromkeys(self.__frame_buffer)
+                    return data
+                else:
+                    for key in self.__unread_samples_buffer:
+                        data[key] = self.__unread_samples_buffer[key][:samples_to_read]
+                    self.__number_of_unread_samples -= samples_to_read
+                    self.__unread_samples_buffer = {key: arr[samples_to_read:] for (key, arr)
+                                                    in self.__unread_samples_buffer.items()}
+                    return data
+            else:
+                if self._di_readers:
+                    write_offset = 0
+                    di_data = np.zeros(len(self.__active_channels['di_channels']) * samples_to_read)
+                    for di_reader in self._di_readers:
+                        di_reader.read_many_sample_double(
+                            di_data[write_offset:],
+                            number_of_samples_per_channel=samples_to_read)
+                        write_offset += samples_to_read
 
-        if self._ai_reader is not None:
-            ai_data = np.zeros((len(self.__active_channels['ai_channels']), samples_to_read))
-            # TODO: Can I prevent this somehow and write directly into __frame_buffer?
-            self._ai_reader.read_many_sample(
-                    ai_data,
-                    number_of_samples_per_channel=samples_to_read)
-            for num, ai_channel in enumerate(self.__active_channels['ai_channels']):
-                self.__frame_buffer[ai_channel][acquired_samples:acquired_samples + samples_to_read]\
-                    = ai_data[num]
+                    di_data = di_data.reshape(len(self.__active_channels['di_channels']), samples_to_read)
+                    for num, di_channel in enumerate(self.__active_channels['di_channels']):
+                        data[di_channel] = di_data[num]
 
-    def get_frame(self, data):
+                if self._ai_reader is not None:
+                    ai_data = np.zeros((len(self.__active_channels['ai_channels']), samples_to_read))
+                    self._ai_reader.read_many_sample(
+                            ai_data,
+                            number_of_samples_per_channel=samples_to_read)
+                    for num, ai_channel in enumerate(self.__active_channels['ai_channels']):
+                        data[ai_channel] = ai_data[num]
+
+                self.__number_of_unread_samples -= samples_to_read
+                return data
+
+    def get_frame(self, data=None):
         """ Performs io for a single data frame for all active channels.
         This method call is blocking until the entire data frame has been emitted.
 
@@ -633,7 +652,14 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return dict: Frame data (values) for all active input channels (keys)
         """
-        pass
+        with self._thread_lock:
+            if data is not None:
+                self.set_frame_data(data)
+            self.start_buffered_frame()
+            return_data = self.get_buffered_samples(self.frame_size)
+            self.stop_buffered_frame()
+
+            return return_data
 
     @property
     def is_running(self):
