@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import visa
+import pyvisa
 
 from qudi.util.mutex import Mutex
 from qudi.core.configoption import ConfigOption
@@ -61,7 +61,7 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         """ Initialisation performed during activation of the module.
         """
         # trying to load the visa connection to the module
-        self._rm = visa.ResourceManager()
+        self._rm = pyvisa.ResourceManager()
         self._device = self._rm.open_resource(self._serial_port,
                                               baud_rate=9600,
                                               read_termination='\n',
@@ -94,9 +94,9 @@ class MicrowaveSynthHDPro(MicrowaveInterface):
         """
         self.off()
         self._device.close()
+        self._device = None
         self._rm.close()
         self._rm = None
-        self._device = None
 
     @property
     def constraints(self):

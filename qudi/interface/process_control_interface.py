@@ -21,13 +21,84 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-__all__ = ('ProcessSetpointInterface', 'ProcessValueInterface', 'ProcessControlInterface',
-           'ProcessControlConstraints')
+__all__ = ['ProcessSetpointInterface', 'ProcessValueInterface', 'ProcessControlInterface',
+           'ProcessControlConstraints']
 
 import numpy as np
 from abc import abstractmethod
+from typing import Iterable, Mapping, Union, Optional, Tuple, Type, Dict
+
 from qudi.core.module import Base
 from qudi.util.helpers import in_range
+
+
+_Real = Union[int, float]
+
+
+class ProcessControlConstraints:
+    """ Data object holding the constraints for a set of process/setpoint channels.
+    """
+    def __init__(self, setpoint_channels: Optional[Iterable[str]] = None,
+                 process_channels: Optional[Iterable[str]] = None,
+                 units: Optional[Mapping[str, str]] = None,
+                 limits: Optional[Mapping[str, Tuple[_Real, _Real]]] = None,
+                 dtypes: Optional[Mapping[str, Union[Type[int], Type[float]]]] = None):
+        """
+        """
+        if units is None:
+            units = dict()
+        if limits is None:
+            limits = dict()
+        if dtypes is None:
+            dtypes = dict()
+        if setpoint_channels is None:
+            setpoint_channels = tuple()
+        if process_channels is None:
+            process_channels = tuple()
+
+        self._setpoint_channels = tuple() if setpoint_channels is None else tuple(setpoint_channels)
+        self._process_channels = tuple() if process_channels is None else tuple(process_channels)
+
+        all_channels = set(self._setpoint_channels)
+        all_channels.update(self._process_channels)
+
+        assert set(units).issubset(all_channels)
+        assert all(isinstance(unit, str) for unit in units.values())
+        assert set(limits).issubset(all_channels)
+        assert all(len(lim) == 2 for lim in limits.values())
+        assert set(dtypes).issubset(all_channels)
+        assert all(t in (int, float) for t in dtypes.values())
+
+        self._channel_units = {ch: units.get(ch, '') for ch in all_channels}
+        self._channel_limits = {ch: limits.get(ch, (-np.inf, np.inf)) for ch in all_channels}
+        self._channel_dtypes = {ch: dtypes.get(ch, float) for ch in all_channels}
+
+    @property
+    def all_channels(self) -> Tuple[str, ...]:
+        return *self.setpoint_channels, *self.process_channels
+
+    @property
+    def setpoint_channels(self) -> Tuple[str, ...]:
+        return self._setpoint_channels
+
+    @property
+    def process_channels(self) -> Tuple[str, ...]:
+        return self._process_channels
+
+    @property
+    def channel_units(self) -> Dict[str, str]:
+        return self._channel_units.copy()
+
+    @property
+    def channel_limits(self) -> Dict[str, Tuple[_Real, _Real]]:
+        return self._channel_limits.copy()
+
+    @property
+    def channel_dtypes(self) -> Dict[str, Union[Type[int], Type[float]]]:
+        return self._channel_dtypes.copy()
+
+    def channel_value_in_range(self, value: _Real, channel: str) -> Tuple[bool, _Real]:
+        return in_range(value, *self._channel_limits[channel])
 
 
 class ProcessSetpointInterface(Base):
@@ -40,74 +111,52 @@ class ProcessSetpointInterface(Base):
 
     @property
     @abstractmethod
-    def constraints(self):
+    def constraints(self) -> ProcessControlConstraints:
         """ Read-Only property holding the constraints for this hardware module.
         See class ProcessControlConstraints for more details.
-
-        @return ProcessControlConstraints: Hardware constraints
         """
         pass
 
     @property
     @abstractmethod
-    def is_active(self):
+    def is_active(self) -> bool:
         """ Current activity state.
         State is bool type and refers to active (True) and inactive (False).
-
-        @return bool: Activity state (active: True, inactive: False)
         """
         pass
 
     @is_active.setter
-    def is_active(self, active):
+    def is_active(self, active: bool):
         """ Set activity state.
         State is bool type and refers to active (True) and inactive (False).
-
-        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
     @property
     @abstractmethod
-    def setpoints(self):
-        """ The current setpoints for all channels.
-
-        @return dict: Currently set target values (values) for all channels (keys)
-        """
+    def setpoints(self) -> Dict[str, _Real]:
+        """ The current setpoints (values) for all channels (keys) """
         pass
 
     @setpoints.setter
-    def setpoints(self, values):
-        """ Set the setpoints for all channels at once.
-
-        @param dict values: Target values (values) to set for all channels (keys)
-        """
+    def setpoints(self, values: Mapping[str, _Real]):
+        """ Set the setpoints (values) for all channels (keys) at once """
         pass
 
     @abstractmethod
-    def set_activity_state(self, active):
+    def set_activity_state(self, active: bool) -> None:
         """ Set activity state. State is bool type and refers to active (True) and inactive (False).
-
-        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
     @abstractmethod
-    def set_setpoint(self, value, channel):
-        """ Set new setpoint for a single channel.
-
-        @param float|int value: Setpoint value to set
-        @param str channel: Channel to set
-        """
+    def set_setpoint(self, value: _Real, channel: str) -> None:
+        """ Set new setpoint for a single channel """
         pass
 
     @abstractmethod
-    def get_setpoint(self, channel):
-        """ Get current setpoint for a single channel.
-
-        @param str channel: Channel to get the setpoint for
-        @return float|int: The current setpoint for <channel>
-        """
+    def get_setpoint(self, channel: str) -> _Real:
+        """ Get current setpoint for a single channel """
         pass
 
 
@@ -121,57 +170,44 @@ class ProcessValueInterface(Base):
 
     @property
     @abstractmethod
-    def constraints(self):
+    def constraints(self) -> ProcessControlConstraints:
         """ Read-Only property holding the constraints for this hardware module.
         See class ProcessControlConstraints for more details.
-
-        @return ProcessControlConstraints: Hardware constraints
         """
         pass
 
     @property
     @abstractmethod
-    def is_active(self):
+    def is_active(self) -> bool:
         """ Current activity state.
         State is bool type and refers to active (True) and inactive (False).
-
-        @return bool: Activity state (active: True, inactive: False)
         """
         pass
 
     @is_active.setter
-    def is_active(self, active):
+    def is_active(self, active: bool):
         """ Set activity state.
         State is bool type and refers to active (True) and inactive (False).
-
-        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
     @property
     @abstractmethod
-    def process_values(self):
-        """ Read-Only property returning a snapshot of current process values for all channels.
-
-        @return dict: Snapshot of the current process values (values) for all channels (keys)
+    def process_values(self) -> Dict[str, _Real]:
+        """ Read-Only property returning a snapshot of current process values (values) for all
+        channels (keys).
         """
         pass
 
     @abstractmethod
-    def set_activity_state(self, active):
+    def set_activity_state(self, active: bool) -> None:
         """ Set activity state. State is bool type and refers to active (True) and inactive (False).
-
-        @param bool active: Activity state to set (active: True, inactive: False)
         """
         pass
 
     @abstractmethod
-    def get_process_value(self, channel):
-        """ Get current process value for a single channel.
-
-        @param str channel: Channel to get the process value for
-        @return float|int: The current process value for <channel>
-        """
+    def get_process_value(self, channel: str) -> _Real:
+        """ Get current process value for a single channel """
         pass
 
 
@@ -183,59 +219,3 @@ class ProcessControlInterface(ProcessSetpointInterface, ProcessValueInterface):
     values, like a temperature or how much a PhD student get paid.
     """
     pass
-
-
-class ProcessControlConstraints:
-    """ Data object holding the constraints for a set of process value channels.
-    """
-    def __init__(self, setpoint_channels, process_channels, units=None, limits=None, dtypes=None):
-        """
-        """
-        if units is None:
-            units = dict()
-        if limits is None:
-            limits = dict()
-        if dtypes is None:
-            dtypes = dict()
-        all_channels = set(setpoint_channels)
-        all_channels.update(process_channels)
-
-        assert set(units).issubset(all_channels)
-        assert all(isinstance(unit, str) for unit in units.values())
-        assert set(limits).issubset(all_channels)
-        assert all(len(lim) == 2 for lim in limits.values())
-        assert set(dtypes).issubset(all_channels)
-        assert all(t in (int, float) for t in dtypes.values())
-
-        self._setpoint_channels = frozenset(setpoint_channels)
-        self._process_channels = frozenset(process_channels)
-        self._channel_units = {ch: units.get(ch, '') for ch in all_channels}
-        self._channel_limits = {ch: limits.get(ch, (-np.inf, np.inf)) for ch in all_channels}
-        self._channel_dtypes = {ch: dtypes.get(ch, float) for ch in all_channels}
-
-    @property
-    def all_channels(self):
-        return self._setpoint_channels.union(self._process_channels)
-
-    @property
-    def setpoint_channels(self):
-        return self._setpoint_channels
-
-    @property
-    def process_channels(self):
-        return self._process_channels
-
-    @property
-    def channel_units(self):
-        return self._channel_units.copy()
-
-    @property
-    def channel_limits(self):
-        return self._channel_limits.copy()
-
-    @property
-    def channel_dtypes(self):
-        return self._channel_dtypes.copy()
-
-    def channel_value_in_range(self, value, channel):
-        return in_range(value, *self._channel_limits[channel])
