@@ -69,6 +69,9 @@ class MotorNewportConexAGP(Base, MotorInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
+
         self._serial_connection = serial.Serial(
             port=self._com_port,
             baudrate=921600,

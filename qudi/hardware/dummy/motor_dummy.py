@@ -46,6 +46,8 @@ class MotorDummy(Base, MotorInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
         self.log.debug('The following configuration was found.')
 
         # checking for the right configuration

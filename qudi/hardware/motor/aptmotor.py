@@ -219,6 +219,9 @@ class APTMotor:
                          degree
         """
 
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
+        
         self.aptdll = windll.LoadLibrary(path_dll)
         self.aptdll.EnableEventDlg(True)
         self.aptdll.APTInit()
@@ -831,7 +834,9 @@ class APTStage(Base, MotorInterface):
     def on_activate(self):
         """ Initialize instance variables and connect to hardware as configured.
         """
-
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
+        
         # get the config for this device.
         config = self.getConfiguration()
 
