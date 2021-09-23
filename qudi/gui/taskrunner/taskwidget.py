@@ -21,10 +21,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 __all__ = ['TaskWidget']
 
+import os
 from typing import Type, Optional, Dict, Tuple, Any, Iterable
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtCore, QtWidgets, QtGui
+
 from qudi.util.helpers import is_integer
+from qudi.util.paths import get_artwork_dir
 from qudi.util.parameters import ParameterWidgetMapper
+from qudi.util.widgets.loading_indicator import CircleLoadingIndicator
 from qudi.core.scripting.moduletask import ModuleTask
 
 
@@ -56,10 +60,20 @@ class TaskWidget(QtWidgets.QWidget):
             max_columns = number_of_widgets // max_rows + number_of_widgets % max_rows
 
         # Create control button and state label. Arrange them in a sub-layout and connect button.
+        icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
+        self._play_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-start.png'))
+        self._stop_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-stop.png'))
         ctrl_layout = QtWidgets.QHBoxLayout()
-        self.run_interrupt_button = QtWidgets.QPushButton('Run')
+        self.run_interrupt_button = QtWidgets.QToolButton()
+        self.run_interrupt_button.setText('Run')
+        self.run_interrupt_button.setIcon(self._play_icon)
+        self.run_interrupt_button.setToolButtonStyle(QtGui.Qt.ToolButtonTextUnderIcon)
+        self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                                QtWidgets.QSizePolicy.Expanding)
         self.state_label = QtWidgets.QLabel('stopped')
         self.state_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                QtWidgets.QSizePolicy.Expanding)
         ctrl_layout.addWidget(self.run_interrupt_button)
         ctrl_layout.addWidget(self.state_label)
         self.run_interrupt_button.clicked.connect(self._run_interrupt_clicked)
@@ -126,6 +140,7 @@ class TaskWidget(QtWidgets.QWidget):
     def task_started(self) -> None:
         self._interrupt_enabled = True
         self.run_interrupt_button.setText('Interrupt')
+        self.run_interrupt_button.setIcon(self._stop_icon)
         self.run_interrupt_button.setEnabled(True)
 
     @QtCore.Slot(str)
@@ -138,6 +153,8 @@ class TaskWidget(QtWidgets.QWidget):
         """ Callback for task finished event """
         self._interrupt_enabled = False
         self.run_interrupt_button.setText('Run')
+        self.run_interrupt_button.setIcon(self._play_icon)
+        self.run_interrupt_button.setEnabled(True)
         self.set_task_result(result, success)
 
     @QtCore.Slot(object, bool)

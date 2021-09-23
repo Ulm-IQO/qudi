@@ -64,7 +64,10 @@ class TaskMainWindow(QtWidgets.QMainWindow):
         self.tasks_layout = QtWidgets.QVBoxLayout()
         widget = QtWidgets.QWidget()
         widget.setLayout(self.tasks_layout)
-        self.setCentralWidget(widget)
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidget(widget)
+        scroll_area.setWidgetResizable(True)
+        self.setCentralWidget(scroll_area)
 
         # # Create toolbar
         # self.toolbar = QtWidgets.QToolBar()
@@ -83,7 +86,7 @@ class TaskMainWindow(QtWidgets.QMainWindow):
         self._clear_task_widgets()
 
         # Create new task widgets
-        for task_name, task_type in tasks.items():
+        for ii, (task_name, task_type) in enumerate(tasks.items()):
             groupbox = QtWidgets.QGroupBox(task_name)
             widget = TaskWidget(task_type=task_type)
             layout = QtWidgets.QVBoxLayout()
