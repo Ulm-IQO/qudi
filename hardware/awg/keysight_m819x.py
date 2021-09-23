@@ -1228,13 +1228,13 @@ class AWGM819X(Base, PulserInterface):
 
         cfg = self._ivi_driver_config
 
-        comtypes.client.GetModule(cfg['fname_dll'])
+        client.GetModule(cfg['fname_dll'])
 
         if hasattr(self, 'awg_ivi'):
             if self.awg_ivi:
                 raise RuntimeError("Close already active handle to driver first!")
 
-        self.awg_ivi = comtypes.client.CreateObject(cfg['com_class'])
+        self.awg_ivi = client.CreateObject(cfg['com_class'])
 
         option_str = "RangeCheck=false"
         id_query = True
@@ -1653,7 +1653,9 @@ class AWGM819X(Base, PulserInterface):
                                        f"{issued_seg_id}(!={segment_id})")
 
                 # name segment_id
-                self.awg_ivi.Arbitrary.Waveform.Name[str(ch_num), segment_id] = wave_name
+                self.write(':TRAC{0}:NAME {1}, "{2}"'.format(int(ch_num), segment_id, wave_name))
+                # ivi command differs on 8190/8195
+                #self.awg_ivi.Arbitrary.Waveform.Name[str(ch_num), segment_id] = wave_name
                 self._check_uploaded_wave_name(ch_num, wave_name, segment_id)
 
                 waveforms.append(wave_name)
@@ -2240,6 +2242,8 @@ class AWGM8195A(AWGM819X):
         """
         # upload one big chunk
         # method is the only one supporting binary data
+        #comb_samples_bin = np.zeros((1024), dtype=np.uint8)
+        comb_samples_bin = np.asarray(comb_samples_bin, dtype=np.uint8)
         issued_seg_id = self.awg_ivi.Arbitrary.Waveform.CreateChannelWaveformChunk(str(ch_num), 0,
                                                                                    0,
                                                                                    len(comb_samples_bin),
