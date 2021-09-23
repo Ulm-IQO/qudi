@@ -152,20 +152,24 @@ class Qudi(QtCore.QObject):
             return
 
         # Get the most recent traceback
+        most_recent_frame = None
         for most_recent_frame, _ in traceback.walk_tb(ex_traceback):
             pass
         # Try to extract the module and class name in which the exception has been raised
-        try:
-            obj = most_recent_frame.f_locals['self']
-            logger = get_logger(f'{obj.__module__}.{obj.__class__.__name__}')
-        except (KeyError, AttributeError):
-            # Try to extract just the module name in which the exception has been raised
-            mod = inspect.getmodule(most_recent_frame.f_code)
+        if most_recent_frame is None:
+            logger = self.log
+        else:
             try:
-                logger = get_logger(mod.__name__)
-            except AttributeError:
-                # If no module and class name can be determined, use the application logger
-                logger = self.log
+                obj = most_recent_frame.f_locals['self']
+                logger = get_logger(f'{obj.__module__}.{obj.__class__.__name__}')
+            except (KeyError, AttributeError):
+                # Try to extract just the module name in which the exception has been raised
+                try:
+                    mod = inspect.getmodule(most_recent_frame.f_code)
+                    logger = get_logger(mod.__name__)
+                except AttributeError:
+                    # If no module and class name can be determined, use the application logger
+                    logger = self.log
         # Log exception with qudi log handler
         logger.error('Unhandled qudi Exception:', exc_info=(ex_type, ex_value, ex_traceback))
 
