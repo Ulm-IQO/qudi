@@ -30,7 +30,7 @@ from qudi.interface.motor_interface import MotorInterface
 
 
 class MotorRotationZaber(Base, MotorInterface):
-    """unstable: Christoph Müller, Simon Schmitt
+    """
     This is the Interface class to define the controls for the simple
     microwave hardware.
 
