@@ -20,7 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from PySide2 import QtCore
+from typing import Iterable, Sequence, Mapping, Union, Any, Optional, Tuple
+
 from qudi.core.scripting.moduletask import ModuleTask
 from qudi.core.connector import Connector
 
@@ -44,3 +45,28 @@ class TestTask(ModuleTask):
         for i in range(10000000):
             self._check_interrupt()
             i += 1
+
+
+class TestTask2(ModuleTask):
+
+    _derp = Connector(name='derp', interface='TemplateLogic')
+
+    def _setup(self) -> None:
+        i = 0
+        for i in range(100000000):
+            i += 1
+
+    def _cleanup(self) -> None:
+        i = 0
+        for i in range(100000000):
+            i += 1
+
+    def _run(self, seq_arg: Sequence[int], iter_arg: Iterable[str], map_arg: Mapping[str, int],
+             opt_arg: Optional[int] = 42
+             ) -> Tuple[Sequence[int], Iterable[str], Mapping[str, int], int]:
+        i = 0
+        for i in range(10000000):
+            if i % 100 == 0:
+                self._check_interrupt()
+            i += 1
+        return seq_arg, iter_arg, map_arg, opt_arg
