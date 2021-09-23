@@ -88,6 +88,10 @@ class TaskMainWindow(QtWidgets.QMainWindow):
         # Create new task widgets
         for ii, (task_name, task_type) in enumerate(tasks.items()):
             groupbox = QtWidgets.QGroupBox(task_name)
+            font = groupbox.font()
+            font.setBold(True)
+            font.setPointSize(font.pointSize() + 2)
+            groupbox.setFont(font)
             widget = TaskWidget(task_type=task_type)
             layout = QtWidgets.QVBoxLayout()
             layout.addWidget(widget)

@@ -53,38 +53,48 @@ class TaskWidget(QtWidgets.QWidget):
         if max_rows is not None and not is_integer(max_rows):
             raise ValueError('"max_rows" must be None or integer value')
 
-        if max_columns is None and max_rows is None:
-            max_columns = 3
-        elif max_columns is None:
+        if max_rows is None and max_columns is None:
+            max_rows = 8
+        elif max_rows is None:
             number_of_widgets = len(task_type.call_parameters())
-            max_columns = number_of_widgets // max_rows + number_of_widgets % max_rows
+            max_rows = number_of_widgets // max_columns + number_of_widgets % max_columns
 
         # Create control button and state label. Arrange them in a sub-layout and connect button.
+        # Also add animated busy-indicator
         icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', 'source_svg')
         self._play_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-start.svgz'))
         self._stop_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-stop.svgz'))
-        ctrl_layout = QtWidgets.QHBoxLayout()
         self.run_interrupt_button = QtWidgets.QToolButton()
-        self.run_interrupt_button.setText('Run')
+        self.run_interrupt_button.setText('Interrupt')
         self.run_interrupt_button.setIcon(self._play_icon)
         self.run_interrupt_button.setToolButtonStyle(QtGui.Qt.ToolButtonTextUnderIcon)
-        self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                                                QtWidgets.QSizePolicy.Expanding)
+        self.run_interrupt_button.setFixedWidth(self.run_interrupt_button.sizeHint().width())
+        self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                                QtWidgets.QSizePolicy.Preferred)
+
         self.state_label = QtWidgets.QLabel('stopped')
         self.state_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                                QtWidgets.QSizePolicy.Expanding)
-        ctrl_layout.addWidget(self.run_interrupt_button)
+        self.running_indicator = CircleLoadingIndicator()
+        self.running_indicator.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                             QtWidgets.QSizePolicy.Expanding)
+        ctrl_layout = QtWidgets.QVBoxLayout()
+        ctrl_layout.addWidget(self.running_indicator)
         ctrl_layout.addWidget(self.state_label)
+        ctrl_layout.addWidget(self.run_interrupt_button)
+        # self.running_indicator.hide()
+
         self.run_interrupt_button.clicked.connect(self._run_interrupt_clicked)
 
         # Create task parameter editors and put them in a sub-layout
         self.parameter_widgets = self.__create_parameter_editor_widgets(task_type)
-        param_layout = self.__layout_parameter_widgets(self.parameter_widgets.values(), max_columns)
+        param_layout = self.__layout_parameter_widgets(self.parameter_widgets.values(), max_rows)
 
         # Add sub-layouts to main layout
-        main_layout = QtWidgets.QVBoxLayout()
+        line = QtWidgets.QFrame()
+        line.setFrameShape(line.VLine)
+        main_layout = QtWidgets.QHBoxLayout()
         main_layout.addLayout(param_layout)
+        main_layout.addWidget(line)
         main_layout.addLayout(ctrl_layout)
         self.setLayout(main_layout)
 
@@ -111,7 +121,7 @@ class TaskWidget(QtWidgets.QWidget):
 
     @staticmethod
     def __layout_parameter_widgets(param_widgets: _ParamWidgetsIterable,
-                                   max_columns: int) -> QtWidgets.QGridLayout:
+                                   max_rows: int) -> QtWidgets.QGridLayout:
         """ Helper function to layout parameter widgets in a QGridLayout """
         row = 0
         column = 0
@@ -120,11 +130,11 @@ class TaskWidget(QtWidgets.QWidget):
             layout.addWidget(label, row, column)
             layout.addWidget(editor, row, column + 1)
             layout.setColumnStretch(column + 1, 1)
-            if column // 2 + 1 >= max_columns:
-                row += 1
-                column = 0
-            else:
+            if row + 1 >= max_rows:
+                row = 0
                 column += 2
+            else:
+                row += 1
         return layout
 
     @QtCore.Slot()

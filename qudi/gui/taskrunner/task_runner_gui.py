@@ -61,6 +61,8 @@ class TaskRunnerGui(GuiBase):
         for task_name, task_state in taskrunner.task_states.items():
             if task_state != 'stopped':
                 self._mw.task_started(task_name)
+            else:
+                self._mw.task_finished(task_name, None, False)
             self._mw.task_state_changed(task_name, task_state)
         # ToDo: Also set task results here
 
