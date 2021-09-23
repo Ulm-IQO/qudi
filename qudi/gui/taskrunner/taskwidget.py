@@ -60,9 +60,9 @@ class TaskWidget(QtWidgets.QWidget):
             max_columns = number_of_widgets // max_rows + number_of_widgets % max_rows
 
         # Create control button and state label. Arrange them in a sub-layout and connect button.
-        icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', '22x22')
-        self._play_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-start.png'))
-        self._stop_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-stop.png'))
+        icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', 'source_svg')
+        self._play_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-start.svgz'))
+        self._stop_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-stop.svgz'))
         ctrl_layout = QtWidgets.QHBoxLayout()
         self.run_interrupt_button = QtWidgets.QToolButton()
         self.run_interrupt_button.setText('Run')
