@@ -50,6 +50,9 @@ class NationalInstrumentsPulser(Base, PulserInterface):
     def on_activate(self):
         """ Activate module
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
+
         config = self.getConfiguration()
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
