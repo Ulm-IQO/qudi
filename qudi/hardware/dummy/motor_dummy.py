@@ -26,6 +26,7 @@ import time
 from qudi.core.module import Base
 from qudi.interface.motor_interface import MotorInterface
 
+
 class MotorAxisDummy:
     """ Generic dummy motor representing one axis. """
     def __init__(self, label):
@@ -335,8 +336,6 @@ class MotorDummy(Base, MotorInterface):
                 self._make_wait_after_movement()
                 self._phi_axis.pos = desired_pos
 
-
-
     def abort(self):
         """Stops movement of the stage
 
@@ -412,7 +411,6 @@ class MotorDummy(Base, MotorInterface):
             status[self._phi_axis.label] = self._phi_axis.status
 
         return status
-
 
     def calibrate(self, param_list=None):
         """ Calibrates the stage.
@@ -495,8 +493,8 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._x_axis.label]
             constr = constraints[self._x_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
+                self.log.warning('Cannot set velocity of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._x_axis.label, desired_vel,
@@ -509,8 +507,8 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._y_axis.label]
             constr = constraints[self._y_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
+                self.log.warning('Cannot set velocity of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._y_axis.label, desired_vel,
@@ -523,8 +521,8 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._z_axis.label]
             constr = constraints[self._z_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
+                self.log.warning('Cannot set velocity of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._z_axis.label, desired_vel,
@@ -537,8 +535,8 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._phi_axis.label]
             constr = constraints[self._phi_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
+                self.log.warning('Cannot set velocity of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._phi_axis.label, desired_vel,
