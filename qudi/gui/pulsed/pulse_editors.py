@@ -459,9 +459,9 @@ class BlockEditor(QtWidgets.QTableView):
 
         # Set item selection and editing behaviour
         self.setEditTriggers(
-            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
-        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
-        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+            QtWidgets.QAbstractItemView.CurrentChanged | QtWidgets.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         # Set item delegates for all table columns
         self._set_item_delegates()
@@ -831,9 +831,9 @@ class EnsembleEditor(QtWidgets.QTableView):
 
         # Set item selection and editing behaviour
         self.setEditTriggers(
-            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
-        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
-        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+            QtWidgets.QAbstractItemView.CurrentChanged | QtWidgets.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         # Set item delegate (ComboBox) for PulseBlock column
         self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, list(),
@@ -1235,9 +1235,9 @@ class SequenceEditor(QtWidgets.QTableView):
 
         # Set item selection and editing behaviour
         self.setEditTriggers(
-            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
-        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
-        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+            QtWidgets.QAbstractItemView.CurrentChanged | QtWidgets.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         # Set item delegate (ComboBox) for PulseBlockEnsemble column
         self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, list(),

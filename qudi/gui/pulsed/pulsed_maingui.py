@@ -2404,12 +2404,10 @@ class PulsedMeasurementGui(GuiBase):
         if mw_constraints is None:
             self._pa.extrnal_control_groupbox.hide()
         else:
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(
-                *mw_constraints.channel_limits['Frequency']
-            )
-            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(
-                *mw_constraints.channel_limits['Power']
-            )
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(mw_constraints.min_frequency,
+                                                                mw_constraints.max_frequency)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setRange(mw_constraints.min_power,
+                                                                 mw_constraints.max_power)
         self._pa.ana_param_fc_bins_ComboBox.clear()
         for binwidth in fc_constraints['hardware_binwidth_list']:
             self._pa.ana_param_fc_bins_ComboBox.addItem(str(binwidth))
@@ -2483,7 +2481,6 @@ class PulsedMeasurementGui(GuiBase):
         @param bool use_alternative_data:
         @return:
         """
-        print('fit_data_updated')
 
         # Update plot.
         if use_alternative_data:
@@ -2498,12 +2495,12 @@ class PulsedMeasurementGui(GuiBase):
         else:
             if not fit_config or fit_config == 'No Fit':
                 if self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
-                    self._pa.pulse_analysis_PlotWidget.removeItem(self.second_fit_image)
+                    self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
             else:
                 self.fit_image.setData(x=result.high_res_best_fit[0],
                                        y=result.high_res_best_fit[1])
                 if self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
-                    self._pa.pulse_analysis_PlotWidget.addItem(self.second_fit_image)
+                    self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
         return
 
     @QtCore.Slot()

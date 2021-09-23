@@ -60,7 +60,7 @@ class PulsedMeasurementLogic(LogicBase):
     # declare connectors
     _fastcounter = Connector(name='fastcounter', interface='FastCounterInterface')
     _pulsegenerator = Connector(name='pulsegenerator', interface='PulserInterface')
-    _microwave = Connector(name='microwave', interface='ProcessSetpointInterface', optional=True)
+    _microwave = Connector(name='microwave', interface='MicrowaveInterface', optional=True)
 
     # Config options
     # Optional additional paths to import from
@@ -488,12 +488,10 @@ class PulsedMeasurementLogic(LogicBase):
         """
         err = 0
         if self._microwave.is_connected:
-            mw = self._microwave()
-            mw.is_active = True
-            running = mw.is_active
-            if not running:
+            self._microwave().cw_on()
+            if not self._microwave().is_running:
                 self.log.error('Failed to turn on external CW microwave output.')
-            self.sigExtMicrowaveRunningUpdated.emit(running)
+            self.sigExtMicrowaveRunningUpdated.emit(self._microwave().is_running)
         else:
             self.sigExtMicrowaveRunningUpdated.emit(False)
         return err
@@ -506,12 +504,10 @@ class PulsedMeasurementLogic(LogicBase):
         """
         err = 0
         if self._microwave.is_connected:
-            mw = self._microwave()
-            mw.is_active = False
-            running = mw.is_active
-            if running:
+            self._microwave().off()
+            if self._microwave().is_running:
                 self.log.error('Failed to turn off external CW microwave output.')
-            self.sigExtMicrowaveRunningUpdated.emit(running)
+            self.sigExtMicrowaveRunningUpdated.emit(self._microwave().is_running)
         else:
             self.sigExtMicrowaveRunningUpdated.emit(False)
         return err
@@ -547,8 +543,7 @@ class PulsedMeasurementLogic(LogicBase):
         @return:
         """
         # Check if microwave is running and do nothing if that is the case
-        microwave = self._microwave()
-        if microwave is not None and microwave.is_active:
+        if self._microwave.is_connected and self._microwave().is_running:
             self.log.warning('Microwave device is running.\nUnable to apply new settings.')
         else:
             # Determine complete settings dictionary
@@ -565,13 +560,11 @@ class PulsedMeasurementLogic(LogicBase):
             if 'use_ext_microwave' in settings_dict:
                 self.__use_ext_microwave = bool(settings_dict['use_ext_microwave']) and self._microwave.is_connected
 
-            if self.__use_ext_microwave and microwave is not None:
+            if self.__use_ext_microwave and self._microwave.is_connected:
                 # Apply the settings to hardware
-                microwave.setpoints = {'Frequency': self.__microwave_freq,
-                                       'Power': self.__microwave_power}
-                new_setpoints = microwave.setpoints
-                self.__microwave_freq = new_setpoints['Frequency']
-                self.__microwave_power = new_setpoints['Power']
+                self._microwave().set_cw(frequency=self.__microwave_freq, power=self.__microwave_power)
+                self.__microwave_freq = self._microwave().cw_frequency
+                self.__microwave_power = self._microwave().cw_power
 
         # emit update signal for master (GUI or other logic module)
         self.sigExtMicrowaveSettingsUpdated.emit({'power': self.__microwave_power,
@@ -1579,11 +1572,11 @@ class PulsedMeasurementLogic(LogicBase):
 
 
         # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(QudiMatplotlibStyle)
+        plt.style.use(QudiMatplotlibStyle.style)
 
         # extract the possible colors from the colorscheme:
         # todo: still needed or set by core?
-        prop_cycle = QudiMatplotlibStyle['axes.prop_cycle']
+        prop_cycle = QudiMatplotlibStyle.style['axes.prop_cycle']
         colors = {}
         for i, color_setting in enumerate(prop_cycle):
             colors[i] = color_setting['color']
