@@ -71,17 +71,19 @@ class TaskWidget(QtWidgets.QWidget):
         self.run_interrupt_button.setFixedWidth(self.run_interrupt_button.sizeHint().width())
         self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
                                                 QtWidgets.QSizePolicy.Preferred)
+        self.run_interrupt_button.heightForWidth(self.run_interrupt_button.width())
 
         self.state_label = QtWidgets.QLabel('stopped')
         self.state_label.setAlignment(QtCore.Qt.AlignCenter)
         self.running_indicator = CircleLoadingIndicator()
-        self.running_indicator.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                             QtWidgets.QSizePolicy.Expanding)
+        self.running_indicator.setFixedWidth(self.run_interrupt_button.width() // 2)
+        self.running_indicator.setFixedHeight(self.run_interrupt_button.width() // 2)
         ctrl_layout = QtWidgets.QVBoxLayout()
-        ctrl_layout.addWidget(self.running_indicator)
+        ctrl_layout.addWidget(self.running_indicator, 0, QtCore.Qt.AlignCenter)
         ctrl_layout.addWidget(self.state_label)
-        ctrl_layout.addWidget(self.run_interrupt_button)
-        # self.running_indicator.hide()
+        ctrl_layout.addWidget(self.run_interrupt_button, 0, QtCore.Qt.AlignCenter)
+        self.running_indicator.hide()
+        self.run_interrupt_button.setText('Run')
 
         self.run_interrupt_button.clicked.connect(self._run_interrupt_clicked)
 
@@ -152,6 +154,7 @@ class TaskWidget(QtWidgets.QWidget):
         self.run_interrupt_button.setText('Interrupt')
         self.run_interrupt_button.setIcon(self._stop_icon)
         self.run_interrupt_button.setEnabled(True)
+        self.running_indicator.show()
 
     @QtCore.Slot(str)
     def task_state_changed(self, new_state: str) -> None:
@@ -165,6 +168,7 @@ class TaskWidget(QtWidgets.QWidget):
         self.run_interrupt_button.setText('Run')
         self.run_interrupt_button.setIcon(self._play_icon)
         self.run_interrupt_button.setEnabled(True)
+        self.running_indicator.hide()
         self.set_task_result(result, success)
 
     @QtCore.Slot(object, bool)
