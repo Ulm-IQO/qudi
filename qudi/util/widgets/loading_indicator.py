@@ -70,10 +70,11 @@ class CircleLoadingIndicator(QtWidgets.QWidget):
 
     @QtCore.Property(int)
     def indicator_position(self):
+        print('indicator_position')
         return self._indicator_position
 
     @indicator_position.setter
-    def set_indicator_position(self, value):
+    def indicator_position(self, value):
         self._indicator_position = value
         self.update()
 
@@ -87,6 +88,7 @@ class CircleLoadingIndicator(QtWidgets.QWidget):
 
     def paintEvent(self, event):
         # Set up painter
+        print('paint')
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing, True)
         p.setBrush(QtCore.Qt.NoBrush)
@@ -99,7 +101,9 @@ class CircleLoadingIndicator(QtWidgets.QWidget):
     def showEvent(self, ev):
         super().showEvent(ev)
         if self.__animation is None:
+            print('derp')
             self.__animation = QtCore.QPropertyAnimation(self, b'indicator_position', self)
+            print('herp')
             self.__animation.setDuration(self._cycle_time_ms)
             self.__animation.setStartValue(0)
             self.__animation.setEndValue(-5760)
