@@ -20,16 +20,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.modules import get_home_dir
+from qudi.util.paths import get_home_dir
 import numpy as np
 import ctypes
 import os
 
 import PyDAQmx as daq
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.interface.pulser_interface import PulserInterface
 from collections import OrderedDict
 
 
