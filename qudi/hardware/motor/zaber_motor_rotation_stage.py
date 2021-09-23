@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import time
-import serial
+import visa
 from collections import OrderedDict
 
 from qudi.core.module import Base
@@ -82,14 +82,15 @@ class MotorRotationZaber(Base, MotorInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-
-        self._serial_connection_rot = serial.Serial(
-            port=self._com_port_rot,
-            baudrate=self._rot_baud_rate,
-            bytesize=8,
-            parity='N',
-            stopbits=1,
-            timeout=self._rot_timeout)
+        self.rm = visa.ResourceManager()
+        self._serial_connection_rot = self.rm.open_resource(
+            resource_name=self._com_port_rot,
+            baud_rate=self._rot_baud_rate,
+            timeout=self._rot_timeout,
+            write_termination="",
+            read_termination="",
+            send_end=False)
+        self._serial_connection_rot.encoding = 'latin'
 
         return 0
 
@@ -171,8 +172,8 @@ class MotorRotationZaber(Base, MotorInterface):
                 self._write_rot([1,20,data])
                 pos[axis_label] = self._read_answer_rot() * self._micro_step_size  # stage sends signal after motion finished
         except:
-            self.log.error('absolute movement of zaber rotation stage is not possible')
             pos = self.get_pos(param_dict.keys())
+            self.log.exception(f'Absolute movement to {angle}° ({data}) is not possible, pos: {pos}: ')
         return pos
 
 
@@ -365,20 +366,23 @@ class MotorRotationZaber(Base, MotorInterface):
                 z4 = 255
                 zz += base**3
                 if zz/base**2 >= 1:
-                    z3 =int(zz/base**2)
+                    z3 = int(zz/base**2)
                     zz -= z3*base**2
                 if zz/base >= 1:
                     z2 = int(zz/base)
                     zz -= z2*base
                 z1 = zz
 
-            sends = [xx,yy,z1,z2,z3,z4]
+            sends = [xx, yy, z1, z2, z3, z4]
 
-            for ii in range (6):
-                self._serial_connection_rot.write(chr(sends[ii]).encode('latin'))
+            msg = bytes(sends).decode('latin')
+            #self.log.debug(f"Sending {sends} as: {msg}")
+
+            self._serial_connection_rot.write(msg)
+
             return 0
         except:
-            self.log.error('Command was not sent to zaber rotation stage')
+            self.log.exception('Command was not sent to zaber rotation stage: ')
             return -1
 
     def _read_answer_rot(self):
@@ -391,8 +395,9 @@ class MotorRotationZaber(Base, MotorInterface):
 
 
         r = [0, 0, 0, 0, 0, 0]
-        for i in range(6):
-            r[i] = ord(self._serial_connection_rot.read(1))
+
+        r = self._serial_connection_rot.read_bytes(6)
+        #self.log.debug(f"Received: {r}")
         yy = r[1]
         z1 = r[2]
         z2 = r[3]
