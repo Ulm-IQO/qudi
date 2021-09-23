@@ -33,11 +33,11 @@ which can be obtained directly from
 
 from collections import OrderedDict
 
-from core.module import Base
-from core.util.modules import get_home_dir
-from core.util.modules import get_main_dir
+from qudi.core.module import Base
+from qudi.util.paths import get_home_dir
+from qudi.util.paths import get_main_dir
 from ctypes import c_long, c_buffer, c_float, windll, pointer
-from interface.motor_interface import MotorInterface
+from qudi.interface.motor_interface import MotorInterface
 import os
 import platform
 

@@ -24,6 +24,7 @@ from abc import abstractmethod
 
 from qudi.core.module import Base
 
+
 class MotorInterface(Base):
     """ This is the Interface class to define the controls for the simple
         step motor device. The actual hardware implementation might have a

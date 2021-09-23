@@ -24,9 +24,9 @@ import time
 import serial
 from collections import OrderedDict
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.motor_interface import MotorInterface
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.interface.motor_interface import MotorInterface
 
 
 class MotorRotationZaber(Base, MotorInterface):
