@@ -1026,7 +1026,7 @@ QSlider::handle:vertical {
 
 QToolButton {
     background-color: transparent;
-    border: 1px transparent #4A4949;
+    border: 1px solid #4A4949;
     border-radius: 2px;
     margin: 3px;
     padding: 3px;
