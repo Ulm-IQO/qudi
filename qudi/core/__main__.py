@@ -21,6 +21,8 @@ import sys
 import argparse
 from qudi.core.application import Qudi
 
+# Set QT_API environment variable to PySide2
+os.environ['QT_API'] = 'pyside2'
 
 # Make icons work on non-X11 platforms, import a custom theme
 if sys.platform == 'win32':
