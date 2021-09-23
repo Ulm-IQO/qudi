@@ -49,6 +49,21 @@ try:
 except ImportError:
     pass
 
+# Set QT_API environment variable to PySide2
+os.environ['QT_API'] = 'pyside2'
+
+# Make icons work on non-X11 platforms, import a custom theme
+if sys.platform == 'win32':
+    try:
+        import ctypes
+        myappid = 'quantumoptics.qudi.mainapp'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except ImportError:
+        raise
+    except:
+        print('SetCurrentProcessExplicitAppUserModelID failed! This is probably not Microsoft '
+              'Windows!')
+
 
 class Qudi(QtCore.QObject):
     """
