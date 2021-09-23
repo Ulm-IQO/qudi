@@ -117,6 +117,9 @@ class MotorStagePI(Base, MotorInterface):
         """ Initialisation performed during activation of the module.
         @return: error code
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
+
         self.rm = visa.ResourceManager()
         self._serial_connection_xyz = self.rm.open_resource(
             resource_name=self._com_port_pi_xyz,

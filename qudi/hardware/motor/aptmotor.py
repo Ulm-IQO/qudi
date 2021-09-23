@@ -219,9 +219,6 @@ class APTMotor:
                          degree
         """
 
-        self.log.warning("This module has not been tested on the new qudi core."
-                         "Use with caution and contribute bug fixed back, please.")
-        
         self.aptdll = windll.LoadLibrary(path_dll)
         self.aptdll.EnableEventDlg(True)
         self.aptdll.APTInit()
