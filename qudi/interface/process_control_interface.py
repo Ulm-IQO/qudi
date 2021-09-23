@@ -75,7 +75,7 @@ class ProcessControlConstraints:
 
     @property
     def all_channels(self) -> Tuple[str, ...]:
-        return *self.setpoint_channels, *self.process_channels
+        return (*self.setpoint_channels, *self.process_channels)
 
     @property
     def setpoint_channels(self) -> Tuple[str, ...]:
