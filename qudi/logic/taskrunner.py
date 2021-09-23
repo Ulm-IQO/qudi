@@ -131,7 +131,7 @@ class ModuleTasksTableModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(index, index)
 
 
-class TaskRunner(LogicBase):
+class TaskRunnerLogic(LogicBase):
     """ This module keeps a collection of available ModuleTask subclasses (defined by config) and
     respective initialized instances that can be run.
     Handles module connections to tasks and allows monitoring of task states and results.
@@ -177,10 +177,21 @@ class TaskRunner(LogicBase):
             return list(self._running_tasks)
 
     @property
+    def task_states(self) -> Dict[str, str]:
+        with self._thread_lock:
+            states = dict()
+            for task_name in self._configured_task_types:
+                try:
+                    states[task_name] = self._running_tasks[task_name].state
+                except KeyError:
+                    states[task_name] = 'stopped'
+            return states
+
+    @property
     def configured_task_types(self) -> Dict[str, Type[ModuleTask]]:
         return self._configured_task_types.copy()
 
-    def run_task(self, name: str, args: Iterable[Any], kwargs: Mapping[str, Any]):
+    def run_task(self, name: str, args: Iterable[Any], kwargs: Mapping[str, Any]) -> None:
         with self._thread_lock:
             self._sigStartTask.emit(name, tuple(args), dict(kwargs))
 
