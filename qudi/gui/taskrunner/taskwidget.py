@@ -93,6 +93,7 @@ class TaskWidget(QtWidgets.QWidget):
         tmp.setRetainSizeWhenHidden(True)
         self.running_indicator.setSizePolicy(tmp)
         ctrl_layout = QtWidgets.QVBoxLayout()
+        ctrl_layout.addStretch(1)
         ctrl_layout.addWidget(self.running_indicator, 0, QtCore.Qt.AlignCenter)
         ctrl_layout.addWidget(self.state_label)
         ctrl_layout.addWidget(self.run_interrupt_button, 0, QtCore.Qt.AlignCenter)
