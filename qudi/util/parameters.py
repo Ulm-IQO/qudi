@@ -44,7 +44,7 @@ import typing
 from os import PathLike
 from PySide2 import QtWidgets
 from typing import Callable, Any, Set, FrozenSet, MutableSequence, Mapping, Tuple, Dict, Type, Union
-from typing import get_origin, get_args
+from typing import get_origin, get_args, Iterable, Sequence
 
 from qudi.util.helpers import is_complex_type, is_float_type, is_integer_type, is_string_type
 from qudi.util.widgets.scientific_spinbox import ScienSpinBox, ScienDSpinBox
@@ -127,10 +127,10 @@ class ParameterWidgetMapper:
             return set
         elif issubclass(typ, Mapping):
             return dict
-        elif issubclass(typ, Tuple):
-            return tuple
         elif issubclass(typ, MutableSequence):
             return list
+        elif issubclass(typ, (Tuple, Iterable, Sequence)):
+            return tuple
         return None
 
     @classmethod
