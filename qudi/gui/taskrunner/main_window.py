@@ -38,7 +38,7 @@ class TaskMainWindow(QtWidgets.QMainWindow):
     sigInterruptTask = QtCore.Signal(str)  # task name
     sigClosed = QtCore.Signal()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, tasks: Mapping[str, Type[ModuleTask]], **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setWindowTitle('qudi: Taskrunner')
@@ -69,6 +69,8 @@ class TaskMainWindow(QtWidgets.QMainWindow):
         scroll_area.setWidgetResizable(True)
         self.setCentralWidget(scroll_area)
 
+        self._initialize_task_widgets(tasks)
+
         # # Create toolbar
         # self.toolbar = QtWidgets.QToolBar()
         # self.toolbar.setOrientation(QtCore.Qt.Horizontal)
@@ -81,11 +83,19 @@ class TaskMainWindow(QtWidgets.QMainWindow):
         super().closeEvent(event)
         self.sigClosed.emit()
 
-    def initialize_task_widgets(self, tasks: Mapping[str, Type[ModuleTask]]) -> None:
-        # Delete old task widgets
-        self._clear_task_widgets()
+    @QtCore.Slot(str)
+    def task_started(self, name: str) -> None:
+        self.task_widgets[name].task_started()
 
-        # Create new task widgets
+    @QtCore.Slot(str, str)
+    def task_state_changed(self, name: str, state: str) -> None:
+        self.task_widgets[name].task_state_changed(state)
+
+    @QtCore.Slot(str, object, bool)
+    def task_finished(self, name: str, result: Any, success: bool) -> None:
+        self.task_widgets[name].task_finished(result, success)
+
+    def _initialize_task_widgets(self, tasks: Mapping[str, Type[ModuleTask]]) -> None:
         for ii, (task_name, task_type) in enumerate(tasks.items()):
             groupbox = QtWidgets.QGroupBox(task_name)
             font = groupbox.font()
@@ -100,18 +110,6 @@ class TaskMainWindow(QtWidgets.QMainWindow):
             widget.sigInterruptTask.connect(self._get_interrupt_task_callback(task_name))
             self.tasks_layout.addWidget(groupbox)
             self.task_widgets[task_name] = widget
-
-    @QtCore.Slot(str)
-    def task_started(self, name: str) -> None:
-        self.task_widgets[name].task_started()
-
-    @QtCore.Slot(str, str)
-    def task_state_changed(self, name: str, state: str) -> None:
-        self.task_widgets[name].task_state_changed(state)
-
-    @QtCore.Slot(str, object, bool)
-    def task_finished(self, name: str, result: Any, success: bool) -> None:
-        self.task_widgets[name].task_finished(result, success)
 
     def _clear_task_widgets(self) -> None:
         """ Helper method to disconnect and delete all TaskWidgets and remove them from layout """

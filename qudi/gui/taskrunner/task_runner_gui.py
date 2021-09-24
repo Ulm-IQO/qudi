@@ -46,8 +46,7 @@ class TaskRunnerGui(GuiBase):
         """
         # Initialize main window and connect task widgets
         taskrunner = self._task_runner()
-        self._mw = TaskMainWindow()
-        self._mw.initialize_task_widgets(taskrunner.configured_task_types)
+        self._mw = TaskMainWindow(tasks=taskrunner.configured_task_types)
         self._mw.sigStartTask.connect(lambda name, kwargs: self.sigStartTask.emit(name, (), kwargs))
         self.sigStartTask.connect(taskrunner.run_task, QtCore.Qt.QueuedConnection)
         self._mw.sigInterruptTask.connect(taskrunner.interrupt_task, QtCore.Qt.QueuedConnection)
