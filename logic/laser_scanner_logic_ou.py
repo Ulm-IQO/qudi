@@ -743,6 +743,7 @@ class LaserScannerLogic(GenericLogic):
             #    self._scanning_device.get_scanner_position()[2],
             #    self.get_current_voltage()
             #)
+            self.log.debug(str(np.where(counts_on_scan_line==max(counts_on_scan_line))[0])) ##ToDo: change this line to a real peak finder
             if self._re_pump=='on' and self._do_width!=0:
                 time.sleep(0.05)
                 self._do.simple_on('/Dev1/Port0/Line5')
