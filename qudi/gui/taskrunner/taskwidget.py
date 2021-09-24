@@ -32,6 +32,15 @@ from qudi.util.widgets.loading_indicator import CircleLoadingIndicator
 from qudi.core.scripting.moduletask import ModuleTask
 
 
+class TestToolButton(QtWidgets.QToolButton):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self.setIconSize(event.size())
+
+
 class TaskWidget(QtWidgets.QWidget):
     """ QWidget to control a ModuleTask and display its state.
     """
@@ -64,20 +73,19 @@ class TaskWidget(QtWidgets.QWidget):
         icon_dir = os.path.join(get_artwork_dir(), 'icons', 'oxygen', 'source_svg')
         self._play_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-start.svgz'))
         self._stop_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-stop.svgz'))
-        self.run_interrupt_button = QtWidgets.QToolButton()
-        self.run_interrupt_button.setText('Interrupt')
-        self.run_interrupt_button.setIcon(self._play_icon)
-        self.run_interrupt_button.setToolButtonStyle(QtGui.Qt.ToolButtonTextUnderIcon)
-        self.run_interrupt_button.setFixedWidth(self.run_interrupt_button.sizeHint().width())
-        self.run_interrupt_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                                                QtWidgets.QSizePolicy.Preferred)
-        self.run_interrupt_button.heightForWidth(self.run_interrupt_button.width())
-
         self.state_label = QtWidgets.QLabel('stopped')
         self.state_label.setAlignment(QtCore.Qt.AlignCenter)
+        control_width = self.state_label.sizeHint().width() * 2
+        self.run_interrupt_button = QtWidgets.QToolButton()
+        self.run_interrupt_button.setIcon(self._play_icon)
+        self.run_interrupt_button.setToolButtonStyle(QtGui.Qt.ToolButtonIconOnly)
+        self.run_interrupt_button.setFixedWidth(control_width)
+        self.run_interrupt_button.setFixedHeight(control_width)
+        self.run_interrupt_button.setIconSize(self.run_interrupt_button.size())
+
         self.running_indicator = CircleLoadingIndicator()
-        self.running_indicator.setFixedWidth(self.run_interrupt_button.width() // 2)
-        self.running_indicator.setFixedHeight(self.run_interrupt_button.width() // 2)
+        self.running_indicator.setFixedWidth(control_width // 2)
+        self.running_indicator.setFixedHeight(control_width // 2)
         tmp = self.running_indicator.sizePolicy()
         tmp.setRetainSizeWhenHidden(True)
         self.running_indicator.setSizePolicy(tmp)
@@ -86,7 +94,6 @@ class TaskWidget(QtWidgets.QWidget):
         ctrl_layout.addWidget(self.state_label)
         ctrl_layout.addWidget(self.run_interrupt_button, 0, QtCore.Qt.AlignCenter)
         self.running_indicator.hide()
-        self.run_interrupt_button.setText('Run')
 
         self.run_interrupt_button.clicked.connect(self._run_interrupt_clicked)
 
@@ -154,7 +161,6 @@ class TaskWidget(QtWidgets.QWidget):
     @QtCore.Slot()
     def task_started(self) -> None:
         self._interrupt_enabled = True
-        self.run_interrupt_button.setText('Interrupt')
         self.run_interrupt_button.setIcon(self._stop_icon)
         self.run_interrupt_button.setEnabled(True)
         self.running_indicator.show()
@@ -168,7 +174,6 @@ class TaskWidget(QtWidgets.QWidget):
     def task_finished(self, result: Any, success: bool) -> None:
         """ Callback for task finished event """
         self._interrupt_enabled = False
-        self.run_interrupt_button.setText('Run')
         self.run_interrupt_button.setIcon(self._play_icon)
         self.run_interrupt_button.setEnabled(True)
         self.running_indicator.hide()
