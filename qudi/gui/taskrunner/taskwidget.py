@@ -75,6 +75,9 @@ class TaskWidget(QtWidgets.QWidget):
         self._stop_icon = QtGui.QIcon(os.path.join(icon_dir, 'media-playback-stop.svgz'))
         self.state_label = QtWidgets.QLabel('stopped')
         self.state_label.setAlignment(QtCore.Qt.AlignCenter)
+        font = self.state_label.font()
+        font.setBold(True)
+        self.state_label.setFont(font)
         control_width = self.state_label.sizeHint().width() * 2
         self.run_interrupt_button = QtWidgets.QToolButton()
         self.run_interrupt_button.setIcon(self._play_icon)
@@ -84,8 +87,8 @@ class TaskWidget(QtWidgets.QWidget):
         self.run_interrupt_button.setIconSize(self.run_interrupt_button.size())
 
         self.running_indicator = CircleLoadingIndicator()
-        self.running_indicator.setFixedWidth(control_width // 2)
-        self.running_indicator.setFixedHeight(control_width // 2)
+        self.running_indicator.setFixedWidth(control_width // 1.5)
+        self.running_indicator.setFixedHeight(control_width // 1.5)
         tmp = self.running_indicator.sizePolicy()
         tmp.setRetainSizeWhenHidden(True)
         self.running_indicator.setSizePolicy(tmp)
@@ -123,6 +126,7 @@ class TaskWidget(QtWidgets.QWidget):
             editor = ParameterWidgetMapper.widget_for_parameter(param)
             if editor is None:
                 editor = QtWidgets.QLabel('Unknown parameter type')
+                editor.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
             else:
                 editor = editor()
                 # ToDo: Set default values here
@@ -138,15 +142,21 @@ class TaskWidget(QtWidgets.QWidget):
         row = 0
         column = 0
         layout = QtWidgets.QGridLayout()
+        layout.setColumnStretch(1, 1)
+        max_height = 0
         for label, editor in param_widgets:
             layout.addWidget(label, row, column)
             layout.addWidget(editor, row, column + 1)
-            layout.setColumnStretch(column + 1, 1)
+            max_height = max(max_height, editor.sizeHint().height())
             if row + 1 >= max_rows:
                 row = 0
                 column += 2
+                layout.setColumnStretch(column + 1, 1)
             else:
                 row += 1
+        for ii in range(row):
+            layout.setRowMinimumHeight(ii, max_height)
+        layout.setRowStretch(row, 1)
         return layout
 
     @QtCore.Slot()
