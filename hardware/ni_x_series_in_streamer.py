@@ -1080,16 +1080,16 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self._di_readers = list()
         self._ai_reader = None
 
-        for i in range(len(self._di_task_handles)):
+        while len(self._di_task_handles) > 0:
             try:
-                if not self._di_task_handles[i].is_task_done():
-                    self._di_task_handles[i].stop()
-                self._di_task_handles[i].close()
+                if not self._di_task_handles[-1].is_task_done():
+                    self._di_task_handles[-1].stop()
+                self._di_task_handles[-1].close()
             except ni.DaqError:
                 self.log.exception('Error while trying to terminate digital counter task.')
                 err = -1
             finally:
-                del self._di_task_handles[i]
+                del self._di_task_handles[-1]
         self._di_task_handles = list()
 
         if self._ai_task_handle is not None:
