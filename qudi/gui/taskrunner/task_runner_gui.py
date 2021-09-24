@@ -35,8 +35,6 @@ class TaskRunnerGui(GuiBase):
     # declare connectors
     _task_runner = Connector(name='task_runner', interface='TaskRunnerLogic')
 
-    sigStartTask = QtCore.Signal(str, tuple, dict)  # name, args, kwargs
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mw = None
@@ -47,8 +45,7 @@ class TaskRunnerGui(GuiBase):
         # Initialize main window and connect task widgets
         taskrunner = self._task_runner()
         self._mw = TaskMainWindow(tasks=taskrunner.configured_task_types)
-        self._mw.sigStartTask.connect(lambda name, kwargs: self.sigStartTask.emit(name, (), kwargs))
-        self.sigStartTask.connect(taskrunner.run_task, QtCore.Qt.QueuedConnection)
+        self._mw.sigStartTask.connect(taskrunner.run_task, QtCore.Qt.QueuedConnection)
         self._mw.sigInterruptTask.connect(taskrunner.interrupt_task, QtCore.Qt.QueuedConnection)
         self._mw.sigClosed.connect(self._deactivate_self)
         taskrunner.sigTaskStarted.connect(self._mw.task_started, QtCore.Qt.QueuedConnection)
@@ -83,7 +80,6 @@ class TaskRunnerGui(GuiBase):
         self._save_window_geometry(self._mw)
         self._mw.close()
         self._mw.sigStartTask.disconnect()
-        self.sigStartTask.disconnect()
         self._mw.sigInterruptTask.disconnect()
         self._mw.sigClosed.disconnect()
         taskrunner = self._task_runner()
