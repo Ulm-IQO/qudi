@@ -20,9 +20,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import visa
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.process_control_interface import ProcessControlInterface
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.interface.process_control_interface import ProcessControlInterface
 
 
 class PowerSupply(Base, ProcessControlInterface):
@@ -51,6 +51,8 @@ class PowerSupply(Base, ProcessControlInterface):
 
     def on_activate(self):
         """ Startup the module """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
 
         rm = visa.ResourceManager()
         try:
