@@ -7,7 +7,8 @@ from serial import Serial, EIGHTBITS,STOPBITS_ONE,PARITY_NONE
 
 
 class ThorlabsElloRotation():	
-	revelation = 262144
+	double_revelation = 286722 # bullshit specs number: 262144
+	revelation = int(double_revelation/2)
 
 	def __init__(self, port, ell=None):
 		self._port = port

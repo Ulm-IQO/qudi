@@ -13,7 +13,10 @@ class ThorlabsRotationMount(Base):
 	--- TODO: PUT IT HERE ---
 
 	"""
-	revelation = 262144
+	
+	double_revelation = 286722 # bullshit specs number: 262144
+	revelation = int(double_revelation/2)
+
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 
