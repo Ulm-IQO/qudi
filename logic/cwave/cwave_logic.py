@@ -209,5 +209,5 @@ class CwaveLogic(GenericLogic):
     def regulate_wavelength(self, mode):
         mode_on_off = "on" if mode else "off"
         self._wavemeter.sig_send_request.emit("set_regulation_mode",mode_on_off)
-        self._wavemeter.set_regulation_mode(mode_on_off)
+        # self._wavemeter.set_regulation_mode(mode_on_off)
 

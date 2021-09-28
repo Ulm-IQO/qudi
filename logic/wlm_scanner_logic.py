@@ -45,7 +45,7 @@ class WlmScannerLogic(GenericLogic):
         super().__init__(**kwargs)
         self.fit_x = []
         self.fit_y = []
-        
+        self.plot_x, self.plot_y = np.zeros(10),np.zeros(10)
         
     def on_activate(self):
         """ Initialisation performed during activation of the module.
