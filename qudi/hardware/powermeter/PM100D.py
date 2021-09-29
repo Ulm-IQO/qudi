@@ -19,11 +19,7 @@ import visa
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 
-#from qudi.interface.process_control_interface import ProcessControlConstraints
-#from qudi.interface.process_control_interface import ProcessSetpointInterface
 from qudi.interface.process_control_interface import ProcessValueInterface
-
-#from interface.process_control_interface import ProcessInterface
 
 try:
     from ThorlabsPM100 import ThorlabsPM100
@@ -31,23 +27,33 @@ except ImportError:
     raise ImportError('ThorlabsPM100 module not found. Please install it by typing command "pip install ThorlabsPM100"')
 
 
-#class PM100D(Base, SimpleDataInterface, ProcessInterface):
 class PM100D(ProcessValueInterface):
     """ Hardware module for Thorlabs PM100D powermeter.
     Example config :
     powermeter:
         module.Class: 'powermeter.PM100D.PM100D'
         address: 'USB0::0x1313::0x8078::P0013645::INSTR'
+        process_value_channels:
+            Power:
+                unit: 'W'
+                limits: [0, 0.5]
+                dtype: float
     This module needs the ThorlabsPM100 package from PyPi, this package is not included in the environment
     To add install it, type :
     pip install ThorlabsPM100
     in the Anaconda prompt after having activated qudi environment
     """
+    
+    _process_value_channels = ConfigOption(
+        name='process_value_channels',
+        default={'Power': {'unit': 'W', 'limits': (0, 0.5), 'dtype': float}}
+    )
 
     _address = ConfigOption('address', missing='error')
     _timeout = ConfigOption('timeout', 1)
     _power_meter = None
-
+    __constraints = None
+    
     def on_activate(self):
         """ Startup the module """
 
@@ -58,19 +64,41 @@ class PM100D(ProcessValueInterface):
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
         self._power_meter = ThorlabsPM100(inst=self._inst)
+        
+        units = {ch: d['unit'] for ch, d in self._process_value_channels.items() if 'unit' in d}
+        limits = {ch: d['limits'] for ch, d in self._process_value_channels.items() if 'limits' in d}
+        dtypes = {ch: d['dtype'] for ch, d in self._process_value_channels.items() if 'dtype' in d}
+        self.__constraints = ProcessControlConstraints(
+            setpoint_channels=None,
+            process_channels=tuple(self._process_value_channels),
+            units=units,
+            limits=limits,
+            dtypes=dtypes
+        )
 
     def on_deactivate(self):
         """ Stops the module """
         self._inst.close()
 
+    @property        
     def is_active(self):
         """ Current activity state.
         State is bool type and refers to active (True) and inactive (False).
 
         @return bool: Activity state (active: True, inactive: False)
         """
-        pass
+        return activity
+   
+    @is_active.setter
+    def is_active(self, active):
+        """ Set activity state. State is bool type and refers to active (True) and inactive (False).
 
+        @param bool active: Activity state to set (active: True, inactive: False)
+        """
+        activity = active
+        pass   
+
+    @property    
     def process_values(self):
         """ Read-Only property returning a snapshot of current process values for all channels.
 
@@ -78,20 +106,14 @@ class PM100D(ProcessValueInterface):
         """
         return self.get_process_value()
 
-    def set_activity_state(self, active):
-        """ Set activity state. State is bool type and refers to active (True) and inactive (False).
-
-        @param bool active: Activity state to set (active: True, inactive: False)
-        """
-        pass
-
+    @property    
     def constraints(self):
         """ Read-Only property holding the constraints for this hardware module.
         See class ProcessControlConstraints for more details.
 
         @return ProcessControlConstraints: Hardware constraints
         """
-        return (self.get_process_unit(), self.get_wavelength_range(), self.get_wavelength())
+        return __constraints
 
     def get_power(self):
         """ Return the power read from the ThorlabsPM100 package """
