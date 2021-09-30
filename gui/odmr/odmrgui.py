@@ -228,6 +228,7 @@ class ODMRGui(GUIBase):
 
                 matrix_range_SpinBox = QtWidgets.QSpinBox(groupBox)
                 matrix_range_SpinBox.setValue(0)
+                matrix_range_SpinBox.setMinimum(-1)
                 matrix_range_SpinBox.setMinimumWidth(75)
                 matrix_range_SpinBox.setMaximumWidth(100)
                 matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
@@ -366,7 +367,7 @@ class ODMRGui(GUIBase):
         self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
         self._mw.fit_range_SpinBox.editingFinished.connect(self.update_fit_range)
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.editingFinished.connect(self.update_matrix_range)
-
+        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.valueChanged.connect(self.update_matrix_range)
         # Control/values-changed signals to logic
         self.sigCwMwOn.connect(self._odmr_logic.mw_cw_on, QtCore.Qt.QueuedConnection)
         self.sigMwOff.connect(self._odmr_logic.mw_off, QtCore.Qt.QueuedConnection)
