@@ -428,7 +428,7 @@ class ODMRGui(GUIBase):
         self._odmr_logic.sigOdmrElapsedTimeUpdated.disconnect()
         self.sigCwMwOn.disconnect()
         self.sigMwOff.disconnect()
-        self.sigClearData.disconnect()
+        self.sigClearData.disconnectt()()
         self.sigStartOdmrScan.disconnect()
         self.sigStopOdmrScan.disconnect()
         self.sigContinueOdmrScan.disconnect()
@@ -941,12 +941,7 @@ class ODMRGui(GUIBase):
         """ Update the shown fit. """
         if current_fit != 'No Fit':
             # display results as formatted text
-            self._mw.odmr_fit_results_DisplayWidget.clear()
-            try:
-                formated_results = units.create_formatted_output(result_str_dict)
-            except:
-                formated_results = 'this fit does not return formatted results'
-            self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
+            self.update_display_widget(result_str_dict)
 
         self._mw.fit_methods_ComboBox.blockSignals(True)
         self._mw.fit_methods_ComboBox.setCurrentFit(current_fit)
@@ -963,6 +958,15 @@ class ODMRGui(GUIBase):
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
+        return
+
+    def update_display_widget(self, result_str_dict):
+        self._mw.odmr_fit_results_DisplayWidget.clear()
+        try:
+            formated_results = units.create_formatted_output(result_str_dict)
+        except:
+            formated_results = 'this fit does not return formatted results'
+        self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
         return
 
     def update_fit_range(self):
