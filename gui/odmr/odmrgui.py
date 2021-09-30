@@ -232,6 +232,7 @@ class ODMRGui(GUIBase):
                 matrix_range_SpinBox.setMinimumWidth(75)
                 matrix_range_SpinBox.setMaximumWidth(100)
                 matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+                matrix_range_SpinBox.setToolTip('What range should be displayed? -1 stands for all ranges combined.')
                 gridLayout.addWidget(matrix_range_SpinBox, row + 1, 8, 1, 1)
                 setattr(self._mw.odmr_control_DockWidget, 'matrix_range_SpinBox',
                         matrix_range_SpinBox)
