@@ -28,6 +28,7 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
+from copy import copy
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -912,7 +913,10 @@ class ODMRLogic(GenericLogic):
 
             # now create a plot for each scan range
             data_start_ind = 0
-            for ii, frequency_arr in enumerate(self.frequency_lists):
+            all_freq_lists = copy(self.frequency_lists)
+            all_freq_lists.insert(0, self.final_freq_list)
+
+            for ii, frequency_arr in enumerate(all_freq_lists):
                 if len(tag) > 0:
                     filelabel = '{0}_ODMR_data_ch{1}_range{2}'.format(tag, nch, ii)
                 else:
@@ -923,10 +927,11 @@ class ODMRLogic(GenericLogic):
                 data['frequency (Hz)'] = frequency_arr
 
                 num_points = len(frequency_arr)
-                data_end_ind = data_start_ind + num_points
-                data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
-                data_start_ind += num_points
-
+                if ii != 0:
+                    data_end_ind = data_start_ind + num_points
+                    data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
+                else:
+                    data['count data (counts/s)'] = self.odmr_plot_y[nch]
                 parameters = OrderedDict()
                 parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
                 parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
@@ -937,16 +942,16 @@ class ODMRLogic(GenericLogic):
                 parameters['Step size (Hz)'] = frequency_arr[1] - frequency_arr[0]
                 parameters['Clock Frequencies (Hz)'] = self.clock_frequency
                 parameters['Channel'] = '{0}: {1}'.format(nch, channel)
-                parameters['frequency range'] = str(ii)
+                parameters['frequency range'] = str(ii - 1)
 
-                key = 'channel: {0}, range: {1}'.format(nch, ii)
+                key = 'channel: {0}, range: {1}'.format(nch, ii - 1)
                 if key in self.fits_performed.keys():
                     parameters['Fit function'] = self.fits_performed[key][3]
                     for name, param in self.fits_performed[key][2].params.items():
                         parameters[name] = str(param)
                 # add all fit parameter to the saved data:
 
-                fig = self.draw_figure(nch, ii,
+                fig = self.draw_figure(nch, ii - 1,
                                        cbar_range=colorscale_range,
                                        percentile_range=percentile_range)
 
@@ -974,7 +979,11 @@ class ODMRLogic(GenericLogic):
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
         key = 'channel: {0}, range: {1}'.format(channel_number, freq_range)
-        freq_data = self.frequency_lists[freq_range]
+        if freq_range >= 0:
+            freq_data = self.frequency_lists[freq_range]
+        else:
+            freq_data = self.final_freq_list
+                
         lengths = [len(freq_range) for freq_range in self.frequency_lists]
         cumulative_sum = list()
         tmp_val = 0
@@ -983,10 +992,19 @@ class ODMRLogic(GenericLogic):
             tmp_val += length
             cumulative_sum.append(tmp_val)
 
-        ind_start = cumulative_sum[freq_range]
-        ind_end = cumulative_sum[freq_range + 1]
+
+        if freq_range >= 0:
+            ind_start = cumulative_sum[freq_range]
+            ind_end = cumulative_sum[freq_range + 1]
+        else:
+            ind_start = cumulative_sum[0]
+            ind_end = cumulative_sum[-1]
         count_data = self.odmr_plot_y[channel_number][ind_start:ind_end]
-        fit_freq_vals = self.frequency_lists[freq_range]
+        if freq_range >= 0:
+            fit_freq_vals = self.frequency_lists[freq_range]
+        else:
+            fit_freq_vals = self.final_freq_list
+
         if key in self.fits_performed:
             fit_count_vals = self.fits_performed[key][2].eval()
         else:
@@ -1102,15 +1120,19 @@ class ODMRLogic(GenericLogic):
         return fig
 
     def select_odmr_matrix_data(self, odmr_matrix, nch, freq_range):
+        # lets try to get this running with index -1
         odmr_matrix_dp = odmr_matrix[:, nch]
-        x_data = self.frequency_lists[freq_range]
-        x_data_full_length = np.zeros(len(self.final_freq_list))
-        mw_starts = [freq_arr[0] for freq_arr in self.frequency_lists]
-        start_pos = np.where(np.isclose(self.final_freq_list,
-                                        mw_starts[freq_range]))[0][0]
-        x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
-        y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
-        odmr_matrix_range = odmr_matrix_dp[:, y_args]
+        if freq_range >= 0:
+            x_data = self.frequency_lists[freq_range]
+            x_data_full_length = np.zeros(len(self.final_freq_list))
+            mw_starts = [freq_arr[0] for freq_arr in self.frequency_lists]
+            start_pos = np.where(np.isclose(self.final_freq_list,
+                                                             mw_starts[freq_range]))[0][0]
+            x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
+            y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
+            odmr_matrix_range = odmr_matrix_dp[:, y_args]
+        else:
+            odmr_matrix_range = odmr_matrix_dp
         return odmr_matrix_range
 
     def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, channel, runtime,

@@ -239,6 +239,7 @@ class ODMRGui(GUIBase):
         setattr(self._mw.odmr_control_DockWidget, 'ranges_groupBox', groupBox)
         self._mw.dockWidgetContents_3_grid_layout = self._mw.dockWidgetContents_3.layout()
         self._mw.fit_range_SpinBox.valueChanged.connect(self.change_fit_range)
+        self._mw.fit_range_SpinBox.valueChanged.connect(self.change_fit_displayed)
         # (QWidget * widget, int row, int column, Qt::Alignment alignment = Qt::Alignment())
 
         self._mw.dockWidgetContents_3_grid_layout.addWidget(groupBox, 7, 1, 1, 5)
@@ -1107,6 +1108,13 @@ class ODMRGui(GUIBase):
         self._odmr_logic.fit_range = self._mw.fit_range_SpinBox.value()
         return
 
+    def change_fit_displayed(self):
+        num = self._mw.fit_range_SpinBox.value()
+        if self._fit_exists(num):
+            odmr_x, odmr_y, result_str, model_str =  self._int_to_fit_credentials(num)
+            self.update_fit(odmr_x, odmr_y, result_str, model_str)
+        return 
+
     def get_frequencies_from_row(self, row):
         object_dict = self.get_objects_from_groupbox_row(row)
         for object_name in object_dict:
@@ -1140,3 +1148,20 @@ class ODMRGui(GUIBase):
 
         self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
         return
+
+    def _map_int_to_fit_id(self, num):
+        fit_id = 'channel: {}, range: {}'.format(self.display_channel, num)
+        return fit_id
+
+    def _int_to_fit_credentials(self, num):
+        fit_id = self._map_int_to_fit_id(num)
+        odmr_x, odmr_y, result, model_str = self._odmr_logic.fits_performed[fit_id]
+        result_str = result.result_str_dict
+        return odmr_x, odmr_y, result_str, model_str
+
+    def _fit_exists(self, num):
+        fit_id = self._map_int_to_fit_id(num)
+        if fit_id in self._odmr_logic.fits_performed.keys():
+            return True
+        else:
+            return False
