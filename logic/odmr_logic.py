@@ -918,9 +918,9 @@ class ODMRLogic(GenericLogic):
 
             for ii, frequency_arr in enumerate(all_freq_lists):
                 if len(tag) > 0:
-                    filelabel = '{0}_ODMR_data_ch{1}_range{2}'.format(tag, nch, ii)
+                    filelabel = '{0}_ODMR_data_ch{1}_range{2}'.format(tag, nch, ii - 1)
                 else:
-                    filelabel = 'ODMR_data_ch{0}_range{1}'.format(nch, ii)
+                    filelabel = 'ODMR_data_ch{0}_range{1}'.format(nch, ii - 1)
 
                 # prepare the data in a dict or in an OrderedDict:
                 data = OrderedDict()
@@ -932,6 +932,7 @@ class ODMRLogic(GenericLogic):
                     data['count data (counts/s)'] = self.odmr_plot_y[nch][data_start_ind:data_end_ind]
                 else:
                     data['count data (counts/s)'] = self.odmr_plot_y[nch]
+
                 parameters = OrderedDict()
                 parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
                 parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
