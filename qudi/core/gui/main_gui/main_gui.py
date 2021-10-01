@@ -32,6 +32,7 @@ from qudi.core.threadmanager import ThreadManager
 from qudi.util.paths import get_main_dir, get_default_config_dir
 from qudi.core.gui.main_gui.errordialog import ErrorDialog
 from qudi.core.gui.main_gui.mainwindow import QudiMainWindow
+from qudi.core.config import Configuration
 from qudi.core.module import GuiBase
 from qudi.core.logger import get_signal_handler
 
@@ -47,7 +48,7 @@ class QudiMainGui(GuiBase):
     """
     # status vars
     _console_font_size = StatusVar(name='console_font_size', default=10)
-    _console_color_theme = StatusVar(name='console_color_theme', default='linux')
+    #_console_color_theme = StatusVar(name='console_color_theme', default='linux')
     _show_error_popups = StatusVar(name='show_error_popups', default=True)
 
     def __init__(self, *args, **kwargs):
@@ -61,6 +62,11 @@ class QudiMainGui(GuiBase):
         self.error_dialog = None
         self.mw = None
         self._has_console = False  # Flag indicating if an IPython console is available
+        self.configuration = self._qudi_main.configuration
+        # TODO do this also for font size etc.
+        self._console_color_theme = self.configuration.console_color_theme
+
+        self.log.error(f'{self._console_color_theme}')
 
     def on_activate(self):
         """ Activation method called on change to active state.
@@ -98,6 +104,13 @@ class QudiMainGui(GuiBase):
 
         # IPython console widget
         self.start_jupyter_widget()
+
+        color_theme_combo_box = self.mw.settings_dialog.color_theme_combobox
+        color_themes = [color_theme_combo_box.itemText(i) for i in range(color_theme_combo_box.count())]
+        if self._console_color_theme in color_themes:
+            self.log.error(self._console_color_theme)
+            ind = color_themes.index(self._console_color_theme)
+            color_theme_combo_box.setCurrentIndex(ind)
 
         # Configure thread widget
         self.mw.threads_widget.setModel(ThreadManager.instance())

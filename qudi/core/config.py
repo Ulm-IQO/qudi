@@ -197,6 +197,16 @@ class Configuration(QtCore.QObject):
         self.sigConfigChanged.emit(self)
 
     @property
+    def console_color_theme(self):
+        return self._global_config.get('console_color_theme', 'lightBG')
+
+    @console_color_theme.setter
+    def console_color_theme(self, color_theme):
+        assert color_theme is None or isinstance(color_theme, str), 'color_theme must be None or str'
+        self._global_config['console_color_theme'] = color_theme
+        self.sigConfigChanged.emit(self)
+
+    @property
     def daily_data_dirs(self):
         """ Flag indicating if daily sub-directories should be used by default (True) or not (False)
 
@@ -425,6 +435,7 @@ class Configuration(QtCore.QObject):
         new_config.startup_modules = global_cfg.pop('startup', None)
         new_config.extension_paths = global_cfg.pop('extensions', None)
         new_config.stylesheet = global_cfg.pop('stylesheet', None)
+        new_config.console_color_theme = global_cfg.pop('console_color_theme', 'lightBG')
         new_config.daily_data_dirs = global_cfg.pop('daily_data_dirs', None)
         new_config.default_data_dir = global_cfg.pop('default_data_dir', None)
         new_config.namespace_server_port = global_cfg.pop('namespace_server_port', 18861)

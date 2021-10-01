@@ -49,7 +49,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self.color_theme_combobox = QtWidgets.QComboBox()
         self.color_theme_combobox.setObjectName('colorThemeComboBox')
-        self.color_theme_combobox.addItems(['linux', 'lightBG', 'NoColor'])
+        self.color_theme_combobox.addItems(['lightBG', 'linux', 'NoColor'])
         label = QtWidgets.QLabel('Console color theme:')
         label.setObjectName('colorThemeLabel')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
