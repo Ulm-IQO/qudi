@@ -47,6 +47,7 @@ class QudiMainGui(GuiBase):
     """
     # status vars
     _console_font_size = StatusVar(name='console_font_size', default=10)
+    _console_color_theme = StatusVar(name='console_color_theme', default='linux')
     _show_error_popups = StatusVar(name='show_error_popups', default=True)
 
     def __init__(self, *args, **kwargs):
@@ -247,7 +248,7 @@ class QudiMainGui(GuiBase):
             self.mw.console_widget.banner = banner
             self.mw.console_widget.font_size = self._console_font_size
             self.mw.console_widget.reset_font()
-            self.mw.console_widget.set_default_style(colors='linux')
+            self.mw.console_widget.set_default_style(colors=self._console_color_theme)
             kernel_client = kernel_manager.client()
             kernel_client.hb_channel.time_to_dead = 10.0
             kernel_client.hb_channel.kernel_died.connect(self.kernel_died_callback)
@@ -312,6 +313,10 @@ class QudiMainGui(GuiBase):
         self.mw.console_widget.reset_font()
         self._console_font_size = font_size
 
+        # Console color theme
+        color_theme = self.mw.settings_dialog.color_theme_combobox.currentText()
+        self.mw.console_widget.set_default_style(color_theme)
+        self._console_color_theme = color_theme
         # Error popups
         error_popups = self.mw.settings_dialog.show_error_popups_checkbox.isChecked()
         self.error_dialog.set_enabled(error_popups)

@@ -49,12 +49,14 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self.color_theme_combobox = QtWidgets.QComboBox()
         self.color_theme_combobox.setObjectName('colorThemeComboBox')
-        self.color_theme_combobox.addItems(['linux', 'lightBG'])
+        self.color_theme_combobox.addItems(['linux', 'lightBG', 'NoColor'])
         label = QtWidgets.QLabel('Console color theme:')
         label.setObjectName('colorThemeLabel')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         layout.addWidget(label, 1, 0)
         layout.addWidget(self.color_theme_combobox, 1, 1)
+
+        # TODO Add combobox to make console styles configurable
 
         self.show_error_popups_checkbox = QtWidgets.QCheckBox()
         self.show_error_popups_checkbox.setObjectName('showErrorPopupsCheckbox')
