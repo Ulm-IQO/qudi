@@ -431,7 +431,7 @@ class ODMRGui(GUIBase):
         self._odmr_logic.sigOdmrElapsedTimeUpdated.disconnect()
         self.sigCwMwOn.disconnect()
         self.sigMwOff.disconnect()
-        self.sigClearData.disconnectt()()
+        self.sigClearData.disconnectt()
         self.sigStartOdmrScan.disconnect()
         self.sigStopOdmrScan.disconnect()
         self.sigContinueOdmrScan.disconnect()
