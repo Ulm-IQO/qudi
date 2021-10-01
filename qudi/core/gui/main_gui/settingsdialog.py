@@ -47,20 +47,29 @@ class SettingsDialog(QtWidgets.QDialog):
         layout.addWidget(label, 0, 0)
         layout.addWidget(self.font_size_spinbox, 0, 1)
 
+        self.color_theme_combobox = QtWidgets.QComboBox()
+        self.color_theme_combobox.setObjectName('colorThemeComboBox')
+        self.color_theme_combobox.addItems(['linux', 'lightBG'])
+        label = QtWidgets.QLabel('Console color theme:')
+        label.setObjectName('colorThemeLabel')
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        layout.addWidget(label, 1, 0)
+        layout.addWidget(self.color_theme_combobox, 1, 1)
+
         self.show_error_popups_checkbox = QtWidgets.QCheckBox()
         self.show_error_popups_checkbox.setObjectName('showErrorPopupsCheckbox')
         self.show_error_popups_checkbox.setChecked(True)
         label = QtWidgets.QLabel('Show error popups:')
         label.setObjectName('showErrorPopupsLabel')
         label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        layout.addWidget(label, 1, 0)
-        layout.addWidget(self.show_error_popups_checkbox, 1, 1)
+        layout.addWidget(label, 2, 0)
+        layout.addWidget(self.show_error_popups_checkbox, 2, 1)
 
         buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok
                                                | QtWidgets.QDialogButtonBox.Cancel
                                                | QtWidgets.QDialogButtonBox.Apply)
         buttonbox.setOrientation(QtCore.Qt.Horizontal)
-        layout.addWidget(buttonbox, 2, 0, 1, 2)
+        layout.addWidget(buttonbox, 3, 0, 1, 2)
 
         # Add internal signals
         buttonbox.accepted.connect(self.accept)
