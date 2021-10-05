@@ -231,7 +231,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
     def generate_rabi_penpp(self, name='rabi_pen', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
                             wait_pumpprobe=100e-6, wait_reinit=500e-6,
-                            alternating_no_mw=False, alternating=True):
+                            alternating_no_mw=False, alternating=False):
         """
         fixed pulse probe
         """
@@ -290,7 +290,6 @@ class PentaceneMethods(PredefinedGeneratorBase):
         rabi_block.append(waiting_reinit_element)
         rabi_block.append(laser_init_element)
         rabi_block.append(delay_element)
-
         rabi_block.append(waiting_element)
 
         if alternating_no_mw and not alternating:
@@ -454,6 +453,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # keep wait_pumpprobe = wait_time + tau + wait_2_time constant
         waiting_reinit_element = self._get_idle_element(wait_reinit,
                                                          increment=0)
+        if wait_pumpprobe - self.wait_time - tau_start - (num_of_points*tau_step) < 0:
+            self.log.warning("Negative pump-probe time, increase!")
         waiting_element_after_mw = self._get_idle_element(length=wait_pumpprobe - self.wait_time - tau_start,
                                                           increment=-tau_step)
 
@@ -532,6 +533,119 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def generate_HH_double_tau_penpp(self, name='double_hh_tau_penpp', dress2_f=10e6, tau_start=0e-6, tau_step=100e-9,
+                       ampl_spinlock=0.25, ampl_dress2=0.1, phase_dress2=90, num_of_points=50,
+                                     wait_pumpprobe=1e-6, wait_reinit=0e-6):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        tau_pspacing_arr = tau_start + np.arange(num_of_points) * tau_step
+
+        # create the elements
+        if wait_pumpprobe < self.wait_time + np.max(tau_pspacing_arr):
+            new_wait_pumpprobe = self.wait_time + np.max(tau_pspacing_arr)
+            self.log.warning(f"Adjusting pump probe time {wait_pumpprobe * 1e6} us -> {new_wait_pumpprobe * 1e6} us")
+            wait_pumpprobe = new_wait_pumpprobe
+
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        waiting_reinit_element = self._get_idle_element(wait_reinit,
+                                                        increment=0)
+        # keep wait_pumpprobe = wait_time + tau + wait_2_time constant
+        waiting_element_after_mw = self._get_idle_element(length=wait_pumpprobe - self.wait_time - tau_start,
+                                                          increment=-tau_step)
+
+        laser_read_element = self._get_laser_gate_element(length=self.laser_length,
+                                                          increment=0, add_gate_ch='d_ch4')
+        laser_init_element = self._get_laser_gate_element(length=self.laser_length,
+                                                          increment=0, add_gate_ch='')
+
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+
+        double_sl_element = self._get_multiple_mw_element(length=tau_start,
+                                                  increment=tau_step,
+                                                  amps=[ampl_spinlock, ampl_dress2, ampl_dress2],
+                                                  freqs=[self.microwave_frequency,
+                                                         self.microwave_frequency-dress2_f,
+                                                         self.microwave_frequency+dress2_f],
+                                                  phases=[90, 90+phase_dress2, 90+phase_dress2])
+
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(double_sl_element)
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(waiting_element_after_mw)
+
+        hhamp_block.append(laser_read_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_reinit_element)
+        hhamp_block.append(laser_init_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_element)
+
+        # alternating
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(double_sl_element)
+        hhamp_block.append(pi3half_element)
+
+        hhamp_block.append(laser_read_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_reinit_element)
+        hhamp_block.append(laser_init_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_element)
+
+        created_blocks.append(hhamp_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        num_phys_lasers = 2 * (2 * num_of_points if True else num_of_points)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['laser_ignore_list'] = list(np.arange(1, num_phys_lasers, 2))
+        block_ensemble.measurement_information['controlled_variable'] = tau_pspacing_arr
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('tau_pspacing', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] =  num_phys_lasers/2
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
 
 
     ############# NV methods
@@ -692,8 +806,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         block_ensemble.measurement_information['alternating'] = True
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = freq_array
-        block_ensemble.measurement_information['units'] = ('V', '')
-        block_ensemble.measurement_information['labels'] = ('MW amplitude', 'Signal')
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['labels'] = ('2nd dress frequency', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -701,6 +815,88 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def generate_HH_double_tau(self, name='double_hh_tau', dress2_f=10e6, tau_start=0e-6, tau_step=100e-9,
+                       ampl_spinlock=0.25, ampl_dress2=0.1, phase_dress2=90, num_of_points=50):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        tau_pspacing_arr = tau_start + np.arange(num_of_points) * tau_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+
+        double_sl_element = self._get_multiple_mw_element(length=tau_start,
+                                                  increment=tau_step,
+                                                  amps=[ampl_spinlock, ampl_dress2, ampl_dress2],
+                                                  freqs=[self.microwave_frequency,
+                                                         self.microwave_frequency-dress2_f,
+                                                         self.microwave_frequency+dress2_f],
+                                                  phases=[90, 90+phase_dress2, 90+phase_dress2])
+
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(double_sl_element)
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(laser_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_element)
+
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(double_sl_element)
+        hhamp_block.append(pi3half_element)
+        hhamp_block.append(laser_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_element)
+        created_blocks.append(hhamp_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_pspacing_arr
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('tau_pspacing', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
 
 
     def generate_rabi_nv_red_read(self, name='rabi_red', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
