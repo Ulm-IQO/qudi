@@ -3,7 +3,7 @@ Qudi is a suite of tools for operating multi-instrument and multi-computer labor
 Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicable framework for controlling experiments.
 
 ## Installation of new core
-First create a new environment with python 3.7 or 3.8 (>=3.9 is not yet supported by some packages 
+First create a new environment with python 3.8 (>=3.9 is not yet supported by some packages 
 we use) to install qudi and all dependencies in and activate this environment. 
 ### Using conda:
 ```bash
@@ -20,7 +20,7 @@ cd "C:\Software\qudicore"
 ### Using native python:
 Open a command line (e.g. cmd or powershell) in a location where you want to install the new virtual
 environment and qudi.
-Make sure to check if your default python executable is 3.7 or 3.8:
+Make sure to check if your default python executable is 3.8:
 ```bash
 python -V
 ```
