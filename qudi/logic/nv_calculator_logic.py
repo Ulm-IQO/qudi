@@ -20,23 +20,23 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
+from PySide2 import QtCore
 import numpy as np
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from core.connector import Connector
-from core.statusvariable import StatusVar
+from qudi.core.module import LogicBase
+from qudi.util.mutex import Mutex
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
 from scipy.constants import physical_constants
 
 
-class NVCalculatorLogic(GenericLogic):
+class NVCalculatorLogic(LogicBase):
     """This is the Logic class for Calculator."""
     _modclass = 'calculatorlogic'
     _modtype = 'logic'
 
     # declare connectors
-    odmr = Connector(interface='ODMRLogic', optional=True)
+    odmr = Connector(interface='OdmrLogic', optional=True)
     pulsed = Connector(interface='PulsedMeasurementLogic', optional=True)
 
     data_source = 0  # choose the data and fitting source, either from cw-odmr, or pulsedmeasurement 0: "no data_source", 1: "CW_ODMR", 2: "pulsed"

@@ -21,14 +21,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 
-from core.module import Connector
-from gui.guibase import GUIBase
-from qtpy import QtWidgets
-from qtpy import QtCore
-from qtpy import uic
+from qudi.core.connector import Connector
+from qudi.core.module import GuiBase
+from PySide2 import QtCore, QtWidgets
+from qudi.util import uic
 
 
-class NVCalculatorGui(GUIBase):
+class NVCalculatorGui(GuiBase):
     _modclass = 'NVCalculatorGui'
     _modtype = 'gui'
     ## declare connectors
@@ -36,7 +35,7 @@ class NVCalculatorGui(GUIBase):
 
     sigCalParamsChanged = QtCore.Signal(float, float, bool)
     sigManualDipsChanged = QtCore.Signal(float, float)
-    sigMaualFieldChanged = QtCore.Signal(float)
+    sigManualFieldChanged = QtCore.Signal(float)
     sigManualNMRChanged = QtCore.Signal(bool)
 
     def on_activate(self):
@@ -80,7 +79,7 @@ class NVCalculatorGui(GUIBase):
         # send signals to logic
         self.sigCalParamsChanged.connect(self.calculator.set_field_params, QtCore.Qt.QueuedConnection)
         self.sigManualDipsChanged.connect(self.calculator.set_manual_dip_values, QtCore.Qt.QueuedConnection)
-        self.sigMaualFieldChanged.connect(self.calculator.set_manual_field, QtCore.Qt.QueuedConnection)
+        self.sigManualFieldChanged.connect(self.calculator.set_manual_field, QtCore.Qt.QueuedConnection)
 
         # Update signals coming from logic
         self.calculator.sigFieldaCalUpdated.connect(self.a_update_field, QtCore.Qt.QueuedConnection)
@@ -90,7 +89,7 @@ class NVCalculatorGui(GUIBase):
         self.calculator.sigManualFieldUpdated.connect(self.update_manual_field, QtCore.Qt.QueuedConnection)
         self.calculator.sigNMRUpdated.connect(self.update_nmr, QtCore.Qt.QueuedConnection)
 
-        self.restoreWindowPos(self._mw)
+        self._restore_window_geometry(self._mw)
         self.show()
 
     def show(self):
@@ -189,7 +188,7 @@ class NVCalculatorGui(GUIBase):
     def change_manual_field(self):
         """ Change the field values manualy for NMR calculation"""
         manual_field = self._mw.manual_field_DoubleSpinBox.value()
-        self.sigMaualFieldChanged.emit(manual_field)
+        self.sigManualFieldChanged.emit(manual_field)
         return
 
     def use_single_freq(self):

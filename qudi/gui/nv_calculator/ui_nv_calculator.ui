@@ -830,7 +830,7 @@
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
+   <header>qudi.util.widgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
