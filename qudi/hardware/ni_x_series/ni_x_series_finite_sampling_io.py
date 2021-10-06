@@ -56,7 +56,12 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         output_channel_units:
             'ao0': 'V'
             'ao1': 'V'
-        adc_voltage_range: [-10, 10]  # optional #TODO adapt interface for limits; and for each channel independently?
+        adc_voltage_ranges:
+            ai0: [-10, 10]  # optional
+            ai1: [-10, 10]  # optional
+        output_voltage_ranges:
+            ao0: [-5, 5]
+            ao1: [-10, 10]
         #TODO output range, also limits need to be included in constraints
         frame_size_limits: [1, 1e9]  # optional #TODO actual HW constraint?
         output_mode: 'JUMP_LIST' # optional, must be name of SamplingOutputMode
