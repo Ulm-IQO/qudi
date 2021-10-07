@@ -29,14 +29,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.util.mutex import Mutex
-from logic.generic_logic import GenericLogic
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.util.mutex import RecursiveMutex
+from qudi.core.module import LogicBase
 from qtpy import QtCore
 
 
-class LaserScannerLogic(GenericLogic):
+class LaserScannerLogic(LogicBase):
 
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
