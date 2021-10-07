@@ -28,10 +28,10 @@ import ctypes   # is a foreign function library for Python. It provides C
                 # or shared libraries. It can be used to wrap these libraries
                 # in pure Python.
 
-from interface.wavemeter_interface import WavemeterInterface
-from core.module import Base
-from core.configoption import ConfigOption
-from core.util.mutex import Mutex
+from qudi.interface.wavemeter_interface import WavemeterInterface
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.util.mutex import Mutex
 
 
 class HardwarePull(QtCore.QObject):
@@ -76,7 +76,7 @@ class HardwarePull(QtCore.QObject):
 
 
 
-class HighFinesseWavemeter(Base,WavemeterInterface):
+class HighFinesseWavemeter(WavemeterInterface):
     """ Hardware class to controls a High Finesse Wavemeter.
 
     Example config for copy-paste:
