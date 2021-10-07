@@ -28,13 +28,13 @@ import datetime
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from core.connector import Connector
-from core.configoption import ConfigOption
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.module import Base
+from qudi.util.mutex import Mutex
 
 
-class WavemeterLoggerLogic(GenericLogic):
+class WavemeterLoggerLogic(Base):
     """This logic module gathers data from wavemeter and the counter logic.
     """
 
