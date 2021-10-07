@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>888</width>
-    <height>780</height>
+    <width>749</width>
+    <height>749</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>qudi: Laser scanning</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QGridLayout" name="gridLayout" rowstretch="0,3,1">
     <item row="0" column="0">
      <widget class="QLabel" name="autoMinLabel">
       <property name="text">
@@ -48,8 +48,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>888</width>
-     <height>30</height>
+     <width>749</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">

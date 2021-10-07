@@ -42,7 +42,7 @@ class WavemeterLogWindow(QtWidgets.QMainWindow):
         """
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_scanwindow_test.ui')
+        ui_file = os.path.join(this_dir, 'ui_scanwindow.ui')
 
         # Load it
         super(WavemeterLogWindow, self).__init__()
