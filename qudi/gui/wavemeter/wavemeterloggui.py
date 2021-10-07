@@ -39,6 +39,8 @@ class WavemeterLogWindow(QtWidgets.QMainWindow):
     def __init__(self):
         """ Create the laser scanner window.
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_scanwindow.ui')
