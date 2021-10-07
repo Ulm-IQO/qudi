@@ -96,6 +96,8 @@ class WavemeterDummy(WavemeterInterface):
     def on_activate(self):
         """ Activate module.
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
 
