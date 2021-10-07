@@ -24,14 +24,13 @@ import os
 import pyqtgraph as pg
 
 from collections import OrderedDict
-from core.connector import Connector
-from gui.colordefs import ColorScaleInferno
-from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
-from qtpy import QtCore
-from qtpy import QtGui
-from qtpy import QtWidgets
-from qtpy import uic
+from qudi.core.connector import Connector
+from qudi.util.colordefs import QudiPalettePale as palette
+from qudi.core.module import GuiBase
+from qudi.util.paths import get_artwork_dir
+from PySide2 import QtCore, QtWidgets, QtGui
+from qudi.util.uic import loadUi
+
 
 
 class VoltScanMainWindow(QtWidgets.QMainWindow):
@@ -46,7 +45,7 @@ class VoltScanMainWindow(QtWidgets.QMainWindow):
         self.show()
 
 
-class VoltScanGui(GUIBase):
+class VoltScanGui(GuiBase):
     """
 
     """
@@ -76,6 +75,8 @@ class VoltScanGui(GUIBase):
         """ 
 
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
         self._voltscan_logic = self.voltagescannerlogic1()
         self._savelogic = self.savelogic()
 
