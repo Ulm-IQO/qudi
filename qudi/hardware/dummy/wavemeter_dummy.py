@@ -120,7 +120,7 @@ class WavemeterDummy(WavemeterInterface):
     #############################################
     # Methods of the main class
     #############################################
-    def start_acqusition(self):
+    def start_acquisition(self):
         """ Method to start the wavemeter software.
 
         @return int: error code (0:OK, -1:error)
@@ -142,7 +142,7 @@ class WavemeterDummy(WavemeterInterface):
 
         return 0
 
-    def stop_acqusition(self):
+    def stop_acquisition(self):
         """ Stops the Wavemeter from measuring and kills the thread that queries the data.
 
         @return int: error code (0:OK, -1:error)
