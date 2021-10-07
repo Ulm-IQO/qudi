@@ -20,17 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.interface import abstract_interface_method
-from core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import Base
 
 
-class WavemeterInterface(metaclass=InterfaceMetaclass):
+class WavemeterInterface(Base):
     """ Define the controls for a wavemeter hardware.
 
     Note: This interface is very similar in feature with slow counter
     """
 
-    @abstract_interface_method
+    @abstractmethod
     def start_acquisition(self):
         """ Method to start the wavemeter software.
 
@@ -41,7 +41,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def stop_acquisition(self):
         """ Stops the Wavemeter from measuring and kills the thread that queries the data.
 
@@ -49,7 +49,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_current_wavelength(self, kind="air"):
         """ This method returns the current wavelength.
 
@@ -59,7 +59,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.
 
@@ -69,7 +69,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def get_timing(self):
         """ Get the timing of the internal measurement thread.
 
@@ -77,7 +77,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def set_timing(self, timing):
         """ Set the timing of the internal measurement thread.
 
