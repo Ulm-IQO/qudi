@@ -176,7 +176,7 @@ class HighFinesseWavemeter(WavemeterInterface):
 
     def on_deactivate(self):
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
-            self.stop_acqusition()
+            self.stop_acquisition()
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
         self._hardware_pull.sig_wavelength.disconnect()
@@ -200,7 +200,7 @@ class HighFinesseWavemeter(WavemeterInterface):
         self._current_wavelength = wavelength1
         self._current_wavelength2 = wavelength2
 
-    def start_acqusition(self):
+    def start_acquisition(self):
         """ Method to start the wavemeter software.
 
         @return int: error code (0:OK, -1:error)
@@ -223,7 +223,7 @@ class HighFinesseWavemeter(WavemeterInterface):
 
         return 0
 
-    def stop_acqusition(self):
+    def stop_acquisition(self):
         """ Stops the Wavemeter from measuring and kills the thread that queries the data.
 
         @return int: error code (0:OK, -1:error)
