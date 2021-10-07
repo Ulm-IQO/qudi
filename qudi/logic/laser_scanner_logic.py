@@ -66,6 +66,8 @@ class LaserScannerLogic(LogicBase):
 
           @param dict kwargs: optional parameters
         """
+        self.log.warning("This module has not been tested on the new qudi core."
+                         "Use with caution and contribute bug fixed back, please.")
         super().__init__(**kwargs)
 
         # locking for thread safety
