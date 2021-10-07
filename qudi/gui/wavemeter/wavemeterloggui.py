@@ -26,14 +26,13 @@ import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
 
-from core.connector import Connector
-from core.util import units
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
-from qtpy import QtWidgets
-from qtpy import QtCore
-from qtpy import uic
+from qudi.core.connector import Connector
+from qudi.util import units
+from qudi.core.module import GuiBase
+from qudi.util.colordefs import QudiPalettePale as palette
+from qudi.util.widgets.fitting import FitConfigurationDialog
+from PySide2 import QtCore, QtWidgets, QtGui
+from qudi.util.uic import loadUi
 
 
 class WavemeterLogWindow(QtWidgets.QMainWindow):
@@ -50,7 +49,7 @@ class WavemeterLogWindow(QtWidgets.QMainWindow):
         self.show()
 
 
-class WavemeterLogGui(GUIBase):
+class WavemeterLogGui(GuiBase):
     """
     This GUI is for PLE measurements, reading out a wavemeter
     """
