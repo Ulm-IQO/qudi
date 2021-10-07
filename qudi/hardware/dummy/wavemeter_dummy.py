@@ -22,12 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import random
-from qtpy import QtCore
+from PySide2 import QtCore
 
-from core.module import Base
-from core.configoption import ConfigOption
-from interface.wavemeter_interface import WavemeterInterface
-from core.util.mutex import Mutex
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.interface.wavemeter_interface import WavemeterInterface
+from qudi.util.mutex import Mutex
 
 
 class HardwarePull(QtCore.QObject):
@@ -68,7 +68,7 @@ class HardwarePull(QtCore.QObject):
             self._parentclass._current_wavelength2 += random.uniform(-range_step, range_step)
 
 
-class WavemeterDummy(Base, WavemeterInterface):
+class WavemeterDummy(WavemeterInterface):
     """ Dummy hardware class to simulate the controls for a wavemeter.
 
     Example config for copy-paste:
