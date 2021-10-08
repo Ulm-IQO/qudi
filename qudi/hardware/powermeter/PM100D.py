@@ -26,6 +26,9 @@ try:
 except ImportError:
     raise ImportError('ThorlabsPM100 module not found. Please install it by typing command "pip install ThorlabsPM100"')
 
+import warnings
+warnings.warn("This module has not been fully tested on the new qudi core and might not work properly."
+                         "Use it with caution and if possible contribute to its rework, please.")
 
 class PM100D(ProcessValueInterface):
     """ Hardware module for Thorlabs PM100D powermeter.
