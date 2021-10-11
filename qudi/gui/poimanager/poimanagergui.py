@@ -241,8 +241,8 @@ class PoiManagerGui(GuiBase):
     """ This is the GUI Class for PoiManager """
 
     # declare connectors
-    poimanagerlogic = Connector(interface='PoiManagerLogic')
-    scannerlogic = Connector(interface='ConfocalLogic')
+    #poimanagerlogic = Connector(interface='PoiManagerLogic') # TODO implement
+    #scannerlogic = Connector(interface='ConfocalLogic') # TODO adjust to new interface
 
     # declare signals
     sigTrackPeriodChanged = QtCore.Signal(float)
