@@ -25,17 +25,18 @@ import os
 import pyqtgraph as pg
 import re
 
-from core.connector import Connector
-from core.util.units import ScaledFloat
-from core.util.helpers import natural_sort
-from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
-from gui.colordefs import ColorScaleInferno
-from gui.colordefs import QudiPalettePale as palette
-from qtpy import QtCore, QtGui
-from qtpy import QtWidgets
-from qtpy import uic
-from qtwidgets.scan_plotwidget import ScanImageItem
+from qudi.core.connector import Connector
+from qudi.util.units import ScaledFloat
+from qudi.util.helpers import natural_sort
+from qudi.core.module import GuiBase
+
+from qudi.util.widgets.colorbar import ColorBarWidget
+from qudi.util.colordefs import ColorScaleInferno
+from qudi.util.colordefs import QudiPalettePale as palette
+from PySide2 import QtCore, QtGui, QtWidgets
+from qudi.util import uic
+from qudi.util.widgets.scan_2d_widget import ScanImageItem
+
 
 
 class PoiMarker(pg.EllipseROI):
@@ -236,7 +237,7 @@ class PoiManagerMainWindow(QtWidgets.QMainWindow):
         self.show()
 
 
-class PoiManagerGui(GUIBase):
+class PoiManagerGui(GuiBase):
     """ This is the GUI Class for PoiManager """
 
     # declare connectors
@@ -275,6 +276,9 @@ class PoiManagerGui(GUIBase):
 
         This method executes the init methods for each of the GUIs.
         """
+        raise NotImplementedError('This module is not implemented in the new core, yet.'
+                                  'Things like "Colorbar" changed not backwards compatible. Please reimplement me')
+
         self._markers = dict()
 
         self._mw = PoiManagerMainWindow()
