@@ -228,7 +228,7 @@ class PoiManagerMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_poimangui.ui')
+        ui_file = os.path.join(this_dir, 'ui_poimanagergui.ui')
 
         # Load it
         super(PoiManagerMainWindow, self).__init__()
