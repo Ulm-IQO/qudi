@@ -116,7 +116,7 @@ class FiniteSamplingIOInterface(Base):
 
         Calling this method will alter read-only property <frame_size>
 
-        @param dict data: The frame data (values) to be set for all active channels (keys)
+        @param dict data: The frame data (values) to be set for all active output channels (keys)
         """
         pass
 
