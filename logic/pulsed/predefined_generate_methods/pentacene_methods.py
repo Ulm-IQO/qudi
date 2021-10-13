@@ -724,7 +724,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_HH_double_fsweep(self, name='double_hh_f', spinlock_length=10e-6, f_start=0e6, f_step=500e3,
-                       ampl_spinlock=0.25, ampl_dress2=0.1, phase_dress2=90, num_of_points=50):
+                       ampl_spinlock=0.25, ampl_dress2=0.1, phase_dress2=90, num_of_points=50, alternating=True):
         """
 
         """
@@ -786,13 +786,13 @@ class PentaceneMethods(PredefinedGeneratorBase):
             hhamp_block.append(laser_element)
             hhamp_block.append(delay_element)
             hhamp_block.append(waiting_element)
-
-            hhamp_block.append(pihalf_element)
-            hhamp_block.append(double_sl_element)
-            hhamp_block.append(pi3half_element)
-            hhamp_block.append(laser_element)
-            hhamp_block.append(delay_element)
-            hhamp_block.append(waiting_element)
+            if alternating:
+                hhamp_block.append(pihalf_element)
+                hhamp_block.append(double_sl_element)
+                hhamp_block.append(pi3half_element)
+                hhamp_block.append(laser_element)
+                hhamp_block.append(delay_element)
+                hhamp_block.append(waiting_element)
         created_blocks.append(hhamp_block)
 
         # Create block ensemble
@@ -897,6 +897,619 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_HH_double_dsl_tau(self, name='double_hh_dsl_tau', dress2_f=10e6, tau_start=0e-6, tau_step=100e-9,
+                       ampl_spinlock=0.25, ampl_pi2_dress2=0.1, ampl_dress2=0.1, t_rabi_dress2=150e-9, phase_dress2=90,
+                                   num_of_points=50, alternating_pi2_dress2=False):
+        """
+        Double spin lock: Spin lock on a dressed transition.
+        Sweep the duration tau of the second spin lock
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        tau_pspacing_arr = tau_start + np.arange(num_of_points) * tau_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+        # pi2 pulse on dressed transition
+        pi2_dress_element = self._get_multiple_mw_element(length=t_rabi_dress2,
+                                                  increment=0,
+                                                  amps=[ampl_spinlock, ampl_pi2_dress2, ampl_pi2_dress2],
+                                                  freqs=[self.microwave_frequency,
+                                                         self.microwave_frequency-dress2_f,
+                                                         self.microwave_frequency+dress2_f],
+                                                  phases=[90, 90+90, 90+90])
+        pi3half_dress_element = self._get_multiple_mw_element(length=t_rabi_dress2,
+                                                  increment=0,
+                                                  amps=[ampl_spinlock, ampl_pi2_dress2, ampl_pi2_dress2],
+                                                  freqs=[self.microwave_frequency,
+                                                         self.microwave_frequency-dress2_f,
+                                                         self.microwave_frequency+dress2_f],
+                                                  phases=[90, 90-90, 90-90])
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+        # spinlock on dressed transition orthogonal to pihalf
+        double_sl_element = self._get_multiple_mw_element(length=tau_start,
+                                                  increment=tau_step,
+                                                  amps=[ampl_spinlock, ampl_dress2, ampl_dress2],
+                                                  freqs=[self.microwave_frequency,
+                                                         self.microwave_frequency-dress2_f,
+                                                         self.microwave_frequency+dress2_f],
+                                                  phases=[90, 90+90+phase_dress2, 90+90+phase_dress2])
+
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(pi2_dress_element)
+        hhamp_block.append(double_sl_element)
+
+        hhamp_block.append(pi2_dress_element)
+        hhamp_block.append(pihalf_element)
+        hhamp_block.append(laser_element)
+        hhamp_block.append(delay_element)
+        hhamp_block.append(waiting_element)
+        # alternate the init pulse in the dressed basis
+        # this should yield contrast and prevent saturation of external polarization
+        if alternating_pi2_dress2:
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(pi3half_dress_element)
+            hhamp_block.append(double_sl_element)
+            hhamp_block.append(pi3half_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+        else: # normal alternating readout in the bare basis
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(pi2_dress_element)
+            hhamp_block.append(double_sl_element)
+            hhamp_block.append(pi2_dress_element)
+            hhamp_block.append(pi3half_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+
+        created_blocks.append(hhamp_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_pspacing_arr
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('tau_pspacing', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_HH_double_dsl_amp(self, name='double_hh_dsl_amp', dress2_f=10e6, dress2_tau=10e-6,
+                                   ampl_dress2_start=0, ampl_dress2_step=0.01,
+                                   ampl_spinlock=0.25, t_rabi_dress2=150e-9, phase_dress2=90, num_of_points=50):
+        """
+        Double spin lock: Spin lock on a dressed transition.
+        Sweep the duration tau of the second spin lock
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        amp_array = ampl_dress2_start + np.arange(num_of_points) * ampl_dress2_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+        # pi2 pulse on dressed transition with 'full' power (= ampl of 1st spinlock)
+        pi2_dress_element = self._get_multiple_mw_element(length=t_rabi_dress2,
+                                                  increment=0,
+                                                  amps=[ampl_spinlock, ampl_spinlock, ampl_spinlock],
+                                                  freqs=[self.microwave_frequency,
+                                                         self.microwave_frequency-dress2_f,
+                                                         self.microwave_frequency+dress2_f],
+                                                  phases=[90, 90+90, 90+90])
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+        for ampl_d2 in amp_array:
+            # spinlock on dressed transition orthogonal to pihalf
+            double_sl_element = self._get_multiple_mw_element(length=dress2_tau,
+                                                      increment=0,
+                                                      amps=[ampl_spinlock, ampl_d2, ampl_d2],
+                                                      freqs=[self.microwave_frequency,
+                                                             self.microwave_frequency-dress2_f,
+                                                             self.microwave_frequency+dress2_f],
+                                                      phases=[90, 90+90+phase_dress2, 90+90+phase_dress2])
+
+            # todo: pi3half on init instead of readout, just like normal hh?
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(pi2_dress_element)
+            hhamp_block.append(double_sl_element)
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(pi2_dress_element)
+            hhamp_block.append(double_sl_element)
+            hhamp_block.append(pi3half_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+            created_blocks.append(hhamp_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = amp_array
+        block_ensemble.measurement_information['units'] = ('V', '')
+        block_ensemble.measurement_information['labels'] = ('2nd dress amplitude', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_HH_double_ise_tau(self, name='double_hh_ise_tau', dress2_f=10e6, tau_start=0e-6, tau_step=100e-9,
+                       ampl_spinlock=0.25, ampl_ise=0.1, df_ise=1e6, sweep_speed_ise=3e12,
+                                   num_of_points=50, alternating_pol=False):
+        """
+        Sweep ISE over the dressed resonance.
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        tau_pspacing_arr = tau_start + np.arange(num_of_points) * tau_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        # ise params on dressed state
+        mw_freq_center_1 = self.microwave_frequency - dress2_f
+        mw_freq_center_2 = self.microwave_frequency + dress2_f
+        mw_freq_start_1 = mw_freq_center_1 - df_ise / 2
+        mw_freq_stop_1 = mw_freq_center_1 + df_ise / 2
+        mw_freq_start_2 = mw_freq_center_2 - df_ise / 2
+        mw_freq_stop_2 = mw_freq_center_2 + df_ise / 2
+
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+
+        n_ise_blocks_arr = []
+        t_ise_arr = []
+        t_ise_lastblock_arr  =[]
+        for tau in tau_pspacing_arr:
+            double_sl_ise_elements = self._get_noninteger_ise_sweep_blocks(tau, mw_freq_start_1, mw_freq_start_2,
+                                                                           mw_freq_stop_1, mw_freq_stop_2,
+                                                                           sweep_speed_ise, df_ise, ampl_spinlock, ampl_ise)
+            # Ajoy: sweeping in other directions polarizes to different direction
+            # since i'm not so sure about this, I do it the NOVEL way: init opposite dressed basis state
+            #double_sl_ise_reversed_elements = _noninteger_ise_sweep_blocks(tau, mw_freq_stop_1, mw_freq_stop_2,
+            #                                                      mw_freq_start_1, mw_freq_start_2)
+            n_ise_blocks_arr.append(len(double_sl_ise_elements))
+            t_ise_arr.append(np.sum(np.asarray([el.init_length_s for el in double_sl_ise_elements])))
+            t_ise_lastblock_arr.append(double_sl_ise_elements[-1].init_length_s)
+
+            hhamp_block.append(pihalf_element)
+            hhamp_block.extend(double_sl_ise_elements)
+
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+            # alternate the init pulse in the dressed basis
+            # this should yield contrast and prevent build-up/saturation of external polarization
+            #if alternating_pol:
+            #    hhamp_block.extend(double_sl_ise_reversed_elements)
+            #else:
+            #    hhamp_block.extend(double_sl_ise_elements)
+            if alternating_pol:
+                hhamp_block.append(pi3half_element)
+                hhamp_block.extend(double_sl_ise_elements)
+                hhamp_block.append(pihalf_element)
+            else:
+                hhamp_block.append(pihalf_element)
+                hhamp_block.extend(double_sl_ise_elements)
+                hhamp_block.append(pi3half_element)
+
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+
+        created_blocks.append(hhamp_block)
+
+        self.log.debug(f"Created full ise sweep blocks: {n_ise_blocks_arr} "
+                       f"of length {t_ise_arr}, last block length {t_ise_lastblock_arr}")
+        self.log.debug(f" t_mw= {df_ise / sweep_speed_ise * 1e6:.3f} us. Sweep speed= {sweep_speed_ise / 1e12} MHz/us")
+        if n_ise_blocks_arr[-1] < 2:
+            self.log.warning(f"Longest tau {tau_pspacing_arr[-1]} yields only a single"
+                             f" - possibly incomplete - ise sweep.")
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_pspacing_arr
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('tau_pspacing', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_HH_double_ise_ramsey(self, name='double_hh_ise_ramsey', dress2_f=10e6, tau_ise=10e-6,
+                                      tau_ram_start=0e-6, tau_ram_step=100e-9,
+                                   ampl_spinlock=0.25, ampl_ise=0.1, df_ise=1e6, sweep_speed_ise=3e12,
+                                   num_of_points=50, alternating_pol=False):
+        """
+        ISE on the dressed res. Subsequent ramsey.
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        tau_pspacing_arr = tau_ram_start + np.arange(num_of_points) * tau_ram_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_init_element = self._get_laser_gate_element(length=self.laser_length, increment=0,
+                                                          add_gate_ch='')
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+
+
+        # ise params on dressed state
+        mw_freq_center_1 = self.microwave_frequency - dress2_f
+        mw_freq_center_2 = self.microwave_frequency + dress2_f
+        mw_freq_start_1 = mw_freq_center_1 - df_ise / 2
+        mw_freq_stop_1 = mw_freq_center_1 + df_ise / 2
+        mw_freq_start_2 = mw_freq_center_2 - df_ise / 2
+        mw_freq_stop_2 = mw_freq_center_2 + df_ise / 2
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+
+        n_ise_blocks_arr = []
+        t_ise_arr = []
+        t_ise_lastblock_arr = []
+        idx_laser = 0
+        idx_ise_laser = []
+        for i, tau in enumerate(tau_pspacing_arr):
+            double_sl_ise_elements = self._get_noninteger_ise_sweep_blocks(tau_ise, mw_freq_start_1, mw_freq_start_2,
+                                                                           mw_freq_stop_1, mw_freq_stop_2,
+                                                                           sweep_speed_ise, df_ise, ampl_spinlock,
+                                                                           ampl_ise)
+
+            ramsey_block, _, _ = self.generate_ramsey_s3p(name='ram', tau_start=tau, tau_step=0,
+                                                          num_of_points=1,
+                                                          alternating=False, read_phases_degree="0, 180",
+                                                          no_nv_init=False,
+                                                          t_laser_init=self.laser_length, laser_read_ch='')
+
+            ramsey_block_alt, _, _ = self.generate_ramsey_s3p(name='ram_alt', tau_start=tau, tau_step=0,
+                                                              num_of_points=1,
+                                                              alternating=False, read_phases_degree="180, 0",
+                                                              no_nv_init=False,
+                                                              t_laser_init=self.laser_length, laser_read_ch='')
+
+            # first element of created block list is a PulseBlock obj
+            ramsey_block = ramsey_block[0]
+            ramsey_block_alt = ramsey_block_alt[0]
+
+            # Ajoy: sweeping in other directions polarizes to different direction
+            # since i'm not so sure about this, I do it the NOVEL way: init opposite dressed basis state
+            # double_sl_ise_reversed_elements = _noninteger_ise_sweep_blocks(tau, mw_freq_stop_1, mw_freq_stop_2,
+            #                                                      mw_freq_start_1, mw_freq_start_2)
+            n_ise_blocks_arr.append(len(double_sl_ise_elements))
+            t_ise_arr.append(np.sum(np.asarray([el.init_length_s for el in double_sl_ise_elements])))
+            t_ise_lastblock_arr.append(double_sl_ise_elements[-1].init_length_s)
+
+            hhamp_block.append(pihalf_element)
+            hhamp_block.extend(double_sl_ise_elements)
+
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(laser_init_element)
+            idx_ise_laser.append(idx_laser)
+            idx_laser += 1
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+            hhamp_block.extend(ramsey_block)
+            idx_laser += 1
+
+
+
+            # alternate the init pulse in the dressed basis
+            # this should yield contrast and prevent build-up/saturation of external polarization
+            # if alternating_pol:
+            #    hhamp_block.extend(double_sl_ise_reversed_elements)
+            # else:
+            #    hhamp_block.extend(double_sl_ise_elements)
+            if alternating_pol:
+                hhamp_block.append(pi3half_element)
+                hhamp_block.extend(double_sl_ise_elements)
+                hhamp_block.append(pihalf_element)
+            else:
+                hhamp_block.append(pihalf_element)
+                hhamp_block.extend(double_sl_ise_elements)
+                hhamp_block.append(pi3half_element)
+
+            hhamp_block.append(laser_init_element)
+            idx_ise_laser.append(idx_laser)
+            idx_laser += 1
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+            hhamp_block.extend(ramsey_block_alt)
+            idx_laser += 1
+
+        created_blocks.append(hhamp_block)
+
+        self.log.debug(f"Created full ise sweep blocks: {n_ise_blocks_arr} "
+                       f"of length {t_ise_arr}, last block length {t_ise_lastblock_arr}")
+        self.log.debug(f" t_mw= {df_ise / sweep_speed_ise * 1e6:.3f} us. Sweep speed= {sweep_speed_ise / 1e12} MHz/us")
+        if n_ise_blocks_arr[-1] < 2:
+            self.log.warning(f"Longest tau {tau_pspacing_arr[-1]} yields only a single"
+                             f" - possibly incomplete - ise sweep.")
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['laser_ignore_list'] = list(idx_ise_laser)
+        block_ensemble.measurement_information['controlled_variable'] = tau_pspacing_arr
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('tau_pspacing', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_HH_double_ise_dhh_f(self, name='double_hh_ise_dhh_f', dress2_f=10e6, tau_ise=10e-6,
+                                      f_dhh_start=10e6, f_dhh_step=100e3,
+                                   ampl_spinlock=0.25, ampl_dhh_dress2=0.1, t_dhh_lock=10e-6,
+                                    ampl_ise=0.1, df_ise=1e6, sweep_speed_ise=3e12,
+                                   num_of_points=50, alternating_pol=False):
+        """
+        Sweep ISE over the resonance. Subsequent double_hh_f
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        freq_arr = f_dhh_start + np.arange(num_of_points) * f_dhh_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_init_element = self._get_laser_gate_element(length=self.laser_length, increment=0,
+                                                          add_gate_ch='')
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+
+
+        # ise params on dressed state
+        mw_freq_center_1 = self.microwave_frequency - dress2_f
+        mw_freq_center_2 = self.microwave_frequency + dress2_f
+        mw_freq_start_1 = mw_freq_center_1 - df_ise / 2
+        mw_freq_stop_1 = mw_freq_center_1 + df_ise / 2
+        mw_freq_start_2 = mw_freq_center_2 - df_ise / 2
+        mw_freq_stop_2 = mw_freq_center_2 + df_ise / 2
+
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
+
+        n_ise_blocks_arr = []
+        t_ise_arr = []
+        t_ise_lastblock_arr = []
+        idx_laser = 0
+        idx_ise_laser = []
+        for i, f in enumerate(freq_arr):
+            double_sl_ise_elements = self._get_noninteger_ise_sweep_blocks(tau_ise, mw_freq_start_1, mw_freq_start_2,
+                                                                           mw_freq_stop_1, mw_freq_stop_2,
+                                                                           sweep_speed_ise, df_ise, ampl_spinlock,
+                                                                           ampl_ise)
+
+            dhh_f_block, _, _ = self.generate_HH_double_fsweep('dhh_f', t_dhh_lock, f, 0, ampl_spinlock,
+                                                         ampl_dhh_dress2, 90, 1, alternating=False)
+
+            # first element of created block list is a PulseBlock obj
+            dhh_f_block = dhh_f_block[0]
+
+
+            # Ajoy: sweeping in other directions polarizes to different direction
+            # since i'm not so sure about this, I do it the NOVEL way: init opposite dressed basis state
+            # double_sl_ise_reversed_elements = _noninteger_ise_sweep_blocks(tau, mw_freq_stop_1, mw_freq_stop_2,
+            #                                                      mw_freq_start_1, mw_freq_start_2)
+            n_ise_blocks_arr.append(len(double_sl_ise_elements))
+            t_ise_arr.append(np.sum(np.asarray([el.init_length_s for el in double_sl_ise_elements])))
+            t_ise_lastblock_arr.append(double_sl_ise_elements[-1].init_length_s)
+
+            if alternating_pol and i%2 == 0:
+                hhamp_block.append(pi3half_element)
+                hhamp_block.extend(double_sl_ise_elements)
+                hhamp_block.append(pihalf_element)
+            else:
+                hhamp_block.append(pihalf_element)
+                hhamp_block.extend(double_sl_ise_elements)
+                hhamp_block.append(pihalf_element)
+            hhamp_block.append(laser_init_element)
+            idx_ise_laser.append(idx_laser)
+            idx_laser += 1
+
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
+            hhamp_block.extend(dhh_f_block)
+            idx_laser += 1
+
+
+        created_blocks.append(hhamp_block)
+
+        self.log.debug(f"Created full ise sweep blocks: {n_ise_blocks_arr} "
+                       f"of length {t_ise_arr}, last block length {t_ise_lastblock_arr}")
+        self.log.debug(f" t_mw= {df_ise / sweep_speed_ise * 1e6:.3f} us. Sweep speed= {sweep_speed_ise / 1e12} MHz/us")
+        if n_ise_blocks_arr[-1] < 2:
+            self.log.warning(f"Yields only a single"
+                             f" - possibly incomplete - ise sweep.")
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((hhamp_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list(idx_ise_laser)
+        block_ensemble.measurement_information['controlled_variable'] = freq_arr
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['labels'] = ('dress2 frequency', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
 
 
     def generate_rabi_nv_red_read(self, name='rabi_red', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
@@ -1820,6 +2433,63 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def _get_noninteger_ise_sweep_blocks(self, tau, mw_freq_start_1, mw_freq_start_2,
+                                        mw_freq_stop_1, mw_freq_stop_2,
+                                        sweep_speed_ise, df_ise, ampl_spinlock,
+                                        ampl_ise):
+        """
+        For a given tau creates the number of full mw ramps plus a last mw ramp that is cut.
+        :param tau:
+        :return:
+        """
+
+        t_mw_ramp = df_ise / sweep_speed_ise
+        n_sweeps = tau / t_mw_ramp
+        n_sweeps_full = int(np.floor(n_sweeps))
+        n_last_sweep = (tau % t_mw_ramp) / t_mw_ramp
+
+        ise_elements = []
+
+        if n_sweeps < 1:
+            ise_elements = [self._get_sine_double_chirp_element(length=tau,
+                                                                increment=0,
+                                                                # amps=[0, ampl_ise, 0],
+                                                                amps=[ampl_spinlock, ampl_ise, ampl_ise],
+                                                                freq_sine=self.microwave_frequency,
+                                                                freq_start=[mw_freq_start_1,
+                                                                            mw_freq_start_2],
+                                                                freq_stop=[mw_freq_stop_1, mw_freq_stop_2],
+                                                                phases=[90,
+                                                                        90 + 90,
+                                                                        90 + 90])]
+        else:
+            # integer number of full blocks
+            for idx_sweep in range(0, n_sweeps_full):
+                ise_elements.append(self._get_sine_double_chirp_element(length=t_mw_ramp,
+                                                                        increment=0,
+                                                                        # amps=[0, ampl_ise, 0],
+                                                                        amps=[ampl_spinlock, ampl_ise, ampl_ise],
+                                                                        freq_sine=self.microwave_frequency,
+                                                                        freq_start=[mw_freq_start_1,
+                                                                                    mw_freq_start_2],
+                                                                        freq_stop=[mw_freq_stop_1, mw_freq_stop_2],
+                                                                        phases=[90,
+                                                                                90 + 90,
+                                                                                90 + 90]))
+            # last element is cut
+            ise_elements.append(self._get_sine_double_chirp_element(length=n_last_sweep * t_mw_ramp,
+                                                                    increment=0,
+                                                                    amps=[ampl_spinlock, ampl_ise, ampl_ise],
+                                                                    freq_sine=self.microwave_frequency,
+                                                                    freq_start=[mw_freq_start_1,
+                                                                                mw_freq_start_2],
+                                                                    freq_stop=[mw_freq_stop_1, mw_freq_stop_2],
+                                                                    phases=[90,
+                                                                            90 + 90,
+                                                                            90 + 90]))
+
+        return ise_elements
 
     def _get_rf_element(self, length, increment, pulse_ch, amp=None, freq=None, phase=None):
         """
