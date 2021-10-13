@@ -39,3 +39,4 @@ class ScalarConstraint:
         # the unit of the parameter value(optional)
         self.unit = unit
         return
+
