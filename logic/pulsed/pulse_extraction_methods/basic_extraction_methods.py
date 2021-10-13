@@ -382,11 +382,28 @@ class BasicPulseExtractor(PulseExtractorBase):
         num_col = max_laser_length + 2 * safety_bins
         # compute from laser_start_indices and laser length the respective position of the laser
         # pulses
-        laser_pulses = np.empty((num_rows, num_col))
+        laser_pulses = np.zeros((num_rows, num_col))
+        idx_cut_lasers = []
         for ii in range(num_rows):
-            laser_pulses[ii][:] = count_data[
-                np.arange(laser_rising_bins[ii] + delay_bins - safety_bins,
-                          laser_rising_bins[ii] + delay_bins + safety_bins + max_laser_length)]
+            idx_cut_low = laser_rising_bins[ii] + delay_bins - safety_bins
+            idx_cut_high = laser_rising_bins[ii] + delay_bins + safety_bins + max_laser_length
+
+            if idx_cut_high >= len(count_data):
+                print(f"WARNING: laser {ii} cut bin {idx_cut_high} is out of count range {len(count_data)}."
+                                 f" Reduce delay or check the provided laser_rising_bins correct?")
+                print(f"DEBUG: laser_rise: {laser_rising_bins[ii]}, delay: {delay_bins},"
+                      f" safety: {safety_bins}, max_laser: {max_laser_length} bins")
+            idx_cut_lasers.append([idx_cut_low, idx_cut_high])
+            try:
+                laser_i = count_data[np.arange(idx_cut_low, idx_cut_high)]
+                laser_pulses[ii][:len(laser_i)] = laser_i
+            except IndexError: pass
+
+        idx_cut_lasers = np.asarray(idx_cut_lasers)
+        t_cut_lasers = idx_cut_lasers * fc_binwidth
+        #print(f"Cutting out laser pulses at (ns): {1e9*t_cut_lasers}")
+
+
         # use the gated extraction method
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
         return return_dict
