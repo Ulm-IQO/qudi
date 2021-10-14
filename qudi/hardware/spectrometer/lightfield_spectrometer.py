@@ -23,8 +23,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base
-from interface.spectrometer_interface import SpectrometerInterface
+from qudi.interface.spectrometer_interface import SpectrometerInterface
 
 import os
 import sys
@@ -45,7 +44,7 @@ class LFImageMode(Enum):
     LFImageModeBackground = 3
 
 
-class Lightfield(Base, SpectrometerInterface):
+class Lightfield(SpectrometerInterface):
     """ Control Princeton Instruments Lightfield from Qudi.
 
     This hardware module needs a brave soul fluent in C# and Python,

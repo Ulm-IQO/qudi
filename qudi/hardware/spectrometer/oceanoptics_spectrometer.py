@@ -19,15 +19,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 """
 
-from core.module import Base
-from core.configoption import ConfigOption
-from core.statusvariable import StatusVar
-from interface.spectrometer_interface import SpectrometerInterface
+
+from qudi.core.configoption import ConfigOption
+from qudi.core.statusvariable import StatusVar
+from qudi.interface.spectrometer_interface import SpectrometerInterface
+
 import numpy as np
 import seabreeze.spectrometers as sb
 
 
-class OceanOptics(Base, SpectrometerInterface):
+class OceanOptics(SpectrometerInterface):
     """ Hardware module for reading spectra from the Ocean Optics spectrometer software.
 
     Example config for copy-paste:

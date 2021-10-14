@@ -25,8 +25,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 """
 
-from core.module import Base
-from interface.spectrometer_interface import SpectrometerInterface
+
+from qudi.interface.spectrometer_interface import SpectrometerInterface
 import numpy as np
 import comtypes.client as ctc
 import win32com.client as w32c
