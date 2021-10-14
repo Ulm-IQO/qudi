@@ -50,10 +50,10 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         module.Class: 'ni_x_series_finite_sampling_input.NIXSeriesFiniteSamplingInput'
         device_name: 'Dev1'
         digital_channel_units:  # optional
-            'PFI15': 'c/s
+            'PFI15': 'c/s'
         analog_channel_units:  # optional
-            'ai0': 'V
-            'ai1': 'V
+            'ai0': 'V'
+            'ai1': 'V'
         # external_sample_clock_source: 'PFI0'  # optional
         # external_sample_clock_frequency: 1000  # optional
         adc_voltage_range: [-10, 10]  # optional
