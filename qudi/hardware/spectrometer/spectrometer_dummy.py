@@ -19,9 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base
-from core.connector import Connector
-from interface.spectrometer_interface import SpectrometerInterface
+from qudi.core.connector import Connector
+from qudi.interface.spectrometer_interface import SpectrometerInterface
 
 from time import strftime, localtime
 
@@ -29,7 +28,7 @@ import time
 import numpy as np
 
 
-class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
+class SpectrometerDummy(SpectrometerInterface):
     """ Dummy spectrometer module.
 
     Shows a silicon vacancy spectrum at liquid helium temperatures.
@@ -38,16 +37,16 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
     spectrometer_dummy:
         module.Class: 'spectrometer.spectrometer_dummy.SpectrometerInterfaceDummy'
-        fitlogic: 'fitlogic' # name of the fitlogic module, see default config
+        # fitlogic: 'fitlogic' # name of the fitlogic module, see default config
 
     """
 
-    fitlogic = Connector(interface='FitLogic')
+    # fitlogic = Connector(interface='FitLogic')
 
     def on_activate(self):
         """ Activate module.
         """
-        self._fitLogic = self.fitlogic()
+        # self._fitLogic = self.fitlogic()
         self.exposure = 0.1
 
     def on_deactivate(self):

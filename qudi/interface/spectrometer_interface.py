@@ -19,11 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.interface import abstract_interface_method
-from core.meta import InterfaceMetaclass
+from abc import abstractmethod
+from qudi.core.module import Base
 
 
-class SpectrometerInterface(metaclass=InterfaceMetaclass):
+
+class SpectrometerInterface(Base):
     """ This is the interface class to define the controls for the simple optical spectrometer.
 
     This is interface is very basic, a more advanced one is in progress.
@@ -32,7 +33,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     documentation/programming_style.md
 
     """
-    @abstract_interface_method
+    @abstractmethod
     def recordSpectrum(self):
         """ Launch an acquisition a wait for a response
 
@@ -41,7 +42,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def setExposure(self, exposureTime):
         """ Set the acquisition exposure time
 
@@ -49,7 +50,7 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
+    @abstractmethod
     def getExposure(self):
         """ Get the acquisition exposure time
 

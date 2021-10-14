@@ -23,14 +23,13 @@ import os
 import pyqtgraph as pg
 import numpy as np
 
-from core.connector import Connector
-from core.util import units
-from gui.colordefs import QudiPalettePale as palette
-from gui.guibase import GUIBase
-from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
+from qudi.core.connector import Connector
+from qudi.util import units
+from qudi.util.colordefs import QudiPalettePale as palette
+from qudi.core.module import GuiBase
+#from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
+from PySide2 import QtCore, QtWidgets
+from qudi.util import uic
 
 
 class SpectrometerWindow(QtWidgets.QMainWindow):
@@ -48,7 +47,7 @@ class SpectrometerWindow(QtWidgets.QMainWindow):
         self.show()
 
 
-class SpectrometerGui(GUIBase):
+class SpectrometerGui(GuiBase):
     """
     """
 
