@@ -32,7 +32,6 @@ from qudi.util.mutex import RecursiveMutex
 from qudi.core.configoption import ConfigOption
 from qudi.util.helpers import natural_sort
 from qudi.interface.finite_sampling_input_interface import FiniteSamplingInputInterface, FiniteSamplingInputConstraints
-from qudi.interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 
 
 class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
@@ -59,21 +58,18 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         adc_voltage_range: [-10, 10]  # optional
         max_channel_samples_buffer: 10000000  # optional
         read_write_timeout: 10  # optional
-        sample_clock_output: '/Dev1/PFI20' # optional
+        sample_clock_output: '/Dev1/PFI20'  # optional
 
     """
 
     # config options
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
-    #_digital_sources = ConfigOption(name='digital_sources', default=tuple(), missing='info')
-    #_analog_sources = ConfigOption(name='analog_sources', default=tuple(), missing='info')
-    _digital_channel_units = ConfigOption(name='digital_channel_units', missing='info')
-    _analog_channel_units = ConfigOption(name='analog_channel_units', missing='info')
-    _external_sample_clock_source = None
-    # _external_sample_clock_source = ConfigOption(
-    #     name='external_sample_clock_source', default=None, missing='nothing')
-    # _external_sample_clock_frequency = ConfigOption(
-    #     name='external_sample_clock_frequency', default=None, missing='nothing')
+    _digital_channel_units = ConfigOption(name='digital_channel_units', default=dict(), missing='info')
+    _analog_channel_units = ConfigOption(name='analog_channel_units', default=dict(), missing='info')
+    _external_sample_clock_source = ConfigOption(
+        name='external_sample_clock_source', default=None, missing='nothing')
+    _external_sample_clock_frequency = ConfigOption(
+        name='external_sample_clock_frequency', default=None, missing='nothing')
 
     _physical_sample_clock_output = ConfigOption(name='sample_clock_output', default=None)
 
@@ -84,14 +80,8 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
     # TODO: check limits
     _sample_rate_limits = ConfigOption(name='sample_rate_limits', default=(1, 1e6))
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
-    _channel_units = ConfigOption(name='channel_units',
-                                  default={'APD counts': 'c/s', 'Photodiode': 'V'})
 
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
-
-    # _clock_channel = ConfigOption('clock_channel', missing='error')
-    #_counter_channels = ConfigOption('counter_channels', list(), missing='warn')
-    #_ai_channels = ConfigOption('ai_channels', list(), missing='info')
 
     # Hardcoded data type
     __data_type = np.float64
@@ -126,8 +116,6 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         """
         Starts up the NI-card and performs sanity checks.
         """
-        #self._counter_channels = self._counter_channels if self._counter_channels is not None else list()
-        #self._ai_channels = self._ai_channels if self._ai_channels is not None else list()
         self._digital_channel_units = {self._extract_terminal(key): value
                                        for key, value in self._digital_channel_units.items()}
         self._analog_channel_units = {self._extract_terminal(key): value
@@ -155,7 +143,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             term.rsplit('/', 1)[-1].lower() for term in self._device_handle.ai_physical_chans.channel_names)
 
         # Check digital input terminals
-        digital_sources = tuple(src for src in self._digital_channel_units)
+        digital_sources = set(src for src in self._digital_channel_units)
         if digital_sources:
             source_set = set(self._extract_terminal(src) for src in digital_sources)
             invalid_sources = source_set.difference(set(self.__all_digital_terminals))
@@ -165,10 +153,10 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                     'be ignored:\n  {0}\nValid digital input terminals are:\n  {1}'
                     ''.format(', '.join(natural_sort(invalid_sources)),
                               ', '.join(self.__all_digital_terminals)))
-            digital_sources = natural_sort(source_set.difference(invalid_sources))
+            digital_sources = set(natural_sort(source_set.difference(invalid_sources)))
 
         # Check analog input channels
-        analog_sources = tuple(src for src in self._analog_channel_units)
+        analog_sources = set(src for src in self._analog_channel_units)
         if analog_sources:
             source_set = set(self._extract_terminal(src) for src in analog_sources)
             invalid_sources = source_set.difference(set(self.__all_analog_terminals))
@@ -177,7 +165,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                                'be ignored:\n  {0}\nValid analog input channels are:\n  {1}'
                                ''.format(', '.join(natural_sort(invalid_sources)),
                                          ', '.join(self.__all_analog_terminals)))
-            analog_sources = natural_sort(source_set.difference(invalid_sources))
+            analog_sources = set(natural_sort(source_set.difference(invalid_sources)))
 
         # Check if all input channels fit in the device
         if len(digital_sources) > 3:
@@ -196,8 +184,6 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                 'NIXSeriesInStreamer failed!'
             )
 
-        self.set_active_channels(digital_sources.union(analog_sources))
-
         # Check Physical clock output if specified
         if self._physical_sample_clock_output is not None:
             self._physical_sample_clock_output = self._extract_terminal(self._physical_sample_clock_output)
@@ -205,6 +191,8 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                 f'Physical sample clock terminal specified in config is invalid'
 
         # Create constraints object and perform sanity/type checking
+        self._channel_units = self._digital_channel_units.copy()
+        self._channel_units.update(self._analog_channel_units)
         self._constraints = FiniteSamplingInputConstraints(
             channel_units=self._channel_units,
             frame_size_limits=self._frame_size_limits,
@@ -219,14 +207,13 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         # initialize default settings
         self._sample_rate = self._constraints.max_sample_rate
         self._frame_size = 0
-        self._active_channels = frozenset(self._constraints.channel_names)
+
+        self.set_active_channels(digital_sources.union(analog_sources))
 
     def on_deactivate(self):
         """ Shut down the NI card.
         """
         self.terminate_all_tasks()
-        # Free memory if possible while module is inactive
-        # self._data_buffer = np.empty(0, dtype=self.__data_type)
         return
 
     @property
@@ -285,7 +272,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         assert hasattr(channels, '__iter__') and not isinstance(channels, str), \
             f'Given input channels {channels} are not iterable'
 
-        assert self.module_state() == 'idle', \
+        assert self.module_state() != 'locked', \
             'Unable to change active channels while finite sampling is running. New settings ignored.'
 
         channels = tuple(self._extract_terminal(channel) for channel in channels)
@@ -332,7 +319,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             self.terminate_all_tasks()
             self.module_state.unlock()
             raise NiInitError('Counter task initialization failed; all tasks terminated')
-        if self._init_analog_task() <= 0:
+        if self._init_analog_task() < 0:
             self.terminate_all_tasks()
             self.module_state.unlock()
             raise NiInitError('Analog in task initialization failed; all tasks terminated')
@@ -369,7 +356,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
 
         Must NOT raise exceptions if no data acquisition is running.
         """
-        if self.is_running:
+        if self.module_state() == 'locked':
             self.terminate_all_tasks()
             self.module_state.unlock()
 
@@ -396,7 +383,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         @return dict: Sample arrays (values) for each active channel (keys)
         """
         data = dict()
-        if not self.is_running and self.samples_in_buffer < 1:
+        if self.module_state() == 'idle' and self.samples_in_buffer < 1:
             self.log.error('Unable to read data. Device is not running and no data in buffer.')
             return data
 
@@ -408,6 +395,16 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                 f'pending for acquisition ({self._frame_size}).'
             )
 
+        if number_of_samples is not None and self.module_state() == 'locked':
+            request_time = time.time()
+            while number_of_samples > self.samples_in_buffer:  # TODO: Check whether this works with a real HW
+                # TODO could one use the ni timeout of the reader class here?
+                if time.time() - request_time < 1.1 * self._frame_size / self._sample_rate:  # TODO Is this timeout ok?
+                    time.sleep(0.05)
+                else:
+                    self.terminate_all_tasks()
+                    self.module_state.unlock()
+                    raise TimeoutError(f'Acquiring {number_of_samples} samples took longer than the whole frame.')
         try:
             #TODO: What if counter stops while waiting for samples?
 
@@ -421,7 +418,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                     timeout=self._rw_timeout)
                 if read_samples != number_of_samples:
                     return data
-                data[reader._task.channel_names[0]] = data_buffer
+                data[reader._task.name.split('_')[-1]] = data_buffer
             # Read analog channels
             if self._ai_reader is not None:
                 data_buffer = np.zeros(number_of_samples)
@@ -498,7 +495,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                     idle_state=ni.constants.Level.LOW)
                 task.timing.cfg_implicit_timing(
                     sample_mode=ni.constants.AcquisitionType.FINITE,
-                    samps_per_chan=self._frame_size)
+                    samps_per_chan=self._frame_size + 1)
             except ni.DaqError:
                 self.log.exception('Error while configuring sample clock task.')
                 try:
@@ -613,6 +610,7 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                         samps_per_chan=self._frame_size)
                 except ni.DaqError:
                     try:
+                        task.close()
                         del task
                     except NameError:
                         pass
@@ -778,6 +776,8 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             except ni.DaqError:
                 self.log.exception('Error while trying to terminate digital counter task.')
                 err = -1
+            finally:
+                del self._di_task_handles[-1]
         self._di_task_handles = list()
 
         if self._ai_task_handle is not None:
