@@ -69,7 +69,7 @@ class FiniteSamplingInputDummy(FiniteSamplingInputInterface):
             sample_rate_limits=self._sample_rate_limits
         )
         # Make sure the ConfigOptions have correct values and types
-        # (ensured by FiniteSamplingOutputConstraints)
+        # (ensured by FiniteSamplingInputConstraints)
         self._sample_rate_limits = self._constraints.sample_rate_limits
         self._frame_size_limits = self._constraints.frame_size_limits
         self._channel_units = self._constraints.channel_units
