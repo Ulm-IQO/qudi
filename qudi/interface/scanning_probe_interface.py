@@ -402,7 +402,7 @@ class ScannerAxis:
 
         self._name = name
         self._unit = unit
-        self._resolution_range = (int(min(resolution_range)), int(max(resolution_range)))
+        self._resolution_range = (int(min(resolution_range)), int(max(resolution_range))) #TODO np.inf cannot be casted as an int
         self._step_range = (float(min(step_range)), float(max(step_range)))
         self._value_range = (float(min(value_range)), float(max(value_range)))
         self._frequency_range = (float(min(frequency_range)), float(max(frequency_range)))

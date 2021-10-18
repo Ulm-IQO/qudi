@@ -42,7 +42,7 @@ class MicrowaveSmiq(MicrowaveInterface):
     mw_source_smiq:
         module.Class: 'microwave.mw_source_smiq.MicrowaveSmiq'
         visa_address: 'GPIB0::28::INSTR'
-        comm_timeout: 10  # in seconds
+        comm_timeout: 10000  # in milliseconds
         visa_baud_rate: null  # optional
         rising_edge_trigger: True  # optional
         frequency_min: null  # optional, in Hz
@@ -313,7 +313,7 @@ class MicrowaveSmiq(MicrowaveInterface):
         """
         with self._thread_lock:
             if self.module_state() != 'idle':
-                if not self._in_cw_mode:
+                if not self._in_cw_mode():
                     return
                 raise RuntimeError('Unable to start frequency scan. CW microwave output is active.')
             assert self._scan_frequencies is not None, \
@@ -357,7 +357,7 @@ class MicrowaveSmiq(MicrowaveInterface):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 return
-            if self._in_cw_mode:
+            if self._in_cw_mode():
                 raise RuntimeError('Can not reset frequency scan. CW microwave output active.')
 
             if self._scan_mode == SamplingOutputMode.JUMP_LIST:
