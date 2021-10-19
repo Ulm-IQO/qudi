@@ -92,7 +92,7 @@ class WavemeterDummy(Base, WavemeterInterface):
         # the current wavelength read by the wavemeter in nm (vac)
         self._current_wavelength = 700.0
         self._current_wavelength2 = 700.0
-
+        self._current_frequency = (3*10**-1)/(self._current_wavelength*10**-9) #GHz
     def on_activate(self):
         """ Activate module.
         """
@@ -177,6 +177,21 @@ class WavemeterDummy(Base, WavemeterInterface):
             return float(self._current_wavelength)
         return -2.0
 
+    def get_current_frequency(self, kind="air"):
+        """ This method returns the current wavelength of the second input channel.
+
+        @param string kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
+
+        @return float: wavelength (or negative value for errors)
+        """
+        if kind in "air":
+            # for air we need the convert the current wavelength.
+            return float(self._current_frequency)
+        if kind in "vac":
+            # for vacuum just return the current wavelength
+            return float(self._current_frequency)
+        return -2.0
+
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.
 
@@ -186,10 +201,10 @@ class WavemeterDummy(Base, WavemeterInterface):
         """
         if kind in "air":
             # for air we need the convert the current wavelength.
-            return float(self._current_wavelength2)
+            return float(self._current_frequency)
         if kind in "vac":
             # for vacuum just return the current wavelength
-            return float(self._current_wavelength2)
+            return float(self._current_frequency)
         return -2.0
 
     def get_timing(self):

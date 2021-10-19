@@ -34,7 +34,7 @@ from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
-import PyDAQmx as daq
+#import PyDAQmx as daq
 
 
 class LaserScannerLogic(GenericLogic):
@@ -47,10 +47,10 @@ class LaserScannerLogic(GenericLogic):
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
-    do=Connector(interface='NIDigitalTrigerLogic')
+    do=Connector(interface='TriggerInterface')
     wavemeter1 = Connector(interface='WavemeterInterface')
     savelogic = Connector(interface='SaveLogic')
-    laser = Connector(interface = 'NewfocusLaserInterface')
+    #laser = Connector(interface = 'NewfocusLaserInterface')
     scan_range = StatusVar('scan_range', [-3, 3])
     number_of_repeats = StatusVar(default=100)
     resolution = StatusVar('resolution', 500)
@@ -100,7 +100,7 @@ class LaserScannerLogic(GenericLogic):
         self._scanning_device = self.confocalscanner1()
         self._wavemeter_device = self.wavemeter1()
         self._save_logic = self.savelogic()
-        self._laser_device = self.laser()
+        #self._laser_device = self.laser()
         self._do=self.do()
 
         # start acquisition of wavemeter so that current wavelength/frequency is always available
