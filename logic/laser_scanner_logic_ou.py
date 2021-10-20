@@ -28,7 +28,7 @@ import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-
+from scipy.ndimage.filters import gaussian_filter
 from core.connector import Connector
 from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
@@ -485,6 +485,7 @@ class LaserScannerLogic(GenericLogic):
         r_min = np.clip(scan_range[0], self.a_range[0], r_max)
         self.scan_range = [r_min, r_max]
 
+
     def set_voltage(self, volts):
         """ Set the channel idle voltage """
         self._static_v = np.clip(volts, self.a_range[0], self.a_range[1])
@@ -506,8 +507,8 @@ class LaserScannerLogic(GenericLogic):
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.plot_y = np.zeros(scan_length)
         self.plot_y2 = np.zeros(scan_length)
-        self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
-        self.fit_y = np.zeros(scan_length)
+        self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length*10)
+        self.fit_y = np.zeros(scan_length*10)
 
     def get_pid_rmse(self):
         """Calculates root mean square error of frequency holding done by PID loop
@@ -630,6 +631,7 @@ class LaserScannerLogic(GenericLogic):
             counts = self._scan_line(self._upwards_ramp)
             self.scan_matrix[self._scan_counter_up] = counts
             self.plot_y += counts
+            self.fit_y =gaussian_filter(np.interp(self.fit_x,self.plot_x,counts),sigma=20)
             self._scan_counter_up += 1
             self.upwards_scan = False
         else:
@@ -743,13 +745,20 @@ class LaserScannerLogic(GenericLogic):
             #    self._scanning_device.get_scanner_position()[2],
             #    self.get_current_voltage()
             #)
-            self.log.debug(str(np.where(counts_on_scan_line==max(counts_on_scan_line))[0])) ##ToDo: change this line to a real peak finder
+            #self.log.debug(str(np.where(counts_on_scan_line==max(counts_on_scan_line))[0])) ##ToDo: change this line to a real peak finder
             if self._re_pump=='on' and self._do_width!=0:
                 time.sleep(0.05)
                 self._do.simple_on('/Dev1/Port0/Line5')
                 time.sleep(self._do_width)
                 self._do.simple_off('/Dev1/Port0/Line5')
-            return counts_on_scan_line.transpose()[0]
+            x0=np.random.randint(len(counts_on_scan_line.transpose()[0]))
+            gamma=np.random.normal(5,1)
+            a=np.random.normal(10,3)*np.pi*gamma/2
+            x=np.arange(len(counts_on_scan_line.transpose()[0]))
+            y=self.Lorentzien(x,x0,gamma,a)
+            y_noise=np.random.poisson(y,y.shape)+np.random.poisson(1,y.shape)
+
+            return y_noise#counts_on_scan_line.transpose()[0]
 
         except Exception as e:
             self.log.error('The scan went wrong, killing the scanner.')
@@ -992,3 +1001,8 @@ class LaserScannerLogic(GenericLogic):
 
         return fig
 
+    def Lorentzien(self,x,x0,gamma,a):
+        return a/np.pi*gamma/2/((x-x0)**2+(gamma/2)**2)
+
+    def peakfind(self,x,y):
+        pass

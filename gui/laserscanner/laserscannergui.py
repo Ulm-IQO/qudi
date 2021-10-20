@@ -118,21 +118,22 @@ class VoltScanGui(GUIBase):
 
         self.scan_image = pg.PlotDataItem(
             self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y)
+            self._voltscan_logic.scan_matrix[self._voltscan_logic._scan_counter_up])
 
         self.scan_image2 = pg.PlotDataItem(
             self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y2)
+            self._voltscan_logic.scan_matrix2[self._voltscan_logic._scan_counter_up])
 
         self.scan_fit_image = pg.PlotDataItem(
             self._voltscan_logic.fit_x,
             self._voltscan_logic.fit_y,
-            pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
+            pen=pg.mkPen('r', width=5))
+            #pen=QtGui.QPen(QtGui.QColor(0, 255, 255, 255)))
 
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.voltscan_ViewWidget.addItem(self.scan_image)
-        #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
+        self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
         self._mw.voltscan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.voltscan_matrix_ViewWidget.addItem(self.scan_matrix_image)
 
@@ -213,8 +214,8 @@ class VoltScanGui(GUIBase):
         self._mw.action_run_stop.setEnabled(False)
         if is_checked:
             self.sigStartScan.emit()
-            self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
-            self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
+            #self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
+            #self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
         else:
             self.sigStopScan.emit()
 
@@ -230,8 +231,9 @@ class VoltScanGui(GUIBase):
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y)
-        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y2)
+        self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix[self._voltscan_logic._scan_counter_up-1])
+        self.scan_fit_image.setData(self._voltscan_logic.fit_x, self._voltscan_logic.fit_y)
+        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix2[self._voltscan_logic._scan_counter_up-1])
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
@@ -311,6 +313,7 @@ class VoltScanGui(GUIBase):
             self._mw.startDoubleSpinBox.value(),
             self._mw.stopDoubleSpinBox.value()
         ])
+        self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
 
     def change_speed(self):
         self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
@@ -320,7 +323,7 @@ class VoltScanGui(GUIBase):
             self._mw.startDoubleSpinBox.value(),
             self._mw.stopDoubleSpinBox.value()
         ])
-
+        self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[-1])
     def change_lines(self):
         self.sigChangeLines.emit(self._mw.linesSpinBox.value())
 
