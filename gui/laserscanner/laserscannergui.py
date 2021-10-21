@@ -93,7 +93,7 @@ class VoltScanGui(GUIBase):
 
         # Get the image from the logic
         self.scan_matrix_image = pg.ImageItem(
-            self._voltscan_logic.scan_matrix,
+            self._voltscan_logic.scan_matrix_new,
             axisOrder='row-major')
 
         self.scan_matrix_image.setRect(
@@ -161,8 +161,14 @@ class VoltScanGui(GUIBase):
         self._mw.voltscan_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
         self._mw.voltscan_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
 
+        # set constrains
+        self._mw.startDoubleSpinBox.setMaximum(self._voltscan_logic.a_range[1])
+        self._mw.stopDoubleSpinBox.setMaximum(self._voltscan_logic.a_range[1])
+        self._mw.startDoubleSpinBox.setMinimum(self._voltscan_logic.a_range[0])
+        self._mw.stopDoubleSpinBox.setMinimum(self._voltscan_logic.a_range[0])
         # set initial values
         self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+
         self._mw.speedDoubleSpinBox.setValue(self._voltscan_logic._scan_speed)
         self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
         self._mw.constDoubleSpinBox.setValue(self._voltscan_logic._static_v)
@@ -231,18 +237,19 @@ class VoltScanGui(GUIBase):
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix[self._voltscan_logic._scan_counter_up-1])
+        #self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix[self._voltscan_logic._scan_counter_up-1])
         self.scan_fit_image.setData(self._voltscan_logic.fit_x, self._voltscan_logic.fit_y)
-        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix2[self._voltscan_logic._scan_counter_up-1])
+        #self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix2[self._voltscan_logic._scan_counter_up-1])
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
-        self.scan_matrix_image.setImage(self._voltscan_logic.scan_matrix, axisOrder='row-major')
+        self.scan_matrix_image.setImage(self._voltscan_logic.scan_matrix_new, axisOrder='row-major')
         self.scan_matrix_image.setRect(
             QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[0],
                 0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[1]-
+                self._voltscan_logic.a_range[0],
                 self._voltscan_logic.number_of_repeats)
             )
         self.scan_matrix_image2.setImage(self._voltscan_logic.scan_matrix2, axisOrder='row-major')
@@ -255,7 +262,7 @@ class VoltScanGui(GUIBase):
         )
         self.refresh_scan_colorbar()
 
-        scan_image_data = self._voltscan_logic.scan_matrix
+        scan_image_data = self._voltscan_logic.scan_matrix_new
 
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
@@ -309,21 +316,29 @@ class VoltScanGui(GUIBase):
         self.sigChangeVoltage.emit(self._mw.constDoubleSpinBox.value())
 
     def change_start_volt(self):
-        self.sigChangeRange.emit([
-            self._mw.startDoubleSpinBox.value(),
-            self._mw.stopDoubleSpinBox.value()
-        ])
-        self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+        if self._mw.startDoubleSpinBox.value()<self._mw.stopDoubleSpinBox.value():
+            self.sigChangeRange.emit([
+                self._mw.startDoubleSpinBox.value(),
+                self._mw.stopDoubleSpinBox.value()
+            ])
+        else:
+            self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+            self.log.warn('start_value must be smaller than stop_value')
+
 
     def change_speed(self):
         self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
 
     def change_stop_volt(self):
-        self.sigChangeRange.emit([
-            self._mw.startDoubleSpinBox.value(),
-            self._mw.stopDoubleSpinBox.value()
-        ])
-        self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[-1])
+        if self._mw.startDoubleSpinBox.value() < self._mw.stopDoubleSpinBox.value():
+            self.sigChangeRange.emit([
+                self._mw.startDoubleSpinBox.value(),
+                self._mw.stopDoubleSpinBox.value()
+            ])
+        else:
+            self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
+            self.log.warn('start_value must be smaller than stop_value')
+
     def change_lines(self):
         self.sigChangeLines.emit(self._mw.linesSpinBox.value())
 

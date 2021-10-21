@@ -102,6 +102,14 @@ class LaserScannerLogic(GenericLogic):
         self._save_logic = self.savelogic()
         #self._laser_device = self.laser()
         self._do=self.do()
+        # default values for clock frequency and slowness
+        # slowness: steps during retrace line
+        self._smoothing_steps = 3  # steps to accelerate between 0 and scan_speed
+        self._max_step = 0.01  # volt
+        self._clock_frequency = max(50, int(self._scan_speed * 50))
+        self.set_resolution(self.resolution)
+        self._goto_speed = 0.5  # 0.01  # volt / second
+        self.set_scan_speed(self._scan_speed)
 
         # start acquisition of wavemeter so that current wavelength/frequency is always available
         # during execution of laser scanner logic
@@ -151,14 +159,7 @@ class LaserScannerLogic(GenericLogic):
         # TODO: allow configuration with respect to measurement duration
         self.acquire_time = 20  # seconds
 
-        # default values for clock frequency and slowness
-        # slowness: steps during retrace line
-        self.set_resolution(self.resolution)
-        self._goto_speed = 0.5  # 0.01  # volt / second
-        self.set_scan_speed(self._scan_speed)
-        self._smoothing_steps = 3  # steps to accelerate between 0 and scan_speed
-        self._max_step = 0.01  # volt
-        self._clock_frequency = max(50,int(self._scan_speed*50))
+
         ##############################
 
         # Initialie data matrix
@@ -477,13 +478,22 @@ class LaserScannerLogic(GenericLogic):
         scan_range = abs(self.scan_range[1] - self.scan_range[0])
         duration = scan_range / self._scan_speed
         new_clock = resolution / duration
-        return self.set_clock_frequency(new_clock)
+        self.set_clock_frequency(new_clock)
+        self._upwards_ramp = self._generate_ramp(self.scan_range[0], self.scan_range[1], self._scan_speed)
+        self._downwards_ramp = self._generate_ramp(self.scan_range[1], self.scan_range[0], self._scan_speed)
+        self.plot_x=np.linspace(self.scan_range[0], self.scan_range[1],len(self._upwards_ramp[-1]))
+
+        return True #self.set_clock_frequency(new_clock)
 
     def set_scan_range(self, scan_range):
         """ Set the scan rnage """
         r_max = np.clip(scan_range[1], self.a_range[0], self.a_range[1])
         r_min = np.clip(scan_range[0], self.a_range[0], r_max)
         self.scan_range = [r_min, r_max]
+        self._upwards_ramp = self._generate_ramp(r_min, r_max, self._scan_speed)
+        self._downwards_ramp = self._generate_ramp(r_max, r_min, self._scan_speed)
+        self.plot_x=np.linspace(r_min,r_max,len(self._upwards_ramp[-1]))
+
 
 
     def set_voltage(self, volts):
@@ -503,6 +513,12 @@ class LaserScannerLogic(GenericLogic):
         """ Initializing the ODMR matrix plot. """
 
         self.scan_matrix = np.zeros((self.number_of_repeats, scan_length))
+        self.scan_matrix_new = np.zeros((self.number_of_repeats, int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
+                self.scan_range[1]-self.scan_range[0]))))
+        self.x_interp=np.linspace(self.a_range[0],self.a_range[1],int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
+                self.scan_range[1]-self.scan_range[0])))
+        self.raw_matrix_voltage = []
+        self.raw_matrix_counts = []
         self.scan_matrix2 = np.zeros((self.number_of_repeats, scan_length))
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.plot_y = np.zeros(scan_length)
@@ -629,15 +645,21 @@ class LaserScannerLogic(GenericLogic):
 
         if self.upwards_scan:
             counts = self._scan_line(self._upwards_ramp)
-            self.scan_matrix[self._scan_counter_up] = counts
-            self.plot_y += counts
+            #self.scan_matrix[self._scan_counter_up] = counts
+            interpolated_y= np.interp(self.x_interp,self.plot_x,counts)
+            self.scan_matrix_new[self._scan_counter_up]=interpolated_y
+            self.raw_matrix_counts.append(counts)
+            self.raw_matrix_voltage.append(self._upwards_ramp[-1])
+            #self.plot_y += counts
             self.fit_y =gaussian_filter(np.interp(self.fit_x,self.plot_x,counts),sigma=20)
             self._scan_counter_up += 1
             self.upwards_scan = False
         else:
             counts = self._scan_line(self._downwards_ramp)
-            self.scan_matrix2[self._scan_counter_down] = counts
-            self.plot_y2 += counts
+            #self.scan_matrix2[self._scan_counter_down] = counts
+            self.raw_matrix_counts.append(counts)
+            self.raw_matrix_voltage.append(self._downwards_ramp[-1])
+            #self.plot_y2 += counts
             self._scan_counter_down += 1
             self.upwards_scan = True
 
