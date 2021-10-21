@@ -40,7 +40,7 @@ General Pulse Creation Procedure:
 """
 
 
-class BasicPolarisationGenerator(HelperMethods):
+class BasicPolarisationGenerator(PredefinedGeneratorBase):
     """
 
     """
@@ -299,19 +299,26 @@ class BasicPolarisationGenerator(HelperMethods):
         created_sequences.append(sequence)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_Poltau(self, name='PolTau', rabi_period=0.1e-6, tau_start=0.5e-6, tau_step=0.01e-6,
-                        num_of_points=50, microwave_amplitude=0.1, microwave_frequency=2870.0e6,
-                        order=8, alternating=True, pulse_function='Sin'):
+    def generate_Poltau(self, name='PPol_tau', tau_start=0.5e-6, tau_step=0.01e-6,
+                        num_of_points=50,
+                        order=8, alternating=True):
         """
 
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
+
+        microwave_amplitude = self.microwave_amplitude
+        microwave_frequency = self.microwave_frequency
+        rabi_period = self.rabi_period
+        """"
         rabi_period = self._adjust_to_samplingrate(rabi_period, 8)
         start_tau = self._adjust_to_samplingrate(tau_start, 4)
         incr_tau = self._adjust_to_samplingrate(tau_step, 4)
+        """
         # get tau array for measurement ticks
+        start_tau, incr_tau = tau_start, tau_step
         tau_array = start_tau + np.arange(num_of_points) * incr_tau
 
         if start_tau / 4.0 - rabi_period / 2.0 < 0.0:
@@ -323,43 +330,39 @@ class BasicPolarisationGenerator(HelperMethods):
         readout_element = self._get_readout_element()
 
         # get -x pihalf element
-        pihalfminusx_element = self._get_mw_element_s3(length=rabi_period / 4., increment=0.0,
+        pihalfminusx_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
                                                        amp=microwave_amplitude, freq=microwave_frequency,
-                                                       phase=180.0, pulse_function=pulse_function)
+                                                       phase=180.0)
 
 
-        pihalfx_element = self._get_mw_element_s3(length=rabi_period / 4., increment=0.0,
+        pihalfx_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
-                                                  phase=0.0, pulse_function=pulse_function)
+                                                  phase=0.0)
 
         # get y pihalf element
-        pihalfy_element = self._get_mw_element_s3(length=rabi_period / 4.,
+        pihalfy_element = self._get_mw_element(length=rabi_period / 4.,
                                                   increment=0.0,
                                                   amp=microwave_amplitude,
                                                   freq=microwave_frequency,
-                                                  phase=90.0,
-                                                  pulse_function=pulse_function)
+                                                  phase=90.0)
         # get pi elements
-        pix_element = self._get_mw_element_s3(length=rabi_period / 2.,
+        pix_element = self._get_mw_element(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=0.0,
-                                              pulse_function=pulse_function)
+                                              phase=0.0)
         # get pi elements
-        piminusx_element = self._get_mw_element_s3(length=rabi_period / 2.,
+        piminusx_element = self._get_mw_element(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=180.0,
-                                              pulse_function=pulse_function)
+                                              phase=180.0)
 
-        piy_element = self._get_mw_element_s3(length=rabi_period / 2.,
+        piy_element = self._get_mw_element(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=90.0,
-                                              pulse_function=pulse_function)
+                                              phase=90.0)
         # get tau/4 element
         tau_element = self._get_idle_element(length=start_tau / 4.0 - rabi_period / 2, increment=incr_tau / 4)
 
@@ -414,12 +417,16 @@ class BasicPolarisationGenerator(HelperMethods):
 
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_Poltau2(self, name='PolTau', rabi_period=0.1e-6, tau_start=0.5e-6, tau_step=0.01e-6,
-                         num_of_points=50, microwave_amplitude=0.1, microwave_frequency=2870.0e6,
-                         order=8, alternating=True, pulse_function='Sin'):
+    def generate_Poltau2(self, name='PolTau_0.1', tau_start=0.5e-6, tau_step=0.01e-6,
+                         num_of_points=50, order=8, alternating=True):
         """
 
         """
+
+        microwave_amplitude = self.microwave_amplitude
+        microwave_frequency = self.microwave_frequency
+        rabi_period = self.rabi_period
+
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
@@ -438,40 +445,38 @@ class BasicPolarisationGenerator(HelperMethods):
         readout_element = self._get_readout_element()
 
         # get -x pihalf element
-        pihalfy_element = self._get_mw_element_s3(length=rabi_period / 4., increment=0.0,
+        pihalfy_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
-                                                  phase=90.0, pulse_function=pulse_function)
+                                                  phase=90.0)
 
-        pihalfminusy_element = self._get_mw_element_s3(length=rabi_period / 4., increment=0.0,
+        pihalfminusy_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
-                                                  phase=270.0, pulse_function=pulse_function)
+                                                  phase=270.0)
 
-
-        pihalfx_element = self._get_mw_element_s3(length=rabi_period / 4., increment=0.0,
+        pihalfx_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
-                                                  phase=0.0, pulse_function=pulse_function)
+                                                  phase=0.0)
 
         # get pi elements
-        pix_element = self._get_mw_element_s3(length=rabi_period / 2.,
+        pix_element = self._get_mw_element(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=0.0,
-                                              pulse_function=pulse_function)
+                                              phase=0.0)
 
 
-        piy_element = self._get_mw_element_s3(length=rabi_period / 2.,
+        piy_element = self._get_mw_element(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=90.0,
-                                              pulse_function=pulse_function)
+                                              phase=90.0)
         # get tau/4 element
         tau_element = self._get_idle_element(length=start_tau / 4.0 - rabi_period / 2, increment=incr_tau / 4)
 
         # create Pol 2.0 block element list
         block = PulseBlock(name=name)
         # actual (Pol 2.0)_2N sequence
+        # ATTENTION: phases not as in Schwartz paper
         for nn in range(2 * order):
             block.append(pihalfy_element)
             block.append(tau_element)
@@ -487,6 +492,7 @@ class BasicPolarisationGenerator(HelperMethods):
         block.extend(readout_element)
 
         if alternating:
+            # reverse polarization
             for pp in range(2 * order):
                 block.append(pihalfx_element)
                 block.append(tau_element)
@@ -500,7 +506,7 @@ class BasicPolarisationGenerator(HelperMethods):
                 block.append(tau_element)
                 block.append(pihalfy_element)
 
-            block[-1] = pihalfminusy_element
+            block[-1] = pihalfminusy_element  # for nv readout contrast
             block.extend(readout_element)
 
         created_blocks.append(block)
@@ -655,12 +661,16 @@ class BasicPolarisationGenerator(HelperMethods):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_Pol20_order(self, name='Pol 2.0_order', rabi_period=0.1e-6, n_start=1, n_step=1, num_of_points=50,
-                             microwave_amplitude=0.25, microwave_frequency=2.8e9, tau=0.5e-6,
-                             alternating = False, pulse_function='Sin'):
+    def generate_Pol20_order(self, name='PPol order', n_start=1, n_step=1, num_of_points=50, tau=0.5e-6,
+                             alternating = False):
         """
 
         """
+
+        microwave_amplitude = self.microwave_amplitude
+        microwave_frequency = self.microwave_frequency
+        rabi_period = self.rabi_period
+
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
@@ -676,34 +686,31 @@ class BasicPolarisationGenerator(HelperMethods):
         readout_element = self._get_readout_element()
 
         # get -x pihalf element
-        pihalfminusx_element = self._get_mw_element_s3(length=rabi_period / 4, increment=0.0,
-                                                       amp=microwave_amplitude, freq=microwave_frequency,
-                                                       phase=180.0, pulse_function=pulse_function)
-        pihalfx_element = self._get_mw_element_s3(length=rabi_period / 4, increment=0.0,
-                                                  amp=microwave_amplitude, freq=microwave_frequency,
-                                                  phase=0.0, pulse_function=pulse_function)
+        pihalfminusx_element = self._get_mw_element(length=rabi_period / 4, increment=0.0,
+                                                    amp=microwave_amplitude, freq=microwave_frequency,
+                                                    phase=180.0)
+        pihalfx_element = self._get_mw_element(length=rabi_period / 4, increment=0.0,
+                                               amp=microwave_amplitude, freq=microwave_frequency,
+                                               phase=0.0)
 
         # get y pihalf element
-        pihalfy_element = self._get_mw_element_s3(length=rabi_period / 4,
-                                                  increment=0.0,
-                                                  amp=microwave_amplitude,
-                                                  freq=microwave_frequency,
-                                                  phase=90.0,
-                                                  pulse_function=pulse_function)
+        pihalfy_element = self._get_mw_element(length=rabi_period / 4,
+                                               increment=0.0,
+                                               amp=microwave_amplitude,
+                                               freq=microwave_frequency,
+                                               phase=90.0)
         # get pi elements
-        pix_element = self._get_mw_element_s3(length=rabi_period / 2,
-                                              increment=0.0,
-                                              amp=microwave_amplitude,
-                                              freq=microwave_frequency,
-                                              phase=0.0,
-                                              pulse_function=pulse_function)
+        pix_element = self._get_mw_element(length=rabi_period / 2,
+                                           increment=0.0,
+                                           amp=microwave_amplitude,
+                                           freq=microwave_frequency,
+                                           phase=0.0)
 
-        piy_element = self._get_mw_element_s3(length=rabi_period / 2,
-                                              increment=0.0,
-                                              amp=microwave_amplitude,
-                                              freq=microwave_frequency,
-                                              phase=90.0,
-                                              pulse_function=pulse_function)
+        piy_element = self._get_mw_element(length=rabi_period / 2,
+                                           increment=0.0,
+                                           amp=microwave_amplitude,
+                                           freq=microwave_frequency,
+                                           phase=90.0)
 
         # get tau/4 element
         tau_element = self._get_idle_element(length=tau / 4 - rabi_period / 2.0, increment=0.)
@@ -783,10 +790,10 @@ class BasicPolarisationGenerator(HelperMethods):
         # get -x pihalf element
         pihalfminusx_element = self._get_mw_element_s3(length=rabi_period / 4, increment=0.0,
                                                        amp=microwave_amplitude, freq=microwave_frequency,
-                                                       phase=180.0, pulse_function=pulse_function)
+                                                       phase=180.0)
         pihalfx_element = self._get_mw_element_s3(length=rabi_period / 4, increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
-                                                  phase=0.0, pulse_function=pulse_function)
+                                                  phase=0.0)
 
         # get y pihalf element
         pihalfy_element = self._get_mw_element_s3(length=rabi_period / 4,
