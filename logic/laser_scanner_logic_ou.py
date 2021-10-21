@@ -84,11 +84,7 @@ class LaserScannerLogic(GenericLogic):
         self.threadlock = Mutex()
         self.stopRequested = False
 
-        self.fit_x = []
-        self.fit_y = []
-        self.plot_x = []
-        self.plot_y = []
-        self.plot_y2 = []
+
 
         # array to store trace of frequencies to judge noise of laser locking
         # first element ist most recent and last element is oldest frequency
@@ -97,6 +93,12 @@ class LaserScannerLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        self.fit_x = []
+        self.fit_y = []
+        self.fit_y2 = []
+        self.plot_x = []
+        self.plot_y = []
+        self.plot_y2 = []
         self._scanning_device = self.confocalscanner1()
         self._wavemeter_device = self.wavemeter1()
         self._save_logic = self.savelogic()
@@ -161,9 +163,9 @@ class LaserScannerLogic(GenericLogic):
 
 
         ##############################
-
         # Initialie data matrix
         self._initialise_data_matrix(100)
+
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -493,7 +495,9 @@ class LaserScannerLogic(GenericLogic):
         self._upwards_ramp = self._generate_ramp(r_min, r_max, self._scan_speed)
         self._downwards_ramp = self._generate_ramp(r_max, r_min, self._scan_speed)
         self.plot_x=np.linspace(r_min,r_max,len(self._upwards_ramp[-1]))
-
+        self.fit_x = np.linspace(r_min, r_max, 10*len(self._upwards_ramp[-1]))
+        self.fit_y = np.zeros(len(self.fit_x))
+        self.fit_y2 = np.zeros(len(self.fit_x))
 
 
     def set_voltage(self, volts):
@@ -525,6 +529,8 @@ class LaserScannerLogic(GenericLogic):
         self.plot_y2 = np.zeros(scan_length)
         self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length*10)
         self.fit_y = np.zeros(scan_length*10)
+        self.fit_y2 = np.zeros(scan_length*10)
+
 
     def get_pid_rmse(self):
         """Calculates root mean square error of frequency holding done by PID loop
@@ -646,6 +652,7 @@ class LaserScannerLogic(GenericLogic):
         if self.upwards_scan:
             counts = self._scan_line(self._upwards_ramp)
             #self.scan_matrix[self._scan_counter_up] = counts
+            self.plot_y=counts
             interpolated_y= np.interp(self.x_interp,self.plot_x,counts)
             self.scan_matrix_new[self._scan_counter_up]=interpolated_y
             self.raw_matrix_counts.append(counts)
@@ -656,9 +663,12 @@ class LaserScannerLogic(GenericLogic):
             self.upwards_scan = False
         else:
             counts = self._scan_line(self._downwards_ramp)
+            interpolated_y = np.interp(self.x_interp, self.plot_x, np.flip(counts,0))
             #self.scan_matrix2[self._scan_counter_down] = counts
+            self.plot_y2=interpolated_y
             self.raw_matrix_counts.append(counts)
             self.raw_matrix_voltage.append(self._downwards_ramp[-1])
+            self.fit_y2 = gaussian_filter(np.interp(self.fit_x, self.plot_x, np.flip(counts,0)), sigma=20)
             #self.plot_y2 += counts
             self._scan_counter_down += 1
             self.upwards_scan = True
