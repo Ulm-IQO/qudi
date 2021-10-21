@@ -105,7 +105,7 @@ class VoltScanGui(GUIBase):
         )
 
         self.scan_matrix_image2 = pg.ImageItem(
-            self._voltscan_logic.scan_matrix2,
+            self._voltscan_logic.scan_matrix_new2,
             axisOrder='row-major')
 
         self.scan_matrix_image2.setRect(
@@ -121,7 +121,7 @@ class VoltScanGui(GUIBase):
             self._voltscan_logic.plot_y)
 
         self.scan_image2 = pg.PlotDataItem(
-            self._voltscan_logic.plot_x,
+            self._voltscan_logic.plot_x2,
             self._voltscan_logic.plot_y2)
 
         self.scan_fit_image = pg.PlotDataItem(
@@ -130,7 +130,7 @@ class VoltScanGui(GUIBase):
             pen=pg.mkPen('r', width=5))
             #pen=QtGui.QPen(QtGui.QColor(0, 255, 255, 255)))
         self.scan_fit_image2 = pg.PlotDataItem(
-            self._voltscan_logic.fit_x,
+            self._voltscan_logic.fit_x2,
             self._voltscan_logic.fit_y2,
             pen=pg.mkPen('r', width=5))
         # pen=QtGui.QPen(QtGui.QColor(0, 255, 255, 255)))
@@ -170,6 +170,8 @@ class VoltScanGui(GUIBase):
         self._mw.startDoubleSpinBox.setMaximum(self._voltscan_logic.a_range[1])
         self._mw.stopDoubleSpinBox.setMaximum(self._voltscan_logic.a_range[1])
         self._mw.startDoubleSpinBox.setMinimum(self._voltscan_logic.a_range[0])
+        #self._mw.resolutionSpinBox.setMinimum(self._voltscan_logic.minimum_resolution)
+
         self._mw.stopDoubleSpinBox.setMinimum(self._voltscan_logic.a_range[0])
         # set initial values
         self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
@@ -244,8 +246,8 @@ class VoltScanGui(GUIBase):
         """ Refresh the xy-plot image """
         self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y)
         self.scan_fit_image.setData(self._voltscan_logic.fit_x, self._voltscan_logic.fit_y)
-        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y2)
-        self.scan_fit_image.setData(self._voltscan_logic.fit_x, self._voltscan_logic.fit_y2)
+        self.scan_image2.setData(self._voltscan_logic.plot_x2, self._voltscan_logic.plot_y2)
+        self.scan_fit_image2.setData(self._voltscan_logic.fit_x2, self._voltscan_logic.fit_y2)
 
 
     def refresh_matrix(self):
@@ -259,12 +261,13 @@ class VoltScanGui(GUIBase):
                 self._voltscan_logic.a_range[0],
                 self._voltscan_logic.number_of_repeats)
             )
-        self.scan_matrix_image2.setImage(self._voltscan_logic.scan_matrix2, axisOrder='row-major')
+        self.scan_matrix_image2.setImage(self._voltscan_logic.scan_matrix_new2, axisOrder='row-major')
         self.scan_matrix_image2.setRect(
             QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[0],
                 0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[1] -
+                self._voltscan_logic.a_range[0],
                 self._voltscan_logic.number_of_repeats)
         )
         self.refresh_scan_colorbar()
@@ -289,7 +292,7 @@ class VoltScanGui(GUIBase):
             levels=(cb_min, cb_max),
             axisOrder='row-major')
 
-        scan_image_data2 = self._voltscan_logic.scan_matrix2
+        scan_image_data2 = self._voltscan_logic.scan_matrix_new2
         # Now update image with new color scale, and update colorbar
         self.scan_matrix_image2.setImage(
             image=scan_image_data2,

@@ -468,6 +468,7 @@ class LaserScannerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self._clock_frequency = float(clock_frequency)
+        self.minimum_resolution=self._clock_frequency
         # checks if scanner is still running
         if self.module_state() == 'locked':
             return -1
@@ -483,8 +484,8 @@ class LaserScannerLogic(GenericLogic):
         self.set_clock_frequency(new_clock)
         self._upwards_ramp = self._generate_ramp(self.scan_range[0], self.scan_range[1], self._scan_speed)
         self._downwards_ramp = self._generate_ramp(self.scan_range[1], self.scan_range[0], self._scan_speed)
-        self.plot_x=np.linspace(self.scan_range[0], self.scan_range[1],len(self._upwards_ramp[-1]))
-
+        #self.plot_x=np.linspace(self.scan_range[0], self.scan_range[1],len(self._upwards_ramp[-1]))
+        #self.minimum_resolution=self._clock_frequency*1
         return True #self.set_clock_frequency(new_clock)
 
     def set_scan_range(self, scan_range):
@@ -494,11 +495,11 @@ class LaserScannerLogic(GenericLogic):
         self.scan_range = [r_min, r_max]
         self._upwards_ramp = self._generate_ramp(r_min, r_max, self._scan_speed)
         self._downwards_ramp = self._generate_ramp(r_max, r_min, self._scan_speed)
-        self.plot_x=np.linspace(r_min,r_max,len(self._upwards_ramp[-1]))
-        self.fit_x = np.linspace(r_min, r_max, 10*len(self._upwards_ramp[-1]))
-        self.fit_y = np.zeros(len(self.fit_x))
-        self.fit_y2 = np.zeros(len(self.fit_x))
-
+        #self.plot_x=np.linspace(r_min,r_max,len(self._upwards_ramp[-1]))
+        #self.fit_x = np.linspace(r_min, r_max, 10*len(self._upwards_ramp[-1]))
+        #self.fit_y = np.zeros(len(self.fit_x))
+        #self.fit_y2 = np.zeros(len(self.fit_x))
+        #self.plot_y2 = np.zeros(len(self.plot_x))
 
     def set_voltage(self, volts):
         """ Set the channel idle voltage """
@@ -519,15 +520,22 @@ class LaserScannerLogic(GenericLogic):
         self.scan_matrix = np.zeros((self.number_of_repeats, scan_length))
         self.scan_matrix_new = np.zeros((self.number_of_repeats, int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
                 self.scan_range[1]-self.scan_range[0]))))
+        self.scan_matrix_new2 = np.zeros(
+            (self.number_of_repeats, int(scan_length * 10 * (self.a_range[1] - self.a_range[0]) / (
+                    self.scan_range[1] - self.scan_range[0]))))
         self.x_interp=np.linspace(self.a_range[0],self.a_range[1],int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
                 self.scan_range[1]-self.scan_range[0])))
         self.raw_matrix_voltage = []
         self.raw_matrix_counts = []
         self.scan_matrix2 = np.zeros((self.number_of_repeats, scan_length))
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
+        self.plot_x2 = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
+
         self.plot_y = np.zeros(scan_length)
         self.plot_y2 = np.zeros(scan_length)
         self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length*10)
+        self.fit_x2 = np.linspace(self.scan_range[0], self.scan_range[1], scan_length*10)
+
         self.fit_y = np.zeros(scan_length*10)
         self.fit_y2 = np.zeros(scan_length*10)
 
@@ -653,26 +661,36 @@ class LaserScannerLogic(GenericLogic):
             counts = self._scan_line(self._upwards_ramp)
             #self.scan_matrix[self._scan_counter_up] = counts
             self.plot_y=counts
+            self.plot_x=np.linspace(self._upwards_ramp[-1][0],self._upwards_ramp[-1][-1],len(self.plot_y))
             interpolated_y= np.interp(self.x_interp,self.plot_x,counts)
             self.scan_matrix_new[self._scan_counter_up]=interpolated_y
             self.raw_matrix_counts.append(counts)
             self.raw_matrix_voltage.append(self._upwards_ramp[-1])
             #self.plot_y += counts
-            self.fit_y =gaussian_filter(np.interp(self.fit_x,self.plot_x,counts),sigma=20)
+            self.fit_x = np.linspace(self.plot_x[0], self.plot_x[-1], 10 * len(self.plot_y))
+            self.fit_y =gaussian_filter(np.interp(self.fit_x,self.plot_x,self.plot_y),sigma=20)
             self._scan_counter_up += 1
             self.upwards_scan = False
         else:
             counts = self._scan_line(self._downwards_ramp)
-            interpolated_y = np.interp(self.x_interp, self.plot_x, np.flip(counts,0))
+
             #self.scan_matrix2[self._scan_counter_down] = counts
-            self.plot_y2=interpolated_y
+            self.plot_y2=np.flip(counts,0)
+            self.plot_x2 = np.linspace(self._downwards_ramp[-1][-1], self._downwards_ramp[-1][0], len(self.plot_y2))
+            #self.fit_x2 = np.linspace(self.plot_x2[0], self.plot_x2[-1], 10 * len(self._downwards_ramp[-1]))
+            interpolated_y = np.interp(self.x_interp, self.plot_x2, self.plot_y2)
+            self.scan_matrix_new2[self._scan_counter_down] = interpolated_y
             self.raw_matrix_counts.append(counts)
             self.raw_matrix_voltage.append(self._downwards_ramp[-1])
-            self.fit_y2 = gaussian_filter(np.interp(self.fit_x, self.plot_x, np.flip(counts,0)), sigma=20)
+            self.fit_x2 = np.linspace(self.plot_x2[0], self.plot_x2[-1], 10 * len(self.plot_y2))
+            self.fit_y2 = gaussian_filter(np.interp(self.fit_x2, self.plot_x2, self.plot_y2), sigma=20)
             #self.plot_y2 += counts
             self._scan_counter_down += 1
             self.upwards_scan = True
-
+        scan_range = abs(self.scan_range[1] - self.scan_range[0])
+        duration = scan_range / self._scan_speed
+        if duration < 1:
+            time.sleep(1-duration)
         self.sigUpdatePlots.emit()
         self.sigScanNextLine.emit()
 
