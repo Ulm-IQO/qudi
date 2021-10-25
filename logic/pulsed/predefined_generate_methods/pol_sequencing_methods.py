@@ -4,6 +4,10 @@ from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 #from interface.pulser_interface import SequenceOrderOption
 #from core.module import Connector
 
+from logic.pulsed.sampling_functions import DDMethods
+from core.util.helpers import csv_2_list
+
+
 OFFSET_TAU_MFL_SEQMODE = 3      # number of sequence elements in front of ramseys
 DELTA_TAU_I_MFL_SEQMODE = 2     # separation between different ramseys in sequence
 OFFSET_TAU_MFL_LIN_SEQMODE = 1      # number of sequence elements in front of sequence segments
@@ -59,48 +63,88 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # only valid while iterating through generation of sequence
         return self._seqtable_counter
 
+    def _add_ensemble_to_seqtable(self, blocks, ensemble, name, seq_params=None):
+        cur_seq_params = self._get_default_seq_params(seq_params)
+        self._add_to_seqtable(name, blocks, ensemble, cur_seq_params)
+
     def generate_ppol_2x_propi(self, name="ppol_2x_propi", n_pol=100, m_read_step=20,
                         tau_ppol=50e-9, order_ppol=1, alternating=True):
 
+        cur_name = 'ppol_init_up'
+        cur_blocks, cur_ensembles, _ = self._create_single_ppol(cur_name, tau_ppol, order_ppol, 'up',
+                                                                alternating=False, add_gate_ch='')
+        blocks, enembles, sequences = self.generic_ppol_propi(cur_name, ov_name=name,
+                                                              pol_blocks=cur_blocks, pol_ensemble=cur_ensembles,
+                                                              n_pol=n_pol, m_read_step=m_read_step, tau_ppol=tau_ppol,
+                                                              order_ppol=order_ppol, alternating=alternating,
+                                                              pol_read='down')
+
+        return blocks, enembles, sequences
+
+    def generate_rnovel_ppol_propi(self, name='rnovel_ppol_propi',
+                                   dd_mol_tau=0.5e-6, dd_mol_order=10, dd_mol_ampl=0.1, dd_mol_type=DDMethods.CPMG,
+                                   n_pol=100, m_read_step=20, tau_ppol=50e-9, order_ppol=1,
+                                   alternating=True):
+
+        # Hovav (2018): RNOVEL
+        cur_name = 'rnovel_init_up' # hopefully up
+
+        cur_blocks, cur_ensembles, _ = self._create_single_dd_mollow(name=cur_name, tau=dd_mol_tau, ampl_mol=dd_mol_ampl,
+                                                                     dd_type=dd_mol_type, dd_order=dd_mol_order,
+                                                                     f_mol=0e6, phase_mod='90, 90',
+                                                                     alternating=False)
+
+        blocks, enembles, sequences = self.generic_ppol_propi(cur_name, ov_name=name,
+                                                              pol_blocks=cur_blocks, pol_ensemble=cur_ensembles,
+                                                              n_pol=n_pol, m_read_step=m_read_step, tau_ppol=tau_ppol,
+                                                              order_ppol=order_ppol, alternating=alternating,
+                                                              pol_read='down')
+
+        return blocks, enembles, sequences
+
+    def generic_ppol_propi(self, pol_name="generic_pol", ov_name=None, pol_blocks=None, pol_ensemble=None,
+                           n_pol=100, m_read_step=20, tau_ppol=50e-9,
+                           order_ppol=1, pol_read='down', alternating=True):
+        """
+        Adds a PulsePol Propi readout to some generic polarization sequence.
+        """
         # for linear sequencers like Keysight AWG
-        self.init_jumptable()  # jumping not needed, but using code infrastructure
+        # self.init_jumptable()  # jumping currently not needed
         self.init_seqtable()
         general_params = locals()
-
+        name = f"{pol_name}_ppol_propi" if not ov_name else ov_name
 
         # read polarization has to come first
         # the laser extraction is based on the laser_rising_bins
         # which are counted in the order of the sequence step
         cur_name = 'ppol_read'
-        cur_blocks, cur_ensembles, _ = self._create_single_ppol(cur_name, tau_ppol, order_ppol, 'down',
+        cur_blocks, cur_ensembles, _ = self._create_single_ppol(cur_name, tau_ppol, order_ppol, pol_read,
                                                                 alternating=alternating)
-        cur_seq_params = self._get_default_seq_params({'repetitions': int(m_read_step - 1)})
-        self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
-
+        self._add_ensemble_to_seqtable(cur_blocks, cur_ensembles, cur_name,
+                                       seq_params={'repetitions': int(m_read_step - 1)})
         # init polarization
-        cur_name = 'ppol_init_up'
-        cur_blocks, cur_ensembles, _ = self._create_single_ppol(cur_name, tau_ppol, order_ppol, 'up',
-                                                                alternating=False, add_gate_ch='')
-        cur_seq_params = self._get_default_seq_params({'repetitions': int(n_pol - 1)})
-        self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
+        if pol_blocks and pol_ensemble:
+            self._add_ensemble_to_seqtable(pol_blocks, pol_ensemble, pol_name,
+                                           seq_params={'repetitions': int(n_pol - 1)})
 
         # sync trigger for start readout
         sync_name = 'sync_trig'
-        sync_blocks, sync_ensembles, _ = self._create_generic_trigger(sync_name, ['d_ch1'])
-        sync_seq_params = self._get_default_seq_params({'repetitions': 0})
-        self._add_to_seqtable(sync_name, sync_blocks, sync_ensembles, sync_seq_params)
+        sync_blocks, sync_ensembles, _ = self._create_generic_trigger(sync_name, self.sync_channel)
+        self._add_ensemble_to_seqtable(sync_blocks, sync_ensembles, sync_name,
+                                       seq_params={'repetitions': int(0)})
 
         all_blocks, all_ensembles, ensemble_list = self._seqtable_to_result()
-        sequence = PulseSequence(name=general_params['name'], ensemble_list=ensemble_list, rotating_frame=False)
+        sequence = PulseSequence(name=name, ensemble_list=ensemble_list, rotating_frame=False)
 
         # get length of ppol_read ensemble
         idx_read = 0
-        fastcounter_count_length = int(m_read_step )*self._get_ensemble_count_length(all_ensembles[idx_read], created_blocks=all_blocks)
-        self.log.debug("Setting fastcounter count length to {:.3f} us".format(fastcounter_count_length * 1e6))
+        fastcounter_count_length = int(m_read_step) * self._get_ensemble_count_length(all_ensembles[idx_read],
+                                                                                      created_blocks=all_blocks)
+        # self.log.debug("Setting fastcounter count length to {:.3f} us".format(fastcounter_count_length * 1e6))
 
         contr_var = np.arange(m_read_step) + 1
         n_lasers = len(contr_var)
-        n_lasers = 2*n_lasers if alternating else n_lasers
+        n_lasers = 2 * n_lasers if alternating else n_lasers
         n_phys_lasers = n_lasers + n_pol
         laser_ignore = np.arange(n_lasers, n_phys_lasers, 1)
 
@@ -433,15 +477,12 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             #created_blocks, block_ensemble = self._add_trigger(created_blocks, block_ensemble)
             # add metadata to invoke settings
             block_ensemble = self._add_metadata_to_settings(block_ensemble, created_blocks=created_blocks,
-                                                            alternating=False, units=('s', ''),
+                                                            alternating=alternating, units=('s', ''),
                                                             labels=('tau', 'Signal'),
                                                             controlled_variable=[tau])
             # append ensemble to created ensembles
             created_ensembles.append(block_ensemble)
             return created_blocks, created_ensembles, created_sequences
-
-
-
 
     def _create_single_ramsey(self, name='ramsey', tau=500e-9, mw_phase=0.0,
                               laser_length=1500e-9, wait_length=1000e-9, ni_gate_length=-1e-9,
@@ -758,6 +799,133 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
 
+        return created_blocks, created_ensembles, created_sequences
+
+    def _create_single_dd_mollow(self, name='dd_mollow_tau', tau=0.5e-6,
+                               dd_type=DDMethods.CPMG, dd_order=1, ampl_mol=0.1, f_mol=1e6, phase_mod='',
+                               alternating=True
+                               ):
+        """
+
+        """
+        # based on dd_iqo_sequences:: generate_dd_mollow_tau
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        tau_pspacing = self.tau_2_pulse_spacing(tau)
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=0)
+
+        # define a function to create phase shifted pi pulse elements
+        def pi_element_function(xphase):
+            return self._get_mw_element(length=self.rabi_period / 2,
+                                        increment=0,
+                                        amp=self.microwave_amplitude,
+                                        freq=self.microwave_frequency,
+                                        phase=xphase)
+
+        def get_mollow_phase(phase_idx, phases=None):
+            phi = 0
+            if not phases:
+                phi = 0
+            else:
+                # ensure correct phase after last pi pulse
+                if phase_idx == len(phases):
+                    phi = phases[0]
+                else:
+                    phi = phases[phase_idx]
+            return phi
+
+        def tau2_mollow_element_function(phase_idx, phases=None):
+            """
+            Alternate the phases of the signal/waiting element according to an idx and a phases array.
+            :param phase_idx:
+            :param phases:
+            :return:
+            """
+            phi = get_mollow_phase(phase_idx, phases)
+            element = self._get_mw_element(length=tau_pspacing / 2, increment=0,
+                                           amp=ampl_mol, freq=self.microwave_frequency + f_mol,
+                                           phase=phi)
+            return element
+
+        # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=180)
+        else:
+            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=0)
+
+        phase_mod = csv_2_list(phase_mod)
+        all_phases = [[get_mollow_phase(idx_pi, phase_mod), get_mollow_phase(idx_pi + 1, phase_mod)]
+                      for idx_pi in range(dd_type.suborder)]
+        self.log.debug(f"Phase modulation in {dd_type}: {all_phases}")
+        # tauhalf_element = self._get_idle_element(length=start_tau_pspacing / 2, increment=tau_step / 2)
+        # tau_element = self._get_idle_element(length=start_tau_pspacing, increment=tau_step)
+
+        # Create block and append to created_blocks list
+        dd_block = PulseBlock(name=name)
+        dd_block.append(pihalf_element)
+        for n in range(dd_order):
+            # create the DD sequence for a single order
+            for pulse_number in range(dd_type.suborder):
+                dd_block.append(tau2_mollow_element_function(pulse_number, phase_mod))
+                dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                dd_block.append(tau2_mollow_element_function(pulse_number + 1, phase_mod))
+        dd_block.append(pihalf_element)
+        dd_block.append(laser_element)
+        dd_block.append(delay_element)
+        dd_block.append(waiting_element)
+        if alternating:
+            dd_block.append(pihalf_element)
+            for n in range(dd_order):
+                # create the DD sequence for a single order
+                for pulse_number in range(dd_type.suborder):
+                    dd_block.append(tau2_mollow_element_function(pulse_number, phase_mod))
+                    dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                    dd_block.append(tau2_mollow_element_function(pulse_number + 1, phase_mod))
+            dd_block.append(pi3half_element)
+            dd_block.append(laser_element)
+            dd_block.append(delay_element)
+            dd_block.append(waiting_element)
+        created_blocks.append(dd_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((dd_block.name, 1 - 1))
+
+        # Create and append sync trigger block if needed
+        # self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = 1 * 2 if alternating else 1
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = [tau]
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
     def _extend_to_min_samples(self, pulse_block, prepend=True):
