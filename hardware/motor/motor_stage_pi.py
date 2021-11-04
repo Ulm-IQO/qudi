@@ -269,9 +269,9 @@ class MotorStagePI(Base, MotorInterface):
                 for axis_label in param_dict:
                     move = param_dict[axis_label]
                     self._do_move_abs(axis_label, move)
-
+                    v_i = self.get_velocity([axis_label])
                 timeout_ms = float(self._pi_xyz_timeout)
-
+                # todo: wait at least the expected time of the move
                 self.wait_on_condition("self._motor_stopped()", dt_s=0.02,
                                        timeout_s=timeout_ms/1000.)
             except:
@@ -465,7 +465,7 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    vel = int(self._ask_úxyz(axis_label, 'TY', nchunks=3).split(":",1)[1]) # expect 17 bytes
+                    vel = int(self._ask_xyz(axis_label, 'TY', nchunks=3).split(":",1)[1]) # expect 17 bytes
                     param_dict[axis_label] = vel * 1e-7
             else:
                 for axis_label in constraints:
@@ -473,7 +473,7 @@ class MotorStagePI(Base, MotorInterface):
                     param_dict[axis_label] = vel * 1e-7
             return param_dict
         except:
-            self.log.error('Could not find current axis velocity')
+            self.log.exception('Could not find current axis velocity: ')
             return -1
 
     def set_velocity(self, param_dict):
