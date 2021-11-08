@@ -213,6 +213,111 @@ class DoubleSinProduct(SamplingBase):
         return samples_arr
 
 
+class SineDoubleChirpSum(SamplingBase):
+    params = OrderedDict()
+    params['sin_amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['sin_frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['sin_phase'] = {'unit': '°', 'init': 0.0, 'min': -np.inf, 'max': np.inf, 'type': float}
+    params['ch_amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['ch_phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
+    params['ch_start_freq_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                                 'type': float}
+    params['ch_stop_freq_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                                'type': float}
+    params['ch_amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['ch_phase_2'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
+    params['ch_start_freq_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                                 'type': float}
+    params['ch_stop_freq_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                                'type': float}
+
+    def __init__(self, sin_ampl=None, sin_freq=None, sin_phase=None,
+                 ch_ampl_1=None, ch_phase_1=None, ch_start_freq_1=None, ch_stop_freq_1=None,
+                 ch_ampl_2=None, ch_phase_2=None, ch_start_freq_2=None, ch_stop_freq_2=None
+                 ):
+
+        # sine
+        if sin_ampl is None:
+            self.sin_ampl = self.params['sin_amplitude']['init']
+        else:
+            self.sin_ampl = sin_ampl
+        if sin_freq is None:
+            self.sin_freq = self.params['sin_frequency']['init']
+        else:
+            self.sin_freq = sin_freq
+        if sin_phase is None:
+            self.sin_phase = self.params['sin_phase']['init']
+        else:
+            self.sin_phase = sin_phase
+
+        # chirp 1
+        if ch_ampl_1 is None:
+            self.ch_ampl_1 = self.params['ch_amplitude_1']['init']
+        else:
+            self.ch_ampl_1 = ch_ampl_1
+        if ch_phase_1 is None:
+            self.ch_phase_1 = self.params['ch_phase_1']['init']
+        else:
+            self.ch_phase_1 = ch_phase_1
+        if ch_start_freq_1 is None:
+            self.ch_start_freq_1 = self.params['ch_start_freq_1']['init']
+        else:
+            self.ch_start_freq_1 = ch_start_freq_1
+        if ch_stop_freq_1 is None:
+            self.ch_stop_freq_1 = self.params['ch_stop_freq_1']['init']
+        else:
+            self.ch_stop_freq_1 = ch_stop_freq_1
+
+        # chirp 2
+        if ch_ampl_2 is None:
+            self.ch_ampl_2 = self.params['ch_amplitude_2']['init']
+        else:
+            self.ch_ampl_2 = ch_ampl_2
+        if ch_phase_2 is None:
+            self.ch_phase_2 = self.params['ch_phase_2']['init']
+        else:
+            self.ch_phase_2 = ch_phase_2
+        if ch_start_freq_2 is None:
+            self.ch_start_freq_2 = self.params['ch_start_freq_2']['init']
+        else:
+            self.ch_start_freq_2 = ch_start_freq_2
+        if ch_stop_freq_2 is None:
+            self.ch_stop_freq_2 = self.params['ch_stop_freq_2']['init']
+        else:
+            self.ch_stop_freq_2 = ch_stop_freq_2
+
+    @staticmethod
+    def _get_sine(time_array, amplitude, frequency, phase_deg):
+
+        phase_rad = np.pi*phase_deg / 180
+
+        samples_arr = amplitude * np.sin(2 * np.pi * frequency * time_array + phase_rad)
+        return samples_arr
+
+    @staticmethod
+    def _get_chirp(time_array, amplitude, phase, start_freq, stop_freq):
+        # todo: add switch to preserve phase
+        # todo: document
+        phase_rad = np.deg2rad(phase)
+        freq_diff = stop_freq - start_freq
+        time_diff = time_array[-1] - time_array[0]
+        dfdt = freq_diff / time_diff
+        samples_arr = amplitude * np.sin(2 * np.pi * time_array * (
+                -0.5 * dfdt * time_array[0] +
+                start_freq + 0.5 * dfdt * (time_array - time_array[0]))
+                                         + phase_rad)
+        return samples_arr
+
+    def get_samples(self, time_array):
+        sine = self._get_sine(time_array, self.sin_ampl, self.sin_freq, self.sin_phase)
+        chirp_1 = self._get_chirp(time_array, self.ch_ampl_1, self.ch_phase_1,
+                                self.ch_start_freq_1, self.ch_stop_freq_1)
+        chirp_2 = self._get_chirp(time_array, self.ch_ampl_2, self.ch_phase_2,
+                                self.ch_start_freq_2, self.ch_stop_freq_2)
+
+        return sine + chirp_1 + chirp_2
+
+
 class TripleSinSum(SamplingBase):
     """
     Object representing a linear combination of three sines

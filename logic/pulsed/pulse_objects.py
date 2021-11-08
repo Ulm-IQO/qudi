@@ -1099,6 +1099,51 @@ class PredefinedGeneratorBase:
     ################################################################################################
     #                                   Helper methods                                          ####
     ################################################################################################
+
+    def tau_2_pulse_spacing(self, t, inverse=False,
+                           custom_func=[None, None], **custom_kwwargs):
+        """
+        Converts tau to the physical pulse spacing between (microwave) pulses.
+        By definition, tau = 1/f where f is the filter frequency of a dynamical decoupling
+        experiment. For many cases this tau equals the time between the center of
+        consecutive pi pulses.
+        Thus, the default behavior is to subtract the duration of a pi pulse from tau.
+
+        :param t: tau (or tau_pulse_spacing, if inverse==True) to be converted.
+        :param bool inverse: do the inverse transformation tau -> tau_pulse_spacing
+        :param [func, inv_func] custom_func: provide function pointers for custom transformations
+        :param custom_kwwargs: kwargs to the custom transformation functions
+        :return:
+        """
+
+        def subtract_pi(t, **kwargs):
+            return t - np.asarray(self.rabi_period) / 2
+
+        def add_pi(t, **kwargs):
+            return t + np.asarray(self.rabi_period) / 2
+
+        def check_sanity(tau, t_phys):
+            t_phys = np.asarray(t_phys)
+            tau = np.asarray(tau)
+            if np.any(t_phys < 0):
+                self.log.warning("Adjusting negative physical pulse spacing to 0. Affected tau: {} "
+                                 .format(tau[t_phys < 0]))
+                t_phys[t_phys < 0] = 0
+
+            return t_phys
+
+        func = subtract_pi
+        func_inverse = add_pi
+
+        if custom_func[0] is not None:
+            func = custom_func[0]
+        if custom_func[1] is not None:
+            func_inverse = custom_func[1]
+
+        if inverse:
+            return func_inverse(t, **custom_kwwargs)
+        return check_sanity(t, func(t, **custom_kwwargs))
+
     def _get_idle_element(self, length, increment):
         """
         Creates an idle pulse PulseBlockElement
@@ -1289,6 +1334,40 @@ class PredefinedGeneratorBase:
                     phase_2=phases[1],
                     phase_3=phases[2])
         return mw_element
+
+    def _get_sine_double_chirp_element(self, length, increment, amps=None, phases=None, freq_sine=None,
+                                       freq_start=None, freq_stop=None,
+                                       ):
+        """
+
+        """
+        if isinstance(amps, (int, float)):
+            amps = [amps]
+        if isinstance(phases, (int, float)):
+            phases = [phases]
+        if isinstance(freq_start, (int, float)):
+            freq_start = [freq_start]
+        if isinstance(freq_stop, (int, float)):
+            freq_stop = [freq_stop]
+
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+            self.log.warning('You are trying to create chirped pulses on a digital channel.')
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+
+            mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SineDoubleChirpSum(
+                 sin_ampl=amps[0],  sin_freq=freq_sine, sin_phase=phases[0],
+                 ch_ampl_1=amps[1], ch_phase_1=phases[1], ch_start_freq_1=freq_start[0], ch_stop_freq_1=freq_stop[0],
+                 ch_ampl_2=amps[2], ch_phase_2=phases[2], ch_start_freq_2=freq_start[1], ch_stop_freq_2=freq_stop[1])
+
+        return mw_element
+
 
     def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None,
                               add_gate_ch='d_ch4'):

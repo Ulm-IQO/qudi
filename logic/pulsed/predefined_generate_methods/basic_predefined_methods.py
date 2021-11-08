@@ -187,7 +187,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_rabi(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50):
+    def generate_rabi(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9,
+                      leave_out_tau_idx='', num_of_points=50):
         """
 
         """
@@ -196,7 +197,13 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_sequences = list()
 
         # get tau array for measurement ticks
+        if leave_out_tau_idx != '':
+            leave_out = np.asarray(csv_2_list(leave_out_tau_idx)).flatten()
+        else:
+            leave_out = []
         tau_array = tau_start + np.arange(num_of_points) * tau_step
+        tau_array = np.delete(tau_array, leave_out)
+        num_of_points = len(tau_array)
 
         # create the laser_mw element
         mw_element = self._get_mw_element(length=tau_start,
@@ -833,7 +840,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_HHtau(self, name='hh_tau', spinlock_amp=0.1, tau_start=1e-6, tau_step=1e-6,
-                       num_of_points=50):
+                       num_of_points=50, alternating=True):
         """
 
         """
@@ -881,12 +888,14 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         hhtau_block.append(delay_element)
         hhtau_block.append(waiting_element)
 
-        hhtau_block.append(pi3half_element)
-        hhtau_block.append(sl_element)
-        hhtau_block.append(pihalf_element)
-        hhtau_block.append(laser_element)
-        hhtau_block.append(delay_element)
-        hhtau_block.append(waiting_element)
+        if alternating:
+            hhtau_block.append(pi3half_element)
+            hhtau_block.append(sl_element)
+            hhtau_block.append(pihalf_element)
+            hhtau_block.append(laser_element)
+            hhtau_block.append(delay_element)
+            hhtau_block.append(waiting_element)
+
         created_blocks.append(hhtau_block)
 
         # Create block ensemble
@@ -897,12 +906,12 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = True
+        block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Spinlock time', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points if alternating else num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 

@@ -1,8 +1,9 @@
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
-#from interface.pulser_interface import SequenceOrderOption
-#from core.module import Connector
+
+from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
+from logic.pulsed.predefined_generate_methods.basic_methods_polarization_nvision import NVisionPolarizationGenerator
 
 from logic.pulsed.sampling_functions import DDMethods
 from core.util.helpers import csv_2_list
@@ -28,6 +29,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         self._jumptable_address = 1 # all low (0000 0000) shouldn't be a valid address
         self.init_seqtable()
         self.init_jumptable()
+
+        self.gen_nvision = NVisionPolarizationGenerator(*args, **kwargs)
+
 
     def _add_to_seqtable(self, name, blocks, ensembles, seq_params):
         self._seqtable['blocks'] += blocks
@@ -68,43 +72,95 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         self._add_to_seqtable(name, blocks, ensemble, cur_seq_params)
 
     def generate_ppol_2x_propi(self, name="ppol_2x_propi", n_pol=100, m_read_step=20,
-                        tau_ppol=50e-9, order_ppol=1, alternating=True):
+                               tau_ppol=50e-9, order_ppol=1, alternating=True,
+                               env_type=EnvelopeMethods.rectangle, order_P=1
+                               ):
 
         cur_name = 'ppol_init_up'
         cur_blocks, cur_ensembles, _ = self._create_single_ppol(cur_name, tau_ppol, order_ppol, 'up',
-                                                                alternating=False, add_gate_ch='')
+                                                                alternating=False, add_gate_ch='',
+                                                                env_type=env_type, order_P=order_P
+                                                                )
         blocks, enembles, sequences = self.generic_ppol_propi(cur_name, ov_name=name,
                                                               pol_blocks=cur_blocks, pol_ensemble=cur_ensembles,
                                                               n_pol=n_pol, m_read_step=m_read_step, tau_ppol=tau_ppol,
                                                               order_ppol=order_ppol, alternating=alternating,
-                                                              pol_read='down')
+                                                              pol_read='down',
+                                                              env_type=env_type, order_P=order_P
+                                                              )
 
         return blocks, enembles, sequences
 
     def generate_rnovel_ppol_propi(self, name='rnovel_ppol_propi',
                                    dd_mol_tau=0.5e-6, dd_mol_order=10, dd_mol_ampl=0.1, dd_mol_type=DDMethods.CPMG,
+                                   dd_t_rabi_rect=0e-9,
                                    n_pol=100, m_read_step=20, tau_ppol=50e-9, order_ppol=1,
+                                   env_type=EnvelopeMethods.rectangle, order_P=1,
                                    alternating=True):
 
         # Hovav (2018): RNOVEL
         cur_name = 'rnovel_init_up' # hopefully up
 
+        phases_dress2 = str([90] * dd_mol_type.suborder)[1:-1]
+        common_t_rabi = self.rabi_period
+
+        # make mollow part non-shaped again
+        shaped_pmollow = dd_t_rabi_rect <= 0e-9
+        if not shaped_pmollow:
+            self.log.info(f"Generating rnovel with rect pulses, ppol_propi with {env_type}")
+        # overwrite temporarily the protected common rabi period
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters['rabi_period'] = dd_t_rabi_rect \
+            if not shaped_pmollow else self.rabi_period
+        env_type_mol = env_type if shaped_pmollow else EnvelopeMethods.rectangle
+        env_orderP_mol = order_P if shaped_pmollow else EnvelopeMethods.rectangle
+
+
         cur_blocks, cur_ensembles, _ = self._create_single_dd_mollow(name=cur_name, tau=dd_mol_tau, ampl_mol=dd_mol_ampl,
                                                                      dd_type=dd_mol_type, dd_order=dd_mol_order,
-                                                                     f_mol=0e6, phase_mod='90, 90',
+                                                                     f_mol=0e6, phase_mod=phases_dress2,
+                                                                     env_type=env_type_mol, order_P=env_orderP_mol,
                                                                      alternating=False)
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters['rabi_period'] = common_t_rabi
+
 
         blocks, enembles, sequences = self.generic_ppol_propi(cur_name, ov_name=name,
                                                               pol_blocks=cur_blocks, pol_ensemble=cur_ensembles,
                                                               n_pol=n_pol, m_read_step=m_read_step, tau_ppol=tau_ppol,
-                                                              order_ppol=order_ppol, alternating=alternating,
+                                                              order_ppol=order_ppol,
+                                                              env_type=env_type, order_P=order_P,
+                                                              alternating=alternating,
                                                               pol_read='down')
 
         return blocks, enembles, sequences
 
+    def generate_ise_ppol_propi(self, name='ise_ppol_propi',
+                                t_ise=1e-6, df_mw_sweep=10e6,
+                                mw_sweep_speed=3e12, amp_mw_sweep=0.25,
+                                   n_pol=100, m_read_step=20, tau_ppol=50e-9, order_ppol=1, ppol_read_dir='up',
+                                   env_type=EnvelopeMethods.rectangle, order_P=1,
+                                   alternating=True):
+
+        cur_name = 'ise_init_down'
+
+        cur_blocks, cur_ensembles, _ = self._create_single_ise(name=cur_name, t_ise=t_ise, f_res=self.microwave_frequency,
+                                                               df_mw_sweep=df_mw_sweep, mw_sweep_speed=mw_sweep_speed,
+                                                               amp_mw_sweep=amp_mw_sweep, both_sweep_polarities=False)
+
+        blocks, enembles, sequences = self.generic_ppol_propi(cur_name, ov_name=name,
+                                                              pol_blocks=cur_blocks, pol_ensemble=cur_ensembles,
+                                                              n_pol=n_pol, m_read_step=m_read_step, tau_ppol=tau_ppol,
+                                                              order_ppol=order_ppol,
+                                                              env_type=env_type, order_P=order_P,
+                                                              alternating=alternating,
+                                                              pol_read=ppol_read_dir)
+
+        return blocks, enembles, sequences
+
+
     def generic_ppol_propi(self, pol_name="generic_pol", ov_name=None, pol_blocks=None, pol_ensemble=None,
                            n_pol=100, m_read_step=20, tau_ppol=50e-9,
-                           order_ppol=1, pol_read='down', alternating=True):
+                           order_ppol=1, pol_read='down',
+                           env_type=EnvelopeMethods.rectangle, order_P=1, alternating=True):
         """
         Adds a PulsePol Propi readout to some generic polarization sequence.
         """
@@ -119,6 +175,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # which are counted in the order of the sequence step
         cur_name = 'ppol_read'
         cur_blocks, cur_ensembles, _ = self._create_single_ppol(cur_name, tau_ppol, order_ppol, pol_read,
+                                                                env_type=env_type, order_P=order_P,
                                                                 alternating=alternating)
         self._add_ensemble_to_seqtable(cur_blocks, cur_ensembles, cur_name,
                                        seq_params={'repetitions': int(m_read_step - 1)})
@@ -140,13 +197,15 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         idx_read = 0
         fastcounter_count_length = int(m_read_step) * self._get_ensemble_count_length(all_ensembles[idx_read],
                                                                                       created_blocks=all_blocks)
-        # self.log.debug("Setting fastcounter count length to {:.3f} us".format(fastcounter_count_length * 1e6))
 
         contr_var = np.arange(m_read_step) + 1
         n_lasers = len(contr_var)
         n_lasers = 2 * n_lasers if alternating else n_lasers
         n_phys_lasers = n_lasers + n_pol
         laser_ignore = np.arange(n_lasers, n_phys_lasers, 1)
+
+        self.log.debug(f"Setting fastcounter count length to {1e6*fastcounter_count_length:.3f} us "
+                       f"for {n_lasers} read lasers from ensemble {all_ensembles[idx_read].name}")
 
         self._add_metadata_to_settings(sequence, alternating=alternating, created_blocks=list(),
                                        laser_ignore_list=list(laser_ignore),
@@ -345,8 +404,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
     def _deg_to_rad(self, angle_deg):
         return angle_deg/360 * 2*np.pi
 
-    def _create_single_ppol(self, name='ppol', tau=0.5e-6, order=1, direction='up', alternating=True,
-                            add_gate_ch='d_ch4'):
+    def _create_single_ppol(self, name='ppol', tau=0.5e-6, order=1, direction='up',
+                            env_type=EnvelopeMethods.rectangle, order_P=1,
+                            add_gate_ch='d_ch4', alternating=True):
             """
             based on polarisation_methods (s3 Pol20_polarize)
             """
@@ -368,33 +428,40 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             if add_gate_ch == '':
                 readout_element[0].digital_high['d_ch4'] = False
 
-
-            pihalfx_element = self._get_mw_element(length=rabi_period / 4, increment=0.0,
-                                                           amp=microwave_amplitude, freq=microwave_frequency,
-                                                           phase=0)
-            pihalfminusx_element = self._get_mw_element(length=rabi_period / 4, increment=0.0,
-                                                           amp=microwave_amplitude, freq=microwave_frequency,
-                                                           phase=180.0)
-            pihalfy_element = self._get_mw_element(length=rabi_period / 4,
-                                                      increment=0.0,
-                                                      amp=microwave_amplitude,
-                                                      freq=microwave_frequency,
-                                                      phase=90.0)
-            pihalfminusy_element = self._get_mw_element(length=rabi_period / 4,
-                                                      increment=0.0,
-                                                      amp=microwave_amplitude,
-                                                      freq=microwave_frequency,
-                                                      phase=270.0)
-            pix_element = self._get_mw_element(length=rabi_period / 2,
-                                                  increment=0.0,
-                                                  amp=microwave_amplitude,
-                                                  freq=microwave_frequency,
-                                                  phase=0.0)
-            piy_element = self._get_mw_element(length=rabi_period / 2,
-                                                  increment=0.0,
-                                                  amp=microwave_amplitude,
-                                                  freq=microwave_frequency,
-                                                  phase=90.0)
+            pihalfx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4, increment=0.0,
+                                                                      amp=microwave_amplitude, freq=microwave_frequency,
+                                                                      phase=0,
+                                                                      env_type=env_type, order_P=order_P)
+            pihalfminusx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4, increment=0.0,
+                                                                           amp=microwave_amplitude,
+                                                                           freq=microwave_frequency,
+                                                                           phase=180.0,
+                                                                           env_type=env_type, order_P=order_P
+                                                                           )
+            pihalfy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4,
+                                                                      increment=0.0,
+                                                                      amp=microwave_amplitude,
+                                                                      freq=microwave_frequency,
+                                                                      phase=90.0,
+                                                                      env_type=env_type, order_P=order_P)
+            pihalfminusy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4,
+                                                                           increment=0.0,
+                                                                           amp=microwave_amplitude,
+                                                                           freq=microwave_frequency,
+                                                                           phase=270.0,
+                                                                           env_type=env_type, order_P=order_P)
+            pix_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2,
+                                                                  increment=0.0,
+                                                                  amp=microwave_amplitude,
+                                                                  freq=microwave_frequency,
+                                                                  phase=0.0,
+                                                                  env_type=env_type, order_P=order_P)
+            piy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2,
+                                                                  increment=0.0,
+                                                                  amp=microwave_amplitude,
+                                                                  freq=microwave_frequency,
+                                                                  phase=90.0,
+                                                                  env_type=env_type, order_P=order_P)
             # get tau/4 element
             tau_element = self._get_idle_element(length=tau / 4.0 - rabi_period / 2, increment=0)
 
@@ -803,7 +870,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
     def _create_single_dd_mollow(self, name='dd_mollow_tau', tau=0.5e-6,
                                dd_type=DDMethods.CPMG, dd_order=1, ampl_mol=0.1, f_mol=1e6, phase_mod='',
-                               alternating=True
+                               env_type=EnvelopeMethods.rectangle, order_P=1,
+                               alternating=True, shaped_weak_drive=True,
                                ):
         """
 
@@ -819,19 +887,21 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
-        pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
+        pihalf_element = self.gen_nvision._get_mw_element_shaped(length=self.rabi_period / 4,
                                               increment=0,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
-                                              phase=0)
+                                              phase=0,
+                                              env_type=env_type, order_P=order_P)
 
         # define a function to create phase shifted pi pulse elements
         def pi_element_function(xphase):
-            return self._get_mw_element(length=self.rabi_period / 2,
+            return self.gen_nvision._get_mw_element_shaped(length=self.rabi_period / 2,
                                         increment=0,
                                         amp=self.microwave_amplitude,
                                         freq=self.microwave_frequency,
-                                        phase=xphase)
+                                        phase=xphase,
+                                        env_type=env_type, order_P=order_P)
 
         def get_mollow_phase(phase_idx, phases=None):
             phi = 0
@@ -845,7 +915,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                     phi = phases[phase_idx]
             return phi
 
-        def tau2_mollow_element_function(phase_idx, phases=None):
+        def tau2_mollow_element_function(phase_idx, phases=None, shaped=False):
             """
             Alternate the phases of the signal/waiting element according to an idx and a phases array.
             :param phase_idx:
@@ -853,24 +923,34 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             :return:
             """
             phi = get_mollow_phase(phase_idx, phases)
-            element = self._get_mw_element(length=tau_pspacing / 2, increment=0,
-                                           amp=ampl_mol, freq=self.microwave_frequency + f_mol,
-                                           phase=phi)
+            if shaped:
+                element = self.gen_nvision._get_mw_element_shaped(length=tau_pspacing / 2, increment=0,
+                                               amp=ampl_mol, freq=self.microwave_frequency + f_mol,
+                                               phase=phi,
+                                               env_type=env_type, order_P=order_P)
+            else:
+                element = self.gen_nvision._get_mw_element_shaped(length=tau_pspacing / 2, increment=0,
+                                                                  amp=ampl_mol, freq=self.microwave_frequency + f_mol,
+                                                                  phase=phi,
+                                                                  env_type=EnvelopeMethods.rectangle, order_P=order_P)
+
             return element
 
         # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
-            pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
-                                                   increment=0,
-                                                   amp=self.microwave_amplitude,
-                                                   freq=self.microwave_frequency,
-                                                   phase=180)
+            pi3half_element = self.gen_nvision._get_mw_element_shaped(length=self.rabi_period / 4,
+                                                                      increment=0,
+                                                                      amp=self.microwave_amplitude,
+                                                                      freq=self.microwave_frequency,
+                                                                      phase=180,
+                                                                      env_type=env_type, order_P=order_P)
         else:
-            pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
-                                                   increment=0,
-                                                   amp=self.microwave_amplitude,
-                                                   freq=self.microwave_frequency,
-                                                   phase=0)
+            pi3half_element = self.gen_nvision._get_mw_element_shaped(length=3 * self.rabi_period / 4,
+                                                                      increment=0,
+                                                                      amp=self.microwave_amplitude,
+                                                                      freq=self.microwave_frequency,
+                                                                      phase=0,
+                                                                      env_type=env_type, order_P=order_P)
 
         phase_mod = csv_2_list(phase_mod)
         all_phases = [[get_mollow_phase(idx_pi, phase_mod), get_mollow_phase(idx_pi + 1, phase_mod)]
@@ -885,9 +965,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         for n in range(dd_order):
             # create the DD sequence for a single order
             for pulse_number in range(dd_type.suborder):
-                dd_block.append(tau2_mollow_element_function(pulse_number, phase_mod))
+                dd_block.append(tau2_mollow_element_function(pulse_number, phase_mod, shaped=shaped_weak_drive))
                 dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
-                dd_block.append(tau2_mollow_element_function(pulse_number + 1, phase_mod))
+                dd_block.append(tau2_mollow_element_function(pulse_number + 1, phase_mod, shaped=shaped_weak_drive))
         dd_block.append(pihalf_element)
         dd_block.append(laser_element)
         dd_block.append(delay_element)
@@ -897,9 +977,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             for n in range(dd_order):
                 # create the DD sequence for a single order
                 for pulse_number in range(dd_type.suborder):
-                    dd_block.append(tau2_mollow_element_function(pulse_number, phase_mod))
+                    dd_block.append(tau2_mollow_element_function(pulse_number, phase_mod, shaped=shaped_weak_drive))
                     dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
-                    dd_block.append(tau2_mollow_element_function(pulse_number + 1, phase_mod))
+                    dd_block.append(tau2_mollow_element_function(pulse_number + 1, phase_mod, shaped=shaped_weak_drive))
             dd_block.append(pi3half_element)
             dd_block.append(laser_element)
             dd_block.append(delay_element)
@@ -927,6 +1007,97 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def _create_single_ise(self, name='ise', t_ise=1e-6, f_res='', df_mw_sweep=10e6,
+                                    mw_sweep_speed=3e12, amp_mw_sweep=0.25,
+                                    both_sweep_polarities=False):
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # create the laser element
+        """
+        laser_element = self._get_laser_element(length=t_laser, increment=0)
+
+        # create the laser element with "jump" signal
+        laser_element_jump = self._get_laser_element(length=t_laser, increment=0)
+        laser_element_jump.digital_high[jump_channel] = True
+        """
+
+        t_mw_ramp = df_mw_sweep / mw_sweep_speed
+
+        # create n mw chirps
+        n_mw_chirps = int(np.ceil(t_ise/t_mw_ramp))
+        if t_ise % t_mw_ramp != 0.:
+            t_ise = n_mw_chirps * t_mw_ramp
+            self.log.info(f"Adjusting t_ise to {t_ise*1e6:.3f} us to fit in {n_mw_chirps}"
+                          f" t_mw= {t_mw_ramp*1e6:.3f} us. Sweep speed= {mw_sweep_speed/1e12} MHz/us")
+
+        if not f_res:
+            mw_freq_center = self.microwave_frequency
+        else:
+            mw_freq_center = float(f_res)
+
+        freq_range = df_mw_sweep
+        mw_freq_start = mw_freq_center - freq_range / 2.
+        mw_freq_end = mw_freq_center + freq_range / 2
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        mw_sweep_element = self._get_mw_element_linearchirp(length=t_mw_ramp,
+                                                          increment=0,
+                                                          amplitude=amp_mw_sweep,
+                                                          start_freq=mw_freq_start,
+                                                          stop_freq=mw_freq_end,
+                                                          phase=0)
+
+        mw_sweep_depol_element = self._get_mw_element_linearchirp(length=t_mw_ramp,
+                                                                 increment=0,
+                                                                 amplitude=amp_mw_sweep,
+                                                                 start_freq=mw_freq_end,
+                                                                 stop_freq=mw_freq_start,
+                                                                 phase=0)
+
+
+
+        # Create block and append to created_blocks list
+        ise_block = PulseBlock(name=name)
+
+        for i in range(n_mw_chirps):
+            ise_block.append(mw_sweep_element)
+            if both_sweep_polarities:
+                ise_block.append(mw_sweep_depol_element)
+
+        ise_block.append(laser_element)
+        ise_block.append(delay_element)
+        ise_block.append(waiting_element)
+
+        # Create block ensemble and append to created_ensembles list
+        created_blocks.append(ise_block)
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((ise_block.name, 0))
+
+
+        # Create and append sync trigger block if needed
+        # no trigger as this sequence is used by other sequences that add sync trigger
+        #self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        number_of_lasers = 1
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = [0]
+        block_ensemble.measurement_information['units'] = ('a.u.', '')
+        block_ensemble.measurement_information['labels'] = ('data point', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
 
     def _extend_to_min_samples(self, pulse_block, prepend=True):
 

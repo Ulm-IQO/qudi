@@ -73,6 +73,9 @@ class DDMethods(Enum):
     KDD8 = nest_phases_function(KDD, XY8)
     KDD16 = nest_phases_function(KDD, XY16)
 
+    PPol_up = [90., 0., 90., 0.]
+    PPol_down = [360., 450., 360., 450.]
+
     # define the specific UR sequences to use, reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
     UR4 = ur_phases_function(4)
     UR6 = ur_phases_function(6)
@@ -143,7 +146,6 @@ class SamplingBase:
         for param in self.params:
             dict_repr['params'][param] = getattr(self, param)
         return dict_repr
-
 
 class SamplingFunctions:
     """

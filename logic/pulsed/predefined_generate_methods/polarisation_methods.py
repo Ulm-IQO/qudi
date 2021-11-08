@@ -26,6 +26,10 @@ from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions
 from logic.pulsed.predefined_generate_methods.helper_methods_setup3 import HelperMethods
 
+from logic.pulsed.predefined_generate_methods.basic_methods_polarization_nvision import NVisionPolarizationGenerator
+from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
+
+
 """
 General Pulse Creation Procedure:
 =================================
@@ -46,6 +50,7 @@ class BasicPolarisationGenerator(PredefinedGeneratorBase):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.gen_nvision = NVisionPolarizationGenerator(*args, **kwargs)
 
     ################################################################################################
     #                             Generation methods for waveforms                                 #
@@ -301,6 +306,7 @@ class BasicPolarisationGenerator(PredefinedGeneratorBase):
 
     def generate_Poltau(self, name='PPol_tau', tau_start=0.5e-6, tau_step=0.01e-6,
                         num_of_points=50,
+                        env_type=EnvelopeMethods.rectangle, order_P=1,
                         order=8, alternating=True):
         """
 
@@ -330,39 +336,45 @@ class BasicPolarisationGenerator(PredefinedGeneratorBase):
         readout_element = self._get_readout_element()
 
         # get -x pihalf element
-        pihalfminusx_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
+        pihalfminusx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4., increment=0.0,
                                                        amp=microwave_amplitude, freq=microwave_frequency,
+                                                       env_type=env_type, order_P=order_P,
                                                        phase=180.0)
 
 
-        pihalfx_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
+        pihalfx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
+                                                  env_type=env_type, order_P=order_P,
                                                   phase=0.0)
 
         # get y pihalf element
-        pihalfy_element = self._get_mw_element(length=rabi_period / 4.,
+        pihalfy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4.,
                                                   increment=0.0,
                                                   amp=microwave_amplitude,
                                                   freq=microwave_frequency,
-                                                  phase=90.0)
+                                                  phase=90.0,
+                                                  env_type=env_type, order_P=order_P,)
         # get pi elements
-        pix_element = self._get_mw_element(length=rabi_period / 2.,
+        pix_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=0.0)
+                                              phase=0.0,
+                                              env_type=env_type, order_P=order_P)
         # get pi elements
-        piminusx_element = self._get_mw_element(length=rabi_period / 2.,
+        piminusx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=180.0)
+                                              phase=180.0,
+                                              env_type=env_type, order_P=order_P)
 
-        piy_element = self._get_mw_element(length=rabi_period / 2.,
+        piy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
-                                              phase=90.0)
+                                              phase=90.0,
+                                              env_type=env_type, order_P=order_P)
         # get tau/4 element
         tau_element = self._get_idle_element(length=start_tau / 4.0 - rabi_period / 2, increment=incr_tau / 4)
 
@@ -445,27 +457,27 @@ class BasicPolarisationGenerator(PredefinedGeneratorBase):
         readout_element = self._get_readout_element()
 
         # get -x pihalf element
-        pihalfy_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
+        pihalfy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
                                                   phase=90.0)
 
-        pihalfminusy_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
+        pihalfminusy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
                                                   phase=270.0)
 
-        pihalfx_element = self._get_mw_element(length=rabi_period / 4., increment=0.0,
+        pihalfx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4., increment=0.0,
                                                   amp=microwave_amplitude, freq=microwave_frequency,
                                                   phase=0.0)
 
         # get pi elements
-        pix_element = self._get_mw_element(length=rabi_period / 2.,
+        pix_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
                                               phase=0.0)
 
 
-        piy_element = self._get_mw_element(length=rabi_period / 2.,
+        piy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2.,
                                               increment=0.0,
                                               amp=microwave_amplitude,
                                               freq=microwave_frequency,
@@ -662,6 +674,7 @@ class BasicPolarisationGenerator(PredefinedGeneratorBase):
 
 
     def generate_Pol20_order(self, name='PPol order', n_start=1, n_step=1, num_of_points=50, tau=0.5e-6,
+                             env_type=EnvelopeMethods.rectangle, order_P=1,
                              alternating = False):
         """
 
@@ -686,31 +699,36 @@ class BasicPolarisationGenerator(PredefinedGeneratorBase):
         readout_element = self._get_readout_element()
 
         # get -x pihalf element
-        pihalfminusx_element = self._get_mw_element(length=rabi_period / 4, increment=0.0,
+        pihalfminusx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4, increment=0.0,
                                                     amp=microwave_amplitude, freq=microwave_frequency,
-                                                    phase=180.0)
-        pihalfx_element = self._get_mw_element(length=rabi_period / 4, increment=0.0,
+                                                    phase=180.0,
+                                                    env_type=env_type, order_P=order_P)
+        pihalfx_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4, increment=0.0,
                                                amp=microwave_amplitude, freq=microwave_frequency,
-                                               phase=0.0)
+                                               phase=0.0,
+                                               env_type=env_type, order_P=order_P)
 
         # get y pihalf element
-        pihalfy_element = self._get_mw_element(length=rabi_period / 4,
+        pihalfy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 4,
                                                increment=0.0,
                                                amp=microwave_amplitude,
                                                freq=microwave_frequency,
-                                               phase=90.0)
+                                               phase=90.0,
+                                               env_type=env_type, order_P=order_P)
         # get pi elements
-        pix_element = self._get_mw_element(length=rabi_period / 2,
+        pix_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2,
                                            increment=0.0,
                                            amp=microwave_amplitude,
                                            freq=microwave_frequency,
-                                           phase=0.0)
+                                           phase=0.0,
+                                           env_type=env_type, order_P=order_P)
 
-        piy_element = self._get_mw_element(length=rabi_period / 2,
+        piy_element = self.gen_nvision._get_mw_element_shaped(length=rabi_period / 2,
                                            increment=0.0,
                                            amp=microwave_amplitude,
                                            freq=microwave_frequency,
-                                           phase=90.0)
+                                           phase=90.0,
+                                           env_type=env_type, order_P=order_P)
 
         # get tau/4 element
         tau_element = self._get_idle_element(length=tau / 4 - rabi_period / 2.0, increment=0.)
