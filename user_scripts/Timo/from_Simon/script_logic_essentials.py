@@ -35,7 +35,7 @@ setup['gated'] = False
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
-setup['laser_delay'] = 900e-9 # aom delay, N25 setup3: 510e-9
+setup['laser_delay'] = 200e-9  #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
 
 if setup['gated']:
@@ -561,6 +561,9 @@ def handle_abort():
         retcode = 2
 
     if retcode > 0:
+        try:
+            uglobals.qmeas = {}
+        except: pass
         logger.debug("handle_abort() received stop signal, code {}".format(retcode))
 
     return retcode
@@ -589,7 +592,16 @@ def conventional_measurement(qm_dict):
         logger.warning("Timed out while starting measurement.")
         user_terminated = False
     else:
+        try:
+            uglobals.qmeas = qm_dict
+        except: pass
         user_terminated = control_measurement(qm_dict, analysis_method=None)
+
+
+    # Stop measurement
+    try:
+            uglobals.qmeas = {}
+    except: pass
 
     pulsedmasterlogic.toggle_pulsed_measurement(False)
     i_wait = 0
@@ -657,7 +669,7 @@ def set_up_conventional_measurement(qm_dict):
     if 'analysis_method' in qm_dict:
         analy_method = qm_dict['analysis_method']
     else:
-        analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
+        analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': 400e-9,
                                             'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
 
     logger.info("Setting laser pulse analysis method: {}".format(analy_method))
@@ -1220,9 +1232,14 @@ def do_automized_measurements(qm_dict, autoexp):
         if handle_abort() is 1:
             break       # next is handled in inner loop
         # move to current poi and optimize position
-        logger.info("Autopilot moving to poi {}".format(poi))
-        poi_name = poi
-        poimanagerlogic.go_to_poi(poi_name)
+        if not poi == "":
+            logger.info("Autopilot moving to poi {}".format(poi))
+            poi_name = poi
+            poimanagerlogic.go_to_poi(poi_name)
+        else:
+            logger.debug("Skipped moving to poi, setting no_optimize")
+            qm_dict['no_optimize'] = True
+            poi_name = '<current pos>'
         if not qm_dict['no_optimize']:
             optimize_poi(poi_name)
 
@@ -1239,12 +1256,19 @@ def do_automized_measurements(qm_dict, autoexp):
 
             # perform the measurement
             try:
-                save_prefix_nv = cur_exp_dict['name'] + "_nv_" + poi
-                save_subdir_nv = "nv_" + poi
+                savetag, save_subdir_nv = "", ""
+                try:
+                    savetag = cur_exp_dict['savetag'] if cur_exp_dict['savetag'] else ""
+                except: pass
+                savetag = cur_exp_dict['name'] if not savetag else savetag
+                if not poi == "":
+                    savetag += "_nv_" + poi
+                    save_subdir_nv = "nv_" + poi
+
                 if first_poi:
                     do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
                                   meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
-                                  generate_new=True, save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
+                                  generate_new=True, save_tag=savetag, save_subdir=save_subdir_nv)
                 else:
                     try:
                         generate_new = cur_exp_dict['generate_new']
@@ -1252,7 +1276,7 @@ def do_automized_measurements(qm_dict, autoexp):
                     do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
                                   meas_type=cur_exp_dict['meas_type'], meas_info=cur_exp_dict['meas_info'],
                                   generate_new=generate_new,
-                                  save_tag=save_prefix_nv, save_subdir=save_subdir_nv)
+                                  save_tag=savetag, save_subdir=save_subdir_nv)
             except:
                 logger.exception("Error during measurement: ")
 

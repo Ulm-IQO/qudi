@@ -50,12 +50,10 @@ class KeysightPlotter():
             wave_dict['d_ch3'] = w_sync_marker_ch1
             wave_dict['d_ch4'] = w_sync_marker_ch2
 
-
         elif ext == 'bin8':
             t_us_ch1, w_analog_ch1, _, w_sample_marker_ch1, w_sync_marker_ch1 = self.decode_int16_to_wave(data_ch1,
                                                                                                      mode=ext,
                                                                                                      channel_config='marker')
-
             # assuming m8190 channel map in marker mode
             wave_dict['a_ch1'] = w_analog_ch1
             wave_dict['d_ch1'] = w_sample_marker_ch1
@@ -67,6 +65,10 @@ class KeysightPlotter():
         wave_dict['t'] = t_us_ch1 * 1e-6
 
         return wave_dict
+
+    def slice_wave(self, wave_dict, i_start=0, i_stop=None):
+        return {key:data[i_start:i_stop] for (key, data) in wave_dict.items()}
+
 
     def sign_extend(self, value, bits):
         sign_bit = 1 << (bits - 1)
@@ -354,10 +356,11 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "ise+ramsey_pen_ch1.bin"
+    file = r"C:\qudi\pulsed_files" + "/" + "ise_init_up_ch1.bin"
     file2 = r"C:\qudi\pulsed_files" + "/" + "ramsey_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
+    file2 = None
 
     plotter = KeysightPlotter(14, 8e9)
     wave_dict = plotter.load_data(file)
@@ -369,6 +372,8 @@ if __name__ == "__main__":
         wave_diff = None
 
     print(wave_dict.keys())
+
+    wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=80000)
 
     plot(wave_dict, title="1")
     if file2:

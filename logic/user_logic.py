@@ -29,6 +29,9 @@ class UserGlobals(GenericLogic):
     next = threading.Event()
     next.clear()
 
+    # current mes dict
+    qmeas = {}
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.

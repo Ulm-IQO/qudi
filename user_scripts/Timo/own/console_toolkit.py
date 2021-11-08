@@ -90,9 +90,21 @@ class Tk_file():
         return mes
 
     @staticmethod
+    def list_mult_pulsed_mes(path, incl_subdir=True, filter_strs=['pulsed_measurement', '.dat'],
+                             excl_filter_str=None, excl_params=['']):
+        files = Tk_file.get_dir_items(path, incl_subdir=incl_subdir)
+        files_filtered = files
+        for filter in filter_strs:
+            files_filtered = Tk_string.filter_str(files_filtered, filter, excl_filter_str)
+
+        return files_filtered
+
+    @staticmethod
     def load_pulsed_result(fname):
 
         data = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "z2", "std1", "std2"])
+        if pd.isnull(data.iloc[0, -1]):
+            data = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "std1"])
         meta = Tk_file.load_pulsed_metadata(fname)
 
         mes = {'data': data,
