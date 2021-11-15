@@ -31,7 +31,7 @@ save_subdir = None
 qm_dict_final ={}
 
 setup = OrderedDict()
-setup['gated'] = False
+setup['gated'] = pulsedmeasurementlogic.fastcounter().gated
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
@@ -39,6 +39,8 @@ setup['laser_delay'] = 200e-9  #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
 
 if setup['gated']:
+    # need a "sync pulse" at the starting edge of every readout laser
+    # setting a gate channel pulls up the gate_ch of every laser_gate_element
     setup['sync_channel'] = ''
     setup['gate_channel'] = 'd_ch1'
 else:
@@ -51,7 +53,6 @@ except Exception as e:
     logger.warning("Couldn't set fast counter sweep mode: {}".format(str(e)))
 
 setup['laser_channel'] = 'd_ch2'
-
 setup['laser_length'] = 3e-6
 setup['wait_length'] = 1e-6
 setup['trigger_length'] = 20e-9
@@ -217,6 +218,7 @@ def add_conventional_information(experiment, qm_dict):
     if 'ctr_n_cycles' not in qm_dict:
         qm_dict['ctr_n_cycles'] = 0
 
+
     if 'measurement_time' not in qm_dict:
         qm_dict['measurement_time'] = None
     if 'optimize_time' not in qm_dict:
@@ -239,7 +241,7 @@ def add_sequence_mode_info(experiment, qm_dict):
     if 'ctr_single_sweeps' not in qm_dict:
         qm_dict['ctr_single_sweeps'] = False
     if 'ctr_n_sweeps' not in qm_dict:
-        qm_dict['ctr_n_sweeps'] = 0
+        qm_dict['ctr_n_sweeps'] = None
     if 'ctr_n_cycles' not in qm_dict:
         qm_dict['ctr_n_cycles'] = 0
 
@@ -313,7 +315,6 @@ def prepare_qm(experiment, qm_dict, generate_new=True):
             raise e
         """
 
-
     # todo: this seems to take forever for long sequences on awg8190
     # do we need it at all?
     """
@@ -325,7 +326,6 @@ def prepare_qm(experiment, qm_dict, generate_new=True):
         qm_dict['sequence_length'] = \
             pulsedmasterlogic.get_sequence_info(pulsedmasterlogic.saved_pulse_sequences[qm_dict['name']])[0]
     """
-    # todo: fix warning "The set measurement_info did not contain all necessary info"
     set_parameters(qm_dict)
 
     try:
@@ -507,6 +507,7 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
 
     ################ Start and perform the measurement #################
     if handle_abort() is 0:
+        logger.debug(f"Starting mes of type {meas_type}")
         user_terminated = meas_type(qm_dict)
 
     ########################## Save data ###############################
@@ -573,6 +574,7 @@ def conventional_measurement(qm_dict):
 
     set_up_conventional_measurement(qm_dict)
     # perform measurement
+    logger.info("Issueing Pulser on")
     pulsedmasterlogic.toggle_pulsed_measurement(True)
     logger.info("Pulser on")
 
@@ -615,11 +617,22 @@ def conventional_measurement(qm_dict):
 
     return user_terminated
 
+def set_gated_counting(qm_dict):
+    if not setup['gated']:
+        qm_dict['ctr_n_cycles'] = 0
+    else:
+        qm_dict['gated'] = setup['gated']
+        qm_dict['ctr_n_cycles'] = qm_dict['params']['number_of_lasers']
+
+    if setup['gated']:
+        pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'],
+                                                               cycles=1,
+                                                               preset=None)
+
+    return qm_dict
 
 def set_up_conventional_measurement(qm_dict):
     from hardware.fast_counter_dummy import FastCounterDummy
-
-    logger.debug("Setup: {}".format(setup))
 
     # configure AWG
     if 'trig_in_pol' in qm_dict:
@@ -636,9 +649,12 @@ def set_up_conventional_measurement(qm_dict):
     # configure counting
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
     logger.info("Setting fastcounter to gated: {}, bin_width {}".format(setup['gated'], qm_dict['bin_width']))
-    # todo: breaks with updated qudi
-    #pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'], is_single_sweeps=qm_dict['ctr_single_sweeps'],
-    #                                                       n_sweeps_preset=qm_dict['ctr_n_sweeps'])
+
+
+
+    # need to do after sequence generation, otherwise number_of_lasers not available
+    qm_dict = set_gated_counting(qm_dict)
+
     # might be specific for mfl 2d gated counting (every 2d line is a epoch)
     pulsedmasterlogic.set_fast_counter_settings({'bin_width': qm_dict['bin_width'],
                                                  'record_length': qm_dict['params']['counting_length'],
@@ -649,7 +665,10 @@ def set_up_conventional_measurement(qm_dict):
 
     if not 'extr_method' in qm_dict:
         #extr_method = {'method': 'fixed_time_one_pulse', 't1': 0e-9, 't2': laser_on}  # mfl with gating adjusts for aom delay
-        extr_method = {'method': 'gated_conv_deriv', 'delay': setup['laser_delay'], 'safety': setup['laser_safety']}
+        if setup['gated']:
+            extr_method = {'method': 'pass_through'}
+        else:
+            extr_method = {'method': 'gated_conv_deriv', 'delay': setup['laser_delay'], 'safety': setup['laser_safety']}
     else:
         extr_method = qm_dict['extr_method']
 
@@ -676,6 +695,7 @@ def set_up_conventional_measurement(qm_dict):
     pulsedmasterlogic.set_analysis_settings(analy_method)
 
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
+    logger.debug("Setting delayed start= 0")
     pulsedmeasurementlogic.fastcounter().set_delay_start(0)
 
     #pulsedmeasurementlogic.fastcounter().change_save_mode(0)
@@ -690,12 +710,15 @@ def set_up_conventional_measurement(qm_dict):
     """
 
     if 'timer_interval' not in qm_dict:
-        t_loop_mes = 2 # for stopping fast by software: 0.001 #s
+        t_loop_mes = 2
     else:
         t_loop_mes = qm_dict['timer_interval']
-    pulsedmeasurementlogic.timer_interval = t_loop_mes
     logger.debug("Setting mes logic timer interval  to {} s.".format(t_loop_mes))
+    pulsedmeasurementlogic.timer_interval = t_loop_mes
 
+    #logger.debug("Final setup: {}".format(setup))
+
+    logger.debug("Finished setup")
     return
 
 
@@ -715,7 +738,6 @@ def control_measurement(qm_dict, analysis_method=None):
     while True:
 
         time.sleep(0.5)  # 2
-
 
         if 'n_sweeps' in qm_dict:
             # stop by sweeps can't be faster than sleep time
