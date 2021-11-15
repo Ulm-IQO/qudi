@@ -1216,11 +1216,14 @@ class PredefinedGeneratorBase:
                                                      increment=increment,
                                                      add_gate_ch=add_gate_ch)
         if self.gate_channel:
-            if self.gate_channel.startswith('d'):
-                laser_gate_element.digital_high[self.gate_channel] = True
-            elif self.gate_channel.startswith('a'):
-                laser_gate_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
-                    voltage=self.analog_trigger_voltage)
+            if add_gate_ch != '':
+                # add_gate_ch == '' signals a laser pulse not used for readout
+                # gate_channel (!= add_gate_ch) triggers the fastcounter and should thus be low
+                if self.gate_channel.startswith('d'):
+                    laser_gate_element.digital_high[self.gate_channel] = True
+                elif self.gate_channel.startswith('a'):
+                    laser_gate_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
+                        voltage=self.analog_trigger_voltage)
         return laser_gate_element
 
     def _get_delay_element(self):
