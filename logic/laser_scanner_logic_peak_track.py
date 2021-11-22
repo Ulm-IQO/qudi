@@ -58,6 +58,7 @@ class LaserScannerLogic(GenericLogic):
     _static_v = StatusVar('goto_voltage', 0)
     _clock_frequency=StatusVar('clock_frequency', 50)
     _do_width=StatusVar('do_length', 10*10**-3)
+    _do_channel=StatusVar('do_channel', '/Dev1/Port0/Line5')
 
     # parameters for pid loop to hold frequency
     pid_kp = StatusVar(default=-10)
@@ -86,9 +87,15 @@ class LaserScannerLogic(GenericLogic):
 
         self.fit_x = []
         self.fit_y = []
-        self.plot_x = []
-        self.plot_y = []
-        self.plot_y2 = []
+        self.plot_x = [] #scan voltage
+        self.plot_y = [] #counts upwards
+        self.plot_y2 = [] #counts downwards
+        self.fit_x2=[] #aligned fitx
+        self.fit_y2=[] #aligned fity
+
+        #todo: accumulative x2, y2 with alignment
+        #todo: voltage matrix in compliment to plot matrix
+
 
         # array to store trace of frequencies to judge noise of laser locking
         # first element ist most recent and last element is oldest frequency
@@ -121,7 +128,7 @@ class LaserScannerLogic(GenericLogic):
         # voltage to change.
 
         self.goto_voltage(self._static_v)
-        self._re_pump='off'
+        self.re_pump= False
         # setup timer for pid refresh
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(True)
@@ -140,7 +147,7 @@ class LaserScannerLogic(GenericLogic):
         self.upwards_scan = True
 
         self.pid_enable = False
-
+        self.peak_track = False
         # calculated number of points in a scan, depends on speed and max step size
         self._num_of_steps = 50  # initialising.  This is calculated for a given ramp.
 
@@ -233,7 +240,7 @@ class LaserScannerLogic(GenericLogic):
         if abs(self.pid_setpoint-self._wavemeter_device.get_current_frequency())*1000 > 10:
             #self.log.info('goto_freq first')
             self.set_scan_speed(0.5)
-            self._re_pump='off'
+            self._re_pump=False
             self.goto_frequency(self.pid_setpoint, 0.05, 10)
         self.set_scan_speed(0.1)
         # start PID loop
@@ -502,12 +509,18 @@ class LaserScannerLogic(GenericLogic):
         """ Initializing the ODMR matrix plot. """
 
         self.scan_matrix = np.zeros((self.number_of_repeats, scan_length))
+        self.voltage_matrix = np.zeros((self.number_of_repeats, scan_length))
         self.scan_matrix2 = np.zeros((self.number_of_repeats, scan_length))
+        self.voltage_matrix2 =np.zeros((self.number_of_repeats, scan_length))
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.plot_y = np.zeros(scan_length)
         self.plot_y2 = np.zeros(scan_length)
         self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.fit_y = np.zeros(scan_length)
+        self.fit_x2 = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
+        self.fit_y2 = np.zeros(scan_length)
+        # todo: accumulative x2, y2 with alignment
+        # todo: voltage matrix in compliment to plot matrix
 
     def get_pid_rmse(self):
         """Calculates root mean square error of frequency holding done by PID loop
@@ -629,13 +642,18 @@ class LaserScannerLogic(GenericLogic):
         if self.upwards_scan:
             counts = self._scan_line(self._upwards_ramp)
             self.scan_matrix[self._scan_counter_up] = counts
+            self.voltage_matrix=self._upwards_ramp[3]
             test_counts=np.random.random_sample(len(counts))
-            self.plot_y += test_counts*10#counts
+            self.plot_y += test_counts*10#counts ##todo: now the plot_y is not aligned anymore! because of the on-the-fly scan range adjustment. Need to introduce binning.
             self._scan_counter_up += 1
             self.upwards_scan = False
-            indexes = peakutils.indexes(self.plot_y, thres=0.5, min_dist=120)
-            self.fit_y=self.plot_y*0.5
+            #indexes = peakutils.indexes(self.plot_y, thres=0.5, min_dist=120)
+            self.fit_y=self.plot_y*0.5 #todo: insert real fit
             self.fit_x=self.plot_x
+            if self.peak_track:
+                #todo: update scan range
+                #todo: generate _upwards_ramp
+                #todo: generate _downwards_ramp
         else:
             counts = self._scan_line(self._downwards_ramp)
             self.scan_matrix2[self._scan_counter_down] = counts
@@ -748,11 +766,11 @@ class LaserScannerLogic(GenericLogic):
             #    self.get_current_voltage()
             #)
             self.log.debug(str(np.where(counts_on_scan_line==max(counts_on_scan_line))[0])) ##ToDo: change this line to a real peak finder
-            if self._re_pump=='on' and self._do_width!=0:
+            if self.re_pump and self._do_width!=0:
                 time.sleep(0.05)
-                self._do.simple_on('/Dev1/Port0/Line5')
+                self._do.simple_on(self._do_channel)
                 time.sleep(self._do_width)
-                self._do.simple_off('/Dev1/Port0/Line5')
+                self._do.simple_off(self._do_channel)
             return counts_on_scan_line.transpose()[0]
 
         except Exception as e:
