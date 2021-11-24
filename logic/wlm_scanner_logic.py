@@ -159,6 +159,7 @@ class WlmScannerLogic(GenericLogic):
         self.plot_x_wlm = np.linspace(0, len(self.plot_y_wlm) , len(self.plot_y_wlm))[:250]
  
         scan_data = self.time_diff.getData()  / (60 / (self.sweep_speed * self.n_scan_bins))
+        scan_data = np.roll(scan_data, int(len(scan_data)/2)) #roll to the center, since we trigger on the central wavelength!!! #TODO DEBUG ITs
         if not self.time_diff.ready():
             self.scan_matrix = np.vstack((self.scan_full_matrix, scan_data))
         else:

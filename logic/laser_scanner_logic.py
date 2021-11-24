@@ -5,20 +5,16 @@ fourth analog output channel.  It was originally written for
 scanning laser frequency, but it can be used to control any parameter
 in the experiment that is voltage controlled.  The hardware
 range is typically -10 to +10 V.
-
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
-
 Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
-
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
@@ -47,11 +43,12 @@ class LaserScannerLogic(GenericLogic):
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
     savelogic = Connector(interface='SaveLogic')
+    # stepmotor = Connector(interface = 'Motordriver', missing='warn')
 
-    scan_range = StatusVar('scan_range', [0, 10])
+    scan_range = StatusVar('scan_range', [0, 30000])
     number_of_repeats = StatusVar(default=10)
-    resolution = StatusVar('resolution', 1000)
-    _scan_speed = StatusVar('scan_speed', 1)
+    resolution = StatusVar('resolution', 5000)
+    _scan_speed = StatusVar('scan_speed', 15000)
     _static_v = StatusVar('goto_voltage', 0)
 
     sigChangeVoltage = QtCore.Signal(float)
@@ -63,7 +60,6 @@ class LaserScannerLogic(GenericLogic):
 
     def __init__(self, **kwargs):
         """ Create VoltageScanningLogic object with connectors.
-
           @param dict kwargs: optional parameters
         """
         super().__init__(**kwargs)
@@ -76,6 +72,7 @@ class LaserScannerLogic(GenericLogic):
         self.fit_y = []
         self.plot_x = []
         self.plot_y = []
+        self.plot_y_2 = []
         self.plot_y2 = []
 
     def on_activate(self):
@@ -83,6 +80,9 @@ class LaserScannerLogic(GenericLogic):
         """
         self._scanning_device = self.confocalscanner1()
         self._save_logic = self.savelogic()
+        # self._motor = self.stepmotor()
+
+        self.saturation_scan=False
 
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!
@@ -137,9 +137,7 @@ class LaserScannerLogic(GenericLogic):
     @QtCore.Slot(float)
     def goto_voltage(self, volts=None):
         """Forwarding the desired output voltage to the scanning device.
-
         @param float volts: desired voltage (volts)
-
         @return int: error code (0:OK, -1:error)
         """
         # print(tag, x, y, z)
@@ -158,14 +156,11 @@ class LaserScannerLogic(GenericLogic):
 
     def _change_voltage(self, new_voltage):
         """ Threaded method to change the hardware voltage for a goto.
-
         @return int: error code (0:OK, -1:error)
         """
         ramp_scan = self._generate_ramp(self.get_current_voltage(), new_voltage, self._goto_speed)
         self._initialise_scanner()
         ignored_counts = self._scan_line(ramp_scan)
-        
-        self._scanning_device.scanner_set_position(a = new_voltage)
         self._close_scanner()
         self.sigVoltageChanged.emit(new_voltage)
         return 0
@@ -182,9 +177,7 @@ class LaserScannerLogic(GenericLogic):
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
-
         @param int clock_frequency: desired frequency of the clock
-
         @return int: error code (0:OK, -1:error)
         """
         self._clock_frequency = float(clock_frequency)
@@ -204,9 +197,10 @@ class LaserScannerLogic(GenericLogic):
 
     def set_scan_range(self, scan_range):
         """ Set the scan rnage """
-        r_max = np.clip(scan_range[1], self.a_range[0], self.a_range[1])
-        r_min = np.clip(scan_range[0], self.a_range[0], r_max)
-        self.scan_range = [r_min, r_max]
+        # r_max = np.clip(scan_range[1], self.a_range[0], self.a_range[1])
+        # r_min = np.clip(scan_range[0], self.a_range[0], r_max)
+        # self.scan_range = [r_min, r_max]
+        self.scan_range = scan_range
 
     def set_voltage(self, volts):
         """ Set the channel idle voltage """
@@ -215,7 +209,7 @@ class LaserScannerLogic(GenericLogic):
 
     def set_scan_speed(self, scan_speed):
         """ Set scan speed in volt per second """
-        self._scan_speed = np.clip(scan_speed, 1e-9, 1e6)
+        self._scan_speed = np.clip(scan_speed, 1e-9, 2e6)
         self._goto_speed = self._scan_speed
 
     def set_scan_lines(self, scan_lines):
@@ -228,6 +222,7 @@ class LaserScannerLogic(GenericLogic):
         self.scan_matrix2 = np.zeros((self.number_of_repeats, scan_length))
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.plot_y = np.zeros(scan_length)
+        self.plot_y_2 = np.zeros(scan_length)
         self.plot_y2 = np.zeros(scan_length)
         self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.fit_y = np.zeros(scan_length)
@@ -246,21 +241,20 @@ class LaserScannerLogic(GenericLogic):
         if returnvalue < 0:
             self._scanning_device.module_state.unlock()
             self.module_state.unlock()
-            # self.set_position('scanner')
+            self.set_position('scanner')
             return -1
 
         returnvalue = self._scanning_device.set_up_scanner()
         if returnvalue < 0:
             self._scanning_device.module_state.unlock()
             self.module_state.unlock()
-            # self.set_position('scanner')
+            self.set_position('scanner')
             return -1
 
         return 0
 
     def start_scanning(self, v_min=None, v_max=None):
         """Setting up the scanner device and starts the scanning procedure
-
         @return int: error code (0:OK, -1:error)
         """
 
@@ -298,7 +292,6 @@ class LaserScannerLogic(GenericLogic):
 
     def stop_scanning(self):
         """Stops the scan
-
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
@@ -330,18 +323,21 @@ class LaserScannerLogic(GenericLogic):
             self._goto_during_scan(self.scan_range[0])
 
         if self.upwards_scan:
-            counts = self._scan_line(self._upwards_ramp)
+            if self.saturation_scan:
+                self._motor.moveRelative(pos = 2)
+            counts = self._scan_line(self._upwards_ramp, pixel_clock=True)
             self.scan_matrix[self._scan_counter_up] = counts
             self.plot_y += counts
             self._scan_counter_up += 1
             self.upwards_scan = False
+            self.plot_y_2 = counts
         else:
             counts = self._scan_line(self._downwards_ramp)
             self.scan_matrix2[self._scan_counter_down] = counts
             self.plot_y2 += counts
             self._scan_counter_down += 1
             self.upwards_scan = True
-
+        
         self.sigUpdatePlots.emit()
         self.sigScanNextLine.emit()
 
@@ -349,9 +345,7 @@ class LaserScannerLogic(GenericLogic):
         """Generate a ramp vrom voltage1 to voltage2 that
         satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the
         ramp is just linear.
-
         @param float voltage1: voltage at start of ramp.
-
         @param float voltage2: voltage at end of ramp.
         """
 
@@ -380,10 +374,10 @@ class LaserScannerLogic(GenericLogic):
             v_max_linear = v_max - v_range_of_accel
 
             if v_min_linear > v_max_linear:
-                self.log.warning(
-                    'Voltage ramp too short to apply the '
-                    'configured smoothing_steps. A simple linear ramp '
-                    'was created instead.')
+                # self.log.warning(
+                #     'Voltage ramp too short to apply the '
+                #     'configured smoothing_steps. A simple linear ramp '
+                #     'was created instead.')
                 num_of_linear_steps = np.rint((v_max - v_min) / linear_v_step)
                 ramp = np.linspace(v_min, v_max, num_of_linear_steps)
 
@@ -421,16 +415,18 @@ class LaserScannerLogic(GenericLogic):
 
         return scan_line
 
-    def _scan_line(self, line_to_scan=None):
+    def _scan_line(self, line_to_scan=None, pixel_clock = False):
         """do a single voltage scan from voltage1 to voltage2
-
         """
         if line_to_scan is None:
             self.log.error('Voltage scanning logic needs a line to scan!')
             return -1
         try:
             # scan of a single line
-            counts_on_scan_line = self._scanning_device.scan_line(line_to_scan)
+            if pixel_clock:
+                counts_on_scan_line = self._scanning_device.scan_line(line_to_scan, pixel_clock = True)
+            else:
+                counts_on_scan_line = self._scanning_device.scan_line(line_to_scan)
             return counts_on_scan_line.transpose()[0]
 
         except Exception as e:
@@ -441,7 +437,6 @@ class LaserScannerLogic(GenericLogic):
 
     def kill_scanner(self):
         """Closing the scanner device.
-
         @return int: error code (0:OK, -1:error)
         """
         try:
@@ -459,7 +454,6 @@ class LaserScannerLogic(GenericLogic):
 
     def save_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Save the counter trace data and writes it to a file.
-
         @return int: error code (0:OK, -1:error)
         """
         if tag is None:
@@ -485,6 +479,7 @@ class LaserScannerLogic(GenericLogic):
         data = OrderedDict()
         data['frequency (Hz)'] = self.plot_x
         data['trace count data (counts/s)'] = self.plot_y
+        # data['trace count data (counts/s)'] = self.plot_y_2
         data['retrace count data (counts/s)'] = self.plot_y2
 
         data2 = OrderedDict()
@@ -555,13 +550,10 @@ class LaserScannerLogic(GenericLogic):
 
     def draw_figure(self, matrix_data, freq_data, count_data, fit_freq_vals, fit_count_vals, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
-
         @param: list cbar_range: (optional) [color_scale_min, color_scale_max].
                                  If not supplied then a default of data_min to data_max
                                  will be used.
-
         @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
-
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
 
@@ -673,4 +665,3 @@ class LaserScannerLogic(GenericLogic):
                              )
 
         return fig
-
