@@ -479,10 +479,10 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         tau_pspacing_start = self.tau_2_pulse_spacing(tau_start)
+        n_taus = dd_order * dd_type.suborder
 
-        if wait_pumpprobe < self.wait_time + tau_array[-1]:
-            # todo: doesn't check for whole sequence length
-            new_wait_pumpprobe = self.wait_time + tau_array[-1]
+        if wait_pumpprobe < self.wait_time + n_taus* tau_array[-1]:
+            new_wait_pumpprobe = self.wait_time + n_taus * tau_array[-1]
             self.log.warning(f"Adjusting pump probe time {wait_pumpprobe*1e6} us -> {new_wait_pumpprobe*1e6} us")
             wait_pumpprobe = new_wait_pumpprobe
 
@@ -514,8 +514,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         waiting_reinit_element = self._get_idle_element(wait_reinit,
                                                          increment=0)
         # keep wait_pumpprobe = wait_time + tau + wait_2_time constant
-        waiting_element_after_mw = self._get_idle_element(length=wait_pumpprobe-self.wait_time-tau_start,
-                                                          increment=-tau_step)
+
 
         laser_read_element = self._get_laser_gate_element(length=self.laser_length,
                                                           increment=0, add_gate_ch='d_ch4')
@@ -535,6 +534,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
         dd_block.append(pihalf_element)
+
         for n in range(dd_order):
             # create the DD sequence for a single order
             for pulse_number in range(dd_type.suborder):
@@ -543,6 +543,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
                 dd_block.append(tauhalf_element)
         dd_block.append(pihalf_element)
 
+        waiting_element_after_mw = self._get_idle_element(length=wait_pumpprobe-self.wait_time-n_taus * tau_start,
+                                                          increment=-n_taus * tau_step)
         dd_block.append(waiting_element_after_mw)
 
         dd_block.append(laser_read_element)
