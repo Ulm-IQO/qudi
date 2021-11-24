@@ -331,10 +331,11 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         num_phys_lasers = 2*(2 * num_of_points if (alternating_no_mw or alternating) else num_of_points)
+        laser_ignore_list = list(np.arange(1, num_phys_lasers, 2)) if self.gate_channel == '' else []
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = alternating_no_mw or alternating
-        block_ensemble.measurement_information['laser_ignore_list'] = list(np.arange(1, num_phys_lasers, 2))
+        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
@@ -447,10 +448,12 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         num_phys_lasers = 2*(2 * num_of_points if alternating else num_of_points)
+        laser_ignore_list = list(np.arange(1, num_phys_lasers, 2)) if self.gate_channel == '' else []
+
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = alternating
-        block_ensemble.measurement_information['laser_ignore_list'] = list(np.arange(1, num_phys_lasers, 2))
+        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
@@ -578,10 +581,11 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         num_phys_lasers = 2*(2 * num_of_points if alternating else num_of_points)
+        laser_ignore_list = list(np.arange(1, num_phys_lasers, 2)) if self.gate_channel == '' else []
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = alternating
-        block_ensemble.measurement_information['laser_ignore_list'] = list(np.arange(1, num_phys_lasers, 2))
+        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
@@ -663,10 +667,11 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         num_phys_lasers = 2*(num_of_points)
+        laser_ignore_list = list(np.arange(1, num_phys_lasers, 2)) if self.gate_channel == '' else []
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
-        block_ensemble.measurement_information['laser_ignore_list'] = list(np.arange(1, num_phys_lasers, 2))
+        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
         block_ensemble.measurement_information['controlled_variable'] = freq_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
