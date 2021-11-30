@@ -426,6 +426,10 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        # we will need the position of the crosshair at the beginnig of the scan lateron.
+        # We will move back to ths position to get rid of jumps.
+        # This also means that you should not move the crosshair while the scan is running.
+        self.crosshair_posi = self.get_position()
         # TODO: this is dirty, but it works for now
 #        while self.module_state() == 'locked':
 #            time.sleep(0.01)
@@ -815,23 +819,23 @@ class ConfocalLogic(GenericLogic):
                 return
 
             # make a line to go to the starting position of the next scan line
-            # if last line is scanned, make return line to cursor position OLI_WAS_HERE
+            # if last line is scanned, make return line to cursor position
             #------------------------------------------------------------------------------------
             #
             # PLAY HERE
             # if we are in the last line
-            if self._scan_counter >= np.size(self._image_vert_axis)-1:
-                # take x as before, but change y and z
-                # get current position
-                current_pos = image[self._scan_counter, 0, :]
-                #get position of crosshair
-                crosshair_pos = self.get_position()
-                npoints = self._return_XL.shape[0]
-                return_line = np.vstack([
-                    self._return_XL,
-                    np.linspace(current_pos[1], crosshair_pos[1],npoints),
-                    np.linspace(current_pos[2], crosshair_pos[1],npoints)
-                ][0:n_ch])
+            # if self._scan_counter >= np.size(self._image_vert_axis)-1:
+            #     # take x as before, but change y and z
+            #     # get current position
+            #     current_pos = image[self._scan_counter, 0, :]
+            #     #get position of crosshair
+            #     crosshair_pos = self.get_position()
+            #     npoints = self._return_XL.shape[0]
+            #     return_line = np.vstack([
+            #         self._return_XL,
+            #         np.linspace(current_pos[1], crosshair_pos[1],npoints),
+            #         np.linspace(current_pos[2], crosshair_pos[1],npoints)
+            #     ][0:n_ch])
             #
             #------------------------------------------------------------------------------------
 
@@ -847,29 +851,29 @@ class ConfocalLogic(GenericLogic):
                         ][0:n_ch])
                     else:
                         return_line = np.vstack([
-                                self._return_XL,
-                                image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                                image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                                np.ones(self._return_XL.shape) * self._current_a
-                            ])
+                            self._return_XL,
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
+                            np.ones(self._return_XL.shape) * self._current_a
+                        ])
                 else: # if in last line
                     # get current position
-                    current_pos = image[self._scan_counter, 0, :]
-                    #get position of crosshair
-                    crosshair_pos = self.get_position()
+                    current_pos = image[self._scan_counter, -1, :]
+                    # TODO: get current position of crosshair, not posi at beginning of scan
+                    crosshair_pos = self.crosshair_posi 
                     npointsshape = self._return_XL.shape
                     npoints = npointsshape[0]
                     if n_ch <= 3: # build return line to posi of crosshair
                         return_line = np.vstack([
                             np.linspace(current_pos[0], crosshair_pos[0],npoints),
                             np.linspace(current_pos[1], crosshair_pos[1],npoints),
-                            np.linspace(current_pos[2], crosshair_pos[1],npoints)
+                            np.linspace(current_pos[2], crosshair_pos[2],npoints)
                         ][0:n_ch])
                     else: # build return line to posi of crosshair
                         return_line = np.vstack([
                             np.linspace(current_pos[0], crosshair_pos[0],npoints),
                             np.linspace(current_pos[1], crosshair_pos[1],npoints),
-                            np.linspace(current_pos[2], crosshair_pos[1],npoints),
+                            np.linspace(current_pos[2], crosshair_pos[2],npoints),
                             np.ones(npointsshape) * self._current_a #no idea what _current_a does, just copied from above
                         ])
             else:
