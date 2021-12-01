@@ -261,7 +261,7 @@ class ConfocalLogic(GenericLogic):
     _clock_frequency = StatusVar('clock_frequency', 500)
     return_slowness = StatusVar(default=50)
     max_history_length = StatusVar(default=10)
-
+    _smoothing_steps = StatusVar('smoothing_steps', 10)  # steps to accelerate between 0 and scan_speed
     # signals
     signal_start_scanning = QtCore.Signal(str)
     signal_continue_scanning = QtCore.Signal(str)
@@ -710,6 +710,59 @@ class ConfocalLogic(GenericLogic):
             self._change_position(tag)
             self.signal_change_position.emit(tag)
             return 0
+
+    def go_to_position(self, tag, x=None, y=None, z=None, a=None, rs = None):
+        """ Threaded method to change the hardware voltage for a goto.
+        slowness in mu m
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._initialise_scanner()
+        spatial_pos = self._scanning_device.get_scanner_position()
+        rs = self.return_slowness if rs is None else rs
+        lsx = np.linspace(self._current_x, x if x!= None else self._current_x, rs)
+        lsy = np.linspace(self._current_y, y if y!= None else self._current_y, rs)
+        lsz = np.linspace(self._current_z, x if z!= None else self._current_z, rs)
+
+        n_ch = len(self.get_scanner_axes())
+        if n_ch <= 3:
+            start_line = np.vstack([lsx, lsy, lsz][0:n_ch])
+        else:
+            start_line = np.vstack(
+                [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
+        # move to the start position of the scan, counts are thrown away
+        start_line_counts = self._scanning_device.scan_line(start_line)
+        self._close_scanner()
+        self.set_position(tag, x, y, z, a)
+        return 0
+
+    def _initialise_scanner(self):
+        """Initialise the clock and locks for a scan"""
+        self.module_state.lock()
+        self._scanning_device.module_state.lock()
+
+        returnvalue = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
+        if returnvalue < 0:
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
+            return -1
+
+        returnvalue = self._scanning_device.set_up_scanner()
+        if returnvalue < 0:
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
+            return -1
+
+        return 0
+
+    def _close_scanner(self):
+        """Close the scanner and unlock"""
+        with self.threadlock:
+            self.kill_scanner()
+            self.stopRequested = False
+            if self.module_state.can('unlock'):
+                self.module_state.unlock()
 
     def _change_position(self, tag):
         """ Threaded method to change the hardware position.
