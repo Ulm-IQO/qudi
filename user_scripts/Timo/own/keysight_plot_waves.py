@@ -80,7 +80,7 @@ class KeysightPlotter():
         val_int = np.asarray(val_int).astype('uint16')
 
         bit_marker = 0x1 & val_int
-        bit_sync = 0x2 & val_int >> 1
+        bit_sync = 0x2 & val_int #>> 1
 
         analog_binary = (0xFFFC & val_int) >>  shiftbits
         #print("Debug: Analog bit {:#016b}".format(analog_binary))
@@ -180,7 +180,7 @@ class KeysightPlotter():
         n_data = len(int_array)
         print("Debug: Starting decoding {} int16 values.".format(n_data))
 
-        t_us = 1e6 * np.asarray(range(n_data)) / self._sampling_rate
+        t_us = 1e6 * np.arange(0, n_data, step=1) / self._sampling_rate
 
         # SLOOOOW:
         #res = [_decode_two_bytes(val16, mode, channel_config) for val16 in np.asarray(int_array).astype('uint16')]
@@ -356,7 +356,7 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "ise_init_up_ch1.bin"
+    file = r"C:\qudi\pulsed_files" + "/" + "nuc_podmr_ch1.bin"
     file2 = r"C:\qudi\pulsed_files" + "/" + "ramsey_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
@@ -373,7 +373,8 @@ if __name__ == "__main__":
 
     print(wave_dict.keys())
 
-    wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=80000)
+    #wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=500000)
+    wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=100000)
 
     plot(wave_dict, title="1")
     if file2:
