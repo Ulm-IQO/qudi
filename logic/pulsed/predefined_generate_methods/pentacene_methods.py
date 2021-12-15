@@ -2835,7 +2835,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
-        delay_element = self._get_delay_gate_element()
+        delay_element = self._get_delay_element()
 
         ise_block, _, _ = self.generate_pol_ise(name='ise', t_laser=t_laser, f_res=f_ise_res, df_mw_sweep=df_mw_sweep,
                                                 mw_sweep_speed=mw_sweep_speed, amp_mw_sweep=amp_mw_sweep,
@@ -2933,6 +2933,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         number_of_lasers = n_order_pi_rf * dd_type.suborder * n_tau
         n_datapoints = number_of_lasers
         number_of_lasers = 2*number_of_lasers if alternating else number_of_lasers
+        if self.gate_channel != '':
+            laser_ignore = []
 
         self.log.debug(f"Laser ignore: {laser_ignore}")
 
@@ -3725,7 +3727,11 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
-
+        pi_weak_element = self._get_mw_element(length=10*self.rabi_period / 2,
+                                          increment=0,
+                                          amp=self.microwave_amplitude/10,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
 
         pulsedodmr_block = PulseBlock(name=name)
         for rf_freq in freq_array:
@@ -3743,6 +3749,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
             if nv_pi_init:
                 pulsedodmr_block.append(pi_element)
             pulsedodmr_block.append(rf_element)
+            pulsedodmr_block.append(pi_weak_element)
             pulsedodmr_block.append(laser_element)
             pulsedodmr_block.append(delay_element)
             pulsedodmr_block.append(waiting_element)
@@ -3754,7 +3761,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                      freq=rf_freq,
                                                      phase=0)
                 if nv_pi_init:
-                    pulsedodmr_block.append(pi_element)
+                    pass
+                    #pulsedodmr_block.append(pi_element)
                 pulsedodmr_block.append(no_rf_element)
                 pulsedodmr_block.append(laser_element)
                 pulsedodmr_block.append(delay_element)
@@ -3785,7 +3793,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_nuc_rabi(self, name='nuc_rabi', tau_start=1.0e-6, tau_step=5.0e-6, num_of_points=50,
-                          rf_chnl='a_ch2', rf_freq=2.5e6, rf_ampl=0.025, nv_pi_init=False, alternating_no_rf=True):
+                          rf_chnl='a_ch2', rf_freq=2.5e6, rf_ampl=0.025,
+                          nv_pi_init=False, alternating_no_rf=True):
         """
 
         """
@@ -3823,19 +3832,26 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
+        pi_weak_element = self._get_mw_element(length=10*self.rabi_period / 2,
+                                          increment=0,
+                                          amp=self.microwave_amplitude/10,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
 
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)
         if nv_pi_init:
             rabi_block.append(pi_element)
         rabi_block.append(rf_element)
+        rabi_block.append(pi_weak_element)
         rabi_block.append(laser_element)
         rabi_block.append(delay_element)
         rabi_block.append(waiting_element)
 
         if alternating_no_rf:
             if nv_pi_init:
-                rabi_block.append(pi_element)
+                pass
+                #rabi_block.append(pi_element)
             rabi_block.append(no_rf_element)
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
