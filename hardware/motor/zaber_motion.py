@@ -290,7 +290,8 @@ class ZaberStage(Base, MotorInterface):
                         self._axis_dict[axis_label] = ZaberAxis(axis, device, label)
                         self._device_list.append(device)
                     else:
-                        self.log.error("Found {}, but expected a daisy-chained topology daisy-chained topology"
+                        self.log.error(f"Found {device[0].get_axis(1)} axes on device {device}; "
+                                       f"but expected a daisy-chained topology daisy-chained topology"
                                        " where every stage is a device with exactly one axis")
                 else:
                     self.log.warning(f"Couldn't find device with serial {serialnumber}")
