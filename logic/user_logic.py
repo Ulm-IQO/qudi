@@ -10,7 +10,7 @@ class UserGlobals(GenericLogic):
 
     eg. in config.cfg:
     uglobals:
-        module.Class: 'user_globals.UserGlobals'
+        module.Class: 'user_logic.UserGlobals'
 
     access in console:
         uglobals.<varname>

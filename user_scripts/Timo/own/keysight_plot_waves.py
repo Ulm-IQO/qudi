@@ -356,7 +356,7 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "nuc_podmr_ch1.bin"
+    file = r"C:\qudi\pulsed_files" + "/" + "pulsedODMR.bin"
     file2 = r"C:\qudi\pulsed_files" + "/" + "ramsey_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
@@ -373,11 +373,16 @@ if __name__ == "__main__":
 
     print(wave_dict.keys())
 
+    idx_slice = 0, 4*100000
     #wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=500000)
-    wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=100000)
+    #wave_dict = plotter.slice_wave(wave_dict, i_start=-20*100000, i_stop=-1)
+    wave_dict = plotter.slice_wave(wave_dict, i_start=idx_slice[0], i_stop=idx_slice[1])
 
     plot(wave_dict, title="1")
     if file2:
+        wave_dict2 = plotter.slice_wave(wave_dict2, i_start=idx_slice[0], i_stop=idx_slice[1])
+        wave_diff = plotter.slice_wave(wave_diff, i_start=idx_slice[0], i_stop=idx_slice[1])
+
         plot(wave_dict2, title="2")
         plot(wave_diff, title="diff")
 

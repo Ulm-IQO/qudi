@@ -2856,7 +2856,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                           no_nv_init=False,
                                                           t_laser_init=t_laser_init, laser_read_ch=laser_read_ch)
 
-        idle_pi_element = self._get_mw_element(length=self.rabi_period / 2,
+        idle_pi_element = self._get_mw_element(length=t_pi_rf / 4,
                                           increment=0,
                                           amp=0,
                                           freq=self.microwave_frequency,
@@ -2933,10 +2933,10 @@ class PentaceneMethods(PredefinedGeneratorBase):
         number_of_lasers = n_order_pi_rf * dd_type.suborder * n_tau
         n_datapoints = number_of_lasers
         number_of_lasers = 2*number_of_lasers if alternating else number_of_lasers
-        if self.gate_channel != '':
+        if self.gate_channel and self.gate_channel != '':
             laser_ignore = []
 
-        self.log.debug(f"Laser ignore: {laser_ignore}")
+        self.log.debug(f"Laser ignore: {laser_ignore}, Gate_ch: {self.gate_channel}")
 
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore  # last laser is ise!
@@ -3100,8 +3100,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_pulsedodmr_deer_pi(self, name='pulsedODMR', f_mw_deer=1.4e9, t_pi_deer=100e-9, deer_ampl=0.25,
-                                    freq_start=2870.0e6, freq_step=0.2e6,
-                                    num_of_points=50):
+                                    freq_start=2870.0e6, freq_step=0.2e6, deer_ch='a_ch1',
+                                    num_of_points=50, alternating_nodeerpi=False):
         """
 
         """
@@ -3119,11 +3119,13 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                      increment=0,
                                                      add_gate_ch='d_ch4')
         delay_element = self._get_delay_gate_element()
-        pi_deer_element = self._get_mw_element(length=t_pi_deer,
+        pi_deer_element = self._get_rf_element(length=t_pi_deer,
                                               increment=0,
+                                              pulse_ch=deer_ch,
                                               amp=deer_ampl,
                                               freq=f_mw_deer,
-                                              phase=0)
+                                              phase=0,
+                                              )
 
         # Create block and append to created_blocks list
         pulsedodmr_block = PulseBlock(name=name)
@@ -3135,9 +3137,18 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                               phase=0)
             pulsedodmr_block.append(pi_deer_element)
             pulsedodmr_block.append(mw_element)
+            # repeat pi pulse after readout to be 2pi in total per tau
+            pulsedodmr_block.append(pi_deer_element)
             pulsedodmr_block.append(laser_element)
             pulsedodmr_block.append(delay_element)
             pulsedodmr_block.append(waiting_element)
+
+            if alternating_nodeerpi:
+                pulsedodmr_block.append(mw_element)
+                pulsedodmr_block.append(laser_element)
+                pulsedodmr_block.append(delay_element)
+                pulsedodmr_block.append(waiting_element)
+
         created_blocks.append(pulsedodmr_block)
 
         # Create block ensemble
@@ -3148,12 +3159,12 @@ class PentaceneMethods(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['alternating'] = alternating_nodeerpi
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = freq_array
         block_ensemble.measurement_information['units'] = ('Hz', '')
         block_ensemble.measurement_information['labels'] = ('Frequency', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if alternating_nodeerpi else num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 

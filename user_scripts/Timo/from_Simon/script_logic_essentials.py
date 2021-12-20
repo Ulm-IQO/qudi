@@ -112,6 +112,9 @@ except NameError:
         logger.error("Auto module loading failed. Defined in config? {}".format(e))
 
 
+def print_welcome_msg():
+    print('[{}] Hi, jupyter ready. working dir: {}'.format(time.ctime(), os.getcwd()))
+
 
 def config_matplotlib_jupyter():
     # is overwritten by qudi save logic
@@ -618,17 +621,18 @@ def conventional_measurement(qm_dict):
     return user_terminated
 
 def set_gated_counting(qm_dict):
+    # not needed to configure fastcounter from script, should be done from pulsedmeasuremenlogic.configure()
     if not setup['gated']:
         qm_dict['ctr_n_cycles'] = 0
     else:
         qm_dict['gated'] = setup['gated']
         qm_dict['ctr_n_cycles'] = qm_dict['params']['number_of_lasers']
-
+    """
     if setup['gated']:
         pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'],
-                                                               cycles=1,
+                                                                cycles=1,
                                                                preset=None)
-
+    """
     return qm_dict
 
 def set_up_conventional_measurement(qm_dict):
@@ -688,8 +692,18 @@ def set_up_conventional_measurement(qm_dict):
     if 'analysis_method' in qm_dict:
         analy_method = qm_dict['analysis_method']
     else:
-        analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': 400e-9,
-                                            'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
+        if not setup['gated']:
+            if pulsedmasterlogic.generation_parameters['laser_length'] > 1.5e-6:
+                analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': 400e-9,
+                                'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
+            else:
+                analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': 400e-9,
+                                'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
+        else:
+            analy_method = {'method': 'mean_norm', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
+                                                'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
+            analy_method = {'method': 'mean', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
+                                                'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
 
     logger.info("Setting laser pulse analysis method: {}".format(analy_method))
     pulsedmasterlogic.set_analysis_settings(analy_method)

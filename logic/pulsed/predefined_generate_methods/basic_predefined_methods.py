@@ -188,7 +188,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_rabi(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9,
-                      leave_out_tau_idx='', num_of_points=50):
+                      leave_out_tau_idx='', num_of_points=50, alternating=False):
         """
 
         """
@@ -211,6 +211,11 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
+        pi_element = self._get_mw_element(length=self.rabi_period / 2,
+                                          increment=0,
+                                          amp=self.microwave_amplitude,
+                                          freq=self.microwave_frequency,
+                                          phase=0)
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
@@ -223,6 +228,14 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         rabi_block.append(laser_element)
         rabi_block.append(delay_element)
         rabi_block.append(waiting_element)
+
+        if alternating:
+            rabi_block.append(mw_element)
+            rabi_block.append(pi_element)
+            rabi_block.append(laser_element)
+            rabi_block.append(delay_element)
+            rabi_block.append(waiting_element)
+
         created_blocks.append(rabi_block)
 
         # Create block ensemble
@@ -233,12 +246,12 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 

@@ -142,7 +142,7 @@ class Tk_file():
         m = re.search('on(.+?)\n', text)
         if m:
             found = m.group(1)
-        date = pd.to_datetime(found)
+        date = pd.to_datetime(found, dayfirst=True)
 
         # poi
         m = re.search('POI:(.+?)\n', text)
