@@ -994,8 +994,10 @@ def wait_for_cts(min_cts=10e3, timeout_s=2):
 
     high_cts = False
     t_start = time.time()
+
     while time.time() - t_start < timeout_s:
-        # will stop on calling .save_data()
+        # will stop on calling .save_data())
+
         counterlogic.start_saving()
         time.sleep(0.1)
 
@@ -1067,23 +1069,30 @@ def optimize_position(optimize_ch=None):
     return additional_time
 
 
-def optimize_poi(poi):
+def optimize_poi(poi, update_shift=False):
     # FIXME: Add the option to pause pulsed measurement during position optimization
     time_start_optimize = time.time()
     #pulsedmeasurementlogic.fast_counter_pause()
     laser_on()
-    time.sleep(0.1)
-    wait_for_cts(min_cts=30e3)
-    time.sleep(0.5)
+    logger.debug("Laser on, sleeping before count wait")
+    time.sleep(1)
+    wait_for_cts(min_cts=1e3, timeout_s=10)
+    time.sleep(1)
     # perform refocus
-    poimanagerlogic.optimise_poi_position(poi)
+    if poi:
+        poimanagerlogic.go_to_poi(poi)
+    poimanagerlogic.optimise_poi_position(poi, update_roi_position=update_shift)
 
-    sleep_until_abort("optimizerlogic.module_state() == 'idle'", timeout_s=3)
+
+    logger.debug("Waiting for track to finish")
+    sleep_until_abort("optimizerlogic.module_state() != 'idle'", timeout_s=10)
+    logger.debug("Done")
 
     scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
                               z=optimizerlogic.optim_pos_z, a=0.0)
 
     # switch off laser
+    logger.debug("Laser off")
     nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
     # pulsedmeasurementlogic.fast_counter_continue()
     time_stop_optimize = time.time()
@@ -1276,6 +1285,9 @@ def do_automized_measurements(qm_dict, autoexp):
             logger.debug("Skipped moving to poi, setting no_optimize")
             qm_dict['no_optimize'] = True
             poi_name = '<current pos>'
+
+        if not 'no_optimize' in qm_dict.keys():
+            qm_dict['no_optimize'] = False
         if not qm_dict['no_optimize']:
             optimize_poi(poi_name)
 
@@ -1300,6 +1312,8 @@ def do_automized_measurements(qm_dict, autoexp):
                 if not poi == "":
                     savetag += "_nv_" + poi
                     save_subdir_nv = "nv_" + poi
+
+                logger.debug(f"Savetag {savetag}, subdir {save_subdir}")
 
                 if first_poi:
                     do_experiment(experiment=cur_exp_dict['type'], qm_dict=cur_exp_dict,
@@ -1380,8 +1394,18 @@ def do_automized_measurements(qm_dict, autoexp):
                     else:
                         logger.debug("Didn't find any update parameters in {}".format(cur_exp_dict['name']))
             try:
+                if handle_abort() != 0:
+                    continue
                 if qm_dict['optimize_between_experiments']:
-                    optimize_poi(poi)
+                    if 'optimize_on_poi' in qm_dict.keys():
+                        opt_poi = qm_dict['optimize_on_poi']
+                        logger.info(f"Moving to poi {opt_poi} to optimize for sample shift tracking")
+                    else:
+                        opt_poi = poi
+                    optimize_poi(opt_poi, update_shift=True)
+                    if opt_poi != poi:
+                        logger.info(f"Back to and optimize on poi {poi}")
+                        optimize_poi(poi, update_shift=False)
             except: pass
         first_poi = False
 
