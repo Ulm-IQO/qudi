@@ -956,3 +956,137 @@ def estimate_lorentziantriple_N14(self, x_axis, data, params):
     params['offset'].set(value=offset)
 
     return error, params
+
+
+def estimate_lorentziantriple_dip(self, x_axis, data, params,
+                                  threshold_fraction=0.3,
+                                  minimal_threshold=0.01,
+                                  sigma_threshold_fraction=0.3):
+    """ Provide an estimator for triple lorentzian dip with offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # smooth with gaussian filter and find offset:
+    data_smooth, offset = self.find_offset_parameter(x_axis, data)
+
+    # level data:
+    data_level = data_smooth - offset
+
+    # search for double lorentzian dip:
+    ret_val = self._search_double_dip(x_axis, data_level, threshold_fraction,
+                                      minimal_threshold,
+                                      sigma_threshold_fraction)
+
+    error = ret_val[0]
+    sigma0_argleft, dip0_arg, sigma0_argright = ret_val[1:4]
+    sigma1_argleft, dip1_arg, sigma1_argright = ret_val[4:7]
+
+    # in rest of (masked) data, find third dip
+    import copy
+    data_masked = copy.deepcopy(data)
+    data_masked[sigma0_argleft:sigma0_argright] = offset
+    data_masked[sigma1_argleft:sigma1_argright] = offset
+    ret_val_thirddip = self._search_double_dip(x_axis, data_masked, threshold_fraction,
+                                      minimal_threshold,
+                                      sigma_threshold_fraction)
+
+    error2 = ret_val_thirddip[0]
+    sigma2_argleft, dip2_arg, sigma2_argright = ret_val_thirddip[1:4]
+
+
+
+    if dip0_arg == dip1_arg:
+        lorentz0_amplitude = data_level[dip0_arg] / 2.
+        lorentz1_amplitude = lorentz0_amplitude
+    else:
+        lorentz0_amplitude = data_level[dip0_arg]
+        lorentz1_amplitude = data_level[dip1_arg]
+
+    lorentz2_amplitude = data_level[dip2_arg]
+
+    lorentz0_center = x_axis[dip0_arg]
+    lorentz1_center = x_axis[dip1_arg]
+    lorentz2_center = x_axis[dip2_arg]
+
+    # Both sigmas are set to the same value
+    # numerical_integral_0 = (np.sum(data_level[sigma0_argleft:sigma0_argright]) *
+    #                    (x_axis[sigma0_argright] - x_axis[sigma0_argleft]) /
+    #                     len(data_level[sigma0_argleft:sigma0_argright]))
+
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level,
+                                            k=smoothing_spline)
+    numerical_integral_0 = fit_function.integral(x_axis[sigma0_argleft],
+                                             x_axis[sigma0_argright])
+    lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
+
+    numerical_integral_1 = numerical_integral_0
+    lorentz1_sigma = abs(numerical_integral_1 / (np.pi * lorentz1_amplitude))
+
+    numerical_integral_2 = numerical_integral_0
+    lorentz2_sigma = abs(numerical_integral_2 / (np.pi * lorentz2_amplitude))
+
+    # esstimate amplitude
+    # lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
+    # lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
+
+    stepsize = x_axis[1] - x_axis[0]
+    full_width = x_axis[-1] - x_axis[0]
+    n_steps = len(x_axis)
+
+    if lorentz0_center < lorentz1_center:
+        params['l0_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l0_sigma'].set(value=lorentz0_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l0_center'].set(value=lorentz0_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l1_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l1_sigma'].set(value=lorentz1_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l1_center'].set(value=lorentz1_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l2_amplitude'].set(value=lorentz2_amplitude, max=0)
+        params['l2_sigma'].set(value=lorentz2_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l2_center'].set(value=lorentz2_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+    else:
+        params['l0_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l0_sigma'].set(value=lorentz1_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l0_center'].set(value=lorentz1_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l1_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l1_sigma'].set(value=lorentz0_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l1_center'].set(value=lorentz0_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l2_amplitude'].set(value=lorentz2_amplitude, max=0)
+        params['l2_sigma'].set(value=lorentz2_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l2_center'].set(value=lorentz2_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+    params['offset'].set(value=offset)
+
+    return error, params
+
