@@ -59,12 +59,13 @@ class SpectrumLogic(GenericLogic):
     camera = Connector(interface='ScienceCameraInterface')
     savelogic = Connector(interface='SaveLogic')
 
-    # declare status variables (logic attribute) :
+    # declare config options :
     _reverse_data_with_side_output = ConfigOption('reverse_data_with_side_output', False)
 
     # declare status variables (logic attribute) :
-    _acquired_data = StatusVar('acquired_data', np.empty((2, 0)))
-    _wavelength_calibration = StatusVar('wavelength_calibration', np.zeros(3))
+    _acquired_data = StatusVar('acquired_data', None)
+    _acquired_wavelength = StatusVar('acquired_wavelength', None)
+    _wavelength_calibration = StatusVar('wavelength_calibration', [0., 0., 0.])
 
     # declare status variables (camera attribute) :
     _camera_gain = StatusVar('camera_gain', None)
@@ -170,6 +171,7 @@ class SpectrumLogic(GenericLogic):
         self._loop_counter = 0
 
         self._acquisition_params = OrderedDict()
+        self._update_acquisition_params()
 
         self._sigStart.connect(self._start_acquisition)
         self._sigCheckStatus.connect(self._check_status, QtCore.Qt.QueuedConnection)
@@ -215,18 +217,11 @@ class SpectrumLogic(GenericLogic):
 
     def _start_acquisition(self):
         """ Start acquisition method initializing the acquisitions constants and calling the acquisition method """
-        self._acquired_data = []
-        self._acquired_spectrum = []
         if self.acquisition_mode == 'MULTI_SCAN':
             self._loop_counter = self.number_of_scan
+            self._acquired_wavelength = np.array([])
+            self._acquired_data = np.array([])
         self._acquisition_loop()
-
-    def get_ready_state(self):
-        """ Getter method returning if the camera hardware is ready to acquire or not
-
-        @return: (bool) camera hardware idle ?
-        """
-        return self.camera().get_ready_state()
 
     def _acquisition_loop(self):
         """ Acquisition method starting hardware acquisition and emitting Qtimer signal connected to check status method
@@ -244,36 +239,37 @@ class SpectrumLogic(GenericLogic):
             return
 
         # If hardware still running
-        if not self.get_ready_state():
+        if not self.camera().get_ready_state():
             self._sigCheckStatus.emit()
             return
 
-
         if self.acquisition_mode == 'SINGLE_SCAN':
+            self._acquired_wavelength = self.wavelength_spectrum
             self._acquired_data = self.get_acquired_data()
-            self._acquired_spectrum = self.wavelength_spectrum
-            self.sigUpdateData.emit()
             self.module_state.unlock()
+            self.sigUpdateData.emit()
             self.log.info("Acquisition finished : module state is 'idle' ")
             return
 
         elif self.acquisition_mode == 'LIVE_SCAN':
             self._loop_counter += 1
+            self._acquired_wavelength = self.wavelength_spectrum
             self._acquired_data = self.get_acquired_data()
-            self._acquired_spectrum = self.wavelength_spectrum
             self.sigUpdateData.emit()
             self._acquisition_loop()
             return
 
         else:
-            self._acquired_data.append(self.get_acquired_data())
-            self._acquired_spectrum.append(self.wavelength_spectrum)
-            self.sigUpdateData.emit()
+            self._acquired_wavelength = np.append(self._acquired_wavelength, self.wavelength_spectrum, axis=0)
+            self._acquired_data = np.append(self._acquired_data, self.get_acquired_data(), axis=0)
 
             if self._loop_counter <= 0:
                 self.module_state.unlock()
+                self.sigUpdateData.emit()
+                self.center_wavelength = self._center_wavelength
                 self.log.info("Acquisition finished : module state is 'idle' ")
             else:
+                self.sigUpdateData.emit()
                 self._do_scan_step()
                 self._loop_timer.start(self.scan_delay*1000)
                 return
@@ -289,7 +285,12 @@ class SpectrumLogic(GenericLogic):
     @property
     def acquired_data(self):
         """ Getter method returning the last acquired data. """
-        return np.array([self._acquired_spectrum, self._acquired_data])
+        return self._acquired_data
+
+    @property
+    def acquired_wavelength(self):
+        """ Getter method returning the last acquired data. """
+        return self._acquired_wavelength
 
     @property
     def acquisition_params(self):
@@ -304,17 +305,17 @@ class SpectrumLogic(GenericLogic):
         if self.read_mode == 'MULTIPLE_TRACKS':
             self._acquisition_params['tracks'] = self.active_tracks
         if self.acquisition_mode == 'MULTI_SCAN':
-            self._acquisition_params['scan_delay (s)'] = self.scan_delay
+            self._acquisition_params['scan_delay'] = self.scan_delay
             self._acquisition_params['number_of_scan'] = self.number_of_scan
             self._acquisition_params['scan_wavelength_step'] = self.scan_wavelength_step
         self._acquisition_params['camera_gain'] = self.camera_gain
-        self._acquisition_params['readout_speed (Hz)'] = self.readout_speed
-        self._acquisition_params['exposure_time (s)'] = self.exposure_time
-        self._acquisition_params['center_wavelength  (m)'] = self.center_wavelength
+        self._acquisition_params['readout_speed'] = self.readout_speed
+        self._acquisition_params['exposure_time'] = self.exposure_time
+        self._acquisition_params['center_wavelength'] = self.center_wavelength
         self._acquisition_params['grating'] = self.grating
         self._acquisition_params['spectro_ports'] = self.input_port, self.output_port
-        self._acquisition_params['slit_width (m)'] = self._input_slit_width, self._output_slit_width
-        self._acquisition_params['wavelength_calibration (m)'] = self.wavelength_calibration
+        self._acquisition_params['slit_width'] = self._input_slit_width, self._output_slit_width
+        self._acquisition_params['wavelength_calibration'] = self.wavelength_calibration
 
     def save_acquired_data(self):
         """ Getter method returning the last acquisition parameters. """
@@ -325,8 +326,8 @@ class SpectrumLogic(GenericLogic):
         if self.acquisition_params['read_mode'] == 'IMAGE_ADVANCED':
             acquisition = {'data': data.flatten()}
         else:
-            spectrum = np.array(self._acquired_spectrum)
-            acquisition = {'wavelength (m)' : spectrum.flatten(), 'data': data.flatten()}
+            spectrum = np.array(self._acquired_wavelength)
+            acquisition = {'wavelength' : spectrum.flatten(), 'data': data.flatten()}
 
         self.savelogic().save_data(acquisition, filepath=filepath, parameters=self.acquisition_params)
 
@@ -423,14 +424,13 @@ class SpectrumLogic(GenericLogic):
         if self._scan_wavelength_step == 0:
             self.log.info('The wavelength step of the scan is 0, no change of the center wavelength.')
             return
-        wavelength = self._center_wavelength + self._scan_wavelength_step
+        wavelength = self.spectrometer().get_wavelength() + self._scan_wavelength_step
         wavelength_max = self.spectro_constraints.gratings[self.grating].wavelength_max
         if not 0 <= wavelength < wavelength_max:
             self.log.error('Wavelength parameter is not correct : it must be in range {} to {} '
                            .format(0, wavelength_max))
             return
         self.spectrometer().set_wavelength(wavelength)
-        self._center_wavelength = self.spectrometer().get_wavelength()
 
     @property
     def wavelength_spectrum(self):
@@ -720,9 +720,9 @@ class SpectrumLogic(GenericLogic):
 
            Each value might be a float or an integer.
            """
-        data = self.camera().get_acquired_data()/self._exposure_time
+        data = self.camera().get_acquired_data()
         if self._reverse_data_with_side_output and self.output_port == "OUTPUT_SIDE":
-            return netobtain(data[:, ::-1])
+            return netobtain(data.T[::-1].T)
         return netobtain(data)
 
     ##############################################################################
@@ -840,10 +840,10 @@ class SpectrumLogic(GenericLogic):
             self.log.error("Binning parameter must be a tuple or list of 2 elements respectively the horizontal and "
                            "vertical binning ")
             return
-        width = self.camera_constraints.width
-        height = self.camera_constraints.height
+        width = abs(self.image_advanced_area['horizontal_range'][1]-self.image_advanced_area['horizontal_range'][0])
+        height = abs(self.image_advanced_area['vertical_range'][1]-self.image_advanced_area['vertical_range'][0])
         if not 0<binning[0]<width or not 0<binning[1]<height:
-            self.log.error("Binning parameter is out of range : the binning is outside the camera dimensions in pixel ")
+            self.log.error("Binning parameter is out of range : the binning is outside the image dimensions in pixel ")
             return
         self._image_advanced.horizontal_binning = int(binning[0])
         self._image_advanced.vertical_binning = int(binning[1])

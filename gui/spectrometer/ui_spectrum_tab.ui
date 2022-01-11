@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>789</width>
-    <height>617</height>
+    <height>705</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -15,6 +15,11 @@
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>13</pointsize>
+   </font>
   </property>
   <property name="windowTitle">
    <string>Form</string>
@@ -49,7 +54,7 @@
            <widget class="QLabel" name="read_modes_label">
             <property name="font">
              <font>
-              <pointsize>8</pointsize>
+              <pointsize>13</pointsize>
              </font>
             </property>
             <property name="text">
@@ -144,22 +149,17 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <widget class="QPushButton" name="remove_dark">
-            <property name="text">
-             <string>Remove Dark</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="dark_acquired_msg">
-            <property name="text">
-             <string>No dark acquired</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
+         <spacer name="verticalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </widget>
@@ -237,6 +237,13 @@
          </layout>
         </item>
         <item>
+         <widget class="Line" name="line_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="scan_delay">
           <item>
            <widget class="QLabel" name="scan_delay_label">
@@ -246,6 +253,13 @@
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
         </item>
         <item>
          <layout class="QHBoxLayout" name="scan_wavelength_step">
@@ -275,7 +289,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="acquire_dark">
+      <widget class="QPushButton" name="upload_background">
        <property name="maximumSize">
         <size>
          <width>300</width>
@@ -283,9 +297,51 @@
         </size>
        </property>
        <property name="text">
-        <string>Acquire Dark</string>
+        <string>Upload Background</string>
        </property>
       </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="clean_background">
+       <property name="maximumSize">
+        <size>
+         <width>300</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Clean Background</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="background_msg">
+       <property name="maximumSize">
+        <size>
+         <width>300</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>No Background</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
      </item>
      <item>
       <widget class="QPushButton" name="save">
@@ -301,7 +357,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="verticalSpacer_3">
+      <spacer name="verticalSpacer">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
@@ -338,19 +394,6 @@
         <string>Stop Acquisition</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <spacer name="verticalSpacer_9">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </item>

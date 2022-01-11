@@ -140,6 +140,15 @@ class Main(Base, GratingSpectrometerInterface):
         """
         return self._constraints
 
+    def get_ready_state(self):
+        """ Get the status of the camera, to know if the acquisition is finished or still ongoing.
+
+        @return (bool): True if the camera is ready, False if an acquisition is ongoing
+
+        As there is no synchronous acquisition in the interface, the logic needs a way to check the acquisition state.
+        """
+        return self.module_state() == 'idle'
+
     def get_grating(self):
         """ Returns the current grating index
 
