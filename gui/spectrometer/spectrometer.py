@@ -535,7 +535,7 @@ class Main(GUIBase):
         else:
             self._output_slit_width[0].setValue(self.spectrumlogic()._output_slit_width[0])
 
-        self._calibration_widget.setValue(self.spectrumlogic()._wavelength_calibration[self.spectrumlogic()._grating])
+        self._calibration_widget.setValue(self.spectrumlogic().wavelength_calibration)
         self._settings_tab.camera_gains.setCurrentText(str(int(self.spectrumlogic()._camera_gain)))
         self._settings_tab.trigger_modes.setCurrentText(self.spectrumlogic()._trigger_mode)
         if self.spectrumlogic().camera_constraints.has_cooler:
@@ -661,13 +661,14 @@ class Main(GUIBase):
     def save_image_data(self):
 
         filepath = self.savelogic().get_path_for_module(module_name='spectrometer')
-        self.spectrumlogic().savelogic().save_data({"wavelength":self._image_data['wavelength'],
+        self.spectrumlogic().savelogic().save_data({"wavelength":self._image_data['wavelength'].flatten(),
                                    "data":self._image_data['data'].flatten()}, filepath=filepath, parameters=self._image_params)
 
     def save_spectrum_data(self):
 
         filepath = self.savelogic().get_path_for_module(module_name='spectrometer')
-        self.spectrumlogic().savelogic().save_data(self._spectrum_data, filepath=filepath, parameters=self._spectrum_params)
+        self.spectrumlogic().savelogic().save_data({"wavelength":self._spectrum_data['wavelength'].flatten(),
+                                   "data":self._spectrum_data['data'].flatten()}, filepath=filepath, parameters=self._spectrum_params)
 
     def _manage_grating_buttons(self, tab_index):
 

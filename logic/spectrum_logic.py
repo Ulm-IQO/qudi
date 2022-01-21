@@ -65,7 +65,7 @@ class SpectrumLogic(GenericLogic):
     # declare status variables (logic attribute) :
     _acquired_data = StatusVar('acquired_data', None)
     _acquired_wavelength = StatusVar('acquired_wavelength', None)
-    _wavelength_calibration = StatusVar('wavelength_calibration', [0., 0., 0.])
+    _wavelength_calibration = StatusVar('wavelength_calibration', np.array([0., 0., 0.]))
 
     # declare status variables (camera attribute) :
     _camera_gain = StatusVar('camera_gain', None)
@@ -78,10 +78,7 @@ class SpectrumLogic(GenericLogic):
     _temperature_setpoint = StatusVar('temperature_setpoint', None)
     _shutter_state = StatusVar('shutter_state', "AUTO")
     _active_tracks = StatusVar('active_tracks', [])
-    _image_advanced = StatusVar('image_advanced', None)
-
-    # cosmic rejection coeff :
-    _coeff_rej_cosmic = StatusVar('coeff_cosmic_rejection', 2.2)
+    _image_advanced = StatusVar('image_advanced', None) #TODO : fix bug
 
     _sigStart = QtCore.Signal()
     _sigCheckStatus = QtCore.Signal()
@@ -219,8 +216,6 @@ class SpectrumLogic(GenericLogic):
         """ Start acquisition method initializing the acquisitions constants and calling the acquisition method """
         if self.acquisition_mode == 'MULTI_SCAN':
             self._loop_counter = self.number_of_scan
-            self._acquired_wavelength = np.array([])
-            self._acquired_data = np.array([])
         self._acquisition_loop()
 
     def _acquisition_loop(self):
@@ -235,6 +230,7 @@ class SpectrumLogic(GenericLogic):
         # If module unlocked by stop_acquisition
         if self.module_state() != 'locked':
             self.sigUpdateData.emit()
+            self.center_wavelength = self._center_wavelength + self._wavelength_calibration[self._grating]
             self.log.info("Acquisition stopped. Status loop stopped.")
             return
 
@@ -260,13 +256,17 @@ class SpectrumLogic(GenericLogic):
             return
 
         else:
-            self._acquired_wavelength = np.append(self._acquired_wavelength, self.wavelength_spectrum, axis=0)
-            self._acquired_data = np.append(self._acquired_data, self.get_acquired_data(), axis=0)
+            if self._loop_counter == self._acquisition_params["number_of_scan"]-1:
+                self._acquired_wavelength = [self.wavelength_spectrum]
+                self._acquired_data = [self.get_acquired_data()]
+            else:
+                self._acquired_wavelength.append(self.wavelength_spectrum)
+                self._acquired_data.append(self.get_acquired_data())
 
             if self._loop_counter <= 0:
                 self.module_state.unlock()
                 self.sigUpdateData.emit()
-                self.center_wavelength = self._center_wavelength
+                self.center_wavelength = self._center_wavelength + self._wavelength_calibration[self._grating]
                 self.log.info("Acquisition finished : module state is 'idle' ")
             else:
                 self.sigUpdateData.emit()
@@ -285,12 +285,12 @@ class SpectrumLogic(GenericLogic):
     @property
     def acquired_data(self):
         """ Getter method returning the last acquired data. """
-        return self._acquired_data
+        return np.array(self._acquired_data)
 
     @property
     def acquired_wavelength(self):
         """ Getter method returning the last acquired data. """
-        return self._acquired_wavelength
+        return np.array(self._acquired_wavelength)
 
     @property
     def acquisition_params(self):
@@ -822,7 +822,7 @@ class SpectrumLogic(GenericLogic):
             self.log.error("The input active tracks are overlapping !")
             return
         self.camera().set_active_tracks(active_tracks)
-        self._active_tracks = self.camera().get_active_tracks()
+        self._active_tracks = np.array(self.camera().get_active_tracks())
 
     @property
     def image_advanced_binning(self):
