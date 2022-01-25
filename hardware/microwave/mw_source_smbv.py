@@ -332,7 +332,7 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.error('List mode not available for this microwave hardware!')
+        self._command_wait(':LIST:RES')
         return -1
 
     def sweep_on(self):
