@@ -288,14 +288,41 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
         Configures the device for list-mode and optionally sets frequencies and/or power
 
         @param list frequency: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
+        @param list, float power: MW power of the frequency list in dBm
 
         @return tuple(list, float, str):
             current frequencies in Hz,
             current power in dBm,
             current mode
         """
-        self.log.error('List mode not available for this microwave hardware!')
+        mode, is_running = self.get_status()
+        if is_running:
+            self.off()
+
+        if (frequency is not None) and (power is not None):
+            if isinstance(power, float) or isinstance(power, int):
+                power = power*np.ones(len(frequency))
+            if len(frequency) != len(power):
+                self.log.error('Number of frequencies and power values not matching!')
+                return
+            self._connection.write(':LIST:SEL "My_list"')
+            freq_str = ""
+            for i in range(len(frequency)):
+                str_val = "{:.4f} GHz, ".format(frequency[i]*1e-9)
+                freq_str = freq_str + str_val
+            self._connection.write('LIST:FREQ {:s}'.format(freq_str[:-2]))
+            power_str = ""
+            for i in range(len(power)):
+                str_val = "{:.2f} dBm, ".format(power[i])
+                power_str = power_str + str_val
+            self._connection.write('LIST:POW {:s}'.format(power_str[:-2]))
+
+            self._connection.write('LIST:MODE STEP') # to trigger each value in the list separately
+            self._connection.write('LIST:TRIG:SOUR EXT') # external trigger
+        
+            self._connection.write(':OUTP:STAT ON')
+            self._command_wait(':FREQ:MODE LIST')
+            
         mode, dummy = self.get_status()
         return self.get_frequency(), self.get_power(), mode
 
