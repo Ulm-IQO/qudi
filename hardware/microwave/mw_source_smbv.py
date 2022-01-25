@@ -161,10 +161,21 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
         """
         Gets the microwave output power.
 
-        @return float: the power set at the device in dBm
+        @return float, list: the power or the list of powers set at the device in dBm
         """
+        mode, is_running = self.get_status()
         # This case works for cw AND sweep mode
-        return float(self._connection.query(':POW?'))
+        if ('cw' in mode) or ('sweep' in mode):
+            rep = float(self._connection.query(':POW?'))
+        # for the list mode
+        elif 'list' in mode:
+            pow_list =  self._connection.query('LIST:POW?')
+            pow_list = pow_list.split(",")
+            rep = np.array([float(x) for x in pow_list])
+            # if there is a single value in the list, we send a single value
+            if rep.all() == rep[0]:
+                rep = rep[0]
+        return rep
 
     def get_frequency(self):
         """
