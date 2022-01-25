@@ -266,8 +266,22 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.error('List mode not available for this microwave hardware!')
-        return -1
+        current_mode, is_running = self.get_status()
+        if is_running:
+            if current_mode == 'list':
+                return 0
+            else:
+                self.off()
+
+        self._connection.write(':OUTP:STAT ON')
+        if current_mode != 'list':
+            self._command_wait(':FREQ:MODE LIST')
+            self._connection.write(':LIST:SEL "My_list"')
+        mode, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            mode, is_running = self.get_status()
+        return 0
 
     def set_list(self, frequency=None, power=None):
         """
