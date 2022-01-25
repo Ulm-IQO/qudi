@@ -194,6 +194,10 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
             stop = float(self._connection.query(':FREQ:STOP?'))
             step = float(self._connection.query(':SWE:STEP?'))
             return_val = [start+step, stop, step]
+        elif 'list' in mode: 
+            freq_str = self._connection.query(':LIST:FREQ?')
+            freq_list = freq_str.split(',')
+            return_val = np.array([float(f) for f in freq_list])
         return return_val
 
     def cw_on(self):
