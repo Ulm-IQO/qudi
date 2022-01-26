@@ -3,7 +3,11 @@ from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
 
+from enum import Enum
 
+class DQTAltModes(Enum):
+    DQT_12_alternating = 1
+    DQT_both = 2
 
 class MultiNV_Generator(PredefinedGeneratorBase):
     """
@@ -13,8 +17,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         super().__init__(*args, **kwargs)
 
     def generate_ent_create_bell(self, name='ent_create_bell', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                             f_mw_2=1e9, ampl_mw_2=None, rabi_period_mw_2=None,
-                             dd_type=DDMethods.XY8, dd_order=1, alternating=True):
+                             f_mw_2=1e9, ampl_mw_2=0.125, rabi_period_mw_2=100e-9,
+                             dd_type=DDMethods.SE, dd_order=1, alternating=True):
         """
         Decoupling sequence on both NVs. Initialization with Hadarmard instead of pi2.
         """
@@ -23,8 +27,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_sequences = list()
 
         rabi_periods = np.asarray([self.rabi_period, rabi_period_mw_2])
-        amplitudes = [self.microwave_amplitude, ampl_mw_2]
-        mw_freqs = [self.microwave_frequency, f_mw_2]
+        amplitudes =  np.asarray([self.microwave_amplitude, ampl_mw_2])
+        mw_freqs =  np.asarray([self.microwave_frequency, f_mw_2])
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
@@ -137,11 +141,92 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_rabi_dqt_p(self, name='rabi_dqt-p', tau_start=10.0e-9, tau_step=10.0e-9,
+                      num_of_points=50, f_mw_2=1e9, ampl_mw_2=0.125, alternating_mode=DQTAltModes.DQT_12_alternating):
+        """
+        Double quantum transition, driven in parallel (instead of sequential)
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        alternating = True if alternating_mode == DQTAltModes.DQT_12_alternating else False
+        amplitudes_both = np.asarray([self.microwave_amplitude, ampl_mw_2])
+        amplitudes_1 = np.asarray([self.microwave_amplitude, 0])
+        amplitudes_2 = np.asarray([0, ampl_mw_2])
+        mw_freqs = np.asarray([self.microwave_frequency, f_mw_2])
+
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        num_of_points = len(tau_array)
+
+        if alternating_mode == DQTAltModes.DQT_both:
+            mw_element = self._get_multiple_mw_element(length=tau_start,
+                                              increment=tau_step,
+                                              amps=amplitudes_both,
+                                              freqs=mw_freqs,
+                                              phases=[0,0])
+            mw_alt_element = None
+        elif alternating_mode == DQTAltModes.DQT_12_alternating:
+            mw_element = self._get_multiple_mw_element(length=tau_start,
+                                                       increment=tau_step,
+                                                       amps=amplitudes_1,
+                                                       freqs=mw_freqs,
+                                                       phases=[0, 0])
+            mw_alt_element = self._get_multiple_mw_element(length=tau_start,
+                                              increment=tau_step,
+                                              amps=amplitudes_2,
+                                              freqs=mw_freqs,
+                                              phases=[0,0])
+        else:
+            raise ValueError(f"Unknown DQT mode: {alternating_mode}")
+
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        rabi_block = PulseBlock(name=name)
+        rabi_block.append(mw_element)
+        rabi_block.append(laser_element)
+        rabi_block.append(delay_element)
+        rabi_block.append(waiting_element)
+
+        if alternating:
+            rabi_block.append(mw_alt_element)
+            rabi_block.append(laser_element)
+            rabi_block.append(delay_element)
+            rabi_block.append(waiting_element)
+
+        created_blocks.append(rabi_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((rabi_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
     def _get_multiple_mw_mult_length_element(self, lengths, increments, amps=None, freqs=None, phases=None):
         """
         Creates single, double sine mw element.
 
-        @param float length: MW pulse duration in seconds
+        @param float lengths: MW pulse duration in seconds
         @param float increment: MW pulse duration increment in seconds
         @param amps: list containing the amplitudes
         @param freqs: list containing the frequencies
@@ -201,7 +286,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         parts_mw1, parts_mw2 = create_pulse_partition(lengths, amps)
         blocks = []
 
-        for idx, p_mw1 in parts_mw1:
+        for idx, p_mw1 in enumerate(parts_mw1):
             p_mw2 = parts_mw2[idx]
 
             # partition guarantees that all steps have same length (but different ampl)
