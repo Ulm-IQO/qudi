@@ -1965,6 +1965,7 @@ class ColorScaleBWR(ColorScale):
     COLORS_INV = COLORS[::-1]
     
 
+
 ## Dict containing the list of available colormaps, defined below.
 ## Please update if you add more
 
@@ -1978,7 +1979,6 @@ colordict = {"Rainbow": ColorScaleRainbow,
              "Sky": ColorScaleSky,
              "BWR": ColorScaleBWR}
 
-    
 # Color styles
     
 class QudiPalette:
