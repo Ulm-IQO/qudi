@@ -48,11 +48,14 @@ class ColorBar(pg.GraphicsObject):
 
         self.refresh_colorbar(cb_min, cb_max)
 
-    def refresh_colorbar(self, cb_min, cb_max, width = None, height = None, xMin = None, yMin = None):
+    def refresh_colorbar(self, cb_min, cb_max, cmap=None,
+                         width = None, height = None,
+                         xMin = None, yMin = None):
         """ Refresh the appearance of the colorbar for a changed count range.
 
         @param float cb_min: The minimal count value should be passed here.
         @param float cb_max: The maximal count value should be passed here.
+        @param object pyqtgraph.ColorMap cmap: optional, a new colormap.
         @param float width: optional, with that you can change the width of the
                             colorbar in the display.
         """
@@ -61,6 +64,11 @@ class ColorBar(pg.GraphicsObject):
             width = self.width
         else:
             self.width = width
+
+        if cmap is not None:
+            # update colors if needed
+            self.stops, self.colors = cmap.getStops('float')
+            self.stops = (self.stops - self.stops.min())/self.stops.ptp()
 
 #       FIXME: Until now, if you want to refresh the colorbar, a new QPainter
 #              object has been created, but I think that it is not necassary.
