@@ -31,7 +31,8 @@ from core.statusvariable import StatusVar
 from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colordefs import ColorScaleInferno
+from gui.colordefs import colordict as cdict
+#from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitParametersWidget
 from qtpy import QtCore
@@ -91,6 +92,7 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         super(OptimizerSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
+
 class SaveDialog(QtWidgets.QDialog):
     """ Dialog to provide feedback and block GUI while saving """
     def __init__(self, parent, title="Please wait", text="Saving..."):
@@ -106,6 +108,7 @@ class SaveDialog(QtWidgets.QDialog):
         self.hbox.addWidget(self.text)
         self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
         self.setLayout(self.hbox)
+
 
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
@@ -129,6 +132,8 @@ class ConfocalGui(GUIBase):
     adjust_cursor_roi = StatusVar(default=True)
     slider_small_step = StatusVar(default=10e-9)    # initial value in meter
     slider_big_step = StatusVar(default=100e-9)     # initial value in meter
+    xy_colormap_name = StatusVar(default="Inferno")
+    depth_colormap_name = StatusVar(default="Inferno")
 
     # signals
     sigStartOptimizer = QtCore.Signal(list, str)
@@ -155,6 +160,7 @@ class ConfocalGui(GUIBase):
         self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
 
         self._save_dialog = SaveDialog(self._mw)
+
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -565,17 +571,27 @@ class ConfocalGui(GUIBase):
         #################################################################
         #           Connect the colorbar and their actions              #
         #################################################################
-        # Get the colorscale and set the LUTs
-        self.my_colors = ColorScaleInferno()
+    
+        # Initialize the ComboBoxes for the colormap choice
+        self._mw.depth_color_ComboBox.addItems(cdict.keys())
+        self._mw.xy_color_ComboBox.addItems(cdict.keys())
+        # We start with the values from StatusVar
+        self._mw.xy_color_ComboBox.setCurrentText(self.xy_colormap_name)
+        self._mw.depth_color_ComboBox.setCurrentText(self.depth_colormap_name)
 
-        self.xy_image.setLookupTable(self.my_colors.lut)
-        self.depth_image.setLookupTable(self.my_colors.lut)
-        self.xy_refocus_image.setLookupTable(self.my_colors.lut)
+        # Get the colorscale and set the LUTs
+        self.my_colors_depth = cdict[self.xy_colormap_name]()
+        self.my_colors_xy = cdict[self.depth_colormap_name]()
+
+        self.xy_image.setLookupTable(self.my_colors_xy.lut)
+        self.depth_image.setLookupTable(self.my_colors_depth.lut)
+        self.xy_refocus_image.setLookupTable(self.my_colors_xy.lut)
+       
 
         # Create colorbars and add them at the desired place in the GUI. Add
         # also units to the colorbar.
 
-        self.xy_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
+        self.xy_cb = ColorBar(self.my_colors_xy.cmap_normed, width=100, cb_min=0, cb_max=100)
         self.depth_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
@@ -588,6 +604,10 @@ class ConfocalGui(GUIBase):
         self._mw.depth_cb_ViewWidget.setMouseEnabled(x=False, y=False)
 
         self._mw.sigPressKeyBoard.connect(self.keyPressEvent)
+
+        self._mw.xy_color_ComboBox.currentIndexChanged.connect(self.refresh_xy_image)
+        self._mw.xy_color_ComboBox.currentIndexChanged.connect(self.refresh_refocus_image)
+        self._mw.depth_color_ComboBox.currentIndexChanged.connect(self.refresh_depth_image)
 
         # Now that the ROI for xy and depth is connected to events, update the
         # default position and initialize the position of the crosshair and
@@ -756,7 +776,7 @@ class ConfocalGui(GUIBase):
         invert the colorbar if the lower border is bigger then the higher one.
         """
         cb_range = self.get_xy_cb_range()
-        self.xy_cb.refresh_colorbar(cb_range[0], cb_range[1])
+        self.xy_cb.refresh_colorbar(cb_range[0], cb_range[1], cmap=self.my_colors_xy.cmap_normed)
 
     def refresh_depth_colorbar(self):
         """ Adjust the depth colorbar.
@@ -766,7 +786,7 @@ class ConfocalGui(GUIBase):
         invert the colorbar if the lower border is bigger then the higher one.
         """
         cb_range = self.get_depth_cb_range()
-        self.depth_cb.refresh_colorbar(cb_range[0], cb_range[1])
+        self.depth_cb.refresh_colorbar(cb_range[0], cb_range[1], cmap=self.my_colors_depth.cmap_normed)
 
     def disable_scan_actions(self):
         """ Disables the buttons for scanning.
@@ -958,7 +978,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_depth_size()
 
     def ready_clicked(self):
-        """ Stopp the scan if the state has switched to ready. """
+        """ Stop the scan if the state has switched to ready. """
         if self._scanning_logic.module_state() == 'locked':
             self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
@@ -1388,6 +1408,10 @@ class ConfocalGui(GUIBase):
 
         cb_range = self.get_xy_cb_range()
 
+        # change colors
+        self.xy_colormap_name = self._mw.xy_color_ComboBox.currentText()
+        self.my_colors_xy = cdict[self.xy_colormap_name]()
+        self.xy_image.setLookupTable(self.my_colors_xy.lut)
         # Now update image with new color scale, and update colorbar
         self.xy_image.setImage(image=xy_image_data, levels=(cb_range[0], cb_range[1]))
         self.refresh_xy_colorbar()
@@ -1408,6 +1432,10 @@ class ConfocalGui(GUIBase):
         depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
         cb_range = self.get_depth_cb_range()
 
+        # change colors
+        self.depth_colormap_name = self._mw.depth_color_ComboBox.currentText()
+        self.my_colors_depth = cdict[self.depth_colormap_name]()
+        self.depth_image.setLookupTable(self.my_colors_depth.lut)
         # Now update image with new color scale, and update colorbar
         self.depth_image.setImage(image=depth_image_data, levels=(cb_range[0], cb_range[1]))
         self.refresh_depth_colorbar()
@@ -1427,6 +1455,11 @@ class ConfocalGui(GUIBase):
             colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
             colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
 
+            # change colors
+            self.xy_colormap_name = self._mw.xy_color_ComboBox.currentText()
+            self.my_colors_xy = cdict[self.xy_colormap_name]()
+            self.xy_refocus_image.setLookupTable(self.my_colors_xy.lut)
+            # change image
             self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max))
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
