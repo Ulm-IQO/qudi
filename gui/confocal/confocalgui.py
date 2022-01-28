@@ -132,8 +132,6 @@ class ConfocalGui(GUIBase):
     adjust_cursor_roi = StatusVar(default=True)
     slider_small_step = StatusVar(default=10e-9)    # initial value in meter
     slider_big_step = StatusVar(default=100e-9)     # initial value in meter
-    xy_colormap_name = StatusVar(default="Inferno")
-    depth_colormap_name = StatusVar(default="Inferno")
 
     # signals
     sigStartOptimizer = QtCore.Signal(list, str)
@@ -196,6 +194,8 @@ class ConfocalGui(GUIBase):
         # Load the images for xy and depth in the display:
         self.xy_image = ScanImageItem(image=raw_data_xy, axisOrder='row-major')
         self.depth_image = ScanImageItem(image=raw_data_depth, axisOrder='row-major')
+        self.xy_colormap_name = self._scanning_logic.xy_colormap_name
+        self.depth_colormap_name = self._scanning_logic.depth_colormap_name
 
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -592,7 +592,7 @@ class ConfocalGui(GUIBase):
         # also units to the colorbar.
 
         self.xy_cb = ColorBar(self.my_colors_xy.cmap_normed, width=100, cb_min=0, cb_max=100)
-        self.depth_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
+        self.depth_cb = ColorBar(self.my_colors_depth.cmap_normed, width=100, cb_min=0, cb_max=100)
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
         self._mw.xy_cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
@@ -1412,6 +1412,8 @@ class ConfocalGui(GUIBase):
         self.xy_colormap_name = self._mw.xy_color_ComboBox.currentText()
         self.my_colors_xy = cdict[self.xy_colormap_name]()
         self.xy_image.setLookupTable(self.my_colors_xy.lut)
+        self._scanning_logic.xy_colormap_name = self.xy_colormap_name
+        
         # Now update image with new color scale, and update colorbar
         self.xy_image.setImage(image=xy_image_data, levels=(cb_range[0], cb_range[1]))
         self.refresh_xy_colorbar()
@@ -1436,6 +1438,8 @@ class ConfocalGui(GUIBase):
         self.depth_colormap_name = self._mw.depth_color_ComboBox.currentText()
         self.my_colors_depth = cdict[self.depth_colormap_name]()
         self.depth_image.setLookupTable(self.my_colors_depth.lut)
+        self._scanning_logic.depth_colormap_name = self.depth_colormap_name
+        
         # Now update image with new color scale, and update colorbar
         self.depth_image.setImage(image=depth_image_data, levels=(cb_range[0], cb_range[1]))
         self.refresh_depth_colorbar()

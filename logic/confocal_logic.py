@@ -261,6 +261,8 @@ class ConfocalLogic(GenericLogic):
     _clock_frequency = StatusVar('clock_frequency', 500)
     return_slowness = StatusVar(default=50)
     max_history_length = StatusVar(default=10)
+    xy_colormap_name = StatusVar(default="Inferno")
+    depth_colormap_name = StatusVar(default="Inferno")
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -1065,7 +1067,8 @@ class ConfocalLogic(GenericLogic):
         self.signal_depth_data_saved.emit()
         return
 
-    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
+    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None,
+                    percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
@@ -1085,6 +1088,11 @@ class ConfocalLogic(GenericLogic):
         """
         if scan_axis is None:
             scan_axis = ['X', 'Y']
+
+        if scan_axis == ['X', 'Y']:
+            cmap_name = self.xy_colormap_name.lower()
+        else:
+            cmap_name = self.depth_colormap_name.lower()
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
@@ -1131,7 +1139,7 @@ class ConfocalLogic(GenericLogic):
 
         # Create image plot
         cfimage = ax.imshow(image_data,
-                            cmap=plt.get_cmap('inferno'), # reference the right place in qd
+                            cmap=cmap_name, # reference the right place in qd
                             origin="lower",
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],
