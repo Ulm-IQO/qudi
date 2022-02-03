@@ -118,7 +118,7 @@ class ZaberAxis(Base):
         @return float: the value of the axis either in m.
         """
 
-        self._axis.get_position()
+        return self._axis.get_position(Units.LENGTH_METRES)
 
     def move_rel(self, distance, wait_until_done=False, force_no_backslash_corr=False):
         """ Moves the motor a relative distance specified.
@@ -286,7 +286,7 @@ class ZaberStage(Base, MotorInterface):
                     label = axis_label
 
                     if device.axis_count == 1:
-                        axis = device[0].get_axis(1)
+                        axis = device.get_axis(1)
                         self._axis_dict[axis_label] = ZaberAxis(axis, device, label)
                         self._device_list.append(device)
                     else:
@@ -299,10 +299,8 @@ class ZaberStage(Base, MotorInterface):
             self.log.debug(f"Successfully connected to devices {self._device_list}")
             self.check_and_unpark_on_startup()
 
-        except BaseException:
-            self.log.error(f"Couldn't connect to Zaber stage on port {self._serial_port}")
-
-        finally:
+        except BaseException as e:
+            self.log.error(f"Couldn't connect to Zaber stage on port {self._serial_port}: {str(e)}")
             if self._connection:
                 self._connection.close()
 
@@ -319,8 +317,9 @@ class ZaberStage(Base, MotorInterface):
         if self._connection:
 
             self.toggle_park(True)
-            self.log.info(f"Parking stage at {self.get_pos()} in preparation of power-off. "
-                          f"Don't mechanically force movement to ensure accurate position after power cycle.")
+            if self._device_list:
+                self.log.info(f"Parking stage at {self.get_pos()} in preparation of power-off. "
+                              f"Don't mechanically force movement to ensure accurate position after power cycle.")
 
             try:
                 self._connection.close()
@@ -604,10 +603,13 @@ class ZaberStage(Base, MotorInterface):
                 self._axis_dict[label_axis].set_velocity(desired_vel)
 
     def toggle_park(self, set_parked):
+
+        if self._device_list:
+            self.log.info("Parking all devices, all axes. Won't move until unparked.")
+
         for dev in self._device_list:
             if set_parked:
                 dev.all_axes.park()
-                self.log.info("Parking all axes. Won't move until unparked.")
             else:
                 dev.all_axes.unpark()
 
