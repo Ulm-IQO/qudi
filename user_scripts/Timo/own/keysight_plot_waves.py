@@ -356,7 +356,7 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "pulsedODMR.bin"
+    file = r"C:\qudi\pulsed_files" + "/" + "DEER_DD_freq_ch1.bin"
     file2 = r"C:\qudi\pulsed_files" + "/" + "ramsey_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
