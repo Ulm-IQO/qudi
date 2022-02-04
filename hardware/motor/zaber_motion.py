@@ -68,8 +68,8 @@ class ZaberAxis(Base):
 
         return default_constr
 
-    def set_constraints(self, contraints_dict):
-        for key, val in contraints_dict.items():
+    def set_constraints(self, constraints_dict):
+        for key, val in constraints_dict.items():
             self._constraints[key] = val
 
     def get_hardware_info(self):
@@ -385,7 +385,6 @@ class ZaberStage(Base, MotorInterface):
         A smart idea would be to ask the position after the movement.
         """
         curr_pos_dict = self.get_pos()
-        constraints = self.get_constraints()
 
         for label_axis in self._axis_dict:
 
@@ -393,22 +392,7 @@ class ZaberStage(Base, MotorInterface):
                 move = param_dict[label_axis]
                 curr_pos = curr_pos_dict[label_axis]
 
-                if (curr_pos + move > constraints[label_axis]['pos_max']) or\
-                   (curr_pos + move < constraints[label_axis]['pos_min']):
-
-                    self.log.warning('Cannot make further relative movement '
-                                     'of the axis "{0}" since the motor is at '
-                                     'position {1} and with the step of {2} it would '
-                                     'exceed the allowed border [{3},{4}]! Movement '
-                                     'is ignored!'.format(
-                                         label_axis,
-                                         move,
-                                         curr_pos,
-                                         constraints[label_axis]['pos_min'],
-                                         constraints[label_axis]['pos_max']
-                                     )
-                                     )
-                else:
+                if self._check_in_range(curr_pos + move, label_axis, ['pos_min', 'pos_max']):
                     self._axis_dict[label_axis].move_rel(move)
 
         if wait_until_done:
@@ -424,22 +408,12 @@ class ZaberStage(Base, MotorInterface):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
         """
-        constraints = self.get_constraints()
 
         for label_axis in self._axis_dict:
             if param_dict.get(label_axis) is not None:
                 desired_pos = param_dict[label_axis]
 
-                constr = constraints[label_axis]
-                if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
-
-                    self.log.warning(
-                        'Cannot make absolute movement of the '
-                        'axis "{0}" to position {1}, since it exceeds '
-                        'the limts [{2},{3}]. Movement is ignored!'
-                        ''.format(label_axis, desired_pos, constr['pos_min'], constr['pos_max'])
-                    )
-                else:
+                if self._check_in_range(desired_pos, label_axis, ['pos_min', 'pos_max']):
                     # move all axes simultanously
                     self._axis_dict[label_axis].move_abs(desired_pos, wait_until_done=False)
 
@@ -584,21 +558,12 @@ class ZaberStage(Base, MotorInterface):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
         """
-        constraints = self.get_constraints()
 
         for label_axis in param_dict:
             if label_axis in self._axis_dict:
                 desired_vel = param_dict[label_axis]
-                constr = constraints[label_axis]
-                if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
 
-                    self.log.warning(
-                        'Cannot set velocity of the axis "{0}" '
-                        'to the desired velocity of "{1}", since it '
-                        'exceeds the limts [{2},{3}] ! Command is ignored!'
-                        ''.format(label_axis, desired_vel, constr['vel_min'], constr['vel_max'])
-                    )
-                else:
+                if self._check_in_range(desired_vel, label_axis, ['vel_min', 'vel_max']):
                     self._axis_dict[label_axis].set_velocity(desired_vel)
 
     def get_acceleration(self, param_list=None):
@@ -661,3 +626,14 @@ class ZaberStage(Base, MotorInterface):
             self.toggle_park(False)
             self.log.debug(f"Unparking on startup from recovered position: {self.get_pos()}")
 
+    def _check_in_range(self, value, axis_label, constr_range=['pos_min', 'pos_max']):
+        constraints = self.get_constraints()[axis_label]
+        c_min = constr_range[0]
+        c_max = constr_range[1]
+
+        if value < constraints[c_min] or value > constraints[c_max]:
+            self.log.warning(f"Value check failed on axis {axis_label}. {value} is outside of "
+                             f"range {c_min}/{c_max}= {constraints[c_min]}, {constraints[c_max]}")
+            return False
+
+        return True
