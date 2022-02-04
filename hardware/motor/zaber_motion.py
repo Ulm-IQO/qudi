@@ -113,7 +113,7 @@ class ZaberStage(Base, MotorInterface):
                     else:
                         self.log.error(f"Found {device[0].get_axis(1)} axes on device {device}; "
                                        f"but expected a daisy-chained topology"
-                                       " where every stage is a device with exactly one axis")
+                                       " where every stage is a device with exactly one axis.")
                 else:
                     self.log.warning(f"Couldn't find device with serial {serialnumber}")
 
@@ -571,9 +571,11 @@ class ZaberAxis(Base):
                 self.move_rel(distance, wait_until_done=wait_until_done,
                               force_no_backslash_corr=True)
             else:
+                # hw dowsn't allow two non-blocking consecutive cmds
+                # look into Zaber command streaming if needed
                 self._axis.move_relative(distance - self._backlash_correction_offset,
                                          Units.LENGTH_METRES,
-                                         wait_until_idle=wait_until_done)
+                                         wait_until_idle=True)
                 self._axis.move_relative(self._backlash_correction_offset,
                                          Units.LENGTH_METRES,
                                          wait_until_idle=wait_until_done)
@@ -598,9 +600,11 @@ class ZaberAxis(Base):
                 self.move_abs(position, wait_until_done=wait_until_done,
                               force_no_backslash_corr=True)
             else:
+                # hw dowsn't allow two non-blocking consecutive cmds
+                # look into Zaber command streaming if needed
                 self._axis.move_absolute(position - self._backlash_correction_offset,
                                          Units.LENGTH_METRES,
-                                         wait_until_idle=wait_until_done)
+                                         wait_until_idle=True)
                 self._axis.move_relative(self._backlash_correction_offset,
                                          Units.LENGTH_METRES,
                                          wait_until_idle=wait_until_done)
