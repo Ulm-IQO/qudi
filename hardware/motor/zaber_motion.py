@@ -31,193 +31,15 @@ from zaber_motion.ascii import Connection as zcon
 from zaber_motion import Units
 
 
-class ZaberAxis(Base):
-
-    def __init__(self, axis_handle, device_parent, label=''):
-        """
-        Initializer called from a ZaberStage that manages the connection
-        """
-        self._axis = axis_handle
-        self._contr_device = device_parent
-
-        self.label = label
-        self._wait_until_done_default = False
-        self._constraints = {}
-
-        self._backlash_correction = False
-        self._backlash_correction_offset = 0e-9
-
-    def get_constrains(self):
-        default_constr = {
-            'pos_min': None,
-            'pos_max': None,
-             # todo: actually used in any way or wait until raise from Zaber?
-            'vel_min': None,
-            'vel_max': None,
-            'acc_min': None,
-            'acc_max': None
-        }
-
-        # update constraints by the ones loaded from config by ZaberStage
-        for key, val in self._constraints.items():
-            if key in default_constr:
-                default_constr.update({key: val})
-            else:
-                self.log.warning(f"Found key {key} in constraints "
-                                 f"that is not defined in get_constraints()")
-
-        return default_constr
-
-    def set_constraints(self, constraints_dict):
-        for key, val in constraints_dict.items():
-            self._constraints[key] = val
-
-    def get_hardware_info(self):
-        """ Get information from the hardware"""
-
-        return self._contr_device.identity()
-
-    def get_velocity(self):
-        """ Get the current velocity setting
-        """
-        return self._axis.settings.get("maxspeed", Units.VELOCITY_METRES_PER_SECOND)
-
-    def set_acceleration(self, acceleration):
-        self._axis.settings.set("accel", acceleration, Units.ACCELERATION_METRES_PER_SECOND_SQUARED)
-
-    def get_acceleration(self):
-
-        return self._axis.settings.get("accel",  Units.ACCELERATION_METRES_PER_SECOND_SQUARED)
-
-    def set_velocity(self, velocity):
-        """ Set the maximal velocity (of the velocity profile) for the motor movement.
-        Raises if value is out of device range.
-
-        @param float maxVel: maximal velocity of the stage in m/s.
-        """
-        self._axis.settings.set("maxspeed", velocity, Units.VELOCITY_METRES_PER_SECOND)
-
-    def get_closed_loop_settings(self):
-        info_dict = {"enabled": self._axis.settings.get('cloop.enable'),
-                     "continuous": self._axis.settings.get('cloop.continuous.enable'),
-                     "displace.tolerance": self._axis.settings.get('cloop.displace.tolerance'),
-                     "settle.period": self._axis.settings.get('cloop.settle.period'),
-                     "timeout": self._axis.settings.get(' cloop.timeout'),
-                     "settle.tolerance": self._axis.settings.get('cloop.settle.tolerance'),
-                     "recovery.enable": self._axis.settings.get('cloop.recovery.enable')}
-
-        return info_dict
-
-    def set_closed_loop(self):
-        raise NotImplementedError
-
-    def get_pos(self):
-        """ Obtain the current absolute position of the stage.
-
-        @return float: the value of the axis either in m.
-        """
-
-        return self._axis.get_position(Units.LENGTH_METRES)
-
-    def move_rel(self, distance, wait_until_done=False, force_no_backslash_corr=False):
-        """ Moves the motor a relative distance specified.
-        If backlash correction is activated, movements in negative direction are over-shot
-        and the target position is approached (always) in positive direction.
-
-
-        @param float relDistance: Relative position desired, in m.
-        """
-
-        wait_until_done = self.get_wait_until_done(wait_until_done)
-
-        if not self._backlash_correction or force_no_backslash_corr:
-            self._axis.move_relative(distance, Units.LENGTH_METRES,
-                                     wait_until_idle=wait_until_done)
-        else:
-            if distance > 0:
-                # move normally in positive direction
-                self.move_rel(distance, wait_until_done=wait_until_done,
-                              force_no_backslash_corr=True)
-            else:
-                self._axis.move_relative(distance - self._backlash_correction_offset,
-                                        Units.LENGTH_METRES,
-                                        wait_until_done=wait_until_done)
-                self._axis.move_relative(self._backlash_correction_offset,
-                                        Units.LENGTH_METRES,
-                                        wait_until_done=wait_until_done)
-
-    def move_abs(self, position, wait_until_done=None, force_no_backslash_corr=False):
-        """ Moves the motor to the absolute position specified.
-        If backlash correction is activated, movements in negative direction are over-shot
-        and the target position is approached (always) in positive direction.
-
-        @param float position: absolute Position desired, in m.
-        """
-
-        wait_until_done = self.get_wait_until_done(wait_until_done)
-
-        if not self._backlash_correction or force_no_backslash_corr:
-            self._axis.move_absolute(position, Units.LENGTH_METRES, wait_until_idle=wait_until_done)
-
-        else:
-            current_pos = self._axis.get_position()
-            if current_pos < position:
-                # move normally in positive direction
-                self.move_abs(position, wait_until_done=wait_until_done,
-                              force_no_backslash_corr=True)
-            else:
-                self._axis.move_absolute(position - self._backlash_correction_offset,
-                                         Units.LENGTH_METRES,
-                                         wait_until_done=wait_until_done)
-                self._axis.move_relative(self._backlash_correction_offset,
-                                         Units.LENGTH_METRES,
-                                         wait_until_done=wait_until_done)
-
-    def get_wait_until_done(self, wait_until_done=None):
-        # argument overwrites axis setting
-        if wait_until_done != None:
-            return wait_until_done
-        else:
-            return self._wait_until_done_default
-
-    def toggle_wait_until_done(self, wait_until_done):
-        self._wait_until_done_default = wait_until_done
-
-    def _wait_until_idle(self):
-        self._axis.wait_until_idle()
-
-    def toggle_backlash(self, set_on=True, backlash_offset=None):
-        self._backlash_correction = set_on
-
-        if backlash_offset:
-            self._backlash_correction_offset = backlash_offset
-
-    def get_status(self):
-        info_dict = {'busy': self._axis.is_busy(),
-                     'parked': self._axis.is_parked(),
-                     'warnings': self._contr_device.warnings.get_flags()}
-
-        return info_dict
-
-    def identify(self):
-        """ Causes the motor to blink the Active LED. """
-        raise NotImplemented
-
-    def go_home(self, wait_until_done=None):
-
-        wait_until_done = self.get_wait_until_done(wait_until_done)
-
-        self._axis.home(wait_until_done=wait_until_done)
-
-
 class ZaberStage(Base, MotorInterface):
 
     """ Control class for an arbitrary collection of ZaberMotor axes.
 
     The required config file entries are based around a few key ideas:
-      - There needs to be a list of axes, so that everything can be "iterated" across this list.
+      - There needs to be a list of axes, so that everything can be iterated across this list.
       - There are some config options for each axis that are all in sub-dictionary of the config file.
         The key is the axis label.
+      - Axis constraints are optional and allow to narrow movement parameters below the device capabilities
 
     A config file entry for a linear xy-axis stage would look like:
 
@@ -232,24 +54,24 @@ class ZaberStage(Base, MotorInterface):
                 backlash_offset: 50e-6
                 wait_until_done: False
                 constraints:
-                    pos_min: 0
-                    pos_max: 200e-3
-                    vel_min: 1.0e-3
-                    vel_max: 10.0e-2
-                    acc_min: 4.0e-2
-                    acc_max: 20.0e-1
+                    pos_min: None
+                    #pos_max: 200e-3
+                    #vel_min: 1.0e-3
+                    #vel_max: 10.0e-2
+                    #acc_min: 4.0e-2
+                    #acc_max: 20.0e-1
             y:
                 serial_num: 00000001
                 backlash_correction: False
                 backlash_offset: 50e-6
                 wait_until_done: False
                 constraints:
-                    pos_min: 0
-                    pos_max: 200e-3
-                    vel_min: 1.0e-3
-                    vel_max: 10.0e-2
-                    acc_min: 4.0e-2
-                    acc_max: 20.0e-1
+                    pos_min: None
+                    #pos_max: 200e-3
+                    #vel_min: 1.0e-3
+                    #vel_max: 10.0e-2
+                    #acc_min: 4.0e-2
+                    #acc_max: 20.0e-1
 
     """
 
@@ -631,9 +453,191 @@ class ZaberStage(Base, MotorInterface):
         c_min = constr_range[0]
         c_max = constr_range[1]
 
+        constraints[c_min] = -float("inf") if not constraints[c_min] else constraints[c_min]
+        constraints[c_max] = float("inf") if not constraints[c_max] else constraints[c_max]
+
         if value < constraints[c_min] or value > constraints[c_max]:
             self.log.warning(f"Value check failed on axis {axis_label}. {value} is outside of "
                              f"range {c_min}/{c_max}= {constraints[c_min]}, {constraints[c_max]}")
             return False
 
         return True
+
+class ZaberAxis(Base):
+
+    def __init__(self, axis_handle, device_parent, label=''):
+        """
+        Initializer called from a ZaberStage that manages the connection
+        """
+        self._axis = axis_handle
+        self._contr_device = device_parent
+
+        self.label = label
+        self._wait_until_done_default = False
+        self._constraints = {}
+
+        self._backlash_correction = False
+        self._backlash_correction_offset = 0e-9
+
+    def get_constrains(self):
+        default_constr = {
+            'pos_min': None,
+            'pos_max': None,
+            'vel_min': None,
+            'vel_max': None,
+            'acc_min': None,
+            'acc_max': None
+        }
+
+        # update constraints by the ones loaded from config by ZaberStage
+        for key, val in self._constraints.items():
+            if key in default_constr:
+                default_constr.update({key: val})
+            else:
+                self.log.warning(f"Found key {key} in constraints "
+                                 f"that is not defined in get_constraints()")
+
+        return default_constr
+
+    def set_constraints(self, constraints_dict):
+        for key, val in constraints_dict.items():
+            val = None if val == "None" else val
+            self._constraints[key] = val
+
+    def get_hardware_info(self):
+        """ Get information from the hardware"""
+
+        return self._contr_device.identity()
+
+    def get_velocity(self):
+        """ Get the current velocity setting
+        """
+        return self._axis.settings.get("maxspeed", Units.VELOCITY_METRES_PER_SECOND)
+
+    def set_acceleration(self, acceleration):
+        self._axis.settings.set("accel", acceleration, Units.ACCELERATION_METRES_PER_SECOND_SQUARED)
+
+    def get_acceleration(self):
+
+        return self._axis.settings.get("accel",  Units.ACCELERATION_METRES_PER_SECOND_SQUARED)
+
+    def set_velocity(self, velocity):
+        """ Set the maximal velocity (of the velocity profile) for the motor movement.
+        Raises if value is out of device range.
+
+        @param float maxVel: maximal velocity of the stage in m/s.
+        """
+        self._axis.settings.set("maxspeed", velocity, Units.VELOCITY_METRES_PER_SECOND)
+
+    def get_closed_loop_settings(self):
+        info_dict = {"enabled": self._axis.settings.get('cloop.enable'),
+                     "continuous": self._axis.settings.get('cloop.continuous.enable'),
+                     "displace.tolerance": self._axis.settings.get('cloop.displace.tolerance'),
+                     "settle.period": self._axis.settings.get('cloop.settle.period'),
+                     "timeout": self._axis.settings.get(' cloop.timeout'),
+                     "settle.tolerance": self._axis.settings.get('cloop.settle.tolerance'),
+                     "recovery.enable": self._axis.settings.get('cloop.recovery.enable')}
+
+        return info_dict
+
+    def set_closed_loop(self):
+        raise NotImplementedError
+
+    def get_pos(self):
+        """ Obtain the current absolute position of the stage.
+
+        @return float: the value of the axis either in m.
+        """
+
+        return self._axis.get_position(Units.LENGTH_METRES)
+
+    def move_rel(self, distance, wait_until_done=False, force_no_backslash_corr=False):
+        """ Moves the motor a relative distance specified.
+        If backlash correction is activated, movements in negative direction are over-shot
+        and the target position is approached (always) in positive direction.
+
+
+        @param float relDistance: Relative position desired, in m.
+        """
+
+        wait_until_done = self.get_wait_until_done(wait_until_done)
+
+        if not self._backlash_correction or force_no_backslash_corr:
+            self._axis.move_relative(distance, Units.LENGTH_METRES,
+                                     wait_until_idle=wait_until_done)
+        else:
+            if distance > 0:
+                # move normally in positive direction
+                self.move_rel(distance, wait_until_done=wait_until_done,
+                              force_no_backslash_corr=True)
+            else:
+                self._axis.move_relative(distance - self._backlash_correction_offset,
+                                         Units.LENGTH_METRES,
+                                         wait_until_idle=wait_until_done)
+                self._axis.move_relative(self._backlash_correction_offset,
+                                         Units.LENGTH_METRES,
+                                         wait_until_idle=wait_until_done)
+
+    def move_abs(self, position, wait_until_done=None, force_no_backslash_corr=False):
+        """ Moves the motor to the absolute position specified.
+        If backlash correction is activated, movements in negative direction are over-shot
+        and the target position is approached (always) in positive direction.
+
+        @param float position: absolute Position desired, in m.
+        """
+
+        wait_until_done = self.get_wait_until_done(wait_until_done)
+
+        if not self._backlash_correction or force_no_backslash_corr:
+            self._axis.move_absolute(position, Units.LENGTH_METRES, wait_until_idle=wait_until_done)
+
+        else:
+            current_pos = self._axis.get_position()
+            if current_pos < position:
+                # move normally in positive direction
+                self.move_abs(position, wait_until_done=wait_until_done,
+                              force_no_backslash_corr=True)
+            else:
+                self._axis.move_absolute(position - self._backlash_correction_offset,
+                                         Units.LENGTH_METRES,
+                                         wait_until_idle=wait_until_done)
+                self._axis.move_relative(self._backlash_correction_offset,
+                                         Units.LENGTH_METRES,
+                                         wait_until_idle=wait_until_done)
+
+    def get_wait_until_done(self, wait_until_done=None):
+        # argument overwrites axis setting
+        if wait_until_done != None:
+            return wait_until_done
+        else:
+            return self._wait_until_done_default
+
+    def toggle_wait_until_done(self, wait_until_done):
+        self._wait_until_done_default = wait_until_done
+
+    def _wait_until_idle(self):
+        self._axis.wait_until_idle()
+
+    def toggle_backlash(self, set_on=True, backlash_offset=None):
+        self._backlash_correction = set_on
+
+        if backlash_offset:
+            self._backlash_correction_offset = backlash_offset
+
+    def get_status(self):
+        info_dict = {'busy': self._axis.is_busy(),
+                     'parked': self._axis.is_parked(),
+                     'warnings': self._contr_device.warnings.get_flags()}
+
+        return info_dict
+
+    def identify(self):
+        """ Causes the motor to blink the Active LED. """
+        raise NotImplemented
+
+    def go_home(self, wait_until_done=None):
+
+        wait_until_done = self.get_wait_until_done(wait_until_done)
+
+        self._axis.home(wait_until_idle=wait_until_done)
+
