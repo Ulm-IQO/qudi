@@ -64,7 +64,7 @@ class ZaberAxis(Base):
                 default_constr.update({key: val})
             else:
                 self.log.warning(f"Found key {key} in constraints "
-                                 f"that is not defined in get_constarints()")
+                                 f"that is not defined in get_constraints()")
 
         return default_constr
 
@@ -80,10 +80,9 @@ class ZaberAxis(Base):
     def get_velocity(self):
         """ Get the current velocity setting
         """
-        self._axis.settings.get("maxspeed", Units.VELOCITY_METERS_PER_SECOND)
+        return self._axis.settings.get("maxspeed", Units.VELOCITY_METRES_PER_SECOND)
 
     def set_acceleration(self, acceleration):
-        # todo: check whether we have to check against contrasint values manually
         self._axis.settings.set("accel", acceleration, Units.ACCELERATION_METRES_PER_SECOND_SQUARED)
 
     def get_acceleration(self):
@@ -91,12 +90,12 @@ class ZaberAxis(Base):
         return self._axis.settings.get("accel",  Units.ACCELERATION_METRES_PER_SECOND_SQUARED)
 
     def set_velocity(self, velocity):
-        """ Set the maximal velocity for the motor movement.
+        """ Set the maximal velocity (of the velocity profile) for the motor movement.
+        Raises if value is out of device range.
 
         @param float maxVel: maximal velocity of the stage in m/s.
         """
-        # todo: check whether we have to check against contrasint values manually
-        self._axis.settings.set("maxspeed", velocity, Units.VELOCITY_METERS_PER_SECOND)
+        self._axis.settings.set("maxspeed", velocity, Units.VELOCITY_METRES_PER_SECOND)
 
     def get_closed_loop_settings(self):
         info_dict = {"enabled": self._axis.settings.get('cloop.enable'),
@@ -234,23 +233,23 @@ class ZaberStage(Base, MotorInterface):
                 wait_until_done: False
                 constraints:
                     pos_min: 0
-                    pos_max: 2
-                    vel_min: 1.0
-                    vel_max: 10.0
-                    acc_min: 4.0
-                    acc_max: 10.0
+                    pos_max: 200e-3
+                    vel_min: 1.0e-3
+                    vel_max: 10.0e-2
+                    acc_min: 4.0e-2
+                    acc_max: 20.0e-1
             y:
                 serial_num: 00000001
                 backlash_correction: False
                 backlash_offset: 50e-6
                 wait_until_done: False
                 constraints:
-                    pos_min: -1
-                    pos_max: 1
-                    vel_min: 1.0
-                    vel_max: 10.0
-                    acc_min: 4.0
-                    acc_max: 10.0
+                    pos_min: 0
+                    pos_max: 200e-3
+                    vel_min: 1.0e-3
+                    vel_max: 10.0e-2
+                    acc_min: 4.0e-2
+                    acc_max: 20.0e-1
 
     """
 
@@ -291,7 +290,7 @@ class ZaberStage(Base, MotorInterface):
                         self._device_list.append(device)
                     else:
                         self.log.error(f"Found {device[0].get_axis(1)} axes on device {device}; "
-                                       f"but expected a daisy-chained topology daisy-chained topology"
+                                       f"but expected a daisy-chained topology"
                                        " where every stage is a device with exactly one axis")
                 else:
                     self.log.warning(f"Couldn't find device with serial {serialnumber}")
@@ -599,12 +598,35 @@ class ZaberStage(Base, MotorInterface):
                         'exceeds the limts [{2},{3}] ! Command is ignored!'
                         ''.format(label_axis, desired_vel, constr['vel_min'], constr['vel_max'])
                     )
-            else:
-                self._axis_dict[label_axis].set_velocity(desired_vel)
+                else:
+                    self._axis_dict[label_axis].set_velocity(desired_vel)
+
+    def get_acceleration(self, param_list=None):
+        """ Gets the current acceleration for all connected axes.
+
+        @param dict param_list: optional, if a specific velocity of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed as the param_list.
+                                If nothing is passed, then from each axis the
+                                velocity is asked.
+
+        @return dict : with the axis label as key and the velocity as item.
+        """
+
+        vel = {}
+        if param_list is not None:
+            for label_axis in param_list:
+                if label_axis in self._axis_dict:
+                    vel[label_axis] = self._axis_dict[label_axis].get_acceleration()
+        else:
+            for label_axis in self._axis_dict:
+                vel[label_axis] = self._axis_dict[label_axis].get_acceleration()
+
+        return vel
 
     def toggle_park(self, set_parked):
 
-        if self._device_list:
+        if self._device_list and set_parked:
             self.log.info("Parking all devices, all axes. Won't move until unparked.")
 
         for dev in self._device_list:
