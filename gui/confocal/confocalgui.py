@@ -91,6 +91,7 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
         super(OptimizerSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
+
 class SaveDialog(QtWidgets.QDialog):
     """ Dialog to provide feedback and block GUI while saving """
     def __init__(self, parent, title="Please wait", text="Saving..."):
@@ -106,6 +107,7 @@ class SaveDialog(QtWidgets.QDialog):
         self.hbox.addWidget(self.text)
         self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
         self.setLayout(self.hbox)
+
 
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
@@ -155,6 +157,7 @@ class ConfocalGui(GUIBase):
         self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
 
         self._save_dialog = SaveDialog(self._mw)
+
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -327,39 +330,45 @@ class ConfocalGui(GUIBase):
                                                 self._scanning_logic.z_range[1])
 
         # set the maximal ranges for the imagerange from the logic:
-        self._mw.x_min_InputWidget.setRange(self._scanning_logic.x_range[0],
+        self._mw.x_window_InputWidget.setRange(self._scanning_logic.x_range[0],
                                             self._scanning_logic.x_range[1])
-        self._mw.x_max_InputWidget.setRange(self._scanning_logic.x_range[0],
+        self._mw.x_offset_InputWidget.setRange(self._scanning_logic.x_range[0],
                                             self._scanning_logic.x_range[1])
-        self._mw.y_min_InputWidget.setRange(self._scanning_logic.y_range[0],
+        self._mw.y_window_InputWidget.setRange(self._scanning_logic.y_range[0],
                                             self._scanning_logic.y_range[1])
-        self._mw.y_max_InputWidget.setRange(self._scanning_logic.y_range[0],
+        self._mw.y_offset_InputWidget.setRange(self._scanning_logic.y_range[0],
                                             self._scanning_logic.y_range[1])
-        self._mw.z_min_InputWidget.setRange(self._scanning_logic.z_range[0],
+        self._mw.z_window_InputWidget.setRange(self._scanning_logic.z_range[0],
                                             self._scanning_logic.z_range[1])
-        self._mw.z_max_InputWidget.setRange(self._scanning_logic.z_range[0],
+        self._mw.z_offset_InputWidget.setRange(self._scanning_logic.z_range[0],
                                             self._scanning_logic.z_range[1])
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
-        self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
-        self._mw.x_max_InputWidget.setValue(self._scanning_logic.image_x_range[1])
-        self._mw.y_min_InputWidget.setValue(self._scanning_logic.image_y_range[0])
-        self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
-        self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
-        self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
+        self._mw.x_window_InputWidget.setValue(self._scanning_logic.image_x_range[1] -
+                                               self._scanning_logic.image_x_range[0])
+        self._mw.x_offset_InputWidget.setValue((self._scanning_logic.image_x_range[1] +
+                                                self._scanning_logic.image_x_range[0])/2)
+        self._mw.y_window_InputWidget.setValue(self._scanning_logic.image_y_range[1] -
+                                               self._scanning_logic.image_y_range[0])
+        self._mw.y_offset_InputWidget.setValue((self._scanning_logic.image_y_range[1] +
+                                                self._scanning_logic.image_y_range[0])/2)
+        self._mw.z_window_InputWidget.setValue(self._scanning_logic.image_z_range[1] -
+                                               self._scanning_logic.image_z_range[0])
+        self._mw.z_offset_InputWidget.setValue((self._scanning_logic.image_z_range[1] +
+                                                self._scanning_logic.image_z_range[0])/2)
 
         if self.default_meter_prefix:
             self._mw.x_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
             self._mw.y_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
             self._mw.z_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
-            self._mw.x_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.x_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.y_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
-            self._mw.z_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_window_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_offset_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_window_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_offset_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_window_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_offset_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
@@ -378,12 +387,15 @@ class ConfocalGui(GUIBase):
         self._mw.xy_res_InputWidget.editingFinished.connect(self.change_xy_resolution)
         self._mw.z_res_InputWidget.editingFinished.connect(self.change_z_resolution)
 
-        self._mw.x_min_InputWidget.editingFinished.connect(self.change_x_image_range)
-        self._mw.x_max_InputWidget.editingFinished.connect(self.change_x_image_range)
-        self._mw.y_min_InputWidget.editingFinished.connect(self.change_y_image_range)
-        self._mw.y_max_InputWidget.editingFinished.connect(self.change_y_image_range)
-        self._mw.z_min_InputWidget.editingFinished.connect(self.change_z_image_range)
-        self._mw.z_max_InputWidget.editingFinished.connect(self.change_z_image_range)
+        self._mw.x_window_InputWidget.editingFinished.connect(self.change_x_image_range)
+        self._mw.x_offset_InputWidget.editingFinished.connect(self.change_x_image_range)
+        self._mw.y_window_InputWidget.editingFinished.connect(self.change_y_image_range)
+        self._mw.y_offset_InputWidget.editingFinished.connect(self.change_y_image_range)
+        self._mw.z_window_InputWidget.editingFinished.connect(self.change_z_image_range)
+        self._mw.z_offset_InputWidget.editingFinished.connect(self.change_z_image_range)
+
+         # connect the cursor to offset function
+        self._mw.pushButton_cursor_to_offset.clicked.connect(self.cursor_to_offset)
 
         # Connect the change of the viewed area to an adjustment of the ROI:
         self.adjust_cursor_roi = True
@@ -783,12 +795,12 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_optimize_position.setEnabled(False)
 
-        self._mw.x_min_InputWidget.setEnabled(False)
-        self._mw.x_max_InputWidget.setEnabled(False)
-        self._mw.y_min_InputWidget.setEnabled(False)
-        self._mw.y_max_InputWidget.setEnabled(False)
-        self._mw.z_min_InputWidget.setEnabled(False)
-        self._mw.z_max_InputWidget.setEnabled(False)
+        self._mw.x_window_InputWidget.setEnabled(False)
+        self._mw.x_offset_InputWidget.setEnabled(False)
+        self._mw.y_window_InputWidget.setEnabled(False)
+        self._mw.y_offset_InputWidget.setEnabled(False)
+        self._mw.z_window_InputWidget.setEnabled(False)
+        self._mw.z_offset_InputWidget.setEnabled(False)
 
         self._mw.xy_res_InputWidget.setEnabled(False)
         self._mw.z_res_InputWidget.setEnabled(False)
@@ -813,12 +825,12 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_optimize_position.setEnabled(True)
 
-        self._mw.x_min_InputWidget.setEnabled(True)
-        self._mw.x_max_InputWidget.setEnabled(True)
-        self._mw.y_min_InputWidget.setEnabled(True)
-        self._mw.y_max_InputWidget.setEnabled(True)
-        self._mw.z_min_InputWidget.setEnabled(True)
-        self._mw.z_max_InputWidget.setEnabled(True)
+        self._mw.x_window_InputWidget.setEnabled(True)
+        self._mw.x_offset_InputWidget.setEnabled(True)
+        self._mw.y_window_InputWidget.setEnabled(True)
+        self._mw.y_offset_InputWidget.setEnabled(True)
+        self._mw.z_window_InputWidget.setEnabled(True)
+        self._mw.z_offset_InputWidget.setEnabled(True)
 
         self._mw.xy_res_InputWidget.setEnabled(True)
         self._mw.z_res_InputWidget.setEnabled(True)
@@ -968,9 +980,19 @@ class ConfocalGui(GUIBase):
         self.enable_scan_actions()
 
     def xy_scan_clicked(self):
-        """ Manages what happens if the xy scan is started. """
-        self.disable_scan_actions()
-        self._scanning_logic.start_scanning(zscan=False, tag='gui')
+        """ Manages what happens if the xy scan is started, including checking that the scan
+          region is in range."""
+        minvalx = self._mw.x_offset_InputWidget.value() - self._mw.x_window_InputWidget.value()/2
+        maxvalx = self._mw.x_offset_InputWidget.value() + self._mw.x_window_InputWidget.value()/2
+        minvaly = self._mw.y_offset_InputWidget.value() - self._mw.y_window_InputWidget.value()/2
+        maxvaly = self._mw.y_offset_InputWidget.value() + self._mw.y_window_InputWidget.value()/2
+        if minvalx < self._scanning_logic.x_range[0] or maxvalx > self._scanning_logic.x_range[1]:
+            self.log.error('Scanning area out of range')
+        elif minvaly < self._scanning_logic.y_range[0] or maxvaly > self._scanning_logic.y_range[1]:
+            self.log.error('Scanning area out of range')
+        else:
+            self.disable_scan_actions()
+            self._scanning_logic.start_scanning(zscan=False, tag='gui')
 
     def continue_xy_scan_clicked(self):
         """ Continue xy scan. """
@@ -983,9 +1005,24 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.continue_scanning(zscan=True, tag='gui')
 
     def depth_scan_clicked(self):
-        """ Start depth scan. """
-        self.disable_scan_actions()
-        self._scanning_logic.start_scanning(zscan=True)
+        """ Start depth scan, after checking that the scan region is in range """
+        if self._scanning_logic.depth_img_is_xz:
+            minvalh = self._mw.x_offset_InputWidget.value() - self._mw.x_window_InputWidget.value()/2
+            maxvalh = self._mw.x_offset_InputWidget.value() + self._mw.x_window_InputWidget.value()/2
+            lim = self._scanning_logic.x_range 
+        else:
+            minvalh = self._mw.y_offset_InputWidget.value() - self._mw.y_window_InputWidget.value()/2
+            maxvalh = self._mw.y_offset_InputWidget.value() + self._mw.y_window_InputWidget.value()/2
+            lim = self._scanning_logic.y_range 
+        minvalz = self._mw.z_offset_InputWidget.value() - self._mw.z_window_InputWidget.value()/2
+        maxvalz = self._mw.z_offset_InputWidget.value() + self._mw.z_window_InputWidget.value()/2
+        if minvalh < lim[0] or maxvalh > lim[1]:
+            self.log.error('Scanning area out of range')
+        elif minvalz < self._scanning_logic.z_range[0] or maxvalz > self._scanning_logic.z_range[1]:
+            self.log.error('Scanning area out of range')
+        else:
+            self.disable_scan_actions()
+            self._scanning_logic.start_scanning(zscan=True)
 
     def refocus_clicked(self):
         """ Start optimize position. """
@@ -1297,22 +1334,73 @@ class ConfocalGui(GUIBase):
 
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanning_logic.image_x_range = [
-            self._mw.x_min_InputWidget.value(),
-            self._mw.x_max_InputWidget.value()]
+        size_window = self._mw.x_window_InputWidget.value()
+        offset = self._mw.x_offset_InputWidget.value()
+        test = offset - size_window/2
+        if test < self._scanning_logic.x_range[0]:
+            offset = self._scanning_logic.x_range[0] + size_window/2
+            self._mw.x_offset_InputWidget.setValue(offset)
+            self.update_roi_xy()
+            self.log.info("x was out of range, changed offset")
+        test = offset + size_window/2
+        if test > self._scanning_logic.x_range[1]:
+            offset = self._scanning_logic.x_range[1] - size_window/2
+            self._mw.x_offset_InputWidget.setValue(offset)
+            self.update_roi_xy()
+            self.log.info("x was out of range, changed offset")
+        self.log.info("Changed x range or offset")
+        self._scanning_logic.image_x_range = [offset - size_window/2, offset + size_window/2]
 
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanning_logic.image_y_range = [
-            self._mw.y_min_InputWidget.value(),
-            self._mw.y_max_InputWidget.value()]
+        size_window = self._mw.y_window_InputWidget.value()
+        offset = self._mw.y_offset_InputWidget.value()
+        test = offset - size_window/2
+        if test < self._scanning_logic.y_range[0]:
+            offset = self._scanning_logic.y_range[0] + size_window/2
+            self._mw.y_offset_InputWidget.setValue(offset)
+            self.update_roi_xy()
+            self.log.info("y was out of range, changed offset")
+        test = offset + size_window/2
+        if test > self._scanning_logic.y_range[1]:
+            offset = self._scanning_logic.y_range[1] - size_window/2
+            self._mw.y_offset_InputWidget.setValue(offset)
+            self.update_roi_xy()
+            self.log.info("y was out of range, changed offset")
+        self.log.info("Changed y range or offset")
+        self._scanning_logic.image_y_range = [offset - size_window/2, offset + size_window/2]
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
-        self._scanning_logic.image_z_range = [
-            self._mw.z_min_InputWidget.value(),
-            self._mw.z_max_InputWidget.value()]
+        size_window = self._mw.z_window_InputWidget.value()
+        offset = self._mw.z_offset_InputWidget.value()
+        test = offset - size_window/2
+        if test < self._scanning_logic.z_range[0]:
+            offset = self._scanning_logic.z_range[0] + size_window/2
+            self._mw.z_offset_InputWidget.setValue(offset)
+            self.update_roi_depth()
+            self.log.info("z was out of range, changed offset")
+        test = offset + size_window/2
+        if test > self._scanning_logic.z_range[1]:
+            offset = self._scanning_logic.z_range[1] - size_window/2
+            self._mw.z_offset_InputWidget.setValue(offset)
+            self.update_roi_depth()
+            self.log.info("z was out of range, changed offset")
+        self.log.info("Changed z range or offset")
+        self._scanning_logic.image_z_range = [offset - size_window/2, offset + size_window/2]
+
+    def cursor_to_offset(self):
+        """Sets the cursor position to the scanning offset value"""
+        newoffset = [self._mw.x_current_InputWidget.value(),
+                     self._mw.y_current_InputWidget.value(),
+                     self._mw.z_current_InputWidget.value()]
+        self._mw.x_offset_InputWidget.setValue(newoffset[0])
+        self._mw.y_offset_InputWidget.setValue(newoffset[1])
+        self._mw.z_offset_InputWidget.setValue(newoffset[2])
+        self.change_x_image_range()
+        self.change_y_image_range()
+        self.change_z_image_range()
 
     def update_tilt_correction(self):
         """ Update all tilt points from the scanner logic. """
@@ -1720,10 +1808,10 @@ class ConfocalGui(GUIBase):
         y_bounds = (rect.bottom(), rect.top())
 
         # set the values to the InputWidgets and update them
-        self._mw.x_min_InputWidget.setValue(min(x_bounds))
-        self._mw.x_max_InputWidget.setValue(max(x_bounds))
-        self._mw.y_min_InputWidget.setValue(min(y_bounds))
-        self._mw.y_max_InputWidget.setValue(max(y_bounds))
+        self._mw.x_window_InputWidget.setValue(max(x_bounds) - min(x_bounds))
+        self._mw.x_offset_InputWidget.setValue((max(x_bounds) - min(x_bounds))/2)
+        self._mw.y_window_InputWidget.setValue(max(y_bounds) - min(y_bounds))
+        self._mw.y_offset_InputWidget.setValue((max(y_bounds) - min(y_bounds))/2)
         self.change_x_image_range()
         self.change_y_image_range()
 
@@ -1739,15 +1827,15 @@ class ConfocalGui(GUIBase):
         z_bounds = (rect.bottom(), rect.top())
 
         # set the values to the InputWidgets and update them
-        self._mw.z_min_InputWidget.setValue(min(z_bounds))
-        self._mw.z_max_InputWidget.setValue(max(z_bounds))
+        self._mw.z_window_InputWidget.setValue(max(z_bounds) - min(z_bounds))
+        self._mw.z_offset_InputWidget.setValue((max(z_bounds) - min(z_bounds))/2)
         if self._scanning_logic.depth_img_is_xz:
-            self._mw.x_min_InputWidget.setValue(min(xy_bounds))
-            self._mw.x_max_InputWidget.setValue(max(xy_bounds))
+            self._mw.x_window_InputWidget.setValue(max(xy_bounds) - min(xy_bounds))
+            self._mw.x_offset_InputWidget.setValue((max(xy_bounds) - min(xy_bounds))/2)
             self.change_x_image_range()
         else:
-            self._mw.y_min_InputWidget.setValue(min(xy_bounds))
-            self._mw.y_max_InputWidget.setValue(max(xy_bounds))
+            self._mw.y_window_InputWidget.setValue(max(xy_bounds) - min(xy_bounds))
+            self._mw.y_offset_InputWidget.setValue((max(xy_bounds) - min(xy_bounds))/2)
             self.change_y_image_range()
         self.change_z_image_range()
 
@@ -1766,26 +1854,26 @@ class ConfocalGui(GUIBase):
         xMax = self._scanning_logic.xy_image[-1, -1, 0]
         yMax = self._scanning_logic.xy_image[-1, -1, 1]
 
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
+        self._mw.x_window_InputWidget.setValue(xMax - xMin)
+        self._mw.x_offset_InputWidget.setValue((xMax - xMin)/2)
         self.change_x_image_range()
 
-        self._mw.y_min_InputWidget.setValue(yMin)
-        self._mw.y_max_InputWidget.setValue(yMax)
+        self._mw.y_window_InputWidget.setValue(yMax - yMin)
+        self._mw.y_offset_InputWidget.setValue((yMax - yMin)/2)
         self.change_y_image_range()
 
     def set_full_scan_range_xy(self):
         """ Set xy image scan range to scanner limits """
         xMin = self._scanning_logic.x_range[0]
         xMax = self._scanning_logic.x_range[1]
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
+        self._mw.x_window_InputWidget.setValue(xMax - xMin)
+        self._mw.x_offset_InputWidget.setValue((xMax - xMin)/2)
         self.change_x_image_range()
 
         yMin = self._scanning_logic.y_range[0]
         yMax = self._scanning_logic.y_range[1]
-        self._mw.y_min_InputWidget.setValue(yMin)
-        self._mw.y_max_InputWidget.setValue(yMax)
+        self._mw.y_window_InputWidget.setValue(yMax - yMin)
+        self._mw.y_offset_InputWidget.setValue((yMax - yMin)/2)
         self.change_y_image_range()
 
         for i in range(2):
@@ -1809,12 +1897,12 @@ class ConfocalGui(GUIBase):
         xMax = self._scanning_logic.depth_image[-1, -1, 0]
         zMax = self._scanning_logic.depth_image[-1, -1, 2]
 
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
+        self._mw.x_window_InputWidget.setValue(xMax - xMin)
+        self._mw.x_offset_InputWidget.setValue((xMax - xMin)/2)
         self.change_x_image_range()
 
-        self._mw.z_min_InputWidget.setValue(zMin)
-        self._mw.z_max_InputWidget.setValue(zMax)
+        self._mw.z_window_InputWidget.setValue(zMax - zMin)
+        self._mw.z_offset_InputWidget.setValue((zMax - zMin)/2)
         self.change_z_image_range()
 
     def set_full_scan_range_z(self):
@@ -1822,20 +1910,20 @@ class ConfocalGui(GUIBase):
         if self._scanning_logic.depth_img_is_xz:
             hMin = self._scanning_logic.x_range[0]
             hMax = self._scanning_logic.x_range[1]
-            self._mw.x_min_InputWidget.setValue(hMin)
-            self._mw.x_max_InputWidget.setValue(hMax)
+            self._mw.x_window_InputWidget.setValue(hMax - hMin)
+            self._mw.x_offset_InputWidget.setValue((hMax - hMin)/2)
             self.change_x_image_range()
         else:
             hMin = self._scanning_logic.y_range[0]
             hMax = self._scanning_logic.y_range[1]
-            self._mw.y_min_InputWidget.setValue(hMin)
-            self._mw.y_max_InputWidget.setValue(hMax)
+            self._mw.y_window_InputWidget.setValue(hMax - hMin)
+            self._mw.y_offset_InputWidget.setValue((hMax - hMin)/2)
             self.change_y_image_range()
 
         vMin = self._scanning_logic.z_range[0]
         vMax = self._scanning_logic.z_range[1]
-        self._mw.z_min_InputWidget.setValue(vMin)
-        self._mw.z_max_InputWidget.setValue(vMax)
+        self._mw.z_window_InputWidget.setValue(vMax - vMin)
+        self._mw.z_offset_InputWidget.setValue((vMax - vMin)/2)
         self.change_z_image_range()
 
         for i in range(2):
@@ -1848,12 +1936,12 @@ class ConfocalGui(GUIBase):
 
     def update_scan_range_inputs(self):
         """ Update scan range spinboxes from confocal logic """
-        self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
-        self._mw.x_max_InputWidget.setValue(self._scanning_logic.image_x_range[1])
-        self._mw.y_min_InputWidget.setValue(self._scanning_logic.image_y_range[0])
-        self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
-        self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
-        self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
+        self._mw.x_window_InputWidget.setValue(self._scanning_logic.image_x_range[1]/10)
+        self._mw.x_offset_InputWidget.setValue((self._scanning_logic.image_x_range[1] - self._scanning_logic.image_x_range[0])/2)
+        self._mw.y_window_InputWidget.setValue(self._scanning_logic.image_y_range[1]/10)
+        self._mw.y_offset_InputWidget.setValue((self._scanning_logic.image_y_range[1] - self._scanning_logic.image_y_range[0])/2)
+        self._mw.z_window_InputWidget.setValue(self._scanning_logic.image_z_range[1]/10)
+        self._mw.z_offset_InputWidget.setValue((self._scanning_logic.image_z_range[1] - self._scanning_logic.image_z_range[0])/2)
 
     def _set_scan_icons(self):
         """ Set the scan icons depending on whether loop-scan is active or not
