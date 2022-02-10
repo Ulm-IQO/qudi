@@ -52,6 +52,7 @@ class MetadataGui(GUIBase):
     
     # declare connectors
     savelogic = Connector(interface='SaveLogic')
+    read_only = ConfigOption('read_only', default=False)
   
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -74,7 +75,9 @@ class MetadataGui(GUIBase):
         self.entry_dict = {}
 
         self._mw.add_pushButton.clicked.connect(self.add_param)
-
+        if self.read_only:
+            self._mw.add_pushButton.setEnabled(False)
+        
         # connect to signals from logic
         self.save_logic.sigAddParamsUpdated.connect(self.update_param_list)
         self.save_logic.sigFileSaved.connect(self.display_saved_file)
@@ -139,6 +142,10 @@ class MetadataGui(GUIBase):
                 self._gl.addWidget(self.entry_dict[k][2], last_row, 3)
                 self.entry_dict[k][2].clicked.connect(lambda :\
                                     self.save_logic.remove_additional_parameter(k))
+
+            if self.read_only:
+                self.entry_dict[k][1].setEnabled(False)
+                self.entry_dict[k][2].setEnabled(False)
                 
         to_remove = []
         for k in self.entry_dict.keys():
