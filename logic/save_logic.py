@@ -29,6 +29,7 @@ import os
 import sys
 import time
 
+from qtpy import QtCore
 from collections import OrderedDict
 from core.configoption import ConfigOption
 from core.util import units
