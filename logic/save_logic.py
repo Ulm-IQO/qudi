@@ -167,6 +167,10 @@ class SaveLogic(GenericLogic):
 
     _additional_parameters = {}
 
+    # declare signals
+    sigAddParamsUpdated = QtCore.Signal()
+    sigFileSaved = QtCore.Signal(str, str)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -565,7 +569,8 @@ class SaveLogic(GenericLogic):
             plt.close(plotfig)
             self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
             #----------------------------------------------------------------------------------
-
+        self.sigFileSaved.emit(module_name, timestamp.strftime('%Y%m%d-%H%M-%S'))
+        
     def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
                            delimiter='\t', comments='#', append=False):
         """
@@ -650,14 +655,17 @@ class SaveLogic(GenericLogic):
         for key in param_dict.keys():
             param_dict[key] = netobtain(param_dict[key])
         self._additional_parameters.update(param_dict)
+        self.sigAddParamsUpdated.emit()
         return
 
-    def remove_additional_parameter(self, key):
+    def remove_additional_parameter(self, key, signal=True):
         """
         remove parameter from additional parameters
 
         @param str key: The additional parameters key/name to delete
         """
         self._additional_parameters.pop(key, None)
+        if signal:
+            self.sigAddParamsUpdated.emit()
         return
 
