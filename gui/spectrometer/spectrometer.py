@@ -551,7 +551,7 @@ class Main(GUIBase):
         #if self.spectrumlogic().camera_constraints.has_shutter:
         #    self._settings_tab.shutter_modes.setCurrentText(self.spectrumlogic()._shutter_state)
 
-        self._mw.center_wavelength_current.setText("{:.2r}m".format(ScaledFloat(self.spectrumlogic()._center_wavelength)))
+        self._mw.center_wavelength_current.setText("{:.2r}m".format(ScaledFloat(self.spectrumlogic().center_wavelength)))
 
     def set_settings_params(self):
 
@@ -834,7 +834,6 @@ class Main(GUIBase):
                 else:
                     self._image_tab.background_msg.setText("Wrong Background Size")
 
-            print(data)
             data = data/self._image_params['exposure_time']
 
             self._image_data = {"wavelength":wavelength,

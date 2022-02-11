@@ -33,7 +33,7 @@ from core.configoption import ConfigOption
 
 from interface.grating_spectrometer_interface import PortType
 from interface.science_camera_interface import ReadMode, ShutterState
-from hardware.camera.andor_camera import TriggerMode
+from hardware.camera.andor_camera import TriggerMode, ImageAdvancedParameters
 
 from scipy import optimize
 
@@ -78,7 +78,7 @@ class SpectrumLogic(GenericLogic):
     _temperature_setpoint = StatusVar('temperature_setpoint', None)
     _shutter_state = StatusVar('shutter_state', "AUTO")
     _active_tracks = StatusVar('active_tracks', [])
-    _image_advanced = StatusVar('image_advanced', None) #TODO : fix bug
+    _image_advanced_dict = StatusVar('image_advanced_dict', None) #TODO : fix bug
 
     _sigStart = QtCore.Signal()
     _sigCheckStatus = QtCore.Signal()
@@ -154,7 +154,14 @@ class SpectrumLogic(GenericLogic):
             else:
                 self.temperature_setpoint = self.camera().get_temperature_setpoint()
 
-        if self._image_advanced:
+        if self._image_advanced_dict:
+            self._image_advanced = ImageAdvancedParameters()
+            self._image_advanced.vertical_start = self._image_advanced_dict["vertical_start"]
+            self._image_advanced.vertical_end = self._image_advanced_dict["vertical_end"]
+            self._image_advanced.horizontal_start = self._image_advanced_dict["horizontal_start"]
+            self._image_advanced.horizontal_end = self._image_advanced_dict["horizontal_end"]
+            self._image_advanced.horizontal_binning = self._image_advanced_dict["horizontal_binning"]
+            self._image_advanced.vertical_binning = self._image_advanced_dict["vertical_binning"]
             self.camera().set_image_advanced_parameters(self._image_advanced)
         else:
             self._image_advanced = self.camera().get_image_advanced_parameters()
@@ -182,9 +189,19 @@ class SpectrumLogic(GenericLogic):
             self.stop_acquisition()
             self.log.warning('Stopping running acquisition due to module deactivation.')
 
+        self._image_advanced_dict = {"vertical_start":self._image_advanced.vertical_start,
+                                     "vertical_end":self._image_advanced.vertical_end,
+                                     "horizontal_start":self._image_advanced.horizontal_start,
+                                     "horizontal_end":self._image_advanced.horizontal_end,
+                                     "horizontal_binning":self._image_advanced.horizontal_binning,
+                                     "vertical_binning":self._image_advanced.vertical_binning,
+                                     }
+
         self._sigStart.disconnect()
         self._sigCheckStatus.disconnect()
         self.sigUpdateSettings.disconnect()
+
+
 
     ##############################################################################
     #                            Acquisition functions
@@ -230,7 +247,7 @@ class SpectrumLogic(GenericLogic):
         # If module unlocked by stop_acquisition
         if self.module_state() != 'locked':
             self.sigUpdateData.emit()
-            self.center_wavelength = self._center_wavelength + self._wavelength_calibration[self._grating]
+            self.center_wavelength = self.center_wavelength
             self.log.info("Acquisition stopped. Status loop stopped.")
             return
 
@@ -266,7 +283,7 @@ class SpectrumLogic(GenericLogic):
             if self._loop_counter <= 0:
                 self.module_state.unlock()
                 self.sigUpdateData.emit()
-                self.center_wavelength = self._center_wavelength + self._wavelength_calibration[self._grating]
+                self.center_wavelength = self.center_wavelength
                 self.log.info("Acquisition finished : module state is 'idle' ")
             else:
                 self.sigUpdateData.emit()
@@ -386,7 +403,6 @@ class SpectrumLogic(GenericLogic):
             return self._center_wavelength
         else:
             return self._center_wavelength + self.wavelength_calibration
-        return self._center_wavelength
 
     @center_wavelength.setter
     def center_wavelength(self, wavelength):
