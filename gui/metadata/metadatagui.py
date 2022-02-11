@@ -144,7 +144,7 @@ class MetadataGui(GUIBase):
                                     self.save_logic.remove_additional_parameter(k))
 
             if self.read_only:
-                self.entry_dict[k][1].setEnabled(False)
+                self.entry_dict[k][1].setReadOnly(True)
                 self.entry_dict[k][2].setEnabled(False)
                 
         to_remove = []
