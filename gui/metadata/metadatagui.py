@@ -109,27 +109,39 @@ class MetadataGui(GUIBase):
         params_dict = self.save_logic.get_additional_parameters()
         
         for k in params_dict.keys():
+            to_add = True
             number = False
+            # check if the new value is a number
             try:    
                 value = float(params_dict[k])
                 number = True
             except:
                 value = str(params_dict[k])
-                    
+
+            # check if we know k already and if the value did not change type
+            # if the type changed, we remove the widgets and add them again
             if k in self.entry_dict.keys():
-                if number:
-                    self.entry_dict[k][1].setValue(value)
-                else:
-                    self.entry_dict[k][1].setText(value)
-            else:
+                try:
+                    if number:
+                        self.entry_dict[k][1].setValue(value)
+                    else:
+                        self.entry_dict[k][1].setText(value)
+                    to_add = False
+                except:
+                    self.entry_dict[k][0].hide()
+                    self.entry_dict[k][1].hide()
+                    self.entry_dict[k][2].hide()
+                    self.entry_dict.pop(k)
+
+            if to_add:
                 if number:
                     input_widget = QtWidgets.QDoubleSpinBox()
                     input_widget.setRange(-10e10, 10e10)
-                    input_widget.setValue(params_dict[k])
+                    input_widget.setValue(value)
                     
                 else:
                     input_widget = TextEdit()
-                    input_widget.setText(params_dict[k])
+                    input_widget.setText(value)
                     
                 input_widget.valueChanged.connect(
                         lambda : self.update_value(input_widget.value(), k))
