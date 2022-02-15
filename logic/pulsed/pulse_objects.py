@@ -1325,7 +1325,7 @@ class PredefinedGeneratorBase:
                     frequency_2=freqs[1],
                     phase_1=phases[0],
                     phase_2=phases[1])
-            else:
+            elif sine_number == 3:
                 mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
@@ -1336,6 +1336,19 @@ class PredefinedGeneratorBase:
                     phase_1=phases[0],
                     phase_2=phases[1],
                     phase_3=phases[2])
+            elif sine_number == 4:
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.QuadSinSum(
+                    amplitude_1=amps[0],
+                    amplitude_2=amps[1],
+                    amplitude_3=amps[2],
+                    frequency_1=freqs[0],
+                    frequency_2=freqs[1],
+                    frequency_3=freqs[2],
+                    phase_1=phases[0],
+                    phase_2=phases[1],
+                    phase_3=phases[2])
+            else:
+                raise ValueError(f"Unsupported number of sines: {sine_number}")
         return mw_element
 
     def _get_sine_double_chirp_element(self, length, increment, amps=None, phases=None, freq_sine=None,

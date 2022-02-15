@@ -2,6 +2,7 @@ import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
+from core.util.helpers import csv_2_list
 
 from enum import Enum
 
@@ -17,18 +18,24 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         super().__init__(*args, **kwargs)
 
     def generate_ent_create_bell(self, name='ent_create_bell', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                             f_mw_2=1e9, ampl_mw_2=0.125, rabi_period_mw_2=100e-9,
+                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                              dd_type=DDMethods.SE, dd_order=1, alternating=True):
         """
         Decoupling sequence on both NVs. Initialization with Hadarmard instead of pi2.
+        Use lists of f_mw_2, ampl_mw_2, rabi_period_m2_2 to a) address second NV b) use double quantum transition
         """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
-        rabi_periods = np.asarray([self.rabi_period, rabi_period_mw_2])
-        amplitudes =  np.asarray([self.microwave_amplitude, ampl_mw_2])
-        mw_freqs =  np.asarray([self.microwave_frequency, f_mw_2])
+        def create_param_array(in_value, in_list):
+            array = [in_value]
+            array.extend(in_list)
+            return np.asarray(array)
+
+        rabi_periods = create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2))
+        amplitudes = create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2))
+        mw_freqs = create_param_array(self.microwave_frequency, csv_2_list(f_mw_2))
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
@@ -57,14 +64,24 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               freqs=mw_freqs,
                                               phases=[90,90])
 
-        # define a function to create phase shifted pi pulse elements
-        def pi_element_function(xphase):
-            return self._get_multiple_mw_mult_length_element(lengths=rabi_periods/2,
-                                              increments=[0,0],
-                                              amps=amplitudes,
-                                              freqs=mw_freqs,
-                                              phases=[xphase,xphase])
+        def pi_element_function(xphase, pi_x_length=1.):
+            """
+             define a function to create phase shifted pi pulse elements
+            :param xphase: phase sift
+            :param pi_x_length: multiple of pi pulse. Eg. 0.5 => pi_half pulse
+            :return:
+            """
 
+            lenghts = pi_x_length * rabi_periods
+            phases = [xphase] * len(lenghts)
+            amps = amplitudes
+            fs = mw_freqs
+
+            return self._get_multiple_mw_mult_length_element(lengths=lenghts,
+                                                             increments=0,
+                                                             amps=amps,
+                                                             freqs=fs,
+                                                             phases=phases)
 
         # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
@@ -248,7 +265,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             :return:
             """
 
-            lenghts = [pi_x * self.rabi_period / 2, pi_x_length * dqt_t_rabi2 / 2]
+            lenghts = [pi_x_length * self.rabi_period / 2, pi_x_length * dqt_t_rabi2 / 2]
             phases = [xphase, xphase]
             amps = [self.microwave_amplitude, dqt_amp2]
             fs = [self.microwave_frequency, dqt_f2]
@@ -269,6 +286,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                             phase=xphase)
             """
             return self._get_multiple_mw_mult_length_element(lengths=lenghts,
+                                                             increments=0,
                                                              amps=amps,
                                                              freqs=fs,
                                                              phases=phases)
@@ -381,8 +399,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         if len(np.unique(increments)) > 1:
             raise NotImplementedError("Currently, can only create multi mw elements with equal increments.")
-        if len(lengths) > 2:
-            raise NotImplementedError
         if len(amps) != len(lengths):
             raise ValueError
 
