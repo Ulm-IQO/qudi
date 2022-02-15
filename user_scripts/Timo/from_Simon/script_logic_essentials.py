@@ -31,18 +31,19 @@ save_subdir = None
 qm_dict_final ={}
 
 setup = OrderedDict()
-setup['gated'] = pulsedmeasurementlogic.fastcounter().gated
+setup['gated'] = True#pulsedmeasurementlogic.fastcounter().gated
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
-setup['laser_delay'] = 200e-9  #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
+setup['laser_delay'] = 500e-9  #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
 
 if setup['gated']:
     # need a "sync pulse" at the starting edge of every readout laser
     # setting a gate channel pulls up the gate_ch of every laser_gate_element
-    setup['sync_channel'] = ''
-    setup['gate_channel'] = 'd_ch1'
+    setup['sync_channel'] = 'd_ch1'
+    setup['gate_channel'] = 'd_ch3'
+
 else:
     setup['sync_channel'] = 'd_ch1'
     setup['gate_channel'] = ''
@@ -52,7 +53,7 @@ try:
 except Exception as e:
     logger.warning("Couldn't set fast counter sweep mode: {}".format(str(e)))
 
-setup['laser_channel'] = 'd_ch2'
+setup['laser_channel'] = 'd_ch4'
 setup['laser_length'] = 3e-6
 setup['wait_length'] = 1e-6
 setup['trigger_length'] = 20e-9
@@ -700,17 +701,17 @@ def set_up_conventional_measurement(qm_dict):
                 analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': 400e-9,
                                 'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
         else:
-            analy_method = {'method': 'mean_norm', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
-                                                'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
-            analy_method = {'method': 'mean', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
-                                                'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
+            analy_method = {'method': 'mean_norm', 'signal_start': 805e-9, 'signal_end': 805e-9 + 800e-9,
+                                                'norm_start': 2700e-9, 'norm_end': 2700e-9 + 800e-9}
+            #analy_method = {'method': 'mean', 'signal_start': 3280-9, 'signal_end': 3280-9 + 500e-9,
+            #                                    'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
 
     logger.info("Setting laser pulse analysis method: {}".format(analy_method))
     pulsedmasterlogic.set_analysis_settings(analy_method)
 
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
-    logger.debug("Setting delayed start= 0")
-    pulsedmeasurementlogic.fastcounter().set_delay_start(0)
+    #logger.debug("Setting delayed start= 0")
+    #pulsedmeasurementlogic.fastcounter().set_delay_start(0)
 
     #pulsedmeasurementlogic.fastcounter().change_save_mode(0)
 
@@ -1105,9 +1106,9 @@ def optimize_poi(poi, update_shift=False):
 
 def laser_on(pulser_on=True):
 
-    # laser_on_awg()
+    laser_on_awg()
     # Turns on the laser via nicard. If pulser_on the pulser is not stopped
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
+    #nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
     return
 
 def laser_on_awg():

@@ -4,7 +4,7 @@ import os
 import re
 import pandas as pd
 
-qudi_path = "C:/Users/Setup3-PC/Desktop/qudi"
+qudi_path = r"C:\Software\qudi"
 os.chdir(qudi_path)
 
 try:
