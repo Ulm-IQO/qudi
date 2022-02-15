@@ -389,48 +389,48 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         def create_pulse_partition(lengths, amps):
             """
             The partition for the pulse blocks that realize the (possibly different) 'lengths'.
-            If lengths are not equal, one pulse must idle while the other is still active.
+            If lengths are not equal, one pulse must idle while the others are still active.
             :param lengths:
-            :return: [partition_mw1, partition_mw2], specifies length (partition_x[1]) and
-                     amplitude (partition_x[0]) of output
+            :return: list with elements (length, amps=[amp0, amp1, ..]], each a block of the partition
             """
-            blocks_mw1, blocks_mw2 = [], []
-            amp_mw1 = amps[0]
-            amp_mw2 = amps[1]
 
-            if len(np.unique(lengths)) == 1:
-                blocks_mw1 = [(amp_mw1, lengths[0])]
-                blocks_mw2 = [(amp_mw2, lengths[0])]
-            elif len(lengths) == 2:
-                if lengths[0] > lengths[1]:
-                    blocks_mw1 = [(amp_mw1, lengths[1]),
-                                  (amp_mw1, lengths[0] - lengths[1])]
-                    blocks_mw2 = [(amp_mw2, lengths[1]),
-                                  (0, lengths[0] - lengths[1])]
-                else:
-                    blocks_mw1 = [(amp_mw1, lengths[0]),
-                                  (0, lengths[1] - lengths[0])]
-                    blocks_mw2 = [(amp_mw2, lengths[0]),
-                                  (amp_mw2, lengths[1] - lengths[0])]
-            else:
-                raise NotImplementedError
+            partition_blocks = []
 
-            return blocks_mw1, blocks_mw2
+            # if pulses are ordered in ascending length
+            # and idx_part are subpulses to the right, idx_ch channels downwards
+            # the lower triangle of the matrix are subpulses with non-zero amplitude
+            n_ch = len(lengths)
+            length_amps = sorted(zip(lengths, amps, range(n_ch)), key=lambda x: x[0])
 
-        parts_mw1, parts_mw2 = create_pulse_partition(lengths, amps)
+            for idx_part, _ in enumerate(length_amps):
+                amps_part = np.zeros((n_ch))
+
+                t_so_far = np.sum([p[0] for p in partition_blocks])
+                lenght_part = length_amps[idx_part][0] - t_so_far
+
+                for idx_ch in range(0, n_ch):
+                    if idx_part <= idx_ch:
+                        ch = length_amps[idx_ch][2]
+                        amp_i = amps[ch]
+                        # keep original order of channels
+                        i = np.where(np.asarray(amps) == amp_i)[0]
+                        amps_part[i] = amps[ch]
+
+                if lenght_part > 0:
+                    partition_blocks.append([lenght_part, amps_part])
+
+            return partition_blocks
+
+        part_blocks = create_pulse_partition(lengths, amps)
         blocks = []
 
-        for idx, p_mw1 in enumerate(parts_mw1):
-            p_mw2 = parts_mw2[idx]
+        for idx, block in enumerate(part_blocks):
 
-            # partition guarantees that all steps have same length (but different ampl)
-            assert p_mw1[1] == p_mw2[1]
-            lenght = p_mw1[1]
-            amp_mw1 = p_mw1[0]
-            amp_mw2 = p_mw2[0]
             increment = increments[0] if idx == 0 else 0
+            amps = block[1]
+            length = block[0]
 
-            blocks.append(self._get_multiple_mw_element(lenght, increment, [amp_mw1, amp_mw2],
+            blocks.append(self._get_multiple_mw_element(length, increment, amps,
                                                         freqs=freqs, phases=phases))
 
         return blocks
