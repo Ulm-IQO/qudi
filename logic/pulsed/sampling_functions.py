@@ -75,6 +75,9 @@ class DDMethods(Enum):
 
     PPol_up = [90., 0., 90., 0.]
     PPol_down = [360., 450., 360., 450.]
+    
+    # for Double Quantum transition
+    DQT_XY16 = [90, 0, 90, 0, 0, 90, 0, 90, -90, -180, -90, -180, -180, -90, -180, -90]   # Mamin (2014)
 
     # define the specific UR sequences to use, reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
     UR4 = ur_phases_function(4)
