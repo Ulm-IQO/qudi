@@ -240,7 +240,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_dd_dqt_tau_scan(self, name='dd_tau_scan', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                             dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0, dqt_t_rabi2=100e-9, dqt_f2=1e9, alternating=True):
+                             dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0e-3, dqt_t_rabi2=100e-9, dqt_f2=1e9,
+                             alternating=True):
         """
         shadows and extends iqo-sequences::generate_dd_tau_scan
         """
@@ -274,7 +275,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 lenghts = lenghts[0:1]
                 amps = amps[0:1]
                 fs = fs[0:1]
-                phases = xphase[0:1]
+                phases = phases[0:1]
 
             """
             legacy: delete after testing
@@ -310,7 +311,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 lenghts = lenghts[0:1]
                 amps = amps[0:1]
                 fs = fs[0:1]
-                phases = xphase[0:1]
+                phases = phases[0:1]
 
             pi3half_element = self._get_multiple_mw_mult_length_element(lengths=lenghts,
                                                    increments=0,
@@ -327,26 +328,26 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
-        dd_block.append(pihalf_element)
+        dd_block.extend(pihalf_element)
         for n in range(dd_order):
             # create the DD sequence for a single order
             for pulse_number in range(dd_type.suborder):
                 dd_block.append(tauhalf_element)
-                dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
                 dd_block.append(tauhalf_element)
-        dd_block.append(pihalf_element)
+        dd_block.extend(pihalf_element)
         dd_block.append(laser_element)
         dd_block.append(delay_element)
         dd_block.append(waiting_element)
         if alternating:
-            dd_block.append(pihalf_element)
+            dd_block.extend(pihalf_element)
             for n in range(dd_order):
                 # create the DD sequence for a single order
                 for pulse_number in range(dd_type.suborder):
                     dd_block.append(tauhalf_element)
-                    dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
                     dd_block.append(tauhalf_element)
-            dd_block.append(pi3half_element)
+            dd_block.extend(pi3half_element)
             dd_block.append(laser_element)
             dd_block.append(delay_element)
             dd_block.append(waiting_element)
@@ -373,6 +374,149 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def generate_dd_dqt_sigamp_scan(self, name='dd_sigamp_scan', tau=0.5e-6, sig_amp_start=0e-3, sig_amp_step=0.01e-3,
+                                    num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0e-3,
+                                    dqt_t_rabi2=100e-9, dqt_f2=1e9,
+                                    alternating=True):
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        tau_array = tau
+        tau_pspacing = self.tau_2_pulse_spacing(tau)
+        sig_amp_array = np.linspace(sig_amp_start, sig_amp_step, num_of_points)
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        def pi_element_function(xphase, pi_x_length=1.):
+            """
+             define a function to create phase shifted pi pulse elements
+            :param xphase: phase sift
+            :param pi_x_length: multiple of pi pulse. Eg. 0.5 => pi_half pulse
+            :return:
+            """
+
+            lenghts = [pi_x_length * self.rabi_period / 2, pi_x_length * dqt_t_rabi2 / 2]
+            phases = [xphase, xphase]
+            amps = [self.microwave_amplitude, dqt_amp2]
+            fs = [self.microwave_frequency, dqt_f2]
+
+            if dqt_amp2 == 0:
+                lenghts = lenghts[0:1]
+                amps = amps[0:1]
+                fs = fs[0:1]
+                phases = phases[0:1]
+
+            """
+            legacy: delete after testing
+            if dqt_amp2 == 0:
+                return self._get_mw_element(length=self.rabi_period / 2,
+                                            increment=0,
+                                            amp=self.microwave_amplitude,
+                                            freq=self.microwave_frequency,
+                                            phase=xphase)
+            """
+            return self._get_multiple_mw_mult_length_element(lengths=lenghts,
+                                                             increments=0,
+                                                             amps=amps,
+                                                             freqs=fs,
+                                                             phases=phases)
+
+        def pi3half_element_function():
+
+            # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
+            if self.microwave_channel.startswith('a'):
+                lenghts = [self.rabi_period / 2, dqt_t_rabi2 / 2]
+                xphase = 180
+                phases = [xphase, xphase]
+            else:
+                lenghts = [3*self.rabi_period / 4, 3*dqt_t_rabi2 / 4]
+                xphase = 0
+                phases = [xphase, xphase]
+
+            amps = [self.microwave_amplitude, dqt_amp2]
+            fs = [self.microwave_frequency, dqt_f2]
+
+            if dqt_amp2 == 0:
+                lenghts = lenghts[0:1]
+                amps = amps[0:1]
+                fs = fs[0:1]
+                phases = phases[0:1]
+
+            pi3half_element = self._get_multiple_mw_mult_length_element(lengths=lenghts,
+                                                   increments=0,
+                                                   amps=amps,
+                                                   freqs=fs,
+                                                   phases=phases)
+
+            return pi3half_element
+
+        pihalf_element = pi_element_function(0, pi_x_length=1/2.)
+        pi3half_element = pi3half_element_function()
+
+        for amp_sig in sig_amp_array:
+            tauhalf_element = self._get_mw_element(length=tau_pspacing,
+                                            increment=0,
+                                            amp=amp_sig,
+                                            freq=1/(2*tau_pspacing),
+                                            phase=0)
+
+            # Create block and append to created_blocks list
+            dd_block = PulseBlock(name=name)
+            dd_block.extend(pihalf_element)
+            for n in range(dd_order):
+                # create the DD sequence for a single order
+                for pulse_number in range(dd_type.suborder):
+                    dd_block.append(tauhalf_element)
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
+                    dd_block.append(tauhalf_element)
+            dd_block.extend(pihalf_element)
+            dd_block.append(laser_element)
+            dd_block.append(delay_element)
+            dd_block.append(waiting_element)
+            if alternating:
+                dd_block.extend(pihalf_element)
+                for n in range(dd_order):
+                    # create the DD sequence for a single order
+                    for pulse_number in range(dd_type.suborder):
+                        dd_block.append(tauhalf_element)
+                        dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
+                        dd_block.append(tauhalf_element)
+                dd_block.extend(pi3half_element)
+                dd_block.append(laser_element)
+                dd_block.append(delay_element)
+                dd_block.append(waiting_element)
+
+        created_blocks.append(dd_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((dd_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = sig_amp_array
+        block_ensemble.measurement_information['units'] = ('V', '')
+        block_ensemble.measurement_information['labels'] = ('Signal ampl.', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
 
     def _get_multiple_mw_mult_length_element(self, lengths, increments, amps=None, freqs=None, phases=None):
         """
