@@ -240,7 +240,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_dd_dqt_tau_scan(self, name='dd_tau_scan', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                             dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0, dqt_t_rabi2=100e-9, dqt_f2=1e9, alternating=True):
+                             dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0e-3, dqt_t_rabi2=100e-9, dqt_f2=1e9, alternating=True):
         """
         shadows and extends iqo-sequences::generate_dd_tau_scan
         """
@@ -274,7 +274,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 lenghts = lenghts[0:1]
                 amps = amps[0:1]
                 fs = fs[0:1]
-                phases = xphase[0:1]
+                phases = phases[0:1]
 
             """
             legacy: delete after testing
@@ -310,7 +310,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 lenghts = lenghts[0:1]
                 amps = amps[0:1]
                 fs = fs[0:1]
-                phases = xphase[0:1]
+                phases = phases[0:1]
 
             pi3half_element = self._get_multiple_mw_mult_length_element(lengths=lenghts,
                                                    increments=0,
@@ -327,26 +327,26 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
-        dd_block.append(pihalf_element)
+        dd_block.extend(pihalf_element)
         for n in range(dd_order):
             # create the DD sequence for a single order
             for pulse_number in range(dd_type.suborder):
                 dd_block.append(tauhalf_element)
-                dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
                 dd_block.append(tauhalf_element)
-        dd_block.append(pihalf_element)
+        dd_block.extend(pihalf_element)
         dd_block.append(laser_element)
         dd_block.append(delay_element)
         dd_block.append(waiting_element)
         if alternating:
-            dd_block.append(pihalf_element)
+            dd_block.extend(pihalf_element)
             for n in range(dd_order):
                 # create the DD sequence for a single order
                 for pulse_number in range(dd_type.suborder):
                     dd_block.append(tauhalf_element)
-                    dd_block.append(pi_element_function(dd_type.phases[pulse_number]))
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
                     dd_block.append(tauhalf_element)
-            dd_block.append(pi3half_element)
+            dd_block.extend(pi3half_element)
             dd_block.append(laser_element)
             dd_block.append(delay_element)
             dd_block.append(waiting_element)
