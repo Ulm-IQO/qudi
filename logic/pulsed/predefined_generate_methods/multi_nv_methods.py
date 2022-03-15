@@ -527,7 +527,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # just renaming of the needed parameters for get_pi_element()
 
             rabi_periods = [self.rabi_period / 2, dqt_t_rabi2 / 2]
-            phases = [xphase, xphase]
             amps = [self.microwave_amplitude, dqt_amp2]
             fs = [self.microwave_frequency, dqt_f2]
 
@@ -537,7 +536,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 fs = fs[0:1]
                 phases = phases[0:1]
 
-            return self.get_pi_element(phases, fs, amps, rabi_periods, pi_x_length=pi_x_length)
+            return self.get_pi_element(xphase, fs, amps, rabi_periods, pi_x_length=pi_x_length)
 
             """
             legacy: delete after testing
@@ -638,19 +637,29 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_dd_dqt_sigamp_scan(self, name='dd_sigamp_scan', tau=0.5e-6, sig_amp_start=0e-3, sig_amp_step=0.01e-3,
-                                    num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0e-3,
-                                    dqt_t_rabi2=100e-9, dqt_f2=1e9,
+    def generate_dd_dqt_sigamp(self, name='dd_sigamp', tau=0.5e-6, amp_start=0e-3, amp_step=0.01e-3,
+                                    num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, ampl_mw2=0e-3,
+                                    t_rabi_mw2=0, f_mw2="1e9", f_mw1_add="",
                                     alternating=True):
+        
+        #todo: not working in tests
 
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
+        t_rabi_mw2 = self.rabi_period if t_rabi_mw2 == 0 else t_rabi_mw2
+
+        rabi_periods = np.asarray([self.rabi_period, t_rabi_mw2])
+        mw_freqs_1 = np.asarray([self.microwave_frequency] + csv_2_list(f_mw1_add))
+        mw_freqs_2 = np.asarray(csv_2_list(f_mw2))
+        fs = np.concatenate([mw_freqs_1, mw_freqs_2])
+        amps = np.asarray([self.microwave_amplitude]*len(mw_freqs_1) + [ampl_mw2]*len(mw_freqs_2)).flatten()
+
         # get tau array for measurement ticks
-        tau_array = tau
+        # todo: considers only pi pulse length of 1 drive (self.rabi_period)
         tau_pspacing = self.tau_2_pulse_spacing(tau)
-        sig_amp_array = np.linspace(sig_amp_start, sig_amp_step, num_of_points)
+        sig_amp_array = (amp_start + np.arange(num_of_points) * amp_step)[::-1]
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -664,19 +673,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             :param pi_x_length: multiple of pi pulse. Eg. 0.5 => pi_half pulse
             :return:
             """
+            nonlocal rabi_periods, amps, fs
 
-            rabi_periods = [self.rabi_period / 2, dqt_t_rabi2 / 2]
-            phases = [xphase, xphase]
-            amps = [self.microwave_amplitude, dqt_amp2]
-            fs = [self.microwave_frequency, dqt_f2]
-
-            if dqt_amp2 == 0:
-                rabi_periods = rabi_periods[0:1]
-                amps = amps[0:1]
-                fs = fs[0:1]
-                phases = phases[0:1]
-
-            return self.get_pi_element(phases, fs, amps, rabi_periods, pi_x_length=pi_x_length)
+            return self.get_pi_element(xphase, fs, amps, rabi_periods, pi_x_length=pi_x_length)
 
             """
             legacy: delete after testing
@@ -696,24 +695,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         def pi3half_element_function():
 
+            nonlocal  fs, amps, rabi_periods
+
             # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
             if self.microwave_channel.startswith('a'):
-                lenghts = [self.rabi_period / 2, dqt_t_rabi2 / 2]
+                lenghts = rabi_periods/2
                 xphase = 180
                 phases = [xphase, xphase]
             else:
-                lenghts = [3*self.rabi_period / 4, 3*dqt_t_rabi2 / 4]
+                lenghts = 3*rabi_periods/4
                 xphase = 0
                 phases = [xphase, xphase]
 
-            amps = [self.microwave_amplitude, dqt_amp2]
-            fs = [self.microwave_frequency, dqt_f2]
-
-            if dqt_amp2 == 0:
-                lenghts = lenghts[0:1]
-                amps = amps[0:1]
-                fs = fs[0:1]
-                phases = phases[0:1]
 
             pi3half_element = self._get_multiple_mw_mult_length_element(lengths=lenghts,
                                                    increments=0,
@@ -726,15 +719,16 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pihalf_element = pi_element_function(0, pi_x_length=1/2.)
         pi3half_element = pi3half_element_function()
 
+        dd_block = PulseBlock(name=name)
+
         for amp_sig in sig_amp_array:
-            tauhalf_element = self._get_mw_element(length=tau_pspacing,
+            tauhalf_element = self._get_mw_element(length=tau_pspacing/2,
                                             increment=0,
                                             amp=amp_sig,
-                                            freq=1/(2*tau_pspacing),
-                                            phase=0)
+                                            freq=1/(2*tau),
+                                            phase=90)
 
             # Create block and append to created_blocks list
-            dd_block = PulseBlock(name=name)
             dd_block.extend(pihalf_element)
             for n in range(dd_order):
                 # create the DD sequence for a single order
@@ -763,7 +757,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append((dd_block.name, num_of_points - 1))
+        block_ensemble.append((dd_block.name, 0))
 
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
@@ -821,7 +815,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         n_lines = len(mw_freqs)
 
         lenghts = pi_x_length * rabi_periods / 2
-        phases = [xphase] * n_lines
+        phases = [float(xphase)] * n_lines
         amps = mw_amps
         fs = mw_freqs
 
