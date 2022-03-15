@@ -337,9 +337,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['controlled_variable'] = tau_array*dd_order*dd_type.suborder
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('t_evol', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -641,7 +641,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                     num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, ampl_mw2=0e-3,
                                     t_rabi_mw2=0, f_mw2="1e9", f_mw1_add="",
                                     alternating=True):
-        
+
         #todo: not working in tests
 
         created_blocks = list()
@@ -871,17 +871,20 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             for idx_part, _ in enumerate(length_amps):
                 amps_part = np.zeros((n_ch))
+                chs_part = np.zeros((n_ch))
 
                 t_so_far = np.sum([p[0] for p in partition_blocks])
                 lenght_part = length_amps[idx_part][0] - t_so_far
 
                 for idx_ch in range(0, n_ch):
+                    ch = length_amps[idx_ch][2]
+                    chs_part[idx_ch] = ch
                     if idx_part <= idx_ch:
-                        ch = length_amps[idx_ch][2]
                         amp_i = amps[ch]
-                        # keep original order of channels
-                        i = np.where(np.asarray(amps) == amp_i)[0]
-                        amps_part[i] = amps[ch]
+                        amps_part[idx_ch] = amp_i
+
+                # restore original ch order (instead of sorted by length)
+                amps_part = np.asarray([amp for amp, _ in sorted(zip(amps_part, chs_part), key=lambda x:x[1])])
 
                 if lenght_part > 0:
                     partition_blocks.append([lenght_part, amps_part])
@@ -889,6 +892,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return partition_blocks
 
         part_blocks = create_pulse_partition(lengths, amps)
+        #debug_1 = create_pulse_partition([100, 10, 10], [0.1, 0.2, 0.3])
+        #debug_2 = create_pulse_partition([10, 100, 80], [0.1, 0.2, 0.3])
+        #debug_3 = create_pulse_partition([10, 80, 100], [0.1, 0.1, 0.1])
         blocks = []
 
         for idx, block in enumerate(part_blocks):
