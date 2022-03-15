@@ -429,8 +429,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs_both = np.concatenate([mw_freqs_1, mw_freqs_2])
         amplitudes_both = np.asarray([self.microwave_amplitude]*len(mw_freqs_1) + [ampl_mw_2]*len(mw_freqs_2)).flatten()
         amplitudes_1 = np.asarray([self.microwave_amplitude]*len(mw_freqs_1) + [0]*len(mw_freqs_2)).flatten()
+        amplitudes_1_solo = np.asarray([self.microwave_amplitude] * len(mw_freqs_1)).flatten()
         amplitudes_2 = np.asarray([0]*len(mw_freqs_1) + [ampl_mw_2]*len(mw_freqs_2)).flatten()
-
+        amplitudes_2_solo = np.asarray([ampl_mw_2] * len(mw_freqs_2)).flatten()
+        n_lines = len(mw_freqs_both)
+        n_lines_1 = len(mw_freqs_1)
+        n_lines_2 = len(mw_freqs_2)
 
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         num_of_points = len(tau_array)
@@ -441,19 +445,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               increment=tau_step,
                                               amps=amplitudes_both,
                                               freqs=mw_freqs_both,
-                                              phases=[0,0])
+                                              phases=[0]*n_lines)
             mw_alt_element = None
         elif int(alternating_mode) == int(DQTAltModes.DQT_12_alternating):
             mw_element = self._get_multiple_mw_element(length=tau_start,
                                                        increment=tau_step,
-                                                       amps=amplitudes_1,
-                                                       freqs=mw_freqs_both,
-                                                       phases=[0, 0])
+                                                       amps=amplitudes_1_solo,
+                                                       freqs=mw_freqs_1,
+                                                       phases=[0]*n_lines_1)
             mw_alt_element = self._get_multiple_mw_element(length=tau_start,
                                               increment=tau_step,
-                                              amps=amplitudes_2,
-                                              freqs=mw_freqs_both,
-                                              phases=[0,0])
+                                              amps=amplitudes_2_solo,
+                                              freqs=mw_freqs_2,
+                                              phases=[0]*n_lines_2)
         else:
             raise ValueError(f"Unknown DQT mode: {alternating_mode} of type {type(alternating_mode)}")
 
