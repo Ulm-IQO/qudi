@@ -349,17 +349,20 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_bell_ramsey(self, name='bell_ramsey', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                                 tau_cnot=100e-9, f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                                 t_rabi_bell=10e-6, f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                                  rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True):
         """
         Use lists of f_mw_2, ampl_mw_2, rabi_period_m2_2 to a) address second NV b) use double quantum transition
         """
+
+        tau_cnot = t_rabi_bell/(4*dd_order*dd_type.suborder)
         bell_blocks, _, _ = self.generate_ent_create_bell('ent', tau_cnot, tau_step=0, num_of_points=1,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                         rabi_period_mw_2=rabi_period_mw_2,
                                                                         dd_type=dd_type, dd_order=dd_order,
-                                                                        alternating=False, no_laser=True)
+                                                                        alternating=False, no_laser=True,
+                                                                        read_phase_deg=90)
         disent_blocks, _, _ = self.generate_ent_create_bell('dis-ent', tau_cnot, tau_step=0, num_of_points=1,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                         rabi_period_mw_2=rabi_period_mw_2,
@@ -374,7 +377,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         bell_blocks, disent_blocks, disent_alt_blocks = bell_blocks[0], disent_blocks[0], disent_alt_blocks[0]
 
-        tau_start_pspacing = tau_start
+        tau_start_pspacing = tau_start   # pi pulse not subtracted here!
         tau_array = tau_start_pspacing + np.arange(num_of_points) * tau_step
         tau_element = self._get_idle_element(length=tau_start_pspacing, increment=tau_step)
 
