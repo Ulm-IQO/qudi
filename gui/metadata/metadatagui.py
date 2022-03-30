@@ -67,7 +67,6 @@ class MetadataGui(GUIBase):
         ########################################################################
         #                      General configurations                          #
         ########################################################################
-        self.save_logic = self.savelogic()
         
         self._mw = MetadataMainWindow()
         self._gl = self._mw.gridLayout
@@ -79,8 +78,8 @@ class MetadataGui(GUIBase):
             self._mw.add_pushButton.setEnabled(False)
         
         # connect to signals from logic
-        self.save_logic.sigAddParamsUpdated.connect(self.update_param_list)
-        self.save_logic.sigFileSaved.connect(self.display_saved_file)
+        self.savelogic().sigAddParamsUpdated.connect(self.update_param_list)
+        self.savelogic().sigFileSaved.connect(self.display_saved_file)
 
         return
 
@@ -106,7 +105,7 @@ class MetadataGui(GUIBase):
         """
         Updates the display when the parameter dict is changed.
         """
-        params_dict = self.save_logic.get_additional_parameters()
+        params_dict = self.savelogic().get_additional_parameters()
         
         for k in params_dict.keys():
             to_add = True
@@ -153,7 +152,7 @@ class MetadataGui(GUIBase):
                 self._gl.addWidget(self.entry_dict[k][1], last_row, 2)
                 self._gl.addWidget(self.entry_dict[k][2], last_row, 3)
                 self.entry_dict[k][2].clicked.connect(lambda :\
-                                    self.save_logic.remove_additional_parameter(k))
+                                    self.savelogic().remove_additional_parameter(k))
 
             if self.read_only:
                 self.entry_dict[k][1].setReadOnly(True)
@@ -174,7 +173,7 @@ class MetadataGui(GUIBase):
     def update_value(self, value, key):
         """ Change a value in the additional_parameters dict of savelogic.
         """
-        self.save_logic.update_additional_parameters({key: value})
+        self.savelogic().update_additional_parameters({key: value})
         return
 
     
