@@ -136,7 +136,7 @@ class ODMRLogic(GenericLogic):
         )
 
         # Switch off microwave and set CW frequency and power
-        self.mw_off(start=True)
+        self.mw_off()
         self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
 
         # Connect signals
@@ -162,6 +162,10 @@ class ODMRLogic(GenericLogic):
         self._mw_device.off()
         # Disconnect signals
         self.sigNextLine.disconnect()
+
+        metadata_to_remove = ["CW frequency (Hz)", "CW power (dBm)", "CW microwave"]
+        for r in metadata_to_remove:
+            self._save_logic.remove_additional_parameter(r)
 
     @fc.constructor
     def sv_set_fits(self, val):
@@ -583,7 +587,7 @@ class ODMRLogic(GenericLogic):
             self._mw_device.reset_listpos()
         return
 
-    def mw_off(self, start=False):
+    def mw_off(self):
         """ Switching off the MW source.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
@@ -594,12 +598,13 @@ class ODMRLogic(GenericLogic):
 
         mode, is_running = self._mw_device.get_status()
         self.sigOutputStateUpdated.emit(mode, is_running)
-        if not start:
-            to_remove = ["CW frequency (Hz)", "CW power (dBm)"]
-            metadata = {"CW microwave": "OFF"}
-            for r in to_remove:
-                self._save_logic.remove_additional_parameter(r)
-            self._save_logic.update_additional_parameters(metadata)
+
+        metadata_to_remove = ["CW frequency (Hz)", "CW power (dBm)"]
+        metadata_to_add = {"CW microwave": "OFF"}
+        self._save_logic.update_additional_parameters(metadata_to_add)
+        for r in metadata_to_remove:
+            self._save_logic.remove_additional_parameter(r)
+
         return mode, is_running
 
     def _start_odmr_counter(self):
