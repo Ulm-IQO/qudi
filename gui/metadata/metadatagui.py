@@ -23,7 +23,6 @@ import os
 from core.connector import Connector
 from core.configoption import ConfigOption
 from gui.guibase import GUIBase
-from qtwidgets.text_edit import TextEdit
 from qtpy import QtWidgets
 from qtpy import uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox
@@ -138,13 +137,15 @@ class MetadataGui(GUIBase):
                 if number:
                     input_widget = ScienDSpinBox()
                     input_widget.setValue(value)
+                    input_widget.editingFinished.connect(
+                        lambda: self.update_value(input_widget.value(), k))
                     
                 else:
-                    input_widget = TextEdit()
+                    input_widget = QtWidgets.QLineEdit()
                     input_widget.setText(value)
-                    
-                input_widget.valueChanged.connect(
-                        lambda : self.update_value(input_widget.value(), k))
+                    input_widget.editingFinished.connect(
+                        lambda: self.update_value(input_widget.text(), k))
+
                     
                 self.entry_dict[k] = (QtWidgets.QLabel(str(k)), input_widget,
                                       QtWidgets.QPushButton("Remove"))
