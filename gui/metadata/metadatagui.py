@@ -24,12 +24,10 @@ from core.connector import Connector
 from core.configoption import ConfigOption
 from gui.guibase import GUIBase
 from qtwidgets.text_edit import TextEdit
-from qtpy import QtCore
-from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
 try:
-import pyperclip
+    import pyperclip
     PYPERCLIP_OK = True
 except ModuleNotFoundError:
     PYPERCLIP_OK = False
@@ -49,12 +47,11 @@ class MetadataMainWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-class MetadataGui(GUIBase):        
+
+class MetadataGui(GUIBase):
     """ This is the GUI Class for metadata module.
     """
-    _modclass = 'MetadataGui'
-    _modtype = 'gui'
-    
+
     # declare connectors
     savelogic = Connector(interface='SaveLogic')
     read_only = ConfigOption('read_only', default=False)
@@ -82,7 +79,7 @@ class MetadataGui(GUIBase):
         self._mw.add_pushButton.clicked.connect(self.add_param)
 
         if PYPERCLIP_OK:
-        self._mw.copy_pushButton.clicked.connect(self.timestamp_to_clipboard)
+            self._mw.copy_pushButton.clicked.connect(self.timestamp_to_clipboard)
         else:
             self.log.warning('Install pyperclip (pip install pyperclip) to copy timestamp to clipboard.')
 
@@ -93,16 +90,10 @@ class MetadataGui(GUIBase):
         self.savelogic().sigAddParamsUpdated.connect(self.update_param_list)
         self.savelogic().sigFileSaved.connect(self.display_saved_file)
 
-        return
-
-        
     def on_deactivate(self):
         """ Reverse steps of activation
-
-        @return int: error code (0:OK, -1:error)
         """
         self._mw.close()
-        return
 
     def show(self):
         """ Make window visible and put it above all other windows. 
@@ -110,12 +101,9 @@ class MetadataGui(GUIBase):
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
-        
-        return
 
     def update_param_list(self):
-        """
-        Updates the display when the parameter dict is changed.
+        """ Updates the display when the parameter dict is changed.
         """
         params_dict = self.savelogic().get_additional_parameters()
         
@@ -126,7 +114,7 @@ class MetadataGui(GUIBase):
             try:    
                 value = float(params_dict[k])
                 number = True
-            except:
+            except ValueError:
                 value = str(params_dict[k])
 
             # check if we know k already and if the value did not change type
@@ -172,7 +160,7 @@ class MetadataGui(GUIBase):
                 
         to_remove = []
         for k in self.entry_dict.keys():
-            if not k in params_dict.keys():
+            if k not in params_dict.keys():
                 to_remove.append(k)
         for k in to_remove:
             self.entry_dict[k][0].hide()
@@ -181,27 +169,22 @@ class MetadataGui(GUIBase):
             self.entry_dict.pop(k)
         return
 
-    
     def update_value(self, value, key):
         """ Change a value in the additional_parameters dict of savelogic.
         """
         self.savelogic().update_additional_parameters({key: value})
         return
 
-    
     def display_saved_file(self, module, timestamp):
         self._mw.last_file_label.setText(f"Last file saved by {module} module with timestamp {timestamp}.")
         self.timestamp = timestamp
         return
 
-
     def timestamp_to_clipboard(self):
         """ Copy the currently displayed timestamp to the clipboard.
         """
         pyperclip.copy(self.timestamp)
-        return
 
-    
     def add_param(self):
         """ Opens a dialog to input the parameters.
         """
@@ -223,12 +206,9 @@ class MetadataGui(GUIBase):
         button2.move(200, 260)
         button2.clicked.connect(add_dialog.reject)
         add_dialog.exec()
-        return
-    
 
     def get_added_param(self, input_key, input_value):
-        """
-        Get the input parameters from the dialog.
+        """ Get the input parameters from the dialog.
         """
         key = input_key.text()
         key = self.remove_annoying_characters(key)
@@ -239,8 +219,6 @@ class MetadataGui(GUIBase):
         except:
             pass
         self.update_value(value, key)
-        return
-        
     
     def remove_annoying_characters(self, input_string):
         """ Removes unwanted characters from the string (for easier parsing of the file headers).
@@ -249,6 +227,4 @@ class MetadataGui(GUIBase):
         for ch in bad_chars:
             input_string = input_string.replace(ch, "")
         return input_string
-  
-        
-        
+
