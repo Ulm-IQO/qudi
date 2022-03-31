@@ -384,10 +384,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         bell_ramsey_block = PulseBlock(name=name)
         bell_ramsey_block.extend(bell_blocks)
         bell_ramsey_block.append(tau_element)
+        #1 bell_ramsey_block.extend(Hadamard_blocks)
         bell_ramsey_block.extend(disent_blocks)
         if alternating:
             bell_ramsey_block.extend(bell_blocks)
             bell_ramsey_block.append(tau_element)
+            #1 bell_ramsey_block.extend(Hadamard_alt_blocks)
             bell_ramsey_block.extend(disent_alt_blocks)
 
         created_blocks = []
@@ -412,6 +414,91 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             ensemble=block_ensemble, created_blocks=created_blocks)
 
         # append ensemble to created ensembles
+        created_ensembles, created_sequences = [], []
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_bell_ramsey2(self, name='bell_ramsey', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                                 t_rabi_bell=10e-6,f_mw_2="1e9,1e9,1e9",ampl_mw_2="0.125, 0, 0",
+                                 rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                                 dd_type=DDMethods.SE, dd_order=1, alternating=True):
+        """
+        Use lists of f_mw_2, ampl_mw_2, rabi_period_m2_2 to a) address second NV b) use double quantum transition
+        """
+        # Changement of Timo's Code from Roberto Sailer (in Paramter list insert rabi_period,microwave_amplitude,microwave_frequency)
+
+
+        tau_cnot = t_rabi_bell/(4*dd_order*dd_type.suborder)
+        bell_blocks, _, _ = self.generate_ent_create_bell('ent', tau_cnot, tau_step=0, num_of_points=1,
+                                                                        f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                                        rabi_period_mw_2=rabi_period_mw_2,
+                                                                        dd_type=dd_type, dd_order=dd_order,
+                                                                        alternating=False, no_laser=True,
+                                                                        read_phase_deg=90)
+
+
+        bell_blocks = bell_blocks[0]
+
+        tau_start_pspacing = tau_start   # pi pulse not subtracted here!
+        tau_array = tau_start_pspacing + np.arange(num_of_points) * tau_step
+        tau_element = self._get_idle_element(length=tau_start_pspacing, increment=tau_step)
+
+        pihalf-y-both_elements = self._get_multiple_mw_mult_length_element(lengths=rabi_periods/4,
+                                             increments=[0,0],
+                                             amps=amplitudes,
+                                            freqs=mw_freqs,
+                                            phases=[90,90])
+        3pihalf_y_both_elements = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                           increments=[0, 0],
+                                                                           amps=amplitudes,
+                                                                           freqs=mw_freqs,
+                                                                           phases=[
+                                                                               read_phase_deg + 180,
+                                                                               read_phase_deg + 180])
+        pi-both_elements = self._get_multiple_mw_mult_length_element(lengths=rabi_periods/2,
+                   increments=[0,0],
+                 amps=amplitudes,
+                freqs=mw_freqs,
+                phases=[0,0])
+        Hadamard_blocks = []
+        Hadamard_blocks.extend(pihalf-y-both_elements)
+        Hadamard_blocks.extend(pi-both_elements)
+
+        Hadamard_alt_blocks = []
+        Hadamard_alt_blocks.extend(3pihalf-y-both_elements)
+        Hadamard_alt_blocks.extend(pi-both_elements)
+
+        bell_ramsey_block = PulseBlock(name=name)
+        bell_ramsey_block.extend(bell_blocks)
+        bell_ramsey_block.append(tau_element)
+        bell_ramsey_block.extend(Hadamard_blocks)
+        if alternating:
+            bell_ramsey_block.extend(bell_blocks)
+            bell_ramsey_block.append(tau_element)
+            bell_ramsey_block.extend(Hadamard_alt_blocks)
+
+        created_blocks = []
+        created_blocks.append(bell_ramsey_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((bell_ramsey_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        ##block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+#
+        ## append ensemble to created ensembles
         created_ensembles, created_sequences = [], []
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
