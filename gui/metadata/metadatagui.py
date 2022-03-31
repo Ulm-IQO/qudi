@@ -26,6 +26,8 @@ from gui.guibase import GUIBase
 from qtwidgets.text_edit import TextEdit
 from qtpy import QtWidgets
 from qtpy import uic
+from qtwidgets.scientific_spinbox import ScienDSpinBox
+
 try:
     import pyperclip
     PYPERCLIP_OK = True
@@ -134,8 +136,7 @@ class MetadataGui(GUIBase):
 
             if to_add:
                 if number:
-                    input_widget = QtWidgets.QDoubleSpinBox()
-                    input_widget.setRange(-10e10, 10e10)
+                    input_widget = ScienDSpinBox()
                     input_widget.setValue(value)
                     
                 else:
