@@ -28,6 +28,7 @@ from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
+import pyperclip
 
 
 class MetadataMainWindow(QtWidgets.QMainWindow):
@@ -72,8 +73,10 @@ class MetadataGui(GUIBase):
         self._gl = self._mw.gridLayout
 
         self.entry_dict = {}
+        self.timestamp = ""
 
         self._mw.add_pushButton.clicked.connect(self.add_param)
+        self._mw.copy_pushButton.clicked.connect(self.timestamp_to_clipboard)
         if self.read_only:
             self._mw.add_pushButton.setEnabled(False)
         
@@ -179,9 +182,17 @@ class MetadataGui(GUIBase):
     
     def display_saved_file(self, module, timestamp):
         self._mw.last_file_label.setText(f"Last file saved by {module} module with timestamp {timestamp}.")
+        self.timestamp = timestamp
         return
-    
 
+
+    def timestamp_to_clipboard(self):
+        """ Copy the currently displayed timestamp to the clipboard.
+        """
+        pyperclip.copy(self.timestamp)
+        return
+
+    
     def add_param(self):
         """ Opens a dialog to input the parameters.
         """

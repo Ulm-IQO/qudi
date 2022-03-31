@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>682</width>
-    <height>626</height>
+    <height>627</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,8 +51,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>653</width>
-          <height>497</height>
+          <width>657</width>
+          <height>503</height>
          </rect>
         </property>
         <widget class="QWidget" name="gridLayoutWidget">
@@ -84,6 +84,19 @@
      <string>Last file saved by X module with timestamp Y.</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="copy_pushButton">
+    <property name="geometry">
+     <rect>
+      <x>530</x>
+      <y>560</y>
+      <width>121</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Copy timestamp</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -91,7 +104,7 @@
      <x>0</x>
      <y>0</y>
      <width>682</width>
-     <height>25</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>
