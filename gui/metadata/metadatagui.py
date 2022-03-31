@@ -222,16 +222,24 @@ class MetadataGui(GUIBase):
         Get the input parameters from the dialog.
         """
         key = input_key.text()
+        key = self.remove_annoying_characters(key)
         value = input_value.toPlainText()
+        value = self.remove_annoying_characters(str(value))
         try:
             value = float(value)
         except:
-            value = str(value)
+            pass
         self.update_value(value, key)
         return
         
     
-
+    def remove_annoying_characters(self, input_string):
+        """ Removes unwanted characters from the string (for easier parsing of the file headers).
+        """
+        bad_chars = [":", "#", "\n"]
+        for ch in bad_chars:
+            input_string = input_string.replace(ch, "")
+        return input_string
   
         
         
