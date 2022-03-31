@@ -28,7 +28,11 @@ from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
+try:
 import pyperclip
+    PYPERCLIP_OK = True
+except ModuleNotFoundError:
+    PYPERCLIP_OK = False
 
 
 class MetadataMainWindow(QtWidgets.QMainWindow):
@@ -76,7 +80,12 @@ class MetadataGui(GUIBase):
         self.timestamp = ""
 
         self._mw.add_pushButton.clicked.connect(self.add_param)
+
+        if PYPERCLIP_OK:
         self._mw.copy_pushButton.clicked.connect(self.timestamp_to_clipboard)
+        else:
+            self.log.warning('Install pyperclip (pip install pyperclip) to copy timestamp to clipboard.')
+
         if self.read_only:
             self._mw.add_pushButton.setEnabled(False)
         
