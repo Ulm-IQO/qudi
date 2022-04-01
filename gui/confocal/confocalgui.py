@@ -1341,14 +1341,13 @@ class ConfocalGui(GUIBase):
             offset = self._scanning_logic.x_range[0] + size_window/2
             self._mw.x_offset_InputWidget.setValue(offset)
             self.update_roi_xy()
-            self.log.info("x was out of range, changed offset")
+            self.log.debug("x was out of range, changed offset")
         test = offset + size_window/2
         if test > self._scanning_logic.x_range[1]:
             offset = self._scanning_logic.x_range[1] - size_window/2
             self._mw.x_offset_InputWidget.setValue(offset)
             self.update_roi_xy()
-            self.log.info("x was out of range, changed offset")
-        self.log.info("Changed x range or offset")
+            self.log.debug("x was out of range, changed offset")
         self._scanning_logic.image_x_range = [offset - size_window/2, offset + size_window/2]
 
     def change_y_image_range(self):
@@ -1361,14 +1360,13 @@ class ConfocalGui(GUIBase):
             offset = self._scanning_logic.y_range[0] + size_window/2
             self._mw.y_offset_InputWidget.setValue(offset)
             self.update_roi_xy()
-            self.log.info("y was out of range, changed offset")
+            self.log.debug("y was out of range, changed offset")
         test = offset + size_window/2
         if test > self._scanning_logic.y_range[1]:
             offset = self._scanning_logic.y_range[1] - size_window/2
             self._mw.y_offset_InputWidget.setValue(offset)
             self.update_roi_xy()
-            self.log.info("y was out of range, changed offset")
-        self.log.info("Changed y range or offset")
+            self.log.debug("y was out of range, changed offset")
         self._scanning_logic.image_y_range = [offset - size_window/2, offset + size_window/2]
 
     def change_z_image_range(self):
@@ -1380,14 +1378,13 @@ class ConfocalGui(GUIBase):
             offset = self._scanning_logic.z_range[0] + size_window/2
             self._mw.z_offset_InputWidget.setValue(offset)
             self.update_roi_depth()
-            self.log.info("z was out of range, changed offset")
+            self.log.debug("z was out of range, changed offset")
         test = offset + size_window/2
         if test > self._scanning_logic.z_range[1]:
             offset = self._scanning_logic.z_range[1] - size_window/2
             self._mw.z_offset_InputWidget.setValue(offset)
             self.update_roi_depth()
-            self.log.info("z was out of range, changed offset")
-        self.log.info("Changed z range or offset")
+            self.log.debug("z was out of range, changed offset")
         self._scanning_logic.image_z_range = [offset - size_window/2, offset + size_window/2]
 
     def cursor_to_offset(self):
