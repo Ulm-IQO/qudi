@@ -120,4 +120,5 @@ dependencies:
     - serial==0.0.64
     - smmap2==2.0.1
     - typing==3.6.4
+    - pyperclip==1.8.2
 

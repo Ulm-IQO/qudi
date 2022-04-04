@@ -117,4 +117,5 @@ dependencies:
     - smmap2==2.0.3
     - typing==3.6.4
     - uncertainties==3.0.2
+    - pyperclip==1.8.2
 

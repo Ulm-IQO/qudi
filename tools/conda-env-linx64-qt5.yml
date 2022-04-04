@@ -124,4 +124,5 @@ dependencies:
     - ruamel.yaml==0.15.37
     - serial==0.0.64
     - smmap2==2.0.1
+    - pyperclip==1.8.2
 
