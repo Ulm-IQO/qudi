@@ -51,6 +51,13 @@ class MetadataMainWindow(QtWidgets.QMainWindow):
 
 class MetadataGui(GUIBase):
     """ This is the GUI Class for metadata module.
+
+    Example config for copy-paste:
+
+    metadata:
+        module.Class: 'metadata.metadatagui.MetadataGui'
+        connect:
+            savelogic: 'savelogic'
     """
 
     # declare connectors
