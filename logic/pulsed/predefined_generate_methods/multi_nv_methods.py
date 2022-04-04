@@ -109,7 +109,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_tomography(self, name='tomography', tau_start=10.0e-9, tau_step=10.0e-9,
-                            rabi_on_nv=1, rabi_phase_deg=0, rotation='', num_of_points=50,
+                            rabi_on_nv=1, rabi_phase_deg=0, rotation=TomoRotations.none, num_of_points=50,
+                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             alternating=False):
         """
@@ -117,19 +118,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         """
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
 
-        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2))
-        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2))
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
         ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
-        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2))
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
         rabi_on_nv = int(rabi_on_nv)
 
         if rabi_on_nv != 1 and rabi_on_nv != 2:
             raise ValueError(f"Can drive Rabi on subsystem NV 1 or 2, not {rabi_on_nv}.")
-
-        if len(mw_freqs) != 4:
-            raise ValueError("Expected four mw frequencies: [f_nv1, f_dqt_nv1, f_nv2, f_dqt_nv2]. "
-                             "Set respective amplitude to zero, if you want omit certain frequencies")
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
@@ -141,12 +138,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_on_2_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_2, tau_step)
         mw_rabi_element = mw_on_1_element if rabi_on_nv == 1 else mw_on_2_element
 
-        self._get_mw_element(length=tau_start,
-                                          increment=tau_step,
-                                          amp=self.microwave_amplitude,
-                                          freq=self.microwave_frequency,
-                                          phase=rabi_phase_deg)
-
         pi_on_all_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
         pi_on_1_element = self.get_pi_element(0, mw_freqs,
                                               ampls_on_1,
@@ -155,23 +146,37 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               ampls_on_2,
                                               rabi_periods)
         pi_rabi_element = pi_on_1_element if rabi_on_nv else pi_on_2_element
+        c1not2_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
+                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                                  dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
+                                                  no_laser=True)
+        c1not2_element = c1not2_element[0]
+        c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
+                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                                  dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
+                                                  no_laser=True)
+        c2not1_element = c2not1_element[0]
 
         rot_elements = []
         if rotation:
             if rotation == TomoRotations.none:
                 rot_elements = []
             elif rotation == TomoRotations.c1not2:
-                rot_elements = [] # TODO: get cnot
-            elif rotation == TomoRotations.ux180_on_2:
-                rot_elements = [pi_on_2_element]
-            elif rotation == TomoRotations.c1not2_ux180_on_2:
-                rot_elements = [] # todo: get cnot
-            elif rotation == TomoRotations.c2not1_ux180_on_1:
-                rot_elements = []  # TODO: get cno
+                rot_elements = c1not2_element
+            elif rotation == TomoRotations.c2not1:
+                rot_elements = c2not1_element
             elif rotation == TomoRotations.ux180_on_1:
-                rot_elements = [pi_on_1_element]
+                rot_elements = pi_on_1_element
+            elif rotation == TomoRotations.ux180_on_2:
+                rot_elements = pi_on_2_element
+            elif rotation == TomoRotations.c1not2_ux180_on_2:
+                rot_elements = c1not2_element
+                rot_elements.extend(pi_on_2_element)
+            elif rotation == TomoRotations.c2not1_ux180_on_1:
+                rot_elements = c2not1_element
+                rot_elements.extend(pi_on_1_element)
             else:
-                raise ValueError(f"Unknown rotation: {rotation}")
+                raise ValueError(f"Unknown tomography rotation: {rotation.name}")
 
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
@@ -217,24 +222,40 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_c1not2(self, name='deer_dd_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+    def generate_c1not2(self, name='c1not2', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                                  rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-                                 dd_type=DDMethods.SE, dd_order=1, alternating=True, no_laser=False):
+                                 dd_type=DDMethods.SE, dd_order=1,
+                                  alternating=False, no_laser=True):
 
+        order_nvs = "1,2"
         read_phase = 90
-        # todo: read and init pi2 probably not on both nvs -> use init_pix_on2 param
+
         return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                   f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                   dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
+                                  nv_order=order_nvs,
                                   read_phase_deg=read_phase)
 
+    def generate_c2not1(self, name='c1not2', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                        f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                        rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                        dd_type=DDMethods.SE, dd_order=1,
+                        alternating=False, no_laser=True):
+
+        order_nvs = "2,1"
+        read_phase = 90
+
+        return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                         dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
+                                         nv_order=order_nvs,
+                                         read_phase_deg=read_phase)
 
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
-                                 rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on2=0, read_phase_deg=90, no_laser=False):
+                                 init_pix_on2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
         In contrast to 'normal' DEER, the position of the pi on NV2 is not swept. Instead, the pi pulses on NV1 & NV2
@@ -245,16 +266,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles = list()
         created_sequences = list()
 
-        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2))
-        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2))
-        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
-        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
-        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2))
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order, n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order, n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2, order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2, order_nvs=nv_order)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
-        # calculate "real" start length of tau due to finite pi-pulse length
-        real_start_tau = max(0, tau_start - self.rabi_period / 2)
         start_tau_pspacing = self.tau_2_pulse_spacing(tau_start)
         # self.log.debug("So far tau_start: {}, new: {}".format(real_start_tau, start_tau_pspacing))
 
@@ -329,7 +348,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         block_ensemble.append((dd_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
-        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
@@ -964,12 +984,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         """
         Creates single, double sine mw element.
 
-        @param float lengths: MW pulse duration in seconds
-        @param float increments: MW pulse duration increment in seconds
-        @param amps: list containing the amplitudes
-        @param freqs: list containing the frequencies
-        @param phases: list containing the phases
-        @return: list of PulseBlockElement, the generated MW element
+        :param float lengths: MW pulse duration in seconds
+        :param float increments: MW pulse duration increment in seconds
+        :param amps: list containing the amplitudes
+        :param freqs: list containing the frequencies
+        :param phases: list containing the phases
+        :return: list of PulseBlockElement, the generated MW element
         """
 
         if isinstance(lengths, (int, float)):
@@ -1044,7 +1064,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return blocks
 
     @staticmethod
-    def _create_param_array(in_value, in_list, n_nvs=None, idx_nv=None):
+    def _create_param_array(in_value, in_list, n_nvs=None, idx_nv=None, order_nvs=None):
         """
         Generate params list that can be supplied to self.get_pi_element() in order
         to generate pulses on all or a single specified NV.
@@ -1057,10 +1077,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         :param idx_nv:
         :return:
         """
+        def sublists(inlist, n):
+            return [inlist[i:i+int(n)] for i in range(0,len(inlist),int(n))]
+
         array = [in_value]
         array.extend(in_list)
         all_nv_params = np.asarray(array)
 
+        # pick a single NV and set all others to zero ampl
         if n_nvs != None and idx_nv != None:
             if idx_nv >= n_nvs:
                 raise ValueError(f"Index of NV {idx_nv} outside range 0..{n_nvs-1}")
@@ -1075,5 +1099,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         else:
             nv_params = all_nv_params
 
-        return nv_params
+        # re-order paraams, if nv order != [1,2, ...]
+        if order_nvs != None:
+            order_nvs = csv_2_list(order_nvs)
+            parama_per_nv = sublists(nv_params, n_nvs)
+            parama_per_nv = [p for p, i in sorted(zip(parama_per_nv, order_nvs), key=lambda tup: tup[1])]
+            nv_params = [item for sublist in parama_per_nv for item in sublist] # flatten per nv list again
+
+        return np.asarray(nv_params)
 
