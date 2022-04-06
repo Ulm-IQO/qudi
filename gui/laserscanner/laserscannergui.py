@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import os
 import pyqtgraph as pg
-
+import time
 from collections import OrderedDict
 from core.connector import Connector
 from gui.colordefs import ColorScaleInferno
@@ -56,6 +56,7 @@ class VoltScanGui(GUIBase):
     savelogic = Connector(interface='SaveLogic')
 
     sigStartScan = QtCore.Signal()
+    sigResumeScan = QtCore.Signal()
     sigStopScan = QtCore.Signal()
     sigChangeVoltage = QtCore.Signal(float)
     sigChangeRange = QtCore.Signal(list)
@@ -93,7 +94,7 @@ class VoltScanGui(GUIBase):
 
         # Get the image from the logic
         self.scan_matrix_image = pg.ImageItem(
-            self._voltscan_logic.scan_matrix,
+            self._voltscan_logic.scan_matrix_new,
             axisOrder='row-major')
 
         self.scan_matrix_image.setRect(
@@ -116,30 +117,50 @@ class VoltScanGui(GUIBase):
                 self._voltscan_logic.number_of_repeats)
         )
 
-        self.scan_image = pg.PlotDataItem(
-            self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y)
+        self.scan_image = pg.PlotDataItem()
+        #self.scan_image2 = pg.PlotDataItem(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y)
+        #self.scan_image = pg.PlotDataItem(
+        #    self._voltscan_logic.raw_matrix_voltage[self._voltscan_logic._scan_counter_down+self._voltscan_logic._scan_counter_up],
+        #    self._voltscan_logic.raw_matrix_counts[self._voltscan_logic._scan_counter_up+self._voltscan_logic._scan_counter_down])
 
-        self.scan_image2 = pg.PlotDataItem(
-            self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y2)
+        self.scan_image2 = pg.PlotDataItem()
+        #    self._voltscan_logic.raw_matrix_voltage[self._voltscan_logic._scan_counter_down+self._voltscan_logic._scan_counter_up],
+        #    self._voltscan_logic.raw_matrix_counts[self._voltscan_logic._scan_counter_down+self._voltscan_logic._scan_counter_up])
 
         self.scan_fit_image = pg.PlotDataItem(
             self._voltscan_logic.fit_x,
             self._voltscan_logic.fit_y,
-            pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
+            pen=pg.mkPen('r', width=5))
+            #pen=QtGui.QPen(QtGui.QColor(0, 255, 255, 255)))
+        self.scan_fit_image2 = pg.PlotDataItem(
+            self._voltscan_logic.fit_x2,
+            self._voltscan_logic.fit_y2,
+            pen=pg.mkPen('r', width=5))
+        # pen=QtGui.QPen(QtGui.QColor(0, 255, 255, 255)))
 
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.voltscan_ViewWidget.addItem(self.scan_image)
-        #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
+        self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
         self._mw.voltscan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.voltscan_ViewWidget.setLabel('bottom','Voltage',units='V')
+        self._mw.voltscan_ViewWidget.setLabel('left','Fluorescence',units='counts/s')
+
         self._mw.voltscan_matrix_ViewWidget.addItem(self.scan_matrix_image)
+        self._mw.voltscan_matrix_ViewWidget.setLabel('bottom','Voltage',units='V')
+        self._mw.voltscan_matrix_ViewWidget.setLabel('left', 'Scan Lines')
+
 
         self._mw.voltscan2_ViewWidget.addItem(self.scan_image2)
-        #self._mw.voltscan2_ViewWidget.addItem(self.scan_fit_image)
+        self._mw.voltscan2_ViewWidget.addItem(self.scan_fit_image2)
         self._mw.voltscan2_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.voltscan2_ViewWidget.setLabel('bottom','Voltage',units='V')
+        self._mw.voltscan2_ViewWidget.setLabel('left','Fluorescence',units='counts/s')
+
         self._mw.voltscan_matrix2_ViewWidget.addItem(self.scan_matrix_image2)
+        self._mw.voltscan_matrix2_ViewWidget.setLabel('bottom', 'Voltage', units='V')
+        self._mw.voltscan_matrix2_ViewWidget.setLabel('left', 'Scan Lines')
+
 
         # Get the colorscales at set LUT
         my_colors = ColorScaleInferno()
@@ -160,8 +181,15 @@ class VoltScanGui(GUIBase):
         self._mw.voltscan_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
         self._mw.voltscan_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
 
+        # set constrains
+        self._mw.startDoubleSpinBox.setMaximum(self._voltscan_logic.a_range[1])
+        self._mw.stopDoubleSpinBox.setMaximum(self._voltscan_logic.a_range[1])
+        self._mw.startDoubleSpinBox.setMinimum(self._voltscan_logic.a_range[0])
+        self._mw.stopDoubleSpinBox.setMinimum(self._voltscan_logic.a_range[0])
+        self._mw.speedDoubleSpinBox.setMaximum(self._voltscan_logic._speed_limit)
         # set initial values
         self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+
         self._mw.speedDoubleSpinBox.setValue(self._voltscan_logic._scan_speed)
         self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
         self._mw.constDoubleSpinBox.setValue(self._voltscan_logic._static_v)
@@ -169,10 +197,10 @@ class VoltScanGui(GUIBase):
         self._mw.linesSpinBox.setValue(self._voltscan_logic.number_of_repeats)
 
         # Update the inputed/displayed numbers if the cursor has left the field:
-        self._mw.startDoubleSpinBox.editingFinished.connect(self.change_start_volt)
-        self._mw.speedDoubleSpinBox.editingFinished.connect(self.change_speed)
-        self._mw.stopDoubleSpinBox.editingFinished.connect(self.change_stop_volt)
-        self._mw.resolutionSpinBox.editingFinished.connect(self.change_resolution)
+        self._mw.startDoubleSpinBox.editingFinished.connect(self.update_scan_range)
+        self._mw.speedDoubleSpinBox.editingFinished.connect(self.update_scan_speed)
+        self._mw.stopDoubleSpinBox.editingFinished.connect(self.update_scan_range)
+        self._mw.resolutionSpinBox.editingFinished.connect(self.update_resolution)
         self._mw.linesSpinBox.editingFinished.connect(self.change_lines)
         self._mw.constDoubleSpinBox.editingFinished.connect(self.change_voltage)
 
@@ -188,8 +216,16 @@ class VoltScanGui(GUIBase):
         self._voltscan_logic.sigUpdatePlots.connect(self.refresh_lines)
         self._voltscan_logic.sigScanFinished.connect(self.scan_stopped)
         self._voltscan_logic.sigScanStarted.connect(self.scan_started)
+        self._voltscan_logic.sigScanResumed.connect(self.scan_resumed)
+        self._voltscan_logic.sigSpeedChanged.connect(self.update_inputs)
+        self._voltscan_logic.sigResolutionChanged.connect(self.update_inputs)
+        self._voltscan_logic.sigScanRangeChanged.connect(self.update_inputs)
+        self._voltscan_logic.sigSpeedLimitChanged.connect(self.update_inputs)
+
+
 
         self.sigStartScan.connect(self._voltscan_logic.start_scanning)
+        self.sigResumeScan.connect(self._voltscan_logic.resume_scanning)
         self.sigStopScan.connect(self._voltscan_logic.stop_scanning)
         self.sigChangeVoltage.connect(self._voltscan_logic.set_voltage)
         self.sigChangeRange.connect(self._voltscan_logic.set_scan_range)
@@ -213,13 +249,29 @@ class VoltScanGui(GUIBase):
         self._mw.action_run_stop.setEnabled(False)
         if is_checked:
             self.sigStartScan.emit()
-            self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
-            self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
+            #self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
+            #self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
         else:
             self.sigStopScan.emit()
 
+    def resume(self):
+        """ Manages what happens if scan is started/stopped """
+        #self._mw.action_run_stop.setEnabled(False)
+        if self._mw.action_run_stop.isChecked():
+            pass
+            # self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
+            # self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
+        else:
+            self.sigResumeScan.emit()
+
     def scan_started(self):
         self._mw.action_run_stop.setEnabled(True)
+        self._mw.action_run_stop.setChecked(True)
+
+
+    def scan_resumed(self):
+        self._mw.action_run_stop.setEnabled(True)
+        self._mw.action_run_stop.setChecked(True)
 
     def scan_stopped(self):
         self._mw.action_run_stop.setEnabled(True)
@@ -228,32 +280,97 @@ class VoltScanGui(GUIBase):
         self.refresh_matrix()
         self.refresh_lines()
 
+    def update_scan_range(self):
+        if self._mw.action_run_stop.isChecked() == False:
+            self.sigChangeRange.emit([self._mw.startDoubleSpinBox.value(),self._mw.stopDoubleSpinBox.value()])
+        else:
+            self._mw.action_run_stop.trigger()
+            duration = abs(
+                self._voltscan_logic.scan_range[0] - self._voltscan_logic.scan_range[1]) / self._voltscan_logic._scan_speed
+            time.sleep(duration)
+            self.sigChangeRange.emit([self._mw.startDoubleSpinBox.value(),self._mw.stopDoubleSpinBox.value()])
+
+            self.resume()
+
+    def update_scan_speed(self):
+        if self._mw.action_run_stop.isChecked() == False:
+            self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
+        else:
+            self._mw.action_run_stop.trigger()
+            #self.scan_stopped()
+            duration = abs(
+                self._voltscan_logic.scan_range[0] - self._voltscan_logic.scan_range[
+                    1]) / self._voltscan_logic._scan_speed
+            time.sleep(duration)
+            self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
+            #self._voltscan_logic.resume_scanning()
+            self.resume()
+
+    def update_resolution(self):
+        if self._mw.action_run_stop.isChecked() == False:
+            self.sigChangeResolution.emit(self._mw.resolutionSpinBox.value())
+        else:
+            self._mw.action_run_stop.trigger()
+            # self.scan_stopped()
+            duration = abs(
+                self._voltscan_logic.scan_range[0] - self._voltscan_logic.scan_range[
+                    1]) / self._voltscan_logic._scan_speed
+            time.sleep(duration)
+            self.sigChangeResolution.emit(self._mw.resolutionSpinBox.value())
+            self.resume()
+
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y)
-        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y2)
+        #self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix[self._voltscan_logic._scan_counter_up-1])
+        self.scan_image.setData(
+            np.concatenate(np.array(self._voltscan_logic.raw_matrix_voltage)[self._voltscan_logic._upwards_index_list]),
+            np.concatenate(np.array(self._voltscan_logic.raw_matrix_counts)[self._voltscan_logic._upwards_index_list]))
+        self.scan_fit_image.setData(self._voltscan_logic.fit_x, self._voltscan_logic.fit_y)
+        #enableAutoRange(axis='y')
+        #self.scan_fit_image.setRange(xRange=[min(self._voltscan_logic.fit_x),max(self._voltscan_logic.fit_x)])
+        self.scan_fit_image2.setData(self._voltscan_logic.fit_x2, self._voltscan_logic.fit_y2)
+        if len(self._voltscan_logic._downwards_index_list)>0:
+            self.scan_image2.setData(
+                np.concatenate(np.array(self._voltscan_logic.raw_matrix_voltage)[self._voltscan_logic._downwards_index_list]),
+                np.concatenate(np.array(self._voltscan_logic.raw_matrix_counts)[self._voltscan_logic._downwards_index_list]))
+        else:
+            pass
+        #self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.scan_matrix2[self._voltscan_logic._scan_counter_up-1])
+
+    def update_inputs(self):
+
+        self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+        self._mw.speedDoubleSpinBox.setValue(self._voltscan_logic._scan_speed)
+        self._mw.speedDoubleSpinBox.setMaximum(self._voltscan_logic._speed_limit)
+        self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
+        self._mw.constDoubleSpinBox.setValue(self._voltscan_logic._static_v)
+        self._mw.resolutionSpinBox.setValue(self._voltscan_logic.resolution)
+        self._mw.linesSpinBox.setValue(self._voltscan_logic.number_of_repeats)
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
-        self.scan_matrix_image.setImage(self._voltscan_logic.scan_matrix, axisOrder='row-major')
+        scan_image_data = self._voltscan_logic.scan_matrix_new
+        scan_image_data2 = self._voltscan_logic.scan_matrix2
+        self.scan_matrix_image.setImage(scan_image_data, axisOrder='row-major')
         self.scan_matrix_image.setRect(
             QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[0],
                 0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[1]-
+                self._voltscan_logic.a_range[0],
                 self._voltscan_logic.number_of_repeats)
             )
-        self.scan_matrix_image2.setImage(self._voltscan_logic.scan_matrix2, axisOrder='row-major')
+        self.scan_matrix_image2.setImage(scan_image_data2, axisOrder='row-major')
         self.scan_matrix_image2.setRect(
             QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[0],
                 0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.a_range[1] - self._voltscan_logic.a_range[0],
                 self._voltscan_logic.number_of_repeats)
         )
         self.refresh_scan_colorbar()
 
-        scan_image_data = self._voltscan_logic.scan_matrix
+
 
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
@@ -304,29 +421,45 @@ class VoltScanGui(GUIBase):
         self._mw.elapsed_lines_DisplayWidget.display(self._voltscan_logic._scan_counter_up)
 
     def change_voltage(self):
+        self.scan_stopped()
         self.sigChangeVoltage.emit(self._mw.constDoubleSpinBox.value())
-
+        #self.scan_resumed()
     def change_start_volt(self):
-        self.sigChangeRange.emit([
-            self._mw.startDoubleSpinBox.value(),
-            self._mw.stopDoubleSpinBox.value()
-        ])
+        self.scan_stopped()
+        if self._mw.startDoubleSpinBox.value()<self._mw.stopDoubleSpinBox.value():
+            self.sigChangeRange.emit([
+                self._mw.startDoubleSpinBox.value(),
+                self._mw.stopDoubleSpinBox.value()
+            ])
+        else:
+            self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+            self.log.warn('start_value must be smaller than stop_value')
+        #self.scan_resumed()
+
 
     def change_speed(self):
+        self.scan_stopped()
         self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
-
+        #self.scan_resumed()
     def change_stop_volt(self):
-        self.sigChangeRange.emit([
-            self._mw.startDoubleSpinBox.value(),
-            self._mw.stopDoubleSpinBox.value()
-        ])
-
+        self.scan_stopped()
+        if self._mw.startDoubleSpinBox.value() < self._mw.stopDoubleSpinBox.value():
+            self.sigChangeRange.emit([
+                self._mw.startDoubleSpinBox.value(),
+                self._mw.stopDoubleSpinBox.value()
+            ])
+        else:
+            self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
+            self.log.warn('start_value must be smaller than stop_value')
+        #self.scan_resumed()
     def change_lines(self):
+
         self.sigChangeLines.emit(self._mw.linesSpinBox.value())
 
     def change_resolution(self):
+        self.scan_stopped()
         self.sigChangeResolution.emit(self._mw.resolutionSpinBox.value())
-
+        #self.scan_resumed()
     def get_matrix_cb_range(self):
         """
         Determines the cb_min and cb_max values for the matrix plot
