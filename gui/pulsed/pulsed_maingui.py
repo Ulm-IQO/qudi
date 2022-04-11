@@ -314,7 +314,8 @@ class PulsedMeasurementGui(GUIBase):
         # Connect signals used in pulse generator settings dialog
         self._pgs.accepted.connect(self.apply_generator_settings)
         self._pgs.rejected.connect(self.keep_former_generator_settings)
-        self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_generator_settings)
+        self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_generator_settings)
         self._pgs.pg_benchmark.clicked.connect(self.run_pg_benchmark)
 
         # Connect signals used in fit settings dialog
@@ -967,8 +968,19 @@ class PulsedMeasurementGui(GUIBase):
         pg_constr = self.pulsedmasterlogic().pulse_generator_constraints
         self._pgs.gen_sample_freq_DSpinBox.setMinimum(pg_constr.sample_rate.min)
         self._pgs.gen_sample_freq_DSpinBox.setMaximum(pg_constr.sample_rate.max)
+        
         self._pgs.gen_activation_config_ComboBox.clear()
         self._pgs.gen_activation_config_ComboBox.addItems(list(pg_constr.activation_config.keys()))
+        # when the activation config list becomes large, we need a way to search inside rather
+        # than scrolling, so we use a completer. Completers only work for editable combo boxes.
+        # QComboBox.NoInsert prevents insertion of the search text
+        self._pgs.gen_activation_config_ComboBox.setEditable(True)
+        self._pgs.gen_activation_config_ComboBox.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+
+        # Change completion mode of the default completer from InlineCompletion to PopupCompletion
+        self._pgs.gen_activation_config_ComboBox.completer().setCompletionMode(
+            QtWidgets.QCompleter.PopupCompletion)
+
         for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
             widget1.setRange(pg_constr.a_ch_amplitude.min, pg_constr.a_ch_amplitude.max)
             widget2.setRange(pg_constr.a_ch_offset.min, pg_constr.a_ch_offset.max)
