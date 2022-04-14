@@ -230,7 +230,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             rabi_block.extend(init_elements)
             rabi_block.extend(rot_elements)
             rabi_block.extend(mw_rabi_element)
-            rabi_block.append(pi_read_element)
+            rabi_block.extend(pi_read_element)
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
             rabi_block.append(waiting_element)
