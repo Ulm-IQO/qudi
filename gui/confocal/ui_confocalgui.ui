@@ -104,6 +104,9 @@
         <widget class="QComboBox" name="depth_channel_ComboBox"/>
        </item>
        <item>
+        <widget class="QComboBox" name="depth_color_ComboBox"/>
+       </item>
+       <item>
         <widget class="ScienDSpinBox" name="depth_cb_max_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1260,9 +1263,12 @@
         </widget>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0">
+        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,1,0,0,0,0">
          <item>
           <widget class="QComboBox" name="xy_channel_ComboBox"/>
+         </item>
+         <item>
+          <widget class="QComboBox" name="xy_color_ComboBox"/>
          </item>
          <item>
           <widget class="ScienDSpinBox" name="xy_cb_max_DoubleSpinBox">
