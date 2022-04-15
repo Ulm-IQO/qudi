@@ -161,10 +161,21 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
         """
         Gets the microwave output power.
 
-        @return float: the power set at the device in dBm
+        @return float, list: the power or the list of powers set at the device in dBm
         """
+        mode, is_running = self.get_status()
         # This case works for cw AND sweep mode
-        return float(self._connection.query(':POW?'))
+        if ('cw' in mode) or ('sweep' in mode):
+            rep = float(self._connection.query(':POW?'))
+        # for the list mode
+        elif 'list' in mode:
+            pow_list =  self._connection.query('LIST:POW?')
+            pow_list = pow_list.split(",")
+            rep = np.array([float(x) for x in pow_list])
+            # if there is a single value in the list, we send a single value
+            if rep.all() == rep[0]:
+                rep = rep[0]
+        return rep
 
     def get_frequency(self):
         """
@@ -183,6 +194,10 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
             stop = float(self._connection.query(':FREQ:STOP?'))
             step = float(self._connection.query(':SWE:STEP?'))
             return_val = [start+step, stop, step]
+        elif 'list' in mode: 
+            freq_str = self._connection.query(':LIST:FREQ?')
+            freq_list = freq_str.split(',')
+            return_val = np.array([float(f) for f in freq_list])
         return return_val
 
     def cw_on(self):
@@ -251,22 +266,63 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.error('List mode not available for this microwave hardware!')
-        return -1
+        current_mode, is_running = self.get_status()
+        if is_running:
+            if current_mode == 'list':
+                return 0
+            else:
+                self.off()
+
+        self._connection.write(':OUTP:STAT ON')
+        if current_mode != 'list':
+            self._command_wait(':FREQ:MODE LIST')
+            self._connection.write(':LIST:SEL "My_list"')
+        mode, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            mode, is_running = self.get_status()
+        return 0
 
     def set_list(self, frequency=None, power=None):
         """
         Configures the device for list-mode and optionally sets frequencies and/or power
 
         @param list frequency: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
+        @param list, float power: MW power of the frequency list in dBm
 
         @return tuple(list, float, str):
             current frequencies in Hz,
             current power in dBm,
             current mode
         """
-        self.log.error('List mode not available for this microwave hardware!')
+        mode, is_running = self.get_status()
+        if is_running:
+            self.off()
+
+        if (frequency is not None) and (power is not None):
+            if isinstance(power, float) or isinstance(power, int):
+                power = power*np.ones(len(frequency))
+            if len(frequency) != len(power):
+                self.log.error('Number of frequencies and power values not matching!')
+                return
+            self._connection.write(':LIST:SEL "My_list"')
+            freq_str = ""
+            for i in range(len(frequency)):
+                str_val = "{:.4f} GHz, ".format(frequency[i]*1e-9)
+                freq_str = freq_str + str_val
+            self._connection.write('LIST:FREQ {:s}'.format(freq_str[:-2]))
+            power_str = ""
+            for i in range(len(power)):
+                str_val = "{:.2f} dBm, ".format(power[i])
+                power_str = power_str + str_val
+            self._connection.write('LIST:POW {:s}'.format(power_str[:-2]))
+
+            self._connection.write('LIST:MODE STEP') # to trigger each value in the list separately
+            self._connection.write('LIST:TRIG:SOUR EXT') # external trigger
+        
+            self._connection.write(':OUTP:STAT ON')
+            self._command_wait(':FREQ:MODE LIST')
+            
         mode, dummy = self.get_status()
         return self.get_frequency(), self.get_power(), mode
 
@@ -276,7 +332,7 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.error('List mode not available for this microwave hardware!')
+        self._command_wait(':LIST:RES')
         return -1
 
     def sweep_on(self):
