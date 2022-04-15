@@ -163,6 +163,10 @@ class ODMRLogic(GenericLogic):
         # Disconnect signals
         self.sigNextLine.disconnect()
 
+        metadata_to_remove = ["CW frequency (Hz)", "CW power (dBm)", "CW microwave"]
+        for r in metadata_to_remove:
+            self._save_logic.remove_additional_parameter(r)
+
     @fc.constructor
     def sv_set_fits(self, val):
         # Setup fit container
@@ -476,6 +480,10 @@ class ODMRLogic(GenericLogic):
                 err_code = self._mw_device.cw_on()
                 if err_code < 0:
                     self.log.error('Activation of microwave output failed.')
+                else:
+                    metadata = {"CW microwave": "ON", "CW frequency (Hz)": self.cw_mw_frequency,
+                                "CW power (dBm)": self.cw_mw_power}
+                    self._save_logic.update_additional_parameters(metadata)
 
         mode, is_running = self._mw_device.get_status()
         self.sigOutputStateUpdated.emit(mode, is_running)
@@ -590,6 +598,13 @@ class ODMRLogic(GenericLogic):
 
         mode, is_running = self._mw_device.get_status()
         self.sigOutputStateUpdated.emit(mode, is_running)
+
+        metadata_to_remove = ["CW frequency (Hz)", "CW power (dBm)"]
+        metadata_to_add = {"CW microwave": "OFF"}
+        self._save_logic.update_additional_parameters(metadata_to_add)
+        for r in metadata_to_remove:
+            self._save_logic.remove_additional_parameter(r)
+
         return mode, is_running
 
     def _start_odmr_counter(self):

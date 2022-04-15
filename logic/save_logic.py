@@ -29,7 +29,9 @@ import os
 import sys
 import time
 
+from qtpy import QtCore
 from collections import OrderedDict
+from core.connector import Connector
 from core.configoption import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
@@ -167,6 +169,13 @@ class SaveLogic(GenericLogic):
 
     _additional_parameters = {}
 
+    # declare signals
+    sigAddParamsUpdated = QtCore.Signal()
+    sigFileSaved = QtCore.Signal(str, str)
+
+    # declare connectors
+    saveremote = Connector(interface='SaveLogic', optional=True)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -205,6 +214,9 @@ class SaveLogic(GenericLogic):
     def on_activate(self):
         """ Definition, configuration and initialisation of the SaveLogic.
         """
+
+        self.save_remote = self.saveremote()
+        
         if self.log_into_daily_directory:
             # adds a log handler for logging into daily directory
             self._daily_loghandler = DailyLogHandler(
@@ -565,7 +577,8 @@ class SaveLogic(GenericLogic):
             plt.close(plotfig)
             self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
             #----------------------------------------------------------------------------------
-
+        self.sigFileSaved.emit(module_name, timestamp.strftime('%Y%m%d-%H%M-%S'))
+        
     def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
                            delimiter='\t', comments='#', append=False):
         """
@@ -650,6 +663,9 @@ class SaveLogic(GenericLogic):
         for key in param_dict.keys():
             param_dict[key] = netobtain(param_dict[key])
         self._additional_parameters.update(param_dict)
+        self.sigAddParamsUpdated.emit()
+        if self.save_remote:
+            self.save_remote.update_additional_parameters(self.get_additional_parameters())
         return
 
     def remove_additional_parameter(self, key):
@@ -659,5 +675,8 @@ class SaveLogic(GenericLogic):
         @param str key: The additional parameters key/name to delete
         """
         self._additional_parameters.pop(key, None)
+        if self.save_remote:
+            self.save_remote.remove_additional_parameter(key)
+        self.sigAddParamsUpdated.emit()
         return
 
