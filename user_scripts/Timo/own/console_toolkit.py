@@ -4,6 +4,9 @@ import os
 import re
 import pandas as pd
 
+import ast
+import difflib
+
 qudi_path = r"C:\Software\qudi"
 os.chdir(qudi_path)
 
@@ -11,6 +14,11 @@ try:
     from logic.mfl_irq_driven import MFL_IRQ_Driven
     from logic.mfl_xy8_irq_driven import MFL_IRQ_Driven as MFL_XY8_IRQ_Driven
     from logic.mfl_multi_irq_driven import MFL_Multi_IRQ_Driven
+except:
+    pass
+try:
+    # if enums should be de-derialized
+    from logic.pulsed.predefined_generate_methods.multi_nv_methods import DQTAltModes, TomoRotations, TomoInit
 except:
     pass
 
@@ -111,6 +119,12 @@ class Tk_file():
                'file': fname}
         mes = {**mes, **meta}
 
+        fname_params = Tk_file.find_param_file(mes)
+        mes['file_params'] = fname_params
+        exp_params = {'exp_params': Tk_file.load_pulsed_params(mes)}
+
+        mes = {**mes, **exp_params}
+
         return mes
 
     @staticmethod
@@ -120,6 +134,96 @@ class Tk_file():
         meta = Tk_file.extract_header(header_lines)
 
         return meta
+
+
+    @staticmethod
+    def load_param_file(fname):
+
+        if not fname:
+            return None
+        if not os.path.exists(fname):
+            return None
+
+        header_lines = Tk_file.read_file_header(fname)
+        header_flat = ' '.join([line for line in header_lines])
+
+        # cut in the right line
+        param_str = header_flat.split('parameters: ')[1].replace("OrderedDict(", "")
+        # need to cut, because current save format breaks starting from "('params'"
+        param_str = param_str.split("('params'")[0][:-2]
+        param_str = param_str + "]"
+
+        # make string format parse-able
+        param_str = param_str.replace("',", "':")
+        param_str = param_str.replace("(", "").replace(")", "")
+        param_str = param_str.replace("[", "").replace("]", "")
+        # manually parse back to dict-like entries
+        # skip entries unreadable to ast
+        param_list = param_str.split(",")
+        param_dict_accepted = {}
+
+        for entry in param_list:
+            try:
+                entry_dict = ast.literal_eval("{" + entry + "}")
+            except:
+                try:
+                    el_manual = Tk_string.str_2_dict(entry)
+                    val_enum = Tk_string.str_2_enum(el_manual[1])
+                    val = el_manual[1] if val_enum is None else val_enum
+
+                    entry_dict = {el_manual[0]: val}
+                except:
+                    pass
+
+            param_dict_accepted = {**param_dict_accepted, **entry_dict}
+
+        return param_dict_accepted
+
+
+    @staticmethod
+    def find_param_file(p_mes):
+
+        def diff_letters(a, b):
+            return sum(a[i] != b[i] for i in range(len(a)))
+
+        # needed, if "Active POI:" property in .dat file is buggy
+        path = os.path.normpath(p_mes['file'])
+        # offset for erasing automatic "nv_" previx
+        p_file = path.split(os.sep)[-1]
+        folder = os.path.join(*path.split(os.sep)[:-1])
+
+        param_file = p_file.split('_pulsed')[0]
+        # expected file name for parameter file
+        param_file = folder + os.sep + param_file + '_parameters.dat'
+
+        # find file that is closest to expected file name
+        files_in_folder = Tk_file.list_mult_pulsed_mes(folder, filter_strs=['parameters', '.dat'], incl_subdir=False)
+        if not files_in_folder:
+            return None
+
+        database = files_in_folder
+        search_file = os.path.abspath(param_file)
+        candidate_param_file = os.path.abspath(difflib.get_close_matches(search_file, database)[0])
+
+        # logger.debug(f"Searched: {os.path.basename(search_file)}, found: {os.path.basename(candidate_param_file)},\
+        #             n_diff: {diff_letters(candidate_param_file, search_file)}")
+
+        # the seconds of the timestamp in the file name may vary,
+        # so accept small difference between expect and found file
+        if diff_letters(candidate_param_file, search_file) > 2:
+            return None
+        else:
+            param_file = candidate_param_file
+
+        if os.path.exists(param_file):
+            return param_file
+        else:
+            return None
+
+    @staticmethod
+    def load_pulsed_params(p_mes):
+        fname = Tk_file.find_param_file(p_mes)
+        return Tk_file.load_param_file(fname)
 
     @staticmethod
     def read_file_header(fname, comment_char='#'):
@@ -232,6 +336,29 @@ class Tk_string():
             return [x for x in strList if (containStr in x.lower()
                                            and not any(estr in x.lower() for estr in exclStrList))]
 
+    @staticmethod
+    def str_2_enum(enum_str):
+        # todo: works only if enum is known to toolkit
+        # ATTENTION: dangerous eval, but no better way
+        if "<" in enum_str and ">" in enum_str:
+            parse_str = re.findall(r'<.+?:', enum_str)[0][1:-1]
+            try:
+                return eval(parse_str)
+            except:
+                pass
+        return None
+
+    @staticmethod
+    def str_2_dict(dict_str):
+        if ":" in dict_str:
+            key_str = dict_str.split(":", 1)[0][1:-1]
+            val_str = dict_str.split(":", 1)[1][1:]
+
+            key_str = key_str.replace("'", "")
+            val_str = val_str.replace("'", "")
+
+            return key_str, val_str
+        return None
 
 class Tk_math():
 
