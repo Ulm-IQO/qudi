@@ -189,8 +189,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                   f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                   rabi_period_mw_2=rabi_period_mw_2,
                                                                   dd_type=dd_type_ent, dd_order=dd_order_ent,
-                                                                  alternating=False, read_phase_deg=90,
-                                                                  no_laser=True)
+                                                                  alternating=False, no_laser=True)
 
 
         init_elements, rot_elements = [], []
@@ -591,7 +590,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               increments=[0,0],
                                               amps=amplitudes,
                                               freqs=mw_freqs,
-                                              phases=[read_phase_deg,read_phase_deg])
+                                              phases=[90,90])
+        pihalf_y_both_read_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                          increments=[0, 0],
+                                                                          amps=amplitudes,
+                                                                          freqs=mw_freqs,
+                                                                          phases=[read_phase_deg, read_phase_deg])
 
         def pi_element_function(xphase, pi_x_length=1.):
 
@@ -608,12 +612,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Use a 180 deg phase shifted pulse as 3pihalf pulse if microwave channel is analog
         if self.microwave_channel.startswith('a'):
-            pi3half_both_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods/4,
-                                              increments=[0,0],
-                                              amps=amplitudes,
-                                              freqs=mw_freqs,
-                                              phases=[180,180])
-            pi3half_y_both_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods/4,
+            pi3half_y_both_read_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods/4,
                                               increments=[0,0],
                                               amps=amplitudes,
                                               freqs=mw_freqs,
@@ -636,7 +635,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
                 dd_block.append(tauhalf_element)
         dd_block.extend(pi_both_element)
-        dd_block.extend(pihalf_y_both_element)
+        dd_block.extend(pihalf_y_both_read_element)
         if not no_laser:
             dd_block.append(laser_element)
             dd_block.append(delay_element)
@@ -651,7 +650,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
                     dd_block.append(tauhalf_element)
             dd_block.extend(pi_both_element)
-            dd_block.extend(pi3half_y_both_element)
+            dd_block.extend(pi3half_y_both_read_element)
             if not no_laser:
                 dd_block.append(laser_element)
                 dd_block.append(delay_element)
