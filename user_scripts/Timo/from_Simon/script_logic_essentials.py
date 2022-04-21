@@ -399,7 +399,7 @@ def generate_sample_upload(experiment, qm_dict):
 
             if qm_dict['name'] not in pulsedmasterlogic.saved_pulse_sequences:
                 pulsedmasterlogic.log.error("Couldn't find sequence {} in pulsedmasterlogic".format(qm_dict['name']))
-                raise RuntimeError("Couldn't find sequence {} in pulsedmafterlogic".format(qm_dict['name']))
+                raise RuntimeError("Couldn't find sequence {} in pulsedmasterlogic".format(qm_dict['name']))
 
             pulsedmasterlogic.sample_sequence(qm_dict['name'], True)
 
