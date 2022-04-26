@@ -210,6 +210,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif init_state == TomoInit.uy90_on_2:
                 init_elements = pi2y_on_2_element
             elif init_state == TomoInit.ux180_on_1:
+                init_elements = pi_on_1_element
+            elif init_state == TomoInit.ux180_on_2:
+                init_elements = pi_on_2_element
+            elif init_state == TomoInit.ux180_on_2:
                 init_elements = pi_on_both_element
             elif init_state == TomoInit.ent_create_bell:
                 init_elements = ent_create_element
