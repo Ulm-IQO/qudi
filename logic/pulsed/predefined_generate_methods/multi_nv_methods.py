@@ -152,8 +152,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         # define pulses on the subsystems or both
-        mw_on_1_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_1, tau_step)
-        mw_on_2_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_2, tau_step)
+        mw_on_1_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_1, increment=tau_step)
+        mw_on_2_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_2, increment=tau_step)
         mw_rabi_element = mw_on_1_element if rabi_on_nv == 1 else mw_on_2_element
 
         # simple rotations
@@ -1308,6 +1308,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             return partition_blocks
 
+        def sanitize_lengths(lengths, increments):
+            # pulse partition eliminates pulse blocks of zero length
+            # this is unwanted, if an increment should be applied to a pulse
+            for idx, l in enumerate(lengths):
+                if l == 0. and increments[idx] != 0.:
+                    lengths[idx] = 1e-15
+
+        sanitize_lengths(lengths, increments)
         part_blocks = create_pulse_partition(lengths, amps)
         #debug_1 = create_pulse_partition([100, 10, 10], [0.1, 0.2, 0.3])
         #debug_2 = create_pulse_partition([10, 100, 80], [0.1, 0.2, 0.3])
