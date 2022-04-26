@@ -174,8 +174,11 @@ class Tk_file():
                     entry_dict = {el_manual[0]: val}
                 except:
                     pass
-
-            param_dict_accepted = {**param_dict_accepted, **entry_dict}
+            try:
+                param_dict_accepted = {**param_dict_accepted, **entry_dict}
+            except:
+                pass
+                #raise ValueError(f"Error loading entry {entry} in file: {fname}")
 
         return param_dict_accepted
 
@@ -464,7 +467,7 @@ if __name__ == '__main__':
     fname = r"E:\\Data\\2022\\04\\20220414\\PulsedMeasurement\\dummy_tomography_tests\\single_qubit\\20220414-1356-06_tomography_parameters.dat"
     mes = Tk_file.load_param_file(fname)
 
-    inpath = r"E:\Data\2022\02\20220224\PulsedMeasurement\nv_20220221_2_1q_tomography_test"
+    inpath = r"E:\Data\2022\04\20220426\PulsedMeasurement\tomography_test_init=00"
 
     filter_strs = ['pulsed_measurement', '.dat']
     # filter_strs += ['rabi']
