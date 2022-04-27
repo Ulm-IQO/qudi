@@ -174,8 +174,11 @@ class Tk_file():
                     entry_dict = {el_manual[0]: val}
                 except:
                     pass
-
-            param_dict_accepted = {**param_dict_accepted, **entry_dict}
+            try:
+                param_dict_accepted = {**param_dict_accepted, **entry_dict}
+            except:
+                pass
+                #raise ValueError(f"Error loading entry {entry} in file: {fname}")
 
         return param_dict_accepted
 
@@ -460,3 +463,21 @@ if __name__ == '__main__':
     # mes =  Tk_file.load_seperate_thread_results(file)
     # mes.get_total_times()
     # mes.calc_sensitivity()
+
+    fname = r"E:\\Data\\2022\\04\\20220414\\PulsedMeasurement\\dummy_tomography_tests\\single_qubit\\20220414-1356-06_tomography_parameters.dat"
+    mes = Tk_file.load_param_file(fname)
+
+    inpath = r"E:\Data\2022\04\20220426\PulsedMeasurement\tomography_test_init=00"
+
+    filter_strs = ['pulsed_measurement', '.dat']
+    # filter_strs += ['rabi']
+
+    fnames = Tk_file.list_mult_pulsed_mes(inpath, filter_strs=filter_strs, incl_subdir=True)
+
+    p_raw = []
+    for f in fnames:
+        # p_i = Tk_file.load_pulsed_metadata(f)
+        # p_i = {**p_i, **{'file': f, 'data':Tk_file.load_pulsed_result(f)['data']}}
+        # p_i = Tk_file.load_pulsed_result(f)
+        p_i = Tk_file.load_pulsed_result(f)
+        p_raw.append(p_i)
