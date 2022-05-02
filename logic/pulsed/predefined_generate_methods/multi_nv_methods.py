@@ -165,6 +165,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
         pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
         pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+        pi2y_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods,pi_x_length=0.5)
 
         pi_read_element = pi_on_1_element if rabi_on_nv==1 else pi_on_2_element
 
@@ -209,6 +210,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 init_elements = pi2y_on_1_element
             elif init_state == TomoInit.uy90_on_2:
                 init_elements = pi2y_on_2_element
+            elif init_state == TomoInit.uy90_on_both:
+                init_elements = pi2y_on_both_element
             elif init_state == TomoInit.ux180_on_1:
                 init_elements = pi_on_1_element
             elif init_state == TomoInit.ux180_on_2:
