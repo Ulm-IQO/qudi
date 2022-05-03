@@ -55,15 +55,22 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     # evil setters for comomon generation settings, use with care. Typically, restore after changing in generation method.
     @PredefinedGeneratorBase.rabi_period.setter
     def rabi_period(self, t_rabi):
-        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters['rabi_period'] = t_rabi
+
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'rabi_period': t_rabi})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
 
     @PredefinedGeneratorBase.microwave_amplitude.setter
     def microwave_amplitude(self, ampl):
-        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters['microwave_amplitude'] = ampl
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'microwave_amplitude': ampl})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
 
     @PredefinedGeneratorBase.microwave_frequency.setter
     def microwave_frequency(self, freq):
-        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters['microwave_frequency'] = freq
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'microwave_frequency': freq})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
 
 
     def generate_pi2_rabi(self, name='pi2_then_rabi', tau_start = 10.0e-9, tau_step = 10.0e-9,
@@ -191,21 +198,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # 2 qubit gates
         # allow to overwrite generation parameters by kwargs or default to this gen method params
         rabi_period_mw_2_cnot = rabi_period_mw_2 if 'rabi_period_mw_2' not in cnot_kwargs else cnot_kwargs['rabi_period_mw_2']
-        env_type_cnot = EnvelopeMethods.rectangle if 'env_type' not in cnot_kwargs else cnot_kwargs['env_type']
-        order_p_cnot = 1 if 'order_P' not in cnot_kwargs else cnot_kwargs['order_P']
-        tau_dd_fix = 1e-9 if 'tau_dd_fix' not in cnot_kwargs else cnot_kwargs['tau_dd_fix']
 
         c1not2_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
                                                   f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2_cnot,
                                                   dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
                                                   no_laser=True,
-                                                  env_type=env_type_cnot, order_P=order_p_cnot, tau_dd_fix=tau_dd_fix)
+                                                  kwargs_dict=cnot_kwargs)
         c1not2_element = c1not2_element[0]
         c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
                                                   f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2_cnot,
                                                   dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
                                                   no_laser=True,
-                                                  env_type=env_type_cnot, order_P=order_p_cnot, tau_dd_fix=tau_dd_fix)
+                                                  kwargs_dict=cnot_kwargs)
         c2not1_element = c2not1_element[0]
 
         dd_type_ent = dd_type_cnot if 'dd_type' not in init_state_kwargs else init_state_kwargs['dd_type']
@@ -324,12 +328,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                             rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             dd_type=DDMethods.SE, dd_order=1,
-                            alternating=False, no_laser=True, read_phase_deg=0,
+                            read_phase_deg=0, order_nvs="1,2",
+                            alternating=False, no_laser=True,
                             # arguments passed to nvision method
-                            env_type=EnvelopeMethods.rectangle, order_P=1, tau_dd_fix=100e-9):
+                            kwargs_dict=None
+                            ):
 
-        order_nvs = "1,2"
         read_phase = 90 + read_phase_deg   # 90° to deer realizes cnot, additional phase by parameter
+
+        env_type = EnvelopeMethods.rectangle if 'env_type' not in kwargs_dict else kwargs_dict['env_type']
+        order_p = 1 if 'order_P' not in kwargs_dict else kwargs_dict['order_P']
+        tau_dd_fix = 1e-9 if 'tau_dd_fix' not in kwargs_dict else kwargs_dict['tau_dd_fix']
+        rabi_period_1 = self.rabi_period if 'rabi_period' not in kwargs_dict else kwargs_dict['rabi_period']
 
         if env_type == EnvelopeMethods.rectangle:
             return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
@@ -338,12 +348,25 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                              nv_order=order_nvs,
                                              read_phase_deg=read_phase)
         else:
-            return self.generate_deer_dd_tau_nvision(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+
+            # may provide new rabi_period in kwargs that overwrites common settings
+            # atm, no support for changed mw_ampl or mw_f
+            self.save_rabi_period, self.save_microwave_amplitude, self.save_microwave_frequency = \
+                self.rabi_period, self.microwave_amplitude, self.microwave_frequency
+            self.rabi_period = rabi_period_1
+
+            d_blocks, d_ensembles, d_sequences = self.generate_deer_dd_tau_nvision(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                              dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
                                              nv_order=order_nvs,
                                              read_phase_deg=read_phase,
-                                             env_type=env_type, order_P=order_P, tau_dd_fix=tau_dd_fix)
+                                             env_type=env_type, order_P=order_p, tau_dd_fix=tau_dd_fix)
+
+            self.rabi_period = self.save_rabi_period
+            #self.microwave_amplitude = self.save_microwave_amplitude
+            #self.microwave_frequency = self.save_microwave_frequency
+
+            return d_blocks, d_ensembles, d_sequences
 
     def generate_c2not1(self, name='c1not2', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
@@ -351,25 +374,20 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         dd_type=DDMethods.SE, dd_order=1,
                         alternating=False, no_laser=True,
                         # arguments passed to nvision method
-                        env_type=EnvelopeMethods.rectangle, order_P=1, tau_dd_fix=100e-9):
+                        kwargs_dict=None):
 
+        # just change order of nvs to swap control and target qubit
         order_nvs = "2,1"
-        read_phase = 90
 
-        if env_type == EnvelopeMethods.rectangle:
+        return self.generate_c1not2(name='c2not1', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                            f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                            rabi_period_mw_2=rabi_period_mw_2,
+                            dd_type=dd_type, dd_order=dd_order,
+                            read_phase_deg=0, order_nvs=order_nvs,
+                            alternating=alternating, no_laser=no_laser,
+                            # arguments passed to nvision method
+                            kwargs_dict=kwargs_dict)
 
-            return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
-                                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                                             dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
-                                             nv_order=order_nvs,
-                                             read_phase_deg=read_phase)
-        else:
-            return self.generate_deer_dd_tau_nvision(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
-                                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                                             dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
-                                             nv_order=order_nvs,
-                                             read_phase_deg=read_phase,
-                                             env_type=env_type, order_P=order_P, tau_dd_fix=tau_dd_fix)
 
     def generate_deer_dd_tau_nvision(self, name='DEER_DD_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
@@ -380,7 +398,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         self.log.info("Using Nvision generate method 'DEER_DD_tau'.")
         generate_method = self._get_generation_method('DEER_DD_tau')
-
         rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order,
                                                 n_nvs=2)
         amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
@@ -388,13 +405,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
         if len(rabi_periods) != 2 or len(amplitudes) != 2 or len(mw_freqs) != 2:
             raise ValueError("Nvision method only supports two drive frequenices")
-
-        # nvision method uses common set values; save and overwrite to support changed nv order
-        self.save_rabi_period, self.save_microwave_amplitude, self.save_microwave_frequency = \
-            self.rabi_period, self.microwave_amplitude, self.microwave_frequency
-        self.rabi_period = rabi_periods[0]
-        self.microwave_amplitude = amplitudes[0]
-        self.microwave_frequency = mw_freqs[0]
 
         rabi_period_2 = rabi_periods[1]
         mq_freq_2 = mw_freqs[1]
@@ -414,13 +424,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                              order=dd_order,
                                                              env_type=env_type, order_P=order_P,
                                                              DD_type=dd_type, alternating=alternating,
-                                                             normalization=0, tau2_rel_to_pi1=True,
+                                                             normalization=0, tau2_rel_to_pi1=False,
                                                              no_laser=no_laser,
                                                              read_phase=read_phase_deg, init_pix_on_2=0)
 
-        self.rabi_period = self.save_rabi_period
-        self.microwave_amplitude = self.save_microwave_amplitude
-        self.microwave_frequency = self.save_microwave_frequency
 
         return d_blocks, d_ensembles, d_sequences
 
