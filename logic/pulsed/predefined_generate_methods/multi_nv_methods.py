@@ -331,8 +331,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             read_phase_deg=0, order_nvs="1,2",
                             alternating=False, no_laser=True,
                             # arguments passed to nvision method
-                            kwargs_dict=None
-                            ):
+                            kwargs_dict=''):
 
         read_phase = 90 + read_phase_deg   # 90° to deer realizes cnot, additional phase by parameter
 
@@ -349,7 +348,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                              read_phase_deg=read_phase)
         else:
 
-            # may provide new rabi_period in kwargs that overwrites common settings
+            # may provide newy rabi_period in kwargs that overwrites common settings
             # atm, no support for changed mw_ampl or mw_f
             self.save_rabi_period, self.save_microwave_amplitude, self.save_microwave_frequency = \
                 self.rabi_period, self.microwave_amplitude, self.microwave_frequency
@@ -374,7 +373,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         dd_type=DDMethods.SE, dd_order=1,
                         alternating=False, no_laser=True,
                         # arguments passed to nvision method
-                        kwargs_dict=None):
+                        kwargs_dict=''):
 
         # just change order of nvs to swap control and target qubit
         order_nvs = "2,1"
