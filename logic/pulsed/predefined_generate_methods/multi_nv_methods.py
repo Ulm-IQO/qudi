@@ -371,18 +371,20 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                         rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                         dd_type=DDMethods.SE, dd_order=1,
+                        read_phase_deg=0,
                         alternating=False, no_laser=True,
                         # arguments passed to nvision method
                         kwargs_dict=''):
 
         # just change order of nvs to swap control and target qubit
+        read_phase = 90 + read_phase_deg  # 90° to deer realizes cnot, additional phase by parameter
         order_nvs = "2,1"
 
         return self.generate_c2not1(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                             rabi_period_mw_2=rabi_period_mw_2,
                             dd_type=dd_type, dd_order=dd_order,
-                            read_phase_deg=0, order_nvs=order_nvs,
+                            read_phase_deg=read_phase, order_nvs=order_nvs,
                             alternating=alternating, no_laser=no_laser,
                             # arguments passed to nvision method
                             kwargs_dict=kwargs_dict)
