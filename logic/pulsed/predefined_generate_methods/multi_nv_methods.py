@@ -324,7 +324,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_c1not2(self, name='c1not2', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+    def generate_c2not1(self, name='c2not1', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                             rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             dd_type=DDMethods.SE, dd_order=1,
@@ -367,7 +367,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             return d_blocks, d_ensembles, d_sequences
 
-    def generate_c2not1(self, name='c1not2', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+    def generate_c1not2(self, name='c1not2', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                         rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                         dd_type=DDMethods.SE, dd_order=1,
@@ -378,7 +378,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # just change order of nvs to swap control and target qubit
         order_nvs = "2,1"
 
-        return self.generate_c1not2(name='c2not1', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+        return self.generate_c2not1(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                             rabi_period_mw_2=rabi_period_mw_2,
                             dd_type=dd_type, dd_order=dd_order,
@@ -1466,6 +1466,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         :return:
         """
         def sublists(inlist, n):
+            """
+            Divides a list/np.array into sublists of len n.
+            """
             return [inlist[i:i+int(n)] for i in range(0,len(inlist),int(n))]
 
         array = [in_value]
@@ -1490,7 +1493,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # re-order paraams, if nv order != [1,2, ...]
         if order_nvs != None:
             order_nvs = csv_2_list(order_nvs)
-            parama_per_nv = sublists(nv_params, n_nvs)
+            parama_per_nv = sublists(nv_params, int(len(nv_params)/n_nvs))
             parama_per_nv = [p for p, i in sorted(zip(parama_per_nv, order_nvs), key=lambda tup: tup[1])]
             nv_params = [item for sublist in parama_per_nv for item in sublist] # flatten per nv list again
 
