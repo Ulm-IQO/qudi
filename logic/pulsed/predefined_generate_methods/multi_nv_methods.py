@@ -363,7 +363,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                              dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
                                              nv_order=order_nvs,
-                                             read_phase_deg=read_phase,
+                                             read_phase_deg=read_phase, end_pix_on_2=1,
                                              env_type=env_type, order_P=order_p, tau_dd_fix=tau_dd_fix)
 
             self.rabi_period = self.save_rabi_period
@@ -400,7 +400,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                         dd_type=DDMethods.SE, dd_order=1,
                         env_type=EnvelopeMethods.rectangle, order_P=1, tau_dd_fix=100e-9,
-                        nv_order="1,2", read_phase_deg=90, alternating=True, no_laser=False):
+                        nv_order="1,2", read_phase_deg=90, init_pix_on_2=0, end_pix_on_2=0,
+                        alternating=True, no_laser=False):
 
         self.log.info("Using Nvision generate method 'DEER_DD_tau'.")
         generate_method = self._get_generation_method('DEER_DD_tau')
@@ -432,7 +433,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                              DD_type=dd_type, alternating=alternating,
                                                              normalization=0, tau2_rel_to_pi1=False,
                                                              no_laser=no_laser,
-                                                             read_phase=read_phase_deg, init_pix_on_2=0)
+                                                             read_phase=read_phase_deg,
+                                                             init_pix_on_2=init_pix_on_2, end_pix_on_2=end_pix_on_2)
 
 
         return d_blocks, d_ensembles, d_sequences
