@@ -218,14 +218,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         rabi_period_mw_2_ent = rabi_period_mw_2 if 'rabi_period_mw_2' not in init_state_kwargs else init_state_kwargs[
             'rabi_period_mw_2']
 
+        """
         ent_create_element, _, _, = self.generate_ent_create_bell(tau_start=tau_ent, tau_step=0, num_of_points=1,
                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                              dd_type=dd_type_ent, dd_order=dd_order_ent, alternating=False, read_phase_deg=90,
                              no_laser=True)
+        # todo: currently untested
+        """
+        ent_create_element = []
         ent_create_bycnot_element, _, _, = self.generate_ent_create_bell_bycnot(tau_start=tau_ent, tau_step=0, num_of_points=1,
                                                                   f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                   rabi_period_mw_2=rabi_period_mw_2_ent,
                                                                   dd_type=dd_type_ent, dd_order=dd_order_ent,
+                                                                  kwargs_dict=cnot_kwargs,
                                                                   alternating=False, no_laser=True)
 
 
@@ -414,7 +419,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # nvision code expects non-zero tau_step for 1 point
         if tau_step == 0. and num_of_points == 1:
             tau_step = 1e-10
-            tau_start = -tau_start
+            #tau_start = -tau_start
 
         d_blocks, d_ensembles, d_sequences = generate_method(name=name,
                                                              rabi_period2=rabi_period_2,
@@ -897,6 +902,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                         num_of_points=50,
                                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                                         rabi_period_mw_2="100e-9, 100e-9, 100e-9", dd_type=DDMethods.SE, dd_order=1,
+                                        kwargs_dict='',
                                         alternating=True, no_laser=False):
         """
         Similar to ent_create_bell(), but instead of Dolde's sequence uses Hadamard + CNOT (via DEER)
@@ -912,10 +918,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         cnot_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                             kwargs_dict=kwargs_dict,
                              dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser)
         cnot_element = cnot_element[0]
         cnot_alt_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                             kwargs_dict=kwargs_dict,
                              dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser,
                              read_phase_deg=180)
         cnot_alt_element = cnot_alt_element[0]
