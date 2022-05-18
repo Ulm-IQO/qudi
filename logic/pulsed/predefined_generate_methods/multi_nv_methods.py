@@ -39,6 +39,7 @@ class TomoInit(IntEnum):
     ent_create_bell = 10
     ent_create_bell_bycnot = 11
     ux90_on_1_uy90_on_2 = 12
+    ux90_on_1_ux180_on_2 = 13
 
 
 class MultiNV_Generator(PredefinedGeneratorBase):
@@ -257,6 +258,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif init_state == TomoInit.ux90_on_1_uy90_on_2:
                 init_elements = pi2_on_1_element
                 init_elements.extend(pi2y_on_2_element)
+            elif init_state == TomoInit.ux90_on_1_ux180_on_2:
+                init_elements = pi2_on_1_element
+                init_elements.extend(pi_on_2_element)
             elif init_state == TomoInit.ent_create_bell:
                 init_elements = ent_create_element
             elif init_state == TomoInit.ent_create_bell_bycnot:
@@ -569,8 +573,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
         ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
-        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),n_nvs=2)
-
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
+        n_drives = len(mw_freqs)
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
@@ -600,16 +604,16 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                    freq=self.microwave_frequency,
                                                    phase=0)
 
-        tau_ct_element = self._get_multiple_mw_mult_length_element(lengths=[tau_start,tau_start],
-                                                                        increments=[tau_step, tau_step],
-                                                                        amps=[0,0],
+        tau_ct_element = self._get_multiple_mw_mult_length_element(lengths=[tau_start]*n_drives,
+                                                                        increments=[tau_step]*n_drives,
+                                                                        amps=[0]*n_drives,
                                                                         freqs=mw_freqs,
-                                                                        phases=[0, 0])
-        tau_ct_alt_element = self._get_multiple_mw_mult_length_element(lengths=[tau_start,tau_start],
-                                                                        increments=[tau_step, tau_step],
+                                                                        phases=[0]*n_drives)
+        tau_ct_alt_element = self._get_multiple_mw_mult_length_element(lengths=[tau_start]*n_drives,
+                                                                        increments=[tau_step]*n_drives,
                                                                         amps=ampls_on_2,
                                                                         freqs=mw_freqs,
-                                                                        phases=[0, 0])
+                                                                        phases=[0]*n_drives)
 
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
