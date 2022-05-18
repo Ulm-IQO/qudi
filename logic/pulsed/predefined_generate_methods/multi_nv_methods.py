@@ -443,7 +443,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         return d_blocks, d_ensembles, d_sequences
 
-    def generate_deer_dd_tau(self, name='deer_dd_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+    def generate_deer_dd_par_tau(self, name='deer_dd_par_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
                                  init_pix_on2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
