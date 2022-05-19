@@ -51,7 +51,7 @@ class LaserScannerLogic(GenericLogic):
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
     counter = Connector(interface='CounterLogic')
     do=Connector(interface='NIDigitalTrigerLogic')
-    #wavemeter1 = Connector(interface='WavemeterInterface')
+    wavemeter1 = Connector(interface='WavemeterInterface')
     savelogic = Connector(interface='SaveLogic')
     laser = Connector(interface = 'NewfocusLaserInterface')
     scan_range = StatusVar('scan_range', [-3, 3])
@@ -60,7 +60,7 @@ class LaserScannerLogic(GenericLogic):
     _scan_speed = StatusVar('scan_speed', 0.5)
     _static_v = StatusVar('goto_voltage', 0)
     _clock_frequency=StatusVar('clock_frequency', 50)
-    _do_width=StatusVar('do_length', 10*10**-3)
+    _do_width=StatusVar('do_length', 1000)
 
     # parameters for pid loop to hold frequency
     pid_kp = StatusVar(default=-10)
@@ -107,7 +107,7 @@ class LaserScannerLogic(GenericLogic):
         """
         self._scanning_device = self.confocalscanner1()
         self._counter=self.counter()
-        #self._wavemeter_device = self.wavemeter1()
+        self._wavemeter_device = self.wavemeter1()
         self._save_logic = self.savelogic()
         self._laser_device = self.laser()
         self._do=self.do()
@@ -116,10 +116,11 @@ class LaserScannerLogic(GenericLogic):
         self._smoothing_steps = 3  # steps to accelerate between 0 and scan_speed
         self._max_step = 0.01  # volt
         self._clock_frequency = max(50, int(self._scan_speed * 50))
+        self._max_clock=700000
         self.set_resolution(self.resolution)
         self._goto_speed = 0.5  # 0.01  # volt / second
         self.set_scan_speed(self._scan_speed)
-
+        self.goto_ramp = False
         # start acquisition of wavemeter so that current wavelength/frequency is always available
         # during execution of laser scanner logic
         #self._wavemeter_device.start_acqusition()
@@ -137,18 +138,22 @@ class LaserScannerLogic(GenericLogic):
         # Keep track of the current static voltage even while a scan may cause the real-time
         # voltage to change.
 
-        self.goto_voltage(self._static_v)
-        self._re_pump='off'
+        #self.goto_voltage(self._static_v)
+        self._re_pump='on'
         # setup timer for pid refresh
         self.timer = QtCore.QTimer()
+        #self.timer2=QtCore.QTimer()
         self.timer.setSingleShot(True)
         self.timer.setInterval(self.pid_timestep)
+        #self.timer2.setSingleShot(True)
+        #self.timer2.setInterval(self._do_width)
 
         # Sets connections between signals and functions
-        self.sigChangeVoltage.connect(self._change_voltage, QtCore.Qt.QueuedConnection)
-        self.sigScanNextLine.connect(self._do_next_line, QtCore.Qt.QueuedConnection)
+        self.sigChangeVoltage.connect(self._change_voltage)
+        self.sigScanNextLine.connect(self._do_next_line)#, QtCore.Qt.QueuedConnection)
 
         self.timer.timeout.connect(self._calcNextPIDStep, QtCore.Qt.QueuedConnection)
+        #self.timer2.timeout.connect(self._pump_off)
 
         # Initialization of internal counter for scanning
         self._scan_counter_up = 0
@@ -177,7 +182,7 @@ class LaserScannerLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        #self._wavemeter_device.stop_acqusition()
+        self._wavemeter_device.stop_acqusition()
         self.stopRequested = True
 
     def get_pid_gains(self):
@@ -238,14 +243,17 @@ class LaserScannerLogic(GenericLogic):
             self.pid_setpoint = frequency
 
         # do coarse approach to frequency if it is to far away
-        self.goto_voltage(0.5)
+        #if frequency is not None:
+            #self.goto_voltage(0.5)
         #self.log.info('delta:'+str(self.pid_setpoint)+'-'+str(self._wavemeter_device.get_current_frequency()))
-        if abs(self.pid_setpoint-self._wavemeter_device.get_current_frequency())*1000 > 10:
+        voltage=self.get_current_voltage()
+        #if
+        #if abs(self.pid_setpoint-self._wavemeter_device.get_current_frequency())*1000 > 10:
             #self.log.info('goto_freq first')
-            self.set_scan_speed(0.5)
-            self._re_pump='off'
-            self.goto_frequency(self.pid_setpoint, 0.05, 10)
-        self.set_scan_speed(0.1)
+            #self.set_scan_speed(self._speed_limit)
+            #self._re_pump='off'
+            #self.goto_frequency(self.pid_setpoint, 0.05, 10)
+        self._goto_speed=1
         # start PID loop
         # reset integral counter of pid loop
         self.pid_integrated = 0
@@ -275,20 +283,21 @@ class LaserScannerLogic(GenericLogic):
             self.freq_history[0] = self.pid_pv
 
             delta = self.pid_setpoint - self.pid_pv
-            self.log.debug('freq delta='+str(delta*1000)+'GHz')
+            #self.log.debug('freq delta='+str(delta*1000)+'GHz')
             self.pid_integrated += delta
             # Calculate PID controller:
             self.pid_P = self.pid_kp * delta
             self.pid_I = self.pid_ki * self.pid_timestep * self.pid_integrated
 
-            voltage_change = (self.pid_P + self.pid_I)/5.8
+            voltage_change = (self.pid_P + self.pid_I)
             #self.log.info('voltage_change='+str(voltage_change)+'V')
-            if abs(voltage_change)> 4*10**-7:
+            if abs(voltage_change)> 4*10**-5*5.8:
                 voltage = self.get_current_voltage() + voltage_change
-
-                self.set_scan_speed(max(voltage_change,0.01))
+                #self._scan_speed=voltage_change/0.15
+                self._doto_speed = voltage_change / 0.15
+                #self.set_scan_speed(max(voltage_change,1))
                 #self.log.debug('voltage to apply to scanner:'+str(voltage)+'V')
-                if voltage <1 and voltage >0:
+                if voltage <2.9 and voltage >-2.9:
                     self.goto_voltage(voltage)
                 else:
                     self.log.info('out of range')
@@ -415,6 +424,7 @@ class LaserScannerLogic(GenericLogic):
             self.set_scan_speed(0.1)
             return True
 #
+
     @QtCore.Slot(float)
     def goto_voltage(self, volts=None):
         """Forwarding the desired output voltage to the scanning device.
@@ -430,15 +440,19 @@ class LaserScannerLogic(GenericLogic):
 
         # Checks if the scanner is still running
         t=0
+
         while (self.module_state() == 'locked'
                 or self._scanning_device.module_state() == 'locked') and t<300:
-            time.sleep(0.1)
+            time.sleep(0.001)
             t+1
             #self.log.info('Cannot goto, because scanner is locked!')
         if t >= 300:
             self.log.exception('scanner timeout')
             return False
-        self.sigChangeVoltage.emit(volts)
+        #self.sigChangeVoltage.emit(volts)
+        self.goto_ramp = True
+        self._change_voltage(volts)
+        #self.goto_ramp=False
         return 0
 
     def _change_voltage(self, new_voltage):
@@ -448,13 +462,23 @@ class LaserScannerLogic(GenericLogic):
         """
         current_v = self.get_current_voltage()
         try:
-            ramp_scan = self._generate_ramp(current_v, new_voltage, self._goto_speed)#abs(new_voltage-current_v)/3)
+            self.ramp_scan = self._generate_ramp(current_v, new_voltage, self._goto_speed)#abs(new_voltage-current_v)/3)
         except:
-            ramp_scan = self._generate_ramp(current_v, new_voltage, abs(new_voltage-current_v)/3)
+            self.ramp_scan = self._generate_ramp(current_v, new_voltage, abs(new_voltage-current_v)/3)
+        #self.log.info(str(self.ramp_scan))
         self._initialise_scanner()
-        ignored_counts = self._scan_line(ramp_scan)
-        self._close_scanner()
+        self.number_of_repeats=1
+        ignored_counts = self._scan_line(self.ramp_scan)
+        #self.stopRequested=True
         self.sigVoltageChanged.emit(new_voltage)
+        #self.
+        try:
+            with self.threadlock:
+                self.kill_scanner()
+                self.module_state.unlock()
+
+        except:
+            pass
         return 0
 
     def _goto_during_scan(self, voltage=None):
@@ -506,8 +530,8 @@ class LaserScannerLogic(GenericLogic):
         scan_range = abs(self.scan_range[1] - self.scan_range[0])
         duration = scan_range / self._scan_speed
         new_clock = resolution / duration
-        self._speed_limit = abs(self.scan_range[0] - self.scan_range[1]) / (self.resolution / 200)
-        if new_clock<= 200:
+        self._speed_limit = abs(self.scan_range[0] - self.scan_range[1]) / (self.resolution / self._max_clock)
+        if new_clock<= self._max_clock:
             self.set_clock_frequency(new_clock)
             self._upwards_ramp = self._generate_ramp(self.scan_range[0], self.scan_range[1],
                                                      self._scan_speed)
@@ -518,8 +542,8 @@ class LaserScannerLogic(GenericLogic):
 
         else:
             self.log.warn('exceeding maximum clock freq, decreasing speed')
-            new_speed=abs(self.scan_range[0]-self.scan_range[1])/(self.resolution/200)
-            self.set_clock_frequency(200)
+            new_speed=abs(self.scan_range[0]-self.scan_range[1])/(self.resolution/self._max_clock)
+            self.set_clock_frequency(self._max_clock)
             self.set_scan_speed(new_speed)
             self._upwards_ramp = self._generate_ramp(self.scan_range[0], self.scan_range[1], self._scan_speed)
             self._downwards_ramp = self._generate_ramp(self.scan_range[1], self.scan_range[0], self._scan_speed)
@@ -539,8 +563,8 @@ class LaserScannerLogic(GenericLogic):
         self.scan_range = [r_min, r_max]
         duration = abs(self.scan_range[0]-self.scan_range[1]) / self._scan_speed
         new_clock = self.resolution / duration
-        self._speed_limit = abs(self.scan_range[0] - self.scan_range[1]) / (self.resolution/200)
-        if new_clock <= 200:
+        self._speed_limit = abs(self.scan_range[0] - self.scan_range[1]) / (self.resolution/self._max_clock)
+        if new_clock <= self._max_clock:
             self.set_clock_frequency(new_clock)
             self._upwards_ramp = self._generate_ramp(self.scan_range[0], self.scan_range[1],
                                                      self._scan_speed)
@@ -553,7 +577,7 @@ class LaserScannerLogic(GenericLogic):
             self.log.warn('exceeding maximum clock freq, decreasing speed')
             new_speed = self._speed_limit#abs(self.scan_range[0] - self.scan_range[1]) / (self.resolution/40)
             #self._speed_limit=new_speed
-            new_clock=200
+            new_clock=self._max_clock
             self.set_clock_frequency(new_clock)
             self.set_scan_speed(new_speed)
             self._upwards_ramp = self._generate_ramp(self.scan_range[0], self.scan_range[1],
@@ -620,14 +644,14 @@ class LaserScannerLogic(GenericLogic):
         """ Initializing the ODMR matrix plot. """
 
         self.scan_matrix = np.zeros((self.number_of_repeats, scan_length))
-        self.scan_matrix_new = np.zeros((self.number_of_repeats, int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
-                self.scan_range[1]-self.scan_range[0]))))
-        self.x_interp=np.linspace(self.a_range[0],self.a_range[1],int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
-                self.scan_range[1]-self.scan_range[0])))
+        self.scan_matrix_new = np.zeros((self.number_of_repeats, min(int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
+                self.scan_range[1]-self.scan_range[0])),6*11*1000)))
+        self.x_interp=np.linspace(self.a_range[0],self.a_range[1],min(int(scan_length*10*(self.a_range[1]-self.a_range[0])/(
+                self.scan_range[1]-self.scan_range[0])),6*11*1000))
         self.raw_matrix_voltage = []
         self.raw_matrix_counts = []
-        self.scan_matrix2 = np.zeros((self.number_of_repeats, int(scan_length * 10 * (self.a_range[1] - self.a_range[0]) / (
-                self.scan_range[1] - self.scan_range[0]))))
+        self.scan_matrix2 = np.zeros((self.number_of_repeats, min(int(scan_length * 10 * (self.a_range[1] - self.a_range[0]) / (
+                self.scan_range[1] - self.scan_range[0])),6*11*1000)))
         #self.x_interp2 = np.flip(x_interp)
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.plot_y = np.zeros(scan_length)
@@ -823,6 +847,7 @@ class LaserScannerLogic(GenericLogic):
             else:
                 pass
 
+
             if self.upwards_scan:
                 counts = self._scan_line(self._upwards_ramp)
                 #self.scan_matrix[self._scan_counter_up] = counts
@@ -855,7 +880,7 @@ class LaserScannerLogic(GenericLogic):
 
 
             self.sigUpdatePlots.emit()
-            self.sigScanNextLine.emit()
+            #self.sigScanNextLine.emit()
             return
 
     def _generate_ramp(self, voltage1, voltage2, speed):
@@ -961,11 +986,16 @@ class LaserScannerLogic(GenericLogic):
             #    self.get_current_voltage()
             #)
             #self.log.debug(str(np.where(counts_on_scan_line==max(counts_on_scan_line))[0])) ##ToDo: change this line to a real peak finder
+            with self.threadlock:
+                self.timer2=QtCore.QTimer()
+                self.timer2.setSingleShot(True)
+                self.timer2.timeout.connect(self._pump_off)
+                self.timer2.start(self._do_width+0.1*1000)
             if self._re_pump=='on' and self._do_width!=0:
-                time.sleep(0.05)
+                #time.sleep(0.05)
                 self._do.simple_on('/Dev1/Port0/Line5')
-                time.sleep(self._do_width)
-                self._do.simple_off('/Dev1/Port0/Line5')
+                #time.sleep(self._do_width)
+                #self._do.simple_off('/Dev1/Port0/Line5')
             #x0=np.random.randint(0.5*len(counts_on_scan_line.transpose()[0]))
             #gamma=np.random.normal(5,1)
             #a=np.random.normal(10,3)*np.pi*gamma/2
@@ -980,6 +1010,14 @@ class LaserScannerLogic(GenericLogic):
             self.stop_scanning()
             self.sigScanNextLine.emit()
             raise e
+
+    def _pump_off(self):
+        self._do.simple_off('/Dev1/Port0/Line5')
+        if self.goto_ramp== True:
+            self.goto_ramp == False
+            pass
+        else:
+            self.sigScanNextLine.emit()
 
     def kill_scanner(self):
         """Closing the scanner device.
