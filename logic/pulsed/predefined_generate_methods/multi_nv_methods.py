@@ -353,7 +353,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                              dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
-                                             nv_order=order_nvs,
+                                             nv_order=order_nvs, end_pix_on_2=1,
                                              read_phase_deg=read_phase)
         else:
 
@@ -446,7 +446,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_par_tau(self, name='deer_dd_par_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
+                                 init_pix_on_2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
         In contrast to 'normal' DEER, the position of the pi on NV2 is not swept. Instead, the pi pulses on NV1 & NV2
@@ -481,7 +481,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                     amps=amplitudes,
                                                                     freqs=mw_freqs,
                                                                     phases=[0, 0])
-        pix_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2*init_pix_on2,
+        pix_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2*init_pix_on_2,
                                                                     increments=[0, 0],
                                                                     amps=ampls_on_2,
                                                                     freqs=mw_freqs,
@@ -507,7 +507,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
-        if init_pix_on2 != 0:
+        if init_pix_on_2 != 0:
             dd_block.extend(pix_on2_element)
         dd_block.extend(pihalf_on1_element)
         for n in range(dd_order):
@@ -522,7 +522,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dd_block.append(delay_element)
             dd_block.append(waiting_element)
         if alternating:
-            if init_pix_on2 != 0:
+            if init_pix_on_2 != 0:
                 dd_block.extend(pix_on2_element)
             dd_block.extend(pihalf_on1_element)
             for n in range(dd_order):
@@ -561,10 +561,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_deer_dd_tau(self, name='deer_dd_par_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+    def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
+                                 init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
         In contrast to 'normal' DEER, the position of the pi on NV2 is not swept. Instead, the pi pulses on NV1 & NV2
@@ -604,14 +604,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                        amps=ampls_on_2,
                                                                        freqs=mw_freqs,
                                                                        phases=[0, 0])
-        t_pi_on1 = pi_on1_element['init_length_s']
-        t_pi_on2 = pi_on2_element['init_length_s']
+
         pi_both_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
                                                                     increments=[0, 0],
                                                                     amps=amplitudes,
                                                                     freqs=mw_freqs,
                                                                     phases=[0, 0])
-        pix_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2 * init_pix_on2,
+        pix_init_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2 * init_pix_on_2,
+                                                                    increments=[0, 0],
+                                                                    amps=ampls_on_2,
+                                                                    freqs=mw_freqs,
+                                                                    phases=[0, 0])
+        pix_end_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2 * end_pix_on_2,
                                                                     increments=[0, 0],
                                                                     amps=ampls_on_2,
                                                                     freqs=mw_freqs,
@@ -638,37 +642,96 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise ValueError
 
-            return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods, pi_x_length=pi_x_length)
+            return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                                       pi_x_length=pi_x_length, no_amps_2_idle=True)
 
+        def get_deer_pos(i_dd_order, dd_order, i_dd_suborder, dd_type, before_pi_on1):
+            first = (i_dd_order == 0 and i_dd_suborder == 0 and before_pi_on1)
+            last = (i_dd_order == dd_order - 1 and i_dd_suborder == dd_type.suborder - 1 and not before_pi_on1)
+            in_between = not first and not last
+
+            return first, last, in_between
+
+        def tauhalf_element_function(i_dd_order, dd_order, i_dd_suborder, dd_type, before_pi_on1=False):
+
+            first, last, in_between = get_deer_pos(i_dd_order, dd_order, i_dd_suborder, dd_type, before_pi_on1)
+
+            if first and last:
+                self.log.warning("Not tested for low order DD. May work, but be careful.")
+
+            if first:
+                if before_pi_on1:
+                    return tauhalf_first_element
+                else:
+                    return tauhalf_bef_element
+            if last:
+                if before_pi_on1:
+                    return tauhalf_aft_element
+                else:
+                    return tauhalf_last_element
+
+            if in_between:
+                if before_pi_on1:
+                    return tauhalf_bef_element
+                else:
+                    return tauhalf_aft_element
+
+        t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
+        t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
-        tau1_pspacing = self.tau_2_pulse_spacing(tau_start, custom_func=[lambda t: t-t_pi_on1, lambda  t: t+t_pi_on1])
-        start_tau2_pspacing = self.tau_2_pulse_spacing(tau_start, custom_func=[lambda t:t-t_pi_on1-t_pi_on2/2])
-        # self.log.debug("So far tau_start: {}, new: {}".format(real_start_tau, start_tau_pspacing))
+
+        tauhalf_first_pspacing = self.tau_2_pulse_spacing(tau1/2,
+                                                 custom_func=[lambda t: t-t_pi_on1/2-t_pi_on1/4,
+                                                              lambda t: t+t_pi_on1/2+t_pi_on1/4])
+        tauhalf_last_pspacing = self.tau_2_pulse_spacing(tau1/2,
+                                                 custom_func=[lambda t: t-t_pi_on1/2-t_pi_on1/4,
+                                                              lambda t: t+t_pi_on1/2+t_pi_on1/4])
+        if end_pix_on_2 != 0:
+            tauhalf_last_pspacing -= MultiNV_Generator.get_element_length(pix_end_on2_element)
 
 
-        #tauhalf_element = self._get_idle_element(length=start_tau2_pspacing / 2, increment=tau_step / 2)
-        # before pi_on_2
-        tauhalf_1_element = self._get_idle_element(length=start_tau2_pspacing / 2, increment=tau_step / 2)
-        # after pi_on_2
-        tauhalf_2_element = self._get_idle_element(length=start_tau2_pspacing / 2, increment=-tau_step / 2)
-        #tau_element = self._get_idle_element(length=start_tau_pspacing, increment=tau_step)
+        tau2_start = tau1 + tau_start
+        start_tau2_pspacing = self.tau_2_pulse_spacing(tau2_start,
+                                                       custom_func=[lambda t:t-t_pi_on1-t_pi_on2,
+                                                                    lambda t:t+t_pi_on1+t_pi_on2])
+
+        # after pi_on_1
+        tauhalf_aft_element = self._get_idle_element(length=start_tau2_pspacing/2, increment=tau_step)
+        # before pi_on_1
+        tauhalf_bef_element = self._get_idle_element(length=start_tau2_pspacing-start_tau2_pspacing/2, increment=-tau_step)
+        # first and last tauhalf
+        tauhalf_first_element = self._get_idle_element(length=tauhalf_first_pspacing, increment=0)
+        tauhalf_last_element = self._get_idle_element(length=tauhalf_last_pspacing, increment=0)
+
+        if MultiNV_Generator.get_element_length_max(tauhalf_bef_element, num_of_points) < 0 or \
+                MultiNV_Generator.get_element_length_max(tauhalf_aft_element, num_of_points) < 0:
+            # todo: catch negative pspacing and throw datapoints out, instead of stopping
+            raise ValueError("Tau1, tau setting yields negative pulse spacing. Increase tau1, decrease tau.")
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
-        if init_pix_on2 != 0:
-            dd_block.extend(pix_on2_element)
+        if init_pix_on_2 != 0:
+            # # todo: consider phase on this one?
+            # todo: double check that timing auf pis on 1 is kept correctly with init pulse
+            dd_block.extend(pix_init_on2_element)
         dd_block.extend(pihalf_on1_element)
         for n in range(dd_order):
             # create the DD sequence for a single order
-            # todo: think about tau2 at start/end
             for pulse_number in range(dd_type.suborder):
-                dd_block.append(tauhalf_2_element)
+                dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
                 dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1))
-                dd_block.append(tauhalf_1_element)
-                dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=2))
+                dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
+                if last:
+                    if end_pix_on_2 != 0:
+                        # todo need to consider phase on this one
+                        dd_block.extend(pix_end_on2_element)
+                else:
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=2))
         dd_block.extend(pihalf_on1_read_element)
+
         if not no_laser:
             dd_block.append(laser_element)
             dd_block.append(delay_element)
@@ -676,20 +739,31 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         if alternating:
-            if init_pix_on2 != 0:
-                dd_block.extend(pix_on2_element)
+            if init_pix_on_2 != 0:
+                # # todo: consider phase on this one?
+                dd_block.extend(pix_init_on2_element)
             dd_block.extend(pihalf_on1_element)
             for n in range(dd_order):
                 # create the DD sequence for a single order
                 for pulse_number in range(dd_type.suborder):
-                    dd_block.append(tauhalf_element)
-                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number]))
-                    dd_block.append(tauhalf_element)
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1))
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                    first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
+                    if last:
+                        if end_pix_on_2 != 0:
+                            # todo need to consider phase on this one
+                            dd_block.extend(pix_end_on2_element)
+                    else:
+                        dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=2))
             dd_block.extend(pihalf_on1_alt_read_element)
+
             if not no_laser:
                 dd_block.append(laser_element)
                 dd_block.append(delay_element)
                 dd_block.append(waiting_element)
+
+
         created_blocks.append(dd_block)
 
         # Create block ensemble
@@ -704,9 +778,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = tau_array * dd_order * dd_type.suborder
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
-        block_ensemble.measurement_information['labels'] = ('t_evol', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('tau', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
@@ -811,7 +885,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_f(self, name='deer_dd_f', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
+                                 init_pix_on_2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
         In contrast to 'normal' DEER, the position of the pi on NV2 is not swept. Instead, the pi pulses on NV1 & NV2
@@ -848,7 +922,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                     amps=amplitudes,
                                                                     freqs=mw_freqs,
                                                                     phases=[0, 0])
-        pix_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2*init_pix_on2,
+        pix_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2*init_pix_on_2,
                                                                     increments=[0, 0],
                                                                     amps=ampls_on_2,
                                                                     freqs=mw_freqs,
@@ -874,7 +948,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
-        if init_pix_on2 != 0:
+        if init_pix_on_2 != 0:
             dd_block.extend(pix_on2_element)
         dd_block.extend(pihalf_on1_element)
         for n in range(dd_order):
@@ -889,7 +963,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dd_block.append(delay_element)
             dd_block.append(waiting_element)
         if alternating:
-            if init_pix_on2 != 0:
+            if init_pix_on_2 != 0:
                 dd_block.extend(pix_on2_element)
             dd_block.extend(pihalf_on1_element)
             for n in range(dd_order):
@@ -1598,14 +1672,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                          phases=phases)
 
     def get_pi_element(self, xphase, mw_freqs, mw_amps, rabi_periods,
-                       pi_x_length=1.):
+                       pi_x_length=1., no_amps_2_idle=False):
         """
          define a function to create phase shifted pi pulse elements
         :param xphase: phase sift
         :param pi_x_length: multiple of pi pulse. Eg. 0.5 => pi_half pulse
+        :param no_amps_2_idle: if True, convert a pulse without any amplitude to waiting/idle. Else silently drop pulse.
         :return:
         """
 
+        if no_amps_2_idle and len(mw_amps[mw_amps!=0])==0:
+            # todo: may have unintended consequences in creation of pulse partition
+            mw_amps = np.asarray([1e-99]*len(mw_amps))
 
         n_lines = len(mw_amps[mw_amps!=0])
 
@@ -1621,6 +1699,37 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                          amps=amps,
                                                          freqs=fs,
                                                          phases=phases)
+
+    @staticmethod
+    def get_element_length(el_list):
+        """
+        Easily calculate length, if pulse elements contain more than one block.
+        (Eg. pulse created by _get_multiple_mw_mult_length_element)
+        :param el_list:
+        :return:
+        """
+
+        if not isinstance(el_list, list):
+            el_list = [el_list]
+
+        incrs = np.sum([el.increment_s for el in el_list])
+        if incrs != 0:
+            # not saying it's not possible, but not for all cases
+            raise ValueError("Can't yield a unique length if increment != 0.")
+
+        return np.sum([el.init_length_s for el in el_list])
+
+    @staticmethod
+    def get_element_length_max(el_list, n_tau=1):
+
+        # todo: mary with get_element_length
+        if not isinstance(el_list, list):
+            el_list = [el_list]
+
+        len_no_incr = np.sum([el.init_length_s for el in el_list])
+        incrs = (n_tau-1) * np.sum([el.increment_s for el in el_list])
+
+        return len_no_incr + incrs
 
     def _get_multiple_mw_mult_length_element(self, lengths, increments, amps=None, freqs=None, phases=None):
         """
