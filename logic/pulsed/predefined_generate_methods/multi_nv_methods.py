@@ -1723,7 +1723,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if isinstance(lengths, (int, float)):
             lengths = [lengths]
         if isinstance(increments, (int, float)):
-            increments = [increments]
+            if increments == 0:
+                n_lines = len(lengths)
+                increments = [increments]*n_lines
+
         if isinstance(amps, (int, float)):
             amps = [amps]
         if isinstance(freqs, (int, float)):
@@ -1733,8 +1736,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         if len(np.unique(increments)) > 1:
             raise NotImplementedError("Currently, can only create multi mw elements with equal increments.")
-        if len(amps) != len(lengths):
-            raise ValueError
+        if len(np.unique([len(ar) for ar in [lengths, increments, amps, freqs, phases]])) > 1:
+            raise ValueError("Parameters must be arrays of same length.")
 
         def create_pulse_partition(lengths, amps):
             """
@@ -1775,6 +1778,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return partition_blocks
 
         def sanitize_lengths(lengths, increments):
+
             # pulse partition eliminates pulse blocks of zero length
             # this is unwanted, if an increment should be applied to a pulse
             if len(lengths) != 0:
