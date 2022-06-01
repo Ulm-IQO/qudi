@@ -43,7 +43,7 @@ class WavemeterLogWindow(QtWidgets.QMainWindow):
         """
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_scanwindow.ui')
+        ui_file = os.path.join(this_dir, 'ui_scanwindow2.ui')
 
         # Load it
         super().__init__()
@@ -296,11 +296,11 @@ class WavemeterLogGui(GUIBase):
         filepath = self._save_logic.get_path_for_module(module_name='WavemeterLogger')
         filename = os.path.join(filepath, timestamp.strftime('%Y%m%d-%H%M-%S_wavemeter_log_thumbnail'))
 
-        exporter = pg.exporters.SVGExporter(self._pw.plotItem)
-        exporter.export(filename+'.svg')
+        # exporter = pg.exporters.SVGExporter(self._pw.plotItem)
+        # exporter.export(filename+'.svg')
 
 
-        self._wm_logger_logic.save_data(timestamp=timestamp)
+        self._wm_logger_logic.save_data(timestamp=timestamp, device=self._mw.deviceNameLineEdit.text())
 
     def recalculate_histogram(self):
         self._wm_logger_logic.recalculate_histogram(

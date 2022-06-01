@@ -115,8 +115,8 @@ class StepperMotor(Base, MotorInterface):
         """
         constraints = {}
 
-        axis0 = {'label': 'x', 'vel_min': (0,), 'vel_max': (900,), 'resolution': self._resolution, 'unit': self._unit}
-        axis1 = {'label': 'y', 'vel_min': (0,), 'vel_max': (900,), 'resolution': self._resolution, 'unit': self._unit}
+        axis0 = {'label': 'x', 'vel_min': (0,), 'vel_max': (10000,), 'resolution': self._resolution, 'unit': self._unit}
+        axis1 = {'label': 'y', 'vel_min': (0,), 'vel_max': (10000,), 'resolution': self._resolution, 'unit': self._unit}
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1
 

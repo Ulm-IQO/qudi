@@ -212,7 +212,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../../core/artwork/icons/oxygen/22x22/go-next.png</normaloff>../../core/artwork/icons/oxygen/22x22/go-next.png</iconset>
+                  <normaloff>../../artwork/icons/oxygen/22x22/go-next.png</normaloff>../../artwork/icons/oxygen/22x22/go-next.png</iconset>
                 </property>
                </widget>
               </item>
@@ -240,7 +240,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../../core/artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../core/artwork/icons/oxygen/22x22/go-previous.png</iconset>
+                  <normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</iconset>
                 </property>
                </widget>
               </item>
@@ -251,7 +251,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../../core/artwork/icons/oxygen/22x22/go-next.png</normaloff>../../core/artwork/icons/oxygen/22x22/go-next.png</iconset>
+                  <normaloff>../../artwork/icons/oxygen/22x22/go-next.png</normaloff>../../artwork/icons/oxygen/22x22/go-next.png</iconset>
                 </property>
                </widget>
               </item>
@@ -285,7 +285,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../../core/artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../core/artwork/icons/oxygen/22x22/go-previous.png</iconset>
+                  <normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</iconset>
                 </property>
                </widget>
               </item>
@@ -319,7 +319,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../../core/artwork/icons/qudiTheme/22x22/stop-scan.png</normaloff>../../core/artwork/icons/qudiTheme/22x22/stop-scan.png</iconset>
+                  <normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</iconset>
                 </property>
                 <property name="iconSize">
                  <size>

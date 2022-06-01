@@ -49,7 +49,7 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_confocalgui_quphot.ui')
+        ui_file = os.path.join(this_dir, 'ui_confocalgui_quphot_2.ui')
         self._doubleclicked = False
 
         # Load it
@@ -132,8 +132,12 @@ class ConfocalGui(GUIBase):
     adjust_cursor_roi = StatusVar(default=True)
     slider_small_step = StatusVar(default=10e-9)  # initial value in meter
     slider_big_step = StatusVar(default=100e-9)  # initial value in meter
-    _x_programmable = StatusVar(default='340e-6')
-    _y_programmable = StatusVar(default='340e-6')
+    _x_programmable = StatusVar(default='0e-6')
+    _y_programmable = StatusVar(default='0e-6')
+    _x_programmable_34 = StatusVar(default='-132e-6')
+    _y_programmable_34 = StatusVar(default='0e-6')
+    _x_programmable_3c = StatusVar(default='-66e-6')
+    _y_programmable_3c = StatusVar(default='0e-6')
 
     # signals
     sigStartOptimizer = QtCore.Signal(list, str)
@@ -296,7 +300,7 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.02)
         self._mw.depth_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_z_crosshair))
         self._mw.depth_ViewWidget.set_crosshair_size(
-            (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_Z_size))
+            (1e-6, 1e-6))
         # connect the drag event of the crosshair with a change in scanner position:
         self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
 
@@ -378,6 +382,9 @@ class ConfocalGui(GUIBase):
 
         # Update the inputed/displayed numbers if the cursor has left the field:
         self._mw.set_confocal_to_center_Button.clicked.connect(self.set_confocal_crosshair_to_center)
+        self._mw.xy_optimizer_range_DoubleSpinBox.editingFinished.connect(self.optimizer_size_shortut)
+        self._mw.set_confocal_to_34_Button.clicked.connect(self.set_confocal_crosshair_to_34)
+        self._mw.set_confocal_to_3c_Button.clicked.connect(self.set_confocal_crosshair_to_3c)
         self._mw.set_confocal_to_programmable.clicked.connect(self.set_confocal_crosshair_to_programmable)
         self._mw.set_new_location.clicked.connect(self.set_new_location_programmable)
         self._mw.set_confocal_to_programmable.setText(
@@ -1005,11 +1012,38 @@ class ConfocalGui(GUIBase):
         crosshair_pos = self._scanning_logic.get_position()
         self.sigStartOptimizer.emit(crosshair_pos, 'confocalgui')
 
+    def optimizer_size_shortut(self):
+        self._optimizer_logic.refocus_XY_size = self._mw.xy_optimizer_range_DoubleSpinBox.value()
+        self.update_roi_xy_size()
+
+
     def set_confocal_crosshair_to_center(self):
-        self._mw.x_current_InputWidget.setValue('340.0e-6')
-        self._mw.y_current_InputWidget.setValue('340.0e-6')
+        self._mw.x_current_InputWidget.setValue('0.0e-6')
+        self._mw.y_current_InputWidget.setValue('0.0e-6')
         self._mw.x_current_InputWidget.editingFinished.emit()
         self._mw.y_current_InputWidget.editingFinished.emit()
+
+    def set_confocal_crosshair_to_34(self):
+        self._mw.x_current_InputWidget.setValue(self._x_programmable_34)
+        self._mw.y_current_InputWidget.setValue(self._y_programmable_34)
+        self._mw.x_current_InputWidget.editingFinished.emit()
+        self._mw.y_current_InputWidget.editingFinished.emit()
+
+    def save_34(self):
+        position = self._scanning_logic.get_position()
+        self._x_programmable_34 = position[0]
+        self._y_programmable_34 = position[1]
+
+    def set_confocal_crosshair_to_3c(self):
+        self._mw.x_current_InputWidget.setValue(self._x_programmable_3c)
+        self._mw.y_current_InputWidget.setValue(self._y_programmable_3c)
+        self._mw.x_current_InputWidget.editingFinished.emit()
+        self._mw.y_current_InputWidget.editingFinished.emit()
+
+    def save_3c(self):
+        position = self._scanning_logic.get_position()
+        self._x_programmable_3c = position[0]
+        self._y_programmable_3c = position[1]
 
     def set_confocal_crosshair_to_programmable(self):
         self._mw.x_current_InputWidget.setValue(self._x_programmable)
@@ -1100,6 +1134,7 @@ class ConfocalGui(GUIBase):
             self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.1)
 
         newsize = self._optimizer_logic.refocus_XY_size
+        self._mw.xy_optimizer_range_DoubleSpinBox.setValue(newsize)
         self._mw.xy_ViewWidget.set_crosshair_size([newsize, newsize])
         return
 
@@ -1113,7 +1148,7 @@ class ConfocalGui(GUIBase):
 
         newsize_h = self._optimizer_logic.refocus_XY_size
         newsize_v = self._optimizer_logic.refocus_Z_size
-        self._mw.depth_ViewWidget.set_crosshair_size([newsize_h, newsize_v])
+        self._mw.depth_ViewWidget.set_crosshair_size([1e-6, 1e-6])
         return
 
     def update_roi_depth(self, h=None, v=None):
@@ -1619,7 +1654,7 @@ class ConfocalGui(GUIBase):
             high_centile = self._mw.xy_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
-        self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range, block=False)
+        self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range, block=True)
 
         # TODO: find a way to produce raw image in savelogic.  For now it is saved here.
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')

@@ -497,7 +497,9 @@ class Qutau(Base, FastCounterInterface):
 
         @return float: current length of a single bin in seconds (seconds/bin)
         """
-        return self.minimal_binwidth  # todo: maybe not correct
+        #return self.minimal_binwidth  # todo: maybe not correct
+
+        return self._bin_size * 81e-12
 
     def get_data_trace(self):
         """ Polls the current timetrace data from the fast counter.

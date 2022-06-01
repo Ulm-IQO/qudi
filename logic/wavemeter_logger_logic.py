@@ -464,7 +464,7 @@ class WavemeterLoggerLogic(GenericLogic):
             # the plot data is the summed counts divided by the occurence of the respective bins
             self.histogram = self.rawhisto / self.sumhisto
 
-    def save_data(self, timestamp=None):
+    def save_data(self, timestamp=None, device=''):
         """ Save the counter trace data and writes it to a file.
 
         @param datetime timestamp: timestamp passed from gui so that saved images match filenames
@@ -473,11 +473,13 @@ class WavemeterLoggerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-
+        device_raw = device
+        if device != '':
+            device = device + '_'
         self._saving_stop_time = time.time()
 
         filepath = self._save_logic.get_path_for_module(module_name='WavemeterLogger')
-        filelabel = 'wavemeter_log_histogram'
+        filelabel = device + 'wavemeter_log_histogram'
 
         # Currently need to pass timestamp from gui so that the saved image matches saved data.
         # TODO: once the savelogic saves images, we can revert this to always getting timestamp here.
@@ -508,7 +510,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    timestamp=timestamp,
                                    fmt='%.12e')
 
-        filelabel = 'wavemeter_log_wavelength'
+        filelabel = device + 'wavemeter_log_wavelength'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -530,7 +532,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    timestamp=timestamp,
                                    fmt='%.12e')
 
-        filelabel = 'wavemeter_log_counts'
+        filelabel = device + 'wavemeter_log_counts'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -554,13 +556,13 @@ class WavemeterLoggerLogic(GenericLogic):
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
-        filelabel = 'wavemeter_log_counts_with_wavelength'
+        filelabel = device + 'wavemeter_log_counts_with_wavelength'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data['Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)'] = np.array(self.counts_with_wavelength)
 
-        fig = self.draw_figure()
+        fig = self.draw_figure(device_raw)
         # write the parameters:
         parameters = OrderedDict()
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
@@ -580,7 +582,7 @@ class WavemeterLoggerLogic(GenericLogic):
         plt.close(fig)
         return 0
 
-    def draw_figure(self):
+    def draw_figure(self, device=''):
         """ Draw figure to save with data file.
 
         @return: fig fig: a matplotlib figure object to be saved to file.
@@ -609,13 +611,17 @@ class WavemeterLoggerLogic(GenericLogic):
         # Create figure
         fig, ax = plt.subplots()
 
-        ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5)
+        ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5, label=device)
+        if device !='':
+            ax.legend()
 
         ax.set_xlabel('wavelength (nm)')
         ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
 
         x_formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         ax.xaxis.set_major_formatter(x_formatter)
+
+
 
         ax2 = ax.twiny()
 

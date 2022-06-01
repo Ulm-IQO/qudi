@@ -409,7 +409,7 @@ class OptimizerLogic(GenericLogic):
             self.optim_sigma_y = 0.
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
-            if abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset:
+            if abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self.refocus_XY_size*self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self.refocus_XY_size*self._max_offset:
                 if self.x_range[0] <= result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
                     if self.y_range[0] <= result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
                         self.optim_pos_x = result_2D_gaus.best_values['center_x']
@@ -497,7 +497,7 @@ class OptimizerLogic(GenericLogic):
     def finish_refocus(self):
         """ Finishes up and releases hardware after the optimizer scans."""
         scanner_pos = self._scanning_device.get_scanner_position()
-        self.kill_scanner()
+
 
         self.log.info(
                 'Optimised from ({0:.3e},{1:.3e},{2:.3e}) to local '
@@ -511,6 +511,8 @@ class OptimizerLogic(GenericLogic):
 
         # Signal that the optimization has finished, and "return" the optimal position along with
         # caller_tag
+        self._move_to_start_pos([self.optim_pos_x, self.optim_pos_y, self.optim_pos_z])
+        self.kill_scanner()
         self.sigRefocusFinished.emit(
             self._caller_tag,
             [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, scanner_pos[3]])
