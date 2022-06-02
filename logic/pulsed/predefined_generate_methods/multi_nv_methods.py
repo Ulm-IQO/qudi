@@ -479,16 +479,16 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
-        pihalf_on1_element = self.get_pi_element([0,0], mw_freqs, mw_amps=ampls_on_1, rabi_periods=rabi_periods,
+        pihalf_on1_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_1, rabi_periods=rabi_periods,
                                                 pi_x_length=1/2, no_amps_2_idle=True)
-        pix_init_on2_element = self.get_pi_element([0,0], mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
+        pix_init_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False)
-        pix_end_on2_element = self.get_pi_element([0,0], mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
+        pix_end_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
                                                    pi_x_length=end_pix_on_2, no_amps_2_idle=False)
-        pihalf_on1_read_element = self.get_pi_element([read_phase_deg, read_phase_deg], mw_freqs, mw_amps=ampls_on_1,
+        pihalf_on1_read_element = self.get_pi_element(read_phase_deg, mw_freqs, mw_amps=ampls_on_1,
                                                       rabi_periods=rabi_periods,
                                                       pi_x_length=1/2, no_amps_2_idle=True)
-        pihalf_on1_alt_read_element = self.get_pi_element([180+read_phase_deg, 180+read_phase_deg],
+        pihalf_on1_alt_read_element = self.get_pi_element(180+read_phase_deg,
                                                           mw_freqs, mw_amps=ampls_on_1,
                                                           rabi_periods=rabi_periods,
                                                           pi_x_length=1/2, no_amps_2_idle=True)
