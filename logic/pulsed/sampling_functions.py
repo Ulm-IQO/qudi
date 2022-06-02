@@ -65,6 +65,7 @@ class DDMethods(Enum):
     CPMG =  [90., 90.]
     XY4 =   [0., 90., 0., 90.]
     XY8 =   [0., 90., 0., 90., 90., 0., 90., 0.]
+    XY8_leave_2i = [0., np.nan, 90., np.nan, 0., np.nan, 90., np.nan, 90., np.nan, 0., np.nan, 90., np.nan, 0.]
     XY16 =  [0., 90., 0., 90., 90., 0., 90., 0., 180., -90., 180., -90., -90., 180., -90., 180.]
     YY8 =   [-90., 90., 90., -90., -90., -90., 90., 90.]
     KDD =   [30., 0., 90., 0., 30.] # composite pulse (CP) for population inversion, U5b shifted by 30 degrees

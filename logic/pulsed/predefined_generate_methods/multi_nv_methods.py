@@ -348,12 +348,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         order_p = 1 if 'order_P' not in kwargs_dict else kwargs_dict['order_P']
         tau_dd_fix = None if 'tau_dd_fix' not in kwargs_dict else kwargs_dict['tau_dd_fix']
         rabi_period_1 = self.rabi_period if 'rabi_period' not in kwargs_dict else kwargs_dict['rabi_period']
+        dd_type_2 = None if 'dd_type_2' not in kwargs_dict else kwargs_dict['dd_type_2']
 
         if env_type == EnvelopeMethods.rectangle:
             if tau_dd_fix is not None:
                 return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                                                 dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
+                                                 dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                                 alternating=alternating, no_laser=no_laser,
                                                  nv_order=order_nvs, end_pix_on_2=1,
                                                  read_phase_deg=read_phase)
             else:
@@ -559,7 +561,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                                 dd_type=DDMethods.SE, dd_order=1, alternating=True,
+                                 dd_type=DDMethods.SE, dd_type_2=None, dd_order=1, alternating=True,
                                  init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
@@ -578,7 +580,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2,
                                               order_nvs=nv_order)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
-
+        if dd_type_2 == None:
+            dd_type_2 == dd_type
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -694,12 +697,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
                 if last:
                     if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type.phases[pulse_number], mw_freqs, ampls_on_2,
+                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
                                                                   rabi_periods,
                                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                         dd_block.extend(pix_end_on2_element)
                 else:
-                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=2))
+                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
         dd_block.extend(pihalf_on1_read_element)
 
         if not no_laser:
@@ -1782,7 +1785,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     if len_i==0. and increments[idx] != 0.:
                         lengths[idx] = 1e-15
 
+        def nan_phase_2_zero_ampl(phases, amps):
+            # pulses with phases marked as nan will be set to zero amplitude
+            for idx, phi in enumerate(phases):
+                if np.isnan(phi):
+                    amps[idx] = 0
+
+        nan_phase_2_zero_ampl(phases, amps)
         sanitize_lengths(lengths, increments)
+
         part_blocks = create_pulse_partition(lengths, amps)
         #debug_1 = create_pulse_partition([100, 10, 10], [0.1, 0.2, 0.3])
         #debug_2 = create_pulse_partition([10, 100, 80], [0.1, 0.2, 0.3])
