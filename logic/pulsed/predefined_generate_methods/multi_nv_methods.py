@@ -561,7 +561,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                                 dd_type=DDMethods.SE, dd_type_2=None, dd_order=1, alternating=True,
+                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=True,
                                  init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
@@ -580,8 +580,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2,
                                               order_nvs=nv_order)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
-        if dd_type_2 == None:
-            dd_type_2 == dd_type
+
+        if dd_type_2 == '' or dd_type_2 == None:
+            dd_type_2 = dd_type
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
