@@ -352,6 +352,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if env_type == EnvelopeMethods.rectangle:
             if tau_dd_fix is not None:
                 return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                                                 tau1=tau_dd_fix,
                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                                  dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
                                                  nv_order=order_nvs, end_pix_on_2=1,
@@ -673,10 +674,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         tauhalf_bef_min = MultiNV_Generator.get_element_length_max(tauhalf_bef_element, num_of_points)
         tauhalf_aft_min = MultiNV_Generator.get_element_length_max(tauhalf_aft_element, num_of_points)
-        if tauhalf_bef_min < 0 or  tauhalf_aft_min < 0:
+        if tauhalf_bef_min < 0 or tauhalf_aft_min < 0:
             # todo: catch negative pspacing and throw datapoints out, instead of raising
-            raise ValueError(f"Tau1, tau setting yields negative pulse spacing {np.min([tauhalf_bef_min, tauhalf_aft_min])}."
-                             f" Increase tau1 or decrease tau.")
+            self.log.debug(f"t_pi1= {t_pi_on1}, t_pi2= {t_pi_on2}, start_tau2_ps= {start_tau2_pspacing},"
+                           f"tau_start= {tau_start}, tau_step= {tau_step}, tau1= {tau1}")
+            raise ValueError(f"Tau1, tau setting yields negative pulse spacing "
+                             f"{np.min([tauhalf_bef_min, tauhalf_aft_min])}."
+                             f" Increase tau1 or decrease tau. Check debug for pulse times")
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
