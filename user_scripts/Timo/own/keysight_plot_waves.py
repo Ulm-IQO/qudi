@@ -66,8 +66,14 @@ class KeysightPlotter():
 
         return wave_dict
 
-    def slice_wave(self, wave_dict, i_start=0, i_stop=None):
-        return {key:data[i_start:i_stop] for (key, data) in wave_dict.items()}
+    def slice_wave(self, wave_dict, i_start=0, i_stop=None, i_step=1,
+                   shift_time=True):
+        res_dict = {key:data[i_start:i_stop:i_step] for (key, data) in wave_dict.items()}
+
+        if shift_time and 't' and len(res_dict['t']) > 0:
+            res_dict['t'] = res_dict['t'] - res_dict['t'][0]
+
+        return res_dict
 
 
     def sign_extend(self, value, bits):
@@ -313,7 +319,7 @@ if __name__ == "__main__":
                     wave_diff[key] = wave_dict_1[key]
                 continue
 
-            if n_diff_sa > 0:
+            if n_diff_sa >= 0:
                 wave_dict_tmp = copy.deepcopy(wave_dict_1[key])
                 wave_dict_tmp = np.pad(wave_dict_tmp, (0,abs(n_diff_sa)),
                                        mode='constant', constant_values=0)
@@ -336,11 +342,13 @@ if __name__ == "__main__":
 
         plt.figure()
         plt.plot(t, wave_dict['a_ch1'], label="a_ch1", color="blue")
+        #plt.scatter(t, wave_dict['a_ch1'],  color="blue", label='_nolegend_')
         plt.plot(t, wave_dict['d_ch1'] - 2, label="d_ch1", color="orange")
         plt.plot(t, wave_dict['d_ch2'] - 3, label="d_ch2", color="green")
 
         try:
             plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
+            #plt.scatter(t, wave_dict['a_ch2'] - 4, color="blue", label='_nolegend_')
             plt.plot(t, wave_dict['d_ch3'] - 6, label="d_ch3", color="orange")
             plt.plot(t, wave_dict['d_ch4'] - 7, label="d_ch4", color="green")
         except:
@@ -356,13 +364,13 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "deer_dd_tau_ch1.bin"
-    file2 = r"C:\qudi\pulsed_files" + "/" + "ramsey_ch2.bin"
+    file = r"C:\qudi\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin"
+    file2 = r"C:\qudi\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
-    file2 = None
+    #file2 = None
 
-    plotter = KeysightPlotter(14, 8e9)
+    plotter = KeysightPlotter(14, 12e9)
     wave_dict = plotter.load_data(file)
     if file2:
         wave_dict2 = plotter.load_data(file2)
@@ -374,13 +382,23 @@ if __name__ == "__main__":
     print(wave_dict.keys())
 
     idx_slice = 0, 4*100000
+    idx_slice = 101*100000, 106*100000
+
+    n_samples =  3*100000
+    idx_slice_start_1 = len(wave_dict['a_ch1']) - n_samples
+
+    idx_slice = idx_slice_start_1, idx_slice_start_1 + n_samples
+    fac_undersample = 1
     #wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=500000)
     #wave_dict = plotter.slice_wave(wave_dict, i_start=-20*100000, i_stop=-1)
-    wave_dict = plotter.slice_wave(wave_dict, i_start=idx_slice[0], i_stop=idx_slice[1])
+    wave_dict = plotter.slice_wave(wave_dict, i_start=idx_slice[0], i_stop=idx_slice[1], i_step=fac_undersample)
 
     plot(wave_dict, title="1")
     if file2:
-        wave_dict2 = plotter.slice_wave(wave_dict2, i_start=idx_slice[0], i_stop=idx_slice[1])
+        idx_slice_start_2 = 0#len(wave_dict2['a_ch1']) - n_samples
+        idx_slice = idx_slice_start_2, idx_slice_start_2 + n_samples
+
+        wave_dict2 = plotter.slice_wave(wave_dict2, i_start=idx_slice[0], i_stop=idx_slice[1], i_step=fac_undersample)
         wave_diff = plotter.slice_wave(wave_diff, i_start=idx_slice[0], i_stop=idx_slice[1])
 
         plot(wave_dict2, title="2")
