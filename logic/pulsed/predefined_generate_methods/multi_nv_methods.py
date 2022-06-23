@@ -161,6 +161,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         """
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
 
+        # handle kwargs
+        # allow to overwrite generation parameters by kwargs or default to this gen method params
+        dd_type_ent = dd_type_cnot if 'dd_type' not in init_state_kwargs else init_state_kwargs['dd_type']
+        dd_order_ent = dd_order if 'dd_order' not in init_state_kwargs else init_state_kwargs['dd_order']
+        tau_ent = tau_cnot if 'tau_start' not in init_state_kwargs else init_state_kwargs['tau_start']
+        rabi_period_mw_2_ent = rabi_period_mw_2 if 'rabi_period_mw_2' not in init_state_kwargs\
+                               else init_state_kwargs['rabi_period_mw_2']
+        rabi_period_mw_2_cnot = rabi_period_mw_2 if 'rabi_period_mw_2' not in cnot_kwargs else \
+                                cnot_kwargs['rabi_period_mw_2']
+        ampl_mw_2_cnot = ampl_mw_2 if 'ampl_mw_2' not in cnot_kwargs else \
+                                cnot_kwargs['ampl_mw_2']
+
+        # create param arrays
         rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), n_nvs=2)
         amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
         ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
@@ -168,8 +181,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
         rabi_on_nv = int(rabi_on_nv)
 
+
         self.log.debug(f"Tomographic rabi on {rabi_on_nv}. Ampls_both: {amplitudes},"
-                       f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}")
+                       f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot}")
+
+
 
         if rabi_on_nv != 1 and rabi_on_nv != 2:
             raise ValueError(f"Can drive Rabi on subsystem NV 1 or 2, not {rabi_on_nv}.")
@@ -194,30 +210,25 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
         pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
 
-        pi_read_element = pi_on_1_element if rabi_on_nv==1 else pi_on_2_element
+        pi_read_element = cp.deepcopy(pi_on_1_element) if rabi_on_nv==1 else cp.deepcopy(pi_on_2_element)
+        self.log.debug(f"Read element on nv {rabi_on_nv}: {pi_on_1_element}")
 
         # 2 qubit gates
-        # allow to overwrite generation parameters by kwargs or default to this gen method params
-        rabi_period_mw_2_cnot = rabi_period_mw_2 if 'rabi_period_mw_2' not in cnot_kwargs else cnot_kwargs['rabi_period_mw_2']
 
         c1not2_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
-                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2_cnot,
+                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot, rabi_period_mw_2=rabi_period_mw_2_cnot,
                                                   dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
                                                   no_laser=True,
                                                   kwargs_dict=cnot_kwargs)
         c1not2_element = c1not2_element[0]
         c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
-                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2_cnot,
+                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot, rabi_period_mw_2=rabi_period_mw_2_cnot,
                                                   dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
                                                   no_laser=True,
                                                   kwargs_dict=cnot_kwargs)
         c2not1_element = c2not1_element[0]
 
-        dd_type_ent = dd_type_cnot if 'dd_type' not in init_state_kwargs else init_state_kwargs['dd_type']
-        dd_order_ent = dd_order if 'dd_order' not in init_state_kwargs else init_state_kwargs['dd_order']
-        tau_ent = tau_cnot if 'tau_start' not in init_state_kwargs else init_state_kwargs['tau_start']
-        rabi_period_mw_2_ent = rabi_period_mw_2 if 'rabi_period_mw_2' not in init_state_kwargs else init_state_kwargs[
-            'rabi_period_mw_2']
+
 
         """
         ent_create_element, _, _, = self.generate_ent_create_bell(tau_start=tau_ent, tau_step=0, num_of_points=1,
@@ -254,7 +265,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif init_state == TomoInit.ux180_on_2:
                 init_elements = pi_on_2_element
             elif init_state == TomoInit.ux180_on_both:
-                init_elements = pi_on_both_element
+                #init_elements = pi_on_both_element
+                init_elements = pi_on_1_element
+                init_elements.extend(pi_on_2_element)
             elif init_state == TomoInit.ux90_on_1_uy90_on_2:
                 init_elements = pi2_on_1_element
                 init_elements.extend(pi2y_on_2_element)
@@ -561,7 +574,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90, no_laser=False):
+                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
+                                 nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
         Decoupling sequence on both NVs.
         Tau1 is kept constant and the second pi pulse is swept through.
@@ -590,7 +604,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1)
         pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=True)
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False)
 
         # read phase opposite to canonical DD: 0->0 on no phase evolution
         pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
@@ -688,6 +704,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # # todo: consider phase on this one?
             # todo: double check that timing auf pis on 1 is kept correctly with init pulse
             dd_block.extend(pix_init_on2_element)
+        if init_pix_on_1 != 0:
+            dd_block.extend(pix_init_on1_element)
         dd_block.extend(pihalf_on1_element)
         for n in range(dd_order):
             # create the DD sequence for a single order
@@ -716,6 +734,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             if init_pix_on_2 != 0:
                 # # todo: consider phase on this one?
                 dd_block.extend(pix_init_on2_element)
+            if init_pix_on_1 != 0:
+                dd_block.extend(pix_init_on1_element)
             dd_block.extend(pihalf_on1_element)
             for n in range(dd_order):
                 # create the DD sequence for a single order
