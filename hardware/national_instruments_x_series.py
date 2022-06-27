@@ -990,7 +990,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 daq.DAQmxCreateTask('ScanAnalogIn', daq.byref(atask))
 
                 daq.DAQmxCreateAIVoltageChan(
-                    atask,
+
                     ', '.join(self._scanner_ai_channels),
                     'Scan Analog In',
                     daq.DAQmx_Val_RSE,
@@ -1426,6 +1426,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 b = -1
 
         c = self.close_counter(scanner=True)
+        #try:
+            #daq.DAQmxClearTask(self._scanner_ao_task)
+            #self._scanner_ao_task = None
+
+        #except:
+            #self.log.exception('Could not clear AO Out Task.')
         return -1 if a < 0 or b < 0 or c < 0 else 0
 
     def close_scanner_clock(self):

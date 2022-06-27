@@ -65,7 +65,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.current_x = (self.x_range[0] + self.x_range[1]) / 2
         self.current_y = (self.y_range[0] + self.y_range[1]) / 2
         self.current_z = (self.z_range[0] + self.z_range[1]) / 2
-        self.current_a = 0.0
+        #self.current_a = 0.0
 
         # Sets the size of the image to the maximal scanning range
         self.image_x_range = self.x_range
@@ -108,7 +108,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._current_x = self.current_x
         confocal._current_y = self.current_y
         confocal._current_z = self.current_z
-        confocal._current_a = self.current_a
+        #confocal._current_a = self.current_a
         confocal.image_x_range = np.copy(self.image_x_range)
         confocal.image_y_range = np.copy(self.image_y_range)
         confocal.image_z_range = np.copy(self.image_z_range)
@@ -151,7 +151,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.current_x = confocal._current_x
         self.current_y = confocal._current_y
         self.current_z = confocal._current_z
-        self.current_a = confocal._current_a
+        #self.current_a = confocal._current_a
         self.image_x_range = np.copy(confocal.image_x_range)
         self.image_y_range = np.copy(confocal.image_y_range)
         self.image_z_range = np.copy(confocal.image_z_range)
@@ -178,7 +178,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
     def serialize(self):
         """ Give out a dictionary that can be saved via the usual means """
         serialized = dict()
-        serialized['focus_position'] = [self.current_x, self.current_y, self.current_z, self.current_a]
+        serialized['focus_position'] = [self.current_x, self.current_y, self.current_z]#, self.current_a]
         serialized['x_range'] = list(self.image_x_range)
         serialized['y_range'] = list(self.image_y_range)
         serialized['z_range'] = list(self.image_z_range)
@@ -207,7 +207,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
             self.current_x = serialized['focus_position'][0]
             self.current_y = serialized['focus_position'][1]
             self.current_z = serialized['focus_position'][2]
-            self.current_a = serialized['focus_position'][3]
+            #self.current_a = serialized['focus_position'][3]
         if 'x_range' in serialized and len(serialized['x_range']) == 2:
             self.image_x_range = serialized['x_range']
         if 'y_range' in serialized and len(serialized['y_range']) == 2:
@@ -666,8 +666,8 @@ class ConfocalLogic(GenericLogic):
             self._current_y = y
         if z is not None:
             self._current_z = z
-        if a is not None:
-            self._current_a = a
+        #if a is not None:
+            #self._current_a = a
 
         # Checks if the scanner is still running
         if self.module_state() == 'locked' or self._scanning_device.module_state() == 'locked':
@@ -683,7 +683,7 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         ch_array = ['x', 'y', 'z', 'a']
-        pos_array = [self._current_x, self._current_y, self._current_z, self._current_a]
+        pos_array = [self._current_x, self._current_y, self._current_z]#, self._current_a]
         pos_dict = {}
 
         for i, ch in enumerate(self.get_scanner_axes()):
@@ -741,7 +741,7 @@ class ConfocalLogic(GenericLogic):
         image = self.depth_image if self._zscan else self.xy_image
         n_ch = len(self.get_scanner_axes())
         s_ch = len(self.get_scanner_count_channels())
-
+        self._current_a = self._scanning_device.get_scanner_position()[-1]
         try:
             if self._scan_counter == 0:
                 # make a line from the current cursor position to
@@ -753,6 +753,7 @@ class ConfocalLogic(GenericLogic):
                 if n_ch <= 3:
                     start_line = np.vstack([lsx, lsy, lsz][0:n_ch])
                 else:
+
                     start_line = np.vstack(
                         [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
                 # move to the start position of the scan, counts are thrown away
