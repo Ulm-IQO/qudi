@@ -238,6 +238,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # todo: currently untested
        
         ent_create_element = []
+        """
         ent_create_bycnot_element, _, _, = self.generate_ent_create_bell_bycnot(tau_start=tau_ent, tau_step=0, num_of_points=1,
                                                                   f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                   rabi_period_mw_2=rabi_period_mw_2_ent,
@@ -245,7 +246,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                   kwargs_dict=cnot_kwargs,
                                                                   alternating=False, no_laser=True)
 
-         """
+
         init_elements, rot_elements = [], []
         if init_state:
             if init_state == TomoInit.none:
@@ -1148,6 +1149,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), n_nvs=2)
         amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
 
         # get tau array for measurement ticks
@@ -1165,14 +1168,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                              read_phase_deg=180)
         cnot_alt_element = cnot_alt_element[0]
 
-        pi_both_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+        pi_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
                                                                     increments=[0, 0],
-                                                                    amps=amplitudes,
+                                                                    amps=ampls_on_1,
                                                                     freqs=mw_freqs,
                                                                     phases=[0, 0])
-        pihalf_y_both_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+
+        pihalf_y_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
                                                                           increments=[0, 0],
-                                                                          amps=amplitudes,
+                                                                          amps=ampls_on_1,
                                                                           freqs=mw_freqs,
                                                                           phases=[90, 90])
 
@@ -1181,13 +1185,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         dd_block = PulseBlock(name=name)
         created_blocks, created_ensembles, created_sequences = [], [], []
         # Hadarmard = 180_X*90_Y*|Psi>
-        dd_block.extend(pihalf_y_both_element)
-        dd_block.extend(pi_both_element)
+        dd_block.extend(pihalf_y_on1_element)
+        dd_block.extend(pi_on1_element)
         dd_block.extend(cnot_element)  # cnot element includes laser for readout
 
         if alternating:
-            dd_block.extend(pihalf_y_both_element)
-            dd_block.extend(pi_both_element)
+            dd_block.extend(pihalf_y_on1_element)
+            dd_block.extend(pi_on1_element)
             dd_block.extend(cnot_alt_element)  # cnot element includes laser for readout
 
         created_blocks.append(dd_block)
