@@ -595,6 +595,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               order_nvs=nv_order)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
 
+        self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}")
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1852,6 +1853,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         array.extend(in_list)
         all_nv_params = np.asarray(array)
 
+        # re-order paraams, if nv order != [1,2, ...]
+        if order_nvs != None:
+            order_nvs = csv_2_list(order_nvs)
+            parama_per_nv = sublists(all_nv_params, int(len(all_nv_params)/n_nvs))
+            parama_per_nv = [p for p, i in sorted(zip(parama_per_nv, order_nvs), key=lambda tup: tup[1])]
+            all_nv_params = [item for sublist in parama_per_nv for item in sublist] # flatten per nv list again
+
         # pick a single NV and set all others to zero ampl
         if n_nvs != None and idx_nv != None:
             if idx_nv >= n_nvs:
@@ -1866,13 +1874,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             nv_params = single_nv_params
         else:
             nv_params = all_nv_params
-
-        # re-order paraams, if nv order != [1,2, ...]
-        if order_nvs != None:
-            order_nvs = csv_2_list(order_nvs)
-            parama_per_nv = sublists(nv_params, int(len(nv_params)/n_nvs))
-            parama_per_nv = [p for p, i in sorted(zip(parama_per_nv, order_nvs), key=lambda tup: tup[1])]
-            nv_params = [item for sublist in parama_per_nv for item in sublist] # flatten per nv list again
 
         return np.asarray(nv_params)
 
