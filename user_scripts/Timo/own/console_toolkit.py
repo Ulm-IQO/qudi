@@ -182,6 +182,19 @@ class Tk_file():
 
         return param_dict_accepted
 
+    @staticmethod
+    def find_all_files_for_mes(p_mes):
+        path = os.path.normpath(p_mes['file'])
+        # offset for erasing automatic "nv_" previx
+        p_file = path.split(os.sep)[-1]
+        folder = os.path.join(*path.split(os.sep)[:-1])
+
+        savetag_with_date = p_file.split('_pulsed')[0]
+
+        # find files that have same savetag
+        files_in_folder = Tk_file.list_mult_pulsed_mes(folder, filter_strs=[savetag_with_date],
+                                                       incl_subdir=False)
+        return files_in_folder
 
     @staticmethod
     def find_param_file(p_mes):
