@@ -1,0 +1,71 @@
+{
+    "optimization_dictionary": {
+        "optimization_client_name": "Optimization_dCRAB_Qubit",
+        "opti_algorithm_name": "dCRAB",
+        "opti_algorithm_module": "quocslib.optimalalgorithms.dCRABAlgorithm",
+        "opti_algorithm_class": "DCrabAlgorithm",
+        "algorithm_settings": {
+            "super_iteration_number": 6,
+            "maximum_function_evaluations_number": 99
+        },
+        "dsm_settings": {
+            "general_settings": {
+                "dsm_name": "nelder_mead",
+                "is_adaptive": true
+            },
+            "stopping_criteria": {
+                "iterations_number": 100,
+                "xatol": 1e-14,
+                "frtol": 1e-14
+            }
+        },
+        "pulses": [
+            {
+                "pulse_name": "Pulse1",
+                "upper_limit": 15.0,
+                "lower_limit": -15.0,
+                "bins_number": 101,
+                "time_name": "time1",
+                "amplitude_variation": 0.5,
+                "basis": {
+                    "basis_name": "Fourier",
+                    "basis_class": "Fourier",
+                    "basis_module": "quocslib.pulses.basis.Fourier",
+                    "basis_vector_number": 10,
+                    "random_frequencies_distribution": {
+                        "distribution_name": "Uniform",
+                        "distribution_class": "Uniform",
+                        "distribution_module": "quocslib.pulses.frequency.Uniform",
+                        "lower_limit": 0.1,
+                        "upper_limit": 30.0
+                    }
+                },
+                "scaling_function": {
+                    "function_type": "lambda_function",
+                    "lambda_function": "lambda t: 1.0 + 0.0*t"
+                },
+                "initial_guess": {
+                    "function_type": "lambda_function",
+                    "lambda_function": "lambda t: np.pi/3 + 0.0*t"
+                }
+            }
+        ],
+        "times": [
+            {
+                "time_name": "time1",
+                "initial_value": 3.0
+            }
+        ],
+        "parameters": []
+    },
+    "communication": {
+        "communication_type": "AllInOneCommunication",
+        "results_folder": "/home/mrossign/QuOCS/quocs-thesuite/QuOCS_Results"
+    },
+    "figure_of_merit": {
+        "further_args": {},
+        "program_type": "TestClass",
+        "python_module": "examples.OneQubitClass",
+        "python_class": "OneQubit"
+    }
+}

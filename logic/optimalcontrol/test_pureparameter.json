@@ -1,0 +1,48 @@
+{
+    "optimization_dictionary": {
+        "optimization_client_name": "PureParametrizationOptimization_Test",
+        "opti_algorithm_name": "DirectSearchMethod",
+        "opti_algorithm_module": "quocslib.optimalalgorithms.DirectSearchAlgorithm",
+        "opti_algorithm_class": "DirectSearchAlgorithm",
+        "algorithm_settings": {},
+        "dsm_settings": {
+            "general_settings": {
+                "dsm_name": "nelder_mead",
+                "is_adaptive": true
+            },
+            "stopping_criteria": {
+                "iterations_number": 100,
+                "xatol": 1e-14,
+                "frtol": 1e-14
+            }
+        },
+        "pulses": [],
+        "times": [],
+        "parameters": [
+            {
+                "parameter_name": "Parameter1",
+                "lower_limit": -2.0,
+                "upper_limit": 2.0,
+                "initial_value": 0.0,
+                "amplitude_variation": 0.5
+            },
+            {
+                "parameter_name": "Parameter2",
+                "lower_limit": -2.0,
+                "upper_limit": 2.0,
+                "initial_value": 0.0,
+                "amplitude_variation": 0.5
+            }
+        ]
+    },
+    "communication": {
+        "communication_type": "AllInOneCommunication",
+        "results_folder": "/home/mrossign/GitHub_Qudi/qudi/QuOCS_Results"
+    },
+    "figure_of_merit": {
+        "further_args": {},
+        "program_type": "TestClass",
+        "python_module": "OptimalControlProblems.OneQubitClass",
+        "python_class": "OneQubit"
+    }
+}
