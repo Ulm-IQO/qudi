@@ -245,7 +245,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                   dd_type=dd_type_ent, dd_order=dd_order_ent,
                                                                   kwargs_dict=cnot_kwargs,
                                                                   alternating=False, no_laser=True)
-
+        ent_create_bycnot_element = ent_create_bycnot_element[0]
 
         init_elements, rot_elements = [], []
         if init_state:
@@ -573,7 +573,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                                 dd_type=DDMethods.SE, dd_order=1, alternating=True,
+                                 dd_type=DDMethods.SE, dd_order=1, dd_phase_slip_w=0, alternating=True,
                                  init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
                                  nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
@@ -602,8 +602,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         delay_element = self._get_delay_gate_element()
 
         pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
-        pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1)
-        pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1)
+        pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1,
+                                             no_amps_2_idle=True)
+        pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1,
+                                             no_amps_2_idle=True)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False)
         pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
