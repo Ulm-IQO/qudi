@@ -364,8 +364,8 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin"
-    file2 = r"C:\qudi\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin"
+    file = r"C:\qudi\pulsed_files" + "/" + "deer_dd_rect_tau_cnotCalib_ch1.bin"
+    file2 = r"C:\qudi\pulsed_files" + "/" + "tomoTest_rot=c2not1_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
     #file2 = None
