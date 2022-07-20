@@ -362,6 +362,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         order_p = 1 if 'order_P' not in kwargs_dict else kwargs_dict['order_P']
         tau_dd_fix = None if 'tau_dd_fix' not in kwargs_dict else kwargs_dict['tau_dd_fix']
         rabi_period_1 = self.rabi_period if 'rabi_period' not in kwargs_dict else kwargs_dict['rabi_period']
+        dd_type_2 = None if 'dd_type_2' not in kwargs_dict else kwargs_dict['dd_type_2']
 
         if num_of_points==1:
             self.log.debug(f"Generating single c2not1 (nv_order: {order_nvs}) "
@@ -373,7 +374,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                                  tau1=tau_dd_fix,
                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                                                 dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
+                                                 dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                                 alternating=alternating, no_laser=no_laser,
                                                  nv_order=order_nvs, end_pix_on_2=1,
                                                  read_phase_deg=read_phase)
             else:
@@ -578,7 +580,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                                 dd_type=DDMethods.SE, dd_order=1, dd_phase_slip_w=0, alternating=True,
+                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=True,
                                  init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
                                  nv_order="1,2", read_phase_deg=90, no_laser=False):
         """
@@ -599,6 +601,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               order_nvs=nv_order)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
 
+        if dd_type_2 == '' or dd_type_2 == None:
+            dd_type_2 = dd_type
         self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}")
 
         # create the elements
@@ -724,12 +728,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
                 if last:
                     if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type.phases[pulse_number], mw_freqs, ampls_on_2,
+                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
                                                                   rabi_periods,
                                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                         dd_block.extend(pix_end_on2_element)
                 else:
-                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=2))
+                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
         dd_block.extend(pihalf_on1_read_element)
 
         if not no_laser:
