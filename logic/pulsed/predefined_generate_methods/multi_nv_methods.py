@@ -230,8 +230,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
 
-
-
         """
         ent_create_element, _, _, = self.generate_ent_create_bell(tau_start=tau_ent, tau_step=0, num_of_points=1,
                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
@@ -247,7 +245,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                   dd_type=dd_type_ent, dd_order=dd_order_ent,
                                                                   kwargs_dict=cnot_kwargs,
                                                                   alternating=False, no_laser=True)
-
+        ent_create_bycnot_element = ent_create_bycnot_element[0]
 
         init_elements, rot_elements = [], []
         if init_state:
@@ -605,11 +603,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
 
-
-        # todo check what happens for ampl_2 = 0. Probably need to set no_amps_2_idle for more puleses
         pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
-        pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1)
-        pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1)
+        pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1,
+                                             no_amps_2_idle=True)
+        pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1,
+                                             no_amps_2_idle=True)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False)
         pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
@@ -697,7 +695,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         tauhalf_bef_min = MultiNV_Generator.get_element_length_max(tauhalf_bef_element, num_of_points)
         tauhalf_aft_min = MultiNV_Generator.get_element_length_max(tauhalf_aft_element, num_of_points)
-        if tauhalf_bef_min < 0 or  tauhalf_aft_min < 0:
+        if tauhalf_bef_min < 0 or tauhalf_aft_min < 0:
             # todo: catch negative pspacing and throw datapoints out, instead of raising
             self.log.debug(f"t_pi1= {t_pi_on1}, t_pi2= {t_pi_on2}, start_tau2_ps= {start_tau2_pspacing},"
                            f"tau_start= {tau_start}, tau_step= {tau_step}, tau1= {tau1}")
@@ -1140,8 +1138,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                         num_of_points=50,
                                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                                         rabi_period_mw_2="100e-9, 100e-9, 100e-9", dd_type=DDMethods.SE, dd_order=1,
-                                        cnot_kwargs='', use_c2not1=False,
-                                        alternating=True, no_laser=False, read_phase_deg=0):
+                                        kwargs_dict='',
+                                        alternating=True, no_laser=False):
         """
         Similar to ent_create_bell(), but instead of Dolde's sequence uses Hadamard + CNOT (via DEER)
         :return:
@@ -1156,26 +1154,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
 
-        c1not2_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+        cnot_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                             kwargs_dict=cnot_kwargs,  read_phase_deg=read_phase_deg,
+                             kwargs_dict=kwargs_dict,
                              dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser)
-        c1not2_element = c1not2_element[0]
-        c1not2_alt_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+        cnot_element = cnot_element[0]
+        cnot_alt_element, _, _ = self.generate_c1not2('c1not2', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                             kwargs_dict=cnot_kwargs, read_phase_deg=read_phase_deg+180,
-                             dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser)
-        c1not2_alt_element = c1not2_alt_element[0]
-        c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
-                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                             kwargs_dict=cnot_kwargs, read_phase_deg=read_phase_deg,
-                             dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser)
-        c2not1_element = c2not1_element[0]
-        c2not1_alt_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
-                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                             kwargs_dict=cnot_kwargs, read_phase_deg=read_phase_deg+180,
-                             dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser)
-        c2not1_alt_element = c2not1_alt_element[0]
+                             kwargs_dict=kwargs_dict,
+                             dd_type=dd_type, dd_order=dd_order, alternating=False, no_laser=no_laser,
+                             read_phase_deg=180)
+        cnot_alt_element = cnot_alt_element[0]
 
         pi_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
                                                                     increments=[0, 0],
@@ -1196,18 +1185,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Hadarmard = 180_X*90_Y*|Psi>
         dd_block.extend(pihalf_y_on1_element)
         dd_block.extend(pi_on1_element)
-        if not use_c2not1:
-            dd_block.extend(c1not2_element)  # cnot element includes laser for readout
-        else:
-            dd_block.extend(c2not1_element)
+        dd_block.extend(cnot_element)  # cnot element includes laser for readout
 
         if alternating:
             dd_block.extend(pihalf_y_on1_element)
             dd_block.extend(pi_on1_element)
-            if not use_c2not1:
-                dd_block.extend(c1not2_alt_element)  # cnot element includes laser for readout
-            else:
-                dd_block.extend(c2not1_alt_element)
+            dd_block.extend(cnot_alt_element)  # cnot element includes laser for readout
 
         created_blocks.append(dd_block)
 
@@ -1234,36 +1217,30 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
     def generate_bell_ramsey(self, name='bell_ramsey', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
-                                 tau_cnot=10e-6, f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
-                                 rabi_period_mw_2="100e-9, 100e-9, 100e-9", assym_disent=False,
-                                 cnot_kwargs='',
+                                 t_rabi_bell=10e-6, f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                                 rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True):
         """
         Use lists of f_mw_2, ampl_mw_2, rabi_period_m2_2 to a) address second NV b) use double quantum transition
         """
 
-        bell_blocks, _, _ = self.generate_ent_create_bell_bycnot('ent', tau_cnot, tau_step=0, num_of_points=1,
+        tau_cnot = t_rabi_bell/(4*dd_order*dd_type.suborder)
+        bell_blocks, _, _ = self.generate_ent_create_bell('ent', tau_cnot, tau_step=0, num_of_points=1,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                         rabi_period_mw_2=rabi_period_mw_2,
                                                                         dd_type=dd_type, dd_order=dd_order,
                                                                         alternating=False, no_laser=True,
-                                                                        cnot_kwargs=cnot_kwargs,
-                                                                        use_c2not1=False)
-        disent_blocks, _, _ = self.generate_ent_create_bell_bycnot('dis-ent', tau_cnot, tau_step=0, num_of_points=1,
+                                                                        read_phase_deg=90)
+        disent_blocks, _, _ = self.generate_ent_create_bell('dis-ent', tau_cnot, tau_step=0, num_of_points=1,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                         rabi_period_mw_2=rabi_period_mw_2,
                                                                         dd_type=dd_type, dd_order=dd_order,
-                                                                        alternating=False,
-                                                                        cnot_kwargs=cnot_kwargs,
-                                                                        use_c2not1=assym_disent)
-        disent_alt_blocks, _, _ = self.generate_ent_create_bell_bycnot('dis-ent', tau_cnot, tau_step=0, num_of_points=1,
+                                                                        alternating=False, read_phase_deg=90)
+        disent_alt_blocks, _, _ = self.generate_ent_create_bell('dis-ent', tau_cnot, tau_step=0, num_of_points=1,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
                                                                         rabi_period_mw_2=rabi_period_mw_2,
                                                                         dd_type=dd_type, dd_order=dd_order,
-                                                                        alternating=False, read_phase_deg=180,
-                                                                        cnot_kwargs=cnot_kwargs,
-                                                                        use_c2not1=assym_disent)
-
+                                                                        alternating=False, read_phase_deg=-90)
 
 
         bell_blocks, disent_blocks, disent_alt_blocks = bell_blocks[0], disent_blocks[0], disent_alt_blocks[0]
