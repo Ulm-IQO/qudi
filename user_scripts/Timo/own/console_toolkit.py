@@ -316,6 +316,9 @@ class Tk_string():
 
     @staticmethod
     def find_num_in_str(str):
+        """
+        Extract numbers in string and return as list of strings.
+        """
         import re
         numstrList = re.findall(r"[-+]?\d*\.\d+|\d+", str)
         # don't sort here, order of files important for load_series()
@@ -372,7 +375,7 @@ class Tk_string():
             if f"{key}=" in in_str:
                 try:
                     substr = in_str.split(f"{key}=", 1)[1]
-                    val = Tk_string.find_num_in_str(substr)[0]
+                    val = float(Tk_string.find_num_in_str(substr)[0])
                     params[key] = val
                 except IndexError:
                     continue
