@@ -424,6 +424,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             dd_type=dd_type, dd_order=dd_order,
                             read_phase_deg=read_phase_deg, order_nvs=order_nvs,
                             alternating=alternating, no_laser=no_laser,
+                            # arguments passed to deer method
                             kwargs_dict=kwargs_dict)
 
 
@@ -602,6 +603,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         if dd_type_2 == '' or dd_type_2 == None:
             dd_type_2 = dd_type
+        self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}")
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -610,9 +612,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
         pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1,
-                                             no_amps_2_idle=True)
+                                             no_amps_2_idle=False)
         pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1,
-                                             no_amps_2_idle=True)
+                                             no_amps_2_idle=False)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False)
         pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
