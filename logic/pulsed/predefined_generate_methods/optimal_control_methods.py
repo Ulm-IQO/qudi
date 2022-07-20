@@ -96,8 +96,57 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     # State to State Transfer
     ####################################################################################################################
 
-    def generate_sts_oc(self, name='stsoc', length=99e-9, filename_amplitude='amplitude', filename_phase='phase',
-                        folder_path=r'C:\Users\Mesoscopic\Desktop\Redcrab_data'):
+    def generate_oc_mw_only(self, name='optimal_mw_pulse',  phase=0,
+                            filename_amplitude='amplitude.txt', filename_phase='phase.txt',
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets'):
+
+        """
+        wrapper to make _get_mw_element_oc_RedCrab available to sequence methods in other generate method files
+        """
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get pulse time from file
+        time, ampl = np.loadtxt(folder_path + "/" + filename_amplitude, usecols=(0, 1), unpack=True)
+        length = time[-1]
+
+        # create the optimized mw element
+        oc_mw_element = self._get_mw_element_oc_RedCrab(length=length,
+                                                        amplitude_scaling=1,
+                                                        frequency=self.microwave_frequency,
+                                                        phase=phase,
+                                                        filename_amplitude=filename_amplitude,
+                                                        filename_phase=filename_phase,
+                                                        folder_path=folder_path)
+
+        # Create block and append to created_blocks list
+        qst_block = PulseBlock(name=name)
+        qst_block.append(oc_mw_element)
+        created_blocks.append(qst_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((qst_block.name, 0))
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = np.arange(1)
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 0
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_sts_oc(self, name='stsoc', length=99e-9, filename_amplitude='amplitude.txt', filename_phase='phase.txt',
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets'):
         """
 
         """
