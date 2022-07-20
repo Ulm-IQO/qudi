@@ -337,7 +337,7 @@ class Tk_string():
             return [x for x in strList if containStr in x.lower()]
         else:
             return [x for x in strList if (containStr in x.lower()
-                                           and not any(estr in x.lower() for estr in exclStrList))]
+                                           and not any(estr.lower() in x.lower() for estr in exclStrList))]
 
     @staticmethod
     def str_2_enum(enum_str):
@@ -362,6 +362,22 @@ class Tk_string():
 
             return key_str, val_str
         return None
+
+    @staticmethod
+    def params_from_str(in_str, keys=['pix']):
+        params = {}
+        in_str = in_str.lower()
+
+        for key in keys:
+            if f"{key}=" in in_str:
+                try:
+                    substr = in_str.split(f"{key}=", 1)[1]
+                    val = Tk_string.find_num_in_str(substr)[0]
+                    params[key] = val
+                except IndexError:
+                    continue
+
+        return params
 
 class Tk_math():
 
