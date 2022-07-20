@@ -1,13 +1,14 @@
 import numpy as np
 import copy as cp
 from enum import Enum, IntEnum
+import os
 
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
 from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
 from core.util.helpers import csv_2_list
-
+from user_scripts.Timo.own.console_toolkit import Tk_file, Tk_string
 
 
 class DQTAltModes(IntEnum):
@@ -42,12 +43,34 @@ class TomoInit(IntEnum):
     ux90_on_1_ux180_on_2 = 13
 
 
+class OptimalControlPulse():
+    def __init__(self, on_nv=1, pi_x=1, file_i=None, file_q=None):
+        self._on_nv = on_nv
+        self._pi_x = pi_x      # pulse length in units of a pi rotation
+
+        self._file_i = file_i
+        self._file_q = file_q
+
+    def equal_target_u(self, other_pulse):
+        if self._on_nv == other_pulse._on_nv and self._pi_x == other_pulse._pi_x:
+            return True
+        return False
+
 class MultiNV_Generator(PredefinedGeneratorBase):
     """
 
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.optimal_control_assets_path = 'C:\Software\qudi_data\optimal_control_assets'
+        self._optimal_pulses = []
+        self._init_optimal_control()
+
+
+    def _init_optimal_control(self):
+        self._optimal_pulses = self.load_optimal_pulses_from_path(self.optimal_control_assets_path)
+
+        pass
 
     def _get_generation_method(self, method_name):
         # evil access to all loaded generation methods. Use carefully.
@@ -72,6 +95,90 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
         gen_params.update({'microwave_frequency': freq})
         self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def optimal_control_assets_path(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['optimal_control_assets_path']
+        except KeyError:
+            return None
+
+    @optimal_control_assets_path.setter
+    def optimal_control_assets_path(self, path):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'optimal_control_assets_path': path})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    def oc_params_from_str(self, in_str):
+
+        keys = ['pix', 'on_nv']
+
+        return Tk_string.params_from_str(in_str, keys=keys)
+
+    def get_oc_pulse(self, on_nv=1, pix=1):
+
+        ret_pulses = []
+        search_pulse = OptimalControlPulse(on_nv=on_nv, pi_x=pix)
+
+        for pulse in self._optimal_pulses:
+            if pulse.equal_target_u(search_pulse):
+                ret_pulses.append(pulse)
+
+        return ret_pulses
+
+    def load_optimal_pulses_from_path(self, path, quadrature_names=['amplitude', 'phase']):
+
+        def find_q_files(i_file, all_files, quadrature_names=['amplitude', 'phase']):
+            str_i, str_q = quadrature_names[0], quadrature_names[1]
+
+            file_no_path = os.path.basename(i_file)
+            file_no_quad = file_no_path.replace(str_i, "")
+            files_filtered = all_files
+
+            for filter in [path, file_no_quad]:
+                files_filtered = Tk_string.filter_str(files_filtered, filter, exclStrList=[i_file])
+
+            return files_filtered
+
+        fnames = Tk_file.get_dir_items(path)
+        str_i = quadrature_names[0]
+        loaded_pulses = []
+
+        for file in fnames:
+
+            path = str(Tk_file.get_parent_dir(file)[1])
+            file_no_path = os.path.basename(file)
+
+            # for every file which is an i quadrature, look for q quadrature
+            if str_i in file_no_path:
+                file_i = file
+                files_q = find_q_files(file_i, fnames, quadrature_names=quadrature_names)
+                if len(files_q) == 1:
+                    file_q = files_q[0]
+                else:
+                    self.log.warning(
+                        f"Found optimal control file {file} for i quadrature, but no corresponding q file.")
+                    continue
+            else:
+                continue
+
+            oc_params = self.oc_params_from_str(file_i)
+            # default to 'pi pulse on nv 1'
+            on_nv = oc_params['on_nv'] if 'on_nv' in oc_params.keys() else 1
+            pix = oc_params['pix'] if 'on_nv' in oc_params.keys() else 1
+            oc_pulse = OptimalControlPulse(on_nv, pix, file_i, file_q)
+            exist_pulses = self.get_oc_pulse(on_nv, pix=pix)
+
+            if len(exist_pulses) != 0:
+                self.log.warning(
+                    f"Skipping loaded optimal pulse {file}, because already found {exist_pulses[0]._file_i}"
+                    f" with same paremters {oc_params}.")
+            else:
+                loaded_pulses.append(oc_pulse)
+
+        return loaded_pulses
+
 
 
     def generate_pi2_rabi(self, name='pi2_then_rabi', tau_start = 10.0e-9, tau_step = 10.0e-9,
@@ -275,8 +382,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif init_state == TomoInit.ux90_on_1_ux180_on_2:
                 init_elements = pi2_on_1_element
                 init_elements.extend(pi_on_2_element)
-            elif init_state == TomoInit.ent_create_bell:
-                init_elements = ent_create_element
+            #elif init_state == TomoInit.ent_create_bell:
+            #    init_elements = ent_create_element
             elif init_state == TomoInit.ent_create_bell_bycnot:
                 init_elements = ent_create_bycnot_element
             else:
