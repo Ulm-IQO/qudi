@@ -3,7 +3,7 @@
 ## Pre-release
 
 Changes/New features:
-
+* Added Keysight power supply for switching on APDs, minicircuits amplifers, etc..
 * Added visual indication of ongoing waveform upload in pulsed gui. 
 * Added benchmarking of the upload times of pulse generator devices in pulsed gui.
 * Added estimated time for waveform upload, issued for long expected upload times (threshold value configurable). 
