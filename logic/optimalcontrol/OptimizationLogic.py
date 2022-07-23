@@ -127,7 +127,10 @@ class OptimizationLogic(LogicBase, OptimizationBasic):
 
     def start_optimization(self, opti_comm_dict):
         if self.optimization_obj is not None:
-            del self.optimization_obj.opt_alg_obj
+            try:
+                del self.optimization_obj.opt_alg_obj
+            except AttributeError:
+                pass
         # Connect the signals and create the figure of merit object
         self.connect_fom()
         # Make sure that this variable is set to False

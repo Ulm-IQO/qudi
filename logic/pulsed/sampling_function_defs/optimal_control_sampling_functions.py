@@ -103,6 +103,7 @@ class OC_RedCrab(SamplingBase):
             timegrid, amplitude_opt = np.loadtxt(file_path_amplitude, usecols=(0, 1), unpack=True)
             timegrid, phase_opt = np.loadtxt(file_path_phase, usecols=(0, 1), unpack=True)
 
+            self.log.debug(f"Loading oc to samplnig func from: {file_path_amplitude}")
         except IOError:
             timegrid = [0, 1]
             amplitude_opt = [0, 0]
