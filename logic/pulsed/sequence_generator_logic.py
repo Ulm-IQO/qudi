@@ -888,9 +888,9 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     ensemble = pickle.load(file)
-            except pickle.UnpicklingError:
-                self.log.error('Failed to de-serialize PulseBlockEnsemble "{0}" from file. '
-                               'Deleting broken file.'.format(ensemble_name))
+            except:
+                self.log.error('Failed to de-serialize {1}/ PulseBlockEnsemble "{0}" from file. '
+                               'Deleting broken file.'.format(ensemble_name, filepath))
                 os.remove(filepath)
         return ensemble
 
@@ -1848,6 +1848,9 @@ class SequenceGeneratorLogic(GenericLogic):
                             time_arr = (offset_bin + np.arange(
                                 samples_to_add, dtype='float64')) / self.__sample_rate
 
+
+
+
                         # Calculate respective part of the sample arrays
                         for chnl in digital_high:
                             digital_samples[chnl][array_write_index:array_write_index + samples_to_add] = digital_high[
@@ -1856,6 +1859,7 @@ class SequenceGeneratorLogic(GenericLogic):
                             analog_samples[chnl][array_write_index:array_write_index + samples_to_add] = pulse_function[
                                                                                                              chnl].get_samples(
                                 time_arr) / (self.__analog_levels[0][chnl] / 2)
+
 
                         # Free memory
                         if pulse_function:

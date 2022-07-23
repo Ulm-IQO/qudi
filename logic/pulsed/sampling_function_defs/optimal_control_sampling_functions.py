@@ -95,14 +95,15 @@ class OC_RedCrab(SamplingBase):
         phase_rad = np.pi * self.phase / 180
 
         # get the full file path to load the file
-        file_path_amplitude = self.folder_path + r'/' + self.filename_amplitude + r'.txt'
-        file_path_phase = self.folder_path + r'/' + self.filename_phase + r'.txt'
+        file_path_amplitude = self.folder_path + r'/' + self.filename_amplitude
+        file_path_phase = self.folder_path + r'/' + self.filename_phase
 
         # try to load the file
         try:
             timegrid, amplitude_opt = np.loadtxt(file_path_amplitude, usecols=(0, 1), unpack=True)
             timegrid, phase_opt = np.loadtxt(file_path_phase, usecols=(0, 1), unpack=True)
 
+            self.log.debug(f"Loading oc to samplnig func from: {file_path_amplitude}")
         except IOError:
             timegrid = [0, 1]
             amplitude_opt = [0, 0]
