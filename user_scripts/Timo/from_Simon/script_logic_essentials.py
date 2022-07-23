@@ -999,12 +999,14 @@ def wait_for_cts(min_cts=10e3, timeout_s=2):
     while time.time() - t_start < timeout_s:
         # will stop on calling .save_data())
 
-        counterlogic.start_saving()
+        #counterlogic.start_saving()
+        timeserieslogic.start_reading()
         time.sleep(0.1)
-
-        data_array, parameters = counterlogic.save_data(to_file=False)
         try:
-            data_array = np.array(data_array)[:, 1]
+
+            #data_array, parameters = counterlogic.save_data(to_file=False)
+            #data_array = np.array(data_array)[:, 1]
+            data_array = timeserieslogic.trace_data[1].values()
             last_cts = data_array[-1]
 
             if last_cts > min_cts:
@@ -1115,14 +1117,22 @@ def laser_on_awg():
     # loads a waveform to awg that contionously enables laser marker
     # Caution: stops any waveform currently played!
     # waveform must be already in workspace of awg!
+    pg = pulsedmasterlogic.pulsedmeasurementlogic().pulsegenerator()
 
-    pulsedmasterlogic.pulsedmeasurementlogic().pulsegenerator().load_waveform({1:'laser_on_ch1'})
+    logger.debug("Stop pg")
+    pulsedmasterlogic.toggle_pulse_generator(False)
+    logger.debug("Done. Set active ch.")
+    pg.set_active_channels({'a_ch1':True, 'a_ch2':True})
+    logger.debug("Done. Load wave.")
+    pg.load_waveform({1: 'laser_on_ch1', 2: 'laser_on_ch2'})
+    logger.debug("Done. Start pg")
     pulsedmasterlogic.toggle_pulse_generator(True)
+    logger.debug("Done.")
 
 def laser_off(pulser_on=False):
     # Switches off the laser trigger from nicard
     pulsedmasterlogic.toggle_pulse_generator(pulser_on)
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+    #nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
     return
 
 
