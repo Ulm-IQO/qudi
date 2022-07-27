@@ -116,7 +116,8 @@ class ArbPulse():
 
         self.length_pix = np.nan
 
-        self._func_p_v_2_omega_mhz = None
+        self._func_ampl_v_2_omega_mhz = None
+        self._func_omega_mhz_2_ampl_v = None
 
     @property
     def file(self):
@@ -194,18 +195,44 @@ class ArbPulse():
         except:
             sane = False
         return sane
+    
+    def convert_rabi_2_ampl(self, unit='V'):
+        type_old = self._get_unit_type_data()
+        type_new = self._get_unit_type_data(unit)
+        prefix_old, unit_si_old = self._split_unit_prefix(self.data_unit)
 
-    def convert_p_2_rabi(self, unit='Hz'):
+        if type_old == 'rabi_freq' and type_new == 'voltage':
+            if not self._func_omega_mhz_2_ampl_v:
+                raise ValueError("No available scaling function for rabi->voltage conversion.")
+                # to Rabi freq units
+            data_ampl = self._func_omega_mhz_2_ampl_v(self._data_ampl)
+            data_phase = self._func_omega_mhz_2_ampl_v(self._data_phase)
+
+            scale_old = self.__unit_prefix_dict[prefix_old]
+            inter_scale = 1e-6*scale_old
+            # guaranteed to be exactly once in dict
+            try:
+                inter_prefix = [k for k,v in self.__unit_prefix_dict.items() if v == inter_scale][0]
+            except (KeyError, IndexError):
+                raise RuntimeError(f"For {self.data_unit}->{unit}, "
+                                   f"Can't find {inter_scale})=1e-6*{scale_old} in SI unit dict")
+            data_unit = f'{inter_prefix}V'
+
+            return data_ampl, data_phase, data_unit
+        else:
+            raise ValueError
+    
+    def convert_ampl_2_rabi(self, unit='Hz'):
         type_old = self._get_unit_type_data()
         type_new = self._get_unit_type_data(unit)
         prefix_old, unit_si_old = self._split_unit_prefix(self.data_unit)
 
         if type_old == 'voltage' and type_new == 'rabi_freq':
-            if not self._func_p_v_2_omega_mhz:
+            if not self._func_ampl_v_2_omega_mhz:
                 raise ValueError("No available scaling function for voltage->rabi conversion.")
                 # to Rabi freq units
-            data_ampl = self._func_p_v_2_omega_mhz(self._data_ampl)
-            data_phase = self._func_p_v_2_omega_mhz(self._data_phase)
+            data_ampl = self._func_ampl_v_2_omega_mhz(self._data_ampl)
+            data_phase = self._func_ampl_v_2_omega_mhz(self._data_phase)
 
             scale_old = self.__unit_prefix_dict[prefix_old]
             inter_scale = 1e6*scale_old
@@ -225,7 +252,10 @@ class ArbPulse():
         conv_factor = self.__unit_prefix_dict[prefix_old]/self.__unit_prefix_dict[prefix_new]
 
         if type_old == 'voltage' and type_new == 'rabi_freq':
-            self._data_ampl, self._data_phase, self.data_unit = self.convert_p_2_rabi(unit=unit)
+            self._data_ampl, self._data_phase, self.data_unit = self.convert_ampl_2_rabi(unit=unit)
+            return self.convert_unit_data(unit=unit)
+        elif type_old == 'rabi_freq' and type_new == 'voltage':
+            self._data_ampl, self._data_phase, self.data_unit = self.convert_rabi_2_ampl(unit=unit)
             return self.convert_unit_data(unit=unit)
 
         if type_old != type_new or unit_si_old != unit_si_new:
@@ -257,16 +287,19 @@ class ArbPulse():
         return os.path.abspath(path + "/" + name + name_ampl), os.path.abspath(path + "/" + name + name_phase)
 
     @staticmethod
-    def load_pulse(folder, name, extension='txt', unit_t='s', unit_data='V', func_p_v_2_omega_mhz=None):
+    def load_pulse(folder, name, extension='txt', unit_t='s', unit_data='V',
+                   func_ampl_v_2_omega_mhz=None, func_omega_mhz_2_ampl_v=None):
         pulse = ArbPulse()
-        pulse.load(folder, name, extension, unit_t, unit_data, func_p_v_2_omega_mhz)
+        pulse.load(folder, name, extension, unit_t, unit_data, func_ampl_v_2_omega_mhz, func_omega_mhz_2_ampl_v)
 
         return pulse
 
-    def load(self, folder, name, extension='txt', unit_t='s', unit_data='V', func_p_v_2_omega_mhz=None):
+    def load(self, folder, name, extension='txt', unit_t='s', unit_data='V',
+             func_ampl_v_2_omega_mhz=None, func_omega_mhz_2_ampl_v=None):
         self.name = name
         self._folder = folder
-        self._func_p_v_2_omega_mhz = func_p_v_2_omega_mhz
+        self._func_ampl_v_2_omega_mhz = func_ampl_v_2_omega_mhz
+        self._func_omega_mhz_2_ampl_v = func_omega_mhz_2_ampl_v
 
         if extension=='txt':
             f_ampl, f_ph = ArbPulse.get_pulse_filename(os.path.abspath(folder), name=name)
