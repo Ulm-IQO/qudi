@@ -87,6 +87,7 @@ class ArbPulse():
         'p': 1e-12,
         'n': 1e-9,
         'µ': 1e-6,
+        'u': 1e-6,
         'm': 1e-3,
         '': 1,
         'k': 1e3,
@@ -115,7 +116,8 @@ class ArbPulse():
 
         self.length_pix = np.nan
 
-        self._func_p_v_2_omega_mhz = None
+        self._func_ampl_v_2_omega_mhz = None
+        self._func_omega_mhz_2_ampl_v = None
 
     @property
     def file(self):
@@ -194,17 +196,43 @@ class ArbPulse():
             sane = False
         return sane
 
-    def convert_p_2_rabi(self, unit='Hz'):
+    def convert_rabi_2_ampl(self, unit='V'):
+        type_old = self._get_unit_type_data()
+        type_new = self._get_unit_type_data(unit)
+        prefix_old, unit_si_old = self._split_unit_prefix(self.data_unit)
+
+        if type_old == 'rabi_freq' and type_new == 'voltage':
+            if not self._func_omega_mhz_2_ampl_v:
+                raise ValueError("No available scaling function for rabi->voltage conversion.")
+                # to Rabi freq units
+            data_ampl = self._func_omega_mhz_2_ampl_v(self._data_ampl)
+            data_phase = self._func_omega_mhz_2_ampl_v(self._data_phase)
+
+            scale_old = self.__unit_prefix_dict[prefix_old]
+            inter_scale = 1e-6*scale_old
+            # guaranteed to be exactly once in dict
+            try:
+                inter_prefix = [k for k,v in self.__unit_prefix_dict.items() if v == inter_scale][0]
+            except (KeyError, IndexError):
+                raise RuntimeError(f"For {self.data_unit}->{unit}, "
+                                   f"Can't find {inter_scale})=1e-6*{scale_old} in SI unit dict")
+            data_unit = f'{inter_prefix}V'
+
+            return data_ampl, data_phase, data_unit
+        else:
+            raise ValueError
+
+    def convert_ampl_2_rabi(self, unit='Hz'):
         type_old = self._get_unit_type_data()
         type_new = self._get_unit_type_data(unit)
         prefix_old, unit_si_old = self._split_unit_prefix(self.data_unit)
 
         if type_old == 'voltage' and type_new == 'rabi_freq':
-            if not self._func_p_v_2_omega_mhz:
+            if not self._func_ampl_v_2_omega_mhz:
                 raise ValueError("No available scaling function for voltage->rabi conversion.")
                 # to Rabi freq units
-            data_ampl = self._func_p_v_2_omega_mhz(self._data_ampl)
-            data_phase = self._func_p_v_2_omega_mhz(self._data_phase)
+            data_ampl = self._func_ampl_v_2_omega_mhz(self._data_ampl)
+            data_phase = self._func_ampl_v_2_omega_mhz(self._data_phase)
 
             scale_old = self.__unit_prefix_dict[prefix_old]
             inter_scale = 1e6*scale_old
@@ -224,7 +252,10 @@ class ArbPulse():
         conv_factor = self.__unit_prefix_dict[prefix_old]/self.__unit_prefix_dict[prefix_new]
 
         if type_old == 'voltage' and type_new == 'rabi_freq':
-            self._data_ampl, self._data_phase, self.data_unit = self.convert_p_2_rabi(unit=unit)
+            self._data_ampl, self._data_phase, self.data_unit = self.convert_ampl_2_rabi(unit=unit)
+            return self.convert_unit_data(unit=unit)
+        elif type_old == 'rabi_freq' and type_new == 'voltage':
+            self._data_ampl, self._data_phase, self.data_unit = self.convert_rabi_2_ampl(unit=unit)
             return self.convert_unit_data(unit=unit)
 
         if type_old != type_new or unit_si_old != unit_si_new:
@@ -256,16 +287,19 @@ class ArbPulse():
         return os.path.abspath(path + "/" + name + name_ampl), os.path.abspath(path + "/" + name + name_phase)
 
     @staticmethod
-    def load_pulse(folder, name, extension='txt', unit_t='s', unit_data='V', func_p_v_2_omega_mhz=None):
+    def load_pulse(folder, name, extension='txt', unit_t='s', unit_data='V',
+                   func_ampl_v_2_omega_mhz=None, func_omega_mhz_2_ampl_v=None):
         pulse = ArbPulse()
-        pulse.load(folder, name, extension, unit_t, unit_data, func_p_v_2_omega_mhz)
+        pulse.load(folder, name, extension, unit_t, unit_data, func_ampl_v_2_omega_mhz, func_omega_mhz_2_ampl_v)
 
         return pulse
 
-    def load(self, folder, name, extension='', unit_t='s', unit_data='V', func_p_v_2_omega_mhz=None):
+    def load(self, folder, name, extension='txt', unit_t='s', unit_data='V',
+             func_ampl_v_2_omega_mhz=None, func_omega_mhz_2_ampl_v=None):
         self.name = name
         self._folder = folder
-        self._func_p_v_2_omega_mhz = func_p_v_2_omega_mhz
+        self._func_ampl_v_2_omega_mhz = func_ampl_v_2_omega_mhz
+        self._func_omega_mhz_2_ampl_v = func_omega_mhz_2_ampl_v
 
         if extension=='txt':
             f_ampl, f_ph = ArbPulse.get_pulse_filename(os.path.abspath(folder), name=name)
@@ -309,6 +343,136 @@ class ArbPulse():
         else:
             raise ValueError(f"Don't understand units (t/data): {unit_t}, {unit_data}")
 
+class PredefinedArbPulses():
+
+    @staticmethod
+    def get_iq(phi):
+        if phi==0 or phi==2*np.pi:
+            return 1,0
+        elif phi==np.pi/2:
+            return 0,1
+        elif phi==np.pi:
+            return -1,0
+        elif phi==3*np.pi/2:
+            return 0,-1
+        else:
+            raise ValueError
+
+    @staticmethod
+    def get_t_pix(omega, pix=1):
+        return 0.5*pix/omega
+
+    @staticmethod
+    def generate_levitt(omega, phase=0, n_t=1000):
+        """
+        Generate a levitt pulse as a optimal control pulse file.
+        Assumes that quadratues I*sin(f_mw*t) + Q*cos(f_mw*t) are used in sampling.
+        """
+        omega_mhz = omega * 1e-6
+
+        get_t_pix = PredefinedArbPulses.get_t_pix
+        get_iq = PredefinedArbPulses.get_iq
+
+        tpi_us = get_t_pix(omega_mhz, pix=1)
+
+        # rabi in MHz, times in us
+        timegrid_us = np.linspace(0, 2 * tpi_us, n_t)  # total pulse area 2pi
+        data_ampl = np.zeros((len(timegrid_us)))  # I quadrature
+        data_phase = np.zeros((len(timegrid_us)))  # Q
+
+        phases = np.asarray([np.pi / 2, 0, np.pi / 2]) + phase
+        tpulse_by_pi = [0.5, 1, 0.5]
+
+        # phases = [np.pi/2]
+        # tpulse_by_pi = [0.5]
+
+        t_curr_us = 0
+        for i_comppulse, phi in enumerate(phases):
+            pix = tpulse_by_pi[i_comppulse]
+            t_end_us = t_curr_us + get_t_pix(omega_mhz, pix=pix)
+            idx_start = np.argmin(np.abs(timegrid_us - t_curr_us))
+            idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
+
+            val_iq = np.asarray(get_iq(phi)) * omega_mhz
+            data_ampl[idx_start:idx_end + 1] = val_iq[0]
+            data_phase[idx_start:idx_end + 1] = val_iq[1]
+
+            if t_curr_us == timegrid_us[-1]:
+                break
+            t_curr_us = t_end_us
+
+        idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
+
+        assert idx_end == n_t - 1
+
+        pulse = ArbPulse()
+        pulse.name = f'levitt_phi={phase / np.pi:.1f}pi'
+        pulse.timegrid_unit = 'µs'
+        pulse.data_unit = 'MHz'
+
+        pulse._data_ampl = data_ampl
+        pulse._data_phase = data_phase
+        pulse._timegrid_ampl = timegrid_us
+        pulse._timegrid_phase = timegrid_us
+
+        return pulse
+
+    @staticmethod
+    def generate_rect_pi(omega, phase=0, n_t=1000):
+        """
+        Generate a levitt pulse as a optimal control pulse file.
+        Assumes that quadratues I*sin(f_mw*t) + Q*cos(f_mw*t) are used in sampling.
+        """
+
+        omega_mhz = omega * 1e-6
+
+        get_t_pix = PredefinedArbPulses.get_t_pix
+        get_iq = PredefinedArbPulses.get_iq
+
+        tpi_us = get_t_pix(omega_mhz, pix=1)
+
+        # rabi in MHz, times in us
+        timegrid_us = np.linspace(0, tpi_us, n_t)
+        data_ampl = np.zeros((len(timegrid_us)))  # I quadrature
+        data_phase = np.zeros((len(timegrid_us)))  # Q
+
+        phases = np.asarray([0]) + phase
+        tpulse_by_pi = [1]
+
+        # phases = [np.pi/2]
+        # tpulse_by_pi = [0.5]
+
+        t_curr_us = 0
+        for i_comppulse, phi in enumerate(phases):
+            pix = tpulse_by_pi[i_comppulse]
+            t_end_us = t_curr_us + get_t_pix(omega_mhz, pix=pix)
+            idx_start = np.argmin(np.abs(timegrid_us - t_curr_us))
+            idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
+
+            val_iq = np.asarray(get_iq(phi)) * omega_mhz
+            data_ampl[idx_start:idx_end + 1] = val_iq[0]
+            data_phase[idx_start:idx_end + 1] = val_iq[1]
+
+            if t_curr_us == timegrid_us[-1]:
+                break
+            t_curr_us = t_end_us
+
+        idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
+
+        assert idx_end == n_t - 1
+
+        pulse = ArbPulse()
+        pulse.name = 'rect_phi={phase/np.pi:.1f}pi'
+
+        pulse.timegrid_unit = 'µs'
+        pulse.data_unit = 'MHz'
+
+        pulse._data_ampl = data_ampl
+        pulse._data_phase = data_phase
+        pulse._timegrid_ampl = timegrid_us
+        pulse._timegrid_phase = timegrid_us
+
+        return pulse
 
 
 class TimeDependentSimulation():
