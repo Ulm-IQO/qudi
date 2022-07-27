@@ -87,6 +87,7 @@ class ArbPulse():
         'p': 1e-12,
         'n': 1e-9,
         'µ': 1e-6,
+        'u': 1e-6,
         'm': 1e-3,
         '': 1,
         'k': 1e3,
@@ -262,7 +263,7 @@ class ArbPulse():
 
         return pulse
 
-    def load(self, folder, name, extension='', unit_t='s', unit_data='V', func_p_v_2_omega_mhz=None):
+    def load(self, folder, name, extension='txt', unit_t='s', unit_data='V', func_p_v_2_omega_mhz=None):
         self.name = name
         self._folder = folder
         self._func_p_v_2_omega_mhz = func_p_v_2_omega_mhz
