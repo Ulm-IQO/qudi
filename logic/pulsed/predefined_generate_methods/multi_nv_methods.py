@@ -1,13 +1,14 @@
 import numpy as np
 import copy as cp
 from enum import Enum, IntEnum
+import os
 
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
 from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
 from core.util.helpers import csv_2_list
-
+from user_scripts.Timo.own.console_toolkit import Tk_file, Tk_string
 
 
 class DQTAltModes(IntEnum):
@@ -42,12 +43,34 @@ class TomoInit(IntEnum):
     ux90_on_1_ux180_on_2 = 13
 
 
+class OptimalControlPulse():
+    def __init__(self, on_nv=1, pi_x=1, file_i=None, file_q=None):
+        self._on_nv = on_nv
+        self._pi_x = pi_x      # pulse length in units of a pi rotation
+
+        self._file_i = file_i
+        self._file_q = file_q
+
+    def equal_target_u(self, other_pulse):
+        if self._on_nv == other_pulse._on_nv and self._pi_x == other_pulse._pi_x:
+            return True
+        return False
+
 class MultiNV_Generator(PredefinedGeneratorBase):
     """
 
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.optimal_control_assets_path = 'C:\Software\qudi_data\optimal_control_assets'
+        self._optimal_pulses = []
+        self._init_optimal_control()
+
+
+    def _init_optimal_control(self):
+        self._optimal_pulses = self.load_optimal_pulses_from_path(self.optimal_control_assets_path)
+        self.log.debug(f"Loaded optimal pulses from: {[os.path.basename(p._file_i) for p in self._optimal_pulses]}")
+        pass
 
     def _get_generation_method(self, method_name):
         # evil access to all loaded generation methods. Use carefully.
@@ -72,6 +95,98 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
         gen_params.update({'microwave_frequency': freq})
         self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def optimal_control_assets_path(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['optimal_control_assets_path']
+        except KeyError:
+            return None
+
+    @optimal_control_assets_path.setter
+    def optimal_control_assets_path(self, path):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'optimal_control_assets_path': path})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    def oc_params_from_str(self, in_str):
+
+        keys = ['pix', 'on_nv']
+
+        return Tk_string.params_from_str(in_str, keys=keys)
+
+    def get_oc_pulse(self, on_nv=1, pix=1):
+
+        ret_pulses = []
+        search_pulse = OptimalControlPulse(on_nv=on_nv, pi_x=pix)
+
+        for pulse in self._optimal_pulses:
+            if pulse.equal_target_u(search_pulse):
+                ret_pulses.append(pulse)
+
+        return ret_pulses
+
+    def load_optimal_pulses_from_path(self, path, quadrature_names=['amplitude', 'phase']):
+
+        def find_q_files(i_file, all_files, quadrature_names=['amplitude', 'phase']):
+            str_i, str_q = quadrature_names[0], quadrature_names[1]
+
+            file_no_path = os.path.basename(i_file)
+            file_no_quad = file_no_path.replace(str_i, "")
+            file_no_ext = Tk_file.get_filename_no_extension(file_no_path)
+            extension = os.path.splitext(file_no_path)[1]
+            files_filtered = all_files
+
+            filter_str = [path, file_no_quad]
+            if file_no_ext == str_i:
+                # filename exactly = quad_name => filtering against empty string yields all other files
+                # instead, we search for the name of the other quadrature
+                filter_str.append(str_q + extension)
+
+            for filter in filter_str:
+                files_filtered = Tk_string.filter_str(files_filtered, filter, exclStrList=[i_file])
+
+            return files_filtered
+
+        fnames = Tk_file.get_dir_items(path)
+        str_i = quadrature_names[0]
+        loaded_pulses = []
+
+        for file in fnames:
+
+            path = str(Tk_file.get_parent_dir(file)[1])
+            file_no_path = os.path.basename(file)
+
+            # for every file which is an i quadrature, look for q quadrature
+            if str_i in file_no_path:
+                file_i = file
+                files_q = find_q_files(file_i, fnames, quadrature_names=quadrature_names)
+                if len(files_q) == 1:
+                    file_q = files_q[0]
+                else:
+                    self.log.warning(
+                        f"Found optimal control file {file} for i quadrature, but no corresponding q file.")
+                    continue
+            else:
+                continue
+
+            oc_params = self.oc_params_from_str(file_i)
+            # default to 'pi pulse on nv 1' if params not in filename
+            on_nv = oc_params['on_nv'] if 'on_nv' in oc_params.keys() else 1
+            pix = oc_params['pix'] if 'pix' in oc_params.keys() else 1
+            oc_pulse = OptimalControlPulse(on_nv, pix, file_i, file_q)
+            exist_pulses = self.get_oc_pulse(on_nv, pix=pix)
+
+            if len(exist_pulses) != 0:
+                self.log.warning(
+                    f"Skipping loaded optimal pulse {file}, because already found {exist_pulses[0]._file_i}"
+                    f" with same paremters {oc_params}.")
+            else:
+                loaded_pulses.append(oc_pulse)
+
+        return loaded_pulses
+
 
 
     def generate_pi2_rabi(self, name='pi2_then_rabi', tau_start = 10.0e-9, tau_step = 10.0e-9,
@@ -275,8 +390,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif init_state == TomoInit.ux90_on_1_ux180_on_2:
                 init_elements = pi2_on_1_element
                 init_elements.extend(pi_on_2_element)
-            elif init_state == TomoInit.ent_create_bell:
-                init_elements = ent_create_element
+            #elif init_state == TomoInit.ent_create_bell:
+            #    init_elements = ent_create_element
             elif init_state == TomoInit.ent_create_bell_bycnot:
                 init_elements = ent_create_bycnot_element
             else:
@@ -369,14 +484,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                            f"with tau_1: {tau_dd_fix}, tau_2: {tau_start}, "
                            f"t_rabi_1_shaped: {rabi_period_1}")
 
-        if env_type == EnvelopeMethods.rectangle:
+        if env_type == EnvelopeMethods.rectangle or env_type == EnvelopeMethods.optimal:
             if tau_dd_fix is not None:
                 return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                                  tau1=tau_dd_fix,
                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                                  dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
                                                  alternating=alternating, no_laser=no_laser,
-                                                 nv_order=order_nvs, end_pix_on_2=1,
+                                                 nv_order=order_nvs, end_pix_on_2=1, env_type_2=env_type,
                                                  read_phase_deg=read_phase)
             else:
                 return self.generate_deer_dd_par_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
@@ -582,61 +697,30 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=True,
                                  init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
-                                 nv_order="1,2", read_phase_deg=90, no_laser=False):
+                                 nv_order="1,2", read_phase_deg=90, env_type_2=EnvelopeMethods.rectangle, no_laser=False):
         """
         Decoupling sequence on both NVs.
         Tau1 is kept constant and the second pi pulse is swept through.
         """
-        created_blocks = list()
-        created_ensembles = list()
-        created_sequences = list()
 
-        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order,
-                                                n_nvs=2)
-        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
-                                              n_nvs=2)
-        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2,
-                                              order_nvs=nv_order)
-        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2,
-                                              order_nvs=nv_order)
-        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
-
-        if dd_type_2 == '' or dd_type_2 == None:
-            dd_type_2 = dd_type
-        self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}")
-
-        # create the elements
-        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
-        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
-        delay_element = self._get_delay_gate_element()
-
-        pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
-        pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=1,
-                                             no_amps_2_idle=False)
-        pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,  pi_x_length=1,
-                                             no_amps_2_idle=False)
-        pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False)
-        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
-                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False)
-
-        # read phase opposite to canonical DD: 0->0 on no phase evolution
-        pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=0.5)
-        pihalf_on1_alt_read_element = self.get_pi_element(0 + read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=0.5)
-
-        def pi_element_function(xphase, on_nv=1, pi_x_length=1.):
+        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
 
             if on_nv == 1:
                 ampl_pi = ampls_on_1
+                env_type = EnvelopeMethods.rectangle
             elif on_nv == 2:
                 ampl_pi = ampls_on_2
+                env_type = env_type_2
             else:
                 raise ValueError
 
-            return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
-                                       pi_x_length=pi_x_length, no_amps_2_idle=True)
+            if env_type == EnvelopeMethods.optimal:
+                return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                                           pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                           env_type=env_type, on_nv=on_nv)
+            else:
+                return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                                       pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle)
 
         def get_deer_pos(i_dd_order, dd_order, i_dd_suborder, dd_type, before_pi_on1):
             first = (i_dd_order == 0 and i_dd_suborder == 0 and before_pi_on1)
@@ -668,6 +752,45 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     return tauhalf_bef_element
                 else:
                     return tauhalf_aft_element
+
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order,
+                                                n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
+                                              n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2,
+                                              order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2,
+                                              order_nvs=nv_order)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
+
+        if dd_type_2 == '' or dd_type_2 is None:
+            dd_type_2 = dd_type
+        self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}")
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
+        # elements inside dd come from their own function
+        pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
+        pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=False)
+        pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False)
+
+        # read phase opposite to canonical DD: 0->0 on no phase evolution
+        pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
+                                                      pi_x_length=0.5)
+        pihalf_on1_alt_read_element = self.get_pi_element(0 + read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
+                                                      pi_x_length=0.5)
 
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
@@ -728,6 +851,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
                 if last:
                     if end_pix_on_2 != 0:
+                        # todo: for env_type_2 != rect this will still generate rect pulses (not oc)
                         pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
                                                                   rabi_periods,
                                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=True)
@@ -1760,8 +1884,38 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                          freqs=fs,
                                                          phases=phases)
 
+    def _get_pi_oc_element(self, xphase, mw_freq, on_nv=1, pi_x_length=1):
+
+        phases = np.unique(xphase)
+        freqs = np.unique(mw_freq)
+
+        if len(phases) != 1 or len(freqs) != 1:
+            raise NotImplementedError("Optimal pulses are currently only possible with a single MW carrier frequency")
+
+        oc_pulse = self.get_oc_pulse(on_nv=on_nv, pix=pi_x_length)
+        if len(oc_pulse) != 1:
+            raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_length, }on_nv= {on_nv})"
+                             f" in {self.optimal_control_assets_path}")
+        oc_pulse = oc_pulse[0]
+
+        generate_method = self._get_generation_method('oc_mw_only')
+        file_i_no_path = os.path.basename(oc_pulse._file_i)
+        file_q_no_path = os.path.basename(oc_pulse._file_q)
+
+        # optimal_control_methods are for only 1 nv, set global mw_freq for the generation
+        self.save_microwave_frequency = self.microwave_frequency
+        self.microwave_frequency = freqs[0]
+
+        oc_blocks, _, _ = generate_method('optimal_pix', phase=phases[0],
+                                          filename_amplitude=file_i_no_path, filename_phase=file_q_no_path,
+                                          folder_path=self.optimal_control_assets_path)
+
+        self.microwave_frequency = self.save_microwave_frequency
+
+        return oc_blocks[0]
+
     def get_pi_element(self, xphase, mw_freqs, mw_amps, rabi_periods,
-                       pi_x_length=1., no_amps_2_idle=False):
+                       pi_x_length=1., no_amps_2_idle=False, env_type=EnvelopeMethods.rectangle, on_nv=None):
         """
          define a function to create phase shifted pi pulse elements
         :param xphase: phase sift
@@ -1773,6 +1927,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if no_amps_2_idle and len(mw_amps[mw_amps!=0])==0:
             # todo: may have unintended consequences in creation of pulse partition
             mw_amps = np.asarray([1e-99]*len(mw_amps))
+            env_type = EnvelopeMethods.rectangle
 
         n_lines = len(mw_amps[mw_amps!=0])
 
@@ -1783,11 +1938,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         assert len(fs) == len(amps) == len(phases) == len(lenghts)
 
-        return self._get_multiple_mw_mult_length_element(lengths=lenghts,
-                                                         increments=0,
-                                                         amps=amps,
-                                                         freqs=fs,
-                                                         phases=phases)
+        if env_type == EnvelopeMethods.rectangle:
+            if on_nv != None:
+                raise ValueError(f"On_nv= {on_nv} parameter should only be used for envelope optimal, not {env_type.name}")
+            return self._get_multiple_mw_mult_length_element(lengths=lenghts,
+                                                             increments=0,
+                                                             amps=amps,
+                                                             freqs=fs,
+                                                             phases=phases)
+        elif env_type == EnvelopeMethods.optimal:
+            return self._get_pi_oc_element(phases, fs, on_nv=on_nv, pi_x_length=pi_x_length)
+
+        else:
+            raise ValueError(f"Envelope type {env_type} not supported.")
 
     @staticmethod
     def get_element_length(el_list):
@@ -1944,7 +2107,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             """
             return [inlist[i:i+int(n)] for i in range(0,len(inlist),int(n))]
 
-        array = [in_value]
+        array = [in_value] if in_value else []
         array.extend(in_list)
         all_nv_params = np.asarray(array)
 
