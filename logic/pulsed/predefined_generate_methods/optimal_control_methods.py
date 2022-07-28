@@ -365,3 +365,64 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_oc_podmr(self, name='oc_podmr', freq_start=2870.0e6, freq_step=0.2e6,
+                        num_of_points=50,
+                        filename_amplitude='amplitude.txt', filename_phase='phase.txt',
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets',
+                        ):
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        freq_array = freq_start + np.arange(num_of_points) * freq_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+
+
+        # Create block and append to created_blocks list
+        qst_block = PulseBlock(name=name)
+
+        for mw_freq in freq_array:
+            oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
+                                                            amplitude_scaling=1,
+                                                            frequency=mw_freq,
+                                                            phase=0,
+                                                            filename_amplitude=filename_amplitude,
+                                                            filename_phase=filename_phase,
+                                                            folder_path=folder_path)
+            qst_block.append(oc_mw_element)
+            qst_block.append(laser_element)
+            qst_block.append(waiting_element)
+
+
+
+        created_blocks.append(qst_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((qst_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        n_lasers = num_of_points
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['labels'] = ('', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = n_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
