@@ -1,0 +1,81 @@
+# timestamp: 2022/07/25-14:10:31
+# script_parameters: {'runtime_per_epoch': 40, 'readout_noise': 0.014142135623730952, 'length_oc': 9.9e-08, 'is_noisy': True, 'generate_parameters': {'name': 'oc_nrep', 'n_start': 1, 'n_step': 1, 'num_of_points': 8, 'filename_amplitude': 'on_nv=2_amplitude.txt', 'filename_phase': 'on_nv=2_phase.txt', 'folder_path': 'C:\\Software\\qudi_data\\optimal_control_assets', 't_gap': 1.1904761904761904e-07, 'vs_rect_pulse': False, 'alternating': True, 'experiment': 'oc_nrep'}, 'fom_function': <function setup_fom_func_oc_npi.<locals>.calc_fom at 0x0000009400DD5950>, 'pulsed_generation_params': OrderedDict([('laser_channel', 'd_ch4'), ('sync_channel', 'd_ch1'), ('gate_channel', 'd_ch3'), ('microwave_channel', 'a_ch1'), ('microwave_frequency', 2628560000.0), ('microwave_amplitude', 0.24), ('rabi_period', 4.96e-08), ('laser_length', 3e-06), ('laser_delay', 5e-07), ('wait_time', 1e-06), ('analog_trigger_voltage', 0.0)]), 'pulsed_settings': {'invoke_settings': True}, 'pulsed_analysis_settings': {'signal_start': 8.042105263157894e-07, 'signal_end': 1.6042105263157894e-06, 'norm_start': 2.6989473684210524e-06, 'norm_end': 3.4989473684210524e-06, 'method': 'mean_norm'}, 'pulsed_extraction_settings_settings': {'method': 'pass_through'}}
+# optimization_client_name: test_dCRAB_Noisy_2_control_fields
+# opti_algorithm_module: quocslib.optimalalgorithms.dCRABNoisyAlgorithm
+# opti_algorithm_class: DCrabNoisyAlgorithm
+# algorithm_settings: {'algorithm_name': 'dCRAB', 'super_iteration_number': 10000000, 'FoM_goal': 1e-05, 'total_time_lim': 2880, 'compensate_drift': {'compensate_after_SI': True, 'compensate_after_minutes': 15}, 'random_number_generator': {'seed_number': 420}, 'dsm_settings': {'general_settings': {'dsm_algorithm_name': 'NelderMead', 'is_adaptive': False, 'dsm_algorithm_module': None, 'dsm_algorithm_class': None, 'parallelization': False}, 'stopping_criteria': {'time_lim': 90, 'change_based_stop': {'cbs_funct_evals': 500, 'cbs_change': 0.01}, 'total_time_lim': 2880, 'k3': 3, 'max_eval': 10000000000, 'xatol': 1e-14, 'frtol': 1e-13}}, 'algorithm_attribute': None, 'algorithm_module': None, 'algorithm_class': None, 'max_eval_total': 10000000000, 'optimization_direction': 'minimization'}
+# times: [{'time_name': 'time_p', 'initial_value': 1e-07}]
+# parameters: []
+# pulses: [{'pulse_name': 'Amplitude', 'upper_limit': 0.25, 'lower_limit': -0.25, 'bins_number': 1001, 'time_name': 'time_p', 'amplitude_variation': 0.03, 'basis': {'basis_name': 'Fourier', 'basis_class': 'Fourier', 'basis_module': 'quocslib.pulses.basis.Fourier', 'basis_vector_number': 2, 'random_super_parameter_distribution': {'distribution_name': 'Uniform', 'distribution_class': 'Uniform', 'distribution_module': 'quocslib.pulses.superparameter.Uniform', 'lower_limit': 0.0, 'upper_limit': 10, 'distribution_attribute': None}, 'basis_attribute': None}, 'scaling_function': {'function_type': 'lambda_function', 'lambda_function': 'lambda t: 1.0 + 0.0*t'}, 'initial_guess': {'function_type': 'list_function', 'list_function': array([0.19001262, 0.19149946, 0.19310568, ..., 0.16356315, 0.16704652,
+#        0.17021857])}, 'shrink_ampl_lim': True}, {'pulse_name': 'Phase', 'upper_limit': 0.25, 'lower_limit': -0.25, 'bins_number': 1001, 'time_name': 'time_p', 'amplitude_variation': 0.03, 'basis': {'basis_name': 'Fourier', 'basis_class': 'Fourier', 'basis_module': 'quocslib.pulses.basis.Fourier', 'basis_vector_number': 2, 'random_super_parameter_distribution': {'distribution_name': 'Uniform', 'distribution_class': 'Uniform', 'distribution_module': 'quocslib.pulses.superparameter.Uniform', 'lower_limit': 0.0, 'upper_limit': 10, 'distribution_attribute': None}, 'basis_attribute': None}, 'scaling_function': {'function_type': 'lambda_function', 'lambda_function': 'lambda t: 1.0 + 0.0*t'}, 'initial_guess': {'function_type': 'list_function', 'list_function': array([0.1519775 , 0.15603068, 0.16000809, ..., 0.03153078, 0.03433861,
+#        0.0370133 ])}, 'shrink_ampl_lim': True}]
+# 
+7.784539151498394149e-01
+8.672025705637835813e-01
+8.074940086578645815e-01
+7.554222624329860469e-01
+7.586561951432604367e-01
+7.874227338073989113e-01
+8.775901732794103571e-01
+8.727366032761952885e-01
+7.659104814359344315e-01
+7.648967008930853684e-01
+8.164903272363723818e-01
+7.608428588010787141e-01
+8.963884480105910324e-01
+7.684602492639028837e-01
+8.212414353864909700e-01
+7.410126303114572544e-01
+8.246827539817783714e-01
+7.368750115591116145e-01
+7.514610476156888819e-01
+7.475371579340154282e-01
+7.333851602479576348e-01
+7.945687236954137589e-01
+7.363415460105734445e-01
+7.949310444985846491e-01
+7.586536976033284585e-01
+7.282876486109397529e-01
+8.002213329979925849e-01
+8.296551367660454090e-01
+7.331943122049989769e-01
+7.541447042044596705e-01
+7.217588814218485194e-01
+8.584245136661031728e-01
+7.367978103524971401e-01
+7.896993052003995484e-01
+7.777508631948147899e-01
+7.280984437105224583e-01
+7.522702950681858791e-01
+7.396885125930180438e-01
+7.466727984426102527e-01
+7.273265423855680423e-01
+7.418987692064393791e-01
+7.453662509473497622e-01
+7.550023591419737778e-01
+7.262931956952453083e-01
+7.331893588327145217e-01
+7.452247819374492321e-01
+7.592430455323981864e-01
+7.398584808908406085e-01
+7.389958503365831044e-01
+7.535806353080135578e-01
+7.209141654327638760e-01
+7.488527775087354676e-01
+7.497535683407998697e-01
+7.512666269368922789e-01
+7.368265855431601619e-01
+7.014506958020513272e-01
+7.179369695262904916e-01
+7.180059733461729987e-01
+7.310887251960134225e-01
+7.328383856911283578e-01
+7.400406381586661642e-01
+7.143605775248632606e-01
+7.242671526430869422e-01
+7.375161737119939609e-01
+7.532737960328700355e-01
+7.247744194112012428e-01
+7.296211104293229832e-01
+7.269871125404027135e-01
+7.378292132016748273e-01

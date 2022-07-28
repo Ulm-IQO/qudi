@@ -1,0 +1,115 @@
+{
+    "optimization_client_name": "test_dCRAB_Noisy_2_control_fields",
+    "opti_algorithm_module": "quocslib.optimalalgorithms.dCRABNoisyAlgorithm",
+    "opti_algorithm_class": "DCrabNoisyAlgorithm",
+    "algorithm_settings": {
+        "algorithm_name": "dCRAB",
+        "super_iteration_number": 10000000,
+        "FoM_goal": 1e-05,
+        "total_time_lim": 2880,
+        "compensate_drift": {
+            "compensate_after_SI": true,
+            "compensate_after_minutes": 15
+        },
+        "random_number_generator": {
+            "seed_number": 420
+        },
+        "dsm_settings": {
+            "general_settings": {
+                "dsm_algorithm_name": "NelderMead",
+                "is_adaptive": false,
+                "dsm_algorithm_module": null,
+                "dsm_algorithm_class": null,
+                "parallelization": false
+            },
+            "stopping_criteria": {
+                "time_lim": 90,
+                "change_based_stop": {
+                    "cbs_funct_evals": 500,
+                    "cbs_change": 0.01
+                },
+                "total_time_lim": 2880,
+                "k3": 3,
+                "max_eval": 10000000000,
+                "xatol": 1e-14,
+                "frtol": 1e-13
+            }
+        },
+        "algorithm_attribute": null,
+        "algorithm_module": null,
+        "algorithm_class": null,
+        "max_eval_total": 10000000000,
+        "optimization_direction": "minimization"
+    },
+    "times": [
+        {
+            "time_name": "time_p",
+            "initial_value": 1e-07
+        }
+    ],
+    "parameters": [],
+    "pulses": [
+        {
+            "pulse_name": "Amplitude",
+            "upper_limit": 0.25,
+            "lower_limit": -0.25,
+            "bins_number": 1001,
+            "time_name": "time_p",
+            "amplitude_variation": 0.18,
+            "basis": {
+                "basis_name": "Fourier",
+                "basis_class": "Fourier",
+                "basis_module": "quocslib.pulses.basis.Fourier",
+                "basis_vector_number": 2,
+                "random_super_parameter_distribution": {
+                    "distribution_name": "Uniform",
+                    "distribution_class": "Uniform",
+                    "distribution_module": "quocslib.pulses.superparameter.Uniform",
+                    "lower_limit": 0.0,
+                    "upper_limit": 10,
+                    "distribution_attribute": null
+                },
+                "basis_attribute": null
+            },
+            "scaling_function": {
+                "function_type": "lambda_function",
+                "lambda_function": "lambda t: 1.0 + 0.0*t"
+            },
+            "initial_guess": {
+                "function_type": "lambda_function",
+                "lambda_function": "lambda t: 0.06 + 0.0*t"
+            }
+        },
+        {
+            "pulse_name": "Phase",
+            "upper_limit": 0.25,
+            "lower_limit": -0.25,
+            "bins_number": 1001,
+            "time_name": "time_p",
+            "amplitude_variation": 0.18,
+            "basis": {
+                "basis_name": "Fourier",
+                "basis_class": "Fourier",
+                "basis_module": "quocslib.pulses.basis.Fourier",
+                "basis_vector_number": 2,
+                "random_super_parameter_distribution": {
+                    "distribution_name": "Uniform",
+                    "distribution_class": "Uniform",
+                    "distribution_module": "quocslib.pulses.superparameter.Uniform",
+                    "lower_limit": 0.0,
+                    "upper_limit": 10,
+                    "distribution_attribute": null
+                },
+                "basis_attribute": null
+            },
+            "scaling_function": {
+                "function_type": "lambda_function",
+                "lambda_function": "lambda t: 1.0 + 0.0*t"
+            },
+            "initial_guess": {
+                "function_type": "lambda_function",
+                "lambda_function": "lambda t: 0.0*t"
+            }
+        }
+    ]
+}
