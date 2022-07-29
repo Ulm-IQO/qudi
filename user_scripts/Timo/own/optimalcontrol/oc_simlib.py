@@ -478,13 +478,20 @@ class PredefinedArbPulses():
 class TimeDependentSimulation():
 
     @staticmethod
-    def oc_element(t, pulse_timegrid, data_ampl, data_ph, frequency, B_gauss, amplitude_scaling, sim_params):
+    def oc_element(t, pulse_timegrid, data_ampl, data_ph, frequency, B_gauss, amplitude_scaling,
+                   sim_params, nv_transition=-1):
         # t: time step
         # filename_1: filename for the S_x pulse
         # filename_2: filename for the S_y pulse
         # frequency: carrier frequency of the pulse
         # amplitude scaling: amplitude prefactor which is multiplicated on the pulse
         simp = sim_params
+        if nv_transition is -1:
+            frequency = cp.copy(frequency) + 2 * simp.gamma_nv*B_gauss
+            B_gauss = -B_gauss
+        elif nv_transition is 1: pass
+        else:
+            raise ValueError
 
         # Zero-field splitting
         B = B_gauss
