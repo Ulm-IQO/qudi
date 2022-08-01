@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at thes
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-#import okfrontpanel
+import okfrontpanel
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import TimeTagger as TimeTagger
