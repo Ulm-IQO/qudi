@@ -36,7 +36,7 @@ class SimParameters():
     # NV- spin matrices
     S_x = qutip.jmat(0.5)[0]
     S_y = qutip.jmat(0.5)[1]
-    S_z = - qutip.basis(2,1) * qutip.basis(2,1).dag()
+    S_z = qutip.jmat(0.5)[2]
 
     # N14 spin matrices
     I_x = qutip.jmat(1)[0]
@@ -479,19 +479,13 @@ class TimeDependentSimulation():
 
     @staticmethod
     def oc_element(t, pulse_timegrid, data_ampl, data_ph, frequency, B_gauss, amplitude_scaling,
-                   sim_params, nv_transition=-1):
+                   sim_params):
         # t: time step
         # filename_1: filename for the S_x pulse
         # filename_2: filename for the S_y pulse
         # frequency: carrier frequency of the pulse
         # amplitude scaling: amplitude prefactor which is multiplicated on the pulse
         simp = sim_params
-        if nv_transition is -1:
-            frequency = cp.copy(frequency) + 2 * simp.gamma_nv*B_gauss
-            B_gauss = -B_gauss
-        elif nv_transition is 1: pass
-        else:
-            raise ValueError
 
         # Zero-field splitting
         B = B_gauss
@@ -530,7 +524,7 @@ class TimeDependentSimulation():
         H_oc_2 = 2 * np.pi * amplitude_scaling * simp.S_y
 
         # time independent parts of the Hamiltonian
-        H_oc_tidp = H_zfs + H_zeeman_nv - frequency * simp.S_z ** 2 + H_zeeman_14n + H_hyperfine
+        H_oc_tidp = H_zeeman_14n + H_hyperfine + ((simp.D - simp.gamma_nv*B) - frequency)*simp.S_z
         H_oc_tidp = 2 * np.pi * H_oc_tidp
 
         # save all Hamiltonians with corresponding coefficents
@@ -564,7 +558,8 @@ class TimeDependentSimulation():
         data_freq_detuning = np.zeros(len(freq_array))
         for idx,freq in enumerate(freq_array):
             oc_el = TimeDependentSimulation.oc_element(t, pulse['timegrid_ampl'], pulse['data_ampl'], pulse['data_phase'], freq, B, 1, simp)
-            results_measurement = qutip.mesolve(oc_el, init_state, t, [], [simp.P_nv], options=options, progress_bar=None)
+            results_measurement = qutip.mesolve(oc_el, init_state, t, [], [simp.P_nv],
+                                                options=options, progress_bar=None)
             data_freq_detuning[idx] = results_measurement.expect[0][-1]
 
         return data_freq_detuning
