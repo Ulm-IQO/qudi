@@ -283,12 +283,18 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     def generate_oc_nrep(self, name='oc_nrep_sweep', n_start=1, n_step=1, num_of_points=10,
                         filename_amplitude='amplitude.txt', filename_phase='phase.txt',
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets',
-                        t_gap=0e-9, phase=0, init_end_pix=0, init_end_phase_deg=0,
+                        t_gap=0e-9, phases='0', init_end_pix=0, init_end_phases_deg='0',
                         vs_rect_pulse=True, alternating=True):
 
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
+
+        phases = csv_2_list(phases)
+        init_end_phases_deg = csv_2_list(init_end_phases_deg)
+        if len(phases) != len(init_end_phases_deg):
+            raise ValueError(f"OC phases {phases} and init_end phases {init_end_phases_deg} "
+                             f"must have same length!")
 
         n_array = n_start + np.arange(num_of_points) * n_step
 
@@ -298,38 +304,39 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         laser_element = self._get_laser_gate_element(length=self.laser_length,
                                                      increment=0)
 
-        pi_element = self._get_mw_element(length=self.rabi_period / 2,
-                                           increment=0,
-                                           amp=self.microwave_amplitude,
-                                           freq=self.microwave_frequency,
-                                           phase=0)
+
         gap_element = self._get_idle_element(length=t_gap,
                                                  increment=0)
-        # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
-        pix_init_element = self._get_mw_element(length=init_end_pix*self.rabi_period / 2,
-                                           increment=0,
-                                           amp=self.microwave_amplitude,
-                                           freq=self.microwave_frequency,
-                                           phase=init_end_phase_deg)
 
-        pix_end_element = self._get_mw_element(length=-init_end_pix*self.rabi_period / 2,
-                                           increment=0,
-                                           amp=self.microwave_amplitude,
-                                           freq=self.microwave_frequency,
-                                           phase=init_end_phase_deg)
-
-        # create the optimized mw element
-        oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
-                                                        amplitude_scaling=1,
-                                                        frequency=self.microwave_frequency,
-                                                        phase=phase,
-                                                        filename_amplitude=filename_amplitude,
-                                                        filename_phase=filename_phase,
-                                                        folder_path=folder_path)
 
         # Create block and append to created_blocks list
         qst_block = PulseBlock(name=name)
-        for n_pulses in n_array:
+        for idx, n_pulses in enumerate(n_array):
+            phase = phases[idx % len(phases)]
+            phase_init_end = init_end_phases_deg[idx % len(phases)]
+
+            # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
+            pix_init_element = self._get_mw_element(length=init_end_pix * self.rabi_period / 2,
+                                                    increment=0,
+                                                    amp=self.microwave_amplitude,
+                                                    freq=self.microwave_frequency,
+                                                    phase=phase_init_end)
+
+            pix_end_element = self._get_mw_element(length=-init_end_pix * self.rabi_period / 2,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=phase_init_end)
+
+            # create the optimized mw element
+            oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
+                                                            amplitude_scaling=1,
+                                                            frequency=self.microwave_frequency,
+                                                            phase=phase,
+                                                            filename_amplitude=filename_amplitude,
+                                                            filename_phase=filename_phase,
+                                                            folder_path=folder_path)
+
             if init_end_pix != 0:
                 qst_block.append(pix_init_element)
             qst_block.extend([oc_mw_element, gap_element]*n_pulses)
@@ -343,7 +350,27 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                 qst_block.append(waiting_element)
 
         # compare against rect pulses (negative x axis)
-        for n_pulses in n_array:
+        for idx, n_pulses in enumerate(n_array):
+            phase = phases[idx % len(phases)]
+            phase_init_end = init_end_phases_deg[idx % len(phases)]
+            # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
+            pix_init_element = self._get_mw_element(length=init_end_pix * self.rabi_period / 2,
+                                                    increment=0,
+                                                    amp=self.microwave_amplitude,
+                                                    freq=self.microwave_frequency,
+                                                    phase=phase_init_end)
+
+            pix_end_element = self._get_mw_element(length=-init_end_pix * self.rabi_period / 2,
+                                                   increment=0,
+                                                   amp=self.microwave_amplitude,
+                                                   freq=self.microwave_frequency,
+                                                   phase=phase_init_end)
+            pi_element = self._get_mw_element(length=self.rabi_period / 2,
+                                              increment=0,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
+                                              phase=phase)
+
             if vs_rect_pulse:
                 if init_end_pix != 0:
                     qst_block.append(pix_init_element)
