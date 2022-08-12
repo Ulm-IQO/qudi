@@ -383,7 +383,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        n_lasers = num_of_points
+        n_lasers = len(n_array)
         n_lasers = 2*n_lasers if alternating else n_lasers
         n_lasers = 2*n_lasers if vs_rect_pulse else n_lasers
         # rect pulses have negative repetition number n
@@ -393,7 +393,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = x_axis
         block_ensemble.measurement_information['units'] = ('', '')
-        block_ensemble.measurement_information['labels'] = ('', 'Signal')
+        block_ensemble.measurement_information['labels'] = ('repetitions / #pi', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = n_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
