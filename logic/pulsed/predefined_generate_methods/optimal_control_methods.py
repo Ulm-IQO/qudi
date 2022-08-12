@@ -283,7 +283,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     def generate_oc_nrep(self, name='oc_nrep_sweep', n_start=1, n_step=1, num_of_points=10,
                         filename_amplitude='amplitude.txt', filename_phase='phase.txt',
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets',
-                        t_gap=0e-9, phases='0', init_end_pix=0, init_end_phases_deg='0',
+                        t_gap=0e-9, phases='0', init_end_pix=0., init_end_phases_deg='0',
                         vs_rect_pulse=True, alternating=True):
 
         created_blocks = list()
@@ -297,6 +297,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                              f"must have same length!")
 
         n_array = n_start + np.arange(num_of_points) * n_step
+        # combine each n_pi with all phases
+        n_array = np.asarray([val for val in n_array for _ in range(len(phases))])
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -307,26 +309,13 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         gap_element = self._get_idle_element(length=t_gap,
                                                  increment=0)
-
-
-        # Create block and append to created_blocks list
-        qst_block = PulseBlock(name=name)
-        for idx, n_pulses in enumerate(n_array):
-            phase = phases[idx % len(phases)]
-            phase_init_end = init_end_phases_deg[idx % len(phases)]
-
-            # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
-            pix_init_element = self._get_mw_element(length=init_end_pix * self.rabi_period / 2,
+        def pi_element(pix=1., phase=0, is_oc=False):
+            pi_rect_element = self._get_mw_element(length=pix * self.rabi_period / 2,
                                                     increment=0,
                                                     amp=self.microwave_amplitude,
                                                     freq=self.microwave_frequency,
-                                                    phase=phase_init_end)
+                                                    phase=phase)
 
-            pix_end_element = self._get_mw_element(length=-init_end_pix * self.rabi_period / 2,
-                                                   increment=0,
-                                                   amp=self.microwave_amplitude,
-                                                   freq=self.microwave_frequency,
-                                                   phase=phase_init_end)
 
             # create the optimized mw element
             oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
@@ -337,11 +326,26 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                             filename_phase=filename_phase,
                                                             folder_path=folder_path)
 
+            if is_oc:
+                return oc_mw_element
+            return pi_rect_element
+
+
+        # Create block and append to created_blocks list
+        qst_block = PulseBlock(name=name)
+        for idx, n_pulses in enumerate(n_array):
+            phase = phases[idx % len(phases)]
+            phase_init_end = init_end_phases_deg[idx % len(phases)]
+
+            self.log.debug(f"Generating oc_nrep with n_pi= {n_pulses} oc phase= {phase} deg, "
+                           f"init_end_phase= {phase_init_end} deg")
+
             if init_end_pix != 0:
-                qst_block.append(pix_init_element)
-            qst_block.extend([oc_mw_element, gap_element]*n_pulses)
+                qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+            qst_block.extend([pi_element(phase, is_oc=True), gap_element]*n_pulses)
             if init_end_pix != 0:
-                qst_block.append(pix_end_element)
+                # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
+                qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
             qst_block.append(laser_element)
             qst_block.append(waiting_element)
 
@@ -353,36 +357,21 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         for idx, n_pulses in enumerate(n_array):
             phase = phases[idx % len(phases)]
             phase_init_end = init_end_phases_deg[idx % len(phases)]
-            # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
-            pix_init_element = self._get_mw_element(length=init_end_pix * self.rabi_period / 2,
-                                                    increment=0,
-                                                    amp=self.microwave_amplitude,
-                                                    freq=self.microwave_frequency,
-                                                    phase=phase_init_end)
-
-            pix_end_element = self._get_mw_element(length=-init_end_pix * self.rabi_period / 2,
-                                                   increment=0,
-                                                   amp=self.microwave_amplitude,
-                                                   freq=self.microwave_frequency,
-                                                   phase=phase_init_end)
-            pi_element = self._get_mw_element(length=self.rabi_period / 2,
-                                              increment=0,
-                                              amp=self.microwave_amplitude,
-                                              freq=self.microwave_frequency,
-                                              phase=phase)
 
             if vs_rect_pulse:
                 if init_end_pix != 0:
-                    qst_block.append(pix_init_element)
-                qst_block.extend([pi_element, gap_element]*n_pulses)
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+                qst_block.extend([pi_element(phase=phase, is_oc=False), gap_element] * n_pulses)
                 if init_end_pix != 0:
-                    qst_block.append(pix_end_element)
+                    # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
                 qst_block.append(laser_element)
                 qst_block.append(waiting_element)
 
                 if alternating:
                     qst_block.append(laser_element)
                     qst_block.append(waiting_element)
+
 
         created_blocks.append(qst_block)
 
