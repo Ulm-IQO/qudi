@@ -888,9 +888,9 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     ensemble = pickle.load(file)
-            except:
-                self.log.error('Failed to de-serialize {1}/ PulseBlockEnsemble "{0}" from file. '
-                               'Deleting broken file.'.format(ensemble_name, filepath))
+            except pickle.UnpicklingError:
+                self.log.error('Failed to de-serialize PulseBlockEnsemble "{0}" from file. '
+                               'Deleting broken file.'.format(ensemble_name))
                 os.remove(filepath)
         return ensemble
 
