@@ -134,11 +134,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             file_no_path = os.path.basename(i_file)
             file_no_quad = file_no_path.replace(str_i, "")
+            file_no_quad_no_ext = os.path.splitext(file_no_quad)[0]
             file_no_ext = Tk_file.get_filename_no_extension(file_no_path)
             extension = os.path.splitext(file_no_path)[1]
             files_filtered = all_files
 
-            filter_str = [path, file_no_quad]
+            filter_str = [path, file_no_quad_no_ext]
+
+            self.log.debug(f"Searching q file for {i_file} in {all_files}. Filter: {filter_str}")
             if file_no_ext == str_i:
                 # filename exactly = quad_name => filtering against empty string yields all other files
                 # instead, we search for the name of the other quadrature
@@ -146,10 +149,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             for filter in filter_str:
                 files_filtered = Tk_string.filter_str(files_filtered, filter, exclStrList=[i_file])
+                #self.log.debug(f"Filter {filter}: => {files_filtered}")
 
             return files_filtered
 
-        fnames = Tk_file.get_dir_items(path)
+        fnames = Tk_file.get_dir_items(path, incl_subdir=False)
         str_i = quadrature_names[0]
         loaded_pulses = []
 
@@ -166,7 +170,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     file_q = files_q[0]
                 else:
                     self.log.warning(
-                        f"Found optimal control file {file} for i quadrature, but no corresponding q file.")
+                        f"Found optimal control file {file} for i quadrature, but no corresponding "
+                        f"q file. Canidates: {files_q}")
                     continue
             else:
                 continue
