@@ -27,7 +27,8 @@ from scipy import interpolate
 
 class OC_RedCrab(SamplingBase):
     """
-    Object representing a sine wave element
+    Object representing an IQ modulated sine wave (I*sin + Q*cos).
+    For consistency with old code, quadratures are called 'amplitude' (I) and 'phase' (Q)
     """
     params = OrderedDict()
     params['amplitude_scaling'] = {'unit': '', 'init': 1.0, 'min': 0.0, 'max': np.inf, 'type': float}
@@ -80,8 +81,8 @@ class OC_RedCrab(SamplingBase):
     #     return samples_arr
 
     def _get_sine_func(self, time_array, amplitude_func, frequency, phase_rad, phase_func):
-        samples_arr = amplitude_func(time_array - time_array[0]) * np.sin(2 * np.pi * frequency * time_array) \
-                      + phase_func(time_array - time_array[0]) * np.cos(2 * np.pi * frequency * time_array)
+        samples_arr = amplitude_func(time_array - time_array[0]) * np.sin(2*np.pi * frequency * time_array + phase_rad) \
+                      + phase_func(time_array - time_array[0]) * np.cos(2*np.pi * frequency * time_array + phase_rad)
 
         return samples_arr
 
@@ -123,6 +124,13 @@ class OC_RedCrab(SamplingBase):
         # change the amplitude of the pulse (e.g. to simulate amplitude detuning)
         samples_arr = self.amplitude_scaling * samples_arr
 
-        # np.savetxt(r'C:\Users\Mesoscopic\Documents\temp\timegrid.txt', time_array - time_array[0])
+        # avoid re-scaling by the pg, todo: think of better way
+        import scipy
+        if max(abs(samples_arr)) > 0.25:
+            biggest_val = max([abs(np.min(samples_arr)), np.max(samples_arr)])
+            self.log.warning(
+                f"Resampling in OC sampling function, because ampl value {biggest_val} exceeds limit")
+            mapper = scipy.interpolate.interp1d([-biggest_val, biggest_val], [-0.25, 0.25])
+            samples_arr = mapper(samples_arr)
 
         return samples_arr

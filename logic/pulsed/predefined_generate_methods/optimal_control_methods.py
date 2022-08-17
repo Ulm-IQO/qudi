@@ -283,14 +283,22 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     def generate_oc_nrep(self, name='oc_nrep_sweep', n_start=1, n_step=1, num_of_points=10,
                         filename_amplitude='amplitude.txt', filename_phase='phase.txt',
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets',
-                        t_gap=0e-9,
+                        t_gap=0e-9, phases='0', init_end_pix=0., init_end_phases_deg='0',
                         vs_rect_pulse=True, alternating=True):
 
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
+        phases = csv_2_list(phases)
+        init_end_phases_deg = csv_2_list(init_end_phases_deg)
+        if len(phases) != len(init_end_phases_deg):
+            raise ValueError(f"OC phases {phases} and init_end phases {init_end_phases_deg} "
+                             f"must have same length!")
+
         n_array = n_start + np.arange(num_of_points) * n_step
+        # combine each n_pi with all phases
+        n_array = np.asarray([val for val in n_array for _ in range(len(phases))])
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
@@ -298,28 +306,46 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         laser_element = self._get_laser_gate_element(length=self.laser_length,
                                                      increment=0)
 
-        pix_element = self._get_mw_element(length=self.rabi_period / 2,
-                                           increment=0,
-                                           amp=self.microwave_amplitude,
-                                           freq=self.microwave_frequency,
-                                           phase=0)
+
         gap_element = self._get_idle_element(length=t_gap,
                                                  increment=0)
+        def pi_element(pix=1., phase=0, is_oc=False):
+            pi_rect_element = self._get_mw_element(length=pix * self.rabi_period / 2,
+                                                    increment=0,
+                                                    amp=self.microwave_amplitude,
+                                                    freq=self.microwave_frequency,
+                                                    phase=phase)
 
-        # create the optimized mw element
-        oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
-                                                        amplitude_scaling=1,
-                                                        frequency=self.microwave_frequency,
-                                                        phase=0,
-                                                        filename_amplitude=filename_amplitude,
-                                                        filename_phase=filename_phase,
-                                                        folder_path=folder_path)
+
+            # create the optimized mw element
+            oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
+                                                            amplitude_scaling=1,
+                                                            frequency=self.microwave_frequency,
+                                                            phase=phase,
+                                                            filename_amplitude=filename_amplitude,
+                                                            filename_phase=filename_phase,
+                                                            folder_path=folder_path)
+
+            if is_oc:
+                return oc_mw_element
+            return pi_rect_element
+
 
         # Create block and append to created_blocks list
         qst_block = PulseBlock(name=name)
+        for idx, n_pulses in enumerate(n_array):
+            phase = phases[idx % len(phases)]
+            phase_init_end = init_end_phases_deg[idx % len(phases)]
 
-        for n_pulses in n_array:
-            qst_block.extend([oc_mw_element, gap_element]*n_pulses)
+            self.log.debug(f"Generating oc_nrep with n_pi= {n_pulses} oc phase= {phase} deg, "
+                           f"init_end_phase= {phase_init_end} deg")
+
+            if init_end_pix != 0:
+                qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+            qst_block.extend([pi_element(phase, is_oc=True), gap_element]*n_pulses)
+            if init_end_pix != 0:
+                # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
+                qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
             qst_block.append(laser_element)
             qst_block.append(waiting_element)
 
@@ -327,15 +353,91 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                 qst_block.append(laser_element)
                 qst_block.append(waiting_element)
 
-        for n_pulses in n_array:
+        # compare against rect pulses (negative x axis)
+        for idx, n_pulses in enumerate(n_array):
+            phase = phases[idx % len(phases)]
+            phase_init_end = init_end_phases_deg[idx % len(phases)]
+
             if vs_rect_pulse:
-                qst_block.extend([pix_element, gap_element]*n_pulses)
+                if init_end_pix != 0:
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+                qst_block.extend([pi_element(phase=phase, is_oc=False), gap_element] * n_pulses)
+                if init_end_pix != 0:
+                    # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
                 qst_block.append(laser_element)
                 qst_block.append(waiting_element)
 
                 if alternating:
                     qst_block.append(laser_element)
                     qst_block.append(waiting_element)
+
+
+        created_blocks.append(qst_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((qst_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        n_lasers = len(n_array)
+        n_lasers = 2*n_lasers if alternating else n_lasers
+        n_lasers = 2*n_lasers if vs_rect_pulse else n_lasers
+        # rect pulses have negative repetition number n
+        x_axis = list(n_array)
+        x_axis = list(n_array) + list(-n_array) if vs_rect_pulse else x_axis
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = x_axis
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('repetitions / #pi', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = n_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_oc_podmr(self, name='oc_podmr', freq_start=2870.0e6, freq_step=0.2e6,
+                        num_of_points=50,
+                        filename_amplitude='amplitude.txt', filename_phase='phase.txt',
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets',
+                        ):
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        freq_array = freq_start + np.arange(num_of_points) * freq_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+
+
+        # Create block and append to created_blocks list
+        qst_block = PulseBlock(name=name)
+
+        for mw_freq in freq_array:
+            oc_mw_element = self._get_mw_element_oc_RedCrab(length=None,
+                                                            amplitude_scaling=1,
+                                                            frequency=mw_freq,
+                                                            phase=0,
+                                                            filename_amplitude=filename_amplitude,
+                                                            filename_phase=filename_phase,
+                                                            folder_path=folder_path)
+            qst_block.append(oc_mw_element)
+            qst_block.append(laser_element)
+            qst_block.append(waiting_element)
+
+
 
         created_blocks.append(qst_block)
 
@@ -348,15 +450,10 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # add metadata to invoke settings later on
         n_lasers = num_of_points
-        n_lasers = 2*n_lasers if alternating else n_lasers
-        n_lasers = 2*n_lasers if vs_rect_pulse else n_lasers
-        # rect pulses have negative repetition number n
-        x_axis = list(n_array)
-        x_axis = list(n_array) + list(-n_array) if vs_rect_pulse else x_axis
-        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = x_axis
-        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['units'] = ('Hz', '')
         block_ensemble.measurement_information['labels'] = ('', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = n_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
