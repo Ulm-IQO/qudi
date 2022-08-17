@@ -418,10 +418,11 @@ class PredefinedArbPulses():
         return pulse
 
     @staticmethod
-    def generate_rect_pi(omega, phase=0, n_t=1000):
+    def generate_rect_pi(omega, phase=0, n_t=1000, t_pulse=None):
         """
         Generate a levitt pulse as a optimal control pulse file.
         Assumes that quadratues I*sin(f_mw*t) + Q*cos(f_mw*t) are used in sampling.
+        @param t_pulse: if None, auto length of pulse. Else zero pad to specified length.
         """
 
         omega_mhz = omega * 1e-6
@@ -431,25 +432,37 @@ class PredefinedArbPulses():
 
         tpi_us = get_t_pix(omega_mhz, pix=1)
 
+        if not t_pulse:
+            t_pulse = tpi_us
+
         # rabi in MHz, times in us
-        timegrid_us = np.linspace(0, tpi_us, n_t)
+        timegrid_us = np.linspace(0, t_pulse, n_t)
         data_ampl = np.zeros((len(timegrid_us)))  # I quadrature
         data_phase = np.zeros((len(timegrid_us)))  # Q
 
-        phases = np.asarray([0]) + phase
+        phases = [0 + phase]
         tpulse_by_pi = [1]
-
+        # pad with zero amplitude/phase
+        if t_pulse != tpi_us:
+            phases.append(0)
+            tpulse_by_pi.append(0)
         # phases = [np.pi/2]
         # tpulse_by_pi = [0.5]
 
-        t_curr_us = 0
+        t_curr_us, t_end_us = 0, 0
         for i_comppulse, phi in enumerate(phases):
             pix = tpulse_by_pi[i_comppulse]
-            t_end_us = t_curr_us + get_t_pix(omega_mhz, pix=pix)
+            if pix != 0:
+                t_end_us = t_curr_us + get_t_pix(omega_mhz, pix=pix)
+                val_iq = np.asarray(get_iq(phi)) * omega_mhz
+            else:  # zero pad until end
+                t_end_us = timegrid_us[-1]
+                val_iq = np.asarray([0, 0])
+
             idx_start = np.argmin(np.abs(timegrid_us - t_curr_us))
             idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
 
-            val_iq = np.asarray(get_iq(phi)) * omega_mhz
+
             data_ampl[idx_start:idx_end + 1] = val_iq[0]
             data_phase[idx_start:idx_end + 1] = val_iq[1]
 
