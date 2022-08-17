@@ -342,7 +342,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
             if init_end_pix != 0:
                 qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
-            qst_block.extend([pi_element(phase, is_oc=True), gap_element]*n_pulses)
+            qst_block.extend([pi_element(phase=phase, is_oc=True), gap_element]*n_pulses)
             if init_end_pix != 0:
                 # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
                 qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
