@@ -182,19 +182,6 @@ class Tk_file():
 
         return param_dict_accepted
 
-    @staticmethod
-    def find_all_files_for_mes(p_mes):
-        path = os.path.normpath(p_mes['file'])
-        # offset for erasing automatic "nv_" previx
-        p_file = path.split(os.sep)[-1]
-        folder = os.path.join(*path.split(os.sep)[:-1])
-
-        savetag_with_date = p_file.split('_pulsed')[0]
-
-        # find files that have same savetag
-        files_in_folder = Tk_file.list_mult_pulsed_mes(folder, filter_strs=[savetag_with_date],
-                                                       incl_subdir=False)
-        return files_in_folder
 
     @staticmethod
     def find_param_file(p_mes):
@@ -329,6 +316,9 @@ class Tk_string():
 
     @staticmethod
     def find_num_in_str(str):
+        """
+        Extract numbers in string and return as list of strings.
+        """
         import re
         numstrList = re.findall(r"[-+]?\d*\.\d+|\d+", str)
         # don't sort here, order of files important for load_series()
@@ -350,7 +340,7 @@ class Tk_string():
             return [x for x in strList if containStr in x.lower()]
         else:
             return [x for x in strList if (containStr in x.lower()
-                                           and not any(estr in x.lower() for estr in exclStrList))]
+                                           and not any(estr.lower() in x.lower() for estr in exclStrList))]
 
     @staticmethod
     def str_2_enum(enum_str):
@@ -375,6 +365,22 @@ class Tk_string():
 
             return key_str, val_str
         return None
+
+    @staticmethod
+    def params_from_str(in_str, keys=['pix']):
+        params = {}
+        in_str = in_str.lower()
+
+        for key in keys:
+            if f"{key}=" in in_str:
+                try:
+                    substr = in_str.split(f"{key}=", 1)[1]
+                    val = float(Tk_string.find_num_in_str(substr)[0])
+                    params[key] = val
+                except IndexError:
+                    continue
+
+        return params
 
 class Tk_math():
 
