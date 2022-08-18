@@ -51,6 +51,8 @@ class SimParameters():
     I_y = qutip.tensor(qutip.qeye(2),I_y)
     I_z = qutip.tensor(qutip.qeye(2),I_z)
 
+    dims = S_x.dims
+
     # Projectors (needed for the readout)
     P_nv = qutip.tensor(qutip.basis(2,0) * qutip.basis(2,0).dag(),qutip.qeye(3))
 
@@ -434,6 +436,8 @@ class PredefinedArbPulses():
 
         if not t_pulse:
             t_pulse = tpi_us
+        else:
+            t_pulse = 1e6 * t_pulse
 
         # rabi in MHz, times in us
         timegrid_us = np.linspace(0, t_pulse, n_t)
@@ -462,7 +466,6 @@ class PredefinedArbPulses():
             idx_start = np.argmin(np.abs(timegrid_us - t_curr_us))
             idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
 
-
             data_ampl[idx_start:idx_end + 1] = val_iq[0]
             data_phase[idx_start:idx_end + 1] = val_iq[1]
 
@@ -477,7 +480,7 @@ class PredefinedArbPulses():
         pulse = ArbPulse()
         pulse.name = 'rect_phi={phase/np.pi:.1f}pi'
 
-        pulse.timegrid_unit = 'µs'
+        pulse.timegrid_unit = 'us'
         pulse.data_unit = 'MHz'
 
         pulse._data_ampl = data_ampl
