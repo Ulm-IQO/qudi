@@ -1042,24 +1042,17 @@ def optimize_position(optimize_ch=None):
     scannerlogic.stop_scanning()
     time.sleep(0.2)
     crosshair_pos = scannerlogic.get_position()
-    optimizerlogic.start_refocus(initial_pos=crosshair_pos)
+    optimizerlogic.start_refocus(initial_pos=crosshair_pos, caller_tag='confocalgui')
 
     sleep_until_abort("optimizerlogic.module_state() != 'idle'", timeout_s=10)
 
-    if abs(optimizerlogic.optim_pos_x - crosshair_pos[0])  > 1e-6 or \
-        abs(optimizerlogic.optim_pos_y - crosshair_pos[1]) > 1e-6 or \
-        abs(optimizerlogic.optim_pos_z - crosshair_pos[2]) > 1e-6:
-            optimize_position()
-            logger.debug("Repeating optimization")
+    if abs(optimizerlogic.optim_pos_x - crosshair_pos[0]) > 1e-6 or \
+            abs(optimizerlogic.optim_pos_y - crosshair_pos[1]) > 1e-6 or \
+            abs(optimizerlogic.optim_pos_z - crosshair_pos[2]) > 1e-6:
+        optimize_position()
+        logger.debug("Repeating optimization")
     else:
-
-        scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
-                              z=optimizerlogic.optim_pos_z, a=0.0)
-        time.sleep(0.5)
-        # switch off laser
-        #logger.debug("Laser off")
-        #nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
-        # pulsedmeasurementlogic.fast_counter_continue()
+        pass
 
     time_stop_optimize = time.time()
     additional_time = (time_stop_optimize - time_start_optimize)
