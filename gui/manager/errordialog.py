@@ -47,8 +47,8 @@ class ErrorDialog(QtWidgets.QDialog):
         wid = QtWidgets.QDesktopWidget()
         screenWidth = wid.screen(wid.primaryScreen()).width()
         screenHeight = wid.screen(wid.primaryScreen()).height()
-        self.setGeometry((screenWidth - 500) / 2,
-                         (screenHeight - 100) / 2, 500, 100)
+        self.setGeometry(round((screenWidth - 500) / 2),
+                         round((screenHeight - 100) / 2), 500, 100)
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.setContentsMargins(3, 3, 3, 3)
         self.setLayout(self.layout)
