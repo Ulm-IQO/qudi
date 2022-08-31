@@ -200,6 +200,14 @@ class ArbPulse():
             sane = False
         return sane
 
+    def _convert_si(self, val, unit_old='V', unit_new='mV'):
+        prefix_old, unit_si_old = self._split_unit_prefix(unit_old)
+        prefix_new, unit_si_new = self._split_unit_prefix(unit_new)
+        if unit_si_old != unit_si_new:
+            raise ValueError(f"Can only convert same base SI unit, not {unit_si_old} and {unit_si_new}")
+
+        return val* self.__unit_prefix_dict[prefix_old] / self.__unit_prefix_dict[prefix_new], unit_new
+
     def convert_rabi_2_ampl(self, unit='V'):
         type_old = self._get_unit_type_data()
         type_new = self._get_unit_type_data(unit)
@@ -220,9 +228,12 @@ class ArbPulse():
             except (KeyError, IndexError):
                 raise RuntimeError(f"For {self.data_unit}->{unit}, "
                                    f"Can't find {inter_scale})=1e-6*{scale_old} in SI unit dict")
-            data_unit = f'{inter_prefix}V'
+            inter_unit = f'{inter_prefix}V'
 
-            return data_ampl, data_phase, data_unit
+            data_ampl, _ = self._convert_si(data_ampl, inter_unit, unit)
+            data_phase, _ = self._convert_si(data_phase, inter_unit, unit)
+
+            return data_ampl, data_phase, unit
         else:
             raise ValueError
 
@@ -242,31 +253,45 @@ class ArbPulse():
             inter_scale = 1e6*scale_old
             # guaranteed to be exactly once in dict
             inter_prefix = [k for k,v in self.__unit_prefix_dict.items() if v == inter_scale][0]
-            data_unit = f'{inter_prefix}Hz'
+            inter_unit = f'{inter_prefix}Hz'
 
+            data_ampl, _ = self._convert_si(data_ampl, inter_unit, unit)
+            data_phase, _ = self._convert_si(data_phase, inter_unit, unit)
+
+            return data_ampl, data_phase, unit
+        else:
+            raise ValueError
+
+    def _convert_unit_type(self, type_old='voltage', type_new='rabi_freq'):
+        if type_old == 'voltage' and type_new == 'rabi_freq':
+            unit_new = 'Hz'
+            data_ampl, data_phase, data_unit = self.convert_ampl_2_rabi(unit=unit_new)
             return data_ampl, data_phase, data_unit
+        elif type_old == 'rabi_freq' and type_new == 'voltage':
+            unit_new = 'V'
+            data_ampl, data_phase, data_unit = self.convert_rabi_2_ampl(unit=unit_new)
+            return data_ampl, data_phase, data_unit
+        elif (type_old == 'rabi_freq' and type_new == 'rabi_freq') or \
+                (type_old == 'voltage' and type_new == 'voltage'):
+            _, unit_si_new = self._split_unit_prefix(self.data_unit)
+            data_ampl, _ = self._convert_si(self._data_ampl, self.data_unit, unit_si_new)
+            data_phase, _ = self._convert_si(self._data_phase, self.data_unit, unit_si_new)
+            return data_ampl, data_phase, unit_si_new
         else:
             raise ValueError
 
     def convert_unit_data(self, unit='Hz'):
+
         prefix_old, unit_si_old = self._split_unit_prefix(self.data_unit)
         prefix_new, unit_si_new = self._split_unit_prefix(unit)
         type_old = self._get_unit_type_data()
         type_new = self._get_unit_type_data(unit)
-        conv_factor = self.__unit_prefix_dict[prefix_old]/self.__unit_prefix_dict[prefix_new]
+        conv_factor = 1/self.__unit_prefix_dict[prefix_new]
 
-        if type_old == 'voltage' and type_new == 'rabi_freq':
-            self._data_ampl, self._data_phase, self.data_unit = self.convert_ampl_2_rabi(unit=unit)
-            return self.convert_unit_data(unit=unit)
-        elif type_old == 'rabi_freq' and type_new == 'voltage':
-            self._data_ampl, self._data_phase, self.data_unit = self.convert_rabi_2_ampl(unit=unit)
-            return self.convert_unit_data(unit=unit)
+        # to new type in SI (Hz/V)
+        d_ampl, d_phase, d_unit = self._convert_unit_type(type_old, type_new)
 
-        if type_old != type_new or unit_si_old != unit_si_new:
-            raise ValueError(f"Can't automatically convert units {unit_si_old}->{unit_si_new} "
-                             f"of type ({type_old}) to ({type_new})")
-
-        return conv_factor*self._data_ampl, conv_factor*self._data_phase
+        return conv_factor*d_ampl, conv_factor*d_phase
 
     def convert_unit_time(self, unit='s'):
         prefix_old, unit_si_old = self._split_unit_prefix(self.timegrid_unit)
@@ -625,3 +650,18 @@ class TimeDependentSimulation():
             data_amp_detuning[idx] = results_measurement.expect[0][-1]
 
         return data_amp_detuning
+
+# fast debug code
+if __name__ == '__main__':
+    print('test')
+
+    pulse = PredefinedArbPulses.generate_levitt(20e6, n_t=1000)
+    pulse._func_omega_mhz_2_ampl_v = lambda x: x / 20 * 0.25
+    pulse._func_ampl_v_2_omega_mhz = lambda x: x / 0.25 * 20
+
+    pulse.convert_rabi_2_ampl()
+    pulse.convert_unit_data('MHz')
+    pulse.convert_unit_data('V')
+
+    pulse.set_unit_data('V')
+    pulse.convert_unit_data('MHz')
