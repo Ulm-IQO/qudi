@@ -146,7 +146,9 @@ class ArbPulse():
     # @property, acts like decorator
     data_ampl = property(get_data_ampl)
 
-    def get_data_phase(self, unit='Hz'):
+    def get_data_phase(self, unit=None):
+        if unit is None:
+            unit = self.data_unit
         return self.convert_unit_data(unit)[1]
     data_phase = property(get_data_phase)
 
@@ -195,7 +197,7 @@ class ArbPulse():
         except:
             sane = False
         return sane
-    
+
     def convert_rabi_2_ampl(self, unit='V'):
         type_old = self._get_unit_type_data()
         type_new = self._get_unit_type_data(unit)
@@ -221,7 +223,7 @@ class ArbPulse():
             return data_ampl, data_phase, data_unit
         else:
             raise ValueError
-    
+
     def convert_ampl_2_rabi(self, unit='Hz'):
         type_old = self._get_unit_type_data()
         type_new = self._get_unit_type_data(unit)
@@ -363,7 +365,7 @@ class PredefinedArbPulses():
         return 0.5*pix/omega
 
     @staticmethod
-    def generate_levitt(omega, phase=0, n_t=1000):
+    def generate_levitt(omega, phase=0, n_t=1000, t_pulse=None):
         """
         Generate a levitt pulse as a optimal control pulse file.
         Assumes that quadratues I*sin(f_mw*t) + Q*cos(f_mw*t) are used in sampling.
@@ -374,14 +376,25 @@ class PredefinedArbPulses():
         get_iq = PredefinedArbPulses.get_iq
 
         tpi_us = get_t_pix(omega_mhz, pix=1)
+        if not t_pulse:
+            t_pulse = 2 * tpi_us
+        else:
+            t_pulse = 1e6 * t_pulse
+            if t_pulse < 2*tpi_us:
+                raise ValueError("Pulse can't be shorter than Levitt pulse")
+
 
         # rabi in MHz, times in us
-        timegrid_us = np.linspace(0, 2 * tpi_us, n_t)  # total pulse area 2pi
+        timegrid_us = np.linspace(0, t_pulse, n_t)  # total pulse area 2pi
         data_ampl = np.zeros((len(timegrid_us)))  # I quadrature
         data_phase = np.zeros((len(timegrid_us)))  # Q
 
-        phases = np.asarray([np.pi / 2, 0, np.pi / 2]) + phase
+        phases = list(np.asarray([np.pi / 2, 0, np.pi / 2]) + phase)
         tpulse_by_pi = [0.5, 1, 0.5]
+        # pad with zero amplitude/phase
+        if t_pulse != tpi_us:
+            phases.append(0)
+            tpulse_by_pi.append(0)
 
         # phases = [np.pi/2]
         # tpulse_by_pi = [0.5]
@@ -389,11 +402,17 @@ class PredefinedArbPulses():
         t_curr_us = 0
         for i_comppulse, phi in enumerate(phases):
             pix = tpulse_by_pi[i_comppulse]
-            t_end_us = t_curr_us + get_t_pix(omega_mhz, pix=pix)
+
+            if pix != 0:
+                t_end_us = t_curr_us + get_t_pix(omega_mhz, pix=pix)
+                val_iq = np.asarray(get_iq(phi)) * omega_mhz
+            else:  # zero pad until end
+                t_end_us = timegrid_us[-1]
+                val_iq = np.asarray([0, 0])
+
             idx_start = np.argmin(np.abs(timegrid_us - t_curr_us))
             idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
 
-            val_iq = np.asarray(get_iq(phi)) * omega_mhz
             data_ampl[idx_start:idx_end + 1] = val_iq[0]
             data_phase[idx_start:idx_end + 1] = val_iq[1]
 
@@ -434,6 +453,8 @@ class PredefinedArbPulses():
 
         if not t_pulse:
             t_pulse = tpi_us
+        else:
+            t_pulse = 1e6 * t_pulse
 
         # rabi in MHz, times in us
         timegrid_us = np.linspace(0, t_pulse, n_t)
@@ -462,7 +483,6 @@ class PredefinedArbPulses():
             idx_start = np.argmin(np.abs(timegrid_us - t_curr_us))
             idx_end = np.argmin(np.abs(timegrid_us - t_end_us))
 
-
             data_ampl[idx_start:idx_end + 1] = val_iq[0]
             data_phase[idx_start:idx_end + 1] = val_iq[1]
 
@@ -477,7 +497,7 @@ class PredefinedArbPulses():
         pulse = ArbPulse()
         pulse.name = 'rect_phi={phase/np.pi:.1f}pi'
 
-        pulse.timegrid_unit = 'µs'
+        pulse.timegrid_unit = 'us'
         pulse.data_unit = 'MHz'
 
         pulse._data_ampl = data_ampl
