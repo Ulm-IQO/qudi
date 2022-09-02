@@ -192,8 +192,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         return loaded_pulses
 
-
-
     def generate_pi2_rabi(self, name='pi2_then_rabi', tau_start = 10.0e-9, tau_step = 10.0e-9,
                                 pi2_phase_deg=0, num_of_points = 50, alternating=False):
         """
@@ -496,7 +494,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                                  dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
                                                  alternating=alternating, no_laser=no_laser,
-                                                 nv_order=order_nvs, end_pix_on_2=1, env_type_2=env_type,
+                                                 nv_order=order_nvs, end_pix_on_2=1, env_type_1=env_type, env_type_2=env_type,
                                                  read_phase_deg=read_phase)
             else:
                 return self.generate_deer_dd_par_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
@@ -699,10 +697,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
-                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=True,
-                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
-                                 nv_order="1,2", read_phase_deg=90, env_type_2=EnvelopeMethods.rectangle, no_laser=False):
+                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                             dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
+                             init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
+                             nv_order="1,2", read_phase_deg=90, env_type_1=EnvelopeMethods.rectangle,
+                             env_type_2=EnvelopeMethods.rectangle,
+                             alternating=True, no_laser=False):
         """
         Decoupling sequence on both NVs.
         Tau1 is kept constant and the second pi pulse is swept through.
@@ -712,7 +712,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             if on_nv == 1:
                 ampl_pi = ampls_on_1
-                env_type = EnvelopeMethods.rectangle
+                env_type = env_type_1
             elif on_nv == 2:
                 ampl_pi = ampls_on_2
                 env_type = env_type_2
