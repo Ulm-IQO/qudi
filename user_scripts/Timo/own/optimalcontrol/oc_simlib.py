@@ -132,6 +132,19 @@ class ArbPulse():
         else:
             raise RuntimeError("Should either have a single file or at least an ampl file.")
 
+    @property
+    def fname(self):
+        """
+        Give file name without extension. If pulse consists out of > 1 file (eg. "p_ampl.txt", "p_ph.txt"),
+        reduce to base name "p_".
+        :return:
+        """
+
+        # with file extension, strip folder directory
+        fnames = [os.path.basename(el) for el in self.file]
+
+        return os.path.commonprefix(fnames)
+
     def get_timegrid(self, unit=None):
         if unit is None:
             unit = self.timegrid_unit
@@ -316,22 +329,22 @@ class ArbPulse():
         return os.path.abspath(path + "/" + name + name_ampl), os.path.abspath(path + "/" + name + name_phase)
 
     @staticmethod
-    def load_pulse(folder, name, extension='txt', unit_t='s', unit_data='V',
+    def load_pulse(folder, fname, extension='txt', unit_t='s', unit_data='V',
                    func_ampl_v_2_omega_mhz=None, func_omega_mhz_2_ampl_v=None):
         pulse = ArbPulse()
-        pulse.load(folder, name, extension, unit_t, unit_data, func_ampl_v_2_omega_mhz, func_omega_mhz_2_ampl_v)
+        pulse.load(folder, fname, extension, unit_t, unit_data, func_ampl_v_2_omega_mhz, func_omega_mhz_2_ampl_v)
 
         return pulse
 
-    def load(self, folder, name, extension='txt', unit_t='s', unit_data='V',
-             func_ampl_v_2_omega_mhz=None, func_omega_mhz_2_ampl_v=None):
-        self.name = name
-        self._folder = folder
+    def load(self, folder, fname, extension='txt', unit_t='s', unit_data='V', func_ampl_v_2_omega_mhz=None,
+             func_omega_mhz_2_ampl_v=None):
+        self._folder = os.path.normpath(folder)
+        self.name = os.path.basename(self._folder) + "/" + fname
         self._func_ampl_v_2_omega_mhz = func_ampl_v_2_omega_mhz
         self._func_omega_mhz_2_ampl_v = func_omega_mhz_2_ampl_v
 
         if extension=='txt':
-            f_ampl, f_ph = ArbPulse.get_pulse_filename(os.path.abspath(folder), name=name)
+            f_ampl, f_ph = ArbPulse.get_pulse_filename(os.path.abspath(folder), name=fname)
 
             data_ampl = np.loadtxt(f_ampl)[:,1]
             t_ampl = np.loadtxt(f_ampl)[:,0]
@@ -346,7 +359,7 @@ class ArbPulse():
             self._file_phase = f_ph
 
         elif extension == 'npz':
-            file = os.path.abspath(folder) + "/" + name + ".npz"
+            file = os.path.abspath(folder) + "/" + fname + ".npz"
             data = np.load(file)
             t_ampl = data['time_grid1']
             data_ampl = data['pulse1']
@@ -465,9 +478,11 @@ class PredefinedArbPulses():
 
     @staticmethod
     def generate_rect_pi(omega, phase=0, n_t=1000, t_pulse=None):
+        return PredefinedArbPulses.generate_rect_pi_x(omega, pix=1, phase=phase, n_t=n_t, t_pulse=t_pulse)
+
+    @staticmethod
+    def generate_rect_pi_x(omega, pix=1, phase=0, n_t=1000, t_pulse=None):
         """
-        Generate a levitt pulse as a optimal control pulse file.
-        Assumes that quadratues I*sin(f_mw*t) + Q*cos(f_mw*t) are used in sampling.
         @param t_pulse: if None, auto length of pulse. Else zero pad to specified length.
         """
 
@@ -476,10 +491,10 @@ class PredefinedArbPulses():
         get_t_pix = PredefinedArbPulses.get_t_pix
         get_iq = PredefinedArbPulses.get_iq
 
-        tpi_us = get_t_pix(omega_mhz, pix=1)
+        tpi_x_us = get_t_pix(omega_mhz, pix=pix)
 
         if not t_pulse:
-            t_pulse = tpi_us
+            t_pulse = tpi_x_us
         else:
             t_pulse = 1e6 * t_pulse
 
@@ -489,9 +504,9 @@ class PredefinedArbPulses():
         data_phase = np.zeros((len(timegrid_us)))  # Q
 
         phases = [0 + phase]
-        tpulse_by_pi = [1]
+        tpulse_by_pi = [pix]
         # pad with zero amplitude/phase
-        if t_pulse != tpi_us:
+        if t_pulse != tpi_x_us:
             phases.append(0)
             tpulse_by_pi.append(0)
         # phases = [np.pi/2]
@@ -522,7 +537,7 @@ class PredefinedArbPulses():
         assert idx_end == n_t - 1
 
         pulse = ArbPulse()
-        pulse.name = 'rect_phi={phase/np.pi:.1f}pi'
+        pulse.name = f'rect_phi={phase/np.pi:.1f}pi'
 
         pulse.timegrid_unit = 'us'
         pulse.data_unit = 'MHz'
