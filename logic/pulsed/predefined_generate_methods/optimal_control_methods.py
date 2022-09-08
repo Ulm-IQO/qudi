@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
-from logic.pulsed.sampling_functions import SamplingFunctions
+from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
 from core.util.helpers import csv_2_list
 
 """
@@ -284,8 +284,27 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                         filename_amplitude='amplitude.txt', filename_phase='phase.txt',
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets',
                         t_gap=0e-9, phases='0', init_end_pix=0., init_end_phases_deg='0',
-                        vs_rect_pulse=True, alternating=True):
-
+                        dd_type=DDMethods.SE,
+                        vs_rect_pulse=True, symmetric_tgap=False, alternating=True):
+        """
+        @param name:
+        @param n_start:
+        @param n_step:
+        @param num_of_points:
+        @param filename_amplitude:
+        @param filename_phase:
+        @param folder_path:
+        @param t_gap:
+        @param phases: string of list of oc phase. Must provide init_end_phases_deg of same length.
+                       Repeat each datapoint with every element.
+        @param init_end_pix:
+        @param init_end_phases_deg:
+        @param dd_type: Add dd phase cycling within a n_rep.
+        @param vs_rect_pulse:
+        @param symmetric_tgap:
+        @param alternating:
+        @return:
+        """
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
@@ -309,6 +328,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         gap_element = self._get_idle_element(length=t_gap,
                                                  increment=0)
+        gap2_element = self._get_idle_element(length=t_gap/2,
+                                             increment=0)
         def pi_element(pix=1., phase=0, is_oc=False):
             pi_rect_element = self._get_mw_element(length=pix * self.rabi_period / 2,
                                                     increment=0,
@@ -337,12 +358,20 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             phase = phases[idx % len(phases)]
             phase_init_end = init_end_phases_deg[idx % len(phases)]
 
-            self.log.debug(f"Generating oc_nrep with n_pi= {n_pulses} oc phase= {phase} deg, "
+            self.log.debug(f"Generating oc_nrep ({dd_type.name}) with n_pi= {n_pulses} oc phase= {phase} deg, "
                            f"init_end_phase= {phase_init_end} deg")
 
             if init_end_pix != 0:
                 qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
-            qst_block.extend([pi_element(phase, is_oc=True), gap_element]*n_pulses)
+            if symmetric_tgap:
+                for idx_per_laser in range(n_pulses):
+                    phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                    self.log.debug(f"For sequence n_pulses= {n_pulses}, idx= {idx_per_laser}, phase= {phi_i}")
+                    qst_block.extend([gap2_element, pi_element(phase=phi_i, is_oc=True), gap2_element])
+            else:
+                for idx_per_laser in range(n_pulses):
+                    phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                    qst_block.extend([pi_element(phase=phi_i, is_oc=True), gap_element])
             if init_end_pix != 0:
                 # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
                 qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
@@ -361,7 +390,14 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             if vs_rect_pulse:
                 if init_end_pix != 0:
                     qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
-                qst_block.extend([pi_element(phase=phase, is_oc=False), gap_element] * n_pulses)
+                    for idx_per_laser in range(n_pulses):
+                        phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                        qst_block.extend(
+                            [gap2_element, pi_element(phase=phi_i, is_oc=False), gap2_element])
+                else:
+                    for idx_per_laser in range(n_pulses):
+                        phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                        qst_block.extend([pi_element(phase=phi_i, is_oc=False), gap_element])
                 if init_end_pix != 0:
                     # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
                     qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
