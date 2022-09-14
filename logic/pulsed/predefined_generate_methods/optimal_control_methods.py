@@ -285,7 +285,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets',
                         t_gap=0e-9, phases='0', init_end_pix=0., init_end_phases_deg='0',
                         dd_type=DDMethods.SE,
-                        vs_rect_pulse=True, symmetric_tgap=False, alternating=True):
+                        vs_rect_pulse=True, symmetric_tgap=False,
+                        alternating=True, alternating_end_phase=False):
         """
         @param name:
         @param n_start:
@@ -308,6 +309,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
+
+        assert not (alternating and alternating_end_phase)
 
         phases = csv_2_list(phases)
         init_end_phases_deg = csv_2_list(init_end_phases_deg)
@@ -375,12 +378,36 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             if init_end_pix != 0:
                 # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
                 qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
+            elif init_end_pix == 0:
+                qst_block.append(pi_element(pix=1, phase=0))
             qst_block.append(laser_element)
             qst_block.append(waiting_element)
 
             if alternating:
                 qst_block.append(laser_element)
                 qst_block.append(waiting_element)
+            if alternating_end_phase:
+                if init_end_pix != 0:
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+                if symmetric_tgap:
+                    for idx_per_laser in range(n_pulses):
+                        phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                        qst_block.extend([gap2_element, pi_element(phase=phi_i, is_oc=True), gap2_element])
+                else:
+                    for idx_per_laser in range(n_pulses):
+                        phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                        qst_block.extend([pi_element(phase=phi_i, is_oc=True), gap_element])
+                if init_end_pix != 0:
+                    # no X, -X pulse eerror correction possible for alternating_end_phase
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180 + 180))
+                elif init_end_pix == 0:
+                    qst_block.append(pi_element(pix=1, phase=0))
+                if init_end_pix != 0 and init_end_pix != 0.5:
+                    self.log.warning(f"Alternating end_phase only well defined for init_end_pix=0/0.5, not {init_end_pix}.")
+
+            qst_block.append(laser_element)
+            qst_block.append(waiting_element)
+
 
         # compare against rect pulses (negative x axis)
         for idx, n_pulses in enumerate(n_array):
@@ -407,6 +434,26 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                 if alternating:
                     qst_block.append(laser_element)
                     qst_block.append(waiting_element)
+                if alternating_end_phase:
+                    if init_end_pix != 0:
+                        qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+                        for idx_per_laser in range(n_pulses):
+                            phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                            qst_block.extend(
+                                [gap2_element, pi_element(phase=phi_i, is_oc=False), gap2_element])
+                    else:
+                        for idx_per_laser in range(n_pulses):
+                            phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                            qst_block.extend([pi_element(phase=phi_i, is_oc=False), gap_element])
+                    if init_end_pix != 0:
+                        # no X, -X pulse eerror correction possible for alternating_end_phase
+                        qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180 + 180))
+                    elif init_end_pix == 0:
+                        qst_block.append(pi_element(pix=1, phase=0))
+                    else:
+                        pass
+                    qst_block.append(laser_element)
+                    qst_block.append(waiting_element)
 
 
         created_blocks.append(qst_block)
@@ -420,12 +467,12 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # add metadata to invoke settings later on
         n_lasers = len(n_array)
-        n_lasers = 2*n_lasers if alternating else n_lasers
+        n_lasers = 2*n_lasers if (alternating or alternating_end_phase) else n_lasers
         n_lasers = 2*n_lasers if vs_rect_pulse else n_lasers
         # rect pulses have negative repetition number n
         x_axis = list(n_array)
         x_axis = list(n_array) + list(-n_array) if vs_rect_pulse else x_axis
-        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['alternating'] = (alternating or alternating_end_phase)
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = x_axis
         block_ensemble.measurement_information['units'] = ('', '')
