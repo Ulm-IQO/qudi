@@ -1,0 +1,2 @@
+fom_func_volt_2_rabi = lambda y: y/ampl_rect*(1e-6/t_rabi_rect)
+ {'t_rabi_rect': 4.803e-08, 't_oc_pulse': 1.01e-07, 'ampl_max': 0.23, 'ampl_rect': 0.25,}
