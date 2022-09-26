@@ -385,6 +385,101 @@ class ArbPulse():
         else:
             raise ValueError(f"Don't understand units (t/data): {unit_t}, {unit_data}")
 
+    def interpolate_2_timegrid(self, timegrid_new, timegrid_unit='s'):
+        """
+        Put pulse on new timegrid.
+        If pulse shorter than new timegrid, zero pad. Else raise.
+        """
+        amplitude_func = interpolate.interp1d(self.timegrid, self.get_data_ampl(unit=self.data_unit),
+                                                    fill_value=0, bounds_error=False)
+        phase_func = interpolate.interp1d(self.timegrid, self.get_data_phase(unit=self.data_unit),
+                                                fill_value=0, bounds_error=False)
+
+        if timegrid_unit != self.timegrid_unit:
+            raise NotImplemented  # may rescale the old pulse first
+        if timegrid_new[-1] < self.timegrid[-1]:
+            # this would work, but probably not intended
+            raise ValueError("Too short new timegrid would cut pulse.")
+
+        self._data_ampl = amplitude_func(timegrid_new - timegrid_new[0])
+        self._data_phase = phase_func(timegrid_new - timegrid_new[0])
+        self._timegrid_ampl = timegrid_new
+        self._timegrid_phase = timegrid_new
+
+
+    def __copy__(self):
+        """
+        (deep) copy pulse. Keep data.
+        """
+        pulse_new = cp.deepcopy(self)
+
+        # invalidate old data fields
+        pulse_new._folder = None
+        pulse_new._file = None
+        pulse_new._file_ampl = None
+        pulse_new._file_phase = None
+
+        return pulse_new
+
+    @staticmethod
+    def shift_phase(pulse, phi_rad):
+
+        pulse_new = cp.copy(pulse)
+        if phi_rad % (2 * np.pi) == 0:
+            pass
+        elif phi_rad % (2 * np.pi) == np.pi / 2:
+            pulse_new._data_ampl = pulse._data_phase
+            pulse_new._data_phase = pulse._data_ampl
+        elif phi_rad % (2 * np.pi) == np.pi:
+            pulse_new._data_ampl = -pulse._data_ampl
+            pulse_new._data_phase = -pulse._data_phase
+        elif phi_rad % (2 * np.pi) == 3 * np.pi / 2:
+            pulse_new._data_ampl = -pulse._data_phase
+            pulse_new._data_phase = -pulse._data_ampl
+        else:
+            raise ValueError
+
+        return pulse_new
+
+    @staticmethod
+    def concatenate(pulse1, pulse2):
+
+        if pulse1 is None:
+            return cp.copy(pulse2)
+        if pulse2 is None:
+            return cp.copy(pulse1)
+
+        pulse1 = cp.copy(pulse1)
+        pulse2 = cp.copy(pulse2)
+        pulse1.set_unit_time('s')
+        pulse2.set_unit_time('s')
+        data_unit = pulse1.data_unit
+
+        # take finer timegrid for new pulse
+        dt1 = pulse1.get_timegrid(unit='s')[1] - pulse1.get_timegrid(unit='s')[0]
+        dt2 = pulse2.get_timegrid(unit='s')[1] - pulse2.get_timegrid(unit='s')[0]
+        dt = dt1 if dt1 < dt2 else dt2
+        t_pulse1 = pulse1.get_timegrid(unit='s')[-1]
+        t_pulse2 = pulse2.get_timegrid(unit='s')[-1]
+        timegrid_new = np.arange(0, t_pulse1 + t_pulse2, dt)
+
+        # put pulses on same timegrid
+        pulse1.interpolate_2_timegrid(timegrid_new, timegrid_unit='s')
+        pulse2.interpolate_2_timegrid(timegrid_new, timegrid_unit='s')
+
+        # shift pulse2 on new timegrid
+        # todo: this probably can cause some rounding issues
+        idx_p1 = np.argmin(abs(timegrid_new - t_pulse1))
+        idx_p2 = len(timegrid_new) - idx_p1
+
+        pulse1._data_ampl[idx_p1:] = pulse2.get_data_ampl(unit=data_unit)[0:idx_p2]
+        pulse1._data_phase[idx_p1:] = pulse2.get_data_phase(unit=data_unit)[0:idx_p2]
+
+        del pulse2
+        return pulse1
+
+
+
 class PredefinedArbPulses():
 
     @staticmethod
@@ -403,6 +498,18 @@ class PredefinedArbPulses():
     @staticmethod
     def get_t_pix(omega, pix=1):
         return 0.5*pix/omega
+
+    @staticmethod
+    def generate_idle(t_idle=10e-9, n_timebins=10):
+        idle_pulse = PredefinedArbPulses.generate_rect_pi(1e6, n_t=n_timebins, t_pulse=t_idle)
+        idle_pulse.name = 'idle'
+
+        idle_pulse._data_ampl[:] = 0
+        idle_pulse._data_phase[:] = 0
+        idle_pulse._func_ampl_v_2_omega_mhz = lambda x: 0 * x
+        idle_pulse._func_omega_mhz_2_ampl_v = lambda x: 0 * x
+
+        return idle_pulse
 
     @staticmethod
     def generate_levitt(omega, phase=0, n_t=1000, t_pulse=None):
@@ -610,8 +717,51 @@ class TimeDependentSimulation():
 
         return H_list
 
+    def run_sim(self, pulse, B_gauss, sim_params, delta_f=0e6, nv_init_ux=None, nv_read_ux=None,
+                  n_timebins=None, t_idle_extension=-1e-9):
 
-    def run_sim_fsweep(self, freq_array, pulse, B_gauss, sim_params, n_timebins=500, t_idle_extension=-1e-9):
+        # for compability reason, accept pulse as dict or ArbPulse object
+        # if supplying a dict, you are responsible for correct units!
+        if type(pulse) == ArbPulse:
+            pulse.set_unit_time('us')
+            pulse.set_unit_data('MHz')
+            pulse = pulse.as_dict()
+
+        if n_timebins is None:
+            n_timebins = len(pulse['timegrid_ampl'])
+
+        B = B_gauss
+        simp = sim_params
+        oc_length = pulse['timegrid_ampl'][-1] + t_idle_extension*1e6
+        delta_f_mhz = delta_f*1e-6
+
+        t = np.linspace(0, oc_length, n_timebins)
+        options=qutip.Options(atol=1e-15, rtol=1e-15, nsteps=1e8, store_final_state=True)
+
+        init_state = simp.rho_ms0
+        if nv_init_ux is not None:
+            u = np.asarray(nv_init_ux)
+            init_state = np.matmul(np.matmul(u,init_state),u.conj().T)
+            init_state = qutip.Qobj(init_state, dims=sim_params.dims)
+
+        freq = simp.D - simp.gamma_nv * B
+
+        # perform the measurement
+        oc_el = TimeDependentSimulation.oc_element(t, pulse['timegrid_ampl'], pulse['data_ampl'], pulse['data_phase'],
+                                                   freq+delta_f_mhz, B, 1, simp)
+        results_measurement = qutip.mesolve(oc_el, init_state, t, [], [simp.P_nv],
+                                                options=options, progress_bar=None)
+
+        rho_final = results_measurement.final_state
+        if nv_read_ux is not None:
+            u = np.asarray(nv_read_ux)
+            rho_final = np.matmul(np.matmul(u,rho_final),u.conj().T)
+            rho_final = qutip.Qobj(rho_final, dims=sim_params.dims)
+
+        return rho_final
+
+    def run_sim_fsweep(self, freq_array, pulse, B_gauss, sim_params, n_timebins=None, t_idle_extension=-1e-9,
+                       ampl_err=0):
 
         # for compability reason, accept pulse as dict or ArbPulse object
         # if supplying a dict, you are responsible for correct units!
@@ -619,6 +769,9 @@ class TimeDependentSimulation():
             pulse.set_unit_time('µs')
             pulse.set_unit_data('MHz')
             pulse = pulse.as_dict()
+
+        if n_timebins is None:
+            n_timebins = len(pulse['timegrid_ampl'])
 
         B = B_gauss
         simp = sim_params
@@ -632,14 +785,15 @@ class TimeDependentSimulation():
         # perform the measurement
         data_freq_detuning = np.zeros(len(freq_array))
         for idx,freq in enumerate(freq_array):
-            oc_el = TimeDependentSimulation.oc_element(t, pulse['timegrid_ampl'], pulse['data_ampl'], pulse['data_phase'], freq, B, 1, simp)
+            oc_el = TimeDependentSimulation.oc_element(t, pulse['timegrid_ampl'], pulse['data_ampl'], pulse['data_phase'],
+                                                       freq, B, 1+ampl_err, simp)
             results_measurement = qutip.mesolve(oc_el, init_state, t, [], [simp.P_nv],
                                                 options=options, progress_bar=None)
             data_freq_detuning[idx] = results_measurement.expect[0][-1]
 
         return data_freq_detuning
 
-    def run_sim_ampsweep(self, amp_array, pulse, B_gauss, sim_params, n_timebins=500, t_idle_extension=-1e-9):
+    def run_sim_ampsweep(self, amp_array, pulse, B_gauss, sim_params, n_timebins=None, t_idle_extension=-1e-9):
 
         # for compability reason, accept pulse as dict or ArbPulse object
         # if supplying a dict, you are responsible for correct units!
@@ -647,6 +801,9 @@ class TimeDependentSimulation():
             pulse.set_unit_time('µs')
             pulse.set_unit_data('MHz')
             pulse = pulse.as_dict()
+
+        if n_timebins is None:
+            n_timebins = len(pulse['timegrid_ampl'])
 
         B = B_gauss
         simp = sim_params
