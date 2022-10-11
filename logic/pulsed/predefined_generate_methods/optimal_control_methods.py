@@ -95,6 +95,66 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         return mw_oc_element_RedCrab
 
+    def _get_mw_element_oc_multi(self, length, amplitude_scaling, freqs, phases, fnames_i,
+                                   fnames_q, folder_path):
+        """
+        Creates an OC MW pulse PulseBlockElement with multiple carriers. Provided oc files must have same length.
+        """
+
+        n_carriers = min(len(freqs), len(phases))
+        if not (len(phases) == len(freqs) == len(fnames_i) == len(fnames_q)):
+            raise ValueError("Input arrays must be of same length.")
+
+        if not length:
+            lengthes = []
+            for file in fnames_i:
+                lengthes.append(self._get_oc_pulse_length(file, folder_path))
+            if len(np.unique(lengthes)) != 1:
+                raise ValueError(f"Provided oc pulses not of same length, but {lengthes}")
+            length = lengthes[0]
+
+        if self.microwave_channel.startswith('d'):
+            self.log.error('Please choose a analog output! The optimized pulse cannot be generated for a digital '
+                           'channel!'
+                           '\n Returning a idle element instead!')
+
+            mw_oc_element_RedCrab = self._get_idle_element(
+                length=length,
+                increment=0)
+
+        else:
+            mw_oc_element_RedCrab = self._get_idle_element(
+                length=length,
+                increment=0)
+
+            if n_carriers == 1:
+                mw_oc_element_RedCrab.pulse_function[self.microwave_channel] = SamplingFunctions.OC_RedCrab(
+                    amplitude_scaling=amplitude_scaling,
+                    frequency=freqs[0],
+                    phase=phases[0],
+                    filename_amplitude=fnames_i[0],
+                    filename_phase=fnames_q[0],
+                    folder_path=folder_path
+                )
+            elif n_carriers == 2:
+                mw_oc_element_RedCrab.pulse_function[self.microwave_channel] = SamplingFunctions.OC_DoubleCarrierSum(
+                    amplitude_scaling_1=amplitude_scaling,
+                    amplitude_scaling_2=amplitude_scaling,
+                    frequency_1=freqs[0],
+                    phase_1=phases[0],
+                    frequency_2=freqs[1],
+                    phase_2=phases[1],
+                    filename_i_1=fnames_i[0],
+                    filename_q_1=fnames_q[0],
+                    filename_i_2=fnames_i[1],
+                    filename_q_2=fnames_q[1],
+                    folder_path=folder_path
+                )
+            else:
+                raise NotImplementedError
+
+        return mw_oc_element_RedCrab
+
     ####################################################################################################################
     # State to State Transfer
     ####################################################################################################################
@@ -124,6 +184,54 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                         filename_amplitude=filename_amplitude,
                                                         filename_phase=filename_phase,
                                                         folder_path=folder_path)
+
+        # Create block and append to created_blocks list
+        qst_block = PulseBlock(name=name)
+        qst_block.append(oc_mw_element)
+        created_blocks.append(qst_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((qst_block.name, 0))
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = np.arange(1)
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 0
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_oc_mw_multi_only(self, name='optimal_mw_pulse',  mw_freqs='1e9', phases='0',
+                            filename_i='amplitude.txt', filename_q='phase.txt',
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets'):
+
+        """
+        wrapper to make _get_mw_element_oc_RedCrab available to sequence methods in other generate method files
+        """
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        mw_freqs = csv_2_list(mw_freqs)
+        phases = csv_2_list(phases)
+        filename_i = csv_2_list(filename_i, str_2_val=str)
+        filename_q = csv_2_list(filename_q, str_2_val=str)
+
+        # create the optimized mw element
+        oc_mw_element = self._get_mw_element_oc_multi(length=None,
+                                                      amplitude_scaling=1,
+                                                      freqs=mw_freqs, phases=phases,
+                                                      fnames_i=filename_i,
+                                                      fnames_q=filename_q,
+                                                      folder_path=folder_path)
 
         # Create block and append to created_blocks list
         qst_block = PulseBlock(name=name)
