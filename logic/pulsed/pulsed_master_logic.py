@@ -588,7 +588,7 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['benchmark_busy'] = False
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True, subdir=None, timestamp=timestamp):
+                              save_figure=True, subdir=None, timestamp=None):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
