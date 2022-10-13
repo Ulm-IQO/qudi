@@ -41,7 +41,7 @@ class TomoInit(IntEnum):
     ent_create_bell_bycnot = 11
     ux90_on_1_uy90_on_2 = 12
     ux90_on_1_ux180_on_2 = 13
-
+    #rand_bench = 14
 
 class OptimalControlPulse():
     def __init__(self, on_nv=1, pi_x=1, file_i=None, file_q=None):
@@ -366,7 +366,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                   kwargs_dict=cnot_kwargs,
                                                                   alternating=False, no_laser=True)
         ent_create_bycnot_element = ent_create_bycnot_element[0]
-
+        #seq_chain: created by Roberto
+        # create a copy of generateTomography
+        # seq_chain = generate_sequenceChain(num_of_sequence=1,name_seq = TomoInit.None)
+        # Definition of function generate_sequenceChain
         init_elements, rot_elements = [], []
         if init_state:
             if init_state == TomoInit.none:
@@ -395,6 +398,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif init_state == TomoInit.ux90_on_1_ux180_on_2:
                 init_elements = pi2_on_1_element
                 init_elements.extend(pi_on_2_element)
+            #elif init_state == TomoInit.rand_bench: Roberto This will be used later for random benchmarking
+            #   init_elements = sequence_chain # Later for use: seq1 should be concatenated
             #elif init_state == TomoInit.ent_create_bell:
             #    init_elements = ent_create_element
             elif init_state == TomoInit.ent_create_bell_bycnot:
