@@ -1251,7 +1251,7 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     @QtCore.Slot(str, bool)
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True, subdir=None):
+                              save_figure=True, subdir=None, timestamp=None):
         """
         Prepare data to be saved and create a proper plot of the data
 
@@ -1266,7 +1266,8 @@ class PulsedMeasurementLogic(GenericLogic):
         filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
         if subdir is not None:
             filepath = filepath + '/' + subdir + '/'
-        timestamp = datetime.datetime.now()
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
 
         #####################################################################
         ####                Save extracted laser pulses                  ####

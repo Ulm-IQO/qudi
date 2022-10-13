@@ -524,9 +524,11 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     global qm_dict_final
     qm_dict_final = qm_dict
 
+    timestamp = datetime.datetime.now()
+
     if save_tag is not None:
         logger.debug("Saving logic essential params to {}/{}".format(save_subdir, save_tag))
-        save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir)
+        save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir, timestamp=timestamp)
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment'] != 'No fit':
         try:
@@ -534,7 +536,8 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
         except BaseException as e:
             logger.exception("Fit failed: ")
     if save_tag is not None:
-        pulsedmasterlogic.save_measurement_data(save_tag, with_error=True, subdir=save_subdir)
+        pulsedmasterlogic.save_measurement_data(save_tag, with_error=True, subdir=save_subdir,
+                                                timestamp=timestamp)
     time.sleep(1)
 
     return user_terminated
@@ -893,10 +896,11 @@ def external_mw_measurement(qm_dict):
 
 #########################################  Save methods ############################################
 
-def save_parameters(save_tag='', save_dict=None, subdir=None):
+def save_parameters(save_tag='', save_dict=None, subdir=None, timestamp=None):
 
     global save_subdir
-    timestamp = datetime.datetime.now()
+    if timestamp is None:
+        timestamp = datetime.datetime.now()
 
     if save_tag is None:
         return  # don't save anything
