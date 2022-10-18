@@ -1254,6 +1254,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
                                                    pi_x_length=init_pix_on_1, no_amps_2_idle=False,
                                                    env_type=env_type_1, on_nv=1)
+        pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False,
+                                                   env_type=EnvelopeMethods.rectangle)
+        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False,
+                                                   env_type=EnvelopeMethods.rectangle)
 
         # read phase opposite to canonical DD: 0->0 on no phase evolution
         pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
