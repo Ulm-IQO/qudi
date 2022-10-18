@@ -1018,9 +1018,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
         pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=False)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False,
+                                                   env_type=env_type_2, on_nv=2)
         pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
-                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False)
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False,
+                                                   env_type=env_type_1, on_nv=1)
 
         # read phase opposite to canonical DD: 0->0 on no phase evolution
         pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
@@ -1043,7 +1045,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if end_pix_on_2 != 0:
             pix_end_on2_element = self.get_pi_element(dd_type.phases[0], mw_freqs, ampls_on_2,
                                                       rabi_periods,
-                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                      env_type=env_type_2, on_nv=2)
             tauhalf_last_pspacing -= MultiNV_Generator.get_element_length(pix_end_on2_element)
 
 
@@ -1087,9 +1090,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
                 if last:
                     if end_pix_on_2 != 0:
-                        # todo: for env_type_2 != rect this will still generate rect pulses (not oc)
                         pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
-                                                                  rabi_periods,
+                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
                                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                         dd_block.extend(pix_end_on2_element)
                 else:
@@ -1120,7 +1122,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         if end_pix_on_2 != 0:
                             pix_end_on2_element = self.get_pi_element(dd_type.phases[pulse_number], mw_freqs,
                                                                       ampls_on_2,
-                                                                      rabi_periods,
+                                                                      rabi_periods, env_type=env_type_2, on_nv=2,
                                                                       pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                             dd_block.extend(pix_end_on2_element)
                     else:
@@ -2348,7 +2350,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             on_nv = [on_nv]
 
         if not (len(phases) == len(freqs) == len(on_nv)):
-            raise ValueError("Optimal pulses require same length of phase, freq, on_nv arrays.")
+            raise ValueError(f"Optimal pulses require same length of phase= {phases}, freq= {freqs},"
+                             f" on_nv= {on_nv} arrays.")
 
         file_i, file_q = [],[]
         for nv in on_nv:
@@ -2427,9 +2430,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         assert len(fs) == len(amps) == len(phases) == len(lenghts)
 
+        if pi_x_length == 0.:
+            return []
+
         if env_type == EnvelopeMethods.rectangle:
             if on_nv != None:
-                raise ValueError(f"On_nv= {on_nv} parameter should only be used for envelope optimal, not {env_type.name}")
+                self.log.warning(f"On_nv= {on_nv} parameter ignored for envelope {env_type.name}")
             return self._get_multiple_mw_mult_length_element(lengths=lenghts,
                                                              increments=0,
                                                              amps=amps,
