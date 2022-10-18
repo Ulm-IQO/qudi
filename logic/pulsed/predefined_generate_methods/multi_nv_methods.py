@@ -1008,9 +1008,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
         pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=False)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False,
+                                                   env_type=env_type_2, on_nv=2)
         pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
-                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False)
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False,
+                                                   env_type=env_type_1, on_nv=1)
 
         # read phase opposite to canonical DD: 0->0 on no phase evolution
         pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
@@ -1033,7 +1035,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if end_pix_on_2 != 0:
             pix_end_on2_element = self.get_pi_element(dd_type.phases[0], mw_freqs, ampls_on_2,
                                                       rabi_periods,
-                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                      env_type=env_type_2, on_nv=2)
             tauhalf_last_pspacing -= MultiNV_Generator.get_element_length(pix_end_on2_element)
 
 
@@ -1077,9 +1080,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
                 if last:
                     if end_pix_on_2 != 0:
-                        # todo: for env_type_2 != rect this will still generate rect pulses (not oc)
                         pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
-                                                                  rabi_periods,
+                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
                                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                         dd_block.extend(pix_end_on2_element)
                 else:
@@ -1110,7 +1112,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         if end_pix_on_2 != 0:
                             pix_end_on2_element = self.get_pi_element(dd_type.phases[pulse_number], mw_freqs,
                                                                       ampls_on_2,
-                                                                      rabi_periods,
+                                                                      rabi_periods, env_type=env_type_2, on_nv=2,
                                                                       pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                             dd_block.extend(pix_end_on2_element)
                     else:
@@ -2255,6 +2257,55 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+
+    def generate_oc_pi_ampl(self, name='oc_ampl', on_nv=1,
+                            ampl_start=0., ampl_step=0.1, num_of_points=20):
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        ampl_array = ampl_start + np.arange(num_of_points) * ampl_step
+
+        # create the laser_mw element
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        rabi_block = PulseBlock(name=name)
+        for ampl in ampl_array:
+            mw_element = self._get_pi_oc_element([0], [self.microwave_frequency], on_nv=on_nv,
+                                                 scale_ampl=ampl)
+            rabi_block.extend(mw_element)
+            rabi_block.append(laser_element)
+            rabi_block.append(delay_element)
+            rabi_block.append(waiting_element)
+        created_blocks.append(rabi_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((rabi_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = ampl_array
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('rel. ampl.', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
     def get_mult_mw_element(self, phase, length, mw_freqs, mw_amps, increment=0):
         """
         Mw element on multiple lines (freqs) with same length on every of these.
@@ -2283,13 +2334,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                          freqs=fs,
                                                          phases=phases)
 
-    def _get_pi_oc_element(self, phases, freqs, on_nv=[1], pi_x_length=1):
+    def _get_pi_oc_element(self, phases, freqs, on_nv=[1], pi_x_length=1, scale_ampl=1):
 
         if isinstance(on_nv, (int, float)):
             on_nv = [on_nv]
 
         if not (len(phases) == len(freqs) == len(on_nv)):
-            raise ValueError("Optimal pulses require same length of phase, freq, on_nv arrays.")
+            raise ValueError(f"Optimal pulses require same length of phase= {phases}, freq= {freqs},"
+                             f" on_nv= {on_nv} arrays.")
 
         file_i, file_q = [],[]
         for nv in on_nv:
@@ -2306,7 +2358,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         generate_method = self._get_generation_method('oc_mw_multi_only')
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(freqs), phases=self.list_2_csv(phases),
                                           filename_i=self.list_2_csv(file_i), filename_q=self.list_2_csv(file_q),
-                                          folder_path=self.optimal_control_assets_path)
+                                          folder_path=self.optimal_control_assets_path,
+                                          scale_ampl=scale_ampl)
 
 
 
@@ -2367,9 +2420,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         assert len(fs) == len(amps) == len(phases) == len(lenghts)
 
+        if pi_x_length == 0.:
+            return []
+
         if env_type == EnvelopeMethods.rectangle:
             if on_nv != None:
-                raise ValueError(f"On_nv= {on_nv} parameter should only be used for envelope optimal, not {env_type.name}")
+                self.log.warning(f"On_nv= {on_nv} parameter ignored for envelope {env_type.name}")
             return self._get_multiple_mw_mult_length_element(lengths=lenghts,
                                                              increments=0,
                                                              amps=amps,
