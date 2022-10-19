@@ -2495,11 +2495,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_oc_pi_ampl(self, name='oc_ampl', on_nv=1,
-                            ampl_start=0., ampl_step=0.1, num_of_points=20):
+    def generate_oc_pi_ampl(self, name='oc_ampl', on_nv='1',
+                            ampl_start=0., ampl_step=0.1, num_of_points=20,
+                            f_mw_2=""):
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
+
+        on_nv = csv_2_list(on_nv)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
 
         # get tau array for measurement ticks
         ampl_array = ampl_start + np.arange(num_of_points) * ampl_step
@@ -2513,15 +2517,38 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)
-        for ampl in ampl_array:
-            mw_element = self._get_pi_oc_element([0], [self.microwave_frequency], on_nv=on_nv,
-                                                 scale_ampl=ampl)
-            rabi_block.extend(mw_element)
-            rabi_block.append(laser_element)
-            rabi_block.append(delay_element)
-            rabi_block.append(waiting_element)
-        created_blocks.append(rabi_block)
+        if len(on_nv) == 1:
+            xaxis = ampl_array
+            for ampl in ampl_array:
+                mw_element = self._get_pi_oc_element([0], [self.microwave_frequency], on_nv=on_nv,
+                                                     scale_ampl=ampl)
+                rabi_block.extend(mw_element)
+                rabi_block.append(laser_element)
+                rabi_block.append(delay_element)
+                rabi_block.append(waiting_element)
+            created_blocks.append(rabi_block)
+        elif len(on_nv) == 2:
+            xaxis, xaxis_virt = [], []
+            idx = 0
+            for ampl_1 in ampl_array:
+                for ampl_2 in ampl_array:
 
+                    mw_element = self._get_pi_oc_element([0, 0], mw_freqs, on_nv=on_nv,
+                                                         scale_ampl=[ampl_1, ampl_2])
+                    rabi_block.extend(mw_element)
+                    rabi_block.append(laser_element)
+                    rabi_block.append(delay_element)
+                    rabi_block.append(waiting_element)
+
+                    xaxis.append(idx)
+                    xaxis_virt.append((ampl_1, ampl_2))
+                    idx += 1
+
+            xaxis = np.asarray(xaxis)
+            created_blocks.append(rabi_block)
+
+        else:
+            raise ValueError(f"On_nv= {on_nv} has wrong length.")
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
         block_ensemble.append((rabi_block.name, 0))
@@ -2532,10 +2559,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = ampl_array
+        block_ensemble.measurement_information['controlled_variable'] = xaxis
+        block_ensemble.measurement_information['virtual controlled variable'] = xaxis_virt
         block_ensemble.measurement_information['units'] = ('', '')
-        block_ensemble.measurement_information['labels'] = ('rel. ampl.', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['labels'] = ('rel. ampl.', 'Signal') if len(on_nv) == 1 else ('idx', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = len(xaxis)
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 
@@ -2571,10 +2599,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                          freqs=fs,
                                                          phases=phases)
 
-    def _get_pi_oc_element(self, phases, freqs, on_nv=[1], pi_x_length=1, scale_ampl=1):
+    def _get_pi_oc_element(self, phases, freqs, on_nv=[1], pi_x_length=1, scale_ampl=[1]):
 
         if isinstance(on_nv, (int, float)):
             on_nv = [on_nv]
+        if isinstance(scale_ampl, (int, float)):
+            scale_ampl = [scale_ampl]
+
+        if not (len(scale_ampl) == len(on_nv)):
+            raise ValueError(f"Optimal pulses require same length of on_nv= {on_nv} and scale= {scale_ampl}")
 
         if not (len(phases) == len(freqs) == len(on_nv)):
             raise ValueError(f"Optimal pulses require same length of phase= {phases}, freq= {freqs},"
@@ -2596,7 +2629,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(freqs), phases=self.list_2_csv(phases),
                                           filename_i=self.list_2_csv(file_i), filename_q=self.list_2_csv(file_q),
                                           folder_path=self.optimal_control_assets_path,
-                                          scale_ampl=scale_ampl)
+                                          scale_ampl=self.list_2_csv(scale_ampl))
 
 
 
