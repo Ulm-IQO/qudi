@@ -2644,7 +2644,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     def generate_oc_pi_ampl(self, name='oc_ampl', on_nv='1',
                             ampl_start=0., ampl_step=0.1, num_of_points=20,
-                            f_mw_2=""):
+                            f_mw_2="", alternating_nfac=2, alternating_nx=False):
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
@@ -2673,7 +2673,16 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rabi_block.append(laser_element)
                 rabi_block.append(delay_element)
                 rabi_block.append(waiting_element)
+                if alternating_nfac:
+                    for n in range(int(alternating_nfac)-1):
+                        rabi_block.extend(mw_element)
+                    rabi_block.append(laser_element)
+                    rabi_block.append(delay_element)
+                    rabi_block.append(waiting_element)
+
+
             created_blocks.append(rabi_block)
+
         elif len(on_nv) == 2:
             xaxis, xaxis_virt = [], []
             idx = 0
@@ -2687,15 +2696,26 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     rabi_block.append(delay_element)
                     rabi_block.append(waiting_element)
 
+                    if alternating_nx:
+                        for n in range(int(alternating_nfac)-1):
+                            rabi_block.extend(mw_element)
+                        rabi_block.append(laser_element)
+                        rabi_block.append(delay_element)
+                        rabi_block.append(waiting_element)
+
                     xaxis.append(idx)
                     xaxis_virt.append((ampl_1, ampl_2))
                     idx += 1
 
             xaxis = np.asarray(xaxis)
+
             created_blocks.append(rabi_block)
 
         else:
             raise ValueError(f"On_nv= {on_nv} has wrong length.")
+
+
+
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
         block_ensemble.append((rabi_block.name, 0))
@@ -2704,14 +2724,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['alternating'] = alternating_2x
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = xaxis
         if len(on_nv) == 2:
             block_ensemble.measurement_information['virtual controlled variable'] = xaxis_virt
         block_ensemble.measurement_information['units'] = ('', '')
         block_ensemble.measurement_information['labels'] = ('rel. ampl.', 'Signal') if len(on_nv) == 1 else ('idx', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = len(xaxis)
+        block_ensemble.measurement_information['number_of_lasers'] = 2*len(xaxis) if alternating_2x else len(xaxis)
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 
