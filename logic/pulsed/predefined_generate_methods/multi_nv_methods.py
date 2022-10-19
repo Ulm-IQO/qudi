@@ -731,7 +731,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 return self.generate_deer_dd_par_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                      f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                      dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
-                                     nv_order=order_nvs, end_pix_on_2=1,
+                                     nv_order=order_nvs, end_pix_on_2=0,
                                      read_phase_deg=read_phase)
 
         else:
@@ -940,6 +940,125 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['controlled_variable'] = tau_array * dd_order * dd_type.suborder
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('t_evol', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_deer_dd_par_tau_interm(self, name='deer_dd_par_tau', tau=1e-6, num_of_points=50,
+                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                                 dd_type=DDMethods.SE, dd_order=1, alternating=True,
+                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90,
+                                 env_type=EnvelopeMethods.rectangle, no_laser=False):
+        """
+        Decoupling sequence on both NVs.
+        In contrast to 'normal' DEER, the position of the pi on NV2 is not swept. Instead, the pi pulses on NV1 & NV2
+        are varied in parallel
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order, n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order, n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2, order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2, order_nvs=nv_order)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
+
+        # get tau array for measurement ticks
+        n_pi = dd_type.suborder * dd_order
+        n_pi_array = np.asarray(range(n_pi)) + 1
+        num_of_points = len(n_pi_array)
+        start_tau_pspacing = self.tau_2_pulse_spacing(tau)  # todo: considers only t_rabi of NV1
+
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+        pihalf_on1_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_1, rabi_periods=rabi_periods,
+                                                pi_x_length=1/2, no_amps_2_idle=True)
+        pix_init_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+        pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False,
+                                                   env_type=env_type, on_nv=2)
+        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False,
+                                                   env_type=env_type, on_nv=1)
+        pix_end_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
+                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=False)
+
+        pihalf_on1_read_element = self.get_pi_element(read_phase_deg, mw_freqs, mw_amps=ampls_on_1,
+                                                      rabi_periods=rabi_periods,
+                                                      pi_x_length=1/2, no_amps_2_idle=True)
+        pihalf_on1_alt_read_element = self.get_pi_element(180+read_phase_deg,
+                                                          mw_freqs, mw_amps=ampls_on_1,
+                                                          rabi_periods=rabi_periods,
+                                                          pi_x_length=1/2, no_amps_2_idle=True)
+
+        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
+
+            if on_nv != [1,2]:
+                raise NotImplementedError("Swapping order not supporte yet")
+
+            if env_type == EnvelopeMethods.optimal:
+                return self.get_pi_element(xphase, mw_freqs, amplitudes, rabi_periods,
+                                           pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                           env_type=env_type, on_nv=on_nv)
+            else:
+                return self.get_pi_element(xphase, mw_freqs, amplitudes, rabi_periods,
+                                       pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle)
+
+
+
+        tauhalf_element = self._get_idle_element(length=start_tau_pspacing / 2, increment=0 / 2)
+        tau_element = self._get_idle_element(length=start_tau_pspacing, increment=0)
+
+        # Create block and append to created_blocks list
+        dd_block = PulseBlock(name=name)
+        for n_pi in np.asarray(range(n_pi)) + 1:
+            idx_pi = 0
+            dd_block.extend(pix_init_on1_element)
+            dd_block.extend(pix_init_on2_element)
+            dd_block.extend(pihalf_on1_element)
+            for n in range(dd_order):
+                # create the DD sequence for a single order
+                for pulse_number in range(dd_type.suborder):
+                    dd_block.append(tauhalf_element)
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=[1,2]))
+                    idx_pi += 1
+                    if idx_pi == n_pi:
+                        break
+                    dd_block.append(tauhalf_element)
+                if idx_pi == n_pi:
+                    break
+
+            if not no_laser:
+                dd_block.append(laser_element)
+                dd_block.append(delay_element)
+                dd_block.append(waiting_element)
+
+        created_blocks.append(dd_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((dd_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = n_pi_array
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('pi idx', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
