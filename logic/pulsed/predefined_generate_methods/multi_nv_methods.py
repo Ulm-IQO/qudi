@@ -44,15 +44,24 @@ class TomoInit(IntEnum):
     #rand_bench = 14
 
 class OptimalControlPulse():
-    def __init__(self, on_nv=1, pi_x=1, file_i=None, file_q=None):
+    def __init__(self, on_nv=1, par_with_nvs=None, pi_x=1, file_i=None, file_q=None):
+        """
+        @param on_nv: int. Specify on which nv pulse is applied
+        @param par_with_nvs: None, or [int]. pulse should be run with another parallel pulse on those nvs.
+        @param pi_x: pulse length in units of a pi rotation
+        @param file_i:
+        @param file_q:
+        """
         self._on_nv = on_nv
-        self._pi_x = pi_x      # pulse length in units of a pi rotation
+        self._pi_x = pi_x
+        self._par_with_nvs = par_with_nvs
 
         self._file_i = file_i
         self._file_q = file_q
 
     def equal_target_u(self, other_pulse):
-        if self._on_nv == other_pulse._on_nv and self._pi_x == other_pulse._pi_x:
+        if self._on_nv==other_pulse._on_nv and self._pi_x == other_pulse._pi_x \
+                and self._par_with_nvs==other_pulse._par_with_nvs:
             return True
         return False
 
@@ -127,16 +136,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     def oc_params_from_str(self, in_str):
 
-        keys = ['pix', 'on_nv']
+        keys = ['pix', 'on_nv', 'par']
 
         return Tk_string.params_from_str(in_str, keys=keys)
 
-    def get_oc_pulse(self, on_nv=1, pix=1):
+    def get_oc_pulse(self, on_nv=1, pix=1, par_with_nvs=None):
 
         ret_pulses = []
-        search_pulse = OptimalControlPulse(on_nv=on_nv, pi_x=pix)
+        search_pulse = OptimalControlPulse(on_nv=on_nv, pi_x=pix, par_with_nvs=par_with_nvs)
 
         for pulse in self._optimal_pulses:
+            #self.log.debug(
+            #    f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
+            #    f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
             if pulse.equal_target_u(search_pulse):
                 ret_pulses.append(pulse)
 
@@ -154,7 +166,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             extension = os.path.splitext(file_no_path)[1]
             files_filtered = all_files
 
-            filter_str = [path, file_no_quad_no_ext]
+            filter_str = [path, file_no_quad_no_ext + quadrature_names[1]]
 
             self.log.debug(f"Searching q file for {i_file} in {all_files}. Filter: {filter_str}")
             if file_no_ext == str_i:
@@ -183,10 +195,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 files_q = find_q_files(file_i, fnames, quadrature_names=quadrature_names)
                 if len(files_q) == 1:
                     file_q = files_q[0]
-                else:
+                elif len(files_q) == 0:
                     self.log.warning(
                         f"Found optimal control file {file} for i quadrature, but no corresponding "
-                        f"q file. Canidates: {files_q}")
+                        f"q file. Candidates: {files_q}")
+                    continue
+                else:
+                    self.log.warning(
+                        f"Found optimal control file {file} for i quadrature, but multiple corresponding "
+                        f"q files. Candidates: {files_q}")
                     continue
             else:
                 continue
@@ -194,9 +211,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             oc_params = self.oc_params_from_str(file_i)
             # default to 'pi pulse on nv 1' if params not in filename
             on_nv = oc_params['on_nv'] if 'on_nv' in oc_params.keys() else 1
+            par_with_nv = oc_params['par'] if 'par' in oc_params.keys() else None
+            # currently, params_from_string only extracts floats, not lists
+            par_with_nv = [par_with_nv] if par_with_nv!= None else None
             pix = oc_params['pix'] if 'pix' in oc_params.keys() else 1
-            oc_pulse = OptimalControlPulse(on_nv, pix, file_i, file_q)
-            exist_pulses = self.get_oc_pulse(on_nv, pix=pix)
+            oc_pulse = OptimalControlPulse(on_nv, pi_x=pix, par_with_nvs=par_with_nv,
+                                           file_i=file_i, file_q=file_q)
+            exist_pulses = self.get_oc_pulse(on_nv, pix=pix, par_with_nvs=par_with_nv)
 
             if len(exist_pulses) != 0:
                 self.log.warning(
@@ -206,8 +227,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 loaded_pulses.append(oc_pulse)
 
         return loaded_pulses
-
-
 
     def generate_pi2_rabi(self, name='pi2_then_rabi', tau_start = 10.0e-9, tau_step = 10.0e-9,
                                 pi2_phase_deg=0, num_of_points = 50, alternating=False):
@@ -805,7 +824,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_par_tau(self, name='deer_dd_par_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90,
+                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90,
                                  env_type=EnvelopeMethods.rectangle, no_laser=False):
         """
         Decoupling sequence on both NVs.
@@ -835,8 +854,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                 pi_x_length=1/2, no_amps_2_idle=True)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+        pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False,
+                                                   env_type=env_type, on_nv=2)
+        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False,
+                                                   env_type=env_type, on_nv=1)
         pix_end_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
                                                    pi_x_length=end_pix_on_2, no_amps_2_idle=False)
+
         pihalf_on1_read_element = self.get_pi_element(read_phase_deg, mw_freqs, mw_amps=ampls_on_1,
                                                       rabi_periods=rabi_periods,
                                                       pi_x_length=1/2, no_amps_2_idle=True)
@@ -865,6 +891,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
+        dd_block.extend(pix_init_on1_element)
         dd_block.extend(pix_init_on2_element)
         dd_block.extend(pihalf_on1_element)
         for n in range(dd_order):
@@ -881,6 +908,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dd_block.append(waiting_element)
 
         if alternating:
+            dd_block.extend(pix_init_on1_element)
             dd_block.extend(pix_init_on2_element)
             dd_block.extend(pihalf_on1_element)
             for n in range(dd_order):
@@ -2560,7 +2588,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = xaxis
-        block_ensemble.measurement_information['virtual controlled variable'] = xaxis_virt
+        if len(on_nv) == 2:
+            block_ensemble.measurement_information['virtual controlled variable'] = xaxis_virt
         block_ensemble.measurement_information['units'] = ('', '')
         block_ensemble.measurement_information['labels'] = ('rel. ampl.', 'Signal') if len(on_nv) == 1 else ('idx', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = len(xaxis)
@@ -2603,8 +2632,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         if isinstance(on_nv, (int, float)):
             on_nv = [on_nv]
+        on_nv = np.asarray(on_nv)
         if isinstance(scale_ampl, (int, float)):
             scale_ampl = [scale_ampl]
+        if len(scale_ampl) == 1:
+            scale_ampl = [scale_ampl]*len(on_nv)
 
         if not (len(scale_ampl) == len(on_nv)):
             raise ValueError(f"Optimal pulses require same length of on_nv= {on_nv} and scale= {scale_ampl}")
@@ -2615,16 +2647,28 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         file_i, file_q = [],[]
         for nv in on_nv:
-            oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length)
+
+            if len(on_nv) > 1:
+                # try finding a pulse that is calculated to run in parallel on multiple nvs
+                # if none available, just use pulses for each nv and play them in parallel
+                other_nvs = on_nv[on_nv != nv]
+                #self.log.debug(f"Searching for parallel= {other_nvs} oc_pulse")
+                oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length, par_with_nvs=other_nvs)
+                if len(oc_pulse) == 0:
+                    #self.log.debug("Couldn't find")
+                    oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length)
+            else:
+                oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length)
             if len(oc_pulse) != 1:
-                raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_length, }on_nv= {on_nv})"
+                raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_length},"
+                                 f"on_nv= {on_nv})"
                                  f" in {self.optimal_control_assets_path}")
             oc_pulse = oc_pulse[0]
 
             file_i.append(os.path.basename(oc_pulse._file_i))
             file_q.append(os.path.basename(oc_pulse._file_q))
 
-
+        self.log.debug(f"Pi_oc_element with files: {file_i}")
         generate_method = self._get_generation_method('oc_mw_multi_only')
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(freqs), phases=self.list_2_csv(phases),
                                           filename_i=self.list_2_csv(file_i), filename_q=self.list_2_csv(file_q),
