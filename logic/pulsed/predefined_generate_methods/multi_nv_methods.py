@@ -1308,7 +1308,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_deer_dd_tau_interm(self, name='deer_dd_tau', tau1=0.5e-6, tau2=0e-6,
+    def generate_deer_dd_tau_interm(self, name='deer_dd_tau', tau1=0.5e-6, tau2=0e-6, n_pi_max=-1,
                              f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                              dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
                              init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
@@ -1430,6 +1430,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # get tau array for measurement ticks
         tau_array = [tau2]
         n_pi = 2*dd_type.suborder*dd_order
+        n_pi = n_pi_max if n_pi_max!=-1 else n_pi
         n_pi_array = np.asarray(range(n_pi))+1
         num_of_points = len(n_pi_array)
 
@@ -2674,7 +2675,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rabi_block.append(delay_element)
                 rabi_block.append(waiting_element)
                 if alternating_nfac:
-                    for n in range(int(alternating_nfac)-1):
+                    for n in range(alternating_nfac):
                         rabi_block.extend(mw_element)
                     rabi_block.append(laser_element)
                     rabi_block.append(delay_element)
@@ -2697,7 +2698,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     rabi_block.append(waiting_element)
 
                     if alternating_nx:
-                        for n in range(int(alternating_nfac)-1):
+                        for n in range(alternating_nfac):
                             rabi_block.extend(mw_element)
                         rabi_block.append(laser_element)
                         rabi_block.append(delay_element)
@@ -2724,14 +2725,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = alternating_2x
+        block_ensemble.measurement_information['alternating'] = alternating_nfac
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = xaxis
         if len(on_nv) == 2:
             block_ensemble.measurement_information['virtual controlled variable'] = xaxis_virt
         block_ensemble.measurement_information['units'] = ('', '')
         block_ensemble.measurement_information['labels'] = ('rel. ampl.', 'Signal') if len(on_nv) == 1 else ('idx', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = 2*len(xaxis) if alternating_2x else len(xaxis)
+        block_ensemble.measurement_information['number_of_lasers'] = 2*len(xaxis) if alternating_nfac else len(xaxis)
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 
