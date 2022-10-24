@@ -406,24 +406,22 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 init_elements = pi2y_on_2_element
             elif init_state == TomoInit.ux180_on_1:
                 init_elements = pi_on_1_element
-                # todo: debug only
-                #if init_env_type == EnvelopeMethods.optimal:
-                #    init_elements = pi_oc_on_1_element
-                #    self.log.debug(f"Init {init_state.name} with oc pulse")
+                if init_env_type == EnvelopeMethods.optimal:
+                    init_elements = pi_oc_on_1_element
+                    self.log.debug(f"Init {init_state.name} with oc pulse")
             elif init_state == TomoInit.ux180_on_2:
                 init_elements = pi_on_2_element
-                # todo: debug only
-                #if init_env_type == EnvelopeMethods.optimal:
-                #    init_elements = pi_oc_on_2_element
-                #    self.log.debug(f"Init {init_state.name} with oc pulse")
+                if init_env_type == EnvelopeMethods.optimal:
+                    init_elements = pi_oc_on_2_element
+                    self.log.debug(f"Init {init_state.name} with oc pulse")
             elif init_state == TomoInit.ux180_on_both:
                 # init_elements = pi_on_both_element
                 init_elements = cp.deepcopy(pi_on_1_element)
                 init_elements.extend(pi_on_2_element)
-                # todo: debug only
                 if init_env_type == EnvelopeMethods.optimal:
-                    init_elements = pi_oc_on_both_element
-                    self.log.debug(f"Init {init_state.name} with parallel oc pulse")
+                    init_elements = cp.deepcopy(pi_oc_on_1_element)
+                    init_elements.extend(pi_oc_on_2_element)
+                    self.log.debug(f"Init {init_state.name} with sequential oc pulse")
             elif init_state == TomoInit.ux90_on_1_uy90_on_2:
                 init_elements = cp.deepcopy(pi2_on_1_element)
                 init_elements.extend(pi2y_on_2_element)
@@ -435,13 +433,22 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return init_elements
 
         def rotation_element(rotation):
-
             if rotation == TomoRotations.none:
                 rot_elements = []
             elif rotation == TomoRotations.c1not2:
                 rot_elements = c1not2_element
             elif rotation == TomoRotations.c2not1:
                 rot_elements = c2not1_element
+            elif rotation == TomoRotations.ux180_on_1:
+                rot_elements = pi_on_1_element
+            elif rotation == TomoRotations.ux180_on_2:
+                rot_elements = pi_on_2_element
+            elif rotation == TomoRotations.c1not2_ux180_on_2:
+                rot_elements = cp.deepcopy(c1not2_element)
+                rot_elements.extend(pi_on_2_element)
+            elif rotation == TomoRotations.c2not1_ux180_on_1:
+                rot_elements = cp.deepcopy(c2not1_element)
+                rot_elements.extend(pi_on_1_element)
             else:
                 raise ValueError(f"Unknown tomography rotation: {rotation.name}")
             return rot_elements
@@ -465,7 +472,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     pi_read_element = cp.deepcopy(pi_on_1_element) if rabi_on_nv == 1 else cp.deepcopy(pi_on_2_element)
                     rabi_block.extend(init_element(init_state))
                     rabi_block.extend(rotation_element(rotation))
-                    rabi_block.extend(pi_read_element) # todo: debug only
+                    rabi_block.extend(pi_read_element)
                     rabi_block.append(laser_element)
                     rabi_block.append(delay_element)
                     rabi_block.append(waiting_element)
@@ -515,6 +522,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                 cnot_kwargs['rabi_period_mw_2']
         ampl_mw_2_cnot = ampl_mw_2 if 'ampl_mw_2' not in cnot_kwargs else \
                                 cnot_kwargs['ampl_mw_2']
+        init_env_type = EnvelopeMethods.rectangle if 'env_type' not in init_state_kwargs else \
+            init_state_kwargs['env_type']
 
         # create param arrays
         rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), n_nvs=2)
@@ -548,6 +557,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
         pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
+        pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1,
+                                                 env_type=EnvelopeMethods.optimal)
+        pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2,
+                                                 env_type=EnvelopeMethods.optimal)
+
         pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
         pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
         pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
@@ -594,8 +608,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # create a copy of generateTomography
         # seq_chain = generate_sequenceChain(num_of_sequence=1,name_seq = TomoInit.None)
         # Definition of function generate_sequenceChain
-        init_elements, rot_elements = [], []
-        if init_state:
+
+        def init_element(init_state):
             if init_state == TomoInit.none:
                 init_elements = []
             elif init_state == TomoInit.ux90_on_1:
@@ -610,27 +624,33 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 init_elements = pi2y_on_2_element
             elif init_state == TomoInit.ux180_on_1:
                 init_elements = pi_on_1_element
+                if init_env_type == EnvelopeMethods.optimal:
+                    init_elements = pi_oc_on_1_element
+                    self.log.debug(f"Init {init_state.name} with oc pulse")
             elif init_state == TomoInit.ux180_on_2:
                 init_elements = pi_on_2_element
+                if init_env_type == EnvelopeMethods.optimal:
+                    init_elements = pi_oc_on_2_element
+                    self.log.debug(f"Init {init_state.name} with oc pulse")
             elif init_state == TomoInit.ux180_on_both:
-                #init_elements = pi_on_both_element
+                # init_elements = pi_on_both_element
                 init_elements = cp.deepcopy(pi_on_1_element)
                 init_elements.extend(pi_on_2_element)
+                if init_env_type == EnvelopeMethods.optimal:
+                    init_elements = cp.deepcopy(pi_oc_on_1_element)
+                    init_elements.extend(pi_oc_on_2_element)
+                    self.log.debug(f"Init {init_state.name} with sequential oc pulse")
             elif init_state == TomoInit.ux90_on_1_uy90_on_2:
                 init_elements = cp.deepcopy(pi2_on_1_element)
                 init_elements.extend(pi2y_on_2_element)
             elif init_state == TomoInit.ux90_on_1_ux180_on_2:
                 init_elements = cp.deepcopy(pi2_on_1_element)
                 init_elements.extend(pi_on_2_element)
-            #elif init_state == TomoInit.rand_bench: Roberto This will be used later for random benchmarking
-            #   init_elements = sequence_chain # Later for use: seq1 should be concatenated
-            #elif init_state == TomoInit.ent_create_bell:
-            #    init_elements = ent_create_element
-            elif init_state == TomoInit.ent_create_bell_bycnot:
-                init_elements = ent_create_bycnot_element
             else:
                 raise ValueError(f"Unknown tomography init state: {init_state.name}")
-        if rotation:
+            return init_elements
+
+        def rotation_element(rotation):
             if rotation == TomoRotations.none:
                 rot_elements = []
             elif rotation == TomoRotations.c1not2:
@@ -649,6 +669,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rot_elements.extend(pi_on_1_element)
             else:
                 raise ValueError(f"Unknown tomography rotation: {rotation.name}")
+            return rot_elements
+
 
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
@@ -656,16 +678,16 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)
-        rabi_block.extend(init_elements)
-        rabi_block.extend(rot_elements)
+        rabi_block.extend(init_element(init_state))
+        rabi_block.extend(rotation_element(rotation))
         rabi_block.extend(mw_rabi_element)
         rabi_block.append(laser_element)
         rabi_block.append(delay_element)
         rabi_block.append(waiting_element)
 
         if alternating:
-            rabi_block.extend(init_elements)
-            rabi_block.extend(rot_elements)
+            rabi_block.extend(init_element(init_state))
+            rabi_block.extend(rotation_element(rotation))
             rabi_block.extend(mw_rabi_element)
             rabi_block.extend(pi_read_element)
             rabi_block.append(laser_element)
@@ -695,6 +717,62 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def _tomo_init_element(self, init_state):
+
+        if init_state == TomoInit.none:
+            init_elements = []
+        elif init_state == TomoInit.ux90_on_1:
+            init_elements = pi2_on_1_element
+        elif init_state == TomoInit.ux90_on_2:
+            init_elements = pi2_on_2_element
+        elif init_state == TomoInit.ux90_on_both:
+            init_elements = pi2_on_both_element
+        elif init_state == TomoInit.uy90_on_1:
+            init_elements = pi2y_on_1_element
+        elif init_state == TomoInit.uy90_on_2:
+            init_elements = pi2y_on_2_element
+        elif init_state == TomoInit.ux180_on_1:
+            init_elements = pi_on_1_element
+            # todo: debug only
+            # if init_env_type == EnvelopeMethods.optimal:
+            #    init_elements = pi_oc_on_1_element
+            #    self.log.debug(f"Init {init_state.name} with oc pulse")
+        elif init_state == TomoInit.ux180_on_2:
+            init_elements = pi_on_2_element
+            # todo: debug only
+            # if init_env_type == EnvelopeMethods.optimal:
+            #    init_elements = pi_oc_on_2_element
+            #    self.log.debug(f"Init {init_state.name} with oc pulse")
+        elif init_state == TomoInit.ux180_on_both:
+            # init_elements = pi_on_both_element
+            init_elements = cp.deepcopy(pi_on_1_element)
+            init_elements.extend(pi_on_2_element)
+            # todo: debug only
+            if init_env_type == EnvelopeMethods.optimal:
+                init_elements = pi_oc_on_both_element
+                self.log.debug(f"Init {init_state.name} with parallel oc pulse")
+        elif init_state == TomoInit.ux90_on_1_uy90_on_2:
+            init_elements = cp.deepcopy(pi2_on_1_element)
+            init_elements.extend(pi2y_on_2_element)
+        elif init_state == TomoInit.ux90_on_1_ux180_on_2:
+            init_elements = cp.deepcopy(pi2_on_1_element)
+            init_elements.extend(pi_on_2_element)
+        else:
+            raise ValueError(f"Unknown tomography init state: {init_state.name}")
+        return init_elements
+
+    def _tomo_rotation_element(self, rotation):
+
+        if rotation == TomoRotations.none:
+            rot_elements = []
+        elif rotation == TomoRotations.c1not2:
+            rot_elements = c1not2_element
+        elif rotation == TomoRotations.c2not1:
+            rot_elements = c2not1_element
+        else:
+            raise ValueError(f"Unknown tomography rotation: {rotation.name}")
+        return rot_elements
 
     def generate_c2not1(self, name='c2not1', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
