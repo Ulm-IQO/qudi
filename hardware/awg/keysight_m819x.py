@@ -57,6 +57,7 @@ class AWGM819X(Base, PulserInterface):
 
     # explicitly set low/high levels for [[d_ch1_low, d_ch1_high], [d_ch2_low, d_ch2_high], ...]
     _d_ch_level_low_high = ConfigOption(name='d_ch_level_low_high', default=[], missing='nothing')
+    _ext_ref_clock_freq = ConfigOption(name='ext_ref_clock_freq', default=None, missing='nothing')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -1200,8 +1201,7 @@ class AWGM819X(Base, PulserInterface):
         self.reset()
         constr = self.get_constraints()
 
-        self.write(':ROSC:SOUR INT')  # Chose source for reference clock
-
+        self._set_ref_clock()
         self._set_awg_mode()
 
         # General procedure according to Sec. 8.22.6 in AWG8190A manual:
@@ -1318,6 +1318,15 @@ class AWGM819X(Base, PulserInterface):
         else:
             raise ValueError("Unknown memory mode: {}".format(self._wave_mem_mode))
 
+    def _set_ref_clock(self):
+        if self._ext_ref_clock_freq is None:
+            self.write(':ROSC:SOUR INT')
+        else:
+            self._ext_ref_clock_freq = int(self._ext_ref_clock_freq)
+            self.write(':ROSC:SOUR EXT')
+            self.write(f':ROSC:FREQ {self._ext_ref_clock_freq:d}')
+            self.log.debug(f"Setting to external ref clock with f= {self._ext_ref_clock_freq/1e6} MHz")
+
     def send_trigger_event(self):
         self.write(":TRIG:BEG")
 
@@ -1363,7 +1372,7 @@ class AWGM819X(Base, PulserInterface):
 
         for i in range(30):  # error buffer of device is 30
             raw_str = self.query(':SYST:ERR?', force_no_check=True)
-            is_error = not ('0' in raw_str[0])
+            is_error = not ('0,' == raw_str[0:2])
             if is_error:
                 self.log.warn("AWG issued error: {}".format(raw_str))
                 has_error_occured = True
