@@ -217,7 +217,6 @@ class ODMRLogic(GenericLogic):
 
         if type(self.final_freq_list) == list:
             self.final_freq_list = np.array(final_freq_list)
-        self.final_freq_list = final_freq_list
 
         self.odmr_plot_x = np.array(self.final_freq_list)
         self.odmr_plot_y = np.zeros([len(self.get_odmr_channels()), self.odmr_plot_x.size])
@@ -1147,9 +1146,8 @@ class ODMRLogic(GenericLogic):
 
         # Perform fit if requested
         if fit_function != 'No Fit':
-            for n in range(0,self.ranges):
-                self.do_fit(fit_function, channel_index=channel, fit_range=n)
-                fit_params = self.fc.current_fit_param
+            self.do_fit(fit_function, channel_index=channel)
+            fit_params = self.fc.current_fit_param
         else:
             fit_params = None
 
