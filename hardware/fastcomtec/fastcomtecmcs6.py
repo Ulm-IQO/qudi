@@ -454,7 +454,6 @@ class FastComtec(Base, FastCounterInterface):
 
         @return int: asks the actual bitshift and returns the red out value
         """
-        #cmd = 'BITSHIFT={0}'.format(bitshift)
         cmd = 'BITSHIFT={0}'.format(hex(bitshift))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return self.get_bitshift()
