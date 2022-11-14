@@ -45,7 +45,7 @@ class GarbageCollector(QObject):
 
         self.threshold = gc.get_threshold()
         gc.disable()
-        self.timer.start(interval * 1000)
+        self.timer.start(round(interval * 1000))
 
     @Slot()
     def check(self):

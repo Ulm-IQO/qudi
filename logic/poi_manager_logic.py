@@ -196,7 +196,7 @@ class RegionOfInterest:
         if name not in self._pois:
             raise KeyError('Name "{0}" not found in POI list.'.format(name))
         if new_name in self._pois:
-            raise NameError('New POI name "{0}" already present in current POI list.')
+            raise NameError('New POI name "{0}" already present in current POI list.'.format(new_name))
         self._pois[name].name = new_name
         self._pois[new_name] = self._pois.pop(name)
         return
