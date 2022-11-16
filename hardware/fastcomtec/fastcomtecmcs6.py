@@ -455,7 +455,7 @@ class FastComtec(Base, FastCounterInterface):
 
         @return int: asks the actual bitshift and returns the red out value
         """
-        cmd = 'BITSHIFT={0}'.format(bitshift)
+        cmd = 'BITSHIFT={0}'.format(hex(bitshift))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return self.get_bitshift()
 
@@ -470,7 +470,9 @@ class FastComtec(Base, FastCounterInterface):
         2**bitshift*minimal_binwidth.
         """
         bitshift = int(np.log2(binwidth/self.minimal_binwidth))
+
         new_bitshift=self.set_bitshift(bitshift)
+        self.log.debug(f"For binwidth {binwidth}, settings bit shift {bitshift}/{2**bitshift}. Result bitshift {new_bitshift}")
 
         return self.minimal_binwidth*(2**new_bitshift)
 
@@ -705,7 +707,7 @@ class FastComtec(Base, FastCounterInterface):
         preset = bsetting.swpreset
         return int(preset)
 
-    def set_cycle_mode(self, sequential_mode=True, cycles=None):
+    def set_cycle_mode(self, sequential_mode=True, cycles=None, raw_bytes=None):
         """ Turns on or off the sequential cycle mode
 
         @param bool mode: Set or unset cycle mode
@@ -720,7 +722,15 @@ class FastComtec(Base, FastCounterInterface):
 
         # Turn on or off sequential cycle mode
         if sequential_mode:
-            cmd = 'sweepmode={0}'.format(hex(1978500))
+            self.log.debug("Sequential mode enabled. Make sure to set 'checksync=0' in mcs6a.ini. "
+                           "Resyncing can cause issues in sequential mode.")
+            if raw_bytes is None:
+                raw_bytes_dec = 1978500  # old standard setting
+                raw_bytes_dec = 1974404  # old setting + disable "sweep counter not needed"
+            else:
+                raw_bytes_dec = raw_bytes
+            cmd = 'sweepmode={0}'.format(hex(raw_bytes_dec))
+            self.log.debug(f"Sweepmode set to: {raw_bytes_dec}")
         else:
             cmd = 'sweepmode={0}'.format(hex(1978496))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
