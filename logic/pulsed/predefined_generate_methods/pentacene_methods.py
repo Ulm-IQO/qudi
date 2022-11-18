@@ -108,10 +108,12 @@ class PentaceneMethods(PredefinedGeneratorBase):
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
         delay_element = self._get_delay_gate_element()
+        laser_init_elment = self._get_laser_element(self.laser_length, add_gate_ch='', increment=0)
 
         # Create block and append to created_blocks list
         pulsedodmr_block = PulseBlock(name=name)
 
+        idx_laser, laser_ignore_list = 0, []
         for mw_freq in freq_array:
 
             mw_element = self._get_mw_laser_element(length=t_single,
@@ -119,6 +121,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                               amp=mw_ampl,
                                               freq=mw_freq,
                                               phase=0)
+            idx_laser += 1
             # copy over from mw to other channel if necessary
             if chnl != self.microwave_channel:
                 mw_element.pulse_function[chnl] = mw_element.pulse_function[self.microwave_channel]
@@ -128,12 +131,19 @@ class PentaceneMethods(PredefinedGeneratorBase):
             pulsedodmr_block.append(waiting_element)
 
             if alternating_no_mw:
+
                 no_mw_element = self._get_mw_laser_element(length=t_single,
                                                      increment=0,
                                                      amp=0,
                                                      freq=mw_freq / 2.,
                                                      phase=0)
+                # after last read with MV on, state is mixed. Re-init with green laser without reading.
+                pulsedodmr_block.append(laser_init_elment)
+                pulsedodmr_block.append(waiting_element)
+                laser_ignore_list.append(idx_laser)
+                idx_laser += 1
                 pulsedodmr_block.append(no_mw_element)
+                idx_laser += 1
                 pulsedodmr_block.append(delay_element)
                 pulsedodmr_block.append(waiting_element)
 
@@ -148,7 +158,9 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = alternating_no_mw
-        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
+        if laser_ignore_list:
+            self.log.debug(f"laser_ignore= {laser_ignore_list}")
         block_ensemble.measurement_information['controlled_variable'] = freq_array
         block_ensemble.measurement_information['units'] = ('Hz', '')
         block_ensemble.measurement_information['labels'] = ('Frequency', 'Signal')
@@ -907,8 +919,9 @@ class PentaceneMethods(PredefinedGeneratorBase):
     ############# NV methods
 
     def generate_laser_strob(self, name='laser_strob', t_laser_read=3e-6,
-                                  t_laser_init=10e-6, t_wait_between=0e-9, laser_read_ch='', add_gate_ch='',
-                                  t_aom_safety=250e-9):
+                             t_laser_init=10e-6, t_wait_between=0e-9, laser_read_ch='', add_gate_ch='',
+                             t_aom_safety=250e-9, gate_init=False, alternating_no_read=False,
+                             overlap_no_read=False, init_laser_first=False):
         """
 
         """
@@ -916,64 +929,126 @@ class PentaceneMethods(PredefinedGeneratorBase):
         created_ensembles = list()
         created_sequences = list()
 
-        laser_init_element = self._get_laser_gate_element(length=t_laser_init,
-                                                          increment=0,
-                                                          add_gate_ch='')
+        if gate_init:
+            laser_init_element = self._get_laser_gate_element(length=t_laser_init,
+                                                              increment=0,
+                                                              add_gate_ch=add_gate_ch)
+        else:
+            laser_init_element = self._get_laser_gate_element(length=t_laser_init,
+                                                              increment=0,
+                                                              add_gate_ch='')
         # additional gate channel, independent on the one from pulsed gui
         laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
                                                          increment=0,
                                                          add_gate_ch=add_gate_ch)
+        no_laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
+                                                         increment=0,
+                                                         add_gate_ch=add_gate_ch)
+
         # close gap between aom init laser pulse and instant red pulse
         laser_red_balanceaom_element = self._get_laser_gate_element(length=t_aom_safety,
+                                                                    increment=0,
+                                                                    add_gate_ch=add_gate_ch)
+        no_laser_red_balanceaom_element = self._get_laser_gate_element(length=t_aom_safety,
                                                                     increment=0,
                                                                     add_gate_ch=add_gate_ch)
         if laser_read_ch:
             laser_red_element.digital_high[self.laser_channel] = False
             laser_red_element.digital_high[laser_read_ch] = True
-            if t_laser_init > t_aom_safety:
-                laser_red_balanceaom_element.digital_high[self.laser_channel] = True
-            else:
-                laser_red_balanceaom_element.digital_high[self.laser_channel] = False
+
+            no_laser_red_element.digital_high[self.laser_channel] = False
+            no_laser_red_element.digital_high[laser_read_ch] = False
+            #f t_laser_init > t_aom_safety:
+            #    laser_red_balanceaom_element.digital_high[self.laser_channel] = True
+            #else:
+            # laser_red_balanceaom_element.digital_high[self.laser_channel] = False
+            laser_red_balanceaom_element.digital_high[self.laser_channel] = False
             laser_red_balanceaom_element.digital_high[laser_read_ch] = True
+
+            no_laser_red_balanceaom_element.digital_high[self.laser_channel] = False
+            no_laser_red_balanceaom_element.digital_high[laser_read_ch] = False
 
 
         idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
                                                              increment=0)
 
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         delay_element = self._get_delay_gate_element()
         safety_element = self._get_idle_element(length=t_aom_safety,
                                                 increment=0)
 
         # Create block and append to created_blocks list
-        strob_block = PulseBlock(name=name)
-        strob_block.append(laser_red_element)
-        strob_block.append(laser_red_balanceaom_element)
-        strob_block.append(idle_between_lasers_element)
-        strob_block.append(laser_init_element)
-        # Is considerable fraction of time, not needed in confocal scanning as m_s state unchanged
-        #strob_block.append(delay_element)
-        # ~ aom delay, but more aggressive timing. Avoid overlapping of green (aom) and red (instant)
-        strob_block.append(safety_element)
+        if init_laser_first:
+            strob_block = PulseBlock(name=name)
+            strob_block.append(laser_init_element)
+            if t_laser_init > 0e-9:
+                strob_block.append(waiting_element)
+                strob_block.append(safety_element)
 
+            strob_block.append(laser_red_element)
+            strob_block.append(laser_red_balanceaom_element)
+            strob_block.append(idle_between_lasers_element)
+
+        else:
+            strob_block = PulseBlock(name=name)
+            strob_block.append(laser_red_element)
+            strob_block.append(laser_red_balanceaom_element)
+            strob_block.append(idle_between_lasers_element)
+            strob_block.append(laser_init_element)
+            strob_block.append(waiting_element)
+            # Is considerable fraction of time, not needed in confocal scanning as m_s state unchanged
+            #strob_block.append(delay_element)
+            # ~ aom delay, but more aggressive timing. Avoid overlapping of green (aom) and red (instant)
+            strob_block.append(safety_element)
 
         created_blocks.append(strob_block)
-
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
         block_ensemble.append((strob_block.name, 1 - 1))
-
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+        fastcount_length = self._get_ensemble_count_length(ensemble=block_ensemble, created_blocks=created_blocks)
+
+        alternating = False
+        # should not be read out seperatetl, but overlapped with the read laser block, so add another sync trigger
+        if alternating_no_read:
+            strob_block_alt = PulseBlock(name=name + 'no_read')
+            strob_block_alt.append(no_laser_red_element)
+            strob_block_alt.append(no_laser_red_balanceaom_element)
+            strob_block_alt.append(idle_between_lasers_element)
+            strob_block_alt.append(laser_init_element)
+            strob_block_alt.append(waiting_element)
+            # Is considerable fraction of time, not needed in confocal scanning as m_s state unchanged
+            # strob_block.append(delay_element)
+            # ~ aom delay, but more aggressive timing. Avoid overlapping of green (aom) and red (instant)
+            strob_block_alt.append(safety_element)
+
+
+            created_blocks.append(strob_block_alt)
+            block_ensemble.append((strob_block_alt.name, 1 - 1))
+            # Create and append sync trigger block if needed
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+            # let fastcounter count over both pulses. Sequence trigger is ignored in this case
+            if not overlap_no_read:
+                fastcount_length = self._get_ensemble_count_length(ensemble=block_ensemble,
+                                                                   created_blocks=created_blocks)
+                alternating = True
+            else:
+                alternating = False
+
+
+
+
 
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = [-1]
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = 1
-        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
-            ensemble=block_ensemble, created_blocks=created_blocks)
+        block_ensemble.measurement_information['number_of_lasers'] = 2 if alternating else 1
+        block_ensemble.measurement_information['counting_length'] = fastcount_length
 
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
