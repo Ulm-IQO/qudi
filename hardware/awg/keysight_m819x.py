@@ -54,6 +54,7 @@ class AWGM819X(Base, PulserInterface):
     _wave_mem_mode = None
     _wave_file_extension = '.bin'
     _wave_transfer_datatype = 'h'
+    _dynamic_sequence_mode = ConfigOption(name='dynamic_sequence_mode', default=True, missing='nothing')
 
     # explicitly set low/high levels for [[d_ch1_low, d_ch1_high], [d_ch2_low, d_ch2_high], ...]
     _d_ch_level_low_high = ConfigOption(name='d_ch_level_low_high', default=[], missing='nothing')
@@ -171,6 +172,7 @@ class AWGM819X(Base, PulserInterface):
                                  class variable status_dic.)
         """
         self._write_output_on()
+        self.check_dev_error()
 
         # Sec. 6.4 from manual:
         # In the program it is recommended to send the command for starting
@@ -312,7 +314,8 @@ class AWGM819X(Base, PulserInterface):
         select the first segment in your sequence, before any dynamic sequence selection.
         """
         self.write_all_ch(":STAB{}:SEQ:SEL 0", all_by_one={'m8195a': True})
-        self.write_all_ch(":STAB{}:DYN ON", all_by_one={'m8195a': True})
+        if self._dynamic_sequence_mode:
+            self.write_all_ch(":STAB{}:DYN ON", all_by_one={'m8195a': True})
 
         return 0
 
@@ -919,18 +922,17 @@ class AWGM819X(Base, PulserInterface):
 
             control = self._get_sequence_control_bin(sequence_parameters, index)
 
-            seq_loop_count = 1
+            sequence_loop_count = 1
             if seq_step.repetitions == -1:
                 # this is ugly, limits maximal waiting time. 1 Sa -> approx. 0.3 s
-                seg_loop_count = 4294967295  # max value, todo: from constraints
+                segment_loop_count = 4294967295  # max value, todo: from constraints
             else:
-                seg_loop_count = seq_step.repetitions + 1  # if repetitions = 0 then do it once
+                segment_loop_count = seq_step.repetitions + 1  # if repetitions = 0 then do it once
             seg_start_offset = 0    # play whole segement from start...
             seg_end_offset = 0xFFFFFFFF     # to end
 
-            self.log.debug("For sequence table step {} with {} reps: control: {}".format(step,
-                                                                                         seq_loop_count,
-                                                                                         control))
+            self.log.debug(f"For sequence table step {step}:'{seq_step['ensemble']}' "
+                           f"with {segment_loop_count} reps: control bit= {control}")
 
             segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1) \
                 if len(wfm_tuple) >= 1 else -1
@@ -944,8 +946,8 @@ class AWGM819X(Base, PulserInterface):
                     self.write(':STAB:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
                                .format(index,
                                        control,
-                                       seq_loop_count,
-                                       seg_loop_count,
+                                       sequence_loop_count,
+                                       segment_loop_count,
                                        segment_id_ch1,
                                        seg_start_offset,
                                        seg_end_offset))
@@ -953,8 +955,8 @@ class AWGM819X(Base, PulserInterface):
                     self.write(':STAB2:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
                                .format(index,
                                        control,
-                                       seq_loop_count,
-                                       seg_loop_count,
+                                       sequence_loop_count,
+                                       segment_loop_count,
                                        segment_id_ch2,
                                        seg_start_offset,
                                        seg_end_offset))
@@ -2818,6 +2820,10 @@ class AWGM8190A(AWGM819X):
         if next_step:
             if 'pattern_jump_address' in next_step:
                 control = 0x1 << 30
+
+        if 'segment_advance_mode' in seq_step:
+            if seq_step['segment_advance_mode'] == 'conditional':
+                control += 0x1 << 16
 
         control += 0x1 << 24  # always enable markers
 
