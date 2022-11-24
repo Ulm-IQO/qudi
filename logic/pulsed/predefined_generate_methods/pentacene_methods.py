@@ -920,7 +920,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
     def generate_laser_strob(self, name='laser_strob', t_laser_read=3e-6,
                              t_laser_init=10e-6, t_wait_between=0e-9, laser_read_ch='', add_gate_ch='',
-                             t_aom_safety=250e-9, gate_init=False, alternating_no_read=False,
+                             t_aom_safety=250e-9, pwm_read_duty=1.0, pwm_freq=1.0e6,
+                             gate_init=False, alternating_no_read=False,
                              overlap_no_read=False, init_laser_first=False):
         """
 
@@ -938,9 +939,18 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                               increment=0,
                                                               add_gate_ch='')
         # additional gate channel, independent on the one from pulsed gui
-        laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
-                                                         increment=0,
-                                                         add_gate_ch=add_gate_ch)
+        #laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
+        #                                                 increment=0,
+        #                                                 add_gate_ch=add_gate_ch)
+        #if laser_read_ch:
+        #    laser_red_element.digital_high[self.laser_channel] = False
+        #    laser_red_element.digital_high[laser_read_ch] = True
+
+        laser_red_element = self._get_laser_gate_elements_pwm(length=t_laser_read-t_aom_safety,
+                                                         increment=0, laser_ch=laser_read_ch,
+                                                         add_gate_ch=add_gate_ch,
+                                                         pwm_duty_cycle=pwm_read_duty, pwm_freq=pwm_freq)
+
         no_laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
                                                          increment=0,
                                                          add_gate_ch=add_gate_ch)
@@ -953,8 +963,6 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                                     increment=0,
                                                                     add_gate_ch=add_gate_ch)
         if laser_read_ch:
-            laser_red_element.digital_high[self.laser_channel] = False
-            laser_red_element.digital_high[laser_read_ch] = True
 
             no_laser_red_element.digital_high[self.laser_channel] = False
             no_laser_red_element.digital_high[laser_read_ch] = False
@@ -985,13 +993,13 @@ class PentaceneMethods(PredefinedGeneratorBase):
                 strob_block.append(waiting_element)
                 strob_block.append(safety_element)
 
-            strob_block.append(laser_red_element)
+            strob_block.extend(laser_red_element)
             strob_block.append(laser_red_balanceaom_element)
             strob_block.append(idle_between_lasers_element)
 
         else:
             strob_block = PulseBlock(name=name)
-            strob_block.append(laser_red_element)
+            strob_block.extend(laser_red_element)
             strob_block.append(laser_red_balanceaom_element)
             strob_block.append(idle_between_lasers_element)
             strob_block.append(laser_init_element)
@@ -1007,7 +1015,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
         block_ensemble.append((strob_block.name, 1 - 1))
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
-        fastcount_length = self._get_ensemble_count_length(ensemble=block_ensemble, created_blocks=created_blocks)
+        fastcount_length = self._get_ensemble_count_length(ensemble=block_ensemble, created_blocks=created_blocks,
+                                                           laser_ch=laser_read_ch)
 
         alternating = False
         # should not be read out seperatetl, but overlapped with the read laser block, so add another sync trigger
