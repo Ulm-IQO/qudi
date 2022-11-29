@@ -3161,6 +3161,8 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         laser_index = self._pe.laserpulses_ComboBox.currentIndex()
+        if laser_index not in range(len(self.pulsedmasterlogic().laser_data)):
+            laser_index = 0
         show_raw = self._pe.laserpulses_display_raw_CheckBox.isChecked()
         is_gated = len(self.pulsedmasterlogic().raw_data.shape) > 1
 
