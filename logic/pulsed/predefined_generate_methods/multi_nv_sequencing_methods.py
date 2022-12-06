@@ -76,7 +76,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
 
     def generate_charge_read_fci(self, name='charge_read_fci', t_cinit_green=500e-9, t_cinit_red=10e-6,
-                                 t_cread_red=50e-6, laser_red_ch='d_ch3', add_gate_ch='',
+                                 t_cread_red=50e-6,  t_wait_between=1e-6, t_aom_safety=750e-9,
+                                 laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1'
                                  ):
 
         """
@@ -91,19 +92,22 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         cur_blocks, cur_ensembles, _ = generate_method(name=cur_name, t_laser_read=t_cread_red,
                                                        t_laser_init=0, t_wait_between=0, laser_read_ch=laser_red_ch,
                                                        add_gate_ch=add_gate_ch,
-                                                       t_aom_safety=750e-9)
+                                                       t_aom_safety=t_aom_safety)
 
         blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
                                                                  generic_blocks=cur_blocks, generic_ensemble=cur_ensembles,
-                                                                 t_init=t_cinit_green, t_read=t_cinit_red)
+                                                                 t_init=t_cinit_green, t_read=t_cinit_red,
+                                                                 laser_read_ch=laser_red_ch,
+                                                                 add_gate_ch=add_gate_ch, ch_trigger_done=done_ch,
+                                                                 t_aom_safety=t_aom_safety, t_wait_between=t_wait_between)
 
         return blocks, enembles, sequences
 
 
     def generic_nv_minus_init(self, total_name='generic_nvinit', generic_name="generic_method",
-                              t_init=3e-6, t_read=10e-6,
+                              t_init=3e-6, t_read=10e-6, t_aom_safety=750e-9, t_wait_between=1e-6,
                               generic_blocks=None, generic_ensemble=None,
-                              ch_trigger_done='d_ch4', add_gate_ch='',
+                              ch_trigger_done='d_ch1', laser_read_ch='d_ch3', add_gate_ch='',
                               alternating=False):
         """
         Prepends a deterministic (Hopper) readout to some generic predefined method.
@@ -116,13 +120,25 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # charge init by repeating (green, res) until a photon threshold is signaled by ext hw
         # repeat init indefintely is done by segment advance mode==conditional + trigger mode==contiunous
+
+        # epoch done trigger for signaling finished sequence and reset of external hw
+        # if this reset is at first (not last) pos of sequence, photon counting not summed, only over 1 red laser
+        done_name = 'epoch_done'
+        done_blocks, done_ensembles, _ = self._create_generic_trigger(done_name, ch_trigger_done)
+        self._add_to_jumptable(done_name)
+        self._add_ensemble_to_seqtable(done_blocks, done_ensembles, done_name,
+                                       seq_params={'repetitions': int(0)})
+
+
+
         init_name = 'nvmin_init'
         generate_method = self._get_generation_method('laser_strob')
         init_seq_params = self._get_default_seq_params({'repetitons': 0,
                                                        'segment_advance_mode': 'conditional'})
         init_blocks, init_ensembles, _ = generate_method(name=init_name, t_laser_read=t_read,
-                             t_laser_init=t_init, t_wait_between=1e-6, laser_read_ch='d_ch3', add_gate_ch=add_gate_ch,
-                             t_aom_safety=750e-9, init_laser_first=True)
+                             t_laser_init=t_init, t_wait_between=t_wait_between, laser_read_ch=laser_read_ch,
+                             add_gate_ch=add_gate_ch, read_no_fc_gate=True,
+                             t_aom_safety=t_aom_safety, init_laser_first=True)
 
         self._add_to_jumptable(init_name)
         self._add_ensemble_to_seqtable(init_blocks, init_ensembles, init_name,
@@ -132,54 +148,21 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # add generic method after init
         if generic_blocks and generic_ensemble:
-            cur_seq_params = self._get_default_seq_params({'repetitons': 0,
-                                           })
+            cur_seq_params = self._get_default_seq_params({'repetitons': 0})
             self._add_to_jumptable(generic_name)
             self._add_ensemble_to_seqtable(generic_blocks, generic_ensemble, generic_name,
                                            seq_params=cur_seq_params)
 
 
-        # epoch done trigger for signaling finished sequence and reset of external hw
-        sync_name = 'epoch_done'
-        done_blocks, done_ensembles, _ = self._create_generic_trigger(sync_name, ch_trigger_done)
-        self._add_ensemble_to_seqtable(done_blocks, done_ensembles, sync_name,
-                                       seq_params={'repetitions': int(0)})
-
-        all_blocks, all_ensembles, ensemble_list = self._seqtable_to_result()
-        sequence = PulseSequence(name=total_name, ensemble_list=ensemble_list, rotating_frame=False)
-
-        # after generic method, repeat charge init again
-        # for linear sequencer as in m8190a, no jump to a specific address, so repeat the init from above
-        # own jump address to mark "new sequence" in linear sequencer
-        """
-        init_seq_params = self._get_default_seq_params({'repetitons': 0,
-                                                       'pattern_jump_address':
-                                                        self._get_current_jumptable_address()})
-        init_name_2 = init_name + "_2"
-        self._add_to_jumptable(init_name_2)
-        # repeat init indefintely (rep=-1). Break is done by external jump trigger
-        self._add_ensemble_to_seqtable(init_blocks, init_ensembles, init_name_2,
-                                       seq_params=init_seq_params)
-        """
-        """
-        idle_name = 'idle'
-        idle_blocks,idle_ensembles, _ = self._create_generic_idle(idle_name)
-        cur_seq_params = self._get_default_seq_params({'repetitons': 0,
-                                                       'pattern_jump_address':
-                                                        self._get_current_jumptable_address()})
-        self._add_ensemble_to_seqtable(idle_blocks, idle_ensembles, idle_name,
-                                       seq_params=cur_seq_params)
-        self._add_to_jumptable(idle_name)
-        """
 
 
         all_blocks, all_ensembles, ensemble_list = self._seqtable_to_result()
         sequence = PulseSequence(name=total_name, ensemble_list=ensemble_list, rotating_frame=False)
 
         # take measurement info for sequence from generic_method ensemble
-        idx_read = 1
+        idx_read = 2
         ensemble_info = all_ensembles[idx_read].measurement_information
-        sequence.ensemble_info = ensemble_info
+        sequence.measurement_information = ensemble_info
         #fastcounter_count_length = self._get_ensemble_count_length(all_ensembles[idx_read],
         #                                                           created_blocks=all_blocks)
 
@@ -352,8 +335,10 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         created_ensembles = []
         created_sequences = []
 
-        trig_element =  self._get_trigger_element(length=50e-9, increment=0., channels=channels)
+        idle_element = self._get_idle_element(1e-9, increment=0)
+        trig_element =  self._get_trigger_element(length=10e-9, increment=0., channels=channels)  # todo: length of trigger element?
         block = PulseBlock(name=name)
+        #block.append(idle_element) # todo: remove idle, only for debug
         block.append(trig_element)
 
         self._extend_to_min_samples(block)
