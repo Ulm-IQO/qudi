@@ -139,6 +139,8 @@ class LaserGUI(GUIBase):
         self.sliderProxy = pg.SignalProxy(self._mw.setValueVerticalSlider.valueChanged, 0.1, 5, self.updateFromSlider)
         self._mw.setValueDoubleSpinBox.editingFinished.connect(self.updateFromSpinBox)
         self._laser_logic.sigUpdate.connect(self.updateGui)
+        #
+        self.changeControlMode('hi')  # Somehow assumed unit prefix did not work
 
     def on_deactivate(self):
         """ Deactivate the module properly.
@@ -202,6 +204,7 @@ class LaserGUI(GUIBase):
             lpr = self._laser_logic.laser_power_range
             self._mw.setValueDoubleSpinBox.setRange(lpr[0], lpr[1])
             self._mw.setValueDoubleSpinBox.setValue(self._laser_logic.laser_power_setpoint)
+            self._mw.setValueDoubleSpinBox.assumed_unit_prefix = 'm'
             self._mw.setValueDoubleSpinBox.setSuffix('W')
             self._mw.setValueVerticalSlider.setValue(
                 self._laser_logic.laser_power_setpoint / (lpr[1] - lpr[0]) * 100 - lpr[0])
@@ -211,6 +214,7 @@ class LaserGUI(GUIBase):
             self._mw.setValueDoubleSpinBox.setRange(lcr[0], lcr[1])
             self._mw.setValueDoubleSpinBox.setValue(self._laser_logic.laser_current_setpoint)
             self._mw.setValueDoubleSpinBox.setSuffix('%')
+            self._mw.setValueDoubleSpinBox.assumed_unit_prefix = None
             self._mw.setValueVerticalSlider.setValue(
                 self._laser_logic.laser_current_setpoint / (lcr[1] - lcr[0]) * 100 - lcr[0])
             self.sigCtrlMode.emit(ControlMode.CURRENT)

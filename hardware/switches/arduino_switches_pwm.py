@@ -27,7 +27,7 @@ from core.util.mutex import RecursiveMutex
 
 import time
 import visa
-import numpy
+import numpy as np
 
 class ArduinoSwitch(Base, SwitchInterface):
     """ Methods to control slow switching devices.
@@ -63,6 +63,8 @@ class ArduinoSwitch(Base, SwitchInterface):
 
     # StatusVariable for remembering the last state of the hardware
     _states = StatusVar(name='states', default=None)
+    _ontimes = StatusVar(name='ontimes', default=np.ones(32)*800)
+    _offtimes = StatusVar(name='offtimes', default=np.ones(32)*2200)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -99,11 +101,10 @@ class ArduinoSwitch(Base, SwitchInterface):
     def on_deactivate(self):
         """ Deactivate the module and clean up.
         """
-        self._states = self.states
         self._instrument.close()
         self._resource_manager.close()
         time.sleep(1)
-        del self._instrument, self._resource_manager
+        # del self._instrument, self._resource_manager
 
     @property
     def name(self):
@@ -201,6 +202,22 @@ class ArduinoSwitch(Base, SwitchInterface):
             response = self._instrument.query(command).strip()
         except visa.VisaIOError:
             self.log.debug('Hardware query raised VisaIOError, trying again...')
+            self._resource_manager = visa.ResourceManager()
+            self._instrument.close()
+            self._resource_manager.close()
+            time.sleep(1)
+            try:
+                self._resource_manager = visa.ResourceManager()
+                self._instrument = self._resource_manager.open_resource(
+                    self._serial_interface,
+                    baud_rate=self._serial_baudrate,
+                    write_termination='\n',
+                    read_termination='\r\n',
+                    timeout=5000
+                )
+                time.sleep(1)
+            except visa.VisaIOError as e:
+                self.log.exception("PID Controller nicht connected")
         else:
             return response
         raise Exception('Hardware did not respond after 3 attempts. Visa error')
@@ -211,3 +228,38 @@ class ArduinoSwitch(Base, SwitchInterface):
             time.sleep(0.1)
         except visa.VisaIOError:
             self.log.debug('Hardware query raised VisaIOError')
+            self._resource_manager = visa.ResourceManager()
+            self._instrument.close()
+            self._resource_manager.close()
+            time.sleep(1)
+            try:
+                self._resource_manager = visa.ResourceManager()
+                self._instrument = self._resource_manager.open_resource(
+                    self._serial_interface,
+                    baud_rate=self._serial_baudrate,
+                    write_termination='\n',
+                    read_termination='\r\n',
+                    timeout=5000
+                )
+                time.sleep(1)
+            except visa.VisaIOError as e:
+                self.log.exception("PID Controller nicht connected")
+
+
+    def set_on_time(self,channel,time):
+        self._ontimes[channel-1] = time
+        command = "setontime"
+        for i, a in enumerate(self._ontimes):
+            command = command + str(int(a)).zfill(4)
+        print(command)
+        self.serial_write(command)
+
+    def set_off_time(self,channel, time):
+        self._offtimes[channel-1] = time
+        command = "setofftime"
+        for i, a in enumerate(self._offtimes):
+            command = command + str(int(a)).zfill(4)
+        print(command)
+        self.serial_write(command)
+
+

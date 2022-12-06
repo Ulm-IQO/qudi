@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy.QtCore import QObject
+from qtpy.QtCore import QObject, QByteArray
 from core.module import BaseMixin
 import warnings
 
@@ -41,6 +41,14 @@ class GUIBaseMixin(BaseMixin):
         if 'pos_x' in self._statusVariables and 'pos_y' in self._statusVariables:
             window.move(self._statusVariables['pos_x'],  self._statusVariables['pos_y'])
 
+    def saveWindowGeometryState(self, window):
+        self._statusVariables['window_state'] = window.saveState().data()
+        self._statusVariables['window_geometry'] = window.saveGeometry().data()
+
+    def restoreWindowGeometryState(self, window):
+        if 'window_state' in self._statusVariables and 'window_geometry' in self._statusVariables:
+            window.restoreState(QByteArray(self._statusVariables['window_state']))
+            window.restoreGeometry(QByteArray(self._statusVariables['window_geometry']))
 
 class GUIBase(QObject, GUIBaseMixin):
     pass

@@ -168,6 +168,8 @@ class CounterGui(GUIBase):
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
 
+        self.restoreWindowGeometryState(self._mw)
+
         #####################
         # starting the physical measurement
         self.sigStartCounter.connect(self._counting_logic.startCount)

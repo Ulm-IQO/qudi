@@ -181,6 +181,8 @@ class WavemeterLogGui(GUIBase):
         self.sigFitChanged.connect(self._wm_logger_logic.fc.set_current_fit)
         self._wm_logger_logic.sig_fit_updated.connect(self.updateFit)
 
+        self.restoreWindowGeometryState(self._mw)
+
     def on_deactivate(self):
         """ Deactivate the module properly.
         """

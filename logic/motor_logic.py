@@ -23,24 +23,47 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from core.statusvariable import StatusVar
+from collections import OrderedDict
+from core.util.helpers import is_integer
+
+# TODO ... I am ugly ... please rework
 
 
 class MotorLogic(GenericLogic):
-    _motor = Connector(name='_motor', interface='MotorInterface')
-    _motor_velocity = StatusVar(name='motor_velocity', default=250)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    x_motor = Connector(interface='MotorInterface', optional=True)
+    y_motor = Connector(interface='MotorInterface', optional=True)
+    z_motor = Connector(interface='MotorInterface', optional=True)
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # Store references to connected modules
-        self._motor().set_velocity({'x': self._motor_velocity, 'y': self._motor_velocity})
-        self.constraints = self.get_constraints()
+
+        # TODO Maybe one could to it similar to Magnet xyz rot interfuse instead of the "_axes" stuff
+        #  which store the connector
+        if self.x_motor()._name == self.y_motor()._name == self.z_motor()._name:
+            assert len(self.x_motor().get_constraints()) == 3
+            self._axes = {ax_log: (self.x_motor, ax_hw) for ax_log, ax_hw
+                          in zip(('x', 'y', 'z'), self.x_motor().get_constraints().keys())}
+            self._unique_motors = [self.x_motor]
+
+        elif self.x_motor()._name == self.y_motor()._name != self.z_motor()._name:
+            assert len(self.x_motor().get_constraints()) == 2 and len(self.z_motor().get_constraints()) == 1
+            self._axes = {ax_log: (self.x_motor, ax_hw) for ax_log, ax_hw
+                          in zip(('x', 'y'), self.x_motor().get_constraints().keys())}
+            self._axes['z'] = (self.z_motor, next(iter(self.z_motor().get_constraints())))
+            self._unique_motors = [self.x_motor, self.z_motor]
+
+        elif self.x_motor()._name != self.y_motor()._name != self.z_motor()._name:
+            assert all([len(mot().get_constraints()) == 1 for mot in (self.x_motor, self.y_motor, self.z_motor)])
+            self._axes = {ax_log: (mot, next(iter(mot().get_constraints())))
+                          for ax_log, mot in zip(('x', 'y', 'z'), (self.x_motor, self.y_motor, self.z_motor))}
+            self._unique_motors = [self.x_motor, self.y_motor, self.z_motor]
+        else:
+            raise NotImplementedError('The given Stage configuration is not implemented')
 
     def on_deactivate(self):
-        self._motor().abort()
+        pass
+        #self._motor().abort()
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -49,56 +72,52 @@ class MotorLogic(GenericLogic):
                       that proper display elements with boundary conditions
                       could be made.
         """
-        constraints = self._motor().get_constraints()
-        return constraints
+        return OrderedDict({ax_log: self._axes[ax_log][0]().get_constraints()[self._axes[ax_log][1]]
+                            for ax_log in self._axes})
 
     def move_rel(self, param_dict):
         """
         todo
         """
-        if 'unit' in param_dict:
-            if param_dict['unit'] == 'step':
-                try:
-                    param_dict['x'] = int(round(param_dict['x']))
-                except KeyError:
-                    pass
-                try:
-                    param_dict['y'] = int(round(param_dict['y']))
-                except KeyError:
-                    pass
-                return self._motor().move_rel(param_dict)
-            elif param_dict['unit'] == 'm':
-                try:
-                    param_dict['x'] = int(round(param_dict['x'] / self.constraints['x']['resolution']))
-                except KeyError:
-                    pass
-                try:
-                    param_dict['y'] = int(round(param_dict['y'] / self.constraints['y']['resolution']))
-                except KeyError:
-                    pass
-                return self._motor().move_rel(param_dict)
-        else:
-            return self._motor().move_rel(param_dict)
+        for ax, dist in param_dict.items():
+            self._axes[ax][0]().move_rel({self._axes[ax][1]: dist})
 
     def abort(self):
-        return self._motor().abort()
-
-    def get_position(self):
-        """Retrieve position of each motor axis"""
-        param_dict = self._motor().get_pos()
-        return param_dict
-
-    def get_status(self):
-        """Retrieve status of each motor axis"""
-        param_dict = self._motor().get_status()
-        return param_dict
+        for motor in self._unique_motors:
+            motor().abort()
+        # self._axes['z'][0]().abort()
+        # self._axes['x'][0]().abort()
+        # self._axes['y'][0]().abort()
+        # for mot, _ in self._axes.values():
+        #     mot().abort() #TODO this stops a 2d motor multiple times ...
 
     def get_velocity(self):
         """Retrieve velocity of each motor axis"""
-        param_dict = self._motor().get_velocity()
-        return param_dict
+        # return {ax_log: ax_hw for ax_log, (mot, ax_hw) in self._axes.items()}
+        # return {ax_log: mot().get_velocity(ax_hw) for ax_log, (mot, ax_hw) in self._axes.items()}
+        return {ax_log: mot().get_velocity(ax_hw)[ax_hw] for ax_log, (mot, ax_hw) in self._axes.items()}
 
     def set_velocity(self, param_dict):
         """Set velocity of each motor axis"""
         # todo also in units if this turns out to be helpful
-        return self._motor().set_velocity(param_dict)
+        for ax_log, velocity in param_dict.items():
+            self._axes[ax_log][0]().set_velocity({self._axes[ax_log][1]: velocity})
+
+    def get_unit(self, ax_log):
+        return self._axes[ax_log][0]().get_constraints()[self._axes[ax_log][1]]['unit']
+
+    def is_ax_log_integer_steps(self, ax_log):
+        step = self._axes[ax_log][0]().get_constraints()[self._axes[ax_log][1]]['pos_step']
+        try:
+            if step.is_integer():
+                return True
+            else:
+                return False
+        except AttributeError:  # Since 'int' has no attribute .is_integer()
+            return is_integer(step)
+
+    def get_positions(self):
+        """Retrieve velocity of each motor axis"""
+        # return {ax_log: ax_hw for ax_log, (mot, ax_hw) in self._axes.items()}
+        # return {ax_log: mot().get_velocity(ax_hw) for ax_log, (mot, ax_hw) in self._axes.items()}
+        return {ax_log: mot().get_pos([ax_hw])[ax_hw] for ax_log, (mot, ax_hw) in self._axes.items()}

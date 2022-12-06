@@ -84,7 +84,7 @@ class LaserLogic(GenericLogic):
     @QtCore.Slot()
     def check_laser_loop(self):
         """ Get power, current, shutter state and temperatures from laser. """
-        if self.stopRequest:
+        if self.stopRequest or self._laser.module_state() == 'deactivated':
             if self.module_state.can('stop'):
                 self.module_state.stop()
             self.stopRequest = False
@@ -110,8 +110,9 @@ class LaserLogic(GenericLogic):
             for k, v in self.laser_temps.items():
                 self.data[k][-1] = v
         except:
-            qi = 3000
-            self.log.exception("Exception in laser status loop, throttling refresh rate.")
+            pass
+            # qi = 3000
+            # self.log.exception("Exception in laser status loop, throttling refresh rate.")
 
         self.queryTimer.start(qi)
         self.sigUpdate.emit()

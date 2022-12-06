@@ -52,9 +52,9 @@ class MotorDummy(Base, MotorInterface):
             self.log.info('{0}: {1}'.format(key,config[key]))
 
         # these label should be actually set by the config.
-        self._x_axis = MotorAxisDummy('x')
-        self._y_axis = MotorAxisDummy('y')
-        self._z_axis = MotorAxisDummy('z')
+        self._x_axis = MotorAxisDummy('x1')
+        self._y_axis = MotorAxisDummy('y1')
+        self._z_axis = MotorAxisDummy('z1')
         self._phi_axis = MotorAxisDummy('phi')
 
         self._wait_after_movement = 1 #in seconds
@@ -115,7 +115,7 @@ class MotorDummy(Base, MotorInterface):
                  'ramp': ['Sinus', 'Linear'],
                  'pos_min': 0,
                  'pos_max': 100,
-                 'pos_step': 0.001,
+                 'pos_step': 1,
                  'vel_min': 0,
                  'vel_max': 100,
                  'vel_step': 0.01,
@@ -165,8 +165,8 @@ class MotorDummy(Base, MotorInterface):
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1
-        constraints[axis2['label']] = axis2
-        constraints[axis3['label']] = axis3
+        # constraints[axis2['label']] = axis2
+        # constraints[axis3['label']] = axis3
 
         return constraints
 
@@ -467,13 +467,14 @@ class MotorDummy(Base, MotorInterface):
             if self._x_axis.label in param_list:
                 vel[self._x_axis.label] = self._x_axis.vel
             if self._y_axis.label in param_list:
-                vel[self._x_axis.label] = self._y_axis.vel
+                vel[self._y_axis.label] = self._y_axis.vel
             if self._z_axis.label in param_list:
-                vel[self._x_axis.label] = self._z_axis.vel
+                vel[self._z_axis.label] = self._z_axis.vel
             if self._phi_axis.label in param_list:
                 vel[self._phi_axis.label] = self._phi_axis.vel
 
         else:
+            print('else')
             vel[self._x_axis.label] = self._x_axis.get_vel
             vel[self._y_axis.label] = self._y_axis.get_vel
             vel[self._z_axis.label] = self._z_axis.get_vel
@@ -496,7 +497,7 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._x_axis.label]
             constr = constraints[self._x_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
@@ -510,7 +511,7 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._y_axis.label]
             constr = constraints[self._y_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
@@ -524,7 +525,7 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._z_axis.label]
             constr = constraints[self._z_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(
@@ -538,7 +539,7 @@ class MotorDummy(Base, MotorInterface):
             desired_vel = param_dict[self._phi_axis.label]
             constr = constraints[self._phi_axis.label]
 
-            if not(constr['vel_min'] <= desired_pos <= constr['vel_max']):
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limits '
                         '[{2},{3}] ! Command is ignored!'.format(

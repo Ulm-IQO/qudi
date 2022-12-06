@@ -34,7 +34,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
     fastcounter_timetagger:
         module.Class: 'swabian_instruments.TimeTagger_ungated_Fastcounter.TimeTaggerFastCounter'
         network: True
-        address: '134.60.31.152:5353'
+        address: '134.60.31.229:5353'
         channel_trigger: 1
         channel_apd: 2
         timetagger_serial: '1924000QHS'
@@ -47,15 +47,17 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
     _channel_apd = ConfigOption('channel_apd', missing='error')
     _timetagger_serial = ConfigOption('timetagger_serial', 'Standard', missing='warn')
     _timetagger_resolution = ConfigOption('timetagger_resolution', 'Standard', missing='warn')
+    _control_apd_channel = ConfigOption('control_apd_channel', missing='error')
 
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         # self.TimeTagger = Pyro5.api.Proxy("PYRO:TimeTagger@localhost:23000")
+        # self._address = '134.60.31.229:5353'
         self._record_length = int(4000)
         if self._network:
-            self.timetagger = TimeTagger.createTimeTaggerNetwork(address=self._address)
+            self.timetagger = TimeTagger.createTimeTaggerNetwork(address='134.60.31.137:5353')
             self.timetagger.setTriggerLevel(2, 1)
         else:
             self.timetagger = TimeTagger.createTimeTagger(self._timetagger_serial)
@@ -137,7 +139,10 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
         self.histogram = TimeTagger.Histogram(self.timetagger, self._channel_apd, self._channel_trigger, self._bin_width, self._record_length)
 
+        self.histogram_control = TimeTagger.Histogram(self.timetagger, self._control_apd_channel, self._channel_trigger, self._bin_width, self._record_length)
+
         self.histogram.stop()
+        self.histogram_control.stop()
         return self._bin_width*1e-12, self._record_length * self._bin_width/1e12, number_of_gates
 
     def get_status(self):
@@ -156,6 +161,10 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         self.module_state.lock()
         self.histogram.clear()
         self.histogram.start()
+
+        self.histogram_control.clear()
+        self.histogram_control.start()
+
         self.statusvar = 2
         return 0
 
@@ -163,27 +172,28 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         """ Stop the fast counter. """
         if self.module_state() == 'locked':
             self.histogram.stop()
+            self.histogram_control.stop()
             self.module_state.unlock()
         self.statusvar = 1
         return 0
 
     def pause_measure(self):
         """ Pauses the current measurement.
-
         Fast counter must be initially in the run state to make it pause.
         """
         if self.module_state() == 'locked':
             self.histogram.stop()
+            self.histogram_control.stop()
             self.statusvar = 3
         return 0
 
     def continue_measure(self):
         """ Continues the current measurement.
-
         If fast counter is in pause state, then fast counter will be continued.
         """
         if self.module_state() == 'locked':
             self.histogram.start()
+            self.histogram_control.start()
             self.statusvar = 2
         return 0
 
@@ -210,6 +220,9 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}  # TODO : implement that according to hardware capabilities
         return np.array(self.histogram.getData(), dtype='int64'), info_dict
+
+    def get_control_data_hist(self):
+        return np.array(self.histogram_control.getData(), dtype='int64')
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds. """

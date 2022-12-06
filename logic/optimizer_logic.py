@@ -393,12 +393,18 @@ class OptimizerLogic(GenericLogic):
         xy_fit_data = self.xy_refocus_image[:, :, 4+self.opt_channel].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
+        if np.sum(xy_fit_data) == 0:
+            xy_fit_data = np.ones_like(xy_fit_data)
+            self.log.error('Only zeroes recieved')
+
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
             xy_axes=axes,
             data=xy_fit_data,
             estimator=self._fit_logic.estimate_twoDgaussian_MLE
         )
         # print(result_2D_gaus.fit_report())
+        if np.sum(xy_fit_data) == len(xy_fit_data)*1:
+            result_2D_gaus.success = False
 
         if result_2D_gaus.success is False:
             self.log.error('Error: 2D Gaussian Fit was not successfull!.')

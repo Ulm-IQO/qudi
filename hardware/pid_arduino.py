@@ -78,6 +78,7 @@ class PIDarduino(Base, PIDControllerInterface):
             return True
 
 
+
     def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
         """

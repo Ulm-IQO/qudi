@@ -206,6 +206,32 @@ def make_lorentzian_model(self, prefix=None):
     return lorentz_offset_model, params
 
 
+def make_lorentzianwm_model(self, prefix=None):
+    """ Create a Lorentz model with amplitude and offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    lorentz_model, params = self.make_lorentzianwithoutoffset_model(prefix=prefix)
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    lorentz_offset_model = lorentz_model + constant_model
+
+    if prefix is None:
+        prefix = ''
+
+    lorentz_offset_model.set_param_hint('{0}contrast'.format(prefix),
+                                        expr='({0}amplitude/offset)*100'.format(prefix))
+
+    params = lorentz_offset_model.make_params()
+
+    return lorentz_offset_model, params
+
 #################################################
 #    Mulitiple Lorentzian model with offset     #
 #################################################
@@ -335,6 +361,61 @@ def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
     result.result_str_dict = result_str_dict
     return result
 
+def make_lorentzianwm_fit(self, x_axis, data, estimator, units=None,
+                        add_params=None, **kwargs):
+    """ Perform a 1D lorentzian fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    model, params = self.make_lorentzian_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+    except:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+        self.log.warning('The 1D lorentzian fit did not work. Error '
+                         'message: {0}\n'.format(result.message))
+
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    if units is None:
+        units = ["arb. units"]
+
+    result_str_dict['Position'] = {'value': result.params['center'].value,
+                                   'error': result.params['center'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+                                   'error': result.params['contrast'].stderr,
+                                   'unit': '%'}
+
+    result_str_dict['FWHM'] = {'value': 3e8 / (result.params['center']* 1e-9) ** 2 * result.params['fwhm'].value * 1e-9,
+                               'error':((3e8 / (result.params['center']* 1e-9) ** 3 *2* result.params['fwhm'].value * 1e-9)**2*result.params['center'].stderr+
+                                           (3e8 / (result.params['center']* 1e-9) ** 2 * 1e-9)**2*result.params['fwhm'].stderr)**0.5,
+                               'unit': 'Hz'}
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    result.result_str_dict = result_str_dict
+    return result
+
 def estimate_lorentzian_dip(self, x_axis, data, params):
     """ Provides an estimator to obtain initial values for lorentzian function.
 
@@ -391,6 +472,44 @@ def estimate_lorentzian_dip(self, x_axis, data, params):
 
     return error, params
 
+def estimate_lorentzianwm_peak (self, x_axis, data, params):
+    """ Provides a lorentzian offset peak estimator.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    # check if parameters make sense
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # the peak and dip lorentzians have the same parameters:
+    params_dip = params
+    data_negative = data * (-1)
+
+    error, params_ret = self.estimate_lorentzian_dip(
+        x_axis,
+        data_negative,
+        params_dip)
+
+    params['sigma'] = params_ret['sigma']
+    params['offset'].set(value=-params_ret['offset'])
+    # set the maximum to infinity, since that is the default value.
+    params['amplitude'].set(
+        value=-params_ret['amplitude'].value,
+        min=-1e-12,
+        max=np.inf)
+    params['center'] = params_ret['center']
+
+    return error, params
+
 def estimate_lorentzian_peak (self, x_axis, data, params):
     """ Provides a lorentzian offset peak estimator.
 
@@ -428,6 +547,94 @@ def estimate_lorentzian_peak (self, x_axis, data, params):
     params['center'] = params_ret['center']
 
     return error, params
+
+
+def make_lorentziandoublewm_model(self):
+    """ Create a model with double lorentzian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    return self.make_multiplelorentzian_model(no_of_functions=2)
+
+
+
+def make_lorentziandoublewm_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
+    """ Perform a 1D double lorentzian dip fit with offset on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+
+    """
+
+    model, params = self.make_lorentziandouble_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    # redefine values of additional parameters
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+    except:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+        self.log.error('The double lorentzian fit did not '
+                     'work: {0}'.format(result.message))
+
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    if units is None:
+        units = ["arb. u."]
+
+    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['l0_center'].stderr,
+                                     'unit': 'nm'}
+
+    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
+                                     'unit': 'nm'}
+
+    result_str_dict['Splitting'] = {'value': ((3e8 /result.params['l1_center'].value -
+                                              3e8 /result.params['l0_center'].value)),
+                                    'error': ((3e8 /result.params['l0_center']**2)**2*result.params['l0_center'].stderr+
+                                              (3e8 /result.params['l1_center']**2)**2*result.params['l1_center'].stderr)**.5 ,
+                                    'unit': 'Hz'}
+
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                     'error': result.params['l0_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                     'error': result.params['l1_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['FWHM 0'] = {'value': 3e8 / (result.params['l0_center']* 1e-9) ** 2 * result.params['l0_fwhm'].value * 1e-9,
+                                 'error': ((3e8 / (result.params['l0_center']* 1e-9) ** 3 *2* result.params['l0_fwhm'].value * 1e-9)**2*result.params['l0_center'].stderr+
+                                           (3e8 / (result.params['l0_center']* 1e-9) ** 2 * 1e-9)**2*result.params['l0_fwhm'].stderr)**0.5,
+                                 'unit': 'Hz'}
+
+    result_str_dict['FWHM 1'] = {'value': 3e8 / (result.params['l1_center']* 1e-9) ** 2 * result.params['l1_fwhm'].value * 1e-9*1e-6,
+                                 'error': ((3e8 / (result.params['l1_center']* 1e-9) ** 3 *2* result.params['l1_fwhm'].value * 1e-9)**2*result.params['l1_center'].stderr+
+                                           (3e8 / (result.params['l1_center']* 1e-9) ** 2 * 1e-9)**2*result.params['l1_fwhm'].stderr)**0.5,
+                                 'unit': 'Hz'}
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    result.result_str_dict = result_str_dict
+    return result
+
 
 
 ################################################################################
@@ -607,6 +814,50 @@ def estimate_lorentziandouble_dip(self, x_axis, data, params,
     params['offset'].set(value=offset)
 
     return error, params
+
+def estimate_lorentziandoublewm_peak(self, x_axis, data, params,
+                                   threshold_fraction=0.3,
+                                   minimal_threshold=0.01,
+                                   sigma_threshold_fraction=0.3):
+    """ Provide an estimator for double lorentzian peak with offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    # check if parameters make sense
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # the peak and dip lorentzians have the same parameters:
+    params_dip = params
+    data_negative = data * (-1)
+
+    error, params_ret = self.estimate_lorentziandouble_dip(x_axis,
+                                                           data_negative,
+                                                           params_dip)
+
+    params['l0_sigma'] = params_ret['l0_sigma']
+    # set the maximum to infinity, since that is the default value.
+    params['l0_amplitude'].set(value=-params_ret['l0_amplitude'].value, min=-1e-12,
+                               max=np.inf)
+    params['l0_center'] = params_ret['l0_center']
+    params['l1_amplitude'].set(value=-params_ret['l1_amplitude'].value, min=-1e-12,
+                               max=np.inf)
+    params['l1_sigma'] = params_ret['l1_sigma']
+    params['l1_center'] = params_ret['l1_center']
+
+    params['offset'].set(value=-params_ret['offset'])
+
+    return error, params
+
 
 def estimate_lorentziandouble_peak(self, x_axis, data, params,
                                    threshold_fraction=0.3,
