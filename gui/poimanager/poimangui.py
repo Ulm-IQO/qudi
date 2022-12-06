@@ -622,10 +622,8 @@ class PoiManagerGui(GUIBase):
         # In our case this is most likely the POI marker to select the active POI from.
         if button != QtCore.Qt.LeftButton:
             return
-        # Z position from ROI origin, X and Y positions from click event
-        new_pos = self.poimanagerlogic().roi_origin
-        new_pos[0] = pos.x()
-        new_pos[1] = pos.y()
+        # Z position from scanner, X and Y positions from click event
+        new_pos =  np.array([pos.x(), pos.y(), self.poimanagerlogic().scanner_position[2]])              
         self.sigAddPoiByClick.emit(new_pos)
         return
 
