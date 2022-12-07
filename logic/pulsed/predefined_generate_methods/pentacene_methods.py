@@ -921,7 +921,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
     def generate_laser_strob(self, name='laser_strob', t_laser_read=3e-6,
                              t_laser_init=10e-6, t_wait_between=0e-9, laser_read_ch='', add_gate_ch='',
                              t_aom_safety=250e-9, pwm_read_duty=1.0, pwm_freq=1.0e6,
-                             gate_init=False, alternating_no_read=False,
+                             epoch_done_ch='', gate_init=False, read_no_fc_gate=False, alternating_no_read=False,
                              overlap_no_read=False, init_laser_first=False):
         """
 
@@ -948,20 +948,22 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         laser_red_element = self._get_laser_gate_elements_pwm(length=t_laser_read-t_aom_safety,
                                                          increment=0, laser_ch=laser_read_ch,
-                                                         add_gate_ch=add_gate_ch,
+                                                         add_gate_ch=add_gate_ch, no_fc_gate=read_no_fc_gate,
                                                          pwm_duty_cycle=pwm_read_duty, pwm_freq=pwm_freq)
 
         no_laser_red_element = self._get_laser_gate_element(length=t_laser_read-t_aom_safety,
                                                          increment=0,
-                                                         add_gate_ch=add_gate_ch)
+                                                         add_gate_ch=add_gate_ch, no_fc_gate=read_no_fc_gate)
 
         # close gap between aom init laser pulse and instant red pulse
         laser_red_balanceaom_element = self._get_laser_gate_element(length=t_aom_safety,
                                                                     increment=0,
-                                                                    add_gate_ch=add_gate_ch)
+                                                                    add_gate_ch=add_gate_ch,
+                                                                    no_fc_gate=read_no_fc_gate)
         no_laser_red_balanceaom_element = self._get_laser_gate_element(length=t_aom_safety,
                                                                     increment=0,
-                                                                    add_gate_ch=add_gate_ch)
+                                                                    add_gate_ch=add_gate_ch,
+                                                                     no_fc_gate=read_no_fc_gate)
         if laser_read_ch:
 
             no_laser_red_element.digital_high[self.laser_channel] = False
@@ -1009,12 +1011,17 @@ class PentaceneMethods(PredefinedGeneratorBase):
             # ~ aom delay, but more aggressive timing. Avoid overlapping of green (aom) and red (instant)
             strob_block.append(safety_element)
 
+        if epoch_done_ch != "":
+            epoch_element = self._get_trigger_element(10e-9, 0, epoch_done_ch)
+            strob_block.append(epoch_element)
+
         created_blocks.append(strob_block)
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
         block_ensemble.append((strob_block.name, 1 - 1))
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
         fastcount_length = self._get_ensemble_count_length(ensemble=block_ensemble, created_blocks=created_blocks,
                                                            laser_ch=laser_read_ch)
 
