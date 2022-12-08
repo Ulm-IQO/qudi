@@ -122,7 +122,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # repeat init indefintely is done by segment advance mode==conditional + trigger mode==contiunous
 
         # epoch done trigger for signaling finished sequence and reset of external hw
-        # if this reset is at first (not last) pos of sequence, photon counting not summed, only over 1 red laser
+        # to reset counter with every green-red combination, add epoch_done into the laser_strob segment
         done_name = 'epoch_done'
         done_blocks, done_ensembles, _ = self._create_generic_trigger(done_name, ch_trigger_done)
         self._add_to_jumptable(done_name)
@@ -137,7 +137,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                        'segment_advance_mode': 'conditional'})
         init_blocks, init_ensembles, _ = generate_method(name=init_name, t_laser_read=t_read,
                              t_laser_init=t_init, t_wait_between=t_wait_between, laser_read_ch=laser_read_ch,
-                             add_gate_ch=add_gate_ch, read_no_fc_gate=True,
+                             add_gate_ch=add_gate_ch, read_no_fc_gate=True, epoch_done_ch='',
                              t_aom_safety=t_aom_safety, init_laser_first=True)
 
         self._add_to_jumptable(init_name)
