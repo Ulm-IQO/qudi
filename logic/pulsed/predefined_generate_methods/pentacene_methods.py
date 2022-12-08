@@ -966,8 +966,15 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                                      no_fc_gate=read_no_fc_gate)
         if laser_read_ch:
 
+            for el in laser_red_element:
+                if el.digital_high[self.laser_channel] and not el.digital_high[laser_read_ch]:
+                    el.digital_high[self.laser_channel] = False
+                    el.digital_high[laser_read_ch] = True
+
             no_laser_red_element.digital_high[self.laser_channel] = False
             no_laser_red_element.digital_high[laser_read_ch] = False
+
+
             #f t_laser_init > t_aom_safety:
             #    laser_red_balanceaom_element.digital_high[self.laser_channel] = True
             #else:
