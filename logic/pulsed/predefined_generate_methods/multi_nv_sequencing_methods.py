@@ -74,6 +74,37 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         cur_seq_params = self._get_default_seq_params(seq_params)
         self._add_to_seqtable(name, blocks, ensemble, cur_seq_params)
 
+    def generate_rabi_fci(self, name='rabi_fci', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
+                          t_cinit_green=500e-9, t_cinit_red=10e-6,
+                          t_wait_between=1e-6, t_aom_safety=750e-9,
+                          laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1'
+                          ):
+
+        """
+        Sequence for charge readout. Init charge with fast charge readout as in Hopper (2020).
+        Analysis of the data requires listmode acquisition to create a photon number histogram.
+        """
+
+        total_name = name
+
+        generate_method = self._get_generation_method('rabi')
+        cur_name = 'rabi'
+        # mw method must have green laser at end!
+        cur_blocks, cur_ensembles, _ = generate_method(name=cur_name, tau_start=tau_start, tau_step=tau_step,
+                                                       num_of_points=num_of_points,
+                                                       # suppress fci counting during normal readout
+                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",)
+
+        blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                 generic_blocks=cur_blocks, generic_ensemble=cur_ensembles,
+                                                                 t_init=t_cinit_green, t_read=t_cinit_red,
+                                                                 laser_read_ch=laser_red_ch,
+                                                                 ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
+                                                                 t_aom_safety=t_aom_safety, t_wait_between=t_wait_between)
+
+        return blocks, enembles, sequences
+
+
 
     def generate_charge_read_fci(self, name='charge_read_fci', t_cinit_green=500e-9, t_cinit_red=10e-6,
                                  t_cread_red=50e-6,  t_wait_between=1e-6, t_aom_safety=750e-9,
@@ -91,14 +122,15 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         cur_name = 'charge_read'
         cur_blocks, cur_ensembles, _ = generate_method(name=cur_name, t_laser_read=t_cread_red,
                                                        t_laser_init=0, t_wait_between=0, laser_read_ch=laser_red_ch,
-                                                       add_gate_ch=add_gate_ch,
+                                                       # suppress fci counting during (long) charge read by const reset
+                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",
                                                        t_aom_safety=t_aom_safety)
 
         blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
                                                                  generic_blocks=cur_blocks, generic_ensemble=cur_ensembles,
                                                                  t_init=t_cinit_green, t_read=t_cinit_red,
                                                                  laser_read_ch=laser_red_ch,
-                                                                 add_gate_ch=add_gate_ch, ch_trigger_done=done_ch,
+                                                                 ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
                                                                  t_aom_safety=t_aom_safety, t_wait_between=t_wait_between)
 
         return blocks, enembles, sequences
@@ -137,7 +169,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                        'segment_advance_mode': 'conditional'})
         init_blocks, init_ensembles, _ = generate_method(name=init_name, t_laser_read=t_read,
                              t_laser_init=t_init, t_wait_between=t_wait_between, laser_read_ch=laser_read_ch,
-                             add_gate_ch=add_gate_ch, read_no_fc_gate=True, epoch_done_ch='',
+                             add_gate_ch=add_gate_ch, read_no_fc_gate=True, epoch_done_ch=ch_trigger_done,
                              t_aom_safety=t_aom_safety, init_laser_first=True)
 
         self._add_to_jumptable(init_name)

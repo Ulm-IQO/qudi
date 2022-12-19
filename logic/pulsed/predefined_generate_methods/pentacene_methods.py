@@ -966,15 +966,8 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                                      no_fc_gate=read_no_fc_gate)
         if laser_read_ch:
 
-            for el in laser_red_element:
-                if el.digital_high[self.laser_channel] and not el.digital_high[laser_read_ch]:
-                    el.digital_high[self.laser_channel] = False
-                    el.digital_high[laser_read_ch] = True
-
             no_laser_red_element.digital_high[self.laser_channel] = False
             no_laser_red_element.digital_high[laser_read_ch] = False
-
-
             #f t_laser_init > t_aom_safety:
             #    laser_red_balanceaom_element.digital_high[self.laser_channel] = True
             #else:
@@ -994,9 +987,13 @@ class PentaceneMethods(PredefinedGeneratorBase):
         safety_element = self._get_idle_element(length=t_aom_safety,
                                                 increment=0)
 
+        strob_block = PulseBlock(name=name)
+        if epoch_done_ch != "":
+            epoch_element = self._get_trigger_element(10e-9, 0, epoch_done_ch)
+            strob_block.append(epoch_element)
+
         # Create block and append to created_blocks list
         if init_laser_first:
-            strob_block = PulseBlock(name=name)
             strob_block.append(laser_init_element)
             if t_laser_init > 0e-9:
                 strob_block.append(waiting_element)
@@ -1007,7 +1004,6 @@ class PentaceneMethods(PredefinedGeneratorBase):
             strob_block.append(idle_between_lasers_element)
 
         else:
-            strob_block = PulseBlock(name=name)
             strob_block.extend(laser_red_element)
             strob_block.append(laser_red_balanceaom_element)
             strob_block.append(idle_between_lasers_element)
@@ -1018,9 +1014,7 @@ class PentaceneMethods(PredefinedGeneratorBase):
             # ~ aom delay, but more aggressive timing. Avoid overlapping of green (aom) and red (instant)
             strob_block.append(safety_element)
 
-        if epoch_done_ch != "":
-            epoch_element = self._get_trigger_element(10e-9, 0, epoch_done_ch)
-            strob_block.append(epoch_element)
+
 
         created_blocks.append(strob_block)
         # Create block ensemble
