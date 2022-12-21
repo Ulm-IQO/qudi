@@ -88,19 +88,30 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         total_name = name
 
         generate_method = self._get_generation_method('rabi')
-        cur_name = 'rabi'
-        # mw method must have green laser at end!
-        cur_blocks, cur_ensembles, _ = generate_method(name=cur_name, tau_start=tau_start, tau_step=tau_step,
-                                                       num_of_points=num_of_points,
-                                                       # suppress fci counting during normal readout
-                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",)
+        single_mw_name = 'rabi'
 
-        blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
-                                                                 generic_blocks=cur_blocks, generic_ensemble=cur_ensembles,
-                                                                 t_init=t_cinit_green, t_read=t_cinit_red,
-                                                                 laser_read_ch=laser_red_ch,
-                                                                 ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
-                                                                 t_aom_safety=t_aom_safety, t_wait_between=t_wait_between)
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        for idx, tau in enumerate(tau_array):
+            # mw method must have green laser at end!
+            cur_name = f"{single_mw_name}_{idx}"
+
+            single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, tau_start=tau,
+                                                                       tau_step=0, num_of_points=1,
+                                                                       # suppress fci counting during normal readout
+                                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",
+                                                                       #short_laser=idx/len(tau_array)*10)
+                                                                       )
+            # single generic method creates most of the mes info, only set multiple tau here
+            single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
+            single_mw_ensembles[0].measurement_information['number_of_lasers'] = len(tau_array)
+
+            blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                     generic_blocks=single_mw_blocks, generic_ensemble=single_mw_ensembles,
+                                                                     t_init=t_cinit_green, t_read=t_cinit_red,
+                                                                     laser_read_ch=laser_red_ch,
+                                                                     ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
+                                                                     t_aom_safety=t_aom_safety, t_wait_between=t_wait_between,
+                                                                     continue_seqtable=(idx!=0))
 
         return blocks, enembles, sequences
 
@@ -140,14 +151,15 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                               t_init=3e-6, t_read=10e-6, t_aom_safety=750e-9, t_wait_between=1e-6,
                               generic_blocks=None, generic_ensemble=None,
                               ch_trigger_done='d_ch1', laser_read_ch='d_ch3', add_gate_ch='',
-                              alternating=False):
+                              alternating=False, continue_seqtable=False):
         """
         Prepends a deterministic (Hopper) readout to some generic predefined method.
         This version is meant to be used with a linear sequencer, as Keysight M8190A.
         """
         # for linear sequencers like Keysight AWG
         # self.init_jumptable()  # jumping currently not needed
-        self.init_seqtable()
+        if not continue_seqtable:
+            self.init_seqtable()
         general_params = locals()
 
         # charge init by repeating (green, res) until a photon threshold is signaled by ext hw
