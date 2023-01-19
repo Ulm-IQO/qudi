@@ -206,7 +206,7 @@ class FastComtec(Base, FastCounterInterface):
         #this variable has to be added because there is no difference
         #in the fastcomtec it can be on "stopped" or "halt"
         self.stopped_or_halt = "stopped"
-        #self.timetrace_tmp = []
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -413,9 +413,6 @@ class FastComtec(Base, FastCounterInterface):
         ptr = data.ctypes.data_as(p_type_ulong)
         self.dll.LVGetDat(ptr, 0)
         time_trace = np.int64(data)
-
-        #if self.gated and self.timetrace_tmp != []:
-        #    time_trace = time_trace + self.timetrace_tmp
 
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}  # TODO : implement that according to hardware capabilities
