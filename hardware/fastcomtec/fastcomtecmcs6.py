@@ -361,40 +361,10 @@ class FastComtec(Base, FastCounterInterface):
 
     def continue_measure(self):
         """Continue a paused measurement. """
-        if self.gated:
-            # in gated mode, MPANT.exe starts a dialog on continue
-            # avoid by stashing to file, starting new measurement and restoring old data
-            fname_tmp = "tmp_timetrace.mpa"
-            fname_old = self.get_filename()
-
-            self.save_data(fname_tmp, clear_starts=True)
-
-            # start new mes
-            self.dll.Start(0)
-            while self.get_status() != 2:
-                time.sleep(0.05)
-
-            # halt and add stashed data
-            self.dll.Halt(0)
-            while self.get_status() != 3:
-                time.sleep(0.05)
-
-            self.log.debug(f"Restoring from file {self.get_filename()} to continue")
-            cmd = 'addmpa'
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        status = self.dll.Continue(0)
+        while self.get_status() != 2:
             time.sleep(0.05)
-
-            # restart measurement
-            self.change_filename(fname_old)
-            status = self.dll.Continue(0)
-            while self.get_status() != 2:
-                time.sleep(0.05)
-        else:
-            status = self.dll.Continue(0)
-            while self.get_status() != 2:
-                time.sleep(0.05)
         return status
-
 
     def is_gated(self):
         """ Check the gated counting possibility.
@@ -403,7 +373,6 @@ class FastComtec(Base, FastCounterInterface):
                       counter (TRUE) or not (FALSE).
         """
         return self.gated
-
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
@@ -757,7 +726,8 @@ class FastComtec(Base, FastCounterInterface):
         # Turn on or off sequential cycle mode
         if sequential_mode:
             self.log.debug("Sequential mode enabled. Make sure to set 'checksync=0' in mcs6a.ini. "
-                           "Resyncing can cause issues in sequential mode.")
+                           "Resyncing can cause issues in sequential mode."
+                           "Make sure to set 'nomessages=1' to allow pausing of  gated measurements.")
             if raw_bytes is None:
                 raw_bytes_dec = 1978500  # old standard setting
                 raw_bytes_dec = 1974404  # old setting + disable "sweep counter not needed"
@@ -917,7 +887,7 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return mode
 
-    def save_data(self, filename, clear_starts=False):
+    def save_data(self, filename):
         """ save the current settings and data.
 
         @param str filename: Path incl. name of the savefile.  Overwrites if already existent.
@@ -925,35 +895,13 @@ class FastComtec(Base, FastCounterInterface):
         self.change_filename(filename)
         file = self.get_filename()
 
-
         if os.path.exists(file):
             os.remove(file)
-            self.log.debug(f"Removing existend file {file}")
 
         cmd = 'savempa'
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
-        if clear_starts:
-            self._clear_start_in_file()
-
         return file
-
-
-    def _clear_start_in_file(self):
-        file = self.get_filename()
-        file_new = f"{file}.2"
-
-        with open(file, "rt") as fin:
-            with open(file_new, "wt") as fout:
-                for line in fin:
-                    if "STARTS:" in line:
-                        fout.write("STARTS: 0")
-                        self.log.debug(f"Resetting starts counter in file {file}")
-                    else:
-                        fout.write(line)
-        os.replace(file_new, file)
-
-
 
 
 ######################## Methods to fulfill gated counter interface ###################
