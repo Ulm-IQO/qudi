@@ -33,7 +33,7 @@ import time
 import os
 import numpy as np
 import ctypes
-
+from pathlib import PurePath
 
 """
 Remark to the usage of ctypes:
@@ -160,6 +160,18 @@ class BOARDSETTING(ctypes.Structure):
                 ('fstchan',     ctypes.c_double),
                 ('timepreset',  ctypes.c_double), ]
 
+class DatSettings(ctypes.Structure):
+    _fields_ = [('savedata', ctypes.c_long),
+                ('autoinc',  ctypes.c_long),
+                ('fmt', ctypes.c_long),
+                ('mpafmt', ctypes.c_long),
+                ('sephead', ctypes.c_long),
+                ('smpts', ctypes.c_long),
+                ('caluse', ctypes.c_long),
+                ('filename', ctypes.c_char * 256),
+                ('specfile', ctypes.c_long * 256),
+                ('command', ctypes.c_long * 256)]
+
 
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
@@ -194,7 +206,7 @@ class FastComtec(Base, FastCounterInterface):
         #this variable has to be added because there is no difference
         #in the fastcomtec it can be on "stopped" or "halt"
         self.stopped_or_halt = "stopped"
-        self.timetrace_tmp = []
+        #self.timetrace_tmp = []
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -329,15 +341,13 @@ class FastComtec(Base, FastCounterInterface):
             #self.log.debug(f"Start status {self.get_status()}")
         return status
 
+
     def stop_measure(self):
         """Stop the measurement. """
         self.stopped_or_halt = "stopped"
         status = self.dll.Halt(0)
         while self.get_status() != 1:
             time.sleep(0.05)
-            self.log.debug(f"Stop status {self.get_status()}")
-        if self.gated:
-            self.timetrace_tmp = []
         return status
 
     def pause_measure(self):
@@ -347,14 +357,38 @@ class FastComtec(Base, FastCounterInterface):
         while self.get_status() != 3:
             time.sleep(0.05)
 
-        if self.gated:
-            self.timetrace_tmp = self.get_data_trace()
         return status
 
     def continue_measure(self):
         """Continue a paused measurement. """
         if self.gated:
-            status = self.start_measure()
+            # in gated mode, MPANT.exe starts a dialog on continue
+            # avoid by stashing to file, starting new measurement and restoring old data
+            fname_tmp = "tmp_timetrace.mpa"
+            fname_old = self.get_filename()
+
+            self.save_data(fname_tmp, clear_starts=True)
+
+            # start new mes
+            self.dll.Start(0)
+            while self.get_status() != 2:
+                time.sleep(0.05)
+
+            # halt and add stashed data
+            self.dll.Halt(0)
+            while self.get_status() != 3:
+                time.sleep(0.05)
+
+            self.log.debug(f"Restoring from file {self.get_filename()} to continue")
+            cmd = 'addmpa'
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            time.sleep(0.05)
+
+            # restart measurement
+            self.change_filename(fname_old)
+            status = self.dll.Continue(0)
+            while self.get_status() != 2:
+                time.sleep(0.05)
         else:
             status = self.dll.Continue(0)
             while self.get_status() != 2:
@@ -411,8 +445,8 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.LVGetDat(ptr, 0)
         time_trace = np.int64(data)
 
-        if self.gated and self.timetrace_tmp != []:
-            time_trace = time_trace + self.timetrace_tmp
+        #if self.gated and self.timetrace_tmp != []:
+        #    time_trace = time_trace + self.timetrace_tmp
 
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}  # TODO : implement that according to hardware capabilities
@@ -727,6 +761,9 @@ class FastComtec(Base, FastCounterInterface):
             if raw_bytes is None:
                 raw_bytes_dec = 1978500  # old standard setting
                 raw_bytes_dec = 1974404  # old setting + disable "sweep counter not needed"
+                # old settings + disable "sweep counter not needed"
+                # + disable "allow 6 byte words"
+                raw_bytes_dec = 35528836
             else:
                 raw_bytes_dec = raw_bytes
             cmd = 'sweepmode={0}'.format(hex(raw_bytes_dec))
@@ -846,11 +883,24 @@ class FastComtec(Base, FastCounterInterface):
 #################################### Methods for saving ###############################################
 
 
+    def get_filename(self):
+        setting = DatSettings()
+        self.dll.GetDatSetting(ctypes.byref(setting))
+
+        return (setting.filename).decode("utf-8")
+
     def change_filename(self, name):
-        """ Changes filename
+        """ Changes filename. If a filename is given without path, will set the
+        qudi tools directory.
 
         @param str name: Location and name of the file
         """
+
+        if str(PurePath(name).parent) == '.':
+            # calling mpaname without path will use the Mcs6 install directory
+            # but this is not known to dll or qudi
+            name = os.path.join(get_main_dir(), 'tools', name)
+
         cmd = 'mpaname=%s' % name
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return name
@@ -867,15 +917,41 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return mode
 
-    def save_data(self, filename):
-        """ save the current settings and data
+    def save_data(self, filename, clear_starts=False):
+        """ save the current settings and data.
 
-        @param str filename: Location and name of the savefile
+        @param str filename: Path incl. name of the savefile.  Overwrites if already existent.
         """
         self.change_filename(filename)
+        file = self.get_filename()
+
+
+        if os.path.exists(file):
+            os.remove(file)
+            self.log.debug(f"Removing existend file {file}")
+
         cmd = 'savempa'
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        return filename
+
+        if clear_starts:
+            self._clear_start_in_file()
+
+        return file
+
+
+    def _clear_start_in_file(self):
+        file = self.get_filename()
+        file_new = f"{file}.2"
+
+        with open(file, "rt") as fin:
+            with open(file_new, "wt") as fout:
+                for line in fin:
+                    if "STARTS:" in line:
+                        fout.write("STARTS: 0")
+                        self.log.debug(f"Resetting starts counter in file {file}")
+                    else:
+                        fout.write(line)
+        os.replace(file_new, file)
 
 
 
