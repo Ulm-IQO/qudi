@@ -277,7 +277,7 @@ def lockfile_aquire(filename, timeout_s=0):
 
             try:
                 with open(filename, 'rb') as file:
-                    lock = pickle.load(file)
+                    lock = pickle.load(file, )
                 success = True
                 #logger.info("Successfully acquired lock {}".format(filename))
                 break
@@ -329,6 +329,7 @@ def prepare_qm(experiment, qm_dict, generate_new=True):
         qm_dict['sequence_length'] = \
             pulsedmasterlogic.get_sequence_info(pulsedmasterlogic.saved_pulse_sequences[qm_dict['name']])[0]
     """
+    time.sleep(0.5)
     set_parameters(qm_dict)
 
     try:
@@ -349,8 +350,12 @@ def customise_setup(dictionary):
     # get a subdictionary with the generation parameters and set them
     subdict = dict([(key, dictionary.get(key)) for key in pulsedmasterlogic.generation_parameters if key in dictionary])
     pulsedmasterlogic.set_generation_parameters(subdict)
-
     logger.info("Setting sequence generation params: {}".format(subdict))
+
+    subdict_fc = dict([(key, dictionary.get(key)) for key in pulsedmasterlogic.fast_counter_settings if key in dictionary])
+    pulsedmasterlogic.set_fast_counter_settings(subdict)
+    logger.info("Setting fastcounter params: {}".format(subdict_fc))
+
 
     return dictionary
 
@@ -473,12 +478,15 @@ def load_into_channel(name, sequence_mode):
 def set_parameters(qm_dict):
 
     logger.debug("Setting parameters for asset {}: {}".format(qm_dict['name'], qm_dict))
+    try:
+        if not qm_dict['sequence_mode']:
+            qm_dict['params'] = pulsedmasterlogic.saved_pulse_block_ensembles.get(qm_dict['name']).measurement_information
+        else:
+            qm_dict['params'] = pulsedmasterlogic.saved_pulse_sequences.get(qm_dict['name']).measurement_information
+        pulsedmasterlogic.set_measurement_settings(qm_dict['params'])
 
-    if not qm_dict['sequence_mode']:
-        qm_dict['params'] = pulsedmasterlogic.saved_pulse_block_ensembles.get(qm_dict['name']).measurement_information
-    else:
-        qm_dict['params'] = pulsedmasterlogic.saved_pulse_sequences.get(qm_dict['name']).measurement_information
-    pulsedmasterlogic.set_measurement_settings(qm_dict['params'])
+    except:
+        logger.exception(f"Failed setting pulsed parameters. Is sequence? {qm_dict['sequence_mode']}:")
 
     return qm_dict
 
@@ -526,6 +534,18 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     if save_tag is not None:
         logger.debug("Saving logic essential params to {}/{}".format(save_subdir, save_tag))
         save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir)
+
+    if 'listfile' in qm_dict.keys():
+        # listfile .lst is configure before mes, but still .mpa will miss.
+        # So change save_mode and save again after mes
+        if qm_dict['listfile']:
+            data_dir = os.path.abspath(savelogic.get_daily_directory())
+            name = f"{qm_dict['savetag']}.mpa"
+            myfastcounter.change_save_mode(0)
+            myfastcounter.save_data(data_dir + r'\\' + name)
+            logger.info(f"Saving .mpa to: {myfastcounter.get_filename()}")
+            myfastcounter.change_save_mode(2)
+
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment'] != 'No fit':
         try:
@@ -627,6 +647,7 @@ def set_gated_counting(qm_dict):
     else:
         qm_dict['gated'] = setup['gated']
         qm_dict['ctr_n_cycles'] = qm_dict['params']['number_of_lasers']
+
     """
     if setup['gated']:
         pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'],
@@ -676,8 +697,8 @@ def set_up_conventional_measurement(qm_dict):
     else:
         extr_method = qm_dict['extr_method']
 
-    pulsedmasterlogic.set_extraction_settings(extr_method)
     logger.info("Setting laser pulse extraction method: {}".format(extr_method))
+    pulsedmasterlogic.set_extraction_settings(extr_method)
 
     # pulsedmasterlogic.set_extraction_settings({'method': 'conv_deriv', 'conv_std_dev': 20})
     # pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
@@ -699,11 +720,14 @@ def set_up_conventional_measurement(qm_dict):
             else:
                 analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': 400e-9,
                                 'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
-        else:
+        else: # gated
             analy_method = {'method': 'mean_norm', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
-                                                'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
-            analy_method = {'method': 'mean', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
-                                                'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
+                                                'norm_start':2.5e-6, 'norm_end': 2.5e-6 + 400e-9}
+            # with 2x TTL pulse duplicator
+            analy_method = {'method': 'mean_norm', 'signal_start': 1070e-9, 'signal_end': 1070e-9 + 400e-9,
+                                                'norm_start':3e-6, 'norm_end': 3e-6 + 400e-9}
+            #analy_method = {'method': 'mean', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
+            #                                    'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
 
     logger.info("Setting laser pulse analysis method: {}".format(analy_method))
     pulsedmasterlogic.set_analysis_settings(analy_method)
@@ -790,8 +814,11 @@ def control_measurement(qm_dict, analysis_method=None):
 
         ##################### optimize position #######################
         if qm_dict['optimize_time'] is not None:
+            func_toggle = None
+            if 'optimize_func_toggle_pause' in qm_dict:
+                func_toggle = qm_dict['optimize_func_toggle_pause']
             if time.time() - optimize_real_time > qm_dict['optimize_time']:
-                additional_time = optimize_position()
+                additional_time = optimize_position(func_toggle_pause=func_toggle)
                 start_time = start_time + additional_time
                 optimize_real_time = time.time()
 
@@ -1018,12 +1045,16 @@ def wait_for_cts(min_cts=10e3, timeout_s=2):
     if not high_cts:
         logger.warning("Timed out while waiting for high counts.")
 
-def optimize_position(optimize_ch=None):
+def optimize_position(optimize_ch=None, func_toggle_pause=None):
     # FIXME: Add the option to pause pulsed measurement during position optimization
     # add: check if counts
 
     time_start_optimize = time.time()
 
+    if func_toggle_pause:
+        logger.debug("Invoking toggle_func(False)")
+        pause_mes = func_toggle_pause
+        pause_mes(False)
 
     #pulsedmeasurementlogic.fast_counter_pause()
     if optimize_ch is None:
@@ -1036,7 +1067,10 @@ def optimize_position(optimize_ch=None):
         logger.debug(f"Optimization with laser ch: {optimize_ch}")
         nicard.digital_channel_switch(optimize_ch, mode=True)
 
-    wait_for_cts()
+    logger.debug("Sleeping before count wait")
+    time.sleep(1)
+    wait_for_cts(min_cts=1e3, timeout_s=10)
+    time.sleep(1)
 
     # perform refocus
     scannerlogic.stop_scanning()
@@ -1058,6 +1092,11 @@ def optimize_position(optimize_ch=None):
     additional_time = (time_stop_optimize - time_start_optimize)
 
     nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+
+    if func_toggle_pause:
+        logger.debug("Invoking toggle_func(True)")
+        pause_mes = func_toggle_pause
+        pause_mes(True)
 
     return additional_time
 
