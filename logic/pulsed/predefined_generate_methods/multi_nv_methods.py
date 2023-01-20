@@ -914,7 +914,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                              f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                              dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
                              init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
-                             nv_order="1,2", read_phase_deg=90, env_type_1=EnvelopeMethods.rectangle,
+                             nv_order="1,2", read_phase_deg=90,
+                             add_gate_ch='d_ch4', env_type_1=EnvelopeMethods.rectangle,
                              env_type_2=EnvelopeMethods.rectangle,
                              alternating=True, no_laser=False):
         """
@@ -1000,8 +1001,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
-        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
-        delay_element = self._get_delay_gate_element()
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0,
+                                                     add_gate_ch=add_gate_ch)
+        delay_element = self._get_delay_gate_element(add_gate_ch=add_gate_ch)
 
         pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
         # elements inside dd come from their own function
@@ -1110,13 +1112,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
                     if last:
                         if end_pix_on_2 != 0:
-                            pix_end_on2_element = self.get_pi_element(dd_type.phases[pulse_number], mw_freqs,
+                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
                                                                       ampls_on_2,
                                                                       rabi_periods, env_type=env_type_2, on_nv=2,
                                                                       pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                             dd_block.extend(pix_end_on2_element)
                     else:
-                        dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=2))
+                        dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
             dd_block.extend(pihalf_on1_alt_read_element)
 
             if not no_laser:
