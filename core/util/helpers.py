@@ -280,7 +280,7 @@ def in_range(value, lower_limit, upper_limit):
     return value
 
 
-def csv_2_list(csv_string, str_2_val=None):
+def csv_2_list(csv_string, str_2_val=None, delimiter=","):
     """
     Parse a list literal (with or without square brackets) given as string containing
     comma-separated int or float values to a python list.
@@ -290,6 +290,7 @@ def csv_2_list(csv_string, str_2_val=None):
                        of blanks. (brackets are ignored)
                        Example: '[1e-6,2.5e6, 42]' or '1e-6, 2e-6,   42'
     @param function str_2_val: optional, function to use for casting substrings into single values.
+    @param str, delimiter:   optional, string that splits the listeral into its elements.
     @return list: list of float values. If optional str_2_val is given, type is invoked by this
                   function.
     """
@@ -302,11 +303,10 @@ def csv_2_list(csv_string, str_2_val=None):
     csv_string = csv_string.replace('[', '').replace(']', '')  # Remove square brackets
     csv_string = csv_string.replace('(', '').replace(')', '')  # Remove round brackets
     csv_string = csv_string.replace('{', '').replace('}', '')  # Remove curly brackets
-    csv_string = csv_string.strip().strip(',')  # Remove trailing/leading blanks and commas
+    csv_string = csv_string.strip().strip(delimiter)  # Remove trailing/leading blanks and commas
 
-    # Cast each str value to float if no explicit cast function is given by parameter str_2_val.
     if str_2_val is None:
-        csv_list = [float(val_str) for val_str in csv_string.split(',')]
+        csv_list = [float(val_str) for val_str in csv_string.split(delimiter)]
     else:
-        csv_list = [str_2_val(val_str.strip()) for val_str in csv_string.split(',')]
+        csv_list = [str_2_val(val_str.strip()) for val_str in csv_string.split(delimiter)]
     return csv_list
