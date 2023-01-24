@@ -17,14 +17,16 @@ class DQTAltModes(IntEnum):
 
 class TomoRotations(IntEnum):
     none = 0
-    ux90_on_1 = 1   # not strictly needed
-    ux90_on_2 = 2   # not strictly needed
+    ux90_on_1 = 1
+    ux90_on_2 = 2
     ux180_on_1 = 3
     ux180_on_2 = 4
     c1not2 = 5
-    c2not1 = 6  # not strictly needed
+    c2not1 = 6
     c1not2_ux180_on_2 = 7
     c2not1_ux180_on_1 = 8
+    uy90_on_1 = 9
+    uy90_on_2 = 10
 
 class TomoInit(IntEnum):
     none = 0
@@ -666,6 +668,150 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_rand_benchmark(self, name='random_benchmark',
+                            rotations="[[<TomoRotations.none: 0>,];]",
+                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,
+                            f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                            alternating=False,
+                            init_state_kwargs='', cnot_kwargs=''):
+        """
+        :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
+                                        a single data point.
+        pulse amplitude/frequency/rabi_period order: [f_nv1, f_dqt_nv1, f_nv2, f_dqt_nv2]
+        """
+
+        created_blocks, created_ensembles, created_sequences = list(), list(), list()
+
+        # handle kwargs
+        # allow to overwrite generation parameters by kwargs or default to this gen method params
+        dd_type_ent = dd_type_cnot if 'dd_type' not in init_state_kwargs else init_state_kwargs['dd_type']
+        dd_order_ent = dd_order if 'dd_order' not in init_state_kwargs else init_state_kwargs['dd_order']
+        tau_ent = tau_cnot if 'tau_start' not in init_state_kwargs else init_state_kwargs['tau_start']
+        rabi_period_mw_2_ent = rabi_period_mw_2 if 'rabi_period_mw_2' not in init_state_kwargs \
+            else init_state_kwargs['rabi_period_mw_2']
+        init_env_type = EnvelopeMethods.rectangle if 'env_type' not in init_state_kwargs else init_state_kwargs['env_type']
+        rabi_period_mw_2_cnot = rabi_period_mw_2 if 'rabi_period_mw_2' not in cnot_kwargs else \
+            cnot_kwargs['rabi_period_mw_2']
+        ampl_mw_2_cnot = ampl_mw_2 if 'ampl_mw_2' not in cnot_kwargs else \
+            cnot_kwargs['ampl_mw_2']
+
+        # create param arrays
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
+
+        str_lists = csv_2_list(rotations, str_2_val=str, delimiter=';')  # to list of csv strings
+        rotations = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
+
+        self.log.debug(f"Tomographic mes, single point  Ampls_both: {amplitudes},"
+                       f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
+                       f" cnot_kwargs: {cnot_kwargs}")
+
+        # get tau array for measurement ticks
+        idx_array = list(range(len(rotations)))
+        num_of_points = len(idx_array)
+
+        # simple rotations
+        pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
+        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
+        pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
+        # todo: optimal control not supported atm
+        #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=EnvelopeMethods.optimal)
+        #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=EnvelopeMethods.optimal)
+        #pi_oc_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, on_nv=[1,2],
+        #                                         env_type=EnvelopeMethods.optimal)
+
+        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
+        pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
+        pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+        pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
+        pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+
+        # 2 qubit gates
+        c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
+                                                    f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot,
+                                                    rabi_period_mw_2=rabi_period_mw_2_cnot,
+                                                    dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
+                                                    no_laser=True,
+                                                    kwargs_dict=cnot_kwargs)
+        c2not1_element = c2not1_element[0]
+
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        def rotation_element(rotation):
+            # atm, supported (native) gate set is only:
+            gate_set = [TomoRotations.ux90_on_1, TomoRotations.ux90_on_2,
+                        TomoRotations.uy90_on_1, TomoRotations.uy90_on_2,
+                        TomoRotations.c2not1,
+                        TomoRotations.none]
+            if rotation not in gate_set:
+                raise ValueError(f"Found rotation {rotation.name} which is not in native gate set {gate_set}")
+
+            if rotation == TomoRotations.none:
+                rot_elements = []
+            elif rotation == TomoRotations.ux90_on_1:
+                rot_elements = pi2_on_1_element
+            elif rotation == TomoRotations.ux90_on_2:
+                rot_elements = pi2_on_2_element
+            elif rotation == TomoRotations.uy90_on_1:
+                rot_elements = pi2y_on_1_element
+            elif rotation == TomoRotations.uy90_on_2:
+                rot_elements = pi2y_on_2_element
+            elif rotation == TomoRotations.c2not1:
+                rot_elements = c2not1_element
+            else:
+                raise ValueError(f"Unknown random benchmarking rotation: {rotation.name}")
+            return rot_elements
+
+        rabi_block = PulseBlock(name=name)
+
+        for idx, gate_list in enumerate(rotations):
+            # Create block and append to created_blocks list
+            for rotation in gate_list:
+                rabi_block.extend(rotation_element(rotation))
+            rabi_block.append(laser_element)
+            rabi_block.append(delay_element)
+            rabi_block.append(waiting_element)
+
+            if alternating:
+                for rotation in gate_list:
+                    rabi_block.extend(rotation_element(rotation))
+                # we measure ground state population |00>, so alternating against |11>
+                rabi_block.extend(pi_on_1_element)
+                rabi_block.extend(pi_on_2_element)
+                rabi_block.append(laser_element)
+                rabi_block.append(delay_element)
+                rabi_block.append(waiting_element)
+
+        created_blocks.append(rabi_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((rabi_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = idx_array
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
 
     def generate_c2not1(self, name='c2not1', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
