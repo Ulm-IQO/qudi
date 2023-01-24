@@ -2580,6 +2580,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_GST_meas(self,name='GST',init_state_dict,meas_dict,gate_set_dict):# Todo: Write the function gen_seqBlock
+        seq_dict = dict() # This dictionary shows the sequence
+        for i in init_state_dict.keys():
+            for j in meas_dict.keys():
+                for k in gate_set_dict.keys():
+                    key = '(' + i + ')' + '(' + j + ')' + '(' + k + ')'
+                    seq_dict[key] = gen_seqBlock(key) # the function gen_seqBlock is used to create a sequence Block/PulseBlock from the keys
+        return seq_dict
+
     def generate_dd_dqt_sigamp(self, name='dd_sigamp', tau=0.5e-6, amp_start=0e-3, amp_step=0.01e-3,
                                     num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, ampl_mw2=0e-3,
                                     t_rabi_mw2=0, f_mw2="1e9", f_mw1_add="",
