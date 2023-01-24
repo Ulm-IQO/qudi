@@ -19,14 +19,25 @@ class TomoRotations(IntEnum):
     none = 0
     ux90_on_1 = 1
     ux90_on_2 = 2
-    ux180_on_1 = 3
-    ux180_on_2 = 4
-    c1not2 = 5
-    c2not1 = 6
-    c1not2_ux180_on_2 = 7
-    c2not1_ux180_on_1 = 8
-    uy90_on_1 = 9
-    uy90_on_2 = 10
+    uy90_on_1 = 3
+    uy90_on_2 = 4
+    ux90min_on_1 = 5
+    ux90min_on_2 = 6
+    uy90min_on_1 = 7
+    uy90min_on_2 = 8
+
+    ux180_on_1 = 9
+    ux180_on_2 = 10
+    uy180_on_1 = 11
+    uy180_on_2 = 12
+    ux180min_on_1 = 13
+    ux180min_on_2 = 14
+    uy180min_on_1 = 15
+    uy180min_on_2 = 16
+    c1not2 = 17
+    c2not1 = 18
+    c1not2_ux180_on_2 = 19
+    c2not1_ux180_on_1 = 20
 
 class TomoInit(IntEnum):
     none = 0
@@ -716,20 +727,30 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         num_of_points = len(idx_array)
 
         # simple rotations
-        pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
         pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
+        piy_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods)
+        piy_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods)
+        pimin_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods)
+        pimin_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods)
+        piminy_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods)
+        piminy_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods)
+
+        pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
+        pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+        pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
+        pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+        pi2min_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
+        pi2min_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+        pi2miny_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
+        pi2miny_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
+
         # todo: optimal control not supported atm
         #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=EnvelopeMethods.optimal)
         #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=EnvelopeMethods.optimal)
         #pi_oc_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, on_nv=[1,2],
         #                                         env_type=EnvelopeMethods.optimal)
 
-        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
-        pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
-        pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
-        pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
-        pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
 
         # 2 qubit gates
         c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
@@ -748,6 +769,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # atm, supported (native) gate set is only:
             gate_set = [TomoRotations.ux90_on_1, TomoRotations.ux90_on_2,
                         TomoRotations.uy90_on_1, TomoRotations.uy90_on_2,
+                        TomoRotations.ux90min_on_1, TomoRotations.ux90min_on_2,
+                        TomoRotations.uy90min_on_1, TomoRotations.uy90min_on_2,
+                        TomoRotations.ux180_on_1, TomoRotations.ux180_on_2,
+                        TomoRotations.uy180_on_1, TomoRotations.uy180_on_2,
+                        TomoRotations.ux180min_on_1, TomoRotations.ux180min_on_2,
+                        TomoRotations.uy180min_on_1, TomoRotations.uy180min_on_2,
                         TomoRotations.c2not1,
                         TomoRotations.none]
             if rotation not in gate_set:
@@ -763,6 +790,34 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rot_elements = pi2y_on_1_element
             elif rotation == TomoRotations.uy90_on_2:
                 rot_elements = pi2y_on_2_element
+
+            elif rotation == TomoRotations.ux90min_on_1:
+                rot_elements = pi2min_on_1_element
+            elif rotation == TomoRotations.ux90min_on_2:
+                rot_elements = pi2min_on_2_element
+            elif rotation == TomoRotations.uy90min_on_1:
+                rot_elements = pi2miny_on_1_element
+            elif rotation == TomoRotations.uy90min_on_2:
+                rot_elements = pi2miny_on_2_element
+
+            elif rotation == TomoRotations.ux180_on_1:
+                rot_elements = pi_on_1_element
+            elif rotation == TomoRotations.ux180_on_2:
+                rot_elements = pi_on_2_element
+            elif rotation == TomoRotations.uy180_on_1:
+                rot_elements = piy_on_1_element
+            elif rotation == TomoRotations.uy180_on_2:
+                rot_elements = piy_on_2_element
+
+            elif rotation == TomoRotations.ux180min_on_1:
+                rot_elements = pimin_on_1_element
+            elif rotation == TomoRotations.ux180min_on_2:
+                rot_elements = pimin_on_2_element
+            elif rotation == TomoRotations.uy180min_on_1:
+                rot_elements = piminy_on_1_element
+            elif rotation == TomoRotations.uy180min_on_2:
+                rot_elements = piminy_on_2_element
+
             elif rotation == TomoRotations.c2not1:
                 rot_elements = c2not1_element
             else:
@@ -773,7 +828,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         for idx, gate_list in enumerate(rotations):
             # Create block and append to created_blocks list
+            self.log.debug("New rb data point")
             for rotation in gate_list:
+                self.log.debug(f"Adding rot {rotation.name}")
                 rabi_block.extend(rotation_element(rotation))
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
