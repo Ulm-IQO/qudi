@@ -681,9 +681,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_rand_benchmark(self, name='random_benchmark',
+    def generate_rand_benchmark(self, name='random_benchmark', xticks=None,
                             rotations="[[<TomoRotations.none: 0>,];]",
-                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,
+                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             alternating=False,
                             init_state_kwargs='', cnot_kwargs=''):
@@ -724,9 +724,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         idx_array = list(range(len(rotations)))
+        if xticks:
+            # expand xaxis. Multiple random sequences for a single n_cliff are collapsed to same tick
+            if len(xticks) < len(idx_array):
+                xticks = np.asarray([[x]*int(len(rotations)/len(xticks)) for x in xticks]).flatten()
         num_of_points = len(idx_array)
 
         # simple rotations
+        id_element = self._get_idle_element(t_idle, 0)
         pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
         piy_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods)
@@ -830,8 +835,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # Create block and append to created_blocks list
             self.log.debug("New rb data point")
             for rotation in gate_list:
-                self.log.debug(f"Adding rot {rotation.name}")
+                #self.log.debug(f"Adding rot {rotation.name}")
                 rabi_block.extend(rotation_element(rotation))
+                rabi_block.append(id_element)
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
             rabi_block.append(waiting_element)
@@ -839,6 +845,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             if alternating:
                 for rotation in gate_list:
                     rabi_block.extend(rotation_element(rotation))
+                    rabi_block.append(id_element)
                 # we measure ground state population |00>, so alternating against |11>
                 rabi_block.extend(pi_on_1_element)
                 rabi_block.extend(pi_on_2_element)
@@ -858,7 +865,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = idx_array
+        block_ensemble.measurement_information['controlled_variable'] = idx_array if xticks is None else xticks
         block_ensemble.measurement_information['units'] = ('', '')
         block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
