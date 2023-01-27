@@ -717,6 +717,132 @@ class TimeDependentSimulation():
 
         return H_list
 
+    @staticmethod
+    def oc_element_multi_pulse(t, pulse_timegrid, datas_ampl, datas_ph, frequency, Bs_gauss, ampl_scalings,
+                               sim_params):
+        # t: time step
+        # filename_1: filename for the S_x pulse
+        # filename_2: filename for the S_y pulse
+        # frequency: carrier frequency of the pulse
+        # amplitude scaling: amplitude prefactor which is multiplicated on the pulse
+        simp = sim_params
+
+        # Zero-field splitting
+        B = Bs_gauss[0]
+        delta_12 = (Bs_gauss[0] - Bs_gauss[1]) * simp.gamma_nv
+        H_zfs = simp.D * simp.S_z ** 2
+
+        # Zeeman interaction
+        H_zeeman_nv = simp.gamma_nv * B * simp.S_z
+        H_zeeman_14n = simp.gamma_14n * B * simp.I_z
+
+        # Hyperfine interaction
+        H_hyperfine = simp.A_parallel * simp.S_z * simp.I_z
+
+        # load and extract the date
+        amp_i1 = datas_ampl[0]
+        amp_q1 = datas_ph[0]
+        amp_i2 = datas_ampl[1]
+        amp_q2 = datas_ph[1]
+
+        # make sure the time_array starts at 0
+        timegrid = pulse_timegrid
+        timegrid = timegrid - timegrid[0]
+
+        # interpolate the given data such that it matches the time grid
+        i_func_1 = interpolate.interp1d(timegrid, amp_i1)
+        q_func_1 = interpolate.interp1d(timegrid, amp_q1)
+        i_func_2 = interpolate.interp1d(timegrid, amp_i2)
+        q_func_2 = interpolate.interp1d(timegrid, amp_q2)
+
+        # amplitude (=1) for the time-independent part
+        # this needs to be interpolated as well because ... I don't know why ... just didn't work otherwise
+        amp_func_tidp = interpolate.interp1d(timegrid, np.ones(len(timegrid)), kind='linear')
+
+        # time dependent coefficients of the Hamiltonian
+        H_oc_coeff_1 = ampl_scalings[0] * i_func_1(t)
+        H_oc_coeff_2 = ampl_scalings[0] * q_func_1(t)
+        # add effect from second (crosstalk) pulse
+        H_oc_coeff_1 += ampl_scalings[1] * i_func_2(t) * np.cos(2 * np.pi * delta_12 * t)
+        H_oc_coeff_2 += -ampl_scalings[1] * q_func_2(t) * np.sin(2 * np.pi * delta_12 * t)
+        H_oc_tidp_coeff = amp_func_tidp(t)
+
+        # corresponding Hamiltonian
+        H_oc_1 = 2 * np.pi * simp.S_x
+        H_oc_2 = 2 * np.pi * simp.S_y
+
+        # time independent parts of the Hamiltonian
+        H_oc_tidp = H_zeeman_14n + H_hyperfine + ((simp.D - simp.gamma_nv * B) - frequency) * simp.S_z
+        H_oc_tidp = 2 * np.pi * H_oc_tidp
+
+        # save all Hamiltonians with corresponding coefficents
+        H_list = []
+        H_list.append([H_oc_tidp, H_oc_tidp_coeff])
+        H_list.append([H_oc_1, H_oc_coeff_1])
+        H_list.append([H_oc_2, H_oc_coeff_2])
+
+        return H_list
+
+    def run_sim_multi(self, pulse, B_gauss, sim_params, delta_f=0e6, scale_ampl=[1, 1], nv_init_ux=None,
+                      nv_read_ux=None,
+                      n_timebins=None, n_sol_step=1e8, t_idle_extension=-1e-9):
+        """
+        For 2 pulses, simulate final density matrix. First pulse is applied on resonance, second pulse is a crosstalk
+        contribution.
+
+        """
+
+        if not (len(B_gauss) == len(pulse) == 2):
+            raise ValueError
+
+        if type(pulse[0]) == ArbPulse:
+            pulse[0].set_unit_time('us')
+            pulse[0].set_unit_data('MHz')
+        else:
+            raise ValueError
+        if type(pulse[1]) == ArbPulse:
+            pulse[1].set_unit_time('us')
+            pulse[1].set_unit_data('MHz')
+        else:
+            raise ValueError
+
+        if n_timebins is None:
+            n_timebins = len(pulse[0].timegrid)
+
+        B_res = B_gauss[0]
+        B_crosstalk = B_gauss[1]
+        simp = sim_params
+        oc_length = pulse[0].timegrid[-1] + t_idle_extension * 1e6
+        delta_f_mhz = delta_f * 1e-6
+
+        t = np.linspace(0, oc_length, n_timebins)
+        options = qutip.Options(atol=1e-15, rtol=1e-15, nsteps=n_sol_step, store_final_state=True)
+
+        init_state = simp.rho_ms0
+        if nv_init_ux is not None:
+            u = np.asarray(nv_init_ux)
+            init_state = np.matmul(np.matmul(u, init_state), u.conj().T)
+            init_state = qutip.Qobj(init_state, dims=sim_params.dims)
+
+        freq = simp.D - simp.gamma_nv * B_res
+
+        # perform the measurement
+        oc_el = TimeDependentSimulation.oc_element_multi_pulse(t, pulse[0].timegrid,
+                                                               [pulse[0].data_ampl, pulse[1].data_ampl],
+                                                               [pulse[0].data_phase, pulse[1].data_phase],
+                                                               freq + delta_f_mhz, B_gauss, scale_ampl, simp)
+        # return oc_el
+        results_measurement = qutip.mesolve(oc_el, init_state, t, [], [simp.P_nv],
+                                            options=options, progress_bar=None)
+
+        rho_final = results_measurement.final_state
+        if nv_read_ux is not None:
+            u = np.asarray(nv_read_ux)
+            rho_final = np.matmul(np.matmul(u, rho_final), u.conj().T)
+            rho_final = qutip.Qobj(rho_final, dims=sim_params.dims)
+
+        return rho_final
+
     def run_sim(self, pulse, B_gauss, sim_params, delta_f=0e6, nv_init_ux=None, nv_read_ux=None,
                   n_timebins=None, t_idle_extension=-1e-9):
 

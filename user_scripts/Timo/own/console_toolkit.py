@@ -95,11 +95,14 @@ class Tk_file():
 
     @staticmethod
     def list_mult_pulsed_mes(path, incl_subdir=True, filter_strs=['pulsed_measurement', '.dat'],
-                             excl_filter_str=None, excl_params=['']):
+                             excl_filter_str=None, excl_params=[''], sort_key=None):
         files = Tk_file.get_dir_items(path, incl_subdir=incl_subdir)
         files_filtered = files
         for filter in filter_strs:
             files_filtered = Tk_string.filter_str(files_filtered, filter, excl_filter_str)
+
+        if sort_key is None:
+            files_filtered = sorted(files_filtered, key=os.path.getctime)
 
         return files_filtered
 
@@ -219,6 +222,7 @@ class Tk_file():
         else:
             return None
 
+    """
     @staticmethod
     def find_param_file(p_mes):
 
@@ -231,6 +235,7 @@ class Tk_file():
         param_file = p_file.split('_pulsed')[0]
 
         return Tk_file.find_close_filename(folder, param_file, filter_str=['parameters', '.dat'])
+    """
 
     @staticmethod
     def load_pulsed_params(p_mes):

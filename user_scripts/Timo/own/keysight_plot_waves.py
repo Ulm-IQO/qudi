@@ -364,11 +364,13 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\qudi\pulsed_files" + "/" + "deer_dd_rect_tau_cnotCalib_ch1.bin"
-    file2 = r"C:\qudi\pulsed_files" + "/" + "tomoTest_rot=c2not1_ch1.bin"
+    file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rand_benchmark_ch1.bin"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_A_ch1.bin"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "nvmin_init_ch1.bin"
+    file2 = r"C:\Software\qudi_data\pulsed_files" + "/" + "deer_dd_tau_18_ch1.bin"
     file = os.path.abspath(file)
     file2 = os.path.abspath(file2)
-    #file2 = None
+    file2 = None
 
     plotter = KeysightPlotter(14, 12e9)
     wave_dict = plotter.load_data(file)
@@ -381,14 +383,13 @@ if __name__ == "__main__":
 
     print(wave_dict.keys())
 
-    idx_slice = 0, 4*100000
-    idx_slice = 101*100000, 106*100000
+    idx_slice = 0, 16*100000
+    #idx_slice = 101*100000, 106*100000
 
-    n_samples =  3*100000
-    idx_slice_start_1 = len(wave_dict['a_ch1']) - n_samples
-
-    idx_slice = idx_slice_start_1, idx_slice_start_1 + n_samples
-    fac_undersample = 1
+    #n_samples =  5*100000
+    #idx_slice_start_1 = len(wave_dict['a_ch1']) - n_samples
+    #idx_slice = idx_slice_start_1, idx_slice_start_1 + n_samples
+    fac_undersample = 4
     #wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=500000)
     #wave_dict = plotter.slice_wave(wave_dict, i_start=-20*100000, i_stop=-1)
     wave_dict = plotter.slice_wave(wave_dict, i_start=idx_slice[0], i_stop=idx_slice[1], i_step=fac_undersample)
