@@ -681,7 +681,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def generate_rand_benchmark(self, name='random_benchmark', xticks=None,
+    def generate_rand_benchmark(self, name='random_benchmark', xticks='',
                             rotations="[[<TomoRotations.none: 0>,];]",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
@@ -724,6 +724,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         idx_array = list(range(len(rotations)))
+        xticks = csv_2_list(xticks)
         if xticks:
             # expand xaxis. Multiple random sequences for a single n_cliff are collapsed to same tick
             if len(xticks) < len(idx_array):
@@ -865,7 +866,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = idx_array if xticks is None else xticks
+        block_ensemble.measurement_information['controlled_variable'] = idx_array if xticks==[] else xticks
         block_ensemble.measurement_information['units'] = ('', '')
         block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
         block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
