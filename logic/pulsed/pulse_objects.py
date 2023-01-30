@@ -30,7 +30,7 @@ from collections import OrderedDict
 
 from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.modules import get_main_dir
-from core.util.helpers import natural_sort
+from core.util.helpers import natural_sort, csv_2_list
 
 
 class PulseBlockElement(object):
@@ -1206,24 +1206,75 @@ class PredefinedGeneratorBase:
         # additional slow counter switch for pentacene setup
         # be sure this is not a fast counter switch!
         if add_gate_ch != "":
-            laser_element.digital_high[add_gate_ch] = True
+            for ch in csv_2_list(add_gate_ch, str):
+                laser_element.digital_high[ch] = True
         return laser_element
 
-    def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4'):
+    def _get_laser_gate_elements_pwm(self, length, increment, laser_ch=None, add_gate_ch='d_ch4', no_fc_gate=False,
+                                pwm_duty_cycle=1, pwm_freq=10e3):
         """
+        """
+
+        if pwm_duty_cycle == 1:
+            laser_gate_element = self._get_laser_gate_element(length, increment, no_fc_gate=no_fc_gate,
+                                                              add_gate_ch=add_gate_ch)
+            if laser_ch:
+                laser_gate_element.digital_high[self.laser_channel] = False
+                laser_gate_element.digital_high[laser_ch] = True
+            return [laser_gate_element]
+
+        elif pwm_duty_cycle < 1:
+            if increment != 0:
+                raise ValueError(f"PWM of fixed frequency not possible with non-zero increment= {increment}")
+
+            t_single_cyc = 1 / pwm_freq
+            n_cyc = int(max([1, length / t_single_cyc]))
+            t_total = t_single_cyc*n_cyc
+            rel_deviation = abs(1-t_total/length)
+            if rel_deviation > 0.05:
+                self.log.warning(f"Laser length has length error {100*rel_deviation:.1f}%. Increase PWM frequency!")
+            t_single_laser = t_single_cyc * pwm_duty_cycle
+            t_single_idle = t_single_cyc - t_single_laser
+
+            laser_gate_element = self._get_laser_gate_element(t_single_laser, 0, add_gate_ch=add_gate_ch)
+            if laser_ch:
+                laser_gate_element.digital_high[self.laser_channel] = False
+                laser_gate_element.digital_high[laser_ch] = True
+            idle_gate_element = self._get_laser_gate_element(t_single_idle, 0, add_gate_ch=add_gate_ch)
+            idle_gate_element.digital_high[self.laser_channel] = False
+
+            element_list = []
+            for i in range(n_cyc):
+                element_list.append(laser_gate_element)
+                element_list.append(idle_gate_element)
+
+            self.log.debug(f"t_sing: {t_single_cyc}, n:{n_cyc}, tot:{t_total}, dev:{rel_deviation}")
+            self.log.debug(f"Created {len(element_list)/2} PWM blocks of length {t_single_cyc}. Total {t_total}")
+            return element_list
+
+        else:
+            raise ValueError
+
+
+    def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4', no_fc_gate=False):
+
+        """
+        no_fc_gate: If True, no trigger to fastcounter. Can be helpful, if additional gate (add_gate_ch) is used,
+                    but no fastcounter acquisition is needed.
         """
         laser_gate_element = self._get_laser_element(length=length,
                                                      increment=increment,
                                                      add_gate_ch=add_gate_ch)
         if self.gate_channel:
-            if add_gate_ch != '':
-                # add_gate_ch == '' signals a laser pulse not used for readout
-                # gate_channel (!= add_gate_ch) triggers the fastcounter and should thus be low
+            if add_gate_ch != '' and not no_fc_gate:
+            # add_gate_ch == '' signals a laser pulse not used for readout
+            # gate_channel (!= add_gate_ch) triggers the fastcounter and should thus be low
                 if self.gate_channel.startswith('d'):
                     laser_gate_element.digital_high[self.gate_channel] = True
                 elif self.gate_channel.startswith('a'):
                     laser_gate_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
                         voltage=self.analog_trigger_voltage)
+
         return laser_gate_element
 
     def _get_delay_element(self):
@@ -1235,7 +1286,7 @@ class PredefinedGeneratorBase:
         return self._get_idle_element(length=self.laser_delay,
                                       increment=0)
 
-    def _get_delay_gate_element(self):
+    def _get_delay_gate_element(self, add_gate_ch='d_ch4'):
         """
         Creates a gate trigger of length of the laser delay.
         If no gate channel is specified will return a simple idle element.
@@ -1243,9 +1294,13 @@ class PredefinedGeneratorBase:
         @return PulseBlockElement: The delay element
         """
         if self.gate_channel:
-            return self._get_trigger_element(length=self.laser_delay,
+            laser_element =  self._get_trigger_element(length=self.laser_delay,
                                              increment=0,
                                              channels=self.gate_channel)
+            if add_gate_ch != "":
+                for ch in csv_2_list(add_gate_ch, str):
+                    laser_element.digital_high[ch] = True
+            return laser_element
         else:
             return self._get_delay_element()
 
@@ -1543,7 +1598,7 @@ class PredefinedGeneratorBase:
         value = float(np.around(value, 13))
         return value
 
-    def _get_ensemble_count_length(self, ensemble, created_blocks):
+    def _get_ensemble_count_length(self, ensemble, created_blocks, laser_ch=None):
         """
 
         @param ensemble:
@@ -1551,7 +1606,18 @@ class PredefinedGeneratorBase:
         @return:
         """
         if self.gate_channel:
-            length = self.laser_length + self.laser_delay
+            if laser_ch is None or laser_ch == '':
+                length = self.laser_length + self.laser_delay
+            else:
+                # if other readout laser than self.laser_ch: search for first 'laser_ch' block
+                # todo: better seaching all ensemble, here assume first one contains laser
+                block_name = ensemble.block_list[0][0]
+                blocks = {block.name: block for block in created_blocks}
+                length = 0
+                for el in blocks[block_name].element_list:
+                    if el.digital_high[laser_ch] is True:
+                        length += el.init_length_s
+
         else:
             blocks = {block.name: block for block in created_blocks}
             length = 0.0
@@ -1559,6 +1625,29 @@ class PredefinedGeneratorBase:
                 length += blocks[block_name].init_length_s * (reps + 1)
                 length += blocks[block_name].increment_s * ((reps ** 2 + reps) / 2)
         return length
+
+    @staticmethod
+    def list_2_csv(in_list, line_delimiter=";"):
+        """
+        :param line_delimter: if given lists of lists, will create lines per out list
+                              that are seperated by the line_delimiter
+        """
+        str_list = ""
+
+        if type(in_list) != list:
+            in_list = [in_list]
+
+        for el in in_list:
+            if type(el) == list:
+                str_list += f"{self.list_2_csv(el)}{line_delimiter} "
+            else:
+                str_list += f"{repr(el)}, "
+            # str_list += f"{el}, "
+
+        if len(str_list) > 0:
+            str_list = str_list[:-2]
+
+        return str_list
 
 
 class PulseObjectGenerator(PredefinedGeneratorBase):

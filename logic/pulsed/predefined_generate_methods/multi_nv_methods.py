@@ -686,7 +686,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             alternating=False,
-                            init_state_kwargs='', cnot_kwargs=''):
+                            init_state_kwargs='', cnot_kwargs='', add_gate_ch='d_ch4'):
         """
         :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
                                         a single data point.
@@ -768,8 +768,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         c2not1_element = c2not1_element[0]
 
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
-        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
-        delay_element = self._get_delay_gate_element()
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0,
+                                                     add_gate_ch=add_gate_ch)
+        delay_element = self._get_delay_gate_element(add_gate_ch=add_gate_ch)
 
         def rotation_element(rotation):
             # atm, supported (native) gate set is only:
@@ -3067,17 +3068,5 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         return np.asarray(nv_params)
 
-    @staticmethod
-    def list_2_csv(in_list):
-        str_list = ""
 
-        if type(in_list) != list:
-            in_list = list(in_list)
 
-        for el in in_list:
-            str_list += f"{el}, "
-
-        if len(str_list) > 0:
-            str_list = str_list[:-2]
-
-        return str_list
