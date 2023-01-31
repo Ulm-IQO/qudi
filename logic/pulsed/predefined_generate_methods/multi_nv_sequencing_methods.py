@@ -2,11 +2,16 @@ import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 
-from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
+#from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
+from logic.pulsed.pulse_objects import PulseEnvelopeType as Evm
 from logic.pulsed.predefined_generate_methods.basic_methods_polarization_nvision import NVisionPolarizationGenerator
+from logic.pulsed.predefined_generate_methods.multi_nv_methods import DQTAltModes, TomoRotations, TomoInit
 
 from logic.pulsed.sampling_functions import DDMethods
 from core.util.helpers import csv_2_list
+
+from user_scripts.Timo.own.console_toolkit import Tk_file, Tk_string
+
 
 
 OFFSET_TAU_MFL_SEQMODE = 3      # number of sequence elements in front of ramseys
@@ -29,12 +34,108 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         self._jumptable_address = 1 # all low (0000 0000) shouldn't be a valid address
         self.init_seqtable()
         self.init_jumptable()
+        self._init_custom_generation_params()
 
         self.gen_nvision = NVisionPolarizationGenerator(*args, **kwargs)
+
+    def _init_custom_generation_params(self):
+
+        self.t_laser_fci_red = 2.5e-6
+        self.t_laser_fci_green = 0.5e-6
+        self.t_wait_fci = 1e-6
+        self.t_safety_fci = 1e-6
+        self.laser_read_red_ch = 'd_ch3'
+        self.done_fci_ch = 'd_ch1'
+        self.add_gate_ch = 'd_ch4'   # additional gate channel to open APD switch
 
     def _get_generation_method(self, method_name):
         # evil access to all loaded generation methods. Use carefully.
         return self._PredefinedGeneratorBase__sequencegeneratorlogic.generate_methods[method_name]
+
+    @property
+    def t_laser_fci_red(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['t_laser_fci_red']
+        except KeyError:
+            return None
+
+    @t_laser_fci_red.setter
+    def t_laser_fci_red(self, t_laser):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'t_laser_fci_red': t_laser})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def t_laser_fci_green(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['t_laser_fci_green']
+        except KeyError:
+            return None
+
+    @t_laser_fci_green.setter
+    def t_laser_fci_green(self, t_laser):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'t_laser_fci_green': t_laser})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def t_wait_fci(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['t_wait_fci']
+        except KeyError:
+            return None
+
+    @t_wait_fci.setter
+    def t_wait_fci(self, t_laser):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'t_wait_fci': t_laser})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def t_safety_fci(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['t_safety_fci']
+        except KeyError:
+            return None
+
+    @t_safety_fci.setter
+    def t_safety_fci(self, t_laser):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'t_safety_fci': t_laser})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def laser_read_red_ch(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['laser_read_red_ch']
+        except KeyError:
+            return None
+
+    @laser_read_red_ch.setter
+    def laser_read_red_ch(self, laser_ch):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'laser_read_red_ch': laser_ch})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
+    @property
+    def done_fci_ch(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['laser_read_red_ch']
+        except KeyError:
+            return None
+
+    @done_fci_ch.setter
+    def done_fci_ch(self, laser_ch):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'done_fci_ch': laser_ch})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
 
     def _add_to_seqtable(self, name, blocks, ensembles, seq_params):
         self._seqtable['blocks'] += blocks
@@ -116,6 +217,94 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         return blocks, enembles, sequences
 
 
+    def generate_deer_dd_tau_fci(self, name='deer_dd_tau_fci', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
+                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
+                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
+                                 nv_order="1,2", read_phase_deg=90, env_type_1=Evm.rectangle,
+                                 env_type_2=Evm.rectangle,
+                                 alternating=True, no_laser=False,
+                                 t_cinit_green=500e-9, t_cinit_red=10e-6,
+                                 t_wait_between=1e-6, t_aom_safety=750e-9,
+                                 laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1'
+                                 ):
+        """
+        Sequence for charge readout. Init charge with fast charge readout as in Hopper (2020).
+        Analysis of the data requires listmode acquisition to create a photon number histogram.
+        """
+        total_name = name
+
+        generate_method = self._get_generation_method('deer_dd_tau')
+        single_mw_name = 'deer_dd_tau'
+
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        for idx, tau in enumerate(tau_array):
+            # mw method must have green laser at end!
+            cur_name = f"{single_mw_name}_{idx}"
+
+            single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, tau_start=tau,
+                                                                       tau_step=0, num_of_points=1,
+                                                                       tau1=tau1, f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                                       rabi_period_mw_2=rabi_period_mw_2, dd_type=dd_type,
+                                                                       dd_type_2=dd_type_2, dd_order=dd_order,
+                                                                       init_pix_on_1=init_pix_on_1, init_pix_on_2=init_pix_on_2,
+                                                                       end_pix_on_2=end_pix_on_2,
+                                                                       nv_order=nv_order, read_phase_deg=read_phase_deg,
+                                                                       env_type_1=env_type_1, env_type_2=env_type_2,
+                                                                       alternating=False, no_laser=no_laser,
+                                                                       # suppress fci counting during normal readout
+                                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",
+                                                                       )
+            # single generic method creates most of the mes info, only set multiple tau here
+            single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
+            single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2*len(tau_array) if alternating else len(tau_array)
+            single_mw_ensembles[0].measurement_information['alternating'] = alternating
+
+            blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                     generic_blocks=single_mw_blocks, generic_ensemble=single_mw_ensembles,
+                                                                     t_init=t_cinit_green, t_read=t_cinit_red,
+                                                                     laser_read_ch=laser_red_ch,
+                                                                     ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
+                                                                     t_aom_safety=t_aom_safety, t_wait_between=t_wait_between,
+                                                                     continue_seqtable=(idx!=0))
+
+            if alternating:
+                cur_name = f"{single_mw_name}_{idx}_alt"
+
+                single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, tau_start=tau,
+                                                                           tau_step=0, num_of_points=1,
+                                                                           tau1=tau1, f_mw_2=f_mw_2,
+                                                                           ampl_mw_2=ampl_mw_2,
+                                                                           rabi_period_mw_2=rabi_period_mw_2,
+                                                                           dd_type=dd_type,
+                                                                           dd_type_2=dd_type_2, dd_order=dd_order,
+                                                                           init_pix_on_1=init_pix_on_1,
+                                                                           init_pix_on_2=init_pix_on_2,
+                                                                           end_pix_on_2=end_pix_on_2,
+                                                                           nv_order=nv_order,
+                                                                           read_phase_deg=180+read_phase_deg,
+                                                                           env_type_1=env_type_1, env_type_2=env_type_2,
+                                                                           alternating=False, no_laser=no_laser,
+                                                                           # suppress fci counting during normal readout
+                                                                           add_gate_ch=f"{add_gate_ch},{done_ch}",
+                                                                           )
+                # single generic method creates most of the mes info, only set multiple tau here
+                single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
+                single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2*len(tau_array) if alternating else len(tau_array)
+                single_mw_ensembles[0].measurement_information['alternating'] = alternating
+
+                blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                         generic_blocks=single_mw_blocks,
+                                                                         generic_ensemble=single_mw_ensembles,
+                                                                         t_init=t_cinit_green, t_read=t_cinit_red,
+                                                                         laser_read_ch=laser_red_ch,
+                                                                         ch_trigger_done=done_ch,
+                                                                         add_gate_ch=add_gate_ch,
+                                                                         t_aom_safety=t_aom_safety,
+                                                                         t_wait_between=t_wait_between,
+                                                                         continue_seqtable=True)
+
+        return blocks, enembles, sequences
 
     def generate_charge_read_fci(self, name='charge_read_fci', t_cinit_green=500e-9, t_cinit_red=10e-6,
                                  t_cread_red=50e-6,  t_wait_between=1e-6, t_aom_safety=750e-9,
@@ -145,6 +334,81 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                  t_aom_safety=t_aom_safety, t_wait_between=t_wait_between)
 
         return blocks, enembles, sequences
+
+
+    def generate_rand_benchmark_fci(self, name='random_benchmark_fci', xticks='',
+                            rotations="[[<TomoRotations.none: 0>,];]",
+                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
+                            f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                            alternating=False,
+                            init_state_kwargs='', cnot_kwargs=''):
+        """
+        Init charge with fast charge readout as in Hopper (2020).
+        Analysis of the data requires listmode acquisition to create a photon number histogram.
+        """
+        total_name = name
+
+        generate_method = self._get_generation_method('rand_benchmark')
+        single_mw_name = 'rand_benchmark'
+
+        str_lists = csv_2_list(rotations, str_2_val=str, delimiter=';')  # to list of csv strings
+        rotations_list = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
+        # get tau array for measurement ticks
+        idx_array = list(range(len(rotations_list)))
+        xticks_list = csv_2_list(xticks)
+        if xticks_list:
+            # expand xaxis. Multiple random sequences for a single n_cliff are collapsed to same tick
+            if len(xticks_list) < len(idx_array):
+                xticks_list = np.asarray([[x]*int(len(rotations_list)/len(xticks_list)) for x in xticks_list]).flatten()
+        num_of_points = len(idx_array)
+
+        self.log.debug(f"idx_array {idx_array}, xticks: {xticks_list}, num {num_of_points}")
+
+        mw_readout_gate_ch = f"{self.add_gate_ch},{self.done_fci_ch}"
+
+        for idx, rotation in enumerate(rotations_list):
+            # mw method must have green laser at end!
+            cur_name = f"{single_mw_name}_{idx}"
+            self.log.debug(f"Generating rot {rotation}")
+            single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, xticks='',
+                                                                        rotations=self.list_2_csv(rotation),
+                                                                        tau_cnot=tau_cnot, dd_type_cnot=dd_type_cnot,
+                                                                        dd_order=dd_order, t_idle=t_idle,
+                                                                        f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                                        rabi_period_mw_2=rabi_period_mw_2,
+                                                                        alternating=False,
+                                                                        init_state_kwargs=init_state_kwargs,
+                                                                        cnot_kwargs=cnot_kwargs,
+                                                                       # suppress fci counting during normal readout
+                                                                       add_gate_ch=mw_readout_gate_ch,
+                                                                       )
+            # single generic method creates most of the mes info, only set multiple tau here
+            single_mw_ensembles[0].measurement_information['controlled_variable'] = idx_array if xticks_list==[] else xticks_list
+            single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
+            single_mw_ensembles[0].measurement_information['alternating'] = alternating
+
+            blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                     generic_blocks=single_mw_blocks, generic_ensemble=single_mw_ensembles,
+                                                                     t_init=self.t_laser_fci_green, t_read=self.t_laser_fci_red,
+                                                                     laser_read_ch=self.laser_read_red_ch,
+                                                                     ch_trigger_done=self.done_fci_ch, add_gate_ch=self.add_gate_ch,
+                                                                     t_aom_safety=self.t_safety_fci, t_wait_between=self.t_wait_fci,
+                                                                     continue_seqtable=(idx!=0))
+
+            if alternating:
+                pass
+
+
+        return blocks, enembles, sequences
+
+
+    def generate_tomogphry_fci(self, name='tomography', tau_start=10.0e-9, tau_step=10.0e-9,
+                            rabi_on_nv=1, rabi_phase_deg=0, rotation=TomoRotations.none, init_state=TomoInit.none,
+                            num_of_points=50,
+                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,
+                            f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                            alternating=False, init_state_kwargs='', cnot_kwargs=''):
+        pass
 
 
     def generic_nv_minus_init(self, total_name='generic_nvinit', generic_name="generic_method",
