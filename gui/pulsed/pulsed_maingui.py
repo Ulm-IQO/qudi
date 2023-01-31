@@ -1245,6 +1245,12 @@ class PulsedMeasurementGui(GUIBase):
                 widget = QtWidgets.QCheckBox()
                 widget.setChecked(value)
                 widget.stateChanged.connect(self.generation_parameters_changed)
+            elif issubclass(type(value), Enum):
+                widget = QtWidgets.QComboBox()
+                for option in type(value):
+                    widget.addItem(option.name, option)
+                widget.setCurrentText(value.name)
+                widget.currentTextChanged.connect(self.generation_parameters_changed)
 
             widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
@@ -1571,6 +1577,8 @@ class PulsedMeasurementGui(GUIBase):
                     settings_dict[param_name] = widget.value()
                 elif hasattr(widget, 'text'):
                     settings_dict[param_name] = widget.text()
+                elif hasattr(widget, 'currentText'):
+                    settings_dict[param_name] = widget.currentData()
 
         self.pulsedmasterlogic().set_generation_parameters(settings_dict)
 
