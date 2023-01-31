@@ -29,16 +29,23 @@ import numpy as np
 from collections import OrderedDict
 
 from logic.pulsed.sampling_functions import SamplingFunctions
-from core.util.modules import get_main_dir
 from core.util.helpers import natural_sort, csv_2_list
-from enum import Enum
+from enum import Enum, EnumMeta
 
 
-class PulseEnvelopeType(Enum):
+class PulseEnvelopeTypeMeta(EnumMeta):
+    # hide special enum types containing '_'
+    def __iter__(self):
+       for x in super().__iter__():
+           if not '_' in x.value:
+                yield x
+
+class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
 
     rectangle = 'rectangle'
     parabola = 'parabola'
     optimal = 'optimal'
+    from_gen_settings = '_from_gen_settings'
 
     def __init__(self, *args):
         self._parameters = self.default_parameters
@@ -47,7 +54,8 @@ class PulseEnvelopeType(Enum):
     def default_parameters(self):
         defaults = {'rectangle': {},
                     'parabola': {'order_P' : 1},
-                     'optimal': {}}
+                     'optimal': {},
+                     '_from_gen_settings': {}}
 
         return defaults[self.value]
 
@@ -1337,9 +1345,20 @@ class PredefinedGeneratorBase:
 
         """
         return self._get_trigger_element(length=50e-9, increment=0, channels=self.sync_channel)
+    
+    def _get_envelope_settings(self, envelope):
+        if envelope == PulseEnvelopeType.from_gen_settings:
+            # if auto setting, take from generation parameters
+            # if there also auto setting, default to rectangle
+            envelope = self.generation_parameters['pulse_envelope'] if 'pulse_envelope' in self.generation_parameters \
+                else PulseEnvelopeType.rectangle
+            envelope = PulseEnvelopeType.rectangle if envelope == PulseEnvelopeType.from_gen_settings else envelope
+            return  envelope
+        else:
+            return envelope
 
     def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None,
-                        envelope=PulseEnvelopeType.rectangle):
+                        envelope=PulseEnvelopeType.from_gen_settings):
         """
         Creates a MW pulse PulseBlockElement
 
@@ -1351,6 +1370,8 @@ class PredefinedGeneratorBase:
 
         @return: PulseBlockElement, the generated MW element
         """
+        envelope = self._get_envelope_settings(envelope)
+
         if self.microwave_channel.startswith('d'):
             mw_element = self._get_trigger_element(
                 length=length,
@@ -1372,7 +1393,7 @@ class PredefinedGeneratorBase:
                     phase=phase,
                     order_P=envelope.parameters['order_P'])
             else:
-                raise ValueError(f"Unsupported enveolope type: {envelope.name}")
+                raise ValueError(f"Unsupported envelope type: {envelope.name}")
         return mw_element
 
     def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None):
