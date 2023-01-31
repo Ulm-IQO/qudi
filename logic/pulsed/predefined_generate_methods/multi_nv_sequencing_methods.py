@@ -2,7 +2,8 @@ import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 
-from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
+#from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
+from logic.pulsed.pulse_objects import PulseEnvelopeType as Evm
 from logic.pulsed.predefined_generate_methods.basic_methods_polarization_nvision import NVisionPolarizationGenerator
 from logic.pulsed.predefined_generate_methods.multi_nv_methods import DQTAltModes, TomoRotations, TomoInit
 
@@ -220,8 +221,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
                                  init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
-                                 nv_order="1,2", read_phase_deg=90, env_type_1=EnvelopeMethods.rectangle,
-                                 env_type_2=EnvelopeMethods.rectangle,
+                                 nv_order="1,2", read_phase_deg=90, env_type_1=Evm.rectangle,
+                                 env_type_2=Evm.rectangle,
                                  alternating=True, no_laser=False,
                                  t_cinit_green=500e-9, t_cinit_red=10e-6,
                                  t_wait_between=1e-6, t_aom_safety=750e-9,
