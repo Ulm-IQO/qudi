@@ -575,9 +575,12 @@ class PulsedMeasurementGui(GUIBase):
         for widget in self._global_param_widgets:
             if hasattr(widget, 'isChecked'):
                 widget.stateChanged.disconnect()
+            elif hasattr(widget, 'currentText'):
+                widget.currentTextChanged.disconnect()
             else:
                 widget.editingFinished.disconnect()
         return
+
 
     def _disconnect_logic_signals(self):
         # Disconnect update signals from pulsed_master_logic
