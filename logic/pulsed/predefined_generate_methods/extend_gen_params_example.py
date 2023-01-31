@@ -45,6 +45,20 @@ class ExampleGenerator(PredefinedGeneratorBase):
         gen_params.update({'laser_2_length': laser_length})
         self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
 
+    @property
+    def pulse_envelope(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['pulse_envelope']
+        except KeyError:
+            return None
+
+    @pulse_envelope.setter
+    def pulse_envelope(self, envelope):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'pulse_envelope': envelope})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
+
     # evil setters for common generation settings, use with care.
     # Typically, restore after changing in generation method.
     @PredefinedGeneratorBase.rabi_period.setter
