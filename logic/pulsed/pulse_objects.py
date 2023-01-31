@@ -31,6 +31,34 @@ from collections import OrderedDict
 from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.modules import get_main_dir
 from core.util.helpers import natural_sort, csv_2_list
+from enum import Enum
+
+
+class PulseEnvelopeType(Enum):
+
+    rectangle = 'rectangle'
+    parabola = 'parabola'
+    optimal = 'optimal'
+
+    def __init__(self, *args):
+        self._parameters = self.default_parameters
+
+    @property
+    def default_parameters(self):
+        defaults = {'rectangle': {},
+                    'parabola': {'order_P' : 1},
+                     'optimal': {}}
+
+        return defaults[self.value]
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @parameters.setter
+    def parameters(self, param_dict):
+        self._parameters = param_dict
+
 
 
 class PulseBlockElement(object):
@@ -1310,7 +1338,8 @@ class PredefinedGeneratorBase:
         """
         return self._get_trigger_element(length=50e-9, increment=0, channels=self.sync_channel)
 
-    def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
+    def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None,
+                        envelope=PulseEnvelopeType.rectangle):
         """
         Creates a MW pulse PulseBlockElement
 
@@ -1331,10 +1360,19 @@ class PredefinedGeneratorBase:
             mw_element = self._get_idle_element(
                 length=length,
                 increment=increment)
-            mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
-                amplitude=amp,
-                frequency=freq,
-                phase=phase)
+            if envelope == PulseEnvelopeType.rectangle:
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
+                    amplitude=amp,
+                    frequency=freq,
+                    phase=phase)
+            elif envelope == PulseEnvelopeType.parabola:
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SinEnvelopeParabola(
+                    amplitude=amp,
+                    frequency=freq,
+                    phase=phase,
+                    order_P=envelope.parameters['order_P'])
+            else:
+                raise ValueError(f"Unsupported enveolope type: {envelope.name}")
         return mw_element
 
     def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None):
@@ -1372,6 +1410,11 @@ class PredefinedGeneratorBase:
                     amplitude=amps[0],
                     frequency=freqs[0],
                     phase=phases[0])
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SinEnvelopeParabola(
+                    amplitude=amps[0],
+                    frequency=freqs[0],
+                    phase=phases[0])
+
             elif sine_number == 2:
                 mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSum(
                     amplitude_1=amps[0],
@@ -1442,7 +1485,6 @@ class PredefinedGeneratorBase:
                  ch_ampl_2=amps[2], ch_phase_2=phases[2], ch_start_freq_2=freq_start[1], ch_stop_freq_2=freq_stop[1])
 
         return mw_element
-
 
     def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None,
                               add_gate_ch='d_ch4'):
