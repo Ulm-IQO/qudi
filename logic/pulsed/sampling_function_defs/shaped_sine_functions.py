@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 
 from logic.pulsed.sampling_functions import SamplingBase
-from logic.pulsed.sampling_function_defs.basic_sampling_functions import Sin
+from logic.pulsed.sampling_function_defs.basic_sampling_functions import Sin, DoubleSinSum, TripleSinSum, QuadSinSum
 
 
 
@@ -32,4 +32,13 @@ class EnvelopeParabolaMixin(SamplingBase):
 
 
 class SinEnvelopeParabola(EnvelopeParabolaMixin, Sin):
+    pass
+
+class DoubleSinSumEnvelopeParabola(EnvelopeParabolaMixin, DoubleSinSum):
+    pass
+
+class TripleSinSumEnvelopeParabola(EnvelopeParabolaMixin, TripleSinSum):
+    pass
+
+class QuadSinSumEnvelopeParabola(EnvelopeParabolaMixin, QuadSinSum):
     pass

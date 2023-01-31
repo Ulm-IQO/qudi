@@ -1629,6 +1629,10 @@ class PulsedMeasurementGui(GUIBase):
                         widget.setValue(settings_dict[param_name])
                     elif hasattr(widget, 'setText'):
                         widget.setText(settings_dict[param_name])
+                    elif hasattr(widget, 'currentText'):
+                        index = widget.findText(str(settings_dict[param_name].name))
+                        widget.setCurrentIndex(index)
+
                     widget.blockSignals(False)
 
         # unblock signals
