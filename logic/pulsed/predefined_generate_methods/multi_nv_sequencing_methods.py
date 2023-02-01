@@ -126,7 +126,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
     def done_fci_ch(self):
         try:
             gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
-            return gen_params['laser_read_red_ch']
+            return gen_params['done_fci_ch']
         except KeyError:
             return None
 
@@ -136,6 +136,19 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         gen_params.update({'done_fci_ch': laser_ch})
         self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
 
+    @property
+    def add_gate_ch(self):
+        try:
+            gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+            return gen_params['add_gate_ch']
+        except KeyError:
+            return None
+
+    @add_gate_ch.setter
+    def add_gate_ch(self, laser_ch):
+        gen_params = self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters
+        gen_params.update({'add_gate_ch': laser_ch})
+        self._PredefinedGeneratorBase__sequencegeneratorlogic.generation_parameters = gen_params
 
     def _add_to_seqtable(self, name, blocks, ensembles, seq_params):
         self._seqtable['blocks'] += blocks
@@ -362,9 +375,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                 xticks_list = np.asarray([[x]*int(len(rotations_list)/len(xticks_list)) for x in xticks_list]).flatten()
         num_of_points = len(idx_array)
 
-        self.log.debug(f"idx_array {idx_array}, xticks: {xticks_list}, num {num_of_points}")
-
         mw_readout_gate_ch = f"{self.add_gate_ch},{self.done_fci_ch}"
+        self.log.debug(f"idx_array {idx_array}, xticks: {xticks_list}, num {num_of_points}, gate_read_ch= {mw_readout_gate_ch}")
 
         for idx, rotation in enumerate(rotations_list):
             # mw method must have green laser at end!
