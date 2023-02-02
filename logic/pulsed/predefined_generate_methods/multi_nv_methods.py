@@ -698,7 +698,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
     def generate_rand_benchmark(self, name='random_benchmark', xticks='',
-                            rotations="[[<TomoRotations.none: 0>,];]",
+                            rotations="[[<TomoRotations.none: 0>,];]", read_rots="[]",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             alternating=False,
@@ -733,6 +733,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         str_lists = csv_2_list(rotations, str_2_val=str, delimiter=';')  # to list of csv strings
         rotations = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
+        read_rots = csv_2_list(read_rots, str_2_val=Tk_string.str_2_enum)
 
         self.log.debug(f"Tomographic mes, single point  Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
@@ -856,6 +857,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 #self.log.debug(f"Adding rot {rotation.name}")
                 rabi_block.extend(rotation_element(rotation))
                 rabi_block.append(id_element)
+            for rotation in read_rots:
+                rabi_block.extend(rotation_element(rotation))
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
             rabi_block.append(waiting_element)
@@ -865,6 +868,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     rabi_block.extend(rotation_element(rotation))
                     rabi_block.append(id_element)
                 # we measure ground state population |00>, so alternating against |11>
+                for rotation in read_rots:
+                    rabi_block.extend(rotation_element(rotation))
                 rabi_block.extend(pi_on_1_element)
                 rabi_block.extend(pi_on_2_element)
                 rabi_block.append(laser_element)

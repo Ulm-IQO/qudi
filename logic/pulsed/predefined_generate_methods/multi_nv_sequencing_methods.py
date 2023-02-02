@@ -408,7 +408,41 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                      continue_seqtable=(idx!=0))
 
             if alternating:
-                pass
+                cur_name = f"{single_mw_name}_{idx}_alt"
+                read_rotations = [TomoRotations.ux180_on_1, TomoRotations.ux180_on_2]
+
+                single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, xticks='',
+                                                                        rotations=self.list_2_csv(rotation),
+                                                                        read_rots=read_rotations,
+                                                                        tau_cnot=tau_cnot, dd_type_cnot=dd_type_cnot,
+                                                                        dd_order=dd_order, t_idle=t_idle,
+                                                                        f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                                        rabi_period_mw_2=rabi_period_mw_2,
+                                                                        alternating=False,
+                                                                        init_state_kwargs=init_state_kwargs,
+                                                                        cnot_kwargs=cnot_kwargs,
+                                                                       # suppress fci counting during normal readout
+                                                                       add_gate_ch=mw_readout_gate_ch,
+                                                                       )
+                # single generic method creates most of the mes info, only set multiple tau here
+                single_mw_ensembles[0].measurement_information[
+                    'controlled_variable'] = idx_array if xticks_list == [] else xticks_list
+                single_mw_ensembles[0].measurement_information[
+                    'number_of_lasers'] = 2 * num_of_points if alternating else num_of_points
+                single_mw_ensembles[0].measurement_information['alternating'] = alternating
+
+                blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                         generic_blocks=single_mw_blocks,
+                                                                         generic_ensemble=single_mw_ensembles,
+                                                                         t_init=self.t_laser_fci_green,
+                                                                         t_read=self.t_laser_fci_red,
+                                                                         laser_read_ch=self.laser_read_red_ch,
+                                                                         ch_trigger_done=self.done_fci_ch,
+                                                                         add_gate_ch=self.add_gate_ch,
+                                                                         t_aom_safety=self.t_safety_fci,
+                                                                         t_wait_between=self.t_wait_fci,
+                                                                         continue_seqtable=True)
+
 
 
         return blocks, enembles, sequences
