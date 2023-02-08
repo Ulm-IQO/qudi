@@ -30,8 +30,42 @@ from collections import OrderedDict
 
 from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.modules import get_main_dir
-from core.util.helpers import natural_sort
+from core.util.helpers import natural_sort, csv_2_list
+from enum import Enum, EnumMeta
 
+class PulseEnvelopeTypeMeta(EnumMeta):
+    # hide special enum types containing '_'
+    def __iter__(self):
+       for x in super().__iter__():
+           if not '_' in x.value:
+                yield x
+
+class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
+
+    rectangle = 'rectangle'
+    parabola = 'parabola'
+    optimal = 'optimal'
+    from_gen_settings = '_from_gen_settings'
+
+    def __init__(self, *args):
+        self._parameters = self.default_parameters
+
+    @property
+    def default_parameters(self):
+        defaults = {'rectangle': {},
+                    'parabola': {'order_P' : 1},
+                     'optimal': {},
+                     '_from_gen_settings': {}}
+
+        return defaults[self.value]
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @parameters.setter
+    def parameters(self, param_dict):
+        self._parameters = param_dict
 
 class PulseBlockElement(object):
     """
@@ -1206,19 +1240,69 @@ class PredefinedGeneratorBase:
         # additional slow counter switch for pentacene setup
         # be sure this is not a fast counter switch!
         if add_gate_ch != "":
-            laser_element.digital_high[add_gate_ch] = True
+            for ch in csv_2_list(add_gate_ch, str):
+                laser_element.digital_high[ch] = True
         return laser_element
 
-    def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4'):
+    def _get_laser_gate_elements_pwm(self, length, increment, laser_ch=None, add_gate_ch='d_ch4', no_fc_gate=False,
+                                pwm_duty_cycle=1, pwm_freq=10e3):
         """
+        """
+
+        if pwm_duty_cycle == 1:
+            laser_gate_element = self._get_laser_gate_element(length, increment, no_fc_gate=no_fc_gate,
+                                                              add_gate_ch=add_gate_ch)
+            if laser_ch:
+                laser_gate_element.digital_high[self.laser_channel] = False
+                laser_gate_element.digital_high[laser_ch] = True
+            return [laser_gate_element]
+
+        elif pwm_duty_cycle < 1:
+            if increment != 0:
+                raise ValueError(f"PWM of fixed frequency not possible with non-zero increment= {increment}")
+
+            t_single_cyc = 1 / pwm_freq
+            n_cyc = int(max([1, length / t_single_cyc]))
+            t_total = t_single_cyc*n_cyc
+            rel_deviation = abs(1-t_total/length)
+            if rel_deviation > 0.05:
+                self.log.warning(f"Laser length has length error {100*rel_deviation:.1f}%. Increase PWM frequency!")
+            t_single_laser = t_single_cyc * pwm_duty_cycle
+            t_single_idle = t_single_cyc - t_single_laser
+
+            laser_gate_element = self._get_laser_gate_element(t_single_laser, 0, add_gate_ch=add_gate_ch)
+            if laser_ch:
+                laser_gate_element.digital_high[self.laser_channel] = False
+                laser_gate_element.digital_high[laser_ch] = True
+            idle_gate_element = self._get_laser_gate_element(t_single_idle, 0, add_gate_ch=add_gate_ch)
+            idle_gate_element.digital_high[self.laser_channel] = False
+
+            element_list = []
+            for i in range(n_cyc):
+                element_list.append(laser_gate_element)
+                element_list.append(idle_gate_element)
+
+            self.log.debug(f"t_sing: {t_single_cyc}, n:{n_cyc}, tot:{t_total}, dev:{rel_deviation}")
+            self.log.debug(f"Created {len(element_list)/2} PWM blocks of length {t_single_cyc}. Total {t_total}")
+            return element_list
+
+        else:
+            raise ValueError
+
+
+    def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4', no_fc_gate=False):
+
+        """
+        no_fc_gate: If True, no trigger to fastcounter. Can be helpful, if additional gate (add_gate_ch) is used,
+                    but no fastcounter acquisition is needed.
         """
         laser_gate_element = self._get_laser_element(length=length,
                                                      increment=increment,
                                                      add_gate_ch=add_gate_ch)
         if self.gate_channel:
-            if add_gate_ch != '':
-                # add_gate_ch == '' signals a laser pulse not used for readout
-                # gate_channel (!= add_gate_ch) triggers the fastcounter and should thus be low
+            if add_gate_ch != '' and not no_fc_gate:
+            # add_gate_ch == '' signals a laser pulse not used for readout
+            # gate_channel (!= add_gate_ch) triggers the fastcounter and should thus be low
                 if self.gate_channel.startswith('d'):
                     laser_gate_element.digital_high[self.gate_channel] = True
                 elif self.gate_channel.startswith('a'):
@@ -1235,7 +1319,7 @@ class PredefinedGeneratorBase:
         return self._get_idle_element(length=self.laser_delay,
                                       increment=0)
 
-    def _get_delay_gate_element(self):
+    def _get_delay_gate_element(self, add_gate_ch='d_ch4'):
         """
         Creates a gate trigger of length of the laser delay.
         If no gate channel is specified will return a simple idle element.
@@ -1243,9 +1327,13 @@ class PredefinedGeneratorBase:
         @return PulseBlockElement: The delay element
         """
         if self.gate_channel:
-            return self._get_trigger_element(length=self.laser_delay,
+            laser_element =  self._get_trigger_element(length=self.laser_delay,
                                              increment=0,
                                              channels=self.gate_channel)
+            if add_gate_ch != "":
+                for ch in csv_2_list(add_gate_ch, str):
+                    laser_element.digital_high[ch] = True
+            return laser_element
         else:
             return self._get_delay_element()
 
@@ -1255,7 +1343,19 @@ class PredefinedGeneratorBase:
         """
         return self._get_trigger_element(length=50e-9, increment=0, channels=self.sync_channel)
 
-    def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
+    def _get_envelope_settings(self, envelope):
+        if envelope == PulseEnvelopeType.from_gen_settings:
+            # if auto setting, take from generation parameters
+            # if there also auto setting, default to rectangle
+            envelope = self.generation_parameters['pulse_envelope'] if 'pulse_envelope' in self.generation_parameters \
+                else PulseEnvelopeType.rectangle
+            envelope = PulseEnvelopeType.rectangle if envelope == PulseEnvelopeType.from_gen_settings else envelope
+            return  envelope
+        else:
+            return envelope
+
+    def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None,
+                        envelope=PulseEnvelopeType.from_gen_settings):
         """
         Creates a MW pulse PulseBlockElement
 
@@ -1267,6 +1367,8 @@ class PredefinedGeneratorBase:
 
         @return: PulseBlockElement, the generated MW element
         """
+        envelope = self._get_envelope_settings(envelope)
+
         if self.microwave_channel.startswith('d'):
             mw_element = self._get_trigger_element(
                 length=length,
@@ -1276,13 +1378,23 @@ class PredefinedGeneratorBase:
             mw_element = self._get_idle_element(
                 length=length,
                 increment=increment)
-            mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
-                amplitude=amp,
-                frequency=freq,
-                phase=phase)
+            if envelope == PulseEnvelopeType.rectangle:
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
+                    amplitude=amp,
+                    frequency=freq,
+                    phase=phase)
+            elif envelope == PulseEnvelopeType.parabola:
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SinEnvelopeParabola(
+                    amplitude=amp,
+                    frequency=freq,
+                    phase=phase,
+                    order_P=envelope.parameters['order_P'])
+            else:
+                raise ValueError(f"Unsupported envelope type: {envelope.name}")
         return mw_element
 
-    def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None):
+    def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None,
+                                 envelope=PulseEnvelopeType.from_gen_settings):
         """
         Creates single, double or triple sine mw element.
 
@@ -1300,6 +1412,8 @@ class PredefinedGeneratorBase:
         if isinstance(phases, (int, float)):
             phases = [phases]
 
+        envelope = self._get_envelope_settings(envelope)
+
         if self.microwave_channel.startswith('d'):
             mw_element = self._get_trigger_element(
                 length=length,
@@ -1313,43 +1427,100 @@ class PredefinedGeneratorBase:
             sine_number = min(len(amps), len(freqs), len(phases))
 
             if sine_number < 2:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
-                    amplitude=amps[0],
-                    frequency=freqs[0],
-                    phase=phases[0])
+                if envelope == PulseEnvelopeType.rectangle:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
+                        amplitude=amps[0],
+                        frequency=freqs[0],
+                        phase=phases[0])
+                elif envelope == PulseEnvelopeType.parabola:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SinEnvelopeParabola(
+                        amplitude=amps[0],
+                        frequency=freqs[0],
+                        phase=phases[0],
+                        order_P=envelope.parameters['order_P']
+                    )
+                else:
+                    raise ValueError(f"Unsupported envelope type: {envelope.name}")
+
             elif sine_number == 2:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSum(
-                    amplitude_1=amps[0],
-                    amplitude_2=amps[1],
-                    frequency_1=freqs[0],
-                    frequency_2=freqs[1],
-                    phase_1=phases[0],
-                    phase_2=phases[1])
+                if envelope == PulseEnvelopeType.rectangle:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSum(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        phase_1=phases[0],
+                        phase_2=phases[1])
+                elif envelope == PulseEnvelopeType.parabola:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSumParabola(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        order_P=envelope.parameters['order_P']
+                    )
+                else:
+                    raise ValueError(f"Unsupported envelope type: {envelope.name}")
             elif sine_number == 3:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSum(
-                    amplitude_1=amps[0],
-                    amplitude_2=amps[1],
-                    amplitude_3=amps[2],
-                    frequency_1=freqs[0],
-                    frequency_2=freqs[1],
-                    frequency_3=freqs[2],
-                    phase_1=phases[0],
-                    phase_2=phases[1],
-                    phase_3=phases[2])
+                if envelope == PulseEnvelopeType.rectangle:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSum(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        amplitude_3=amps[2],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        frequency_3=freqs[2],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        phase_3=phases[2])
+                elif envelope == PulseEnvelopeType.parabola:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSumParabola(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        amplitude_3=amps[2],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        frequency_3=freqs[2],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        phase_3=phases[2],
+                        order_P=envelope.parameters['order_P'])
+                else:
+                    raise ValueError(f"Unsupported envelope type: {envelope.name}")
             elif sine_number == 4:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.QuadSinSum(
-                    amplitude_1=amps[0],
-                    amplitude_2=amps[1],
-                    amplitude_3=amps[2],
-                    amplitude_4=amps[3],
-                    frequency_1=freqs[0],
-                    frequency_2=freqs[1],
-                    frequency_3=freqs[2],
-                    frequency_4=freqs[3],
-                    phase_1=phases[0],
-                    phase_2=phases[1],
-                    phase_3=phases[2],
-                    phase_4=phases[3])
+                if envelope == PulseEnvelopeType.rectangle:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.QuadSinSum(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        amplitude_3=amps[2],
+                        amplitude_4=amps[3],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        frequency_3=freqs[2],
+                        frequency_4=freqs[3],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        phase_3=phases[2],
+                        phase_4=phases[3])
+                elif envelope == PulseEnvelopeType.parabola:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.QuadSinSumParabola(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        amplitude_3=amps[2],
+                        amplitude_4=amps[3],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        frequency_3=freqs[2],
+                        frequency_4=freqs[3],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        phase_3=phases[2],
+                        phase_4=phases[3],
+                        order_P=envelope.parameters['order_P'])
+                else:
+                    raise ValueError(f"Unsupported envelope type: {envelope.name}")
 
             else:
                 raise ValueError(f"Unsupported number of sines: {sine_number}")
@@ -1543,7 +1714,7 @@ class PredefinedGeneratorBase:
         value = float(np.around(value, 13))
         return value
 
-    def _get_ensemble_count_length(self, ensemble, created_blocks):
+    def _get_ensemble_count_length(self, ensemble, created_blocks, laser_ch=None):
         """
 
         @param ensemble:
@@ -1551,7 +1722,18 @@ class PredefinedGeneratorBase:
         @return:
         """
         if self.gate_channel:
-            length = self.laser_length + self.laser_delay
+            if laser_ch is None or laser_ch == '':
+                length = self.laser_length + self.laser_delay
+            else:
+                # if other readout laser than self.laser_ch: search for first 'laser_ch' block
+                # todo: better seaching all ensemble, here assume first one contains laser
+                block_name = ensemble.block_list[0][0]
+                blocks = {block.name: block for block in created_blocks}
+                length = 0
+                for el in blocks[block_name].element_list:
+                    if el.digital_high[laser_ch] is True:
+                        length += el.init_length_s
+
         else:
             blocks = {block.name: block for block in created_blocks}
             length = 0.0
@@ -1559,6 +1741,29 @@ class PredefinedGeneratorBase:
                 length += blocks[block_name].init_length_s * (reps + 1)
                 length += blocks[block_name].increment_s * ((reps ** 2 + reps) / 2)
         return length
+
+    @staticmethod
+    def list_2_csv(in_list, line_delimiter=";"):
+        """
+        :param line_delimter: if given lists of lists, will create lines per out list
+                              that are seperated by the line_delimiter
+        """
+        str_list = ""
+
+        if type(in_list) != list:
+            in_list = [in_list]
+
+        for el in in_list:
+            if type(el) == list:
+                str_list += f"{self.list_2_csv(el)}{line_delimiter} "
+            else:
+                str_list += f"{repr(el)}, "
+            # str_list += f"{el}, "
+
+        if len(str_list) > 0:
+            str_list = str_list[:-2]
+
+        return str_list
 
 
 class PulseObjectGenerator(PredefinedGeneratorBase):
