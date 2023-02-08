@@ -2657,7 +2657,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_GST_meas(self,name='GST',init_state_dict,meas_dict,gate_set_dict): # The dict are created in the notebook "double_Nv"
+    def generate_GST_meas(self,name='GST',init_state_dict='',meas_dict='',gate_set_dict=''): # The dict are created in the notebook "double_Nv"
         seq_dict = dict() # This dictionary shows the sequence
         for i in init_state_dict.keys():
             for j in meas_dict.keys():
@@ -2840,12 +2840,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
             rabi_block.append(waiting_element)
-        created_blocks.append(rabi_block)
+
 
         else:
             raise ValueError(f"On_nv= {on_nv} has wrong length.")
 
-
+        created_blocks.append(rabi_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
