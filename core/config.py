@@ -37,7 +37,8 @@ import re
 import os
 import ruamel.yaml as yaml
 from io import BytesIO
-
+from enum import Enum
+from importlib import import_module
 
 def ordered_load(stream, Loader=yaml.Loader):
     """
@@ -110,6 +111,15 @@ def ordered_load(stream, Loader=yaml.Loader):
         else:
             return value
 
+    def construct_enum(loader, tag, node):
+        # backported from new core
+        enum_repr_str = loader.construct_yaml_str(node)
+        enum_mod_cls, enum_name = enum_repr_str.rsplit(']', 1)[0].rsplit('[', 1)
+        module, cls_name = enum_mod_cls.rsplit('.', 1)
+        cls = getattr(import_module(module), cls_name)
+        return cls[enum_name]
+
+
     # add constructor
     OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
@@ -126,6 +136,9 @@ def ordered_load(stream, Loader=yaml.Loader):
     OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
             construct_str)
+    OrderedLoader.add_multi_constructor(
+            '!enum',
+            construct_enum)
 
     # load config file
     config = yaml.load(stream, OrderedLoader)
@@ -184,6 +197,25 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         node.tag = '!frozenset'
         return node
 
+    def represent_enum(dumper, data):
+        """
+        Representer for enum like data
+        """
+
+        class_name = data.__class__.__name__
+        module = data.__class__.__module__
+        try:
+            mod = import_module(module)
+            cls = getattr(mod, class_name)
+            assert data == cls[data.name]
+        except (AttributeError, ImportError, AssertionError):
+            raise TypeError(f'Data can not be represented as enum.Enum.')
+        return dumper.represent_scalar(tag='!enum',
+                                     value=f'{module}.{class_name}[{data.name}]')
+
+        #repr_str = '{}-{}'.format(enum_data.name, enum_data.value)
+        #return dumper.represent_scalar(u'!enum', repr_str)
+
     def represent_ndarray(dumper, array_data):
         """
         Representer for numpy ndarrays
@@ -222,6 +254,7 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     # OrderedDumper.add_representer(numpy.float128, represent_float)
     OrderedDumper.add_representer(numpy.ndarray, represent_ndarray)
     OrderedDumper.add_representer(frozenset, represent_frozenset)
+    OrderedDumper.add_multi_representer(Enum, represent_enum)
 
     # dump data
     return yaml.dump(data, stream, OrderedDumper, **kwds)
