@@ -37,12 +37,13 @@ class PulseEnvelopeTypeMeta(EnumMeta):
     # hide special enum types containing '_'
     def __iter__(self):
        for x in super().__iter__():
-           if not '_' in x.value:
+           if not '_' == x.value[0]:
                 yield x
 
 class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
 
     rectangle = 'rectangle'
+    sin_n = 'sin_n'
     parabola = 'parabola'
     optimal = 'optimal'
     from_gen_settings = '_from_gen_settings'
@@ -53,8 +54,9 @@ class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     @property
     def default_parameters(self):
         defaults = {'rectangle': {},
-                    'parabola': {'order_P' : 1},
+                    'parabola': {'order_P': 1},
                      'optimal': {},
+                     'sin_n': {'order_n': 2},
                      '_from_gen_settings': {}}
 
         return defaults[self.value]
@@ -1395,6 +1397,12 @@ class PredefinedGeneratorBase:
                     frequency=freq,
                     phase=phase,
                     order_P=envelope.parameters['order_P'])
+            elif envelope == PulseEnvelopeType.sin_n:
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SinEnvelopeSinn(
+                    amplitude=amp,
+                    frequency=freq,
+                    phase=phase,
+                    order_n=envelope.parameters['order_n'])
             else:
                 raise ValueError(f"Unsupported envelope type: {envelope.name}")
         return mw_element
@@ -1443,8 +1451,13 @@ class PredefinedGeneratorBase:
                         amplitude=amps[0],
                         frequency=freqs[0],
                         phase=phases[0],
-                        order_P=envelope.parameters['order_P']
-                    )
+                        order_P=envelope.parameters['order_P'])
+                elif envelope == PulseEnvelopeType.sin_n:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.SinEnvelopeSinn(
+                        amplitude=amps[0],
+                        frequency=freqs[0],
+                        phase=phases[0],
+                        order_n=envelope.parameters['order_n'])
                 else:
                     raise ValueError(f"Unsupported envelope type: {envelope.name}")
 
@@ -1465,8 +1478,16 @@ class PredefinedGeneratorBase:
                         frequency_2=freqs[1],
                         phase_1=phases[0],
                         phase_2=phases[1],
-                        order_P=envelope.parameters['order_P']
-                    )
+                        order_P=envelope.parameters['order_P'])
+                elif envelope == PulseEnvelopeType.sin_n:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSumEnvelopeSinn(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        order_n=envelope.parameters['order_n'])
                 else:
                     raise ValueError(f"Unsupported envelope type: {envelope.name}")
             elif sine_number == 3:
@@ -1493,6 +1514,18 @@ class PredefinedGeneratorBase:
                         phase_2=phases[1],
                         phase_3=phases[2],
                         order_P=envelope.parameters['order_P'])
+                elif envelope == PulseEnvelopeType.sin_n:
+                    mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSumEnvelopeSinn(
+                        amplitude_1=amps[0],
+                        amplitude_2=amps[1],
+                        amplitude_3=amps[2],
+                        frequency_1=freqs[0],
+                        frequency_2=freqs[1],
+                        frequency_3=freqs[2],
+                        phase_1=phases[0],
+                        phase_2=phases[1],
+                        phase_3=phases[2],
+                        order_n=envelope.parameters['order_n'])
                 else:
                     raise ValueError(f"Unsupported envelope type: {envelope.name}")
             elif sine_number == 4:
