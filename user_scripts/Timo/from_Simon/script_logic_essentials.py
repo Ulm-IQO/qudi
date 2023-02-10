@@ -62,7 +62,7 @@ setup['delay_length'] = setup['laser_delay'] - 30e-9#450e-9
 
 setup['channel_amp'] = 1.0
 setup['microwave_channel'] = 'a_ch1'
-setup['optimize_channel'] = '/Dev1/PFI0'
+setup['optimize_channel'] = None #'/Dev1/PFI0'
 
 setup['readout_end'] = 0.3e-6
 
@@ -524,11 +524,9 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     global qm_dict_final
     qm_dict_final = qm_dict
 
-    timestamp = datetime.datetime.now()
-
     if save_tag is not None:
         logger.debug("Saving logic essential params to {}/{}".format(save_subdir, save_tag))
-        save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir, timestamp=timestamp)
+        save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir)
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment'] != 'No fit':
         try:
@@ -536,8 +534,7 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
         except BaseException as e:
             logger.exception("Fit failed: ")
     if save_tag is not None:
-        pulsedmasterlogic.save_measurement_data(save_tag, with_error=True, subdir=save_subdir,
-                                                timestamp=timestamp)
+        pulsedmasterlogic.save_measurement_data(save_tag, with_error=True, subdir=save_subdir)
     time.sleep(1)
 
     return user_terminated
@@ -704,8 +701,10 @@ def set_up_conventional_measurement(qm_dict):
                 analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': 400e-9,
                                 'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
         else:
-            analy_method = {'method': 'mean_norm', 'signal_start': 805e-9, 'signal_end': 805e-9 + 800e-9,
-                                                'norm_start': 2700e-9, 'norm_end': 2700e-9 + 800e-9}
+            #analy_method = {'method': 'mean_norm', 'signal_start': 805e-9, 'signal_end': 805e-9 + 800e-9,
+             #                                   'norm_start': 2700e-9, 'norm_end': 2700e-9 + 800e-9}
+            analy_method = {'method': 'mean_norm', 'signal_start': 833.684e-9, 'signal_end': 833.684e-9 + 943.158e-9,
+                                                'norm_start': 3204e-9, 'norm_end': 3204e-9 + 294.737e-9}
             #analy_method = {'method': 'mean', 'signal_start': 3280-9, 'signal_end': 3280-9 + 500e-9,
             #                                    'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
 
@@ -1006,12 +1005,13 @@ def wait_for_cts(min_cts=10e3, timeout_s=2):
         #counterlogic.start_saving()
         timeserieslogic.start_reading()
         time.sleep(0.1)
+        logger.debug("Waiting for counts...")
         try:
 
             #data_array, parameters = counterlogic.save_data(to_file=False)
             #data_array = np.array(data_array)[:, 1]
             data_array = timeserieslogic.trace_data[1].values()
-            last_cts = data_array[-1]
+            last_cts = list(data_array)[0][-1]
 
             if last_cts > min_cts:
                 high_cts = True
@@ -1019,59 +1019,63 @@ def wait_for_cts(min_cts=10e3, timeout_s=2):
                                                                    last_cts, min_cts))
                 break
         except Exception as e:
-            logger.warning("Couln't read from counter: {}".format(str(e)))
+            logger.warning("Couldn't read from counter: {}".format(str(e)))
             return
 
     if not high_cts:
         logger.warning("Timed out while waiting for high counts.")
 
-def optimize_position(optimize_ch=None):
+def optimize_position(optimize_ch=''):
     # FIXME: Add the option to pause pulsed measurement during position optimization
     # add: check if counts
 
     time_start_optimize = time.time()
+    try:
 
+        #pulsedmeasurementlogic.fast_counter_pause()
+        if optimize_ch is None:
+            logger.info(f"Optimization with laser ch: {setup['optimize_channel']}")
+            nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
+        elif optimize_ch is '':
+            logger.debug("No opt_ch optimization")
+            pass
+        else:
+            logger.debug(f"Optimization with laser ch: {optimize_ch}")
+            nicard.digital_channel_switch(optimize_ch, mode=True)
 
-    #pulsedmeasurementlogic.fast_counter_pause()
-    if optimize_ch is None:
-        logger.info(f"Optimization with laser ch: {setup['optimize_channel']}")
-        nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
-    elif optimize_ch is '':
-        logger.debug("No opt_ch optimization")
-        pass
-    else:
-        logger.debug(f"Optimization with laser ch: {optimize_ch}")
-        nicard.digital_channel_switch(optimize_ch, mode=True)
+        wait_for_cts()
 
-    wait_for_cts()
+        # perform refocus
+        scannerlogic.stop_scanning()
+        time.sleep(0.2)
+        crosshair_pos = scannerlogic.get_position()
+        optimizerlogic.start_refocus(initial_pos=crosshair_pos)
 
-    # perform refocus
-    scannerlogic.stop_scanning()
-    time.sleep(0.2)
-    crosshair_pos = scannerlogic.get_position()
-    optimizerlogic.start_refocus(initial_pos=crosshair_pos)
+        sleep_until_abort("optimizerlogic.module_state() != 'idle'", timeout_s=10)
 
-    sleep_until_abort("optimizerlogic.module_state() != 'idle'", timeout_s=10)
+        if abs(optimizerlogic.optim_pos_x - crosshair_pos[0])  > 1e-6 or \
+            abs(optimizerlogic.optim_pos_y - crosshair_pos[1]) > 1e-6 or \
+            abs(optimizerlogic.optim_pos_z - crosshair_pos[2]) > 1e-6:
+                optimize_position()
+                logger.debug("Repeating optimization")
+        else:
 
-    if abs(optimizerlogic.optim_pos_x - crosshair_pos[0])  > 1e-6 or \
-        abs(optimizerlogic.optim_pos_y - crosshair_pos[1]) > 1e-6 or \
-        abs(optimizerlogic.optim_pos_z - crosshair_pos[2]) > 1e-6:
-            optimize_position()
-            logger.debug("Repeating optimization")
-    else:
+            scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
+                                  z=optimizerlogic.optim_pos_z, a=0.0)
+            time.sleep(0.5)
+            # switch off laser
+            #logger.debug("Laser off")
+            #nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+            # pulsedmeasurementlogic.fast_counter_continue()
 
-        scannerlogic.set_position('optimizer', x=optimizerlogic.optim_pos_x, y=optimizerlogic.optim_pos_y,
-                              z=optimizerlogic.optim_pos_z, a=0.0)
-        time.sleep(0.5)
-        # switch off laser
-        #logger.debug("Laser off")
-        #nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
-        # pulsedmeasurementlogic.fast_counter_continue()
+        time_stop_optimize = time.time()
+        additional_time = (time_stop_optimize - time_start_optimize)
 
-    time_stop_optimize = time.time()
-    additional_time = (time_stop_optimize - time_start_optimize)
+        if optimize_ch is not '':
+            nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
 
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+    except:
+        logger.exception(f"Optimization failed: ")
 
     return additional_time
 
