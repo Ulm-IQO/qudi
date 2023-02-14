@@ -753,7 +753,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             rotations="[[<TomoRotations.none: 0>,];]", read_rots="",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-                            alternating=False,
+                            mirror_1q_pulses=False, alternating=False,
                             init_state_kwargs='', cnot_kwargs='', add_gate_ch='d_ch4'):
         """
         :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
@@ -790,6 +790,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         self.log.debug(f"Rb mes point  Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
                        f" cnot_kwargs: {cnot_kwargs}, read rots {read_rots}")
+        if mirror_1q_pulses:
+            if len(np.unique(rabi_periods)) != 1:
+                self.log.warning(f"Mirroring with non unique rabi_periods: {rabi_periods} will cause idle times.")
 
         # get tau array for measurement ticks
         idx_array = list(range(len(rotations)))
@@ -806,35 +809,51 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods,
+                                              mw_idle_amps=ampls_on_1 * ampl_idle_mult)
         piy_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         piy_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        piy_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods,
+                                               mw_idle_amps=ampls_on_1 * ampl_idle_mult)
         pimin_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pimin_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        pimin_on_both_element = self.get_pi_element(180, mw_freqs, amplitudes, rabi_periods,
+                                                 mw_idle_amps=ampls_on_1 * ampl_idle_mult)
         piminy_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         piminy_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        piminy_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods,
+                                                  mw_idle_amps=ampls_on_1 * ampl_idle_mult)
 
         pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
+                                               mw_idle_amps=ampls_on_1 * ampl_idle_mult)
         pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        pi2y_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
+                                                mw_idle_amps=ampls_on_1 * ampl_idle_mult)
         pi2min_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2min_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        pi2min_on_both_element = self.get_pi_element(180, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
+                                                  mw_idle_amps=ampls_on_1 * ampl_idle_mult)
         pi2miny_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2miny_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
+        pi2miny_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
+                                                   mw_idle_amps=ampls_on_1 * ampl_idle_mult)
 
         pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
 
@@ -876,46 +895,68 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             if rotation == TomoRotations.none:
                 rot_elements = []
+                rot_elements_mirror = []
             elif rotation == TomoRotations.ux90_on_1:
                 rot_elements = pi2_on_1_element
+                rot_elements_mirror = pi2_on_both_element
             elif rotation == TomoRotations.ux90_on_2:
                 rot_elements = pi2_on_2_element
+                rot_elements_mirror = pi2_on_both_element
             elif rotation == TomoRotations.uy90_on_1:
                 rot_elements = pi2y_on_1_element
+                rot_elements_mirror = pi2_on_both_element
             elif rotation == TomoRotations.uy90_on_2:
                 rot_elements = pi2y_on_2_element
-
+                rot_elements_mirror = pi2y_on_both_element
             elif rotation == TomoRotations.ux90min_on_1:
                 rot_elements = pi2min_on_1_element
+                rot_elements_mirror = pi2min_on_both_element
             elif rotation == TomoRotations.ux90min_on_2:
                 rot_elements = pi2min_on_2_element
+                rot_elements_mirror = pi2min_on_both_element
             elif rotation == TomoRotations.uy90min_on_1:
                 rot_elements = pi2miny_on_1_element
+                rot_elements_mirror = pi2miny_on_both_element
             elif rotation == TomoRotations.uy90min_on_2:
                 rot_elements = pi2miny_on_2_element
+                rot_elements_mirror = pi2miny_on_both_element
 
             elif rotation == TomoRotations.ux180_on_1:
                 rot_elements = pi_on_1_element
+                rot_elements_mirror = pi_on_both_element
             elif rotation == TomoRotations.ux180_on_2:
                 rot_elements = pi_on_2_element
+                rot_elements_mirror = pi_on_both_element
             elif rotation == TomoRotations.uy180_on_1:
                 rot_elements = piy_on_1_element
+                rot_elements_mirror = piy_on_both_element
             elif rotation == TomoRotations.uy180_on_2:
                 rot_elements = piy_on_2_element
+                rot_elements_mirror = piy_on_both_element
 
             elif rotation == TomoRotations.ux180min_on_1:
                 rot_elements = pimin_on_1_element
+                rot_elements_mirror = pimin_on_both_element
             elif rotation == TomoRotations.ux180min_on_2:
                 rot_elements = pimin_on_2_element
+                rot_elements_mirror = pimin_on_both_element
             elif rotation == TomoRotations.uy180min_on_1:
                 rot_elements = piminy_on_1_element
+                rot_elements_mirror = piminy_on_both_element
             elif rotation == TomoRotations.uy180min_on_2:
                 rot_elements = piminy_on_2_element
+                rot_elements_mirror = piminy_on_both_element
 
             elif rotation == TomoRotations.c2not1:
                 rot_elements = c2not1_element
+                if mirror_1q_pulses:
+                    raise ValueError("Can't mirror c2not1 to other qubit.")
             else:
                 raise ValueError(f"Unknown random benchmarking rotation: {rotation.name}")
+
+            if mirror_1q_pulses:
+                return rot_elements_mirror
+
             return rot_elements
 
         rabi_block = PulseBlock(name=name)
@@ -2657,7 +2698,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_GST_meas(self,name='GST',init_state_dict='',meas_dict='',gate_set_dict=''): # The dict are created in the notebook "double_Nv"
+    def generate_GST_meas(self,name='GST',init_state_dict={},meas_dict={},gate_set_dict={}): # The dict are created in the notebook "double_Nv"
         seq_dict = dict() # This dictionary shows the sequence
         for i in init_state_dict.keys():
             for j in meas_dict.keys():
