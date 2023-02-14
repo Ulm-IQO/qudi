@@ -31,7 +31,7 @@ save_subdir = None
 qm_dict_final ={}
 
 setup = OrderedDict()
-setup['gated'] = pulsedmeasurementlogic.fastcounter().gated#True
+setup['gated'] = True
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
