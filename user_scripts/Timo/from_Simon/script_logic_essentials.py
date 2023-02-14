@@ -31,7 +31,7 @@ save_subdir = None
 qm_dict_final ={}
 
 setup = OrderedDict()
-setup['gated'] = True#pulsedmeasurementlogic.fastcounter().gated
+setup['gated'] = pulsedmeasurementlogic.fastcounter().gated#True
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
@@ -353,6 +353,11 @@ def customise_setup(dictionary):
 
     logger.info("Setting sequence generation params: {}".format(subdict))
 
+    subdict_fc = dict([(key, dictionary.get(key)) for key in pulsedmasterlogic.fast_counter_settings if key in dictionary])
+    pulsedmasterlogic.set_fast_counter_settings(subdict)
+    logger.info("Setting fastcounter params: {}".format(subdict_fc))
+
+
     return dictionary
 
 def generate_sample_upload(experiment, qm_dict):
@@ -474,12 +479,15 @@ def load_into_channel(name, sequence_mode):
 def set_parameters(qm_dict):
 
     logger.debug("Setting parameters for asset {}: {}".format(qm_dict['name'], qm_dict))
+    try:
+        if not qm_dict['sequence_mode']:
+            qm_dict['params'] = pulsedmasterlogic.saved_pulse_block_ensembles.get(qm_dict['name']).measurement_information
+        else:
+            qm_dict['params'] = pulsedmasterlogic.saved_pulse_sequences.get(qm_dict['name']).measurement_information
+        pulsedmasterlogic.set_measurement_settings(qm_dict['params'])
 
-    if not qm_dict['sequence_mode']:
-        qm_dict['params'] = pulsedmasterlogic.saved_pulse_block_ensembles.get(qm_dict['name']).measurement_information
-    else:
-        qm_dict['params'] = pulsedmasterlogic.saved_pulse_sequences.get(qm_dict['name']).measurement_information
-    pulsedmasterlogic.set_measurement_settings(qm_dict['params'])
+    except:
+        logger.exception(f"Failed setting pulsed parameters. Is sequence? {qm_dict['sequence_mode']}:")
 
     return qm_dict
 
@@ -527,6 +535,18 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     if save_tag is not None:
         logger.debug("Saving logic essential params to {}/{}".format(save_subdir, save_tag))
         save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir)
+
+    if 'listfile' in qm_dict.keys():
+        # listfile .lst is configure before mes, but still .mpa will miss.
+        # So change save_mode and save again after mes
+        if qm_dict['listfile']:
+            data_dir = os.path.abspath(savelogic.get_daily_directory())
+            name = f"{qm_dict['savetag']}.mpa"
+            myfastcounter.change_save_mode(0)
+            myfastcounter.save_data(data_dir + r'\\' + name)
+            logger.info(f"Saving .mpa to: {myfastcounter.get_filename()}")
+            myfastcounter.change_save_mode(2)
+
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment'] != 'No fit':
         try:
@@ -793,8 +813,11 @@ def control_measurement(qm_dict, analysis_method=None):
 
         ##################### optimize position #######################
         if qm_dict['optimize_time'] is not None:
+            func_toggle = None
+            if 'optimize_func_toggle_pause' in qm_dict:
+                func_toggle = qm_dict['optimize_func_toggle_pause']
             if time.time() - optimize_real_time > qm_dict['optimize_time']:
-                additional_time = optimize_position()
+                additional_time = optimize_position(func_toggle_pause=func_toggle)
                 start_time = start_time + additional_time
                 optimize_real_time = time.time()
 
