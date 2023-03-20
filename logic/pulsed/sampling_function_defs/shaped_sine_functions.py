@@ -56,7 +56,7 @@ class EnvelopeSinnMixin(SamplingBase):
 
     def __init__(self, *args, **kwargs):
 
-        self.order_P = self.params['order_n']['init']if 'order_n' not in kwargs else kwargs.pop('order_n')
+        self.order_n = self.params['order_n']['init']if 'order_n' not in kwargs else kwargs.pop('order_n')
 
         super().__init__(*args, **kwargs)
 
