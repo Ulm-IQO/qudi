@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import numpy as np
+import copy as cp
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -817,7 +818,8 @@ def control_measurement(qm_dict, analysis_method=None):
             if 'optimize_func_toggle_pause' in qm_dict:
                 func_toggle = qm_dict['optimize_func_toggle_pause']
             if time.time() - optimize_real_time > qm_dict['optimize_time']:
-                additional_time = optimize_position(func_toggle_pause=func_toggle)
+                #additional_time = optimize_position(func_toggle_pause=func_toggle)
+                additional_time = optimize_position()
                 start_time = start_time + additional_time
                 optimize_real_time = time.time()
 
@@ -1342,8 +1344,6 @@ def do_automized_measurements(qm_dict, autoexp):
                 break
             if handle_abort() is 2:
                 continue
-
-
             # perform the measurement
             try:
                 savetag, save_subdir_nv = "", ""
@@ -1374,9 +1374,25 @@ def do_automized_measurements(qm_dict, autoexp):
 
             # fit and update parameters
             if 'fit_experiment' in cur_exp_dict:
+                fitter = pulsedmeasurementlogic.fc
                 if cur_exp_dict['fit_experiment'] != '':
+                    fit_method = cur_exp_dict['fit_experiment']
                     try:
-                        fit_data, fit_result = pulsedmeasurementlogic.do_fit(cur_exp_dict['fit_experiment'])
+                        if 'fit_edit_params' in cur_exp_dict:
+                            # provide initial guesses / fit bounds
+                            edit_params = cur_exp_dict['fit_edit_params']
+                            logger.debug(f"Found fit edit_param: {edit_params}")
+                            save_usefit_params, save_edit_params = cp.copy(fitter.fit_list[fit_method]['use_settings']), cp.copy(fitter.fit_list[fit_method]['parameters'])
+                            for ov_param in edit_params:
+                                if ov_param.name in fitter.fit_list[fit_method]['parameters'].keys():
+                                    fitter.fit_list[fit_method]['use_settings'][ov_param.name] = True
+                                    fitter.fit_list[fit_method]['parameters'][ov_param.name] = ov_param
+                                else:
+                                    logger.warning(f"Couldn't find edit_param: {ov_param}")
+
+                        fitter.clear_result()
+                        fitter.set_current_fit(fit_method)
+                        fit_data, fit_result = pulsedmeasurementlogic.do_fit(fit_method)
                         #pulsedmasterlogic.do_fit(cur_exp_dict['fit_experiment'])
                         # while pulsedmasterlogic.status_dict['fitting_busy']: time.sleep(0.2)
                         #time.sleep(1)
@@ -1385,8 +1401,18 @@ def do_automized_measurements(qm_dict, autoexp):
                         #fit_para = fit_result.best_values[cur_exp_dict['fit_parameter']]
 
                         fit_para = fit_result.result_str_dict[cur_exp_dict['fit_parameter']]['value']
+
+                        if 'fit_edit_params' in cur_exp_dict:
+                            # reset fitter to previous values
+                            for ov_param in edit_params:
+                                logger.debug(f"Resetting fit settings for {ov_param.name} to:"
+                                             f" use {save_usefit_params[ov_param.name]}, params: {save_edit_params[ov_param.name]}")
+                                fitter.fit_list[fit_method]['use_settings'][ov_param.name] = save_usefit_params[ov_param.name]
+                                fitter.fit_list[fit_method]['parameters'][ov_param.name] = save_edit_params[ov_param.name]
+
                     except Exception as e:
-                        logger.warning("Couldn't perform fit: {}".format(str(e)))
+                        stack_trace = traceback.format_exc()
+                        logger.warning("Couldn't perform fit: {}".format(stack_trace))
                         fit_para = None
 
                     if 'update_parameters' in cur_exp_dict:
@@ -1429,6 +1455,7 @@ def do_automized_measurements(qm_dict, autoexp):
 
                                     autoexp[key_nextexp][key_param] = val
                                     logger.info("Updating {}= {} for exp {}".format(key_param, val, key_nextexp))
+                                    logger.debug(f"Full fit result: {fit_result.result_str_dict}")
                                 except Exception as e:
                                     logger.warning("Failed to update next parameter for {}: {}".format(key_nextexp, str(e)))
                         except Exception as e:
