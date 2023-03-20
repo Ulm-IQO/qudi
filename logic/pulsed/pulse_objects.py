@@ -37,7 +37,7 @@ class PulseEnvelopeTypeMeta(EnumMeta):
     # hide special enum types containing '_'
     def __iter__(self):
        for x in super().__iter__():
-           if not '_' in x.value:
+           if not '_' == x.value[0]:
                 yield x
 
 class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
