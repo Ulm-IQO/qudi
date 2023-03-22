@@ -16,11 +16,6 @@ try:
     from logic.mfl_multi_irq_driven import MFL_Multi_IRQ_Driven
 except:
     pass
-try:
-    # if enums should be de-derialized
-    from logic.pulsed.predefined_generate_methods.multi_nv_methods import DQTAltModes, TomoRotations, TomoInit
-except:
-    pass
 
 from abc import abstractstaticmethod
 
@@ -206,7 +201,11 @@ class Tk_file():
 
         database = files_in_folder
         search_file = os.path.abspath(param_file)
-        candidate_param_file = os.path.abspath(difflib.get_close_matches(search_file, database)[0])
+        candidates = difflib.get_close_matches(search_file, database)
+        if len(candidates) > 0:
+            candidate_param_file = os.path.abspath(candidates[0])
+        else:
+            return None
 
         # logger.debug(f"Searched: {os.path.basename(search_file)}, found: {os.path.basename(candidate_param_file)},\
         #             n_diff: {diff_letters(candidate_param_file, search_file)}")
@@ -223,6 +222,20 @@ class Tk_file():
         else:
             return None
 
+    """
+    @staticmethod
+    def find_param_file(p_mes):
+
+        # needed, if "Active POI:" property in .dat file is buggy
+        path = os.path.normpath(p_mes['file'])
+        # offset for erasing automatic "nv_" previx
+        p_file = path.split(os.sep)[-1]
+        folder = os.path.join(*path.split(os.sep)[:-1])
+
+        param_file = p_file.split('_pulsed')[0]
+
+        return Tk_file.find_close_filename(folder, param_file, filter_str=['parameters', '.dat'])
+    """
     @staticmethod
     def load_pulsed_params(p_mes):
         fname = Tk_file.find_param_file(p_mes)
@@ -344,6 +357,10 @@ class Tk_string():
 
     @staticmethod
     def str_2_enum(enum_str):
+
+        # if enums should be de-derialized
+        from logic.pulsed.predefined_generate_methods.multi_nv_methods import DQTAltModes, TomoRotations, TomoInit
+
         # todo: works only if enum is known to toolkit
         # ATTENTION: dangerous eval, but no better way
         if "<" in enum_str and ">" in enum_str:
