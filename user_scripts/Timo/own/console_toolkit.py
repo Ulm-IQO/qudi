@@ -152,14 +152,16 @@ class Tk_file():
         param_str = param_str.replace("',", "':")
         param_str = param_str.replace("(", "").replace(")", "")
         param_str = param_str.replace("[", "").replace("]", "")
-        # manually parse back to dict-like entries
-        # skip entries unreadable to ast
-        param_list = param_str.split(",")
+        param_str = param_str.strip("[").strip("]")
+        param_str = param_str.replace(" ", "")
+        param_str = param_str.replace("'", '"')
+
+        param_list = param_str.split(',"')
         param_dict_accepted = {}
 
         for entry in param_list:
             try:
-                entry_dict = ast.literal_eval("{" + entry + "}")
+                entry_dict = ast.literal_eval('{"' + entry + "}")
             except:
                 try:
                     el_manual = Tk_string.str_2_dict(entry)
@@ -173,7 +175,7 @@ class Tk_file():
                 param_dict_accepted = {**param_dict_accepted, **entry_dict}
             except:
                 pass
-                #raise ValueError(f"Error loading entry {entry} in file: {fname}")
+                # raise ValueError(f"Error loading entry {entry} in file: {fname}")
 
         return param_dict_accepted
 
