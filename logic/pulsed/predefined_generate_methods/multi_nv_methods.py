@@ -566,7 +566,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
         rabi_on_nv = int(rabi_on_nv)
-
+        if type(rotation) != list:
+            rotation = [rotation]
 
         self.log.debug(f"Tomographic rabi on {rabi_on_nv}. Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
@@ -709,7 +710,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)
         rabi_block.extend(init_element(init_state))
-        rabi_block.extend(rotation_element(rotation))
+        for rot in rotation:
+            rabi_block.extend(rotation_element(rot))
         rabi_block.extend(mw_rabi_element)
         rabi_block.append(laser_element)
         rabi_block.append(delay_element)
@@ -717,7 +719,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         if alternating:
             rabi_block.extend(init_element(init_state))
-            rabi_block.extend(rotation_element(rotation))
+            for rot in rotation:
+                rabi_block.extend(rotation_element(rot))
             rabi_block.extend(mw_rabi_element)
             rabi_block.extend(pi_read_element)
             rabi_block.append(laser_element)
@@ -810,52 +813,52 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods,
-                                              mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                              )
         piy_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         piy_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         piy_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods,
-                                               mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                               )
         pimin_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pimin_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pimin_on_both_element = self.get_pi_element(180, mw_freqs, amplitudes, rabi_periods,
-                                                 mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                                 )
         piminy_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         piminy_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         piminy_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods,
-                                                  mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                                  )
 
         pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                               mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                               )
         pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi2y_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                                mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                                )
         pi2min_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2min_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi2min_on_both_element = self.get_pi_element(180, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                                  mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                                  )
         pi2miny_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2miny_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi2miny_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                                   mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                                   )
 
-        pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
+        #pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
 
         # todo: optimal control not supported atm
         #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
@@ -1343,7 +1346,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if dd_type_2 == '' or dd_type_2 is None:
             dd_type_2 = dd_type
         self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}, "
-                       f"envelope= {env_type_1}/{env_type_2}")
+                       f"envelope= {env_type_1}/{env_type_2}, read pulse phase {180+read_phase_deg}")
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1363,9 +1366,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                    env_type=env_type_1, on_nv=1)
 
         # read phase opposite to canonical DD: 0->0 on no phase evolution
-        pihalf_on1_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
+
+        pihalf_on1_read_element = self.get_pi_element(0+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
                                                       pi_x_length=0.5)
-        pihalf_on1_alt_read_element = self.get_pi_element(0 + read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
+        pihalf_on1_alt_read_element = self.get_pi_element(180 + read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
                                                       pi_x_length=0.5)
 
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
@@ -2698,19 +2702,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_GST_meas(self,name='GST',init_state_dict={},meas_dict={},gate_set_dict={}): # The dict are created in the notebook "double_Nv"
-        seq_dict = dict() # This dictionary shows the sequence
-        for i in init_state_dict.keys():
-            for j in meas_dict.keys():
-                for k in gate_set_dict.keys():
-                    key = '(' + i + ')' + '(' + j + ')' + '(' + k + ')'
-                    init_block = init_state_dict[i]
-                    meas_block = meas_dict[j]
-                    gate_block = gate_set_dict[k]
-                    seq_dict[key] = init_block
-                    seq_dict[key].append(gate_block)
-                    seq_dict[key].append(meas_block) # This dictionary concatens the init_state, gate and the mas state
-        return seq_dict
+    #def generate_GST_meas(self,name='GST',rotations="[[<TomoRotations.none: 0>,];]", read_rots="",
+            #                tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
+           #                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+          #                  alternating=False,
+         #                   , cnot_kwargs=''): # The dict are created in the notebook "double_Nv"
+        #seq_dict = dict() # This dictionary shows the sequence
+        #for i in init_state_dict.keys():
+            #for j in meas_dict.keys():
+               # for k in gate_set_dict.keys():
+              #      key = '(' + i + ')' + '(' + j + ')' + '(' + k + ')'
+             #       init_block = init_state_dict[i]
+           #         meas_block = meas_dict[j]
+          #          gate_block = gate_set_dict[k]
+            #        seq_dict[key] = init_block
+         #           seq_dict[key].append(gate_block)
+        #            seq_dict[key].append(meas_block) # This dictionary concatens the init_state, gate and the mas state
+       # return seq_dict
 
     def generate_dd_dqt_sigamp(self, name='dd_sigamp', tau=0.5e-6, amp_start=0e-3, amp_step=0.01e-3,
                                     num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, ampl_mw2=0e-3,
@@ -3010,6 +3018,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         return oc_blocks[0]
 
+
     def get_pi_element(self, xphase, mw_freqs, mw_amps, rabi_periods, mw_idle_amps=None,
                        pi_x_length=1., no_amps_2_idle=False, env_type=Evm.from_gen_settings,
                        on_nv=None):
@@ -3049,7 +3058,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         env_type = self._get_envelope_settings(env_type)
 
-        if env_type == Evm.rectangle or env_type == Evm.parabola:
+        if env_type == Evm.rectangle or env_type == Evm.parabola or env_type == Evm.sin_n:
             if on_nv is not None:
                 self.log.debug(f"On_nv= {on_nv} parameter ignored for envelope {env_type.name}")
             if len(mw_idle_amps[mw_idle_amps!=0]) == 0:
