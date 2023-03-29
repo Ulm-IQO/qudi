@@ -39,6 +39,7 @@ class TomoRotations(IntEnum):
     c2not1 = 18
     c1not2_ux180_on_2 = 19
     c2not1_ux180_on_1 = 20
+    cphase_dd = 21
 
 class TomoInit(IntEnum):
     none = 0
@@ -592,10 +593,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
         pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
-        pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1,
-                                                 env_type=Evm.optimal)
-        pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2,
-                                                 env_type=Evm.optimal)
+        #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1,
+        #                                         env_type=Evm.optimal)
+        #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2,
+        #                                         env_type=Evm.optimal)
 
         pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
         pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
@@ -875,6 +876,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                     no_laser=True,
                                                     kwargs_dict=cnot_kwargs)
         c2not1_element = c2not1_element[0]
+        cphase_dd_element, _, _ = self.generate_cphase_dd('cphase_dd', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
+                                                    f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot,
+                                                    rabi_period_mw_2=rabi_period_mw_2_cnot,
+                                                    dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
+                                                    no_laser=True,
+                                                    kwargs_dict=cnot_kwargs)
+        cphase_dd_element = cphase_dd_element[0]
 
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0,
@@ -891,7 +899,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         TomoRotations.uy180_on_1, TomoRotations.uy180_on_2,
                         TomoRotations.ux180min_on_1, TomoRotations.ux180min_on_2,
                         TomoRotations.uy180min_on_1, TomoRotations.uy180min_on_2,
-                        TomoRotations.c2not1,
+                        TomoRotations.c2not1, TomoRotations.cphase_dd,
                         TomoRotations.none]
             if rotation not in gate_set:
                 raise ValueError(f"Found rotation {rotation}, type {type(rotation)} which is not in native gate set {gate_set}")
@@ -954,6 +962,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rot_elements = c2not1_element
                 if mirror_1q_pulses:
                     raise ValueError("Can't mirror c2not1 to other qubit.")
+            elif rotation == TomoRotations.cphase_dd:
+                rot_elements = cphase_dd_element
+                if mirror_1q_pulses:
+                    raise NotImplementedError
             else:
                 raise ValueError(f"Unknown random benchmarking rotation: {rotation.name}")
 
@@ -1015,6 +1027,73 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def generate_cphase_dd(self, name='cphase_dd', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                            f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                            rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                            dd_type=DDMethods.SE, dd_order=1,
+                            read_phase_deg=0, order_nvs="1,2",
+                            alternating=False, no_laser=True,
+                            # arguments passed to generate methods
+                            kwargs_dict=''):
+
+        read_phase = 90 + read_phase_deg   # 90° to deer realizes cnot, additional phase by parameter
+
+        env_type = Evm.from_gen_settings if 'env_type' not in kwargs_dict else kwargs_dict['env_type']
+        env_type = self._get_envelope_settings(env_type)
+        #order_p = 1 if 'order_P' not in kwargs_dict else kwargs_dict['order_P']
+        tau_dd_fix = None if 'tau_dd_fix' not in kwargs_dict else kwargs_dict['tau_dd_fix']
+        rabi_period_1 = self.rabi_period if 'rabi_period' not in kwargs_dict else kwargs_dict['rabi_period']
+        dd_type_2 = None if 'dd_type_2' not in kwargs_dict else kwargs_dict['dd_type_2']
+
+        if num_of_points==1:
+            self.log.debug(f"Generating single cphase (nv_order: {order_nvs}) "
+                           f"with tau_1: {tau_dd_fix}, tau_2: {tau_start}, "
+                           f"t_rabi_1_shaped: {rabi_period_1}. Envelope: {env_type}")
+
+        if tau_dd_fix is not None:
+            return self.generate_deer_dd_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                                             tau1=tau_dd_fix,
+                                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                             dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                             alternating=alternating, no_laser=no_laser,
+                                             nv_order=order_nvs,
+                                             init_pix_on_1=0, end_pix_on_1=0,
+                                             start_pix_on_1=0, end_pix_on_2=1,
+                                             env_type_1=env_type, env_type_2=env_type,
+                                             read_phase_deg=read_phase)
+        else:
+            self.log.warning("Untested code!")
+            return self.generate_deer_dd_par_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                                 f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                 dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
+                                 nv_order=order_nvs,
+                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=1,
+                                 read_phase_deg=read_phase)
+
+        """
+        DEPRECATED nvision code
+        else:
+
+            # may provide newy rabi_period in kwargs that overwrites common settings
+            # atm, no support for changed mw_ampl or mw_f
+            self.save_rabi_period, self.save_microwave_amplitude, self.save_microwave_frequency = \
+                self.rabi_period, self.microwave_amplitude, self.microwave_frequency
+            self.rabi_period = rabi_period_1
+
+            d_blocks, d_ensembles, d_sequences = self.generate_deer_dd_tau_nvision(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                                             f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                             dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
+                                             nv_order=order_nvs,
+                                             read_phase_deg=read_phase, end_pix_on_2=1,
+                                             env_type=env_type, order_P=order_p, tau_dd_fix=tau_dd_fix)
+
+            self.rabi_period = self.save_rabi_period
+            #self.microwave_amplitude = self.save_microwave_amplitude
+            #self.microwave_frequency = self.save_microwave_frequency
+
+            return d_blocks, d_ensembles, d_sequences
+        """
 
 
     def generate_c2not1(self, name='c2not1', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
@@ -1148,7 +1227,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_par_tau(self, name='deer_dd_par_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on_2=0, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90,
+                                 init_pix_on_2=0, init_pix_on_1=0.5, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90,
                                  env_type=Evm.rectangle, no_laser=False):
         """
         Decoupling sequence on both NVs.
@@ -1175,7 +1254,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_on1_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_1, rabi_periods=rabi_periods,
-                                                pi_x_length=1/2, no_amps_2_idle=True)
+                                                pi_x_length=init_pix_on_1, no_amps_2_idle=True)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False)
         pix_end_on2_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_2, rabi_periods=rabi_periods,
@@ -1266,7 +1345,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_tau(self, name='deer_dd_tau', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                              f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                              dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
-                             init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
+                             init_pix_on_1=0, init_pix_on_2=0,
+                             start_pix_on_1=0.5, end_pix_on_1=0.5, end_pix_on_2=0,
                              nv_order="1,2", read_phase_deg=90,
                              add_gate_ch='d_ch4', env_type_1=Evm.from_gen_settings,
                              env_type_2=Evm.from_gen_settings,
@@ -1346,7 +1426,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if dd_type_2 == '' or dd_type_2 is None:
             dd_type_2 = dd_type
         self.log.debug(f"deer_dd with ampl1/2= {ampls_on_1}, {ampls_on_2}, t_rabi: {rabi_periods}, f: {mw_freqs}, "
-                       f"envelope= {env_type_1}/{env_type_2}, read pulse phase {180+read_phase_deg}")
+                       f"envelope= {env_type_1}/{env_type_2}, read pulse phase {read_phase_deg},"
+                       f"init=({init_pix_on_1, init_pix_on_2}), start={start_pix_on_1}, end={(end_pix_on_1, end_pix_on_2)}")
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
@@ -1354,7 +1435,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                      add_gate_ch=add_gate_ch)
         delay_element = self._get_delay_gate_element(add_gate_ch=add_gate_ch)
 
-        pihalf_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,  pi_x_length=0.5)
+        pihalf_start_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                       pi_x_length=start_pix_on_1)
         # elements inside dd come from their own function
         pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
         pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=False)
@@ -1368,9 +1450,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # read phase opposite to canonical DD: 0->0 on no phase evolution
 
         pihalf_on1_read_element = self.get_pi_element(0+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=0.5)
+                                                      pi_x_length=end_pix_on_1)
         pihalf_on1_alt_read_element = self.get_pi_element(180 + read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=0.5)
+                                                      pi_x_length=end_pix_on_1)
 
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
@@ -1417,12 +1499,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
         if init_pix_on_2 != 0:
-            # # todo: consider phase on this one?
-            # todo: double check that timing auf pis on 1 is kept correctly with init pulse
             dd_block.extend(pix_init_on2_element)
         if init_pix_on_1 != 0:
             dd_block.extend(pix_init_on1_element)
-        dd_block.extend(pihalf_on1_element)
+        if start_pix_on_1 != 0:
+            dd_block.extend(pihalf_start_on1_element)
         for n in range(dd_order):
             # create the DD sequence for a single order
             for pulse_number in range(dd_type.suborder):
@@ -1438,7 +1519,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         dd_block.extend(pix_end_on2_element)
                 else:
                     dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
-        dd_block.extend(pihalf_on1_read_element)
+        if end_pix_on_1 != 0:
+            dd_block.extend(pihalf_on1_read_element)
 
         if not no_laser:
             dd_block.append(laser_element)
@@ -1452,7 +1534,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.extend(pix_init_on2_element)
             if init_pix_on_1 != 0:
                 dd_block.extend(pix_init_on1_element)
-            dd_block.extend(pihalf_on1_element)
+            if start_pix_on_1 != 0:
+                dd_block.extend(pihalf_start_on1_element)
             for n in range(dd_order):
                 # create the DD sequence for a single order
                 for pulse_number in range(dd_type.suborder):
@@ -1469,7 +1552,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             dd_block.extend(pix_end_on2_element)
                     else:
                         dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
-            dd_block.extend(pihalf_on1_alt_read_element)
+            if end_pix_on_1 != 0:
+                dd_block.extend(pihalf_on1_alt_read_element)
 
             if not no_laser:
                 dd_block.append(laser_element)
