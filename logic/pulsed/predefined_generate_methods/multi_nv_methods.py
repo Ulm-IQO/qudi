@@ -1068,7 +1068,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                  dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
                                  nv_order=order_nvs,
-                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=1,
+                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0, end_pix_on_1=0,
                                  read_phase_deg=read_phase)
 
         """
@@ -1227,7 +1227,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_par_tau(self, name='deer_dd_par_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
-                                 init_pix_on_2=0, init_pix_on_1=0.5, end_pix_on_2=0, nv_order="1,2", read_phase_deg=90,
+                                 init_pix_on_2=0, init_pix_on_1=0.5, end_pix_on_1=0.5, end_pix_on_2=0, nv_order="1,2",
+                                 read_phase_deg=90,
                                  env_type=Evm.rectangle, no_laser=False):
         """
         Decoupling sequence on both NVs.
@@ -1261,11 +1262,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                    pi_x_length=end_pix_on_2, no_amps_2_idle=False)
         pihalf_on1_read_element = self.get_pi_element(read_phase_deg, mw_freqs, mw_amps=ampls_on_1,
                                                       rabi_periods=rabi_periods,
-                                                      pi_x_length=1/2, no_amps_2_idle=True)
+                                                      pi_x_length=end_pix_on_1, no_amps_2_idle=True)
         pihalf_on1_alt_read_element = self.get_pi_element(180+read_phase_deg,
                                                           mw_freqs, mw_amps=ampls_on_1,
                                                           rabi_periods=rabi_periods,
-                                                          pi_x_length=1/2, no_amps_2_idle=True)
+                                                          pi_x_length=end_pix_on_1, no_amps_2_idle=True)
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
 
@@ -1566,6 +1567,80 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
         block_ensemble.append((dd_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_deer_dd_tau1(self, name='deer_dd_tau', tau2=0e-9, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
+                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                             dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
+                             init_pix_on_1=0, init_pix_on_2=0,
+                             start_pix_on_1=0.5, end_pix_on_1=0.5, end_pix_on_2=0,
+                             nv_order="1,2", read_phase_deg=90,
+                             add_gate_ch='d_ch4', env_type_1=Evm.from_gen_settings,
+                             env_type_2=Evm.from_gen_settings,
+                             alternating=True, no_laser=False):
+        """
+        Decoupling sequence on both NVs.
+        Tau2 is kept constant and the tau1 is swept.
+        """
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+
+        dd_block = PulseBlock(name=name)
+        for tau1 in tau_array:
+            deer_element, _, _ = self.generate_deer_dd_tau(tau1=tau1, tau_start=tau2, tau_step=0, num_of_points=1,
+                                      f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                      dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                      init_pix_on_1=init_pix_on_1, init_pix_on_2=init_pix_on_2,
+                                      start_pix_on_1=start_pix_on_1, end_pix_on_1=end_pix_on_1,
+                                      end_pix_on_2=end_pix_on_2, nv_order=nv_order, read_phase_deg=read_phase_deg,
+                                      add_gate_ch=add_gate_ch, env_type_1=env_type_1, env_type_2=env_type_2,
+                                      alternating=False, no_laser=no_laser)
+            deer_element = deer_element[0]
+            dd_block.extend(deer_element)
+
+            if alternating:
+                deer_alt_element, _, _ = self.generate_deer_dd_tau(tau1=tau1, tau_start=tau2, tau_step=0, num_of_points=1,
+                                          f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                          rabi_period_mw_2=rabi_period_mw_2,
+                                          dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                          init_pix_on_1=init_pix_on_1, init_pix_on_2=init_pix_on_2,
+                                          start_pix_on_1=start_pix_on_1, end_pix_on_1=end_pix_on_1,
+                                          end_pix_on_2=end_pix_on_2, nv_order=nv_order,
+                                          read_phase_deg=read_phase_deg+180,
+                                          add_gate_ch=add_gate_ch, env_type_1=env_type_1,
+                                          env_type_2=env_type_2,
+                                          alternating=False, no_laser=no_laser)
+                deer_alt_element = deer_alt_element[0]
+                dd_block.extend(deer_alt_element)
+
+        created_blocks.append(dd_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((dd_block.name, 0))
 
         # Create and append sync trigger block if needed
         if not no_laser:
@@ -2261,7 +2336,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # Hadarmard = 180_X*90_Y*|Psi>
             had_on1_element = [pihalf_y_on1_element, pi_on1_element] if not simple_had else [pihalf_x_on1_element]
             #had_on2_element = [pihalf_y_on2_element, pi_on1_element] if not simple_had else [pihalf_x_on1_element]
-
 
             if not reverse:
                 had = []
