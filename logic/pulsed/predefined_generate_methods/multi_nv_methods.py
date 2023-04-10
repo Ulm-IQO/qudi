@@ -39,6 +39,7 @@ class TomoRotations(IntEnum):
     c2not1 = 18
     c1not2_ux180_on_2 = 19
     c2not1_ux180_on_1 = 20
+    cphase = 21
 
 class TomoInit(IntEnum):
     none = 0
@@ -55,6 +56,13 @@ class TomoInit(IntEnum):
     ent_create_bell_bycnot = 11
     ux90_on_1_uy90_on_2 = 12
     ux90_on_1_ux180_on_2 = 13
+    cphase_none = 14
+    cphase_ux180_on_1 = 15
+    cphase_ux180_on_2 = 16
+    cphase_ux180_on_both = 17
+    cphase_hadamad_1 = 18
+    cphase_hadamad_2 = 19
+    cphase_hadamd_2_ux180_on_1 = 20
 
 
 class OptimalControlPulse():
@@ -1131,6 +1139,506 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             alternating=alternating, no_laser=no_laser,
                             # arguments passed to deer method
                             kwargs_dict=kwargs_dict)
+
+
+    def generate_c2phase1(self, name='c2phase1',init_state=TomoInit.none ,tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                        f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                        rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                        dd_type=DDMethods.SE, dd_order=1,
+                        read_phase_deg=90,nv_order="1,2",
+                        alternating=False, no_laser=True,
+                        # arguments passed to deer method
+                        kwargs_dict=''):
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order,
+                                                n_nvs=2)
+
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
+                                              n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2,
+                                              order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2,
+                                              order_nvs=nv_order)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
+
+        # Creation of cphase Gate from cnot with Hadamard on NV1
+        c2not1_element, _, _ = self.generate_c2not1(name=name, tau_start=tau_start, tau_step=tau_step,
+                                                    num_of_points=num_of_points,
+                                                    f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                    rabi_period_mw_2=rabi_period_mw_2,
+                                                    dd_type=dd_type, dd_order=dd_order,
+                                                    read_phase_deg=read_phase_deg, order_nvs=nv_order,
+                                                    alternating=alternating, no_laser=no_laser,
+                                                    # arguments passed to deer method
+                                                    kwargs_dict=kwargs_dict)
+        c2not1_element = c2not1_element[0]
+
+        pihalf_y_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_1,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[90, 90])
+
+        pihalf_y_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_2,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[90, 90])
+
+
+
+        pi_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                   increments=[0, 0],
+                                                                   amps=ampls_on_1,
+                                                                   freqs=mw_freqs,
+                                                                   phases=[0, 0])
+
+        pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                    increments=[0, 0],
+                                                                    amps=ampls_on_2,
+                                                                    freqs=mw_freqs,
+                                                                    phases=[0, 0])
+
+        # If the optimum controlled pulses are needed ToDo: For later use implementation of optimal controlled pulses
+       # pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
+        #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=Evm.optimal)
+        #pi_oc_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, on_nv=[1, 2],
+                                                #    env_type=Evm.optimal)
+
+        def init_element(init_state):
+
+            if init_state == TomoInit.none:
+                init_elements = []
+            elif init_state == TomoInit.ux180_on_1:
+                init_elements = pi_on_1_element
+                #if init_env_type == Evm.optimal:
+                 #   init_elements = pi_oc_on_1_element
+                  #  self.log.debug(f"Init {init_state.name} with oc pulse")
+            elif init_state == TomoInit.ux180_on_2:
+                init_elements = pi_on_2_element
+                #if init_env_type == Evm.optimal:
+                 #   init_elements = pi_oc_on_2_element
+                  #  self.log.debug(f"Init {init_state.name} with oc pulse")
+            elif init_state == TomoInit.ux180_on_both:
+                # init_elements = pi_on_both_element
+                init_elements = cp.deepcopy(pi_on_1_element)
+                init_elements.extend(pi_on_2_element)
+                #if init_env_type == Evm.optimal:
+                 #   init_elements = pi_oc_on_both_element
+                  #  self.log.debug(f"Init {init_state.name} with parallel oc pulse")
+            elif init_state == TomoInit.ux90_on_1_uy90_on_2:
+                init_elements = cp.deepcopy(pi2_on_1_element)
+                init_elements.extend(pi2y_on_2_element)
+            elif init_state == TomoInit.ux90_on_1_ux180_on_2:
+                init_elements = cp.deepcopy(pi2_on_1_element)
+                init_elements.extend(pi_on_2_element)
+            else:
+                raise ValueError(f"Unknown tomography init state: {init_state.name}")
+            return init_elements
+
+
+        def had_element(onNV = []):
+            hadarmad_block = []
+            if onNV == [1]:
+                hadarmad_block.extend(pihalf_y_on1_element)
+                hadarmad_block.extend(pi_on1_element)
+            elif onNV ==[2]:
+                hadarmad_block.extend(pihalf_y_on2_element)
+                hadarmad_block.extend(pi_on2_element)
+            else:
+                raise ValueError(f"Wrong type of Input: {onNV}")
+
+            return hadarmad_block
+
+        hadamard_on1_element = had_element([1])
+
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        cphase_block = PulseBlock(name=name)
+        cphase_block.extend(init_element(init_state))
+        cphase_block.extend(hadamard_on1_element)
+        cphase_block.extend(c2not1_element)
+        cphase_block.extend(hadamard_on1_element)
+        if not no_laser:
+            cphase_block.append(laser_element)
+            cphase_block.append(delay_element)
+            cphase_block.append(waiting_element)
+
+        if alternating:
+            cphase_block.extend(init_element(init_state))
+            cphase_block.extend(hadamard_on1_element)
+            cphase_block.extend(c2not1_element)
+            cphase_block.extend(hadamard_on1_element)
+            cphase_block.extend(pi_on_1_element)
+            cphase_block.extend(pi_on_2_element)
+            if not no_laser:
+                cphase_block.append(laser_element)
+                cphase_block.append(delay_element)
+                cphase_block.append(waiting_element)
+
+
+
+
+        created_blocks.append(cphase_block)
+
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((cphase_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array * dd_order * dd_type.suborder
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('t', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+
+    # Verification of the cphase
+    def generate_cphase_verif(self, name='cphase_verif',verif_gate=TomoRotations.none,init_state= TomoInit.none,
+                              tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                        f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                        rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                        dd_type=DDMethods.SE, dd_order=1,
+                        read_phase_deg=0,nv_order="1,2",
+                        alternating=False, no_laser=True,
+                        # arguments passed to deer method
+                        kwargs_dict=''):
+        # Variable verif_gate: Any Unitary Gate U to verify if it's diagonal
+        # Variable init_state: Initial state |00> prepared with the operators from the Protocoll. A list of preparations
+
+
+
+        def init_element(init_state,verif_gate): # Prepare of init states for cphase gate with a gate to verifiy
+
+            # verif_gate: gate to experimentally verify, if it's a cphase gate
+            if verif_gate == TomoRotations.cphase:
+                verif_element = cphase_element
+            elif verif_gate == TomoRotations.none:
+                verif_element = []
+            else:
+                ValueError(f"Unknown gate for Verification: {verif_gate.name}.")
+
+            if init_state == TomoInit.cphase_none:
+                # Operators: U
+                init_elements = []
+                init_elements.extend(verif_element)
+                self.log.debug(f"Init state for cphase {init_state.name}")
+            elif init_state == TomoInit.cphase_ux180_on_1:
+                #Operators: X1*U*X1
+                init_elements = pi_on_1_element
+                #if init_env_type == Evm.optimal:
+                 #   init_elements = pi_oc_on_1_element
+                  #  self.log.debug(f"Init {init_state.name} with oc pulse")
+                init_elements.extend(verif_element)
+                self.log.debug(f"Init state for cphase {init_state.name}")
+            elif init_state == TomoInit.cphase_ux180_on_2:
+                # Operators: X2*U'X2
+                init_elements = pi_on_2_element
+                #if init_env_type == Evm.optimal:
+                 #   init_elements = pi_oc_on_2_element
+                  #  self.log.debug(f"Init {init_state.name} with oc pulse")
+                init_elements.extend(verif_element)
+                self.log.debug(f"Init state for cphase {init_state.name}")
+            elif init_state == TomoInit.cphase_ux180_on_both:
+                # Operators: X1*X2*U*X1*X2
+                # init_elements = pi_on_both_element
+                init_elements = cp.deepcopy(pi_on_1_element)
+                init_elements.extend(pi_on_2_element)
+                #if init_env_type == Evm.optimal:
+                 #   init_elements = pi_oc_on_both_element
+                  #  self.log.debug(f"Init {init_state.name} with parallel oc pulse")
+                init_elements.extend(verif_element)
+                self.log.debug(f"Init state for cphase {init_state.name}")
+            elif init_state == TomoInit.cphase_hadamad_1:
+                init_elements = hadamard_on1_element
+                init_elements.extend(verif_element)
+                init_elements.extend(hadamad_on1_element)
+            elif init_state == TomoInit.cphase_hadamad_2:
+                init_elements = hadamard_on2_element
+                init_elements.extend(verif_element)
+                init_elements.extend(hadamad_on2_element)
+            elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
+                init_elements = hadamard_on2_element
+                init_elements.extend(pi_oc_on_1_element)
+                init_elements.extend(verif_element)
+                init_elements.extend(hadamad_on2_element)
+                init_elements.extend(pi_oc_on_1_element)
+            else:
+                raise ValueError(f"Unknown init state for cPhase Verification: {init_state.name}")
+            return init_elements
+
+
+        #def meas_element(init_state,meas_state): #ToDo Possible Use of this function or to erase this
+         #   if init_state == TomoInit.cphase_none:
+          #      if meas_state == TomoRotations.none:
+           #         meas_element = []
+            #    elif meas_state == TomoRotations.ux90min_on_both#.ux90_on_both: # --
+             #       meas_element = cp.depcopy(pihalf_x_on1_element)#other phase
+              #      meas_element.extend(pihalf_x_on2_element) # other phase
+               # elif meas_state == TomoRotations.uy90min_on_both:
+                #    meas_element = cp.depcopy(pihalf_y_on1_element)
+                 #   meas_element.extend(pihalf_y_on2_element) # other element
+                #elif meas_state == TomoRotations.uy90min_on_1_ux90min_on_2:
+                 #   meas_element = []
+                  #  meas_element.extend(pihalf_ymin_on1_element)
+                   # meas_element.extend(pihalf_xmin_on2_element)
+                #elif meas_state == TomoRotations.ux90min_on_1_uy90min_on_2:
+                 #   meas_element = []
+                  #  meas_element.extend(pihalf_xmin_on1_element)
+                   # meas_element.extend(pihalf_ymin_on2_element)
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #elif init_state == TomoInit.cphase_ux180_on_1:
+             #   if meas_state == TomoRotations.ux90min_on_1
+              #      meas_element = []
+               # elif meas_state == TomoInit.TomoRotations.ux90min_on_2:
+                #    pass
+                #elif meas_state == TomoRotations.uy90min_on_1_ux90min_on_2:
+                 #   meas_element = []
+                  #  meas_element.extend(pihalf_ymin_on1_element)
+                   # meas_element.extend(pihalf_xmin_on2_element)
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #elif init_state == TomoInit.cphase_ux180_on_2:
+             #   if meas_state == TomoInit.none
+              #      meas_element = []
+               # elif meas_state == TomoInit.
+                #    pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #elif init_state == TomoInit.cphase_ux180_on_both:
+             #   if meas_state == TomoInit.none
+              #      meas_element = []
+               # elif meas_state == TomoInit.
+                #    pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #elif init_state == TomoInit.cphase_hadamad_1:
+             #   if meas_state == TomoInit.none
+              #      meas_element = []
+               # elif meas_state == TomoInit.
+                #    pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #elif init_state == TomoInit.cphase_hadamad_2:
+             #   if meas_state == TomoInit.none
+              #      meas_element = []
+               # elif meas_state == TomoInit.
+                #    pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
+             #   if meas_state == TomoInit.none
+              #      meas_element = []
+               # elif meas_state == TomoInit.
+                #    pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #elif meas_state == TomoInit.
+                 #   pass
+                #else:
+                 #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
+            #else:
+             #   raise ValueError(f"Unknown init state for Measuring: {init_state.name}")
+
+            #return meas_element
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+
+        # Create other pulse_elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), order_nvs=nv_order,
+                                                n_nvs=2)
+
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
+                                              n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2,
+                                              order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2,
+                                              order_nvs=nv_order)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), order_nvs=nv_order, n_nvs=2)
+
+
+        pi_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                   increments=[0, 0],
+                                                                   amps=ampls_on_1,
+                                                                   freqs=mw_freqs,
+                                                                   phases=[0, 0])
+
+        pihalf_y_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_1,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[90, 90])
+        pihalf_y_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_2,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[90, 90])
+
+        pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_1,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[0, 0])
+        pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_2,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[0, 0])
+
+        pihalf_ymin_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_1,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[270, 270])
+        pihalf_ymin_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_2,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[270, 270])
+
+        pihalf_xmin_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_1,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[180, 180])
+        pihalf_xmin_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_2,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[180, 180])
+
+        pi_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                   increments=[0, 0],
+                                                                   amps=ampls_on_2,
+                                                                   freqs=mw_freqs,
+                                                                   phases=[0, 0])
+
+        def had_element(onNV = []):
+            hadarmad_block = []
+            if onNV == [1]:
+                hadarmad_block.extend(pihalf_y_on1_element)
+                hadarmad_block.extend(pi_on1_element)
+            elif onNV ==[2]:
+                hadarmad_block.extend(pihalf_y_on2_element)
+                hadarmad_block.extend(pi_on2_element)
+            else:
+                raise ValueError(f"Wrong type of Input: {onNV}")
+
+
+
+            return hadarmad_block
+
+        # ToDo Later for optimized pulse shapes
+        #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
+        #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=Evm.optimal)
+        #pi_oc_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, on_nv=[1, 2],
+         #                                           env_type=Evm.optimal)
+
+        # Create a cphase eement from C2Not1 Element and Hadarmad Element
+
+        cphase_element,_,_ = self.generate_c2phase1(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
+                            f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                            rabi_period_mw_2=rabi_period_mw_2,
+                            dd_type=dd_type, dd_order=dd_order,
+                            read_phase_deg=read_phase_deg, nv_order=nv_order,
+                            alternating=alternating, no_laser=no_laser,
+                            # arguments passed to deer method
+                            kwargs_dict=kwargs_dict)
+
+        hadamard_on1_element =  had_element([1])
+        hadamard_on2_element = had_element([2])
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+
+        init_state_block = PulseBlock(name = name)
+
+        # The measurement will be given for 7 inital states
+
+        init_state_list = [init_state]
+        for i in range(len(init_state_list)):
+            init_state_block.extend(init_element(init_state_list[i], verif_gate))
+            #init_state_block.append(meas_element(init_state[i],meas_state)) Todo: Possible Inserting measurement states
+            if not no_laser:
+                init_state_block.append(laser_element)
+                init_state_block.append(waiting_element)
+                init_state_block.append(delay_element)
+
+            if alternating:
+                init_state_block.append(init_element(init_state_list[i], verif_gate))
+                #init_state_block.append(meas_element(init_state[i], meas_state)) Todo: Possible Inserting measurement states
+                init_state_block.append(pi_on1_element)
+                init_state_block.append(pi_on2_element)
+                if not no_laser:
+                    init_state_block.append(laser_element)
+                    init_state_block.append(waiting_element)
+                    init_state_block.append(delay_element)
+
+            created_blocks.append(init_state_block)
+
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((init_state_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        idx_array = list(range(len(init_state))) # Each number is connected to a initial state
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = idx_array if tau_step == 0.0 else tau_array
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
 
 
     def generate_deer_dd_tau_nvision(self, name='DEER_DD_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
