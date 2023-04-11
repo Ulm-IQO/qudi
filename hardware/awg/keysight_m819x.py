@@ -316,6 +316,8 @@ class AWGM819X(Base, PulserInterface):
         self.write_all_ch(":STAB{}:SEQ:SEL 0", all_by_one={'m8195a': True})
         if self._dynamic_sequence_mode:
             self.write_all_ch(":STAB{}:DYN ON", all_by_one={'m8195a': True})
+        else:
+            self.write_all_ch(":STAB{}:DYN OFF", all_by_one={'m8195a': False})
 
         return 0
 
