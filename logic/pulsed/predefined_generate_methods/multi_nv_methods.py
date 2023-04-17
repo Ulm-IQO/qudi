@@ -63,9 +63,13 @@ class TomoInit(IntEnum):
     ux180_on_1_uy90_on_2 = 15
     uy90_on_1_ux90_on_2 = 16
     uy90_on_1_ux180_on_2 = 17
-    cphase_hadamad_1 = 18
-    cphase_hadamad_2 = 19
-    cphase_hadamd_2_ux180_on_1 = 20
+    cphase_none = 18
+    cphase_ux180_on_1 = 19
+    cphase_ux180_on_2 = 20
+    cphase_ux180_on_both = 21
+    cphase_hadamad_1 = 22
+    cphase_hadamad_2 = 23
+    cphase_hadamd_2_ux180_on_1 = 24
     #rand_bench = 14
     # GST_2Q = 15
 
