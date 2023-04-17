@@ -42,6 +42,7 @@ class TomoRotations(IntEnum):
     c1not2_ux180_on_2 = 21
     c2not1_ux180_on_1 = 22
     c2phase1_dd = 23
+    c2phase1_rot = 24 # For debug between Roberto's and Timo's methode
 
 class TomoInit(IntEnum):
     none = 0
@@ -62,6 +63,9 @@ class TomoInit(IntEnum):
     ux180_on_1_uy90_on_2 = 15
     uy90_on_1_ux90_on_2 = 16
     uy90_on_1_ux180_on_2 = 17
+    cphase_hadamad_1 = 18
+    cphase_hadamad_2 = 19
+    cphase_hadamd_2_ux180_on_1 = 20
     #rand_bench = 14
     # GST_2Q = 15
 
@@ -1654,6 +1658,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                       alternating=alternating, no_laser=no_laser,
                                                       # arguments passed to deer method
                                                       kwargs_dict=kwargs_dict)
+
+        cphase_element = cphase_element[0]
 
         hadamard_on1_element = had_element([1])
         hadamard_on2_element = had_element([2])
