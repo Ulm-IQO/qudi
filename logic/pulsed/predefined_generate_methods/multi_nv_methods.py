@@ -1221,6 +1221,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                           alternating=False, no_laser=True,
                           # arguments passed to deer method
                           kwargs_dict=''):
+
+
         rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
                                                 order_nvs=nv_order,
                                                 n_nvs=2)
@@ -1274,6 +1276,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                     amps=ampls_on_2,
                                                                     freqs=mw_freqs,
                                                                     phases=[0, 0])
+
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
 
         # If the optimum controlled pulses are needed ToDo: For later use implementation of optimal controlled pulses
         # pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
