@@ -3673,10 +3673,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                          freqs=fs,
                                                          phases=phases)
 
-    def _get_pi_oc_element(self, phases, freqs, on_nv=[1], pi_x_length=1, scale_ampl=1):
+    def _get_pi_oc_element(self, phases, freqs, on_nv=[1], pi_x_length=1, scale_ampl=[1]):
 
         if isinstance(on_nv, (int, float)):
             on_nv = [on_nv]
+        on_nv = np.asarray(on_nv)
+        if isinstance(scale_ampl, (int, float)):
+            scale_ampl = [scale_ampl]
+        if len(scale_ampl) == 1:
+            scale_ampl = [scale_ampl]*len(on_nv)
+
+        if not (len(scale_ampl) == len(on_nv)):
+            raise ValueError(f"Optimal pulses require same length of on_nv= {on_nv} and scale= {scale_ampl}")
 
         if not (len(phases) == len(freqs) == len(on_nv)):
             raise ValueError(f"Optimal pulses require same length of phase= {phases}, freq= {freqs},"
@@ -3710,7 +3718,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(freqs), phases=self.list_2_csv(phases),
                                           filename_i=self.list_2_csv(file_i), filename_q=self.list_2_csv(file_q),
                                           folder_path=self.optimal_control_assets_path,
-                                          scale_ampl=scale_ampl)
+                                          scale_ampl=self.list_2_csv(scale_ampl))
 
 
 
