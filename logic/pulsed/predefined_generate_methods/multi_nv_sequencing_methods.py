@@ -233,9 +233,10 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
     def generate_deer_dd_tau_fci(self, name='deer_dd_tau_fci', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
-                                 init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
-                                 nv_order="1,2", read_phase_deg=90, env_type_1=Evm.rectangle,
-                                 env_type_2=Evm.rectangle,
+                                 init_pix_on_1=0, init_pix_on_2=0,
+                                 start_pix_on_1=0.5, end_pix_on_1=0.5, end_pix_on_2=0, read_pix_on_2=0,
+                                 nv_order="1,2", read_phase_deg=90, env_type_1=Evm.from_gen_settings,
+                                 env_type_2=Evm.from_gen_settings,
                                  alternating=True, no_laser=False,
                                  t_cinit_green=500e-9, t_cinit_red=10e-6,
                                  t_wait_between=1e-6, t_aom_safety=750e-9,
@@ -261,13 +262,13 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        rabi_period_mw_2=rabi_period_mw_2, dd_type=dd_type,
                                                                        dd_type_2=dd_type_2, dd_order=dd_order,
                                                                        init_pix_on_1=init_pix_on_1, init_pix_on_2=init_pix_on_2,
-                                                                       end_pix_on_2=end_pix_on_2,
+                                                                       start_pix_on_1=start_pix_on_1, end_pix_on_1=end_pix_on_1,
+                                                                       end_pix_on_2=end_pix_on_2, read_pix_on_2=read_pix_on_2,
                                                                        nv_order=nv_order, read_phase_deg=read_phase_deg,
                                                                        env_type_1=env_type_1, env_type_2=env_type_2,
                                                                        alternating=False, no_laser=no_laser,
                                                                        # suppress fci counting during normal readout
-                                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",
-                                                                       )
+                                                                       add_gate_ch=f"{add_gate_ch},{done_ch}")
             # single generic method creates most of the mes info, only set multiple tau here
             single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
             single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2*len(tau_array) if alternating else len(tau_array)
@@ -291,9 +292,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                            rabi_period_mw_2=rabi_period_mw_2,
                                                                            dd_type=dd_type,
                                                                            dd_type_2=dd_type_2, dd_order=dd_order,
-                                                                           init_pix_on_1=init_pix_on_1,
-                                                                           init_pix_on_2=init_pix_on_2,
-                                                                           end_pix_on_2=end_pix_on_2,
+                                                                           init_pix_on_1=init_pix_on_1, init_pix_on_2=init_pix_on_2,
+                                                                           start_pix_on_1=start_pix_on_1, end_pix_on_1=end_pix_on_1,
+                                                                           end_pix_on_2=end_pix_on_2, read_pix_on_2=read_pix_on_2,
                                                                            nv_order=nv_order,
                                                                            read_phase_deg=180+read_phase_deg,
                                                                            env_type_1=env_type_1, env_type_2=env_type_2,
@@ -383,7 +384,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             cur_name = f"{single_mw_name}_{idx}"
             self.log.debug(f"Generating rot {rotation}")
             single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, xticks='',
-                                                                        rotations=self.list_2_csv(rotation),
+                                                                        rotations=self.list_2_csv(rotation),  # todo: double check no read rot
                                                                         tau_cnot=tau_cnot, dd_type_cnot=dd_type_cnot,
                                                                         dd_order=dd_order, t_idle=t_idle,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
