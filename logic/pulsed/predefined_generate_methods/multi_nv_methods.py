@@ -1253,41 +1253,26 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                     kwargs_dict=kwargs_dict)
         c2not1_element = c2not1_element[0]
 
-        pihalf_y_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_1,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[90, 90])
 
-        pihalf_y_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_2,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[90, 90])
+        #pi_on_1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+         #                                                          increments=[0, 0],
+          #                                                         amps=ampls_on_1,
+           #                                                        freqs=mw_freqs,
+            #                                                       phases=[0, 0])
 
-        pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_1,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[0, 0])
+        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods) # x-Rotation
+        pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods) # x-Rotation
 
-        pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_2,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[0, 0])
-
-        pi_on_1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                   increments=[0, 0],
-                                                                   amps=ampls_on_1,
-                                                                   freqs=mw_freqs,
-                                                                   phases=[0, 0])
-
-        pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                    increments=[0, 0],
-                                                                    amps=ampls_on_2,
-                                                                    freqs=mw_freqs,
-                                                                    phases=[0, 0])
+        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods,
+                                                  pi_x_length=0.5)
+        pihalf_x_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                               pi_x_length=0.5)
+        pihalf_x_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                               pi_x_length=0.5)
+        pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
+                                                pi_x_length=0.5)
+        pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
+                                                pi_x_length=0.5)
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
@@ -1337,13 +1322,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return init_elements
 
         def had_element(onNV=[]):
-            hadarmad_block = []
             if onNV == [1]:
-                hadarmad_block.extend(pihalf_y_on1_element)
+                hadarmad_block = cp.deepcopy(pihalf_y_on1_element)
                 hadarmad_block.extend(pi_on_1_element)
             elif onNV == [2]:
-                hadarmad_block.extend(pihalf_y_on2_element)
-                hadarmad_block.extend(pi_on2_element)
+                hadarmad_block = cp.deepcopy(pihalf_y_on2_element)
+                hadarmad_block.extend(pi_on_2_element)
             else:
                 raise ValueError(f"Wrong type of Input: {onNV}")
 
@@ -1406,7 +1390,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
     # Verification of the cphase. Number of points and tau_step is not given, because the points are different initial states
     def generate_cphase_verif(self, name='cphase_verif', verif_gate=TomoRotations.none,
-                              init_state=TomoInit.cphase_none,
+                              init_state="[[<TomoInit.cphase_none: 18>,];]", read_inits="",
                               tau_start=0.5e-6,
                               f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                               rabi_period_mw_2="100e-9, 100e-9, 100e-9",
@@ -1420,6 +1404,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         def init_element(init_state,
                          verif_gate):  # Prepare of init states for cphase gate with a gate to verifiy
+            init_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
+        TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
+            if init_state not in init_state_set:
+                raise ValueError(
+                    f"Found Init_state {init_state}, type {type(init_state)} which is not in native gate set {init_state_set}")
 
             # verif_gate: gate to experimentally verify, if it's a cphase gate
             if verif_gate == TomoRotations.c2phase1_rot:
@@ -1438,21 +1427,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_1:
                 # Operators: X1*U*X1
-                init_elements = pi_on_1_element
+                init_elements = cp.deepcopy(pi_on_1_element)
                 # if init_env_type == Evm.optimal:
                 #   init_elements = pi_oc_on_1_element
                 #  self.log.debug(f"Init {init_state.name} with oc pulse")
                 init_elements.extend(verif_element)
-                init_elements.extend(pi_on_1_element)
+                #init_elements.extend(pi_on_1_element)
+                init_elements.extend(piMin_on_1_element)# negative
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_2:
                 # Operators: X2*U'X2
-                init_elements = pi_on_2_element
+                init_elements = cp.deepcopy(pi_on_2_element)
                 # if init_env_type == Evm.optimal:
                 #   init_elements = pi_oc_on_2_element
                 #  self.log.debug(f"Init {init_state.name} with oc pulse")
                 init_elements.extend(verif_element)
-                init_elements.extend(pi_on_2_element)
+                #init_elements.extend(pi_on_2_element)
+                init_elements.extend(piMin_on_2_element)
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_both:
                 # Operators: X1*X2*U*X1*X2
@@ -1463,117 +1454,31 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 #   init_elements = pi_oc_on_both_element
                 #  self.log.debug(f"Init {init_state.name} with parallel oc pulse")
                 init_elements.extend(verif_element)
-                init_elements.extend(pi_on_1_element)
-                init_elements.extend(pi_on_2_element)
+                init_elements.extend(piMin_on_2_element)
+                init_elements.extend(piMin_on_1_element)
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_hadamad_1:
+                # H1 U H1
                 init_elements = hadamard_on1_element
                 init_elements.extend(verif_element)
-                init_elements.extend(hadamad_on1_element)
+                init_elements.extend(hadamardMin_on1_element)
             elif init_state == TomoInit.cphase_hadamad_2:
+                # H2 U H2
                 init_elements = hadamard_on2_element
                 init_elements.extend(verif_element)
-                init_elements.extend(hadamad_on2_element)
+                init_elements.extend(hadamardMin_on2_element)
             elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
+                # X1 H2 U X1 H2
                 init_elements = hadamard_on2_element
                 init_elements.extend(pi_on_1_element)
                 init_elements.extend(verif_element)
-                init_elements.extend(hadamad_on2_element)
-                init_elements.extend(pi_on_1_element)
+                init_elements.extend(hadamardMin_on2_element)
+                init_elements.extend(piMin_on_1_element)
+
             else:
                 raise ValueError(f"Unknown init state for cPhase Verification: {init_state.name}")
             return init_elements
 
-        # def meas_element(init_state,meas_state): #ToDo Possible Use of this function or to erase this
-        #   if init_state == TomoInit.cphase_none:
-        #      if meas_state == TomoRotations.none:
-        #         meas_element = []
-        #    elif meas_state == TomoRotations.ux90min_on_both#.ux90_on_both: # --
-        #       meas_element = cp.depcopy(pihalf_x_on1_element)#other phase
-        #      meas_element.extend(pihalf_x_on2_element) # other phase
-        # elif meas_state == TomoRotations.uy90min_on_both:
-        #    meas_element = cp.depcopy(pihalf_y_on1_element)
-        #   meas_element.extend(pihalf_y_on2_element) # other element
-        # elif meas_state == TomoRotations.uy90min_on_1_ux90min_on_2:
-        #   meas_element = []
-        #  meas_element.extend(pihalf_ymin_on1_element)
-        # meas_element.extend(pihalf_xmin_on2_element)
-        # elif meas_state == TomoRotations.ux90min_on_1_uy90min_on_2:
-        #   meas_element = []
-        #  meas_element.extend(pihalf_xmin_on1_element)
-        # meas_element.extend(pihalf_ymin_on2_element)
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # elif init_state == TomoInit.cphase_ux180_on_1:
-        #   if meas_state == TomoRotations.ux90min_on_1
-        #      meas_element = []
-        # elif meas_state == TomoInit.TomoRotations.ux90min_on_2:
-        #    pass
-        # elif meas_state == TomoRotations.uy90min_on_1_ux90min_on_2:
-        #   meas_element = []
-        #  meas_element.extend(pihalf_ymin_on1_element)
-        # meas_element.extend(pihalf_xmin_on2_element)
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # elif init_state == TomoInit.cphase_ux180_on_2:
-        #   if meas_state == TomoInit.none
-        #      meas_element = []
-        # elif meas_state == TomoInit.
-        #    pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # elif init_state == TomoInit.cphase_ux180_on_both:
-        #   if meas_state == TomoInit.none
-        #      meas_element = []
-        # elif meas_state == TomoInit.
-        #    pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # elif init_state == TomoInit.cphase_hadamad_1:
-        #   if meas_state == TomoInit.none
-        #      meas_element = []
-        # elif meas_state == TomoInit.
-        #    pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # elif init_state == TomoInit.cphase_hadamad_2:
-        #   if meas_state == TomoInit.none
-        #      meas_element = []
-        # elif meas_state == TomoInit.
-        #    pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
-        #   if meas_state == TomoInit.none
-        #      meas_element = []
-        # elif meas_state == TomoInit.
-        #    pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # elif meas_state == TomoInit.
-        #   pass
-        # else:
-        #   raise ValueError(f"Unknown state for measurement: {meas_state.name}")
-        # else:
-        #   raise ValueError(f"Unknown init state for Measuring: {init_state.name}")
-
-        # return meas_element
 
         created_blocks = list()
         created_ensembles = list()
@@ -1600,22 +1505,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
                                             order_nvs=nv_order, n_nvs=2)
 
-        pi_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                   increments=[0, 0],
-                                                                   amps=ampls_on_1,
-                                                                   freqs=mw_freqs,
-                                                                   phases=[0, 0])
+        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
 
-        pihalf_y_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_1,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[90, 90])
-        pihalf_y_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_2,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[90, 90])
+        pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
+
+        piMin_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods)
+
+        piMin_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods)
+
+        pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
+                                               pi_x_length=0.5)
+        pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
+                                               pi_x_length=0.5)
 
         pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
                                                                          increments=[0, 0],
@@ -1628,18 +1529,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                          freqs=mw_freqs,
                                                                          phases=[0, 0])
 
-        pihalf_ymin_on1_element = self._get_multiple_mw_mult_length_element(
-            lengths=rabi_periods / 4,
-            increments=[0, 0],
-            amps=ampls_on_1,
-            freqs=mw_freqs,
-            phases=[270, 270])
-        pihalf_ymin_on2_element = self._get_multiple_mw_mult_length_element(
-            lengths=rabi_periods / 4,
-            increments=[0, 0],
-            amps=ampls_on_2,
-            freqs=mw_freqs,
-            phases=[270, 270])
+        pihalf_ymin_on1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
+                                               pi_x_length=0.5)
+        pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
+                                               pi_x_length=0.5)
 
         pihalf_xmin_on1_element = self._get_multiple_mw_mult_length_element(
             lengths=rabi_periods / 4,
@@ -1654,20 +1547,31 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             freqs=mw_freqs,
             phases=[180, 180])
 
-        pi_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                   increments=[0, 0],
-                                                                   amps=ampls_on_2,
-                                                                   freqs=mw_freqs,
-                                                                   phases=[0, 0])
+
+
+
+        str_lists = csv_2_list(init_state, str_2_val=str, delimiter=';')  # to list of csv strings
+        init_state_list = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
+        read_inits = csv_2_list(read_inits, str_2_val=Tk_string.str_2_enum)
+
+        self.log.debug(f"Rb mes point  Ampls_both: {amplitudes},"
+                       f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}"
+                       f"read inits {read_inits}")
 
         def had_element(onNV=[]):
             hadarmad_block = []
             if onNV == [1]:
                 hadarmad_block.extend(pihalf_y_on1_element)
-                hadarmad_block.extend(pi_on1_element)
+                hadarmad_block.extend(pi_on_1_element)
             elif onNV == [2]:
                 hadarmad_block.extend(pihalf_y_on2_element)
-                hadarmad_block.extend(pi_on2_element)
+                hadarmad_block.extend(pi_on_2_element)
+            elif onNV == [-1]: # For reverse pulse
+                hadarmad_block.extend(piMin_on_1_element)
+                hadarmad_block.extend(pihalf_ymin_on1_element)
+            elif onNV == [-2]:
+                hadarmad_block.extend(piMin_on_2_element)
+                hadarmad_block.extend(pihalf_ymin_on2_element)
             else:
                 raise ValueError(f"Wrong type of Input: {onNV}")
 
@@ -1698,38 +1602,43 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         hadamard_on1_element = had_element([1])
         hadamard_on2_element = had_element([2])
 
+        hadamardMin_on1_element = had_element([-1])
+        hadamardMin_on2_element = had_element([-2])
+
         init_state_block = PulseBlock(name=name)
 
         # The measurement will be given for 7 inital states
 
-        if type(init_state) != list: # For debugging, if the right state is loaded
-            init_state_list = [init_state]
-        elif type(init_state) == list:
+        #if type(init_state) != list: # For debugging, if the right state is loaded
+         #   init_state_list = [init_state]
+        #elif type(init_state) == list:
             #if len(init_state) <= 7: # For preventing magical numbers
-            init_state_list = cp.deepcopy(init_state)
+         #   init_state_list = cp.deepcopy(init_state)
             #else:
              #   raise ValueError(f"It should be less equal 7 initial state. Actual number of init states:{len(init_state)}")
-        else:
-            raise TypeError(f"Unknown kind of type for initial state in cphase Protocoll: {type(init_state)}")
+        #else:
+         #   raise TypeError(f"Unknown kind of type for initial state in cphase Protocoll: {type(init_state)}")
         idx_array = list(range(len(init_state_list)))  # Each number is connected to a initial state
 
-        for i in init_state_list:
-            init_state_block.extend(init_element(i, verif_gate))
-            # init_state_block.append(meas_element(init_state[i],meas_state)) Todo: Possible Inserting measurement states
-            if not no_laser:
-                init_state_block.append(laser_element)
-                init_state_block.append(delay_element)
-                init_state_block.append(waiting_element)
+        for ini in init_state_list:
 
-            if alternating:
-                init_state_block.append(init_element(i, verif_gate))
-                # init_state_block.append(meas_element(init_state[i], meas_state)) Todo: Possible Inserting measurement states
-                init_state_block.append(pi_on1_element)
-                init_state_block.append(pi_on2_element)
+            for sub_ini in ini:
+                init_state_block.extend(init_element(sub_ini, verif_gate))
+                # init_state_block.append(meas_element(init_state[i],meas_state)) Todo: Possible Inserting measurement states
                 if not no_laser:
                     init_state_block.append(laser_element)
                     init_state_block.append(delay_element)
                     init_state_block.append(waiting_element)
+
+                if alternating:
+                    init_state_block.extend(init_element(sub_ini, verif_gate))
+                    # init_state_block.append(meas_element(init_state[i], meas_state)) Todo: Possible Inserting measurement states
+                    init_state_block.extend(pi_on_1_element)
+                    init_state_block.extend(pi_on_2_element)
+                    if not no_laser:
+                        init_state_block.append(laser_element)
+                        init_state_block.append(delay_element)
+                        init_state_block.append(waiting_element)
 
 
 
@@ -2105,6 +2014,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         tauhalf_bef_min = MultiNV_Generator.get_element_length_max(tauhalf_bef_element, num_of_points)
         tauhalf_aft_min = MultiNV_Generator.get_element_length_max(tauhalf_aft_element, num_of_points)
         tauhalf_last_2_min = MultiNV_Generator.get_element_length_max(tauhalf_last_2_float_element, num_of_points)
+        self.log.debug(f"tauhalf_last_2_min {[tauhalf_last_2_min]},")
         if tauhalf_bef_min < 0 or tauhalf_aft_min < 0:
             # todo: catch negative pspacing and throw datapoints out, instead of raising
             self.log.debug(f"t_pi1= {t_pi_on1}, t_pi2= {t_pi_on2}, start_tau2_ps= {start_tau2_pspacing},"
@@ -3511,6 +3421,102 @@ class MultiNV_Generator(PredefinedGeneratorBase):
            #                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
           #                  alternating=False,
          #                   , cnot_kwargs=''): # The dict are created in the notebook "double_Nv"
+    #created_blocks = list()
+       # created_ensembles = list()
+        #created_sequences = list()
+
+        # Create other pulse_elements
+        #waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        #laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        #delay_element = self._get_delay_gate_element()
+
+        #rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
+                                               # order_nvs=nv_order,
+                                                #n_nvs=2)
+
+        #amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              #order_nvs=nv_order,
+                                              #n_nvs=2)
+        #ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              #idx_nv=0, n_nvs=2,
+                                              #order_nvs=nv_order)
+        #ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              #idx_nv=1, n_nvs=2,
+                                             # order_nvs=nv_order)
+        #mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
+                                            #order_nvs=nv_order, n_nvs=2)
+
+        #pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
+
+        #pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
+            #                                   pi_x_length=0.5)
+        #pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
+           #                                    pi_x_length=0.5)
+
+        #pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+             #                                                            increments=[0, 0],
+          #                                                               amps=ampls_on_1,
+         #                                                                freqs=mw_freqs,
+              #                                                           phases=[0, 0])
+        #pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+               #                                                          increments=[0, 0],
+                #                                                         amps=ampls_on_2,
+                 #                                                        freqs=mw_freqs,
+                  #                                                       phases=[0, 0])
+
+        #pihalf_ymin_on1_element = self._get_multiple_mw_mult_length_element(
+         #   lengths=rabi_periods / 4,
+          #  increments=[0, 0],
+           # amps=ampls_on_1,
+            #freqs=mw_freqs,
+            #phases=[270, 270])
+        #pihalf_ymin_on2_element = self._get_multiple_mw_mult_length_element(
+         #   lengths=rabi_periods / 4,
+          ##  increments=[0, 0],
+          #  amps=ampls_on_2,
+          #  freqs=mw_freqs,
+          #  phases=[270, 270])
+
+        #pihalf_xmin_on1_element = self._get_multiple_mw_mult_length_element(
+         #   lengths=rabi_periods / 4,
+          #  increments=[0, 0],
+          #  amps=ampls_on_1,
+          #  freqs=mw_freqs,
+           # phases=[180, 180])
+        #pihalf_xmin_on2_element = self._get_multiple_mw_mult_length_element(
+         #   lengths=rabi_periods / 4,
+          #  increments=[0, 0],
+          #  amps=ampls_on_2,
+          #  freqs=mw_freqs,
+          #  phases=[180, 180])
+
+        #pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+         #                                                          increments=[0, 0],
+          #                                                         amps=ampls_on_2,
+           #                                                        freqs=mw_freqs,
+            #                                                       phases=[0, 0])
+
+        #def init_elements(init_states):
+            #if init_states == TomoInit.none:
+            #   init_elements = []
+            #elif init_states == TomoInit.ux180_on_1:
+            #elif init_states == TomoInit.ux180_on_2:
+            # elif init_states == TomoInit.ux180_on_both:
+            # elif init_states == TomoInit.uy90_on_2:
+            # elif init_states == TomoInit.ux90_on_1:
+            #elif init_states == TomoInit.uy90_on_2:
+            #elif init_states == TomoInit.ux180_on_1_ux90_on_2:
+            # elif init_states == TomoInit.uy90_on_1:
+            # elif init_states == TomoInit.uy90_on_1_ux180_on_2:
+            # elif init_states == TomoInit.uy90_on_1_uy90_on_2:
+            # elif init_states == TomoInit.uy90_on_1_ux90_on_2:
+            # elif init_states == TomoInit.ux90_on_1:
+            # elif init_states == TomoInit.ux90_on_1_ux180_on_2:
+            # elif init_states == TomoInit.ux90_on_1_uy90_on_2:
+            # elif init_states == TomoInit.ux90_on_1_ux90_on_2:
+            #return init_elements
+
+
         #seq_dict = dict() # This dictionary shows the sequence
         #for i in init_state_dict.keys():
             #for j in meas_dict.keys():
