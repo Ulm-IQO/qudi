@@ -107,10 +107,8 @@ class MotorStagePI(Base, MotorInterface):
     _vel_step_second = ConfigOption('vel_second_axis_step', 1e-5, missing='warn')
     _vel_step_third = ConfigOption('vel_third_axis_step', 1e-5, missing='warn')
 
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -124,7 +122,6 @@ class MotorStagePI(Base, MotorInterface):
 
         return 0
 
-
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         @return: error code
@@ -132,7 +129,6 @@ class MotorStagePI(Base, MotorInterface):
         self._serial_connection_xyz.close()
         self.rm.close()
         return 0
-
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -195,7 +191,6 @@ class MotorStagePI(Base, MotorInterface):
 
         return constraints
 
-
     def move_rel(self, param_dict):
         """Moves stage in given direction (relative movement)
 
@@ -222,9 +217,9 @@ class MotorStagePI(Base, MotorInterface):
         else:
             self.log.error('Motor cannot move!')
 
-        #The following two lines have been commented out to speed up
-        #pos = self.get_pos()
-        #return pos
+        # The following two lines have been commented out to speed up
+        # pos = self.get_pos()
+        # return pos
         return param_dict
 
     def move_abs(self, param_dict):
@@ -246,9 +241,11 @@ class MotorStagePI(Base, MotorInterface):
                 for axis_label in param_dict:
                     move = param_dict[axis_label]
                     self._do_move_abs(axis_label, move)
-                while not self._motor_stopped():
-                    time.sleep(0.02)
 
+                timeout_ms = float(self._pi_xyz_timeout)
+
+                self._wait_on_condition(self._motor_stopped, dt_s=0.02,
+                                        timeout_s=timeout_ms / 1000.)
             except:
                 self.log.warning('Motor connection problem! Try again...')
             else:
@@ -256,11 +253,10 @@ class MotorStagePI(Base, MotorInterface):
         else:
             self.log.error('Motor cannot move!')
 
-        #The following two lines have been commented out to speed up
-        #pos = self.get_pos()
-        #return pos
+        # The following two lines have been commented out to speed up
+        # pos = self.get_pos()
+        # return pos
         return param_dict
-
 
     def abort(self):
         """Stops movement of the stage
@@ -270,7 +266,7 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         try:
             for axis_label in constraints:
-                self._write_xyz(axis_label,'AB')
+                self._write_xyz(axis_label, 'AB')
             while not self._motor_stopped():
                 time.sleep(0.2)
             return 0
@@ -295,13 +291,15 @@ class MotorStagePI(Base, MotorInterface):
         # unfortunately, probably due to connection problems this specific command sometimes failing
         # although it should run.... therefore some retries are added
 
+        # self.log.debug("Trying to get pos")
+
         try:
             if param_list is not None:
                 for axis_label in param_list:
                     for attempt in range(5):
                         # self.log.debug(attempt)
                         try:
-                            pos = int(self._ask_xyz(axis_label,'TT').split(":",1)[1])
+                            pos = int(self._ask_xyz(axis_label, 'TT', nchunks=3).split(":", 1)[1])
                             param_dict[axis_label] = pos * 1e-7
                         except:
                             continue
@@ -310,20 +308,22 @@ class MotorStagePI(Base, MotorInterface):
             else:
                 for axis_label in constraints:
                     for attempt in range(5):
-                        #self.log.debug(attempt)
+                        # self.log.debug(attempt)
                         try:
-                            #pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                            pos = int(self._ask_xyz(axis_label, 'TT').split(":",1)[1])
+                            # pos = int(self._ask_xyz(axis_label,'TT')[8:])
+                            pos = int(self._ask_xyz(axis_label, 'TT', nchunks=3).split(":", 1)[1])
                             param_dict[axis_label] = pos * 1e-7
                         except:
                             continue
                         else:
                             break
+
+            self.log.debug(f"Returning Pos {param_dict}")
+
             return param_dict
         except:
             self.log.error('Could not find current xyz motor position')
             return -1
-
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -344,17 +344,23 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    status = self._ask_xyz(axis_label,'TS').split(":",1)[1]
+                    status = self._ask_xyz(axis_label, 'TS', nchunks=3).split(":", 1)[1]
                     param_dict[axis_label] = status
+
+                    # self.log.debug(f"return code in movevement: {status}")
+                    # self.log.debug(f"Updating status dict: {param_dict}")
             else:
                 for axis_label in constraints:
-                    status = self._ask_xyz(axis_label, 'TS').split(":",1)[1]
+                    status = self._ask_xyz(axis_label, 'TS', nchunks=3).split(":", 1)[1]
                     param_dict[axis_label] = status
+
+                    # self.log.debug(f"return code in movevement: {status}")
+                    # self.log.debug(f"Updating status dict: {param_dict}")
+
             return param_dict
         except:
             self.log.error('Status request unsuccessful')
             return -1
-
 
     def calibrate(self, param_list=None):
         """ Calibrates the stage.
@@ -371,16 +377,15 @@ class MotorStagePI(Base, MotorInterface):
         @return dict pos: dictionary with the current position of the ac#xis
         """
 
-
-        #constraints = self.get_constraints()
+        # constraints = self.get_constraints()
         param_dict = {}
         try:
             for axis_label in param_list:
-                self._write_xyz(axis_label,'FE2')
+                self._write_xyz(axis_label, 'FE2')
             while not self._motor_stopped():
                 time.sleep(0.2)
             for axis_label in param_list:
-                self._write_xyz(axis_label,'DH')
+                self._write_xyz(axis_label, 'DH')
         except:
             self.log.error('Calibration did not work')
 
@@ -407,15 +412,15 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    vel = int(self._ask_xyz(axis_label, 'TY').split(":",1)[1])
+                    vel = int(self._ask_xyz(axis_label, 'TY', nchunks=3).split(":", 1)[1])
                     param_dict[axis_label] = vel * 1e-7
             else:
                 for axis_label in constraints:
-                    vel = int(self._ask_xyz(axis_label, 'TY').split(":",1)[1])
+                    vel = int(self._ask_xyz(axis_label, 'TY', nchunks=3).split(":", 1)[1])
                     param_dict[axis_label] = vel * 1e-7
             return param_dict
-        except:
-            self.log.error('Could not find current axis velocity')
+        except BaseException:
+            self.log.exception('Could not find current axis velocity: ')
             return -1
 
     def set_velocity(self, param_dict):
@@ -429,27 +434,24 @@ class MotorStagePI(Base, MotorInterface):
 
         @return dict param_dict2: dictionary with the updated axis velocity
         """
-        #constraints = self.get_constraints()
+        # constraints = self.get_constraints()
         try:
             for axis_label in param_dict:
                 vel = int(param_dict[axis_label] * 1.0e7)
                 self._write_xyz(axis_label, 'SV{0:d}'.format(vel))
 
-            #The following two lines have been commented out to speed up
-            #param_dict2 = self.get_velocity()
-            #retrun param_dict2
+            # The following two lines have been commented out to speed up
+            # param_dict2 = self.get_velocity()
+            # retrun param_dict2
             return param_dict
 
         except:
             self.log.error('Could not set axis velocity')
             return -1
 
+    ########################## internal methods ##################################
 
-
-########################## internal methods ##################################
-
-
-    def _write_xyz(self,axis,command):
+    def _write_xyz(self, axis, command):
         """this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
         @param axis string: name of the axis that should be asked
 
@@ -459,42 +461,67 @@ class MotorStagePI(Base, MotorInterface):
         """
         constraints = self.get_constraints()
         try:
-            #self.log.info(constraints[axis]['ID'] + command + '\n')
+            # self.log.info(constraints[axis]['ID'] + command + '\n')
+
             self._serial_connection_xyz.write(constraints[axis]['ID'] + command + '\n')
-            trash=self._read_answer_xyz()   # deletes possible answers
+            _ = self._read_answer_xyz()
             return 0
-        except:
-            self.log.error('Command was no accepted')
+
+        except BaseException:
+            self.log.exception('Command was no accepted: ')
             return -1
 
     def _read_answer_xyz(self):
-        """this method reads the answer from the motor!
+        """ Read answer if number of chunks is not known ahead of call.
+        Try to avoid, may cause instability.
+        For a certain command n_chunks should be constant. -> Use ._aks_xyz()
         @return answer string: answer of motor
         """
 
-        still_reading = True
-        answer=''
-        while still_reading:
+        finished_reading = False
+        timed_out = False
+        answer = ''
+
+        timeout_ms = float(self._pi_xyz_timeout)
+
+        t = 0
+        timeout_s = float(timeout_ms) / 1000
+        t_start = time.perf_counter()
+
+        while not finished_reading and not timed_out:
+
+            # self.log.debug(f"[{t} s] Fetching serial answer. So far: {answer}")
+            t = time.perf_counter() - t_start
+            if timeout_s >= 0 and t > timeout_s:
+                timed_out = True
+                break
             try:
                 answer = answer + self._serial_connection_xyz.read()[:-1]
             except:
-                still_reading = False
+                finished_reading = True
+                # self.log.debug("Done.")
+
+        if timed_out:
+            self.log.warning(f"Timed out after {t} s while serial read")
+
         return answer
 
-    def _ask_xyz(self,axis,question):
-        """this method combines writing a command and reading the answer
-        @param axis string: name of the axis that should be asked
+    def _ask_xyz(self, axis, question, nchunks=1):
 
-        @param command string: command
-
-        @return answer string: answer of motor
-        """
         constraints = self.get_constraints()
-        self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
-        answer=self._read_answer_xyz()
-        return answer
+        # self.log.debug(f"Asking {constraints[axis]['ID'] + question} for {nchunks} chunks...")
+        self._serial_connection_xyz.write(str(constraints[axis]['ID']) + question + '\n')
 
+        str_ret = ""
 
+        for i in range(nchunks):
+            raw_ret = self._serial_connection_xyz.read()
+            str_ret += str(raw_ret).replace("\r", "").replace("\n", "")
+            # self.log.debug(f"Chunk {i}: {str_ret}")
+
+        # self.log.debug(f"Finished response: {str_ret}")
+
+        return str_ret
 
     def _do_move_rel(self, axis, step):
         """internal method for the relative move
@@ -507,9 +534,9 @@ class MotorStagePI(Base, MotorInterface):
                 move float: absolute position to move to
         """
         constraints = self.get_constraints()
-        if not(abs(constraints[axis]['pos_step']) < abs(step)):
+        if not (abs(constraints[axis]['pos_step']) < abs(step)):
             self.log.warning('Cannot make the movement of the axis "{0}"'
-                'since the step is too small! Ignore command!')
+                             'since the step is too small! Ignore command!')
         else:
             current_pos = self.get_pos(axis)[axis]
             move = current_pos + step
@@ -527,17 +554,15 @@ class MotorStagePI(Base, MotorInterface):
                 move float: absolute position to move to
         """
         constraints = self.get_constraints()
-        #self.log.info(axis + 'MA{0}'.format(int(move*1e8)))
-        if not(constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
+        # self.log.info(axis + 'MA{0}'.format(int(move*1e8)))
+        if not (constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
             self.log.warning('Cannot make the movement of the axis "{0}"'
-                'since the border [{1},{2}] would be crossed! Ignore command!'
-                ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
+                             'since the border [{1},{2}] would be crossed! Ignore command!'
+                             ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
         else:
-            self._write_xyz(axis,'MA{0}'.format(int(move*1e7)))  # 1e7 to convert meter to SI units
-            #self._write_xyz(axis, 'MP')
+            self._write_xyz(axis, 'MA{0}'.format(int(move * 1e7)))  # 1e7 to convert meter to SI units
+            # self._write_xyz(axis, 'MP')
         return axis, move
-
-
 
     def _in_movement_xyz(self):
         """this method checks if the magnet is still moving and returns
@@ -546,11 +571,16 @@ class MotorStagePI(Base, MotorInterface):
         @return: dict param_dict: Dictionary displaying if axis are moving:
         0 for immobile and 1 for moving
         """
-        constraints=self.get_constraints()
+        constraints = self.get_constraints()
         param_dict = {}
         for axis_label in constraints:
-            tmp0 = int(self._ask_xyz(constraints[axis_label]['label'],'TS')[8:])
-            param_dict[axis_label] = tmp0%2
+            try:
+                tmp0 = int(self._ask_xyz(constraints[axis_label]['label'], 'TS', nchunks=3)[8:])
+            except Exception as e:
+                self.log.exception("Failed: ")
+            # self.log.debug(f"return code in movevement: {tmp0}")
+            param_dict[axis_label] = tmp0 % 2
+            # self.log.debug(f"Updating movement dict: {param_dict}")
 
         return param_dict
 
@@ -560,23 +590,28 @@ class MotorStagePI(Base, MotorInterface):
 
             @return: bool stopped: False for immobile and True for moving
                 """
-        param_dict=self._in_movement_xyz()
-        stopped=True
+        param_dict = self._in_movement_xyz()
+        stopped = True
         for axis_label in param_dict:
             if param_dict[axis_label] != 0:
-                self.log.info(axis_label + ' is moving')
-                stopped=False
+                self.log.debug(axis_label + ' is moving')
+                stopped = False
         return stopped
 
+    def _wait_on_condition(self, condition_func, dt_s=0.2, timeout_s=-1):
 
+        timed_out = False
+        t = 0
+        t_start = time.perf_counter()
+        while not condition_func():
 
-            #########################################################################################
-#########################################################################################
-#########################################################################################
+            t = time.perf_counter() - t_start
+            if timeout_s >= 0 and t > timeout_s:
+                timed_out = True
+                break
+            time.sleep(dt_s)
+            # self.log.debug(f"Waiting for {condition_str}")
 
-
-
-
-
-
+        if timed_out:
+            self.log.warning(f"Timed out after {t} s waiting for {str(condition_func)}")
 
