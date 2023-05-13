@@ -1,6 +1,7 @@
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
+from logic.pulsed.sampling_functions import SamplingFunctions
 
 #from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods
 from logic.pulsed.pulse_objects import PulseEnvelopeType as Evm
@@ -191,7 +192,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
     def generate_rabi_fci(self, name='rabi_fci', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
                           t_cinit_green=500e-9, t_cinit_red=10e-6,
                           t_wait_between=1e-6, t_aom_safety=750e-9,
-                          laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1'
+                          laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1', alternating=True, post_select=False,
                           ):
 
         """
@@ -217,7 +218,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        )
             # single generic method creates most of the mes info, only set multiple tau here
             single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
-            single_mw_ensembles[0].measurement_information['number_of_lasers'] = len(tau_array)
+            single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2 * len(tau_array) if alternating else len(tau_array)
+            single_mw_ensembles[0].measurement_information['alternating'] = alternating
 
             blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
                                                                      generic_blocks=single_mw_blocks, generic_ensemble=single_mw_ensembles,
@@ -225,7 +227,32 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                      laser_read_ch=laser_red_ch,
                                                                      ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
                                                                      t_aom_safety=t_aom_safety, t_wait_between=t_wait_between,
-                                                                     continue_seqtable=(idx!=0))
+                                                                     continue_seqtable=(idx!=0), post_select=post_select)
+
+            if alternating:
+                cur_name = f"{single_mw_name}_{idx}_alt"
+
+                single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, tau_start=tau,
+                                                                       tau_step=0, num_of_points=1,
+                                                                       # suppress fci counting during normal readout
+                                                                       add_gate_ch=f"{add_gate_ch},{done_ch}",
+                                                                       read_pix=1
+                                                                       )
+                # single generic method creates most of the mes info, only set multiple tau here
+                single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
+                single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2 * len(tau_array) if alternating else len(tau_array)
+                single_mw_ensembles[0].measurement_information['alternating'] = alternating
+
+                blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
+                                                                         generic_blocks=single_mw_blocks,
+                                                                         generic_ensemble=single_mw_ensembles,
+                                                                         t_init=t_cinit_green, t_read=t_cinit_red,
+                                                                         laser_read_ch=laser_red_ch,
+                                                                         ch_trigger_done=done_ch,
+                                                                         add_gate_ch=add_gate_ch,
+                                                                         t_aom_safety=t_aom_safety,
+                                                                         t_wait_between=t_wait_between,
+                                                                         continue_seqtable=True, post_select=post_select)
 
         return blocks, enembles, sequences
 
@@ -240,7 +267,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                  alternating=True, no_laser=False,
                                  t_cinit_green=500e-9, t_cinit_red=10e-6,
                                  t_wait_between=1e-6, t_aom_safety=750e-9,
-                                 laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1'
+                                 laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1', post_select=False
                                  ):
         """
         Sequence for charge readout. Init charge with fast charge readout as in Hopper (2020).
@@ -280,7 +307,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                      laser_read_ch=laser_red_ch,
                                                                      ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
                                                                      t_aom_safety=t_aom_safety, t_wait_between=t_wait_between,
-                                                                     continue_seqtable=(idx!=0))
+                                                                     continue_seqtable=(idx!=0), post_select=post_select)
 
             if alternating:
                 cur_name = f"{single_mw_name}_{idx}_alt"
@@ -316,7 +343,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                          add_gate_ch=add_gate_ch,
                                                                          t_aom_safety=t_aom_safety,
                                                                          t_wait_between=t_wait_between,
-                                                                         continue_seqtable=True)
+                                                                         continue_seqtable=True, post_select=post_select)
 
         return blocks, enembles, sequences
 
@@ -462,7 +489,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                               t_init=3e-6, t_read=10e-6, t_aom_safety=750e-9, t_wait_between=1e-6,
                               generic_blocks=None, generic_ensemble=None,
                               ch_trigger_done='d_ch1', laser_read_ch='d_ch3', add_gate_ch='',
-                              alternating=False, continue_seqtable=False):
+                              alternating=False, continue_seqtable=False, post_select=False):
         """
         Prepends a deterministic (Hopper) readout to some generic predefined method.
         This version is meant to be used with a linear sequencer, as Keysight M8190A.
@@ -488,11 +515,15 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         init_name = 'nvmin_init'
         generate_method = self._get_generation_method('laser_strob')
-        init_seq_params = self._get_default_seq_params({'repetitons': 0,
-                                                       'segment_advance_mode': 'conditional'})
+        if not post_select:
+            init_seq_params = self._get_default_seq_params({'repetitons': 0,
+                                                           'segment_advance_mode': 'conditional'})
+        else:
+            init_seq_params = self._get_default_seq_params({'repetitons': 0})
+
         init_blocks, init_ensembles, _ = generate_method(name=init_name, t_laser_read=t_read,
                              t_laser_init=t_init, t_wait_between=t_wait_between, laser_read_ch=laser_read_ch,
-                             add_gate_ch=add_gate_ch, read_no_fc_gate=True, epoch_done_ch=ch_trigger_done,
+                             add_gate_ch=add_gate_ch, read_no_fc_gate=not post_select, epoch_done_ch=ch_trigger_done,
                              t_aom_safety=t_aom_safety, init_laser_first=True)
 
         self._add_to_jumptable(init_name)
@@ -507,6 +538,16 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             self._add_to_jumptable(generic_name)
             self._add_ensemble_to_seqtable(generic_blocks, generic_ensemble, generic_name,
                                            seq_params=cur_seq_params)
+            if post_select:
+                # keep gate channel high from init laser_strob over whole generic mw sequence
+                for block in generic_blocks:
+                    for element in block.element_list:
+                        if self.gate_channel.startswith('a'):
+                            element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
+                                voltage=self.analog_trigger_voltage)
+                        else:
+                            raise NotImplementedError
+
 
 
 
@@ -517,11 +558,14 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # take measurement info for sequence from generic_method ensemble
         idx_read = 2
         ensemble_info = all_ensembles[idx_read].measurement_information
+
+        if post_select: # need to count over red laser, mw sequence, green laser
+            ensemble_info['counting_length'] = t_read + np.sum([block.init_length_s for block in generic_blocks])
+            for block in generic_blocks:
+                if block.increment_s != 0:
+                    raise ValueError("Can't calculate counting length for increment != 0")
+
         sequence.measurement_information = ensemble_info
-        #fastcounter_count_length = self._get_ensemble_count_length(all_ensembles[idx_read],
-        #                                                           created_blocks=all_blocks)
-
-
 
         return all_blocks, all_ensembles, [sequence]
 
