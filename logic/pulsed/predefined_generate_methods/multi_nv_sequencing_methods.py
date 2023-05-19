@@ -377,7 +377,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                             rotations="[[<TomoRotations.none: 0>,];]",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-                            alternating=False, , post_select=False,
+                            alternating=False, post_select=False,
                             init_state_kwargs='', cnot_kwargs=''):
         """
         Init charge with fast charge readout as in Hopper (2020).
@@ -437,7 +437,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
                 single_mw_blocks, single_mw_ensembles, _ = generate_method(name=cur_name, xticks='',
                                                                         rotations=self.list_2_csv(rotation),
-                                                                        read_rots=read_rotations,
+                                                                        read_rots=self.list_2_csv(read_rotations),
                                                                         tau_cnot=tau_cnot, dd_type_cnot=dd_type_cnot,
                                                                         dd_order=dd_order, t_idle=t_idle,
                                                                         f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
