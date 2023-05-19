@@ -377,12 +377,40 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                             rotations="[[<TomoRotations.none: 0>,];]",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                            fci_fix_t_mw=0,
                             alternating=False, post_select=False,
                             init_state_kwargs='', cnot_kwargs=''):
         """
         Init charge with fast charge readout as in Hopper (2020).
         Analysis of the data requires listmode acquisition to create a photon number histogram.
         """
+
+        def _prepend_wait_time(mw_blocks, fci_fix_t_mw=0):
+            """
+            For fastcounter that only support a constant read gate length, insert (ugly) waiting time such
+            that all sequence steps have same length. For this to work, the longest (net) MW sequence must
+            come last in the sequence table!
+            :param mw_blocks:
+            :param fci_fix_t_mw:
+            :return:
+            """
+
+
+            t_single_mw = np.sum([block.init_length_s for block in mw_blocks[0]])
+            t_delta = 0
+
+            if fci_fix_t_mw != 0:
+                t_delta = fci_fix_t_mw - t_single_mw
+                if t_delta < 0:
+                    raise ValueError(f"fci_fix_t_mw= {fci_fix_t_mw:e} too short, yielding negative pad time {t_delta:e}.")
+                id_element = self._get_idle_element(t_delta, 0)
+                mw_blocks[0].element_list.insert(0, id_element)
+                mw_blocks[0].refresh_parameters()
+
+            t_single_mw_new = np.sum([block.init_length_s for block in mw_blocks[0]])
+            self.log.debug(f"MW time in rand_benchmark_fci: {t_single_mw:e}, added wati time: {t_delta:e} =>"
+                           f" {t_single_mw_new:e}")
+
         total_name = name
 
         generate_method = self._get_generation_method('rand_benchmark')
@@ -418,6 +446,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        # suppress fci counting during normal readout
                                                                        add_gate_ch=mw_readout_gate_ch,
                                                                        )
+
+            _prepend_wait_time(single_mw_blocks, fci_fix_t_mw)
+
             # single generic method creates most of the mes info, only set multiple tau here
             single_mw_ensembles[0].measurement_information['controlled_variable'] = idx_array if xticks_list==[] else xticks_list
             single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2*num_of_points if alternating else num_of_points
@@ -448,6 +479,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        # suppress fci counting during normal readout
                                                                        add_gate_ch=mw_readout_gate_ch,
                                                                        )
+                _prepend_wait_time(single_mw_blocks, fci_fix_t_mw)
+
                 # single generic method creates most of the mes info, only set multiple tau here
                 single_mw_ensembles[0].measurement_information[
                     'controlled_variable'] = idx_array if xticks_list == [] else xticks_list
@@ -465,7 +498,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                          add_gate_ch=self.add_gate_ch,
                                                                          t_aom_safety=self.t_safety_fci,
                                                                          t_wait_between=self.t_wait_fci,
-                                                                         continue_seqtable=True, post_select=True)
+                                                                         continue_seqtable=True, post_select=post_select)
+
 
 
 
@@ -543,9 +577,6 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                 voltage=self.analog_trigger_voltage)
                         else:
                             raise NotImplementedError
-
-
-
 
 
         all_blocks, all_ensembles, ensemble_list = self._seqtable_to_result()
