@@ -256,7 +256,6 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         return blocks, enembles, sequences
 
-
     def generate_deer_dd_tau_fci(self, name='deer_dd_tau_fci', tau1=0.5e-6, tau_start=0e-6, tau_step=0.01e-6, num_of_points=50,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  dd_type=DDMethods.SE, dd_type_2='', dd_order=1,
@@ -264,10 +263,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                  start_pix_on_1=0.5, end_pix_on_1=0.5, end_pix_on_2=0, read_pix_on_2=0,
                                  nv_order="1,2", read_phase_deg=90, env_type_1=Evm.from_gen_settings,
                                  env_type_2=Evm.from_gen_settings,
-                                 alternating=True, no_laser=False,
-                                 t_cinit_green=500e-9, t_cinit_red=10e-6,
-                                 t_wait_between=1e-6, t_aom_safety=750e-9,
-                                 laser_red_ch='d_ch3', add_gate_ch='', done_ch='d_ch1', post_select=False
+                                 alternating=True, no_laser=False, post_select=False
                                  ):
         """
         Sequence for charge readout. Init charge with fast charge readout as in Hopper (2020).
@@ -295,7 +291,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        env_type_1=env_type_1, env_type_2=env_type_2,
                                                                        alternating=False, no_laser=no_laser,
                                                                        # suppress fci counting during normal readout
-                                                                       add_gate_ch=f"{add_gate_ch},{done_ch}")
+                                                                       add_gate_ch=f"{self.add_gate_ch},{self.done_fci_ch}")
             # single generic method creates most of the mes info, only set multiple tau here
             single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
             single_mw_ensembles[0].measurement_information['number_of_lasers'] = 2*len(tau_array) if alternating else len(tau_array)
@@ -303,10 +299,10 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
             blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
                                                                      generic_blocks=single_mw_blocks, generic_ensemble=single_mw_ensembles,
-                                                                     t_init=t_cinit_green, t_read=t_cinit_red,
-                                                                     laser_read_ch=laser_red_ch,
-                                                                     ch_trigger_done=done_ch, add_gate_ch=add_gate_ch,
-                                                                     t_aom_safety=t_aom_safety, t_wait_between=t_wait_between,
+                                                                     t_init=self.t_laser_fci_green, t_read=self.t_laser_fci_red,
+                                                                     laser_read_ch=self.laser_read_red_ch,
+                                                                     ch_trigger_done=self.done_fci_ch, add_gate_ch=self.add_gate_ch,
+                                                                     t_aom_safety=self.t_safety_fci, t_wait_between=self.t_wait_fci,
                                                                      continue_seqtable=(idx!=0), post_select=post_select)
 
             if alternating:
@@ -327,7 +323,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                            env_type_1=env_type_1, env_type_2=env_type_2,
                                                                            alternating=False, no_laser=no_laser,
                                                                            # suppress fci counting during normal readout
-                                                                           add_gate_ch=f"{add_gate_ch},{done_ch}",
+                                                                           add_gate_ch=f"{self.add_gate_ch},{self.done_fci_ch}",
                                                                            )
                 # single generic method creates most of the mes info, only set multiple tau here
                 single_mw_ensembles[0].measurement_information['controlled_variable'] = tau_array
@@ -337,12 +333,12 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                 blocks, enembles, sequences = self.generic_nv_minus_init(total_name=total_name, generic_name=cur_name,
                                                                          generic_blocks=single_mw_blocks,
                                                                          generic_ensemble=single_mw_ensembles,
-                                                                         t_init=t_cinit_green, t_read=t_cinit_red,
-                                                                         laser_read_ch=laser_red_ch,
-                                                                         ch_trigger_done=done_ch,
-                                                                         add_gate_ch=add_gate_ch,
-                                                                         t_aom_safety=t_aom_safety,
-                                                                         t_wait_between=t_wait_between,
+                                                                         t_init=self.t_laser_fci_green, t_read=self.t_laser_fci_red,
+                                                                         laser_read_ch=self.laser_read_red_ch,
+                                                                         ch_trigger_done=self.done_fci_ch,
+                                                                         add_gate_ch=self.add_gate_ch,
+                                                                         t_aom_safety=self.t_safety_fci,
+                                                                         t_wait_between=self.t_wait_fci,
                                                                          continue_seqtable=True, post_select=post_select)
 
         return blocks, enembles, sequences
@@ -381,7 +377,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                             rotations="[[<TomoRotations.none: 0>,];]",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-                            alternating=False,
+                            alternating=False, , post_select=False,
                             init_state_kwargs='', cnot_kwargs=''):
         """
         Init charge with fast charge readout as in Hopper (2020).
@@ -433,7 +429,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                      laser_read_ch=self.laser_read_red_ch,
                                                                      ch_trigger_done=self.done_fci_ch, add_gate_ch=self.add_gate_ch,
                                                                      t_aom_safety=self.t_safety_fci, t_wait_between=self.t_wait_fci,
-                                                                     continue_seqtable=(idx!=0))
+                                                                     continue_seqtable=(idx!=0), post_select=post_select)
 
             if alternating:
                 cur_name = f"{single_mw_name}_{idx}_alt"
@@ -469,7 +465,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                          add_gate_ch=self.add_gate_ch,
                                                                          t_aom_safety=self.t_safety_fci,
                                                                          t_wait_between=self.t_wait_fci,
-                                                                         continue_seqtable=True)
+                                                                         continue_seqtable=True, post_select=True)
 
 
 
