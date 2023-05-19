@@ -95,14 +95,11 @@ class Tk_file():
 
     @staticmethod
     def list_mult_pulsed_mes(path, incl_subdir=True, filter_strs=['pulsed_measurement', '.dat'],
-                             excl_filter_str=None, excl_params=[''], sort_key=None):
+                             excl_filter_str=None, excl_params=['']):
         files = Tk_file.get_dir_items(path, incl_subdir=incl_subdir)
         files_filtered = files
         for filter in filter_strs:
             files_filtered = Tk_string.filter_str(files_filtered, filter, excl_filter_str)
-
-        if sort_key is None:
-            files_filtered = sorted(files_filtered, key=os.path.getctime)
 
         return files_filtered
 
@@ -156,14 +153,16 @@ class Tk_file():
         param_str = param_str.replace("',", "':")
         param_str = param_str.replace("(", "").replace(")", "")
         param_str = param_str.replace("[", "").replace("]", "")
-        # manually parse back to dict-like entries
-        # skip entries unreadable to ast
-        param_list = param_str.split(",")
+        param_str = param_str.strip("[").strip("]")
+        param_str = param_str.replace(" ", "")
+        param_str = param_str.replace("'", '"')
+
+        param_list = param_str.split(',"')
         param_dict_accepted = {}
 
         for entry in param_list:
             try:
-                entry_dict = ast.literal_eval("{" + entry + "}")
+                entry_dict = ast.literal_eval('{"' + entry + "}")
             except:
                 try:
                     el_manual = Tk_string.str_2_dict(entry)
@@ -177,7 +176,7 @@ class Tk_file():
                 param_dict_accepted = {**param_dict_accepted, **entry_dict}
             except:
                 pass
-                #raise ValueError(f"Error loading entry {entry} in file: {fname}")
+                # raise ValueError(f"Error loading entry {entry} in file: {fname}")
 
         return param_dict_accepted
 
@@ -205,7 +204,11 @@ class Tk_file():
 
         database = files_in_folder
         search_file = os.path.abspath(param_file)
-        candidate_param_file = os.path.abspath(difflib.get_close_matches(search_file, database)[0])
+        candidates = difflib.get_close_matches(search_file, database)
+        if len(candidates) > 0:
+            candidate_param_file = os.path.abspath(candidates[0])
+        else:
+            return None
 
         # logger.debug(f"Searched: {os.path.basename(search_file)}, found: {os.path.basename(candidate_param_file)},\
         #             n_diff: {diff_letters(candidate_param_file, search_file)}")
@@ -236,7 +239,6 @@ class Tk_file():
 
         return Tk_file.find_close_filename(folder, param_file, filter_str=['parameters', '.dat'])
     """
-
     @staticmethod
     def load_pulsed_params(p_mes):
         fname = Tk_file.find_param_file(p_mes)
