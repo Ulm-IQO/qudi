@@ -447,7 +447,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        add_gate_ch=mw_readout_gate_ch,
                                                                        )
 
-            _prepend_wait_time(single_mw_blocks, fci_fix_t_mw)
+            #_prepend_wait_time(single_mw_blocks, fci_fix_t_mw)
 
             # single generic method creates most of the mes info, only set multiple tau here
             single_mw_ensembles[0].measurement_information['controlled_variable'] = idx_array if xticks_list==[] else xticks_list
@@ -460,7 +460,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                      laser_read_ch=self.laser_read_red_ch,
                                                                      ch_trigger_done=self.done_fci_ch, add_gate_ch=self.add_gate_ch,
                                                                      t_aom_safety=self.t_safety_fci, t_wait_between=self.t_wait_fci,
-                                                                     continue_seqtable=(idx!=0), post_select=post_select)
+                                                                     continue_seqtable=(idx!=0), post_select=post_select,
+                                                                     fci_fix_t_mw=fci_fix_t_mw)
 
             if alternating:
                 cur_name = f"{single_mw_name}_{idx}_alt"
@@ -479,7 +480,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                        # suppress fci counting during normal readout
                                                                        add_gate_ch=mw_readout_gate_ch,
                                                                        )
-                _prepend_wait_time(single_mw_blocks, fci_fix_t_mw)
+                #_prepend_wait_time(single_mw_blocks, fci_fix_t_mw)
 
                 # single generic method creates most of the mes info, only set multiple tau here
                 single_mw_ensembles[0].measurement_information[
@@ -498,7 +499,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                          add_gate_ch=self.add_gate_ch,
                                                                          t_aom_safety=self.t_safety_fci,
                                                                          t_wait_between=self.t_wait_fci,
-                                                                         continue_seqtable=True, post_select=post_select)
+                                                                         continue_seqtable=True, post_select=post_select,
+                                                                         fci_fix_t_mw=fci_fix_t_mw)
 
 
 
@@ -517,6 +519,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
     def generic_nv_minus_init(self, total_name='generic_nvinit', generic_name="generic_method",
                               t_init=3e-6, t_read=10e-6, t_aom_safety=750e-9, t_wait_between=1e-6,
+                              fci_fix_t_mw=0e-6,
                               generic_blocks=None, generic_ensemble=None,
                               ch_trigger_done='d_ch1', laser_read_ch='d_ch3', add_gate_ch='',
                               alternating=False, continue_seqtable=False, post_select=False):
@@ -524,6 +527,46 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         Prepends a deterministic (Hopper) readout to some generic predefined method.
         This version is meant to be used with a linear sequencer, as Keysight M8190A.
         """
+        def _prepend_laser_time(generic_name, mw_blocks, fci_fix_t_mw=0, t_safety=5e-6):
+            """
+            For fastcounter that only support a constant read gate length, insert (ugly) laser time such
+            that all sequence steps have same length. For this to work, the longest (net) MW sequence must
+            come last in the sequence table!
+            :param mw_blocks:
+            :param fci_fix_t_mw:
+            :return:
+            """
+
+
+            t_single_mw = np.sum([block.init_length_s for block in mw_blocks[0]])
+            t_delta = 0
+
+            if fci_fix_t_mw != 0:
+                t_delta = fci_fix_t_mw - t_single_mw
+                if t_delta < 0:
+                    raise ValueError(f"fci_fix_t_mw= {fci_fix_t_mw:e} too short, yielding negative pad time {t_delta:e}.")
+
+                idx_str = generic_name.split('_')[-2] + "_alt" if 'alt' in generic_name else generic_name.split('_')[-1]
+                step_name = 'wait_fix_t_' + idx_str
+                # gating over the whole sequence requires exact timing of the gate rising flank
+                # add some safety to relax non-perfect counting_length
+                step_blocks, step_ensembles, _ = self._create_generic_idle(step_name, length=t_safety)
+
+                laser_blocks, _, _ = self._create_generic_trigger(step_name, length=t_delta,
+                                                                              channels=[self.gate_channel,
+                                                                                        self.laser_channel,
+                                                                                        self.add_gate_ch])  # todo: add_gate only for debug
+
+                step_blocks[0].append(laser_blocks[0][0])
+                self._add_to_jumptable(step_name)
+                self._add_ensemble_to_seqtable(step_blocks, step_ensembles, step_name,
+                                               seq_params={'repetitions': int(0)})
+
+            self.log.debug(f"MW time in rand_benchmark_fci: {t_single_mw:e}, added laser time: {t_delta:e}")
+            return t_delta
+
+
+
         # for linear sequencers like Keysight AWG
         # self.init_jumptable()  # jumping currently not needed
         if not continue_seqtable:
@@ -535,13 +578,15 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # epoch done trigger for signaling finished sequence and reset of external hw
         # to reset counter with every green-red combination, add epoch_done into the laser_strob segment
-        done_name = 'epoch_done'
-        done_blocks, done_ensembles, _ = self._create_generic_trigger(done_name, ch_trigger_done)
-        self._add_to_jumptable(done_name)
-        self._add_ensemble_to_seqtable(done_blocks, done_ensembles, done_name,
-                                       seq_params={'repetitions': int(0)})
+        if not post_select:
+            done_name = 'epoch_done'
+            done_blocks, done_ensembles, _ = self._create_generic_trigger(done_name, length=25e-9,
+                                                                          channels=ch_trigger_done)
+            self._add_to_jumptable(done_name)
+            self._add_ensemble_to_seqtable(done_blocks, done_ensembles, done_name,
+                                           seq_params={'repetitions': int(0)})
 
-
+        t_laser_fix_t = _prepend_laser_time(generic_name, generic_blocks, fci_fix_t_mw=fci_fix_t_mw)
 
         init_name = 'nvmin_init'
         generate_method = self._get_generation_method('laser_strob')
@@ -569,8 +614,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             self._add_ensemble_to_seqtable(generic_blocks, generic_ensemble, generic_name,
                                            seq_params=cur_seq_params)
             if post_select:
-                # keep gate channel high from init laser_strob over whole generic mw sequence
-                for block in generic_blocks:
+                # keep gate channel high from gate trigger over whole generic mw sequence
+                for block in generic_blocks + init_blocks:
                     for element in block.element_list:
                         if self.gate_channel.startswith('a'):
                             element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
@@ -587,12 +632,17 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         ensemble_info = all_ensembles[idx_read].measurement_information
 
         if post_select: # need to count over red laser, mw sequence, green laser
-            ensemble_info['counting_length'] = t_read + np.sum([block.init_length_s for block in generic_blocks])
+            # in case of prepend_wait_time into MW blcoks
+            # ensemble_info['counting_length'] = t_read + np.sum([block.init_length_s for block in generic_blocks])
+            # in case of prepend_laser_time
+            ensemble_info['counting_length'] = t_laser_fix_t + np.sum([block.init_length_s for block in init_blocks]) \
+                                               + np.sum([block.init_length_s for block in generic_blocks])
             for block in generic_blocks:
                 if block.increment_s != 0:
                     raise ValueError("Can't calculate counting length for increment != 0")
 
         sequence.measurement_information = ensemble_info
+
 
         return all_blocks, all_ensembles, [sequence]
 
@@ -734,12 +784,12 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             seq_para_dict['go_to'] = -1
         return seq_para_dict
 
-    def _create_generic_idle(self, name='idle'):
+    def _create_generic_idle(self, name='idle', length=1e-9):
         created_blocks = []
         created_ensembles = []
         created_sequences = []
 
-        idle_element = self._get_idle_element(length=1e-9, increment=0.0)
+        idle_element = self._get_idle_element(length=length, increment=0.0)
         block = PulseBlock(name=name)
         block.append(idle_element)
 
@@ -756,13 +806,16 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         return created_blocks, created_ensembles, created_sequences
 
-    def _create_generic_trigger(self, name='trigger', channels=[]):
+    def _create_generic_trigger(self, name='trigger', length=None, channels=[]):
         created_blocks = []
         created_ensembles = []
         created_sequences = []
 
+        if length is None:
+            length = 10e-9
+
         idle_element = self._get_idle_element(1e-9, increment=0)
-        trig_element =  self._get_trigger_element(length=10e-9, increment=0., channels=channels)  # todo: length of trigger element?
+        trig_element =  self._get_trigger_element(length=length, increment=0., channels=channels)  # todo: length of trigger element?
         block = PulseBlock(name=name)
         #block.append(idle_element) # todo: remove idle, only for debug
         block.append(trig_element)
