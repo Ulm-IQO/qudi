@@ -1296,7 +1296,6 @@ class PredefinedGeneratorBase:
         else:
             raise ValueError
 
-
     def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4', no_fc_gate=False):
 
         """
@@ -1327,15 +1326,15 @@ class PredefinedGeneratorBase:
         return self._get_idle_element(length=self.laser_delay,
                                       increment=0)
 
-    def _get_delay_gate_element(self, add_gate_ch='d_ch4'):
+    def _get_delay_gate_element(self, add_gate_ch='d_ch4', no_fc_gate=False):
         """
         Creates a gate trigger of length of the laser delay.
         If no gate channel is specified will return a simple idle element.
 
         @return PulseBlockElement: The delay element
         """
-        if self.gate_channel:
-            laser_element =  self._get_trigger_element(length=self.laser_delay,
+        if self.gate_channel and not no_fc_gate:
+            laser_element = self._get_trigger_element(length=self.laser_delay,
                                              increment=0,
                                              channels=self.gate_channel)
             if add_gate_ch != "":
