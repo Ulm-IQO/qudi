@@ -1231,7 +1231,7 @@ class PredefinedGeneratorBase:
                                  pulse_function=pulse_function,
                                  digital_high=digital_high)
 
-    def _get_laser_element(self, length, increment, add_gate_ch='d_ch4'):
+    def _get_laser_element(self, length, increment, add_gate_ch=''):
         """
         Creates laser trigger PulseBlockElement
 
@@ -1248,10 +1248,13 @@ class PredefinedGeneratorBase:
         # be sure this is not a fast counter switch!
         if add_gate_ch != "":
             for ch in csv_2_list(add_gate_ch, str):
-                laser_element.digital_high[ch] = True
+                if ch.startswith('d'):
+                    laser_element.digital_high[ch] = True
+                else:
+                    raise NotImplementedError
         return laser_element
 
-    def _get_laser_gate_elements_pwm(self, length, increment, laser_ch=None, add_gate_ch='d_ch4', no_fc_gate=False,
+    def _get_laser_gate_elements_pwm(self, length, increment, laser_ch=None, add_gate_ch='', no_fc_gate=False,
                                 pwm_duty_cycle=1, pwm_freq=10e3):
         """
         """
@@ -1296,7 +1299,7 @@ class PredefinedGeneratorBase:
         else:
             raise ValueError
 
-    def _get_laser_gate_element(self, length, increment, add_gate_ch='d_ch4', no_fc_gate=False):
+    def _get_laser_gate_element(self, length, increment, add_gate_ch='', no_fc_gate=False):
 
         """
         no_fc_gate: If True, no trigger to fastcounter. Can be helpful, if additional gate (add_gate_ch) is used,
@@ -1326,7 +1329,7 @@ class PredefinedGeneratorBase:
         return self._get_idle_element(length=self.laser_delay,
                                       increment=0)
 
-    def _get_delay_gate_element(self, add_gate_ch='d_ch4', no_fc_gate=False):
+    def _get_delay_gate_element(self, add_gate_ch='', no_fc_gate=False):
         """
         Creates a gate trigger of length of the laser delay.
         If no gate channel is specified will return a simple idle element.
@@ -1339,7 +1342,10 @@ class PredefinedGeneratorBase:
                                              channels=self.gate_channel)
             if add_gate_ch != "":
                 for ch in csv_2_list(add_gate_ch, str):
-                    laser_element.digital_high[ch] = True
+                    if ch.startswith('d'):
+                        laser_element.digital_high[ch] = True
+                    else:
+                        raise NotImplementedError
             return laser_element
         else:
             return self._get_delay_element()
@@ -1598,7 +1604,7 @@ class PredefinedGeneratorBase:
         return mw_element
 
     def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None,
-                              add_gate_ch='d_ch4'):
+                              add_gate_ch=''):
         """
 
         @param length:
