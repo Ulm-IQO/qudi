@@ -22,24 +22,26 @@ class TomoRotations(IntEnum):
     ux90_on_2 = 2
     uy90_on_1 = 3
     uy90_on_2 = 4
-    ux90min_on_1 = 5
-    ux90min_on_2 = 6
-    uy90min_on_1 = 7
-    uy90min_on_2 = 8
+    ux45_on_2 = 5
+    ux45min_on_2 = 6
+    ux90min_on_1 = 7
+    ux90min_on_2 = 8
+    uy90min_on_1 = 9
+    uy90min_on_2 = 10
 
-    ux180_on_1 = 9
-    ux180_on_2 = 10
-    uy180_on_1 = 11
-    uy180_on_2 = 12
-    ux180min_on_1 = 13
-    ux180min_on_2 = 14
-    uy180min_on_1 = 15
-    uy180min_on_2 = 16
-    c1not2 = 17
-    c2not1 = 18
-    c1not2_ux180_on_2 = 19
-    c2not1_ux180_on_1 = 20
-    cphase = 21
+    ux180_on_1 = 11
+    ux180_on_2 = 12
+    uy180_on_1 = 13
+    uy180_on_2 = 14
+    ux180min_on_1 = 15
+    ux180min_on_2 = 16
+    uy180min_on_1 = 17
+    uy180min_on_2 = 18
+    c1not2 = 19
+    c2not1 = 20
+    c1not2_ux180_on_2 = 21
+    c2not1_ux180_on_1 = 22
+    c2phase1_dd = 23
 
 class TomoInit(IntEnum):
     none = 0
@@ -771,7 +773,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             mirror_1q_pulses=False, alternating=False,
-                            init_state_kwargs='', cnot_kwargs='', add_gate_ch='d_ch4'):
+                            init_state_kwargs='', cnot_kwargs='', add_gate_ch=''):
         """
         :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
                                         a single data point.
@@ -939,7 +941,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rot_elements_mirror = pi2_on_both_element
             elif rotation == TomoRotations.uy90_on_1:
                 rot_elements = pi2y_on_1_element
-                rot_elements_mirror = pi2_on_both_element
+                rot_elements_mirror = pi2y_on_both_element
             elif rotation == TomoRotations.uy90_on_2:
                 rot_elements = pi2y_on_2_element
                 rot_elements_mirror = pi2y_on_both_element
@@ -1881,7 +1883,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         Tau1 is kept constant and the second pi pulse is swept through.
         """
 
-        floating_last_pi = False  # will allow only negative tau2!
+        floating_last_pi = True  # will allow only negative tau2!
         adapt_pspacing = False   # take into account init pulse before cphase
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
