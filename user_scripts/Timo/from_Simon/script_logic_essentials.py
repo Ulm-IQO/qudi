@@ -35,8 +35,9 @@ setup['gated'] = pulsedmeasurementlogic.fastcounter().gated
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
-setup['laser_delay'] = 200e-9  #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
+setup['laser_delay'] = 500e-9  #200e-9  # #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
+setup['laser_t_analysis'] = 334e-9
 
 if setup['gated']:
     # need a "sync pulse" at the starting edge of every readout laser
@@ -539,12 +540,18 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
         # listfile .lst is configure before mes, but still .mpa will miss.
         # So change save_mode and save again after mes
         if qm_dict['listfile']:
-            data_dir = os.path.abspath(savelogic.get_daily_directory())
-            name = f"{qm_dict['savetag']}.mpa"
-            myfastcounter.change_save_mode(0)
-            myfastcounter.save_data(data_dir + r'\\' + name)
-            logger.info(f"Saving .mpa to: {myfastcounter.get_filename()}")
-            myfastcounter.change_save_mode(2)
+            skip_mpa = False
+            if 'listfile_no_mpa' in qm_dict.keys():
+                if qm_dict['listfile_no_mpa']:
+                    skip_mpa = True
+
+            if not skip_mpa:
+                data_dir = os.path.abspath(savelogic.get_daily_directory())
+                name = f"{qm_dict['savetag']}.mpa"
+                myfastcounter.change_save_mode(0)
+                myfastcounter.save_data(data_dir + r'\\' + name)
+                logger.info(f"Saving .mpa to: {myfastcounter.get_filename()}")
+                myfastcounter.change_save_mode(3)
 
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment'] != 'No fit':
@@ -715,17 +722,17 @@ def set_up_conventional_measurement(qm_dict):
     else:
         if not setup['gated']:
             if pulsedmasterlogic.generation_parameters['laser_length'] > 1.5e-6:
-                analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': 400e-9,
+                analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': setup['laser_t_analysis'],
                                 'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
             else:
-                analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': 400e-9,
+                analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': setup['laser_t_analysis'],
                                 'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
         else: # gated
-            analy_method = {'method': 'mean_norm', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
+            analy_method = {'method': 'mean_norm', 'signal_start': 740e-9, 'signal_end': 740e-9 + setup['laser_t_analysis'],
                                                 'norm_start':2.5e-6, 'norm_end': 2.5e-6 + 400e-9}
             # with 2x TTL pulse duplicator
-            analy_method = {'method': 'mean_norm', 'signal_start': 1070e-9, 'signal_end': 1070e-9 + 400e-9,
-                                                'norm_start':3e-6, 'norm_end': 3e-6 + 400e-9}
+            analy_method = {'method': 'mean_norm', 'signal_start': 1110e-9, 'signal_end': 1110e-9 + setup['laser_t_analysis'],
+                                                'norm_start':3e-6, 'norm_end': 3e-6 + 350e-9}
             #analy_method = {'method': 'mean', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
             #                                    'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
 
@@ -813,14 +820,17 @@ def control_measurement(qm_dict, analysis_method=None):
             break
 
         ##################### optimize position #######################
-        if qm_dict['optimize_time'] is not None:
-            func_toggle = None
-            if 'optimize_func_toggle_pause' in qm_dict:
-                func_toggle = qm_dict['optimize_func_toggle_pause']
-            if time.time() - optimize_real_time > qm_dict['optimize_time']:
-                additional_time = optimize_position(func_toggle_pause=func_toggle)
-                start_time = start_time + additional_time
-                optimize_real_time = time.time()
+        opt_time = qm_dict.get('optimize_time', np.inf)
+        opt_time = np.inf if opt_time is None else opt_time
+        func_toggle = qm_dict.get('optimize_func_toggle_pause')
+
+        if time.time() - optimize_real_time > opt_time or uglobals.scanner_optimize.is_set():
+            additional_time = optimize_position(func_toggle_pause=func_toggle)
+            start_time = start_time + additional_time
+
+            uglobals.scanner_optimize.clear()
+            optimize_real_time = time.time()
+
 
         ####################### optimize frequency ####################
         if qm_dict['freq_optimize_time'] is not None:
