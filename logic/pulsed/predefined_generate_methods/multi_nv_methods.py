@@ -1274,6 +1274,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
                                                 pi_x_length=0.5)
 
+        pihalf_ymin_on1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
+                                                pi_x_length=0.5)
+
+        pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
+                                                      pi_x_length=0.5)
+
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
@@ -1324,16 +1330,25 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         def had_element(onNV=[]):
             if onNV == [1]:
                 hadarmad_block = cp.deepcopy(pihalf_y_on1_element)
-                hadarmad_block.extend(pi_on_1_element)
+                #hadarmad_block.extend(pi_on_1_element)
             elif onNV == [2]:
                 hadarmad_block = cp.deepcopy(pihalf_y_on2_element)
-                hadarmad_block.extend(pi_on_2_element)
+                #hadarmad_block.extend(pi_on_2_element)
+            elif onNV == [-1]: # For reverse pulse
+                #hadarmad_block = cp.deepcopy(piMin_on_1_element)
+                hadarmad_block = cp.deepcopy(pihalf_ymin_on1_element)
+                #hadarmad_block.extend(pihalf_ymin_on1_element)
+            elif onNV == [-2]:
+                #hadarmad_block.extend(piMin_on_2_element)
+                hadarmad_block=cp.deepcopy(pihalf_ymin_on2_element)
+                #hadarmad_block.extend(pihalf_ymin_on2_element)
             else:
                 raise ValueError(f"Wrong type of Input: {onNV}")
 
             return hadarmad_block
 
         hadamard_on1_element = had_element(onNV=[1])
+        hadamard_minon1_element = had_element(onNV=[-1])
 
         created_blocks = list()
         created_ensembles = list()
@@ -1343,7 +1358,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         cphase_block.extend(init_element(init_state))
         cphase_block.extend(hadamard_on1_element)
         cphase_block.extend(c2not1_element)
-        cphase_block.extend(hadamard_on1_element)
+        cphase_block.extend(hadamard_minon1_element)
         if not no_laser:
             cphase_block.append(laser_element)
             cphase_block.append(delay_element)
@@ -1353,7 +1368,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             cphase_block.extend(init_element(init_state))
             cphase_block.extend(hadamard_on1_element)
             cphase_block.extend(c2not1_element)
-            cphase_block.extend(hadamard_on1_element)
+            cphase_block.extend(hadamard_minon1_element)
             cphase_block.extend(pi_on_1_element)
             cphase_block.extend(pi_on_2_element)
             if not no_laser:
@@ -1432,8 +1447,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 #   init_elements = pi_oc_on_1_element
                 #  self.log.debug(f"Init {init_state.name} with oc pulse")
                 init_elements.extend(verif_element)
-                #init_elements.extend(pi_on_1_element)
-                init_elements.extend(piMin_on_1_element)# negative
+                init_elements.extend(pi_on_1_element)
+                #init_elements.extend(piMin_on_1_element)# negative
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_2:
                 # Operators: X2*U'X2
@@ -1442,8 +1457,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 #   init_elements = pi_oc_on_2_element
                 #  self.log.debug(f"Init {init_state.name} with oc pulse")
                 init_elements.extend(verif_element)
-                #init_elements.extend(pi_on_2_element)
-                init_elements.extend(piMin_on_2_element)
+                init_elements.extend(pi_on_2_element)
+                #init_elements.extend(piMin_on_2_element)
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_both:
                 # Operators: X1*X2*U*X1*X2
@@ -1454,26 +1469,33 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 #   init_elements = pi_oc_on_both_element
                 #  self.log.debug(f"Init {init_state.name} with parallel oc pulse")
                 init_elements.extend(verif_element)
-                init_elements.extend(piMin_on_2_element)
-                init_elements.extend(piMin_on_1_element)
+                init_elements.extend(pi_on_2_element)
+                init_elements.extend(pi_on_1_element)
+                #init_elements.extend(piMin_on_2_element) # negative
+                #init_elements.extend(piMin_on_1_element)
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_hadamad_1:
                 # H1 U H1
-                init_elements = hadamard_on1_element
+                init_elements = cp.deepcopy(hadamard_on1_element)
                 init_elements.extend(verif_element)
+                #init_elements.extend(hadamard_on1_element)
                 init_elements.extend(hadamardMin_on1_element)
             elif init_state == TomoInit.cphase_hadamad_2:
                 # H2 U H2
-                init_elements = hadamard_on2_element
+                init_elements = cp.deepcopy(hadamard_on2_element)
                 init_elements.extend(verif_element)
+                #init_elements.extend(hadamard_on2_element)
                 init_elements.extend(hadamardMin_on2_element)
             elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
                 # X1 H2 U X1 H2
-                init_elements = hadamard_on2_element
-                init_elements.extend(pi_on_1_element)
+                init_elements = cp.deepcopy(pi_on_1_element)
+                init_elements.extend(hadamard_on2_element)
                 init_elements.extend(verif_element)
+                #init_elements.extend(piMin_on_1_element)
+                #init_elements.extend(hadamard_on2_element)
                 init_elements.extend(hadamardMin_on2_element)
-                init_elements.extend(piMin_on_1_element)
+                init_elements.extend(pi_on_1_element)
+                #init_elements.extend(piMin_on_1_element)
 
             else:
                 raise ValueError(f"Unknown init state for cPhase Verification: {init_state.name}")
@@ -1518,34 +1540,22 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
                                                pi_x_length=0.5)
 
-        pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_1,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[0, 0])
-        pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_2,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[0, 0])
+        pihalf_x_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                   pi_x_length=0.5)
+        pihalf_x_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                                   pi_x_length=0.5)
+
 
         pihalf_ymin_on1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
                                                pi_x_length=0.5)
         pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
                                                pi_x_length=0.5)
 
-        pihalf_xmin_on1_element = self._get_multiple_mw_mult_length_element(
-            lengths=rabi_periods / 4,
-            increments=[0, 0],
-            amps=ampls_on_1,
-            freqs=mw_freqs,
-            phases=[180, 180])
-        pihalf_xmin_on2_element = self._get_multiple_mw_mult_length_element(
-            lengths=rabi_periods / 4,
-            increments=[0, 0],
-            amps=ampls_on_2,
-            freqs=mw_freqs,
-            phases=[180, 180])
+        pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
+                                                      pi_x_length=0.5)
+        pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
+                                                      pi_x_length=0.5)
+
 
 
 
@@ -1562,15 +1572,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             hadarmad_block = []
             if onNV == [1]:
                 hadarmad_block.extend(pihalf_y_on1_element)
-                hadarmad_block.extend(pi_on_1_element)
+                #hadarmad_block.extend(pi_on_1_element)
             elif onNV == [2]:
                 hadarmad_block.extend(pihalf_y_on2_element)
-                hadarmad_block.extend(pi_on_2_element)
+                #hadarmad_block.extend(pi_on_2_element)
             elif onNV == [-1]: # For reverse pulse
-                hadarmad_block.extend(piMin_on_1_element)
+                #hadarmad_block.extend(piMin_on_1_element)
                 hadarmad_block.extend(pihalf_ymin_on1_element)
             elif onNV == [-2]:
-                hadarmad_block.extend(piMin_on_2_element)
+                #hadarmad_block.extend(piMin_on_2_element)
                 hadarmad_block.extend(pihalf_ymin_on2_element)
             else:
                 raise ValueError(f"Wrong type of Input: {onNV}")
@@ -3500,20 +3510,40 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             #if init_states == TomoInit.none:
             #   init_elements = []
             #elif init_states == TomoInit.ux180_on_1:
+            #   init_elements = cp.deepcopy(pi_on_1_element)
             #elif init_states == TomoInit.ux180_on_2:
+            #   init_elements = cp.deepcopy(pi_on_2_element)
             # elif init_states == TomoInit.ux180_on_both:
+            #   init_elements = cp.deepcopy(pi_on_1_element)
+            #   init_elements.extend(pi_on_2_element)
             # elif init_states == TomoInit.uy90_on_2:
+            #   init_elements = cp.deepcopy(pihalf_y_on2_element)
             # elif init_states == TomoInit.ux90_on_1:
+            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
             #elif init_states == TomoInit.uy90_on_2:
+            #   init_elements = cp.deepcopy(pihalf_y_on2_element)
             #elif init_states == TomoInit.ux180_on_1_ux90_on_2:
+            #   init_elements = cp.deepcopy(pihalf_y_on2_element)
+            #   init_elements.extend(pi_on_1_element)
             # elif init_states == TomoInit.uy90_on_1:
+            #   init_elements = cp.deepcopy(pihalf_y_on1_element)
             # elif init_states == TomoInit.uy90_on_1_ux180_on_2:
+            #   init_elements = cp.deepcopy(pihalf_y_on1_element)
+            #   init_elements.extend(pi_on_2_element)
             # elif init_states == TomoInit.uy90_on_1_uy90_on_2:
-            # elif init_states == TomoInit.uy90_on_1_ux90_on_2:
+    #           init_elements = cp.deepcopy(pihalf_y_on1_element)
+    #           init_elements.extend(pihalf_y_on2_element)
             # elif init_states == TomoInit.ux90_on_1:
+            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
             # elif init_states == TomoInit.ux90_on_1_ux180_on_2:
+            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
+            #   init_elements.extend(pi_on_2_element)
             # elif init_states == TomoInit.ux90_on_1_uy90_on_2:
+            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
+            #   init_elements.extend(pihalf_y_on2_element)
             # elif init_states == TomoInit.ux90_on_1_ux90_on_2:
+            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
+            #   init_elements.extend(pihalf_x_on2_element)
             #return init_elements
 
 
