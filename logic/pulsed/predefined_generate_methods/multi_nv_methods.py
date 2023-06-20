@@ -1158,13 +1158,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                              dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
                                              alternating=alternating, no_laser=no_laser,
-                                             nv_order=order_nvs, end_pix_on_2=1, env_type_1=env_type, env_type_2=env_type,
+                                             nv_order=order_nvs, end_pix_on_2=0, env_type_1=env_type, env_type_2=env_type,
                                              read_phase_deg=read_phase)
         else:
             return self.generate_deer_dd_par_tau(name=name, tau_start=tau_start, tau_step=tau_step, num_of_points=num_of_points,
                                  f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
                                  dd_type=dd_type, dd_order=dd_order, alternating=alternating, no_laser=no_laser,
-                                 nv_order=order_nvs, end_pix_on_2=1,
+                                 nv_order=order_nvs, end_pix_on_2=0,
                                  read_phase_deg=read_phase)
 
         """
@@ -1254,11 +1254,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         c2not1_element = c2not1_element[0]
 
 
-        #pi_on_1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-         #                                                          increments=[0, 0],
-          #                                                         amps=ampls_on_1,
-           #                                                        freqs=mw_freqs,
-            #                                                       phases=[0, 0])
 
         pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods) # x-Rotation
         pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods) # x-Rotation
@@ -1406,7 +1401,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     # Verification of the cphase. Number of points and tau_step is not given, because the points are different initial states
     def generate_cphase_verif(self, name='cphase_verif', verif_gate=TomoRotations.none,
                               init_state="[[<TomoInit.cphase_none: 18>,];]", read_inits="",
-                              tau_start=0.5e-6,
+                              tau_2=0.5e-6,
                               f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
                               rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                               dd_type=DDMethods.SE, dd_order=1,
@@ -1427,7 +1422,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             # verif_gate: gate to experimentally verify, if it's a cphase gate
             if verif_gate == TomoRotations.c2phase1_rot:
-                verif_element = cphase_element
+                verif_element = cp.deepcopy(cphase_element)
                 self.log.debug(f"Verificated cphase Gate  {verif_gate.name}")
             elif verif_gate == TomoRotations.none: # For debug of the work of the protocol
                 verif_element = []
@@ -1566,7 +1561,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         self.log.debug(f"Rb mes point  Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}"
-                       f"read inits {read_inits}")
+                       f"read inits {read_inits},"
+                       f"")
 
         def had_element(onNV=[]):
             hadarmad_block = []
@@ -1595,7 +1591,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create a cphase element from C2Not1 Element and Hadarmad Element. Only one point of the t1 is taken
 
-        cphase_element, _, _ = self.generate_c2phase1(name=name, tau_start=tau_start,
+        cphase_element, _, _ = self.generate_c2phase1(name=name, tau_start=tau_2,
                                                       tau_step=0,
                                                       num_of_points=1,
                                                       f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
@@ -1603,7 +1599,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                       dd_type=dd_type, dd_order=dd_order,
                                                       read_phase_deg=read_phase_deg,
                                                       nv_order=nv_order,
-                                                      alternating=alternating, no_laser=True,
+                                                      alternating=False, no_laser=True,
                                                       # arguments passed to deer method
                                                       kwargs_dict=kwargs_dict)
 
@@ -1631,24 +1627,24 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         idx_array = list(range(len(init_state_list)))  # Each number is connected to a initial state
 
         for ini in init_state_list:
+            #for sub_ini in ini:
+            init_state_block.extend(init_element(ini[0], verif_gate))
 
-            for sub_ini in ini:
-                init_state_block.extend(init_element(sub_ini, verif_gate))
-                # init_state_block.append(meas_element(init_state[i],meas_state)) Todo: Possible Inserting measurement states
+            # init_state_block.append(meas_element(init_state[i],meas_state)) Todo: Possible Inserting measurement states
+            if not no_laser:
+                init_state_block.append(laser_element)
+                init_state_block.append(delay_element)
+                init_state_block.append(waiting_element)
+
+            if alternating:
+                init_state_block.extend(init_element(ini[0], verif_gate))
+                # init_state_block.append(meas_element(init_state[i], meas_state)) Todo: Possible Inserting measurement states
+                init_state_block.extend(pi_on_1_element)
+                init_state_block.extend(pi_on_2_element)
                 if not no_laser:
                     init_state_block.append(laser_element)
                     init_state_block.append(delay_element)
                     init_state_block.append(waiting_element)
-
-                if alternating:
-                    init_state_block.extend(init_element(sub_ini, verif_gate))
-                    # init_state_block.append(meas_element(init_state[i], meas_state)) Todo: Possible Inserting measurement states
-                    init_state_block.extend(pi_on_1_element)
-                    init_state_block.extend(pi_on_2_element)
-                    if not no_laser:
-                        init_state_block.append(laser_element)
-                        init_state_block.append(delay_element)
-                        init_state_block.append(waiting_element)
 
 
 
@@ -1858,7 +1854,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         Tau1 is kept constant and the second pi pulse is swept through.
         """
 
-        floating_last_pi = True  # will allow only negative tau2!
+        floating_last_pi = False#True  # will allow only negative tau2!
         adapt_pspacing = False   # take into account init pulse before cphase
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
@@ -2029,6 +2025,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # todo: catch negative pspacing and throw datapoints out, instead of raising
             self.log.debug(f"t_pi1= {t_pi_on1}, t_pi2= {t_pi_on2}, start_tau2_ps= {start_tau2_pspacing},"
                            f"tau_start= {tau_start}, tau_step= {tau_step}, tau1= {tau1}")
+            self.log.debug(f"tau2_bef_min {tauhalf_bef_min}, tau2_aft_min= {tauhalf_aft_min}")
             raise ValueError(f"Tau1, tau setting yields negative pulse spacing "
                              f"{np.min([tauhalf_bef_min, tauhalf_aft_min])}."
                              f" Increase tau1 or decrease tau. Check debug for pulse times")
