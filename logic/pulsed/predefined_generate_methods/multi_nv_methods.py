@@ -43,6 +43,7 @@ class TomoRotations(IntEnum):
     c2not1_ux180_on_1 = 22
     c2phase1_dd = 23
     c2phase1_rot = 24 # For debug between Roberto's (c2phase1_rot) and Timo's methode (c2phase1_dd)
+    xy8_par = 25 # Use of parallel driven xy8-sequence
 
 class TomoInit(IntEnum):
     none = 0
@@ -1427,6 +1428,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif verif_gate == TomoRotations.none: # For debug of the work of the protocol
                 verif_element = []
                 self.log.debug(f"Verificated cphase Gate  {verif_gate.name}")
+            elif verif_gate == TomoRotations.xy8_par: # Use of xy8 sequence as verification element
+                verif_element = cp.deepcopy(xy8_element)
+                self.log.debug(f"Verificated cphase Gate  {verif_gate.name}")
             else:
                 ValueError(f"Unknown gate for Verification: {verif_gate.name}.")
 
@@ -1591,19 +1595,35 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create a cphase element from C2Not1 Element and Hadarmad Element. Only one point of the t1 is taken
 
-        cphase_element, _, _ = self.generate_c2phase1(name=name, tau_start=tau_2,
-                                                      tau_step=0,
-                                                      num_of_points=1,
-                                                      f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
-                                                      rabi_period_mw_2=rabi_period_mw_2,
-                                                      dd_type=dd_type, dd_order=dd_order,
-                                                      read_phase_deg=read_phase_deg,
-                                                      nv_order=nv_order,
-                                                      alternating=False, no_laser=True,
-                                                      # arguments passed to deer method
-                                                      kwargs_dict=kwargs_dict)
+        if verif_gate == TomoRotations.c2phase1_rot:
+            cphase_element, _, _ = self.generate_c2phase1(name=name, tau_start=tau_2,
+                                                          tau_step=0,
+                                                          num_of_points=1,
+                                                          f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                          rabi_period_mw_2=rabi_period_mw_2,
+                                                          dd_type=dd_type, dd_order=dd_order,
+                                                          read_phase_deg=read_phase_deg,
+                                                          nv_order=nv_order,
+                                                          alternating=False, no_laser=True,
+                                                          # arguments passed to deer method
+                                                          kwargs_dict=kwargs_dict)
 
-        cphase_element = cphase_element[0]
+            cphase_element = cphase_element[0]
+        elif verif_gate == TomoRotations.xy8_par:
+
+            xy8_element, _, _ = self.generate_deer_dd_par_tau(name=name, tau_start=tau_2,
+                                                              tau_step=0, num_of_points=1,
+                                                              f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                              rabi_period_mw_2=rabi_period_mw_2,
+                                                              dd_type=dd_type, dd_order=dd_order,
+                                                              alternating=False,
+                                                              init_pix_on_2=0, init_pix_on_1=0,
+                                                              end_pix_on_1=0, end_pix_on_2=0,
+                                                              nv_order="1,2",
+                                                              read_phase_deg=read_phase_deg,
+                                                              no_laser=True)
+
+            xy8_element = xy8_element[0]
 
         hadamard_on1_element = had_element([1])
         hadamard_on2_element = had_element([2])
