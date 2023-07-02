@@ -1441,38 +1441,50 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_1:
                 # Operators: X1*U*X1
-                init_elements = cp.deepcopy(pi_on_1_element)
-                # if init_env_type == Evm.optimal:
-                #   init_elements = pi_oc_on_1_element
-                #  self.log.debug(f"Init {init_state.name} with oc pulse")
-                init_elements.extend(verif_element)
-                init_elements.extend(pi_on_1_element)
-                #init_elements.extend(piMin_on_1_element)# negative
-                self.log.debug(f"Init state for cphase {init_state.name}")
+                if self.pulse_envelope == Evm.optimal:
+                    init_elements = cp.deepcopy(pi_oc_on_1_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pi_oc_on_1_element)
+                    self.log.debug(f"Init {init_state.name} with oc pulse")
+                else:
+                    init_elements = cp.deepcopy(pi_on_1_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pi_on_1_element)
+                    #init_elements.extend(piMin_on_1_element)# negative
+                    self.log.debug(f"Init state for cphase {init_state.name} without oc pulse")
             elif init_state == TomoInit.cphase_ux180_on_2:
                 # Operators: X2*U'X2
-                init_elements = cp.deepcopy(pi_on_2_element)
-                # if init_env_type == Evm.optimal:
-                #   init_elements = pi_oc_on_2_element
-                #  self.log.debug(f"Init {init_state.name} with oc pulse")
-                init_elements.extend(verif_element)
-                init_elements.extend(pi_on_2_element)
+                if self.pulse_envelope == Evm.optimal:
+                    init_elements = cp.deepcopy(pi_oc_on_2_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pi_oc_on_2_element))
+                    self.log.debug(f"Init {init_state.name} with oc pulse")
+                else:
+                    init_elements = cp.deepcopy(pi_on_2_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pi_on_2_element)
                 #init_elements.extend(piMin_on_2_element)
-                self.log.debug(f"Init state for cphase {init_state.name}")
+                    self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_ux180_on_both:
                 # Operators: X1*X2*U*X1*X2
-                # init_elements = pi_on_both_element
-                init_elements = cp.deepcopy(pi_on_1_element)
-                init_elements.extend(pi_on_2_element)
-                # if init_env_type == Evm.optimal:
-                #   init_elements = pi_oc_on_both_element
-                #  self.log.debug(f"Init {init_state.name} with parallel oc pulse")
-                init_elements.extend(verif_element)
-                init_elements.extend(pi_on_2_element)
-                init_elements.extend(pi_on_1_element)
-                #init_elements.extend(piMin_on_2_element) # negative
-                #init_elements.extend(piMin_on_1_element)
-                self.log.debug(f"Init state for cphase {init_state.name}")
+
+                if self.pulse_envelope == Evm.optimal:
+                    init_elements = cp.deepcopy(pi_oc_on_1_element)
+                    init_elements.extend((pi_oc_on_2_element)
+                    init_elements.extend(verif_element)
+                    init_elements = cp.deepcopy(pi_oc_on_1_element)
+                    init_elements.extend((pi_oc_on_2_element)
+                    self.log.debug(f"Init {init_state.name} with seriell oc pulse")
+                else:
+                    # init_elements = pi_on_both_element
+                    init_elements = cp.deepcopy(pi_on_1_element)
+                    init_elements.extend(pi_on_2_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pi_on_2_element)
+                    init_elements.extend(pi_on_1_element)
+                    #init_elements.extend(piMin_on_2_element) # negative
+                    #init_elements.extend(piMin_on_1_element)
+                    self.log.debug(f"Init state for cphase {init_state.name}")
             elif init_state == TomoInit.cphase_hadamad_1:
                 # H1 U H1
                 init_elements = cp.deepcopy(hadamard_on1_element)
@@ -1587,9 +1599,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             return hadarmad_block
 
-        # ToDo Later for optimized pulse shapes
-        # pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
-        # pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=Evm.optimal)
+        pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
+        pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=Evm.optimal)
         # pi_oc_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, on_nv=[1, 2],
         #                                           env_type=Evm.optimal)
 
