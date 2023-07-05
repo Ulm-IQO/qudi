@@ -849,33 +849,29 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         piminy_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods,
                                                   )
         pi4_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.25,
-                                               mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi4min_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.25,
-                                               mw_idle_amps=ampls_on_1 * ampl_idle_mult)
+                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
         pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
-        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                               )
+        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
         pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
-        pi2y_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                                )
+        pi2y_on_both_element = self.get_pi_element(90, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
         pi2min_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2min_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
-        pi2min_on_both_element = self.get_pi_element(180, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                                  )
+        pi2min_on_both_element = self.get_pi_element(180, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
         pi2miny_on_1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_2*ampl_idle_mult)
         pi2miny_on_2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5,
                                               mw_idle_amps=ampls_on_1*ampl_idle_mult)
-        pi2miny_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5,
-                                                   )
+        pi2miny_on_both_element = self.get_pi_element(270, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
 
         #pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
 
@@ -1877,7 +1873,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                              nv_order="1,2", read_phase_deg=90,
                              add_gate_ch='d_ch4', env_type_1=Evm.from_gen_settings,
                              env_type_2=Evm.from_gen_settings,
-                             alternating=True, no_laser=False):
+                             alternating=True, no_laser=False, incl_ref=False):
         """
         Decoupling sequence on both NVs.
         Tau1 is kept constant and the second pi pulse is swept through.
@@ -2003,6 +1999,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
+        if incl_ref:
+            dtau = abs(tau_array[-1] - tau_array[0])
+            dtau = -1 if dtau == 0 else dtau
+            tau_array = np.concatenate([np.ones(1)*(tau_array[0] - 2*dtau), tau_array], axis=None)
 
         pix_end_on2_element = self.get_pi_element(dd_type.phases[0], mw_freqs, ampls_on_2,
                                                   rabi_periods,
@@ -2063,6 +2063,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
+
+        if incl_ref:
+            if not no_laser:
+                dd_block.append(laser_element)
+                dd_block.append(delay_element)
+                dd_block.append(waiting_element)
+
         if init_pix_on_2 != 0:
             dd_block.extend(pix_init_on2_element)
         if init_pix_on_1 != 0:
@@ -2109,6 +2116,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         if alternating:
+            if incl_ref:
+                dd_block.extend(pi_on1_element)
+                dd_block.extend(pi_on2_element)
+
+                if not no_laser:
+                    dd_block.append(laser_element)
+                    dd_block.append(delay_element)
+                    dd_block.append(waiting_element)
+
             if init_pix_on_2 != 0:
                 dd_block.extend(pix_init_on2_element)
             if init_pix_on_1 != 0:
@@ -2164,6 +2180,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        if incl_ref:
+            number_of_lasers = number_of_lasers + 2 if alternating else number_of_lasers + 1
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
@@ -3252,6 +3270,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         num_of_points = len(tau_array)
 
+
         # don't know why simple eqaulity between enums fails
         if int(alternating_mode) == int(DQTAltModes.DQT_both):
             mw_element = self._get_multiple_mw_element(length=tau_start,
@@ -3315,6 +3334,75 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
+    def generate_rabi_test(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
+                           f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0.):
+        """
+        Double quantum transition, driven in parallel (instead of sequential)
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+
+        # create param arrays
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
+
+
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        num_of_points = len(tau_array)
+
+
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                                 increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                     increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        rabi_block = PulseBlock(name=name)
+        for tau in tau_array:
+            if tau == 0:
+                tau = 1e-9
+                self.log.warning(f"Changing mw element of unsupported tau=0 to {tau}")
+            rabi_periods = np.ones(amplitudes.shape)*tau
+            # todo: debug only
+            mw_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=2,
+                                             mw_idle_amps=ampls_on_2 * ampl_idle_mult)
+            #mw_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=2,
+            #                                      mw_idle_amps=ampls_on_2*ampl_idle_mult)
+            rabi_block.extend(mw_element)
+            rabi_block.append(laser_element)
+            rabi_block.append(delay_element)
+            rabi_block.append(waiting_element)
+
+
+        created_blocks.append(rabi_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((rabi_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2*num_of_points if False else num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
 
     def generate_dd_dqt_tau_scan(self, name='dd_tau_scan', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                              dd_type=DDMethods.XY8, dd_order=1, dqt_amp2=0e-3, dqt_t_rabi2=100e-9, dqt_f2=1e9,
@@ -3647,6 +3735,26 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+    def generate_mw_gate_dd(self, tau_start=100e-9, tau_step=1e-6, num_of_points=10,
+                                phase=0, ampl_gate=0.1,
+                            f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                            dd_type=DDMethods.SE, dd_order=1,
+                            ):
+
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+
+        for mw_length in tau_array:
+
+            tau1 = 2*mw_length   # todo: need to include pi times?
+
+            self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
+                                      f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
+                                      dd_type=dd_type,
+                                      init_pix_on_1=0, init_pix_on_2=0,
+                                      start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0, read_pix_on_2=0,
+                                      alternating=False, no_laser=True)
+
+
     def get_mult_mw_element(self, phase, length, mw_freqs, mw_amps, increment=0):
         """
         Mw element on multiple lines (freqs) with same length on every of these.
@@ -3792,7 +3900,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         fs = mw_freqs[(mw_amps+mw_idle_amps)!=0]
         lenghts[amps == 0] = np.max(lenghts[amps!=0])
 
-        assert len(fs) == len(amps) == len(phases) == len(lenghts)
+        assert len(fs) == len(amps) == len(phases) == len(lenghts), f"Unqueal length of {fs}, {amps}, {phases}, {lenghts}"
         # idle_amps>0 only on channels with amps==0
         assert len(amps[amps!=0]) + len(mw_idle_amps[mw_idle_amps!=0]) == \
                len((mw_amps+mw_idle_amps)[(mw_amps+mw_idle_amps)!=0]) == n_lines
