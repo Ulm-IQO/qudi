@@ -2074,10 +2074,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.append(delay_element)
                 dd_block.append(waiting_element)
 
-        if init_pix_on_2 != 0:
-            dd_block.extend(pix_init_on2_element)
         if init_pix_on_1 != 0:
             dd_block.extend(pix_init_on1_element)
+        if init_pix_on_2 != 0:
+            dd_block.extend(pix_init_on2_element)
         if start_pix_on_1 != 0:
             dd_block.extend(pihalf_start_on1_element)
         for n in range(dd_order):
@@ -2119,7 +2119,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dd_block.append(delay_element)
             dd_block.append(waiting_element)
 
-
         if alternating:
             if incl_ref:
                 dd_block.extend(pi_on1_element)
@@ -2130,10 +2129,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     dd_block.append(delay_element)
                     dd_block.append(waiting_element)
 
-            if init_pix_on_2 != 0:
-                dd_block.extend(pix_init_on2_element)
             if init_pix_on_1 != 0:
                 dd_block.extend(pix_init_on1_element)
+            if init_pix_on_2 != 0:
+                dd_block.extend(pix_init_on2_element)
             if start_pix_on_1 != 0:
                 dd_block.extend(pihalf_start_on1_element)
             for n in range(dd_order):
@@ -3744,7 +3743,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_mw_gate_dd(self, name='gate_dd', tau_start=100e-9, tau_step=1e-6, num_of_points=10,
                                 phase=0, ampl_gate=0.1,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                            dd_type=DDMethods.SE, dd_order=1,
+                            dd_type=DDMethods.SE, dd_order=1, alternating=False,
                             ):
 
         exact_mw_tau = True
@@ -3764,10 +3763,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         tau_array = tau_start + np.arange(num_of_points) * tau_step
 
         pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
-                                           pi_x_length=1, no_amps_2_idle=True,
+                                           pi_x_length=1, no_amps_2_idle=False,
                                            env_type=Evm.from_gen_settings)
         pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                             pi_x_length=1, no_amps_2_idle=True,
+                                             pi_x_length=1, no_amps_2_idle=False,
                                              env_type=Evm.from_gen_settings)
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
@@ -3782,17 +3781,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         for mw_length in tau_array:
 
             tau1 = 2*mw_length/2
-            # length of the physical spacing in dd without balancing below
-            tau_pspacing = self.tau_2_pulse_spacing(tau1, custom_func=[lambda t: t - t_pi_on1 - t_pi_on2,
-                                                                        lambda t: t + t_pi_on1 + t_pi_on2])
-            # make tau1 longer st. the resulting tau2_ps (in deer_dd_tau) yields pi pulse spacing on NV 1 = 2x mw_length
+             # make tau1 longer st. the resulting tau2_ps (in deer_dd_tau) yields pi pulse spacing on NV 1 = 2x mw_length
             t_balance = 0
             if exact_mw_tau:
-                t_balance = (tau1 - tau_pspacing) - t_pi_on2
-                if t_balance < 0:
-                    raise ValueError(f"Negative balance time. Tau1= {tau1} too short!")
+                t_balance = t_pi_on1 + t_pi_on2
                 tau1 += t_balance
-            self.log.debug(f"For MW/2 {mw_length/2}, tau2_ps_unbal {tau_pspacing/2} => tau1 {tau1}, t_balance {t_balance}")
+            self.log.debug(f"For MW/2 {mw_length/2}, => tau1 {tau1}, t_balance {t_balance}")
 
             mw_half_el = self._get_multiple_mw_element(mw_length/2, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
             self.log.debug(f"rabi: {rabi_periods}, amppl2 {ampls_on_2}, freqs {mw_freqs}")
@@ -3818,6 +3812,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             gate_block.append(delay_element)
             gate_block.append(waiting_element)
 
+            if alternating:
+                gate_block.append(mw_half_el)
+                gate_block.extend(dd_element)
+                gate_block.append(mw_half_el)
+                gate_block.extend(pi_on2_element)
+                gate_block.extend(pi_on1_element)
+
+                gate_block.append(laser_element)
+                gate_block.append(delay_element)
+                gate_block.append(waiting_element)
+
 
         created_blocks.append(gate_block)
 
@@ -3830,12 +3835,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points
-        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
         block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['labels'] = ('tau', 'Signal')
-        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['number_of_lasers'] = 2*number_of_lasers if alternating else number_of_lasers
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 
