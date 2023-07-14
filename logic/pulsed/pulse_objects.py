@@ -77,6 +77,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
 
     bare = 'bare'
     bb1 = 'bb1'
+    bb1_cp2 = 'bb1_cp2'
     from_gen_settings = '_from_gen_settings'
 
     def __init__(self, *args):
@@ -86,6 +87,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     def supported_rotations(self):
         rots = {'bare': ['any'],
                 'bb1': ['any'],
+                'bb1_cp2': ['any'],
                 '_from_gen_settings': []}
         return rots[self.value]
 
@@ -93,6 +95,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     def supported_phase(self):
         phases = {'bare': ['any'],
                 'bb1': ['any'],
+                'bb1_cp2': ['any'],
                  '_from_gen_settings': []}
         return phases[self.value]
 
@@ -100,6 +103,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     def default_parameters(self):
         defaults = {'bare': {},
                     'bb1': {},
+                    'bb1_cp2': {},
                     '_from_gen_settings': {}}
 
         return defaults[self.value]
