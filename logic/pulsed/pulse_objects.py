@@ -73,6 +73,48 @@ class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
         return f"{self.__class__.__name__}({self.value}))"
 
 
+class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
+
+    bare = 'bare'
+    bb1 = 'bb1'
+    from_gen_settings = '_from_gen_settings'
+
+    def __init__(self, *args):
+        self._parameters = self.default_parameters
+
+    @property
+    def supported_rotations(self):
+        rots = {'bare': ['any'],
+                'bb1': ['any'],
+                '_from_gen_settings': []}
+        return rots[self.value]
+
+    @property
+    def supported_phase(self):
+        phases = {'bare': ['any'],
+                'bb1': ['any'],
+                 '_from_gen_settings': []}
+        return phases[self.value]
+
+    @property
+    def default_parameters(self):
+        defaults = {'bare': {},
+                    'bb1': {},
+                    '_from_gen_settings': {}}
+
+        return defaults[self.value]
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @parameters.setter
+    def parameters(self, param_dict):
+        self._parameters = param_dict
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.value}))"
+
 
 class PulseBlockElement(object):
     """
@@ -1240,9 +1282,10 @@ class PredefinedGeneratorBase:
 
         @return: PulseBlockElement, two elements for laser and gate trigger (delay element)
         """
+        on_channels = [self.laser_channel, self.gate_channel] if self.gate_channel else [self.laser_channel]
         laser_element = self._get_trigger_element(length=length,
                                                   increment=increment,
-                                                  channels=self.laser_channel)
+                                                  channels=on_channels)
         laser_element.laser_on = True
         # additional slow counter switch for pentacene setup
         # be sure this is not a fast counter switch!
@@ -1250,8 +1293,10 @@ class PredefinedGeneratorBase:
             for ch in csv_2_list(add_gate_ch, str):
                 if ch.startswith('d'):
                     laser_element.digital_high[ch] = True
-                else:
+                elif ch.startswith('a'):
                     raise NotImplementedError
+                else:
+                    pass
         return laser_element
 
     def _get_laser_gate_elements_pwm(self, length, increment, laser_ch=None, add_gate_ch='', no_fc_gate=False,
@@ -1344,8 +1389,10 @@ class PredefinedGeneratorBase:
                 for ch in csv_2_list(add_gate_ch, str):
                     if ch.startswith('d'):
                         laser_element.digital_high[ch] = True
-                    else:
+                    elif ch.startswith('a'):
                         raise NotImplementedError
+                    else:
+                        pass
             return laser_element
         else:
             return self._get_delay_element()
@@ -1621,7 +1668,8 @@ class PredefinedGeneratorBase:
                                                 phase=phase)
         if self.laser_channel.startswith('d'):
             mw_laser_element.digital_high[self.laser_channel] = True
-            mw_laser_element.digital_high[add_gate_ch] = True
+            if add_gate_ch != "":
+                mw_laser_element.digital_high[add_gate_ch] = True
         elif self.laser_channel.startswith('a'):
             mw_laser_element.pulse_function[self.laser_channel] = SamplingFunctions.DC(
                 voltage=self.analog_trigger_voltage)
