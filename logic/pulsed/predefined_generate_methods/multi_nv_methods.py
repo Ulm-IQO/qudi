@@ -3867,7 +3867,59 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-    
+
+    def _get_bb1_cp1_element(self, phase, mw_freqs, mw_amps, rabi_periods, pi_x_length=1.,
+                             cp_on2=True, no_amps_2_idle_on2=False, env_type=Evm.from_gen_settings,
+                             nv_order="1,2"):
+
+        """
+        Arb. rotation on 1 via BB1, decoupling on 2 via CP.
+        """
+
+        ampls_on_1 = self._create_param_array(None, mw_amps, idx_nv=0, n_nvs=2,
+                                              order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(None, mw_amps, idx_nv=1, n_nvs=2,
+                                              order_nvs=nv_order)
+
+        def pi_element_function(xphase, pi_x_length=1., on_nv=1, no_amps_2_idle=True):
+
+            if on_nv == 1:
+                ampl_pi = ampls_on_1
+            elif on_nv == 2:
+                ampl_pi = ampls_on_2
+            else:
+                raise ValueError
+
+            return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                                   pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                   env_type=env_type)
+
+        pix = pi_x_length
+
+        phi = phase
+        beta = np.arccos(-pix % 2 * np.pi / (4 * np.pi)) / (2 * np.pi) * 360
+        # BB1 composite pulse
+        # split first rotation and insert to beginning and end [Rong, Du 2015]
+        pix_c0_on1_element = pi_element_function(phi, pi_x_length=pix / 2, on_nv=1)
+        pi_c1_on1_element = pi_element_function(phi + beta, on_nv=1)
+        twopi_c2_on1_element = pi_element_function(phi + 3 * beta, on_nv=1, pi_x_length=2)
+        pi_c3_on1_element = pi_element_function(phi + beta, on_nv=1)
+        # decoupling on NV2. If no_amps_2_idle=False and ampl2=0, will yield a standard BB1 pulse
+        pi_on2_element = pi_element_function(phi, on_nv=2, no_amps_2_idle=no_amps_2_idle_on2)
+
+        comp_block = []
+        comp_block.extend(pix_c0_on1_element)
+        comp_block.extend(pi_c1_on1_element)
+        if cp_on2:
+            comp_block.extend(pi_on2_element)
+        comp_block.extend(twopi_c2_on1_element)
+        if cp_on2:
+            comp_block.extend(pi_on2_element)
+        comp_block.extend(pi_c3_on1_element)
+        comp_block.extend(pix_c0_on1_element)
+
+        return comp_block
+
     def generate_mw_gate_bb1_cpon2(self, name='gate_bb1', pix_start=0., pix_step=1/25, num_of_points=50,
                              f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                              phase=0., no_amps_2_idle_on2=False,
@@ -3928,41 +3980,20 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         comp_block = PulseBlock(name=name)
 
         for pix in pix_array:
-            
-            # angles (deg) for effective BB1 rotation as in [Souza, Suter, 2015]
-            phi = phase
-            beta = np.arccos(-pix % 2 *np.pi/(4*np.pi)) /(2*np.pi)*360
-            # BB1 composite pulse
-            # split first rotation and insert to beginning and end [Rong, Du 2015]
-            pix_c0_on1_element = pi_element_function(phi, pi_x_length=pix/2, on_nv=1)
-            pi_c1_on1_element = pi_element_function(phi+beta, on_nv=1)
-            twopi_c2_on1_element = pi_element_function(phi+3*beta, on_nv=1, pi_x_length=2)
-            pi_c3_on1_element = pi_element_function(phi+beta, on_nv=1)
-            # decoupling on NV2. If no_amps_2_idle=False and ampl2=0, will yield a standard BB1 pulse
-            pi_on2_element = pi_element_function(phi, on_nv=2, no_amps_2_idle=no_amps_2_idle_on2)
-            
-            self.log.debug(f"For pix= {pix}, phi= {phi}, beta= {beta} deg. Current Block: {comp_block}")
-            comp_block.extend(pix_c0_on1_element)
-            comp_block.extend(pi_c1_on1_element)
-            comp_block.extend(pi_on2_element)
-            comp_block.extend(twopi_c2_on1_element)
-            comp_block.extend(pi_on2_element)
-            comp_block.extend(pi_c3_on1_element)
-            comp_block.extend(pix_c0_on1_element)
-            
+
+            comp_block.extend(self._get_bb1_cp1_element(phase, mw_freqs, amplitudes, rabi_periods,
+                                                        pi_x_length=pix, cp_on2=True, nv_order=nv_order,
+                                                        no_amps_2_idle_on2=no_amps_2_idle_on2))
+
             if not no_laser:
                 comp_block.append(laser_element)
                 comp_block.append(delay_element)
                 comp_block.append(waiting_element)
     
             if alternating:
-                comp_block.extend(pix_c0_on1_element)
-                comp_block.extend(pi_c1_on1_element)
-                comp_block.extend(pi_on2_element)
-                comp_block.extend(twopi_c2_on1_element)
-                comp_block.extend(pi_on2_element)
-                comp_block.extend(pi_c3_on1_element)
-                comp_block.extend(pix_c0_on1_element)
+                comp_block.extend(self._get_bb1_cp1_element(phase, mw_freqs, amplitudes, rabi_periods,
+                                                            pi_x_length=pix, cp_on2=True, nv_order=nv_order,
+                                                            no_amps_2_idle_on2=no_amps_2_idle_on2))
                 
                 comp_block.extend(pi_on1_element)
 
@@ -4182,6 +4213,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise NotImplementedError
 
+        if False: #comp_type == Comp.bb1_cp2:
+            if n_lines != 1:
+                raise NotImplementedError("Currently, only support composite pulses on single frequency")
+            if env_type != self._get_envelope_settings(Evm.from_gen_settings):
+                raise NotImplementedError("Currently, only support pulse envelope 'from_gen_settings'")
+            if len(fs) == 2:
+                bb1_element, _, _ = self.generate_mw_gate_bb1_cpon2(name='pix', pix_start=pi_x_length, num_of_points=1,
+                                                 f_mw_2="1e9", ampl_mw_2="0",
+                                                 rabi_period_mw_2="1e-9", phase=phases[0],
+                                                 alternating=False, no_laser=True)
+                return bb1_element[0]
+            else:
+                raise NotImplementedError
 
         if env_type == Evm.rectangle or env_type == Evm.parabola or env_type == Evm.sin_n:
             if on_nv is not None:
