@@ -28,7 +28,7 @@ import importlib
 import numpy as np
 from collections import OrderedDict
 
-from logic.pulsed.sampling_functions import SamplingFunctions
+from logic.pulsed.sampling_functions import SamplingFunctions, DDMethods
 from core.util.helpers import natural_sort, csv_2_list
 from enum import Enum, EnumMeta
 
@@ -78,6 +78,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     bare = 'bare'
     bb1 = 'bb1'
     bb1_cp2 = 'bb1_cp2'
+    mw_dd = 'mw_dd'
     from_gen_settings = '_from_gen_settings'
 
     def __init__(self, *args):
@@ -88,6 +89,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
         rots = {'bare': ['any'],
                 'bb1': ['any'],
                 'bb1_cp2': ['any'],
+                'mw_dd': ['any'],
                 '_from_gen_settings': []}
         return rots[self.value]
 
@@ -96,6 +98,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
         phases = {'bare': ['any'],
                 'bb1': ['any'],
                 'bb1_cp2': ['any'],
+                'mw_dd': ['any'],
                  '_from_gen_settings': []}
         return phases[self.value]
 
@@ -104,6 +107,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
         defaults = {'bare': {},
                     'bb1': {},
                     'bb1_cp2': {},
+                    'mw_dd': {'dd_type': DDMethods.SE, 'dd_order': 3},
                     '_from_gen_settings': {}}
 
         return defaults[self.value]
