@@ -95,12 +95,78 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         return mw_oc_element_RedCrab
 
+    def _get_mw_element_oc_multi(self, length, amplitude_scaling, freqs, phases, fnames_i,
+                                   fnames_q, folder_path):
+        """
+        Creates an OC MW pulse PulseBlockElement with multiple carriers. Provided oc files must have same length.
+        """
+
+        n_carriers = min(len(freqs), len(phases))
+        self.log.debug(f'length of phase {len(phases)}. Length of freqs:{len(freqs)}.Length of file_ampli:{len(fnames_i)}.Length of file_phase:{len(fnames_q)}.Length of amplitude_scaling{len(amplitude_scaling)}.')
+        if not (len(phases) == len(freqs) == len(fnames_i) == len(fnames_q) == len(amplitude_scaling)):
+            raise ValueError("Input arrays must be of same length.")
+
+        if not length:
+            lengthes = []
+            self.log.debug(f"filenames_i:{fnames_i}")
+            for file in fnames_i:
+                self.log.debug(f"filename:{file}")
+                lengthes.append(self._get_oc_pulse_length(file, folder_path))
+            if len(np.unique(lengthes)) != 1:
+                raise ValueError(f"Provided oc pulses not of same length, but {lengthes}")
+            length = lengthes[0]
+
+        if self.microwave_channel.startswith('d'):
+            self.log.error('Please choose a analog output! The optimized pulse cannot be generated for a digital '
+                           'channel!'
+                           '\n Returning a idle element instead!')
+
+            mw_oc_element_RedCrab = self._get_idle_element(
+                length=length,
+                increment=0)
+
+        else:
+            mw_oc_element_RedCrab = self._get_idle_element(
+                length=length,
+                increment=0)
+
+            if n_carriers == 1:
+                mw_oc_element_RedCrab.pulse_function[self.microwave_channel] = SamplingFunctions.OC_RedCrab(
+                    amplitude_scaling=amplitude_scaling[0],
+                    frequency=freqs[0],
+                    phase=phases[0],
+                    filename_amplitude=fnames_i[0],
+                    filename_phase=fnames_q[0],
+                    folder_path=folder_path
+                )
+            elif n_carriers == 2:
+                mw_oc_element_RedCrab.pulse_function[self.microwave_channel] = SamplingFunctions.OC_DoubleCarrierSum(
+                    amplitude_scaling_1=amplitude_scaling[0],
+                    amplitude_scaling_2=amplitude_scaling[1],
+                    frequency_1=freqs[0],
+                    phase_1=phases[0],
+                    frequency_2=freqs[1],
+                    phase_2=phases[1],
+                    filename_i_1=fnames_i[0],
+                    filename_q_1=fnames_q[0],
+                    filename_i_2=fnames_i[1],
+                    filename_q_2=fnames_q[1],
+                    folder_path=folder_path
+                )
+            else:
+                raise NotImplementedError
+
+        return mw_oc_element_RedCrab
+
     ####################################################################################################################
     # State to State Transfer
     ####################################################################################################################
 
     # todo: think about idle extension
     def _get_oc_pulse_length(self, filename_amplitude, folder_path, idle_extension=-1e-9):
+
+        #total_path = folder_path + "/" + filename_amplitude
+        #self.log.debug(f"total folder name:{total_path}")
         time, ampl = np.loadtxt(folder_path + "/" + filename_amplitude, usecols=(0, 1), unpack=True)
         return time[-1] + idle_extension
 
@@ -124,6 +190,58 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                         filename_amplitude=filename_amplitude,
                                                         filename_phase=filename_phase,
                                                         folder_path=folder_path)
+
+        # Create block and append to created_blocks list
+        qst_block = PulseBlock(name=name)
+        qst_block.append(oc_mw_element)
+        created_blocks.append(qst_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((qst_block.name, 0))
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = np.arange(1)
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 0
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # Append ensemble to created_ensembles list
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_oc_mw_multi_only(self, name='optimal_mw_pulse',  mw_freqs='1e9', phases='0',
+                                  scale_ampl='1.0',
+                        filename_i='amplitude.txt', filename_q='phase.txt',
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets'):
+
+        """
+        wrapper to make _get_mw_element_oc_RedCrab available to sequence methods in other generate method files
+        """
+
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        mw_freqs = csv_2_list(mw_freqs)
+        phases = csv_2_list(phases)
+        scale_ampl = csv_2_list(scale_ampl)
+        filename_i = csv_2_list(filename_i, str_2_val=str)
+        filename_q = csv_2_list(filename_q, str_2_val=str)
+
+
+        self.log.debug(f"filename_i after converting from csv to list: {filename_i}")
+        # create the optimized mw element
+        oc_mw_element = self._get_mw_element_oc_multi(length=None,
+                                                      amplitude_scaling=scale_ampl,
+                                                      freqs=mw_freqs, phases=phases,
+                                                      fnames_i=filename_i,
+                                                      fnames_q=filename_q,
+                                                      folder_path=folder_path)
 
         # Create block and append to created_blocks list
         qst_block = PulseBlock(name=name)
@@ -285,7 +403,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets',
                         t_gap=0e-9, phases='0', init_end_pix=0., init_end_phases_deg='0',
                         dd_type=DDMethods.SE,
-                        vs_rect_pulse=True, symmetric_tgap=False, alternating=True):
+                        vs_rect_pulse=True, symmetric_tgap=False,
+                        alternating=True, alternating_end_phase=False):
         """
         @param name:
         @param n_start:
@@ -308,6 +427,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
+
+        assert not (alternating and alternating_end_phase)
 
         phases = csv_2_list(phases)
         init_end_phases_deg = csv_2_list(init_end_phases_deg)
@@ -375,12 +496,36 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             if init_end_pix != 0:
                 # rect init/end pulses are not ideal. Make them X,-X for some pulse error correction
                 qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180))
+            elif init_end_pix == 0:
+                qst_block.append(pi_element(pix=1, phase=0))
             qst_block.append(laser_element)
             qst_block.append(waiting_element)
 
             if alternating:
                 qst_block.append(laser_element)
                 qst_block.append(waiting_element)
+            if alternating_end_phase:
+                if init_end_pix != 0:
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+                if symmetric_tgap:
+                    for idx_per_laser in range(n_pulses):
+                        phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                        qst_block.extend([gap2_element, pi_element(phase=phi_i, is_oc=True), gap2_element])
+                else:
+                    for idx_per_laser in range(n_pulses):
+                        phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                        qst_block.extend([pi_element(phase=phi_i, is_oc=True), gap_element])
+                if init_end_pix != 0:
+                    # no X, -X pulse eerror correction possible for alternating_end_phase
+                    qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180 + 180))
+                elif init_end_pix == 0:
+                    qst_block.append(pi_element(pix=1, phase=0))
+                if init_end_pix != 0 and init_end_pix != 0.5:
+                    self.log.warning(f"Alternating end_phase only well defined for init_end_pix=0/0.5, not {init_end_pix}.")
+
+            qst_block.append(laser_element)
+            qst_block.append(waiting_element)
+
 
         # compare against rect pulses (negative x axis)
         for idx, n_pulses in enumerate(n_array):
@@ -407,6 +552,26 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                 if alternating:
                     qst_block.append(laser_element)
                     qst_block.append(waiting_element)
+                if alternating_end_phase:
+                    if init_end_pix != 0:
+                        qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end))
+                        for idx_per_laser in range(n_pulses):
+                            phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                            qst_block.extend(
+                                [gap2_element, pi_element(phase=phi_i, is_oc=False), gap2_element])
+                    else:
+                        for idx_per_laser in range(n_pulses):
+                            phi_i = phase + dd_type.phases[idx_per_laser % len(dd_type.phases)]
+                            qst_block.extend([pi_element(phase=phi_i, is_oc=False), gap_element])
+                    if init_end_pix != 0:
+                        # no X, -X pulse eerror correction possible for alternating_end_phase
+                        qst_block.append(pi_element(pix=init_end_pix, phase=phase_init_end + 180 + 180))
+                    elif init_end_pix == 0:
+                        qst_block.append(pi_element(pix=1, phase=0))
+                    else:
+                        pass
+                    qst_block.append(laser_element)
+                    qst_block.append(waiting_element)
 
 
         created_blocks.append(qst_block)
@@ -420,12 +585,12 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # add metadata to invoke settings later on
         n_lasers = len(n_array)
-        n_lasers = 2*n_lasers if alternating else n_lasers
+        n_lasers = 2*n_lasers if (alternating or alternating_end_phase) else n_lasers
         n_lasers = 2*n_lasers if vs_rect_pulse else n_lasers
         # rect pulses have negative repetition number n
         x_axis = list(n_array)
         x_axis = list(n_array) + list(-n_array) if vs_rect_pulse else x_axis
-        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['alternating'] = (alternating or alternating_end_phase)
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = x_axis
         block_ensemble.measurement_information['units'] = ('', '')
