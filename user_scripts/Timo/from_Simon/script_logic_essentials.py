@@ -141,6 +141,7 @@ def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, 
     # add information necessary for measurement type
     logger.debug("Measrument info of type {}".format(str(meas_info)))
     qm_dict = meas_info(experiment, qm_dict)
+    #print(qm_dict)
 
     # perform sanity checks
     if experiment not in pulsedmasterlogic.generate_methods:
@@ -363,11 +364,15 @@ def customise_setup(dictionary):
 
 def generate_sample_upload(experiment, qm_dict):
     qm_dict = customise_setup(qm_dict)
+    logger.debug(f'qm_dict_before upload in AWG: {qm_dict}')
+    
     if not qm_dict['sequence_mode']:
         # make sure a previous ensemble is deleted
         pulsedmasterlogic.delete_block_ensemble(qm_dict['name'])
         try:
-            pulsedmasterlogic.generate_predefined_sequence(experiment, qm_dict.copy())
+            pulsedmasterlogic.generate_predefined_sequence(experiment, cp.deepcopy(qm_dict))
+            logger.debug(f'qm_dict after methode generate_predefined_sequence: {qm_dict}')
+            #logger.debug(f'qm_dict after methode generate_predefined_sequence and after copy: {qm_dict.copy()}')
         except Exception as e:
             pulsedmasterlogic.log.error('Generation failed')
             raise e
@@ -377,6 +382,7 @@ def generate_sample_upload(experiment, qm_dict):
         sleep_until_abort("pulsedmasterlogic.status_dict['predefined_generation_busy']")
 
         not_found = False
+        logger.debug(f'qm_dict_before sampling: {qm_dict}')
         if qm_dict['name'] in pulsedmasterlogic.saved_pulse_block_ensembles:
             pulsedmasterlogic.sample_ensemble(qm_dict['name'], True)
         else:
@@ -517,7 +523,6 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     qm_dict['analysis_interval'] = analysis_interval
     """
     user_terminated = False
-
     ################ Start and perform the measurement #################
     if handle_abort() is 0:
         logger.debug(f"Starting mes of type {meas_type}")
@@ -532,7 +537,7 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', save_subdi
     # save
     global qm_dict_final
     qm_dict_final = qm_dict
-
+   
     if save_tag is not None:
         logger.debug("Saving logic essential params to {}/{}".format(save_subdir, save_tag))
         save_parameters(save_tag=save_tag, save_dict=qm_dict, subdir=save_subdir)
