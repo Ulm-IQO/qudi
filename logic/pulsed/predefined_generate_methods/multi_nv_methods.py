@@ -1407,8 +1407,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                               rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                               dd_type=DDMethods.SE, dd_order=1,
                               read_phase_deg=0, nv_order="1,2",
-                              alternating=False, no_laser=False,
-                              # arguments passed to deer method
+                              alternating=False, no_laser=False,composite = False,
                               kwargs_dict=''):
         # Variable verif_gate: Any Unitary Gate U to verify if it's diagonal
         # Variable init_state: Initial state |00> prepared with the operators from the Protocoll. A list of preparations
@@ -1457,7 +1456,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 if self.pulse_envelope == Evm.optimal:
                     init_elements = cp.deepcopy(pi_oc_on_2_element)
                     init_elements.extend(verif_element)
-                    init_elements.extend(pi_oc_on_2_element))
+                    init_elements.extend(pi_oc_on_2_element)
                     self.log.debug(f"Init {init_state.name} with oc pulse")
                 else:
                     init_elements = cp.deepcopy(pi_on_2_element)
@@ -1470,10 +1469,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
                 if self.pulse_envelope == Evm.optimal:
                     init_elements = cp.deepcopy(pi_oc_on_1_element)
-                    init_elements.extend((pi_oc_on_2_element)
+                    init_elements.extend(pi_oc_on_2_element)
                     init_elements.extend(verif_element)
-                    init_elements = cp.deepcopy(pi_oc_on_1_element)
-                    init_elements.extend((pi_oc_on_2_element)
+                    init_elements.extend(pi_oc_on_1_element)
+                    init_elements.extend(pi_oc_on_2_element)
                     self.log.debug(f"Init {init_state.name} with seriell oc pulse")
                 else:
                     # init_elements = pi_on_both_element
@@ -1513,6 +1512,41 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return init_elements
 
 
+        def composite_element(composite_pulse): # This is used to create a composite pulse
+            # composite_pulse: This dict contains the length of the pulse in the first array entry and in the second array entry the phase of each pulse and third entry is the amplitude
+            if type(composite_pulse) == dict:
+                pulse_dict = dict()
+                for i in composite_pulse.keys():
+                    length = composite_pulse[i][0] # Pulselength
+                    phase = composite_pulse[i][1]
+                    amplitude_index = composite_pulse[i][2] # only for index
+
+                    self.log.debug(f"amplitude_compos:{amplitude_index[0]} at dict key {i}")
+                    amplitude = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),idx_nv=amplitude_index[0], n_nvs=2,order_nvs=nv_order)
+
+
+                    #self.log.debug(f"amplitude_compos_array:{amplitude}")
+
+                    pulse_dict[i] = self.get_pi_element(phase[0], mw_freqs, amplitude, rabi_periods, pi_x_length=length[0])
+
+                    del length[0] # erases the first element to concatenate the pulses
+                    del phase[0]
+                    del amplitude_index[0]
+
+                    if (len(length) != len(phase)) or (len(phase) != len(amplitude_index)):
+                        raise ValueError(f"Wrong length of Pulselength: {len(length)} , wrong length of phase: {len(phase)} or wrong length of index_array: {len(amplitude_index)}")
+
+                    for j,k,l in zip(length,phase,amplitude_index):
+                        amplitude = self._create_param_array(self.microwave_amplitude,
+                                                             csv_2_list(ampl_mw_2),
+                                                             idx_nv=l, n_nvs=2,
+                                                             order_nvs=nv_order)
+                        pulse_dict[i].extend(self.get_pi_element(k, mw_freqs, amplitude, rabi_periods,pi_x_length=j))
+                return pulse_dict
+            else:
+                self.log.error(f'Not a dictionary. Type: {type(composite_pulse)}')
+
+
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
@@ -1538,34 +1572,58 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
                                             order_nvs=nv_order, n_nvs=2)
 
-        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
+        if not composite: # This is needed to obtain non composite pulses
+            pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
 
-        pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
+            pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
 
-        piMin_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods)
+            piMin_on_1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods)
 
-        piMin_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods)
+            piMin_on_2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods)
 
-        pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
-                                               pi_x_length=0.5)
-        pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
-                                               pi_x_length=0.5)
+            pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
+                                                       pi_x_length=0.5)
+            pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
+                                                       pi_x_length=0.5)
 
-        pihalf_x_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
-                                                   pi_x_length=0.5)
-        pihalf_x_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                                   pi_x_length=0.5)
+            pihalf_x_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                                       pi_x_length=0.5)
+            pihalf_x_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                                       pi_x_length=0.5)
 
+            pihalf_ymin_on1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
+                                                          pi_x_length=0.5)
+            pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
+                                                          pi_x_length=0.5)
 
-        pihalf_ymin_on1_element = self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
-                                               pi_x_length=0.5)
-        pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
-                                               pi_x_length=0.5)
+            pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
+                                                          pi_x_length=0.5)
+            pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
+                                                          pi_x_length=0.5)
+        else:
+            self.log.debug(f"composite pulse dict: {kwargs_dict}")
+            pulse_dict = composite_element(kwargs_dict['composite_pulse'])
+            pi_on_1_element = pulse_dict['pi_x1'] # The form variable "composite_pulses" is written in the notebook "double_NV.ipynb"
 
-        pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=0.5)
-        pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
-                                                      pi_x_length=0.5)
+            pi_on_2_element = pulse_dict['pi_x2']
+
+            piMin_on_1_element = pulse_dict['piMin_x1']
+
+            piMin_on_2_element = pulse_dict['piMin_x2']
+
+            pihalf_y_on1_element = pulse_dict['pi2_y1']
+            pihalf_y_on2_element =pulse_dict['pi2_y2']
+
+            pihalf_x_on1_element = pulse_dict['pi2_x1']
+            pihalf_x_on2_element = pulse_dict['pi2_x2']
+
+            pihalf_ymin_on1_element =pulse_dict['pi2Min_y1']
+            pihalf_ymin_on2_element = pulse_dict['pi2Min_y2']
+
+            pihalf_xmin_on1_element = pulse_dict['pi2Min_x1']
+
+            pihalf_xmin_on2_element = pulse_dict['pi2Min_x2']
+
 
 
 
@@ -1599,8 +1657,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             return hadarmad_block
 
-        pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
-        pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=Evm.optimal)
+        #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1, env_type=Evm.optimal)
+        #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2, env_type=Evm.optimal)
         # pi_oc_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, on_nv=[1, 2],
         #                                           env_type=Evm.optimal)
 
@@ -1707,6 +1765,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
+
 
     def generate_deer_dd_tau_nvision(self, name='DEER_DD_tau', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
                         f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
@@ -2579,6 +2638,217 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
+    def generate_ramsey_var_phase(self,name = 'ramsey_v_phase', tau_start=1.0e-6, tau_step=1.0e-6, num_of_points=50, f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0",
+                              rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                              read_phase_deg=0, nv_order="1,2",
+                        alternating=True): # This method changes the pulse spacing like in normal ramsey but the phase of the last pi-half-pulse is changed. Later use for metrology experiments
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # get tau array for measurement ticks
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time,
+                                             increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                 increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
+                                                order_nvs=nv_order,
+                                                n_nvs=2)
+
+
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                            idx_nv=0, n_nvs=2,
+                                            order_nvs=nv_order)
+
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
+                                            order_nvs=nv_order, n_nvs=2)
+
+
+        pihalf_init_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=0.25)
+
+
+        pihalf_read_element = self.get_pi_element(read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
+                                               pi_x_length=0.25)
+
+
+        # Use a 180 deg phase shiftet pulse as 3pihalf pulse if microwave channel is analog
+        if self.microwave_channel.startswith('a'):
+            pi3half_read_element = self.get_pi_element(read_phase_deg+180, mw_freqs, ampls_on_1, rabi_periods,
+                                                pi_x_length=0.25)
+        else:
+            pi3half_read_element = self.get_pi_element(read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
+                                                    pi_x_length=0.75)
+        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
+
+    # Create block and append to created_blocks list
+        ramsey_v_phase_block = PulseBlock(name=name)
+        ramsey_v_phase_block.extend(pihalf_init_element)
+        ramsey_v_phase_block.append(tau_element)
+        ramsey_v_phase_block.extend(pihalf_read_element)
+        ramsey_v_phase_block.append(laser_element)
+        ramsey_v_phase_block.append(delay_element)
+        ramsey_v_phase_block.append(waiting_element)
+        if alternating:
+            ramsey_v_phase_block.extend(pihalf_init_element)
+            ramsey_v_phase_block.append(tau_element)
+            ramsey_v_phase_block.extend(pi3half_read_element)
+            ramsey_v_phase_block.append(laser_element)
+            ramsey_v_phase_block.append(delay_element)
+            ramsey_v_phase_block.append(waiting_element)
+        created_blocks.append(ramsey_v_phase_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((ramsey_v_phase_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('Tau', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def generate_xy8_var_phase(self, name='xy8_var_phase', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
+                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                                 dd_type=DDMethods.SE, dd_order=1, alternating=True
+                                 ,nv_order="1,2",
+                                 xy8_phase=0,read_phase_deg = 0,
+                                 env_type=Evm.rectangle, no_laser=False):
+
+        """
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
+                                                order_nvs=nv_order, n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              order_nvs=nv_order, n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              idx_nv=0, n_nvs=2, order_nvs=nv_order)
+
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
+                                            order_nvs=nv_order, n_nvs=2)
+
+        tau_array = tau_start + np.arange(num_of_points) * tau_step
+        start_tau_pspacing = self.tau_2_pulse_spacing(tau_start)
+
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        pihalfx_on1_element = self.get_pi_element(0, mw_freqs, mw_amps=ampls_on_1,
+                                                 rabi_periods=rabi_periods,
+                                                 pi_x_length=0.5)
+
+
+        pihalfxread_on1_element = self.get_pi_element(read_phase_deg, mw_freqs, mw_amps=ampls_on_1,
+                                            rabi_periods=rabi_periods,
+                                                pi_x_length=0.5)
+
+
+        pihalf_on1_alt_read_element = self.get_pi_element(180+read_phase_deg, mw_freqs, mw_amps=ampls_on_1,
+                                            rabi_periods=rabi_periods,
+                                            pi_x_length=0.5)
+
+
+
+        tauhalf_element = self._get_idle_element(length=start_tau_pspacing / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=start_tau_pspacing, increment=tau_step)
+
+
+        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
+            if on_nv != [1, 2]:
+                raise NotImplementedError("Swapping order not supporte yet")
+
+            if env_type == Evm.optimal:
+                return self.get_pi_element(xphase, mw_freqs, amplitudes, rabi_periods,
+                                   pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                   env_type=env_type, on_nv=on_nv)
+            else:
+                return self.get_pi_element(xphase, mw_freqs, ampls_on_1, rabi_periods,
+                                        pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle)
+
+
+        tauhalf_element = self._get_idle_element(length=start_tau_pspacing / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=start_tau_pspacing, increment=tau_step)
+
+        # Create block and append to created_blocks list
+        xy8_phase_block = PulseBlock(name=name)
+        xy8_phase_block.extend(pihalfx_on1_element)
+
+
+        for n in range(dd_order):
+        # create the DD sequence for a single order
+            for pulse_number in range(dd_type.suborder):
+                xy8_phase_block.append(tauhalf_element)
+                xy8_phase_block.extend(pi_element_function(dd_type.phases[pulse_number]+xy8_phase, on_nv=[1, 2]))
+                xy8_phase_block.append(tauhalf_element)
+        xy8_phase_block.extend(pihalfxread_on1_element)
+        if not no_laser:
+            xy8_phase_block.append(laser_element)
+            xy8_phase_block.append(delay_element)
+            xy8_phase_block.append(waiting_element)
+
+        if alternating:
+            xy8_phase_block.extend(pihalfx_on1_element)
+            for n in range(dd_order):
+                # create the DD sequence for a single order
+                for pulse_number in range(dd_type.suborder):
+                    xy8_phase_block.append(tauhalf_element)
+                    xy8_phase_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=[1,2]))
+                    xy8_phase_block.append(tauhalf_element)
+            xy8_phase_block.extend(pihalf_on1_alt_read_element)
+            if not no_laser:
+                xy8_phase_block.append(laser_element)
+                xy8_phase_block.append(delay_element)
+                xy8_phase_block.append(waiting_element)
+        created_blocks.append(xy8_phase_block)
+
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((xy8_phase_block.name, num_of_points - 1))
+
+        # Create and append sync trigger block if needed
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information[
+            'controlled_variable'] = tau_array * dd_order * dd_type.suborder
+        block_ensemble.measurement_information['units'] = ('s', '')
+        block_ensemble.measurement_information['labels'] = ('t_evol', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+
         return created_blocks, created_ensembles, created_sequences
 
     def generate_deer_dd_f(self, name='deer_dd_f', tau_start=0.5e-6, tau_step=0.01e-6, num_of_points=50,
@@ -3454,11 +3724,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    #def generate_GST_meas(self,name='GST',rotations="[[<TomoRotations.none: 0>,];]", read_rots="",
+    #def generate_2QGST_meas(self,name='GST_2Q',Gate_set="[[<TomoRotations.none: 0>,];]",init_state = "[[<TomoInit.none: 0>,];]",meas_state ="[[<TomoInit.none: 0>,];]" ,read_rots="",
             #                tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
            #                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
           #                  alternating=False,
-         #                   , cnot_kwargs=''): # The dict are created in the notebook "double_Nv"
+         #                   , cnot_kwargs=''): # The dict are created in the notebook "double_NV"
     #created_blocks = list()
        # created_ensembles = list()
         #created_sequences = list()
@@ -3502,37 +3772,41 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                  #                                                        freqs=mw_freqs,
                   #                                                       phases=[0, 0])
 
-        #pihalf_ymin_on1_element = self._get_multiple_mw_mult_length_element(
-         #   lengths=rabi_periods / 4,
-          #  increments=[0, 0],
-           # amps=ampls_on_1,
-            #freqs=mw_freqs,
-            #phases=[270, 270])
-        #pihalf_ymin_on2_element = self._get_multiple_mw_mult_length_element(
-         #   lengths=rabi_periods / 4,
-          ##  increments=[0, 0],
-          #  amps=ampls_on_2,
-          #  freqs=mw_freqs,
-          #  phases=[270, 270])
-
-        #pihalf_xmin_on1_element = self._get_multiple_mw_mult_length_element(
-         #   lengths=rabi_periods / 4,
-          #  increments=[0, 0],
-          #  amps=ampls_on_1,
-          #  freqs=mw_freqs,
-           # phases=[180, 180])
-        #pihalf_xmin_on2_element = self._get_multiple_mw_mult_length_element(
-         #   lengths=rabi_periods / 4,
-          #  increments=[0, 0],
-          #  amps=ampls_on_2,
-          #  freqs=mw_freqs,
-          #  phases=[180, 180])
+        #pihalf_ymin_on1_element =self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
+            #                                   pi_x_length=0.5)
+        #pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
+            #                                   pi_x_length=0.5)
+        #pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
+            #                                   pi_x_length=1)
+        #pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
+            #                                   pi_x_length=1)
 
         #pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
          #                                                          increments=[0, 0],
           #                                                         amps=ampls_on_2,
            #                                                        freqs=mw_freqs,
             #                                                       phases=[0, 0])
+
+        #        def init_element(init_state,gate_set,
+                       #  meas_state):  # Prepare of init states for cphase gate with a gate to verifiy
+            #init_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
+        #TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
+    # meas_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
+    #         #TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
+    # gate_set = [TomoRotations.none,TomoRotations.ux90_on_1,TomoRotations.ux90_on_2,TomoRotations.uy90_on_1,TomoRotations.uy90_on_2,TomoRotations.ux45_on_2,TomoRotations.ux45min_on_2,= 6
+    # TomoRotations.ux90min_on_1, TomoRotations.ux90min_on_2,TomoRotations.uy90min_on_1,TomoRotations.uy90min_on_2,TomoRotations.ux180_on_1,
+    # TomoRotations.ux180_on_2,TomoRotations.uy180_on_1 = 13,TomoRotations.uy180_on_2,TomoRotations.ux180min_on_1,TomoRotations.ux180min_on_2,
+    # TomoRotations.uy180min_on_1,TomoRotations.uy180min_on_2,TomoRotations.c1not2,TomoRotations.c2not1,TomoRotations.c1not2_ux180_on_2 = 21,
+    # TomoRotations.c2not1_ux180_on_1,TomoRotations.c2phase1_dd ]
+         #   if init_state not in init_state_set:
+          #      raise ValueError(
+           #         f"Found Init_state {init_state}, type {type(init_state)} which is not in native gate set {init_state_set}")
+    #         elif meas_state not in meas_state_set:
+    #raise ValueError(
+           #         f"Found Meas_state {meas_state}, type {type(meas_state)} which is not in native gate set {meas_state_set}")
+    # elif gate_set not in gate_Set:
+    # raise ValueError(
+    #         f"Found Meas_state {gate_set}, type {type(mgate_set)} which is not in native gate set {gate_set}")
 
         #def init_elements(init_states):
             #if init_states == TomoInit.none:
@@ -3586,7 +3860,33 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             #        seq_dict[key] = init_block
          #           seq_dict[key].append(gate_block)
         #            seq_dict[key].append(meas_block) # This dictionary concatens the init_state, gate and the mas state
-       # return seq_dict
+
+        #created_blocks.append(init_state_block)
+
+        # self.log.debug(f"idx_array {idx_array}") # quick look for debug
+        # self.log.debug(f"init state name: {init_state_block.name}")  # quick look for debug
+        #block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        #block_ensemble.append((init_state_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        #if not no_laser:
+         #   self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        #number_of_lasers = len(idx_array) * 2 if alternating else len(idx_array)
+        #block_ensemble.measurement_information['alternating'] = alternating
+        #block_ensemble.measurement_information['laser_ignore_list'] = list()
+        #block_ensemble.measurement_information[
+        #    'controlled_variable'] = idx_array  # if tau_step == 0.0 else tau_array Possible later use
+        #block_ensemble.measurement_information['units'] = ('', '')
+        #block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
+        #block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        #block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+         #   ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        #created_ensembles.append(block_ensemble)
+       # created_blocks, created_ensembles, created_sequences
 
     def generate_dd_dqt_sigamp(self, name='dd_sigamp', tau=0.5e-6, amp_start=0e-3, amp_step=0.01e-3,
                                     num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, ampl_mw2=0e-3,
@@ -3845,6 +4145,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             file_i.append(os.path.basename(oc_pulse._file_i))
             file_q.append(os.path.basename(oc_pulse._file_q))
 
+            self.log.debug(f"ampli_file:{file_i}")
+
 
         generate_method = self._get_generation_method('oc_mw_multi_only')
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(freqs), phases=self.list_2_csv(phases),
@@ -3961,7 +4263,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         elif env_type == Evm.optimal:
-            if len(mw_idle_amps) != 0:
+            self.log.debug('mw_idle_amps:'+str(mw_idle_amps))
+            if len(mw_idle_amps) !=  0:
                 raise NotImplementedError("Ooptimal control pulses support no idle ampl != 0")
             return self._get_pi_oc_element(phases, fs, on_nv=on_nv, pi_x_length=pi_x_length)
 
