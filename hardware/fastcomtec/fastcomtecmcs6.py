@@ -471,8 +471,9 @@ class FastComtec(Base, FastCounterInterface):
         """
         bitshift = int(np.log2(binwidth/self.minimal_binwidth))
 
-        new_bitshift=self.set_bitshift(bitshift)
-        self.log.debug(f"For binwidth {binwidth}, settings bit shift {bitshift}/{2**bitshift}. Result bitshift {new_bitshift}")
+        new_bitshift = self.set_bitshift(bitshift)
+        self.log.debug(f"For binwidth {binwidth}, settings bit shift {bitshift}/{2**bitshift}. "
+                       f"Result bitshift {new_bitshift}, binwidth {self.minimal_binwidth* 2**(bitshift)}")
 
         return self.minimal_binwidth*(2**new_bitshift)
 
@@ -560,6 +561,11 @@ class FastComtec(Base, FastCounterInterface):
 
             # insert sleep time, otherwise fast counter crashed sometimes!
             time.sleep(0.5)
+
+            bin_width = self.get_binwidth()
+            res_length_bins = self.get_length()
+            self.log.debug(f"Settings count_length= {length_bins*bin_width} -> {res_length_bins*bin_width}")
+
             return length_bins
         else:
             self.log.error('Dimensions {0} are too large for fast counter1!'.format(length_bins *  cycles))
@@ -638,6 +644,7 @@ class FastComtec(Base, FastCounterInterface):
         self.change_sweep_mode(True, cycles, preset)
 
         no_of_bins = int((record_length_s + self.aom_delay) / bin_width_s)
+        self.log.debug(f"Trying to set record_length= {record_length_s}...•")
         self.set_length(no_of_bins)
         if sequences is not None:
             self.set_sequences(sequences)
