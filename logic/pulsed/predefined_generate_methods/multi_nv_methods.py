@@ -3719,8 +3719,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             ):
 
         exact_mw_tau = True
-
-        created_blocks, created_ensembles, created_sequences = list(), list(), list()
+        mw_freqs_raw, mw_amps_raw, rabi_periods_raw = cp.copy(mw_freqs), cp.copy(mw_amps), cp.copy(rabi_periods)
 
         ampls_on_1 = self._create_param_array(None, mw_amps, idx_nv=0, n_nvs=2,
                                               order_nvs=nv_order)
@@ -3771,18 +3770,35 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         self.log.debug(f"rabi: {rabi_periods}, amppl2 {ampls_on_2}, freqs {mw_freqs}")
         pi_on2_element = self.get_pi_element(dd_type.phases[-1], mw_freqs, ampls_on_2, rabi_periods,
                                              pi_x_length=1)
+
+        no_dd_on2 = True
+        save_mw_amp = self.microwave_amplitude
+        if no_dd_on2:
+            # debug only
+            if nv_order == "1,2":
+                mw_amps_raw[1] = 0
+            elif nv_order == "2,1":
+                self.microwave_amplitude = 0
+            else:
+                raise ValueError
+
+
         # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
+        # pass unaltered mw_freqs, mw_amps array that might have been flipped by nv_order already
         dd_element, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, tau_step=0, num_of_points=1,
-                                  f_mw_2=self.list_2_csv(list(mw_freqs[1:])), ampl_mw_2=self.list_2_csv(list(mw_amps[1:])),
-                                                     rabi_period_mw_2=self.list_2_csv(list(rabi_periods[1:])),
-                                  dd_type=dd_type, dd_order=dd_order,
+                                  f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])), ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                     rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                  dd_type=dd_type, dd_type_2=DDMethods.MW_DD_SE8, dd_order=dd_order,
                                   init_pix_on_1=0, init_pix_on_2=0,
                                   start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0, read_pix_on_2=0,
-                                  nv_order = nv_order,
                                   scale_tau2_first_last=0, floating_last_pi=False,
+                                  nv_order=nv_order,
                                   alternating=False, no_laser=True)
 
+        self.microwave_amplitude = save_mw_amp
+
         dd_element = dd_element[0]
+
 
         gate_block.append(mw_half_el)
         gate_block.extend(dd_element)
@@ -3850,12 +3866,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
             dd_element, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
                                       f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2, rabi_period_mw_2=rabi_period_mw_2,
-                                      dd_type=dd_type, dd_order=dd_order,
+                                      dd_type=dd_type, dd_type_2=DDMethods.MW_DD_SE8, dd_order=dd_order,
                                       init_pix_on_1=0, init_pix_on_2=0,
                                       start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0, read_pix_on_2=0,
                                       nv_order = nv_order,
                                       scale_tau2_first_last=0, floating_last_pi=False,
                                       alternating=False, no_laser=True)
+
 
             dd_element = dd_element[0]
 
@@ -4274,9 +4291,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif comp_type == Comp.mw_dd:
                 dd_order = comp_type.parameters['dd_order']
                 dd_type = comp_type.parameters['dd_type']
-                self.log.debug(f"Mw dd comp pulse with target rot {pi_x_length} pi, phase {phases[0]}")
-                # todo: need to change in total number of pi pulses
-                if dd_order %2 == 1:
+                self.log.debug(f"Mw dd comp pulse (dd={dd_type}) with target rot {pi_x_length} pi, phase {phases[0]}")
+
+                if dd_order * dd_type.suborder %2 == 1:
                     # uneven dd_order will create a pi flip on NV1, balance by increasing the mw_time
                     pi_x_length += 1
 
