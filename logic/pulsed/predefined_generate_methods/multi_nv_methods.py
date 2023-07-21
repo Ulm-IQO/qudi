@@ -3774,6 +3774,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         no_dd_on2 = True
         save_mw_amp = self.microwave_amplitude
         if no_dd_on2:
+            self.log.warning("no_dd_on2 enabled. Won't decouple the other NV!")
             # debug only
             if nv_order == "1,2":
                 mw_amps_raw[1] = 0
@@ -3809,7 +3810,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         return gate_block
 
     def generate_mw_gate_dd(self, name='gate_dd', tau_start=100e-9, tau_step=1e-6, num_of_points=10,
-                                phase=0, ampl_gate=0.1,
+                                phase=0, ampl_gate=0.1, n_gate_reps=1,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                             nv_order='1,2',
                             dd_type=DDMethods.SE, dd_order=1, alternating=False,
@@ -3853,10 +3854,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             tau1 = 2*mw_length/2
             # make tau1 longer st. the resulting tau2_ps (in deer_dd_tau) yields pi pulse spacing on NV 1 = 2x mw_length
+            # pulse spacing must stay constant for n_rep > 1!
             t_balance = 0
             if exact_mw_tau:
-                t_balance = t_pi_on1 + t_pi_on2
+                t_balance = t_pi_on1 #+ t_pi_on2
                 tau1 += t_balance
+                if tau1 < t_pi_on2 + t_pi_on1:
+                    self.log.warning(f"Adjusting tau1 to fit t_pi_on2 in: {tau1}->{t_pi_on2 + t_pi_on1}")
+                    tau1 = t_pi_on2 + t_pi_on1
+
             self.log.debug(f"For MW/2 {mw_length/2}, => tau1 {tau1}, t_balance {t_balance}")
 
             mw_half_el = self._get_multiple_mw_element(mw_length/2, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
@@ -3876,9 +3882,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             dd_element = dd_element[0]
 
-            gate_block.append(mw_half_el)
-            gate_block.extend(dd_element)
-            gate_block.append(mw_half_el)
+            for i_gate in range(n_gate_reps):
+                gate_block.append(mw_half_el)
+                gate_block.extend(dd_element)
+                gate_block.append(mw_half_el)
             #gate_block.extend(pi_on2_element)
 
             gate_block.append(laser_element)
@@ -3886,9 +3893,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             gate_block.append(waiting_element)
 
             if alternating:
-                gate_block.append(mw_half_el)
-                gate_block.extend(dd_element)
-                gate_block.append(mw_half_el)
+                for i_gate in range(n_gate_reps):
+                    gate_block.append(mw_half_el)
+                    gate_block.extend(dd_element)
+                    gate_block.append(mw_half_el)
                 #gate_block.extend(pi_on2_element)
                 gate_block.extend(pi_on1_element)
 
@@ -4291,11 +4299,22 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif comp_type == Comp.mw_dd:
                 dd_order = comp_type.parameters['dd_order']
                 dd_type = comp_type.parameters['dd_type']
+                dd_rabi_period = comp_type.parameters['rabi_period']
+                dd_rabi_phase = comp_type.parameters['rabi_phase']
                 self.log.debug(f"Mw dd comp pulse (dd={dd_type}) with target rot {pi_x_length} pi, phase {phases[0]}")
 
                 if dd_order * dd_type.suborder %2 == 1:
                     # uneven dd_order will create a pi flip on NV1, balance by increasing the mw_time
                     pi_x_length += 1
+
+                if dd_rabi_period != None:
+                    # compensate calibration
+                    t_length_2pi = dd_rabi_period - ((1/4 + dd_rabi_phase/360)* dd_rabi_period)
+                    common_rabi_period = rabi_periods[0]     # rabi_periods[on_nv[0]-1]
+                    pi_x_length = pi_x_length* t_length_2pi/common_rabi_period
+                    t_pix = 1/2*pi_x_length*common_rabi_period
+                    self.log.debug(f"Compensating pi_x_length= {pi_x_length}/{t_pix} for calibrated rabi_period= {dd_rabi_period}"
+                                   f" phase= {dd_rabi_phase}")
 
                 comp_element = self._get_mw_gate_dd_element(phases[0], mw_freqs, mw_amps, rabi_periods,
                                                            pi_x_length=pi_x_length, nv_order=nv_order,
