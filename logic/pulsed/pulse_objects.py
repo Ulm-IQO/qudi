@@ -46,6 +46,7 @@ class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     sin_n = 'sin_n'
     parabola = 'parabola'
     optimal = 'optimal'
+    hermite = 'hermite' #insert new pulse shape
     from_gen_settings = '_from_gen_settings'
 
     def __init__(self, *args):
@@ -57,7 +58,17 @@ class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
                     'parabola': {'order_P' : 1},
                      'optimal': {},
                      'sin_n': {'order_n': 2},
-                     '_from_gen_settings': {}}
+                     '_from_gen_settings': {},
+                    'hermite':{'T':0.1667,'scale':0.956,'time_pos':0.5}}# The default values for a hermite pi-pulse without time scaling from pulse sequence
+
+        """
+        default_parameters of hermite pulse:
+        formula of a hermite pulse envelope: (1-c((t-nu)/T)^2)*exp(-((t-nu)/T)^2). Definition from the Paper "Fault-tolerant operation of a logical qubit in diamond quantum processor" of Abobeih 2022
+        
+        T: half_life_time of the envelope. Corresponds in the dictionary with the key word 'T'
+        c: scale factor. Corresponds in the dictionary with the keyword 'scale'
+        time_pos: Position of the maximum of the envelope. Corresponds in the dictionary with the key word 'nu'
+        """
 
         return defaults[self.value]
 
@@ -1459,6 +1470,15 @@ class PredefinedGeneratorBase:
                     frequency=freq,
                     phase=phase,
                     order_n=envelope.parameters['order_n'])
+            elif envelope == PulseEnvelopeType.hermite:
+                mw_element.pulse_function[
+                    self.microwave_channel] = SamplingFunctions.SinHermiteEnvelope(
+                    amplitude=amp,
+                    frequency=freq,
+                    phase=phase,
+                time_pos= envelope.parameters['time_pos'],
+                T= envelope.parameters['T'],
+                scale=envelope.parameters['scale'])
             else:
                 raise ValueError(f"Unsupported envelope type: {envelope.name}")
         return mw_element
