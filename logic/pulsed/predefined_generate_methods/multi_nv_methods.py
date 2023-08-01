@@ -38,13 +38,14 @@ class TomoRotations(IntEnum):
     ux180min_on_2 = 16
     uy180min_on_1 = 17
     uy180min_on_2 = 18
-    c1not2 = 19
-    c2not1 = 20
-    c1not2_ux180_on_2 = 21
-    c2not1_ux180_on_1 = 22
-    c2phase1_dd = 23
-    c2phase1_rot = 24 # For debug between Roberto's (c2phase1_rot) and Timo's methode (c2phase1_dd)
-    xy8_par = 25 # Use of parallel driven xy8-sequence
+    ux180min_on_both = 19
+    c1not2 = 20
+    c2not1 = 21
+    c1not2_ux180_on_2 = 22
+    c2not1_ux180_on_1 = 23
+    c2phase1_dd = 24
+    c2phase1_rot = 25 # For debug between Roberto's (c2phase1_rot) and Timo's methode (c2phase1_dd)
+    xy8_par = 26 # Use of parallel driven xy8-sequence
 
 class TomoInit(IntEnum):
     none = 0
@@ -1625,15 +1626,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # The measurement will be given for 7 inital states
 
-        #if type(init_state) != list: # For debugging, if the right state is loaded
-         #   init_state_list = [init_state]
-        #elif type(init_state) == list:
-            #if len(init_state) <= 7: # For preventing magical numbers
-         #   init_state_list = cp.deepcopy(init_state)
-            #else:
-             #   raise ValueError(f"It should be less equal 7 initial state. Actual number of init states:{len(init_state)}")
-        #else:
-         #   raise TypeError(f"Unknown kind of type for initial state in cphase Protocoll: {type(init_state)}")
         idx_array = list(range(len(init_state_list)))  # Each number is connected to a initial state
 
         for ini in init_state_list:
@@ -3645,169 +3637,360 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    #def generate_2QGST_meas(self,name='GST_2Q',Gate_set="[[<TomoRotations.none: 0>,];]",init_state = "[[<TomoInit.none: 0>,];]",meas_state ="[[<TomoInit.none: 0>,];]" ,read_rots="",
-            #                tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
-           #                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-          #                  alternating=False,
-         #                   , cnot_kwargs=''): # The dict are created in the notebook "double_NV"
-    #created_blocks = list()
-       # created_ensembles = list()
-        #created_sequences = list()
+    def generate_2QGST_meas(self,name='GST_2Q',Gate_set="[[<TomoRotations.none: 0>,];]",init_state = "[[<TomoInit.none: 0>,];]",meas_state ="[[<TomoRotations.none: 0>,];]" ,
+                            tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,nv_order="1,2",
+                            f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
+                            alternating=False,cnot_kwargs='',no_laser = False): # The dict are created in the notebook "double_NV"
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
 
         # Create other pulse_elements
-        #waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
-        #laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
-        #delay_element = self._get_delay_gate_element()
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
 
-        #rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
-                                               # order_nvs=nv_order,
-                                                #n_nvs=2)
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
+                                                order_nvs=nv_order,
+                                                n_nvs=2)
 
-        #amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
-                                              #order_nvs=nv_order,
-                                              #n_nvs=2)
-        #ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
-                                              #idx_nv=0, n_nvs=2,
-                                              #order_nvs=nv_order)
-        #ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
-                                              #idx_nv=1, n_nvs=2,
-                                             # order_nvs=nv_order)
-        #mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
-                                            #order_nvs=nv_order, n_nvs=2)
+        amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              order_nvs=nv_order,
+                                              n_nvs=2)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              idx_nv=0, n_nvs=2,
+                                              order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              idx_nv=1, n_nvs=2,
+                                              order_nvs=nv_order)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
+                                            order_nvs=nv_order, n_nvs=2)
 
-        #pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
+        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
 
-        #pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,
-            #                                   pi_x_length=0.5)
-        #pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,
-           #                                    pi_x_length=0.5)
+        pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=0.5)
+        pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=0.5)
 
-        #pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-             #                                                            increments=[0, 0],
-          #                                                               amps=ampls_on_1,
-         #                                                                freqs=mw_freqs,
-              #                                                           phases=[0, 0])
-        #pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-               #                                                          increments=[0, 0],
-                #                                                         amps=ampls_on_2,
-                 #                                                        freqs=mw_freqs,
-                  #                                                       phases=[0, 0])
+        pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_1,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[0, 0])
+        pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
+                                                                         increments=[0, 0],
+                                                                         amps=ampls_on_2,
+                                                                         freqs=mw_freqs,
+                                                                         phases=[0, 0])
 
-        #pihalf_ymin_on1_element =self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,
-            #                                   pi_x_length=0.5)
-        #pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,
-            #                                   pi_x_length=0.5)
-        #pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,
-            #                                   pi_x_length=1)
-        #pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,
-            #                                   pi_x_length=1)
+        pihalf_ymin_on1_element =self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=0.5)
+        pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=0.5)
+        pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=1)
+        pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=1)
 
-        #pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-         #                                                          increments=[0, 0],
-          #                                                         amps=ampls_on_2,
-           #                                                        freqs=mw_freqs,
-            #                                                       phases=[0, 0])
+        pi_on_1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                    increments=[0, 0],
+                                                                    amps=ampls_on_1,
+                                                                    freqs=mw_freqs,
+                                                                    phases=[0, 0])
 
-        #        def init_element(init_state,gate_set,
-                       #  meas_state):  # Prepare of init states for cphase gate with a gate to verifiy
-            #init_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
-        #TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
-    # meas_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
-    #         #TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
-    # gate_set = [TomoRotations.none,TomoRotations.ux90_on_1,TomoRotations.ux90_on_2,TomoRotations.uy90_on_1,TomoRotations.uy90_on_2,TomoRotations.ux45_on_2,TomoRotations.ux45min_on_2,= 6
-    # TomoRotations.ux90min_on_1, TomoRotations.ux90min_on_2,TomoRotations.uy90min_on_1,TomoRotations.uy90min_on_2,TomoRotations.ux180_on_1,
-    # TomoRotations.ux180_on_2,TomoRotations.uy180_on_1 = 13,TomoRotations.uy180_on_2,TomoRotations.ux180min_on_1,TomoRotations.ux180min_on_2,
-    # TomoRotations.uy180min_on_1,TomoRotations.uy180min_on_2,TomoRotations.c1not2,TomoRotations.c2not1,TomoRotations.c1not2_ux180_on_2 = 21,
-    # TomoRotations.c2not1_ux180_on_1,TomoRotations.c2phase1_dd ]
-         #   if init_state not in init_state_set:
-          #      raise ValueError(
-           #         f"Found Init_state {init_state}, type {type(init_state)} which is not in native gate set {init_state_set}")
-    #         elif meas_state not in meas_state_set:
-    #raise ValueError(
-           #         f"Found Meas_state {meas_state}, type {type(meas_state)} which is not in native gate set {meas_state_set}")
-    # elif gate_set not in gate_Set:
-    # raise ValueError(
-    #         f"Found Meas_state {gate_set}, type {type(mgate_set)} which is not in native gate set {gate_set}")
+        pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                   increments=[0, 0],
+                                                                   amps=ampls_on_2,
+                                                                   freqs=mw_freqs,
+                                                                   phases=[0, 0])
 
-        #def init_elements(init_states):
-            #if init_states == TomoInit.none:
-            #   init_elements = []
-            #elif init_states == TomoInit.ux180_on_1:
-            #   init_elements = cp.deepcopy(pi_on_1_element)
-            #elif init_states == TomoInit.ux180_on_2:
-            #   init_elements = cp.deepcopy(pi_on_2_element)
-            # elif init_states == TomoInit.ux180_on_both:
-            #   init_elements = cp.deepcopy(pi_on_1_element)
-            #   init_elements.extend(pi_on_2_element)
-            # elif init_states == TomoInit.uy90_on_2:
-            #   init_elements = cp.deepcopy(pihalf_y_on2_element)
-            # elif init_states == TomoInit.ux90_on_1:
-            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
-            #elif init_states == TomoInit.uy90_on_2:
-            #   init_elements = cp.deepcopy(pihalf_y_on2_element)
-            #elif init_states == TomoInit.ux180_on_1_ux90_on_2:
-            #   init_elements = cp.deepcopy(pihalf_y_on2_element)
-            #   init_elements.extend(pi_on_1_element)
-            # elif init_states == TomoInit.uy90_on_1:
-            #   init_elements = cp.deepcopy(pihalf_y_on1_element)
-            # elif init_states == TomoInit.uy90_on_1_ux180_on_2:
-            #   init_elements = cp.deepcopy(pihalf_y_on1_element)
-            #   init_elements.extend(pi_on_2_element)
-            # elif init_states == TomoInit.uy90_on_1_uy90_on_2:
-    #           init_elements = cp.deepcopy(pihalf_y_on1_element)
-    #           init_elements.extend(pihalf_y_on2_element)
-            # elif init_states == TomoInit.ux90_on_1:
-            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
-            # elif init_states == TomoInit.ux90_on_1_ux180_on_2:
-            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
-            #   init_elements.extend(pi_on_2_element)
-            # elif init_states == TomoInit.ux90_on_1_uy90_on_2:
-            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
-            #   init_elements.extend(pihalf_y_on2_element)
-            # elif init_states == TomoInit.ux90_on_1_ux90_on_2:
-            #   init_elements = cp.deepcopy(pihalf_x_on1_element)
-            #   init_elements.extend(pihalf_x_on2_element)
-            #return init_elements
+        pi_min_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                   increments=[0, 0],
+                                                                   amps=ampls_on_1,
+                                                                   freqs=mw_freqs,
+                                                                   phases=[180, 180])
+
+        pi_min_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
+                                                                       increments=[0, 0],
+                                                                       amps=ampls_on_2,
+                                                                       freqs=mw_freqs,
+                                                                       phases=[180, 180])
+
+        cphase_element,_,_ = self.generate_c2phase1(tau_start=tau_cnot,tau_step=0,num_of_points=1,dd_type=dd_type_cnot,dd_order=dd_order,
+                                                          f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
+                                                          rabi_period_mw_2=rabi_period_mw_2,
+                                                          nv_order=nv_order,
+                                                          alternating=False, no_laser=True)
+
+        cphase_element = cphase_element[0]
+
+        def prep_elements(init_state,gate_set,meas_state):  # Prepare of init states for cphase gate with a gate to verifiy
+            init_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
+                TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
+
+            meas_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
+                               TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
+
+            gate_Set = [TomoRotations.none,TomoRotations.ux90_on_1,TomoRotations.ux90_on_2,TomoRotations.uy90_on_1,TomoRotations.uy90_on_2,TomoRotations.ux45_on_2,TomoRotations.ux45min_on_2,
+                        TomoRotations.ux90min_on_1, TomoRotations.ux90min_on_2,TomoRotations.uy90min_on_1,TomoRotations.uy90min_on_2,TomoRotations.ux180_on_1,
+                        TomoRotations.ux180_on_2,TomoRotations.uy180_on_1,TomoRotations.uy180_on_2,TomoRotations.ux180min_on_1,TomoRotations.ux180min_on_2,
+                        TomoRotations.uy180min_on_1,TomoRotations.uy180min_on_2,TomoRotations.c1not2,TomoRotations.c2not1,TomoRotations.c1not2_ux180_on_2 ,
+                        TomoRotations.c2not1_ux180_on_1,TomoRotations.c2phase1_dd]
+            if init_state not in init_state_set:
+                raise ValueError(f"Found Init_state {init_state}, type {type(init_state)} which is not in native gate set {init_state_set}")
+            elif meas_state not in meas_state_set:
+                raise ValueError(f"Found Meas_state {meas_state}, type {type(meas_state)} which is not in native gate set {meas_state_set}")
+            elif gate_set not in gate_Set:
+                raise ValueError(f"Found Meas_state {gate_set}, type {type(gate_set)} which is not in native gate set {gate_Set}")
+
+        def init_meas_gate_elements(init_states,meas_states,gate_states):
+            if init_states == TomoInit.none:
+               init_elements = []
+            elif init_states == TomoInit.ux180_on_1:
+               init_elements = cp.deepcopy(pi_on_1_element)
+            elif init_states == TomoInit.ux180_on_2:
+               init_elements = cp.deepcopy(pi_on_2_element)
+            elif init_states == TomoInit.ux180_on_both:
+               init_elements = cp.deepcopy(pi_on_1_element)
+               init_elements.extend(pi_on_2_element)
+            elif init_states == TomoInit.uy90_on_2:
+               init_elements = cp.deepcopy(pihalf_y_on2_element)
+            elif init_states == TomoInit.ux90_on_1:
+               init_elements = cp.deepcopy(pihalf_x_on1_element)
+            elif init_states == TomoInit.uy90_on_2:
+               init_elements = cp.deepcopy(pihalf_y_on2_element)
+            elif init_states == TomoInit.ux180_on_1_ux90_on_2:
+               init_elements = cp.deepcopy(pihalf_y_on2_element)
+               init_elements.extend(pi_on_1_element)
+            elif init_states == TomoInit.uy90_on_1:
+               init_elements = cp.deepcopy(pihalf_y_on1_element)
+            elif init_states == TomoInit.uy90_on_1_ux180_on_2:
+               init_elements = cp.deepcopy(pihalf_y_on1_element)
+               init_elements.extend(pi_on_2_element)
+            elif init_states == TomoInit.uy90_on_1_uy90_on_2:
+               init_elements = cp.deepcopy(pihalf_y_on1_element)
+               init_elements.extend(pihalf_y_on2_element)
+            elif init_states == TomoInit.ux90_on_1:
+               init_elements = cp.deepcopy(pihalf_x_on1_element)
+            elif init_states == TomoInit.ux90_on_1_ux180_on_2:
+               init_elements = cp.deepcopy(pihalf_x_on1_element)
+               init_elements.extend(pi_on_2_element)
+            elif init_states == TomoInit.ux90_on_1_uy90_on_2:
+               init_elements = cp.deepcopy(pihalf_x_on1_element)
+               init_elements.extend(pihalf_y_on2_element)
+            elif init_states == TomoInit.ux90_on_1_ux90_on_2:
+               init_elements = cp.deepcopy(pihalf_x_on1_element)
+               init_elements.extend(pihalf_x_on2_element)
+            else:
+                self.log.error(f'The other initial states are not implmented. Current Initialstate:{init_states}')
+
+            if meas_states == TomoRotations.none:
+                meas_elements = []
+            elif meas_states == TomoRotations.ux180min_on_1:
+                meas_elements = cp.deepcopy(pi_min_on1_element)
+            elif meas_states == TomoRotations.uy90min_on_1:
+                meas_elements = cp.deepcopy(pihalf_ymin_on1_element)
+            elif meas_states == TomoRotations.ux90min_on_1:
+                meas_elements = cp.deepcopy(pihalf_xmin_on1_element)
+            elif meas_states == TomoRotations.ux180min_on_both:
+                meas_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elemtns.extend(pi_min_on2_element)
+            elif meas_states == TomoRotations.uy90min_on_2:
+                meas_elements = cp.deepcopy(pihalf_ymin_on2_element)
+            elif meas_states == TomoRotations.ux90min_on_2:
+                meas_elements = cp.deepcopy(pihalf_xmin_on2_element)
+            elif meas_states == TomoRotations.ux180minon1_uy90min_on_2:
+                meas_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elemnts.extend(pihalf_ymin_on2_element)
+            elif meas_states == TomoRotations.ux180min_on_1_ux90min_on_2:
+                meas_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elemnts.extend(pihalf_xmin_on2_element)
+            elif meas_states == TomoRotations.uy90min_on_1:
+                meas_elements = cp.deepcopy(pihalf_ymin_on1_element)
+            elif meas_states == TomoRotations.uy90min_on_1_ux180min_on_1:
+                meas_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elements.extend(pihalf_ymin_on1_element)
+            elif meas_states == TomoRotations.uy90min_on_1_uy90min_on_2:
+                meas_elements = cp.deepcopy(pihalf_ymin_on1_element)
+                meas_elemets.extend(pihalf_ymin_on2_element)
+            elif meas_states == TomoRotations.uy90min_on_1_ux90min_on_2:
+                meas_elements = cp.deepcopy(pihalf_ymin_on2_element)
+                meas_elemets.extend(pihalf_ymin_on1_element)
+            elif meas_states == TomoRotations.ux90min_on_1:
+                meas_elements = cp.deepcopy(pihalf_xmin_on1_element)
+            elif meas_states == TomoRotations.ux90minon1_ux180min_on_2:
+                meas_elements = cp.deepcopy(pi_min_on2_element)
+                meas_elements.extend(pihalf_xmin_on1_element)
+            elif meas_states == TomoRotations.ux90minon1_uy90min_on_2:
+                meas_elements = cp.deepcopy(pihalf_ymin_on2_element)
+                meas_elements.extend(pihalf_xmin_on1_element)
+            elif meas_states == TomoRotations.ux90min_onboth:
+                meas_elements = cp.deepcopy(pihalf_xmin_on2_element)
+                meas_elements.extend(pihalf_xmin_on1_element)
+            else:
+                self.log.error(
+                    f'The other measurement states are not implmented. Current Measstate:{meas_elements}')
+
+            if gate_states == TomoRotations.none:
+                gate_elements = []
+            elif gate_states == TomoRotations.ux180min_on_1:
+                gate_elements = cp.deepcopy(pi_min_on1_element)
+            elif gate_states == TomoRotations.uy90min_on_1:
+                gate_elements = cp.deepcopy(pihalf_ymin_on1_element)
+            elif gate_states == TomoRotations.ux90min_on_1:
+                gate_elements = cp.deepcopy(pihalf_xmin_on1_element)
+            elif gate_states == TomoRotations.ux180min_on_both:
+                gate_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elemtns.extend(pi_min_on2_element)
+            elif gate_states == TomoRotations.uy90min_on_2:
+                gate_elements = cp.deepcopy(pihalf_ymin_on2_element)
+            elif gate_states == TomoRotations.ux90min_on_2:
+                gate_elements = cp.deepcopy(pihalf_xmin_on2_element)
+            elif gate_states == TomoRotations.ux180minon1_uy90min_on_2:
+                gate_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elemnts.extend(pihalf_ymin_on2_element)
+            elif gate_states == TomoRotations.ux180min_on_1_ux90min_on_2:
+                gate_elements = cp.deepcopy(pi_min_on1_element)
+                meas_elemnts.extend(pihalf_xmin_on2_element)
+            elif gate_states == TomoRotations.uy90min_on_1:
+                gate_elements = cp.deepcopy(pihalf_ymin_on1_element)
+            elif gate_states == TomoRotations.uy90min_on_1_ux180min_on_1:
+                gate_elements = cp.deepcopy(pi_min_on1_element)
+                gate_elements.extend(pihalf_ymin_on1_element)
+            elif gate_states == TomoRotations.uy90min_on_1_uy90min_on_2:
+                gate_elements = cp.deepcopy(pihalf_ymin_on1_element)
+                meas_elemets.extend(pihalf_ymin_on2_element)
+            elif gate_states == TomoRotations.uy90min_on_1_ux90min_on_2:
+                gate_elements = cp.deepcopy(pihalf_ymin_on2_element)
+                meas_elemets.extend(pihalf_ymin_on1_element)
+            elif gate_states == TomoRotations.ux90min_on_1:
+                gate_elements = cp.deepcopy(pihalf_xmin_on1_element)
+            elif gate_states == TomoRotations.ux90minon1_ux180min_on_2:
+                gate_elements = cp.deepcopy(pi_min_on2_element)
+                gate_elements.extend(pihalf_xmin_on1_element)
+            elif gate_states == TomoRotations.ux90minon1_uy90min_on_2:
+                gate_elements = cp.deepcopy(pihalf_ymin_on2_element)
+                gate_elements.extend(pihalf_xmin_on1_element)
+            elif gate_states == TomoRotations.ux90min_onboth:
+                gate_elements = cp.deepcopy(pihalf_xmin_on2_element)
+                gate_elements.extend(pihalf_xmin_on1_element)
+            elif gate_state == TomoRotations.c2phase1_rot:
+                gate_elements = cp.deepcopy(cphase_element)
+            else:
+                self.log.error(
+                    f'The other gate set are not implmented. Current Measstate:{gate_states}')
+
+            return init_elements,gate_elements,meas_elements
 
 
-        #seq_dict = dict() # This dictionary shows the sequence
+        #seq_dict = dict() # This dictionary shows the sequence . Vielleicht wegmachen
         #for i in init_state_dict.keys():
-            #for j in meas_dict.keys():
-               # for k in gate_set_dict.keys():
-              #      key = '(' + i + ')' + '(' + j + ')' + '(' + k + ')'
-             #       init_block = init_state_dict[i]
-           #         meas_block = meas_dict[j]
-          #          gate_block = gate_set_dict[k]
-            #        seq_dict[key] = init_block
-         #           seq_dict[key].append(gate_block)
-        #            seq_dict[key].append(meas_block) # This dictionary concatens the init_state, gate and the mas state
+         #   for j in meas_dict.keys():
+          #      for k in gate_set_dict.keys():
+           #         key = '(' + i + ')' + '(' + j + ')' + '(' + k + ')'
+            #        init_block = init_state_dict[i]
+             #       meas_block = meas_dict[j]
+              #      gate_block = gate_set_dict[k]
+               #     seq_dict[key] = init_block
+                #   seq_dict[key].append(gate_block)
+                 #   seq_dict[key].append(meas_block) # This dictionary concatens the init_state, gate and the mas state
 
-        #created_blocks.append(init_state_block)
 
-        # self.log.debug(f"idx_array {idx_array}") # quick look for debug
-        # self.log.debug(f"init state name: {init_state_block.name}")  # quick look for debug
-        #block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        #block_ensemble.append((init_state_block.name, 0))
+
+        str_init_state = csv_2_list(init_state, str_2_val=str, delimiter=';')
+        init_state_list = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_init_state]
+
+        str_meas_state = csv_2_list(meas_state, str_2_val=str, delimiter=';')
+        meas_state_list = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_meas_state]
+
+        str_gate_set = csv_2_list(Gate_set, str_2_val=str, delimiter=';')
+        gate_set_list = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_gate_set]
+
+        #read_inits = csv_2_list(read_inits, str_2_val=Tk_string.str_2_enum)
+
+        init_state_block = PulseBlock(name=name)
+
+        idx_array = []  # Each number is connected to a measured chain of initial state, gate and the measure state
+        counter = 0
+
+
+        if len(init_state_list) == len(meas_state_list) == len(gate_set_list): # if the list of used gates has the same length
+            for l, m, n in zip(init_state_list, gate_set_list, meas_state_list):
+                help_element = []
+                int_gate_meas_element = init_meas_gate_elements(l[0], n[0], m[0])
+                for o in int_gate_meas_element:  # This goes through following order: init-gate-meas
+                    self.log.debug(f'the installed elements for GST are:{o}')
+                    init_state_block.extend(o)
+                    help_element.extend(o)
+
+                if not no_laser:
+                    init_state_block.append(laser_element)
+                    init_state_block.append(delay_element)
+                    init_state_block.append(waiting_element)
+
+                if alternating:
+                    init_state_block.extend(help_element)
+                    init_state_block.extend(pi_on_1_element)
+                    init_state_block.extend(pi_on_2_element)
+                    if not no_laser:
+                        init_state_block.append(laser_element)
+                        init_state_block.append(delay_element)
+                        init_state_block.append(waiting_element)
+
+                idx_array.append(counter)
+
+                counter += 1
+        elif len(init_state_list) == len(meas_state_list): # only if the init_statelist and the meas_state_list has the same length
+            for q,r in zip(init_state_list, meas_state_list):
+                for s in gate_set_list:
+                    help_element = []
+                    int_gate_meas_element = init_meas_gate_elements(q[0], r[0], s[0])
+                    for t in int_gate_meas_element:
+                        self.log.debug(f'the installed elements for GST are:{t}')
+                        init_state_block.extend(t)
+                        help_element.extend(t)
+
+                    if not no_laser:
+                        init_state_block.append(laser_element)
+                        init_state_block.append(delay_element)
+                        init_state_block.append(waiting_element)
+
+                    if alternating:
+                        init_state_block.extend(help_element)
+                        init_state_block.extend(pi_on_1_element)
+                        init_state_block.extend(pi_on_2_element)
+                        if not no_laser:
+                            init_state_block.append(laser_element)
+                            init_state_block.append(delay_element)
+                            init_state_block.append(waiting_element)
+
+                    idx_array.append(counter)
+
+                    counter += 1
+
+
+        created_blocks.append(init_state_block)
+
+
+        self.log.debug(f"idx_array {idx_array}") # quick look for debug
+        self.log.debug(f"init state name: {init_state_block.name}")  # quick look for debug
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((init_state_block.name, 0))
 
         # Create and append sync trigger block if needed
-        #if not no_laser:
-         #   self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+        if not no_laser:
+            self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         # add metadata to invoke settings later on
-        #number_of_lasers = len(idx_array) * 2 if alternating else len(idx_array)
-        #block_ensemble.measurement_information['alternating'] = alternating
-        #block_ensemble.measurement_information['laser_ignore_list'] = list()
-        #block_ensemble.measurement_information[
-        #    'controlled_variable'] = idx_array  # if tau_step == 0.0 else tau_array Possible later use
-        #block_ensemble.measurement_information['units'] = ('', '')
-        #block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
-        #block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
-        #block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
-         #   ensemble=block_ensemble, created_blocks=created_blocks)
+        number_of_lasers = len(idx_array) * 2 if alternating else len(idx_array)
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information[
+            'controlled_variable'] = idx_array  # if tau_step == 0.0 else tau_array Possible later use
+        block_ensemble.measurement_information['units'] = ('', '')
+        block_ensemble.measurement_information['labels'] = ('idx', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
 
         # append ensemble to created ensembles
-        #created_ensembles.append(block_ensemble)
-       # created_blocks, created_ensembles, created_sequences
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
 
     def generate_dd_dqt_sigamp(self, name='dd_sigamp', tau=0.5e-6, amp_start=0e-3, amp_step=0.01e-3,
                                     num_of_points=50, dd_type=DDMethods.XY8, dd_order=1, ampl_mw2=0e-3,
@@ -4486,7 +4669,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             return bb1_element
 
 
-        if env_type == Evm.rectangle or env_type == Evm.parabola or env_type == Evm.sin_n:
+        if env_type == Evm.rectangle or env_type == Evm.parabola or env_type == Evm.sin_n or env_type ==Evm.hermite:
             if on_nv is not None:
                 self.log.debug(f"On_nv= {on_nv} parameter ignored for envelope {env_type.name}")
             if len(mw_idle_amps[mw_idle_amps!=0]) == 0:
