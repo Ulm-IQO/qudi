@@ -1534,6 +1534,15 @@ class PredefinedGeneratorBase:
                         frequency=freqs[0],
                         phase=phases[0],
                         order_n=envelope.parameters['order_n'])
+                elif envelope == PulseEnvelopeType.hermite:
+                    mw_element.pulse_function[
+                        self.microwave_channel] = SamplingFunctions.SinHermiteEnvelope(
+                        amplitude=amps[0],
+                        frequency=freqs[0],
+                        phase=phases[0],
+                        time_pos=envelope.parameters['time_pos'],
+                        T=envelope.parameters['T'],
+                        scale=envelope.parameters['scale'])
                 else:
                     raise ValueError(f"Unsupported envelope type: {envelope.name}")
 
