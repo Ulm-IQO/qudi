@@ -3877,7 +3877,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on2_element = self.get_pi_element(dd_type.phases[-1], mw_freqs, ampls_on_2, rabi_periods,
                                              pi_x_length=1)
 
-        no_dd_on2 = False
+        no_dd_on2 = False  # debug only
         save_mw_amp = self.microwave_amplitude
         if no_dd_on2:
             self.log.warning("no_dd_on2 enabled. Won't decouple the other NV!")
@@ -3888,9 +3888,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 self.microwave_amplitude = 0
             else:
                 raise ValueError
-
-
-
 
         # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
         # pass unaltered mw_freqs, mw_amps array that might have been flipped by nv_order already
@@ -3913,7 +3910,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                        f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
                                                        ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
                                                        rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
-                                                       dd_type=dd_type, dd_type_2=dd_type_2,
+                                                       dd_type=dd_type.dd_after_mwx, dd_type_2=dd_type_2,
                                                        dd_order=dd_order,
                                                        init_pix_on_1=0, init_pix_on_2=0,
                                                        start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
@@ -4352,7 +4349,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                  nv_order='1,2',
                                  dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=False,
                                  ):
-
 
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
 

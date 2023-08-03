@@ -28,25 +28,41 @@ import copy
 import logging
 import numpy as np
 from collections import OrderedDict
+import enum
 from enum import Enum
 
 ##############################################################
 # Helper class for everything that need dynamical decoupling #
 ##############################################################
 
+class DDMethodsHelper():
+    @staticmethod
+    def get_phases(seq):
+        if type(seq) == dict:
+            if len(seq) != 1:
+                raise ValueError("If using dicts as unique phase identifier, must have exactly 1 element.")
+            _phases = list(seq.values())[0]
+        else:
+            _phases = seq
+        return _phases
 
+@enum.unique
 class DDMethods(Enum):
 
     # define a function to nest the phases of sequence 1 into sequence 2
     def nest_phases_function(xseq1, xseq2):
+        xseq1 = DDMethodsHelper.get_phases(xseq1)
+        xseq2 = DDMethodsHelper.get_phases(xseq2)
         return [((xseq1[j] + xseq2[k]) % 360.) for k in range(len(xseq2)) for j in range(len(xseq1))]
+
 
     # define a function to calculate the phases of the UR sequences,
     # reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
     def ur_phases_function(xn):
+
         # define phi_large, depending on the number of pulses in the UR sequence
         if xn % 4 == 0:
-            phi_large = 720./xn
+            phi_large = 720. / xn
         elif xn % 4 == 2:
             phi_large = 180. * (xn - 2) / xn
         else:
@@ -54,31 +70,44 @@ class DDMethods(Enum):
             print("Error: the UR sequence can only have an even number of pulses")
         # formula for the UR sequences phases, we round the degrees to the 8th digit to avoid some small machine
         # numbers in the phases when calculated from the formula but such rounding is in principle not necessary
-        ur_phases_array = [(round(k * ((k-1) * phi_large / 2 + phi_large) % 360., 8)) for k in range(xn)]
+        ur_phases_array = [(round(k * ((k - 1) * phi_large / 2 + phi_large) % 360., 8)) for k in range(xn)]
         return ur_phases_array
+
+
 
     # # define a function to compare the phases of sequence 1 and sequence 2, useful for testing after uncommenting
     # def compare_phases_function(xseq1, xseq2):
     #     return [((xseq1[k] - xseq2[k]) % 360.) for k in range(len(xseq2))]
 
-    SE =    [0., ]
-    CPMG =  [90., 90.]
-    XY4 =   [0., 90., 0., 90.]
-    XY8 =   [0., 90., 0., 90., 90., 0., 90., 0.]
-    XY8_leave_2i = [0., np.nan, 90., np.nan, 0., np.nan, 90., np.nan, 90., np.nan, 0., np.nan, 90., np.nan, 0.]
-    XY16 =  [0., 90., 0., 90., 90., 0., 90., 0., 180., -90., 180., -90., -90., 180., -90., 180.]
-    YY8 =   [-90., 90., 90., -90., -90., -90., 90., 90.]
-    KDD =   [30., 0., 90., 0., 30.] # composite pulse (CP) for population inversion, U5b shifted by 30 degrees
-    KDD2 = nest_phases_function(KDD, [0., 0.])
+    SE = [0., ]
+    SE2 = [0., 0.]
+    CPMG = [90., 90.]
+
+    XY4 = {0: [0., 90., 0., 90.]}
+    XY4_leave_2i = [0., float('nan'), 90., float('nan')]
+    XY8 = [0., 90., 0., 90., 90., 0., 90., 0.]
+    XY8_leave_2i = [0., float('nan'), 90., float('nan'), 0., float('nan'), 90., float('nan'),
+                    90., float('nan'), 0., float('nan'), 90., float('nan'), 0.]
+    XY16 = [0., 90., 0., 90., 90., 0., 90., 0., 180., -90., 180., -90., -90., 180., -90., 180.]
+    YY8 = [-90., 90., 90., -90., -90., -90., 90., 90.]
+    KDD = [30., 0., 90., 0., 30.]  # composite pulse (CP) for population inversion, U5b shifted by 30 degrees
+
+    KDD2 = nest_phases_function(KDD, SE2)
     KDD4 = nest_phases_function(KDD, XY4)
     KDD8 = nest_phases_function(KDD, XY8)
     KDD16 = nest_phases_function(KDD, XY16)
 
-    PPol_up = [90., 0., 90., 0.]
+    PPol_up = {0: [90., 0., 90., 0.]}
     PPol_down = [360., 450., 360., 450.]
-    
+
     # for Double Quantum transition
-    DQT_XY16 = [90, 0, 90, 0, 0, 90, 0, 90, -90, -180, -90, -180, -180, -90, -180, -90]   # Mamin (2014)
+    DQT_XY16 = [90, 0, 90, 0, 0, 90, 0, 90, -90, -180, -90, -180, -180, -90, -180, -90]  # Mamin (2014)
+
+    # 2x NV composite pulses
+    MW_DD_XY3 = [90, 0, 90]
+    MW_DD_SE8 = [0, 0, 0, 0, 0, 0, 0, 0]
+    MW_DD_XY4s = {1: [0., 90., 0., 90.]}
+    MW_DD_XY4s_2nd = {1: [90., 0., 90., 0.]}
 
     # define the specific UR sequences to use, reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
     UR4 = ur_phases_function(4)
@@ -87,6 +116,7 @@ class DDMethods(Enum):
     UR10 = ur_phases_function(10)
     UR12 = ur_phases_function(12)
     UR14 = ur_phases_function(14)
+
     UR16 = ur_phases_function(16)
     UR18 = ur_phases_function(18)
     UR20 = ur_phases_function(20)
@@ -95,7 +125,7 @@ class DDMethods(Enum):
     UR100 = ur_phases_function(100)
 
     def __init__(self, phases):
-        self._phases = phases
+        self._phases = DDMethodsHelper.get_phases(phases)
 
     @property
     def suborder(self):
@@ -104,6 +134,21 @@ class DDMethods(Enum):
     @property
     def phases(self):
         return np.array(self._phases)
+
+    @property
+    def dd_after_mwx(self):
+        """
+        For use in arbitrary (x) gates embedded in dd_x_dd decoupling.
+        Allows to set another DD in 2nd half of composite pulse.
+        """
+        after_x = {DDMethods.MW_DD_XY4s: DDMethods.MW_DD_XY4s_2nd}
+
+        if self in after_x.keys():
+            return after_x[self]
+        else:
+            return self
+
+
 
 class SamplingBase:
     """
