@@ -3814,11 +3814,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
     def _get_mw_gate_ddxdd_element(self, phase, mw_freqs, mw_amps, rabi_periods, pi_x_length=1.,
+                                   ampl_gate=None,
                                    nv_order='1,2', dd_type=DDMethods.SE, dd_type_2='',
                                    dd_order=1, dd_tau=100e-9, env_type=Evm.from_gen_settings,
                             ):
 
         exact_mw_tau = True
+        force_axy = False
+
         mw_freqs_raw, mw_amps_raw, rabi_periods_raw = cp.copy(mw_freqs), cp.copy(mw_amps), cp.copy(rabi_periods)
 
         ampls_on_1 = self._create_param_array(None, mw_amps, idx_nv=0, n_nvs=2,
@@ -3866,8 +3869,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                  f"->{1 + abs(t_balance_last) * (t_pi_on2 + t_pi_on1)}")
                 tau1 = (1 + abs(t_balance_last)) * (t_pi_on2 + t_pi_on1)
 
-
-        ampl_gate = ampls_on_1[0]
+        if ampl_gate is None:
+            ampl_gate = ampls_on_1[0]
 
         mw_el = self._get_multiple_mw_element(mw_length, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
         self.log.debug(f"rabi: {rabi_periods}, amppl2 {ampls_on_2}, freqs {mw_freqs}")
@@ -3919,6 +3922,29 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                        scale_tau2_first=t_balance_last, scale_tau2_last=1,
                                                        floating_last_pi=False,
                                                        alternating=False, no_laser=True)
+
+        if force_axy:
+            axy_element_1, _, _ = self.generate_AXY(name='mw_dd', tau_start=tau1, tau_step=0e-9,
+                                                    num_of_points=1,
+                                                    f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
+                                                    ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                    rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                                    xy8_order=dd_order,
+                                                    no_laser=True, alternating=False,
+                                                    f1=0, f2=0, f3=0, f4=0,
+                                                    scale_tau2_first=1, scale_tau2_last=t_balance_last,
+                                                    init_pix=0)
+            axy_element_2, _, _ = self.generate_AXY(name='mw_dd', tau_start=tau1, tau_step=0e-9,
+                                                    num_of_points=1,
+                                                    f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
+                                                    ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                    rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                                    xy8_order=dd_order,
+                                                    no_laser=True, alternating=False,
+                                                    f1=0, f2=0, f3=0, f4=0,
+                                                    scale_tau2_first=t_balance_last, scale_tau2_last=1,
+                                                    init_pix=0)
+            dd_element_1, dd_element_2 = axy_element_1, axy_element_2
 
         dd_element_1, dd_element_2 = dd_element_1[0], dd_element_2[0]
         self.microwave_amplitude = save_mw_amp
@@ -4323,12 +4349,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def generate_mw_gate_dd_x_dd(self, name='gate_dd', tau_start=100e-9, tau_step=1e-6, num_of_points=10,
                                  tau1=100e-9, phase=0, ampl_gate=0.1, n_gate_reps=1,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
-                                 nv_order='1,2', random_tau1=0.,
+                                 nv_order='1,2',
                                  dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=False,
                                  ):
 
-        exact_mw_tau = True
-        force_axy = False
 
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
 
@@ -4338,6 +4362,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               idx_nv=0, n_nvs=2, order_nvs=nv_order)
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
                                               idx_nv=1, n_nvs=2, order_nvs=nv_order)
+        mw_amps = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
+                                              n_nvs=2)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
                                             n_nvs=2, order_nvs=nv_order)
 
@@ -4353,93 +4379,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
 
-        if dd_type_2 == '':
-            dd_type_2 = DDMethods.MW_DD_SE8
-
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
 
         gate_block = PulseBlock(name=name)
 
-        tau1_mean = tau1
-        if random_tau1 != 0. and n_gate_reps != 1:
-            rand_fac = np.random.uniform((1 - random_tau1), (1 + random_tau1), len(range(n_gate_reps)))
-            self.log.debug(f"Randomizing tau1 per n_gate_reps: {rand_fac}")
-        else:
-            rand_fac = np.ones((len(range(n_gate_reps))))
-
-        # todo: make use of _get_mw_gate_dd_element
-
         for mw_length in tau_array:
+            pi_x_length = mw_length / t_pi_on1
 
-            mw_el = self._get_multiple_mw_element(mw_length, 0, ampl_gate, mw_freqs, [phase] * len(mw_freqs))
+            mw_dd_element = self._get_mw_gate_ddxdd_element(phase, mw_freqs, mw_amps, rabi_periods,
+                                                            ampl_gate=ampl_gate,
+                                                            pi_x_length=pi_x_length, nv_order=nv_order,
+                                                            dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                                            dd_tau=tau1)
 
             for idx_gate, i_gate in enumerate(range(n_gate_reps)):
-                t_balance_last = 1
-                tau1 = rand_fac[idx_gate] * tau1_mean
-
-                if exact_mw_tau:
-                    t_balance_last = 1 - (mw_length / 2) / ((tau1 - t_pi_on1) / 2)
-                    if tau1 < t_pi_on2 + t_pi_on1 or t_balance_last < 0:
-                        self.log.warning(f"Adjusting tau1 to fit t_pi_on2 in: {tau1}"
-                                         f"->{1 + abs(t_balance_last) * (t_pi_on2 + t_pi_on1)}")
-                        tau1 = (1 + abs(t_balance_last)) * (t_pi_on2 + t_pi_on1)
-
-                self.log.debug(f"For MW {mw_length}, => tau1 {tau1}, t_balance_last {t_balance_last}")
-
-                # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
-                dd_element_1, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
-                                                               f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
-                                                               rabi_period_mw_2=rabi_period_mw_2,
-                                                               dd_type=dd_type, dd_type_2=dd_type_2,
-                                                               dd_order=dd_order,
-                                                               init_pix_on_1=0, init_pix_on_2=0,
-                                                               start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
-                                                               read_pix_on_2=0,
-                                                               nv_order=nv_order,
-                                                               scale_tau2_first=1, scale_tau2_last=t_balance_last,
-                                                               floating_last_pi=False,
-                                                               alternating=False, no_laser=True)
-                dd_element_2, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
-                                                               f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
-                                                               rabi_period_mw_2=rabi_period_mw_2,
-                                                               dd_type=dd_type, dd_type_2=dd_type_2,
-                                                               dd_order=dd_order,
-                                                               init_pix_on_1=0, init_pix_on_2=0,
-                                                               start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
-                                                               read_pix_on_2=0,
-                                                               nv_order=nv_order,
-                                                               scale_tau2_first=t_balance_last, scale_tau2_last=1,
-                                                               floating_last_pi=False,
-                                                               alternating=False, no_laser=True)
-
-                dd_element_1, dd_element_2 = dd_element_1[0], dd_element_2[0]
-                if force_axy:
-                    axy_element_1, _, _ = self.generate_AXY(name='mw_dd', tau_start=tau1, tau_step=0e-9,
-                                                            num_of_points=1,
-                                                            f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
-                                                            rabi_period_mw_2=rabi_period_mw_2,
-                                                            xy8_order=dd_order,
-                                                            no_laser=True, alternating=False,
-                                                            f1=0, f2=0, f3=0, f4=0,
-                                                            scale_tau2_first=1, scale_tau2_last=t_balance_last,
-                                                            init_pix=0)
-                    axy_element_2, _, _ = self.generate_AXY(name='mw_dd', tau_start=tau1, tau_step=0e-9,
-                                                            num_of_points=1,
-                                                            f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
-                                                            rabi_period_mw_2=rabi_period_mw_2,
-                                                            xy8_order=dd_order,
-                                                            no_laser=True, alternating=False,
-                                                            f1=0, f2=0, f3=0, f4=0,
-                                                            scale_tau2_first=t_balance_last, scale_tau2_last=1,
-                                                            init_pix=0)
-                    dd_element_1, dd_element_2 = axy_element_1, axy_element_2
-
-                gate_block.extend(dd_element_1)
-                gate_block.append(mw_el)
-                gate_block.extend(dd_element_2)
-            #gate_block.extend(pi_on2_element)
+                gate_block.extend(mw_dd_element)
 
             gate_block.append(laser_element)
             gate_block.append(delay_element)
@@ -4447,16 +4403,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             if alternating:
                 for i_gate in range(n_gate_reps):
-                    gate_block.extend(dd_element_1)
-                    gate_block.append(mw_el)
-                    gate_block.extend(dd_element_2)
-                #gate_block.extend(pi_on2_element)
+                    gate_block.extend(mw_dd_element)
+
                 gate_block.extend(pi_on1_element)
 
                 gate_block.append(laser_element)
                 gate_block.append(delay_element)
                 gate_block.append(waiting_element)
-
 
         created_blocks.append(gate_block)
 
