@@ -3774,7 +3774,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pi_on2_element = self.get_pi_element(dd_type.phases[-1], mw_freqs, ampls_on_2, rabi_periods,
                                              pi_x_length=1)
 
-        no_dd_on2 = True
+        no_dd_on2 = False
+        save_mw_amp, save_mw_freqs, save_rabi_periods = self.microwave_amplitude, self.microwave_frequency, self.rabi_period
+        self.microwave_amplitude, self.microwave_frequency, self.rabi_period = mw_amps_raw[0], mw_freqs_raw[0], \
+                                                                               rabi_periods_raw[0]
         save_mw_amp = self.microwave_amplitude
         if no_dd_on2:
             self.log.warning("no_dd_on2 enabled. Won't decouple the other NV!")
@@ -3799,7 +3802,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                   nv_order=nv_order,
                                   alternating=False, no_laser=True)
 
-        self.microwave_amplitude = save_mw_amp
+        self.microwave_amplitude, self.microwave_frequency, self.rabi_period = save_mw_amp, save_mw_freqs, save_rabi_periods
 
         dd_element = dd_element[0]
 
@@ -3878,7 +3881,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                              pi_x_length=1)
 
         no_dd_on2 = False  # debug only
-        save_mw_amp = self.microwave_amplitude
+        save_mw_amp, save_mw_freqs, save_rabi_periods = self.microwave_amplitude, self.microwave_frequency, self.rabi_period
+        self.microwave_amplitude, self.microwave_frequency, self.rabi_period = mw_amps_raw[0], mw_freqs_raw[0], rabi_periods_raw[0]
         if no_dd_on2:
             self.log.warning("no_dd_on2 enabled. Won't decouple the other NV!")
             # debug only
@@ -3910,7 +3914,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                        f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
                                                        ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
                                                        rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
-                                                       dd_type=dd_type.dd_after_mwx, dd_type_2=dd_type_2,
+                                                       dd_type=dd_type.dd_after_mwx, dd_type_2=dd_type_2.dd_after_mwx,
                                                        dd_order=dd_order,
                                                        init_pix_on_1=0, init_pix_on_2=0,
                                                        start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
@@ -3919,6 +3923,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                        scale_tau2_first=t_balance_last, scale_tau2_last=1,
                                                        floating_last_pi=False,
                                                        alternating=False, no_laser=True)
+
+        if dd_type != dd_type.dd_after_mwx:
+            self.log.debug(f"Using decoupling streched over mw x, type {dd_type} -> {dd_type.dd_after_mwx}")
+        if dd_type_2 != dd_type_2.dd_after_mwx:
+            self.log.debug(f"Using decoupling on2 streched over mw x, type {dd_type_2} -> {dd_type_2.dd_after_mwx}")
 
         if force_axy:
             axy_element_1, _, _ = self.generate_AXY(name='mw_dd', tau_start=tau1, tau_step=0e-9,
@@ -3944,7 +3953,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dd_element_1, dd_element_2 = axy_element_1, axy_element_2
 
         dd_element_1, dd_element_2 = dd_element_1[0], dd_element_2[0]
-        self.microwave_amplitude = save_mw_amp
+        self.microwave_amplitude, self.microwave_frequency, self.rabi_period = save_mw_amp, save_mw_freqs, save_rabi_periods
 
         gate_block = []
         gate_block.extend(dd_element_1)
@@ -4431,6 +4440,99 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
+
+    def generate_mw_gate_dd_x_dd_ampl(self, name='gate_dd', ampl_start=1e-3, ampl_step=10e-3, num_of_points=10,
+                                 tau1=100e-9, phase=0, t_mw_gate='', n_gate_reps=1,
+                                 f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
+                                 nv_order='1,2',
+                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=False,
+                                 ):
+
+        created_blocks, created_ensembles, created_sequences = list(), list(), list()
+
+        rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2),
+                                                n_nvs=2, order_nvs=nv_order)
+        ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              idx_nv=0, n_nvs=2, order_nvs=nv_order)
+        ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2),
+                                              idx_nv=1, n_nvs=2, order_nvs=nv_order)
+        mw_amps = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), order_nvs=nv_order,
+                                              n_nvs=2)
+        mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2),
+                                            n_nvs=2, order_nvs=nv_order)
+
+
+        ampl_array = ampl_start + np.arange(num_of_points) * ampl_step
+
+        pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
+                                           pi_x_length=1, no_amps_2_idle=False,
+                                           env_type=Evm.from_gen_settings)
+        pi_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
+                                             pi_x_length=1, no_amps_2_idle=False,
+                                             env_type=Evm.from_gen_settings)
+        t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
+        t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
+
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        gate_block = PulseBlock(name=name)
+
+        for ampl_gate in ampl_array:
+            if t_mw_gate is '' or t_mw_gate is None:
+                pi_x_length = 1
+            else:
+                pi_x_length = t_mw_gate / t_pi_on1
+
+            mw_dd_element = self._get_mw_gate_ddxdd_element(phase, mw_freqs, mw_amps, rabi_periods,
+                                                            ampl_gate=ampl_gate,
+                                                            pi_x_length=pi_x_length, nv_order=nv_order,
+                                                            dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                                            dd_tau=tau1)
+
+            for idx_gate, i_gate in enumerate(range(n_gate_reps)):
+                gate_block.extend(mw_dd_element)
+
+            gate_block.append(laser_element)
+            gate_block.append(delay_element)
+            gate_block.append(waiting_element)
+
+            if alternating:
+                for i_gate in range(n_gate_reps):
+                    gate_block.extend(mw_dd_element)
+
+                gate_block.extend(pi_on1_element)
+
+                gate_block.append(laser_element)
+                gate_block.append(delay_element)
+                gate_block.append(waiting_element)
+
+        created_blocks.append(gate_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append((gate_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        # add metadata to invoke settings later on
+        number_of_lasers = num_of_points
+        block_ensemble.measurement_information['alternating'] = alternating
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = ampl_array
+        block_ensemble.measurement_information['units'] = ('V', '')
+        block_ensemble.measurement_information['labels'] = ('gate_ampl', 'Signal')
+        block_ensemble.measurement_information['number_of_lasers'] = 2*number_of_lasers if alternating else number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+
     def _get_bb1_cp1_element(self, phase, mw_freqs, mw_amps, rabi_periods, pi_x_length=1.,
                              cp_on2=True, no_amps_2_idle_on2=False, env_type=Evm.from_gen_settings,
                              nv_order="1,2"):
@@ -4812,8 +4914,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 flipped_rabi = False
 
                 if dd_ampl_2 is not None and len(mw_amps) == 2:
+                    if nv_order == "1,2":
+                        idx = 1
+                    elif nv_order == "2,1":
+                        idx = 0
+                    else:
+                        raise RuntimeError
                     # not general (n_lines > 2) preliminary helper to disable MW on NV2
-                    mw_amps[1] = dd_ampl_2
+                    amps[idx] = dd_ampl_2
 
                 if comp_type == Comp.mw_dd and dd_order * dd_type.suborder %2 == 1:
                     # uneven dd_order will create a pi flip on NV1, balance by increasing the mw_time
@@ -4833,12 +4941,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                    f" phase= {dd_rabi_phase}")
 
                 if is_ddxdd:
-                    comp_element = self._get_mw_gate_ddxdd_element(phases[0], mw_freqs, mw_amps, rabi_periods,
+                    comp_element = self._get_mw_gate_ddxdd_element(phases[0], mw_freqs, amps, rabi_periods,
                                                                 pi_x_length=pi_x_length, nv_order=nv_order,
                                                                 dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order, dd_tau=dd_tau)
 
                 else:
-                    comp_element = self._get_mw_gate_dd_element(phases[0], mw_freqs, mw_amps, rabi_periods,
+                    comp_element = self._get_mw_gate_dd_element(phases[0], mw_freqs, amps, rabi_periods,
                                                                pi_x_length=pi_x_length, nv_order=nv_order,
                                                                dd_type=dd_type, dd_order=dd_order)
             else:
