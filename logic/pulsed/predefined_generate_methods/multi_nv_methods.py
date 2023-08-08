@@ -151,6 +151,13 @@ class OptimalControlPulse():
 
         return os.path.commonprefix(fnames)
 
+    @property
+    def available(self):
+        avail_i = os.path.exists(self._file_i)
+        avail_q = os.path.exists(self._file_i)
+
+        return (avail_i and avail_q)
+
 class MultiNV_Generator(PredefinedGeneratorBase):
     """
 
@@ -237,7 +244,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             #self.log.debug(
             #    f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
             #    f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
-            if pulse.equal_target_u(search_pulse):
+            if pulse.equal_target_u(search_pulse) and pulse.available:
                 ret_pulses.append(pulse)
 
         return ret_pulses
@@ -821,7 +828,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             rotations="[[<TomoRotations.none: 0>,];]", read_rots="",
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-                            comp_type=Comp.from_gen_settings,
+                            comp_type=Comp.from_gen_settings, env_type=Evm.from_gen_settings,
                             mirror_1q_pulses=False, alternating=False,
                             init_state_kwargs='', cnot_kwargs='', add_gate_ch=''):
         """
@@ -855,9 +862,16 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 # for composite pulses that act on both NVs
                 ampl_pi = amplitudes
 
+            if env_type == Evm.optimal:
+                # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
+                if env_type.parameters['par_drive_on_func']:
+                    func_map = env_type.parameters['par_drive_on_func']
+                    on_nv = func_map(on_nv)
+                    ampl_pi = amplitudes
+
             return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
                                        pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
-                                       comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
+                                       env_type=env_type, comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
 
         def rotation_element(rotation):
             # atm, supported (native) gate set is only:
@@ -1859,7 +1873,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         adapt_pspacing = False   # take into account init pulse before cphase
 
-        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True):
+        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True, scale_ampl=1.):
 
             on_nv_oc = on_nv
             if on_nv == '2,1':
@@ -1868,10 +1882,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             # ampls_on_1/2 take care of nv_order already
             if on_nv == 1:
-                ampl_pi = ampls_on_1
+                ampl_pi = scale_ampl* ampls_on_1
                 env_type = env_type_1
             elif on_nv == 2:
-                ampl_pi = ampls_on_2
+                ampl_pi = scale_ampl* ampls_on_2
                 env_type = env_type_2
             else:
                 raise ValueError
@@ -2060,21 +2074,25 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # create the DD sequence for a single order
             for pulse_number in range(dd_type.suborder):
                 dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
-                dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1))
+                dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
+                                                     scale_ampl=dd_type.scale_ampl[pulse_number]))
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
                 if last and not floating_last_pi:
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                     if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
+                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
                                                                   rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True
+                                                                  )
                         dd_block.extend(pix_end_on2_element)
                 elif last and floating_last_pi:
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
                                                              floating_last_pi=True, before_pi_on2=True))
                     if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
+                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
                                                                   rabi_periods, env_type=env_type_2, on_nv=2,
                                                                   pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                         dd_block.extend(pix_end_on2_element)
@@ -2083,7 +2101,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
                 else:
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
+                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
+                                    scale_ampl=dd_type_2.scale_ampl[pulse_number]))
 
         if end_pix_on_1 != 0:
             dd_block.extend(pihalf_on1_read_element)
@@ -2111,32 +2130,37 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.extend(pix_init_on2_element)
             if start_pix_on_1 != 0:
                 dd_block.extend(pihalf_start_on1_element)
-            for n in range(dd_order):
-                # create the DD sequence for a single order
-                for pulse_number in range(dd_type.suborder):
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
-                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1))
-                    first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
+            for pulse_number in range(dd_type.suborder):
+                dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
+                dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
+                                                     scale_ampl=dd_type.scale_ampl[pulse_number]))
+                first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
-                    if last and not floating_last_pi:
-                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                        if end_pix_on_2 != 0:
-                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs, ampls_on_2,
-                                                    rabi_periods, env_type=env_type_2, on_nv=2,  pi_x_length=end_pix_on_2, no_amps_2_idle=True)
-                            dd_block.extend(pix_end_on2_element)
-                    elif last and floating_last_pi:
-                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
-                                                     floating_last_pi=True, before_pi_on2=True))
-                        if end_pix_on_2 != 0:
-                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number],  mw_freqs, ampls_on_2,
-                                                        rabi_periods, env_type=env_type_2, on_nv=2, pi_x_length=end_pix_on_2, no_amps_2_idle=True)
-                            dd_block.extend(pix_end_on2_element)
-                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
-                                                     floating_last_pi=True, before_pi_on2=False))
+                if last and not floating_last_pi:
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                    if end_pix_on_2 != 0:
+                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
+                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True
+                                                                  )
+                        dd_block.extend(pix_end_on2_element)
+                elif last and floating_last_pi:
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
+                                                             floating_last_pi=True, before_pi_on2=True))
+                    if end_pix_on_2 != 0:
+                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
+                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                        dd_block.extend(pix_end_on2_element)
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
+                                                             floating_last_pi=True, before_pi_on2=False))
 
-                    else:
-                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                        dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2))
+                else:
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
+                                    scale_ampl=dd_type_2.scale_ampl[pulse_number]))
 
             if end_pix_on_1 != 0:
                 dd_block.extend(pihalf_on1_alt_read_element)
@@ -4767,7 +4791,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         generate_method = self._get_generation_method('oc_mw_multi_only')
-        oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(freqs), phases=self.list_2_csv(phases),
+        oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(list(freqs)),
+                                          phases=self.list_2_csv(phases),
                                           filename_i=self.list_2_csv(file_i), filename_q=self.list_2_csv(file_q),
                                           folder_path=self.optimal_control_assets_path,
                                           scale_ampl=self.list_2_csv(scale_ampl))
@@ -4909,7 +4934,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_tau = comp_type.parameters.get('dd_tau')
                 dd_rabi_period = comp_type.parameters['rabi_period']
                 dd_rabi_phase = comp_type.parameters['rabi_phase']
-                self.log.debug(f"Mw dd comp pulse (dd={dd_type}) with target rot {pi_x_length} pi, phase {phases[0]}")
+                mw_phase_overwrite = comp_type.parameters.get('replace_mw_phase', None)
 
                 flipped_rabi = False
 
@@ -4940,13 +4965,21 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     self.log.debug(f"Compensating pi_x_length= {pi_x_length}/{t_pix} for calibrated rabi_period= {dd_rabi_period}"
                                    f" phase= {dd_rabi_phase}")
 
+                phase = phases[0]
+                if mw_phase_overwrite is not None:
+                    if pi_x_length == mw_phase_overwrite['from_pix'] and mw_phase_overwrite['from_phase'] == phase:
+                        self.log.debug(f"WARNING: Overwriting phase for pix= {pi_x_length}: "
+                                       f"{phase} -> { mw_phase_overwrite['from_phase']}. Testing only!")
+                        phase = mw_phase_overwrite['to_phase']
+
+                self.log.debug(f"Mw dd comp pulse (dd={dd_type}) with target rot {pi_x_length} pi, phase {phase}")
                 if is_ddxdd:
-                    comp_element = self._get_mw_gate_ddxdd_element(phases[0], mw_freqs, amps, rabi_periods,
+                    comp_element = self._get_mw_gate_ddxdd_element(phase, mw_freqs, amps, rabi_periods,
                                                                 pi_x_length=pi_x_length, nv_order=nv_order,
                                                                 dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order, dd_tau=dd_tau)
 
                 else:
-                    comp_element = self._get_mw_gate_dd_element(phases[0], mw_freqs, amps, rabi_periods,
+                    comp_element = self._get_mw_gate_dd_element(phase, mw_freqs, amps, rabi_periods,
                                                                pi_x_length=pi_x_length, nv_order=nv_order,
                                                                dd_type=dd_type, dd_order=dd_order)
             else:
@@ -4982,7 +5015,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         elif env_type == Evm.optimal:
-            if len(mw_idle_amps) != 0:
+            if np.sum(abs((mw_idle_amps))) != 0:
                 raise NotImplementedError("Ooptimal control pulses support no idle ampl != 0")
             return self._get_pi_oc_element(phases, fs, on_nv=on_nv, pi_x_length=pi_x_length)
 
