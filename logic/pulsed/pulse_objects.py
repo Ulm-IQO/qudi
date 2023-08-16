@@ -55,7 +55,7 @@ class PulseEnvelopeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     def default_parameters(self):
         defaults = {'rectangle': {},
                     'parabola': {'order_P': 1},
-                     'optimal': {},
+                     'optimal': {'par_drive_on_func': None},
                      'sin_n': {'order_n': 2},
                      '_from_gen_settings': {}}
 
@@ -79,6 +79,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
     bb1 = 'bb1'
     bb1_cp2 = 'bb1_cp2'
     mw_dd = 'mw_dd'
+    mw_ddxdd = 'mw_ddxdd'
     from_gen_settings = '_from_gen_settings'
 
     def __init__(self, *args):
@@ -90,6 +91,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
                 'bb1': ['any'],
                 'bb1_cp2': ['any'],
                 'mw_dd': ['any'],
+                'mw_ddxdd': ['any'],
                 '_from_gen_settings': []}
         return rots[self.value]
 
@@ -99,6 +101,7 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
                 'bb1': ['any'],
                 'bb1_cp2': ['any'],
                 'mw_dd': ['any'],
+                'mw_ddxdd': ['any'],
                  '_from_gen_settings': []}
         return phases[self.value]
 
@@ -107,7 +110,11 @@ class PulseCompositeType(Enum, metaclass=PulseEnvelopeTypeMeta):
         defaults = {'bare': {},
                     'bb1': {},
                     'bb1_cp2': {},
-                    'mw_dd': {'dd_type': DDMethods.SE, 'dd_order': 3},
+                    'mw_dd': {'dd_type': DDMethods.SE, 'dd_order': 3,
+                              'rabi_period': None, 'rabi_phase': -90},
+                    'mw_ddxdd': {'dd_type': DDMethods.SE, 'dd_order': 2,
+                              'rabi_period': None, 'rabi_phase': 90,
+                                 'dd_tau': 100e-9, 'dd_ampl_2': None},
                     '_from_gen_settings': {}}
 
         return defaults[self.value]
@@ -1842,7 +1849,7 @@ class PredefinedGeneratorBase:
         return length
 
     @staticmethod
-    def list_2_csv(in_list, line_delimiter=";"):
+    def list_2_csv(in_list, delimiter=",", line_delimiter=";"):
         """
         :param line_delimter: if given lists of lists, will create lines per out list
                               that are seperated by the line_delimiter
@@ -1854,9 +1861,9 @@ class PredefinedGeneratorBase:
 
         for el in in_list:
             if type(el) == list:
-                str_list += f"{self.list_2_csv(el)}{line_delimiter} "
+                str_list += f"{PredefinedGeneratorBase.list_2_csv(el)}{line_delimiter} "
             else:
-                str_list += f"{repr(el)}, "
+                str_list += f"{repr(el)}{delimiter} "
             # str_list += f"{el}, "
 
         if len(str_list) > 0:
