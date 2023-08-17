@@ -2191,37 +2191,38 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.extend(pix_init_on2_element)
             if start_pix_on_1 != 0:
                 dd_block.extend(pihalf_start_on1_element)
-            for pulse_number in range(dd_type.suborder):
-                dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
-                dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
-                                                     scale_ampl=dd_type.scale_ampl[pulse_number]))
-                first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
+            for n in range(dd_order):
+                for pulse_number in range(dd_type.suborder):
+                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
+                    dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
+                                                         scale_ampl=dd_type.scale_ampl[pulse_number]))
+                    first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
-                if last and not floating_last_pi:
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                    if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True
-                                                                  )
-                        dd_block.extend(pix_end_on2_element)
-                elif last and floating_last_pi:
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
-                                                             floating_last_pi=True, before_pi_on2=True))
-                    if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True)
-                        dd_block.extend(pix_end_on2_element)
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
-                                                             floating_last_pi=True, before_pi_on2=False))
+                    if last and not floating_last_pi:
+                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                        if end_pix_on_2 != 0:
+                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                                                                      ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                                                                      rabi_periods, env_type=env_type_2, on_nv=2,
+                                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True
+                                                                      )
+                            dd_block.extend(pix_end_on2_element)
+                    elif last and floating_last_pi:
+                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
+                                                                 floating_last_pi=True, before_pi_on2=True))
+                        if end_pix_on_2 != 0:
+                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                                                                      ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                                                                      rabi_periods, env_type=env_type_2, on_nv=2,
+                                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                            dd_block.extend(pix_end_on2_element)
+                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
+                                                                 floating_last_pi=True, before_pi_on2=False))
 
-                else:
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
-                                    scale_ampl=dd_type_2.scale_ampl[pulse_number]))
+                    else:
+                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                        dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
+                                        scale_ampl=dd_type_2.scale_ampl[pulse_number]))
 
             if end_pix_on_1 != 0:
                 dd_block.extend(pihalf_on1_alt_read_element)
