@@ -54,6 +54,9 @@ class TomoRotations(IntEnum):
     ux180min_on_both = 30
     uy180min_on_both = 31
 
+    c2phase1_rot = 32  # For debug between Roberto's (c2phase1_rot) and Timo's methode (c2phase1_dd)
+    xy8_par = 33  # Use of parallel driven xy8-
+
     def __init__(self, *args):
         super().__init__()
 
@@ -845,7 +848,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pulse amplitude/frequency/rabi_period order: [f_nv1, f_dqt_nv1, f_nv2, f_dqt_nv2]
         """
 
-        add_pi2s = True   # avoid optimization into zero pulse
+        add_pi2s = False #True   # for optimal control only! avoid optimization into zero pulse
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True,
                                 env_type_pi=None, comp_type_pi=None):
