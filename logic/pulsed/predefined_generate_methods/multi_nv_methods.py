@@ -848,7 +848,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pulse amplitude/frequency/rabi_period order: [f_nv1, f_dqt_nv1, f_nv2, f_dqt_nv2]
         """
 
-        add_pi2s = False #True   # for optimal control only! avoid optimization into zero pulse
+        add_pi2s = True   # for optimal control only! avoid optimization into zero pulse
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True,
                                 env_type_pi=None, comp_type_pi=None):
@@ -1864,6 +1864,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
+
         dd_block.extend(pix_init_on2_element)
         dd_block.extend(pihalf_on1_element)
         for n in range(dd_order):
@@ -3440,10 +3441,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 self.log.warning(f"Changing mw element of unsupported tau=0 to {tau}")
             rabi_periods = np.ones(amplitudes.shape)*tau
             # todo: debug only
-            mw_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=2,
-                                             mw_idle_amps=ampls_on_2 * ampl_idle_mult)
-            #mw_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=2,
-            #                                      mw_idle_amps=ampls_on_2*ampl_idle_mult)
+            #mw_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=2,
+            #                                 mw_idle_amps=ampls_on_2 * ampl_idle_mult)
+            mw_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=2,
+                                                  mw_idle_amps=ampls_on_2*ampl_idle_mult)
             rabi_block.extend(mw_element)
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
@@ -3908,7 +3909,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
     def _get_mw_gate_ddxdd_element(self, phase, mw_freqs, mw_amps, rabi_periods, pi_x_length=1.,
                                    ampl_gate=None,
                                    nv_order='1,2', dd_type=DDMethods.SE, dd_type_2='',
-                                   dd_order=1, dd_tau=100e-9, env_type=Evm.from_gen_settings,
+                                   dd_order=1, dd_tau=100e-9, dd_parallel=False, env_type=Evm.from_gen_settings,
                             ):
 
         exact_mw_tau = True
@@ -4012,6 +4013,28 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                        scale_tau2_first=t_balance_last, scale_tau2_last=1,
                                                        floating_last_pi=False,
                                                        alternating=False, no_laser=True)
+
+        if dd_parallel:
+            dd_element_1, _, _ = self.generate_deer_dd_par_tau(name='mw_dd', tau_start=tau1, tau_step=0, num_of_points=1,
+                                                               f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
+                                                               ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                               rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                                               dd_type=dd_type, dd_order=dd_order,
+                                                               alternating=False, no_laser=True,
+                                                               nv_order=nv_order,
+                                                               init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
+                                                               end_pix_on_1=0, read_phase_deg=0)
+
+            dd_element_2, _, _ = self.generate_deer_dd_par_tau(name='mw_dd', tau_start=tau1, tau_step=0, num_of_points=1,
+                                                               f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
+                                                               ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                               rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                                               dd_type=dd_type.dd_after_mwx, dd_order=dd_order,
+                                                               alternating=False, no_laser=True,
+                                                               nv_order=nv_order,
+                                                               init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
+                                                               end_pix_on_1=0, read_phase_deg=0)
+
 
         if dd_type != dd_type.dd_after_mwx:
             self.log.debug(f"Using decoupling streched over mw x, type {dd_type} -> {dd_type.dd_after_mwx}")
@@ -4445,7 +4468,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                  tau1=100e-9, phase=0, ampl_gate=0.1, n_gate_reps=1,
                                  f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="10e-9, 10e-9, 10e-9",
                                  nv_order='1,2',
-                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1, alternating=False,
+                                 dd_type=DDMethods.SE, dd_type_2='', dd_order=1, dd_parallel=False, alternating=False,
                                  ):
 
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
@@ -4486,7 +4509,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                             ampl_gate=ampl_gate,
                                                             pi_x_length=pi_x_length, nv_order=nv_order,
                                                             dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
-                                                            dd_tau=tau1)
+                                                            dd_tau=tau1, dd_parallel=dd_parallel)
 
             for idx_gate, i_gate in enumerate(range(n_gate_reps)):
                 gate_block.extend(mw_dd_element)
@@ -5020,6 +5043,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_type = comp_type.parameters['dd_type']
                 dd_type_2 = comp_type.parameters.get('dd_type_2', '')
                 dd_ampl_2 = comp_type.parameters.get('dd_ampl_2', None)
+                dd_parallel = comp_type.parameters.get('dd_parallel', False)
                 dd_tau = comp_type.parameters.get('dd_tau')
                 dd_rabi_period = comp_type.parameters['rabi_period']
                 dd_rabi_phase = comp_type.parameters['rabi_phase']
@@ -5065,7 +5089,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 if is_ddxdd:
                     comp_element = self._get_mw_gate_ddxdd_element(phase, mw_freqs, amps, rabi_periods,
                                                                 pi_x_length=pi_x_length, nv_order=nv_order,
-                                                                dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order, dd_tau=dd_tau)
+                                                                dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
+                                                                dd_tau=dd_tau, dd_parallel=dd_parallel)
 
                 else:
                     comp_element = self._get_mw_gate_dd_element(phase, mw_freqs, amps, rabi_periods,
@@ -5091,7 +5116,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 # on amp_idle channel, make pulse with reversed phases in 2nd half -> no net state change
                 for idx in range(0,2):
                     for idx_ch, _ in enumerate(fs):
-                        phases[idx_ch] = phases[idx_ch]+180 if idx==1 and mw_idle_amps[idx_ch] != 0else phases[idx_ch]
+                        phases[idx_ch] = phases[idx_ch]+180 if idx==1 and mw_idle_amps[idx_ch] != 0 else phases[idx_ch]
 
                     el = self._get_multiple_mw_mult_length_element(lengths=lenghts/2,
                                                                  increments=0,
