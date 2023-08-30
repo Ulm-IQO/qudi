@@ -118,6 +118,29 @@ class TomoInit(IntEnum):
     cphase_hadamad_2 = 19
     cphase_hadamd_2_ux180_on_1 = 20
 
+    def __init__(self, *args):
+        super().__init__()
+
+        self._native_gate_translation = {
+            'none': TomoRotations.none,
+            'ux90_on_1': TomoRotations.ux90_on_1,
+            'ux90_on_2': TomoRotations.ux90_on_2,
+            'ux90_on_both': TomoRotations.ux90_on_both,
+            'uy90_on_1': TomoRotations.uy90_on_1,
+            'uy90_on_2': TomoRotations.uy90_on_2,
+            'uy90_on_both': TomoRotations.uy90_on_both,
+            'ux180_on_1': TomoRotations.ux180_on_1,
+            'ux180_on_2': TomoRotations.ux180_on_2,
+            'ux180_on_both': TomoRotations.ux180_on_both,
+            'uy180_on_1': TomoRotations.uy180_on_1,
+            'uy180_on_2': TomoRotations.uy180_on_2,
+            'uy180_on_both': TomoRotations.uy180_on_both,
+
+        }
+
+    def to_rotation(self):
+        return self._native_gate_translation[self.name]
+
 
 class OptimalControlPulse():
     def __init__(self, on_nv=1, par_with_nvs=None, pi_x=1, file_i=None, file_q=None):
@@ -623,11 +646,99 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             rabi_on_nv=1, rabi_phase_deg=0, rotation=TomoRotations.none, init_state=TomoInit.none,
                             num_of_points=50,
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,
+                            comp_type=Comp.from_gen_settings, env_type=Evm.from_gen_settings,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             alternating=False, init_state_kwargs='', cnot_kwargs=''):
         """
         pulse amplitude/frequency/rabi_period order: [f_nv1, f_dqt_nv1, f_nv2, f_dqt_nv2]
         """
+
+        def init_element(init_state):
+            init_set = [
+                        TomoInit.ux90_on_1, TomoInit.ux90_on_2,
+                        TomoInit.uy90_on_1, TomoInit.uy90_on_2,
+                        TomoInit.ux180_on_1, TomoInit.ux180_on_2,
+                        TomoInit.ux90_on_both, TomoInit.ux180_on_both,
+                        TomoInit.none]
+            if init_state not in init_set:
+                raise ValueError(
+                    f"Found rotation {init_state.name}, type {type(init_state)} which is not in init gate set {init_set}")
+            else:
+                return rotation_element(init_state.to_rotation())
+
+
+        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True,
+                                env_type_pi=None, comp_type_pi=None):
+
+            if type(on_nv) != list:
+                on_nv = [on_nv]
+
+            if comp_type_pi is None:
+                comp_type_pi = comp_type
+            if env_type_pi is None:
+                env_type_pi = env_type
+
+            mw_idle_amps = None
+            # ampls_on_1/2 take care of nv_order already
+            if on_nv == [1]:
+                ampl_pi = ampls_on_1
+            elif on_nv == [2]:
+                ampl_pi = ampls_on_2
+            elif set(on_nv) == set([1,2]):
+                ampl_pi = amplitudes
+
+            else:
+                raise ValueError
+
+            if comp_type_pi == Comp.bb1_cp2 or comp_type_pi == Comp.mw_dd or comp_type_pi == Comp.mw_ddxdd:
+                # for composite pulses that act on both NVs
+                ampl_pi = amplitudes
+
+            # todo: implement compy type via gen settings, like _get_envelope_settings()
+            if env_type_pi == Evm.optimal and (comp_type == Comp.bare or comp_type == Comp.from_gen_settings):
+                # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
+                if env_type_pi.parameters['par_drive_on_func']:
+                    func_map = env_type_pi.parameters['par_drive_on_func']
+                    on_nv = func_map(on_nv)
+                    ampl_pi = amplitudes
+
+            return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                                       pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                       env_type=env_type_pi, comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
+
+        def rotation_element(rot):
+            # atm, supported (native) gate set is only:
+            gate_set = [TomoRotations.ux45_on_2, TomoRotations.ux45min_on_2,
+                        TomoRotations.ux90_on_1, TomoRotations.ux90_on_2,
+                        TomoRotations.uy90_on_1, TomoRotations.uy90_on_2,
+                        TomoRotations.ux90min_on_1, TomoRotations.ux90min_on_2,
+                        TomoRotations.uy90min_on_1, TomoRotations.uy90min_on_2,
+                        TomoRotations.ux180_on_1, TomoRotations.ux180_on_2,
+                        TomoRotations.uy180_on_1, TomoRotations.uy180_on_2,
+                        TomoRotations.ux180min_on_1, TomoRotations.ux180min_on_2,
+                        TomoRotations.uy180min_on_1, TomoRotations.uy180min_on_2,
+                        TomoRotations.c2not1, TomoRotations.c2phase1_dd,
+                        TomoRotations.none]
+            if rot not in gate_set:
+                raise ValueError(
+                    f"Found rot {rot.name}, type {type(rot)} which is not in native gate set {gate_set}")
+
+            if rot == TomoRotations.none:
+                rot_elements = []
+            elif rot not in [TomoRotations.c2not1, TomoRotations.c2phase1_dd]:
+                params = rot.pulse_parameters
+                rot_elements = pi_element_function(params['phase'], pi_x_length=params['pulse_area']/np.pi,
+                                                   on_nv=params['target'])
+            elif rot == TomoRotations.c2not1:
+                rot_elements = c2not1_element
+            elif rot == TomoRotations.c2phase1_dd:
+                rot_elements = c2phase1_dd_element
+            else:
+                raise ValueError(f"Unknown random benchmarking rot: {rot.name}")
+
+            return rot_elements
+
+
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
 
         # handle kwargs
@@ -651,6 +762,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
         rabi_on_nv = int(rabi_on_nv)
+        n_lines = len(mw_freqs)
+
         if type(rotation) != list:
             rotation = [rotation]
         if type(init_state) != list:
@@ -667,26 +780,27 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         tau_array = tau_start + np.arange(num_of_points) * tau_step
         num_of_points = len(tau_array)
 
+        # simple rotations
+        env_type_readpi = self._get_envelope_settings(Evm.from_gen_settings)
+        pi_on_1_element = pi_element_function(0, on_nv=1, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare)
+        pi_on_2_element = pi_element_function(0, on_nv=2, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare)
 
         # define pulses on the subsystems or both
-        mw_on_1_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_1, increment=tau_step)
-        mw_on_2_element = self.get_mult_mw_element(rabi_phase_deg, tau_start, mw_freqs, ampls_on_2, increment=tau_step)
+        mw_on_1_element = self._get_multiple_mw_mult_length_element(lengths=[tau_start]*n_lines,
+                                                     increments=[tau_step]*n_lines,
+                                                     amps=ampls_on_1,
+                                                     freqs=mw_freqs,
+                                                     phases=[rabi_phase_deg]*n_lines,
+                                                     envelope=env_type_readpi)
+
+        mw_on_2_element = self._get_multiple_mw_mult_length_element(lengths=[tau_start]*n_lines,
+                                                     increments=[tau_step]*n_lines,
+                                                     amps=ampls_on_2,
+                                                     freqs=mw_freqs,
+                                                     phases=[rabi_phase_deg]*n_lines,
+                                                     envelope=env_type_readpi)
         mw_rabi_element = mw_on_1_element if rabi_on_nv == 1 else mw_on_2_element
 
-        # simple rotations
-        pi_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods)
-        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods)
-        pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods)
-        #pi_oc_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, on_nv=1,
-        #                                         env_type=Evm.optimal)
-        #pi_oc_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, on_nv=2,
-        #                                         env_type=Evm.optimal)
-
-        pi2_on_both_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=0.5)
-        pi2_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
-        pi2_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
-        pi2y_on_1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=0.5)
-        pi2y_on_2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods, pi_x_length=0.5)
 
         pi_read_element = cp.deepcopy(pi_on_1_element) if rabi_on_nv==1 else cp.deepcopy(pi_on_2_element)
         self.log.debug(f"Read element on nv {rabi_on_nv}: {pi_on_1_element}")
@@ -731,70 +845,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                   kwargs_dict=cnot_kwargs,
                                                                   alternating=False, no_laser=True)
         ent_create_bycnot_element = ent_create_bycnot_element[0]
-
-        def init_element(init_state):
-            if init_state == TomoInit.none:
-                init_elements = []
-            elif init_state == TomoInit.ux90_on_1:
-                init_elements = pi2_on_1_element
-            elif init_state == TomoInit.ux90_on_2:
-                init_elements = pi2_on_2_element
-            elif init_state == TomoInit.ux90_on_both:
-                init_elements = pi2_on_both_element
-            elif init_state == TomoInit.uy90_on_1:
-                init_elements = pi2y_on_1_element
-            elif init_state == TomoInit.uy90_on_2:
-                init_elements = pi2y_on_2_element
-            elif init_state == TomoInit.ux180_on_1:
-                init_elements = pi_on_1_element
-                if init_env_type == Evm.optimal:
-                    init_elements = pi_oc_on_1_element
-                    self.log.debug(f"Init {init_state.name} with oc pulse")
-            elif init_state == TomoInit.ux180_on_2:
-                init_elements = pi_on_2_element
-                if init_env_type == Evm.optimal:
-                    init_elements = pi_oc_on_2_element
-                    self.log.debug(f"Init {init_state.name} with oc pulse")
-            elif init_state == TomoInit.ux180_on_both:
-                # init_elements = pi_on_both_element
-                init_elements = cp.deepcopy(pi_on_1_element)
-                init_elements.extend(pi_on_2_element)
-                if init_env_type == Evm.optimal:
-                    init_elements = cp.deepcopy(pi_oc_on_1_element)
-                    init_elements.extend(pi_oc_on_2_element)
-                    self.log.debug(f"Init {init_state.name} with sequential oc pulse")
-            elif init_state == TomoInit.ux90_on_1_uy90_on_2:
-                init_elements = cp.deepcopy(pi2_on_1_element)
-                init_elements.extend(pi2y_on_2_element)
-            elif init_state == TomoInit.ux90_on_1_ux180_on_2:
-                init_elements = cp.deepcopy(pi2_on_1_element)
-                init_elements.extend(pi_on_2_element)
-            else:
-                raise ValueError(f"Unknown tomography init state: {init_state.name}")
-            return init_elements
-
-        def rotation_element(rotation):
-            if rotation == TomoRotations.none:
-                rot_elements = []
-            elif rotation == TomoRotations.c1not2:
-                rot_elements = c1not2_element
-            elif rotation == TomoRotations.c2phase1_dd:
-                rot_elements = c2phase1_dd_element
-            elif rotation == TomoRotations.c2not1:
-                rot_elements = c2not1_element
-            elif rotation == TomoRotations.ux180_on_1:
-                rot_elements = pi_on_1_element
-            elif rotation == TomoRotations.ux180_on_2:
-                rot_elements = pi_on_2_element
-            elif rotation == TomoRotations.c1not2_ux180_on_2:
-                rot_elements = cp.deepcopy(c1not2_element)
-                rot_elements.extend(pi_on_2_element)
-            elif rotation == TomoRotations.c2not1_ux180_on_1:
-                rot_elements = cp.deepcopy(c2not1_element)
-                rot_elements.extend(pi_on_1_element)
-            else:
-                raise ValueError(f"Unknown tomography rotation: {rotation.name}")
-            return rot_elements
 
 
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
