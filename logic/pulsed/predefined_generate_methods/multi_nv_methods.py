@@ -143,10 +143,23 @@ class OptimalControlPulse():
         if type(self._pi_x) == list and type(other_pulse._pi_x) != list:
             if self._pi_x[::-1][int(self._on_nv)-1] == 0:
                 own_pix = self._pi_x[int(self._on_nv)-1]
+            if len(self._pi_x) == 1:
+                own_pix = own_pix[0]
 
-        if self._on_nv==other_pulse._on_nv and own_pix == other_pulse._pi_x \
-                and self._par_with_nvs==other_pulse._par_with_nvs:
+        # todo: handle lists and scalars properly
+        if type(other_pulse._pi_x) == list and type(self._pi_x) != list:
+            if len(other_pulse._pi_x) == 1:
+                other_pulse._pi_x = other_pulse._pi_x[0]
+
+        if float(self._on_nv) == float(other_pulse._on_nv) and own_pix == other_pulse._pi_x \
+                and self._par_with_nvs == other_pulse._par_with_nvs:
             return True
+
+        #print(f"on_nv: {float(self._on_nv) == float(other_pulse._on_nv)}")
+        #print(f"pix: {own_pix == other_pulse._pi_x}")
+
+        #print(f"Debug. Checking failed for other pulse: on={other_pulse._on_nv}, pi={other_pulse._pi_x}, par={other_pulse._par_with_nvs},"
+        #    f"pulse2: on={self._on_nv},pi={self._pi_x},par={self._par_with_nvs} ")
         return False
 
     @property
@@ -254,7 +267,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         for pulse in self._optimal_pulses:
             #self.log.debug(
             #    f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
-            #    f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
+            #   f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
             if pulse.equal_target_u(search_pulse) and pulse.available:
                 ret_pulses.append(pulse)
 
@@ -848,7 +861,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pulse amplitude/frequency/rabi_period order: [f_nv1, f_dqt_nv1, f_nv2, f_dqt_nv2]
         """
 
-        add_pi2s = True   # for optimal control only! avoid optimization into zero pulse
+        add_pi2s = False   # for optimal control only! avoid optimization into zero pulse
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True,
                                 env_type_pi=None, comp_type_pi=None):
@@ -878,7 +891,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 # for composite pulses that act on both NVs
                 ampl_pi = amplitudes
 
-            if env_type_pi == Evm.optimal:
+            # todo: implement compy type via gen settings, like _get_envelope_settings()
+            if env_type_pi == Evm.optimal and (comp_type == Comp.bare or comp_type == Comp.from_gen_settings):
                 # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
                 if env_type_pi.parameters['par_drive_on_func']:
                     func_map = env_type_pi.parameters['par_drive_on_func']
@@ -1805,7 +1819,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                  dd_type=DDMethods.SE, dd_order=1, alternating=True,
                                  init_pix_on_2=0, init_pix_on_1=0.5, end_pix_on_1=0.5, end_pix_on_2=0, nv_order="1,2",
                                  read_phase_deg=90,
-                                 env_type=Evm.rectangle, no_laser=False):
+                                 env_type=Evm.from_gen_settings, no_laser=False):
         """
         Decoupling sequence on both NVs.
         In contrast to 'normal' DEER, the position of the pi on NV2 is not swept. Instead, the pi pulses on NV1 & NV2
@@ -1851,7 +1865,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             if env_type == Evm.optimal:
                 return self.get_pi_element(xphase, mw_freqs, amplitudes, rabi_periods,
-                                           pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                           pi_x_length=[pi_x_length, pi_x_length], no_amps_2_idle=no_amps_2_idle,
                                            env_type=env_type, on_nv=on_nv)
             else:
                 return self.get_pi_element(xphase, mw_freqs, amplitudes, rabi_periods,
@@ -1938,7 +1952,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         adapt_pspacing = False   # take into account init pulse before cphase
 
-        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True, scale_ampl=1.):
+        def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True, scale_ampl=1.,
+                                env_type=Evm.from_gen_settings):
 
             on_nv_oc = on_nv
             if on_nv == '2,1':
@@ -1955,9 +1970,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise ValueError
 
+            if env_type.parameters.get('par_drive_on_func'):
+                #self.log.debug(f"Overwriting parallel drive for pulse envelope: {env_type}")
+                func_map = env_type.parameters['par_drive_on_func']
+                on_nv = func_map(on_nv)
+                ampl_pi = amplitudes
+
             return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
                                        pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
-                                       env_type=env_type)
+                                       env_type=env_type, on_nv=on_nv)
 
         def get_deer_pos(i_dd_order, dd_order, i_dd_suborder, dd_type, before_pi_on1):
             first = (i_dd_order == 0 and i_dd_suborder == 0 and before_pi_on1)
@@ -2033,8 +2054,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pihalf_start_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
                                                        pi_x_length=start_pix_on_1)
         # elements inside dd come from their own function
-        pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
-        pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=True)
+        pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False, env_type=env_type_1)
+        pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=True, env_type=env_type_2)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False,
                                                    env_type=env_type_2, on_nv=2)
@@ -2140,10 +2161,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             for pulse_number in range(dd_type.suborder):
                 dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
                 dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
-                                                     scale_ampl=dd_type.scale_ampl[pulse_number]))
+                                                    scale_ampl=dd_type.scale_ampl[pulse_number],
+                                                    env_type=env_type_1))
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
                 if last and not floating_last_pi:
+                    # todo: unify; all pis should be generated by pi_element_funcion
+                    # think about env_type
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                     if end_pix_on_2 != 0:
                         pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
@@ -2167,7 +2191,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 else:
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                     dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
-                                    scale_ampl=dd_type_2.scale_ampl[pulse_number]))
+                                    scale_ampl=dd_type_2.scale_ampl[pulse_number], env_type=env_type_2))
 
         if end_pix_on_1 != 0:
             dd_block.extend(pihalf_on1_read_element)
@@ -2199,7 +2223,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 for pulse_number in range(dd_type.suborder):
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
                     dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
-                                                         scale_ampl=dd_type.scale_ampl[pulse_number]))
+                                                        scale_ampl=dd_type.scale_ampl[pulse_number],
+                                                        env_type=env_type_1))
                     first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
                     if last and not floating_last_pi:
@@ -2226,7 +2251,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     else:
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                         dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
-                                        scale_ampl=dd_type_2.scale_ampl[pulse_number]))
+                                                            scale_ampl=dd_type_2.scale_ampl[pulse_number],
+                                                            env_type=env_type_2))
+
 
             if end_pix_on_1 != 0:
                 dd_block.extend(pihalf_on1_alt_read_element)
@@ -3406,8 +3433,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_rabi_test(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9, num_of_points=50,
-                           f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0.):
+    def generate_rabi_test(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9, tau1=np.nan, num_of_points=50,
+                           f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., n_rep=1):
         """
         Double quantum transition, driven in parallel (instead of sequential)
         """
@@ -3424,6 +3451,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         tau_array = tau_start + np.arange(num_of_points) * tau_step
+        if np.isnan(tau1):
+            tau1 = None
         num_of_points = len(tau_array)
 
 
@@ -3440,12 +3469,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 tau = 1e-9
                 self.log.warning(f"Changing mw element of unsupported tau=0 to {tau}")
             rabi_periods = np.ones(amplitudes.shape)*tau
+            if tau1:
+                rabi_periods[0] = tau1
+                self.log.debug(f"MW of length {rabi_periods}")
             # todo: debug only
-            #mw_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=2,
-            #                                 mw_idle_amps=ampls_on_2 * ampl_idle_mult)
-            mw_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=2,
-                                                  mw_idle_amps=ampls_on_2*ampl_idle_mult)
-            rabi_block.extend(mw_element)
+            mw_element = self.get_pi_element(0, mw_freqs, amplitudes, rabi_periods, pi_x_length=2,
+                                             mw_idle_amps=None)
+            # same length, parallel drive via idle_amps
+            #mw_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods, pi_x_length=2,
+            #                                      mw_idle_amps=ampls_on_2*ampl_idle_mult)
+            for i in range(n_rep):
+                rabi_block.extend(mw_element)
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
             rabi_block.append(waiting_element)
@@ -3907,7 +3941,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
     def _get_mw_gate_ddxdd_element(self, phase, mw_freqs, mw_amps, rabi_periods, pi_x_length=1.,
-                                   ampl_gate=None,
+                                   ampl_gate=None, mw_length=None,
                                    nv_order='1,2', dd_type=DDMethods.SE, dd_type_2='',
                                    dd_order=1, dd_tau=100e-9, dd_parallel=False, env_type=Evm.from_gen_settings,
                             ):
@@ -3921,6 +3955,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                               order_nvs=nv_order)
         ampls_on_2 = self._create_param_array(None, mw_amps, idx_nv=1, n_nvs=2,
                                                order_nvs=nv_order)
+        amplitudes = self._create_param_array(None, mw_amps, n_nvs=2,
+                                              order_nvs=nv_order)
         mw_freqs = self._create_param_array(None, mw_freqs, n_nvs=2, order_nvs=nv_order)
         rabi_periods = self._create_param_array(None, rabi_periods, n_nvs=2, order_nvs=nv_order)
 
@@ -3935,7 +3971,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
                                    pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
-                                   env_type=env_type)
+                                   env_type=Evm.from_gen_settings, on_nv=on_nv)
 
         pix_on1_element = pi_element_function(0, pi_x_length=pi_x_length, on_nv=1)
         pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
@@ -3945,9 +3981,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                              pi_x_length=1, no_amps_2_idle=False,
                                              env_type=Evm.from_gen_settings)
 
+        # todo: probably need to consider here oc pulses as well, not from gen_setting
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
-        mw_length = MultiNV_Generator.get_element_length(pix_on1_element)
+        if mw_length is None:
+            mw_length = MultiNV_Generator.get_element_length(pix_on1_element)
 
         if dd_type_2 == '':
             dd_type_2 = DDMethods.MW_DD_SE8
@@ -3966,7 +4004,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             ampl_gate = ampls_on_1[0]
 
         mw_el = self._get_multiple_mw_element(mw_length, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
-        self.log.debug(f"rabi: {rabi_periods}, amppl2 {ampls_on_2}, freqs {mw_freqs}")
+        self.log.debug(f"dd_x_dd, parallel= {dd_parallel}, t_mw= {mw_length}, rabi: {rabi_periods},"
+                       f" amppl2 {ampls_on_2}, freqs {mw_freqs}, env_type= {env_type}")
         pi_on2_element = self.get_pi_element(dd_type.phases[-1], mw_freqs, ampls_on_2, rabi_periods,
                                              pi_x_length=1)
 
@@ -3986,33 +4025,36 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
         # pass unaltered mw_freqs, mw_amps array that might have been flipped by nv_order already
 
-        # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
-        dd_element_1, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
-                                                       f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
-                                                       ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
-                                                       rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
-                                                       dd_type=dd_type, dd_type_2=dd_type_2,
-                                                       dd_order=dd_order,
-                                                       init_pix_on_1=0, init_pix_on_2=0,
-                                                       start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
-                                                       read_pix_on_2=0,
-                                                       nv_order=nv_order,
-                                                       scale_tau2_first=1, scale_tau2_last=t_balance_last,
-                                                       floating_last_pi=False,
-                                                       alternating=False, no_laser=True)
-        dd_element_2, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
-                                                       f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
-                                                       ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
-                                                       rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
-                                                       dd_type=dd_type.dd_after_mwx, dd_type_2=dd_type_2.dd_after_mwx,
-                                                       dd_order=dd_order,
-                                                       init_pix_on_1=0, init_pix_on_2=0,
-                                                       start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
-                                                       read_pix_on_2=0,
-                                                       nv_order=nv_order,
-                                                       scale_tau2_first=t_balance_last, scale_tau2_last=1,
-                                                       floating_last_pi=False,
-                                                       alternating=False, no_laser=True)
+        if not dd_parallel:
+            # deer_dd with tau2=0 decouples dipolar coupling, and both NV1, NV2
+            dd_element_1, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
+                                                           f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
+                                                           ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                           rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                                           dd_type=dd_type, dd_type_2=dd_type_2,
+                                                           dd_order=dd_order,
+                                                           init_pix_on_1=0, init_pix_on_2=0,
+                                                           start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
+                                                           read_pix_on_2=0,
+                                                           nv_order=nv_order,
+                                                           scale_tau2_first=1, scale_tau2_last=t_balance_last,
+                                                           env_type_1=env_type, env_type_2=env_type,
+                                                           floating_last_pi=False,
+                                                           alternating=False, no_laser=True)
+            dd_element_2, _, _ = self.generate_deer_dd_tau(name='mw_dd', tau1=tau1, tau_start=0, num_of_points=1,
+                                                           f_mw_2=self.list_2_csv(list(mw_freqs_raw[1:])),
+                                                           ampl_mw_2=self.list_2_csv(list(mw_amps_raw[1:])),
+                                                           rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
+                                                           dd_type=dd_type.dd_after_mwx, dd_type_2=dd_type_2.dd_after_mwx,
+                                                           dd_order=dd_order,
+                                                           init_pix_on_1=0, init_pix_on_2=0,
+                                                           start_pix_on_1=0, end_pix_on_1=0, end_pix_on_2=0,
+                                                           read_pix_on_2=0,
+                                                           nv_order=nv_order,
+                                                           scale_tau2_first=t_balance_last, scale_tau2_last=1,
+                                                           env_type_1=env_type, env_type_2=env_type,
+                                                           floating_last_pi=False,
+                                                           alternating=False, no_laser=True)
 
         if dd_parallel:
             dd_element_1, _, _ = self.generate_deer_dd_par_tau(name='mw_dd', tau_start=tau1, tau_step=0, num_of_points=1,
@@ -4021,7 +4063,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
                                                                dd_type=dd_type, dd_order=dd_order,
                                                                alternating=False, no_laser=True,
-                                                               nv_order=nv_order,
+                                                               nv_order=nv_order, env_type=env_type,
                                                                init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
                                                                end_pix_on_1=0, read_phase_deg=0)
 
@@ -4031,7 +4073,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                rabi_period_mw_2=self.list_2_csv(list(rabi_periods_raw[1:])),
                                                                dd_type=dd_type.dd_after_mwx, dd_order=dd_order,
                                                                alternating=False, no_laser=True,
-                                                               nv_order=nv_order,
+                                                               nv_order=nv_order,  env_type=env_type,
                                                                init_pix_on_1=0, init_pix_on_2=0, end_pix_on_2=0,
                                                                end_pix_on_1=0, read_phase_deg=0)
 
@@ -4880,6 +4922,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 if pi_x_length[idx_nv] == 0:
                     # for identity, need pulse that fits to correct length pulse on other NV
                     pi_x_nv = pi_x_length if all(on_nv == [1,2]) else pi_x_length[::-1]
+                if len(pi_x_length) == 2:
+                    # for same operation on both nvs
+                    idx_other_nv = 0 if idx_nv == 1 else 1
+                    if pi_x_length[idx_other_nv] == pi_x_length[idx_nv]:
+                        pi_x_nv = pi_x_length
                 oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_nv, par_with_nvs=other_nvs)
                 if len(oc_pulse) == 0:
                     #self.log.debug("Couldn't find")
@@ -4893,8 +4940,20 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             oc_pulse = oc_pulse[0]
 
             pulses.append(oc_pulse)
+            """
+            # todo debug only
+            if all(on_nv == [2,1]) and idx_nv==0:
+                freqs = [1,1]
+                scale_ampl = [0, 1]
+            else:
+                freqs = [1, 1]
+                scale_ampl = [1, 0]  # disable parallel pulses
+            """
             file_i.append(os.path.basename(oc_pulse._file_i))
             file_q.append(os.path.basename(oc_pulse._file_q))
+
+
+
 
         # swap order such that correct pulse.on_nv on every freq
         nv_order = [p._on_nv for p in pulses]
@@ -4967,10 +5026,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             mw_idle_amps = np.asarray([0] * len(mw_freqs))
         assert len(mw_freqs) == len(mw_idle_amps)
 
-        if pi_x_length < 0:
-            self.log.debug(f"Pi lengths {pi_x_length} <0 transformed to phase shift +180° for {xphase}")
-            pi_x_length = abs(pi_x_length)
-            xphase = xphase + 180
+        if type(pi_x_length) != list:  # todo: can only happen for OC pulses
+            if pi_x_length < 0:
+                self.log.debug(f"Pi lengths {pi_x_length} <0 transformed to phase shift +180° for {xphase}")
+                pi_x_length = abs(pi_x_length)
+                xphase = xphase + 180
 
 
         n_lines = len(mw_amps[mw_amps!=0]) + len(mw_idle_amps[mw_idle_amps!=0])
@@ -4986,7 +5046,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         assert len(amps[amps!=0]) + len(mw_idle_amps[mw_idle_amps!=0]) == \
                len((mw_amps+mw_idle_amps)[(mw_amps+mw_idle_amps)!=0]) == n_lines
 
-        if pi_x_length == 0.:
+        if np.sum(abs(np.asarray(pi_x_length))) == 0.:
             return []
 
         env_type = self._get_envelope_settings(env_type)
@@ -5017,9 +5077,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise ValueError("Parallel composite pulses not supported!")
 
-
-            if env_type != self._get_envelope_settings(Evm.from_gen_settings):
-                raise NotImplementedError("Currently, only support pulse envelope 'from_gen_settings'")
+            # still true, but generates a lot of warnings
+            #if env_type != self._get_envelope_settings(Evm.from_gen_settings):
+            #    self.log.warning("Explicitly setting env_type!='from_gen_settings' is not well tested")
 
             self.log.debug(f"Composite pulse {comp_type.value}, on_nv={on_nv}")
 
@@ -5030,53 +5090,68 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 # todo: provisional only, add a generic function that can generate different comp pulses
                 comp_element = self._get_bb1_cp1_element(phases[0], mw_freqs, mw_amps, rabi_periods,
                                                         pi_x_length=pi_x_length, cp_on2=False, nv_order=nv_order,
-                                                        no_amps_2_idle_on2=False)
+                                                        no_amps_2_idle_on2=False, env_type=env_type)
 
             elif comp_type == Comp.bb1_cp2:
                 comp_element = self._get_bb1_cp1_element(phases[0], mw_freqs, mw_amps, rabi_periods,
                                                         pi_x_length=pi_x_length, cp_on2=True, nv_order=nv_order,
-                                                        no_amps_2_idle_on2=False)
+                                                        no_amps_2_idle_on2=False,  env_type=env_type)
 
             elif comp_type == Comp.mw_dd or comp_type == Comp.mw_ddxdd:
                 is_ddxdd = (comp_type == comp_type == Comp.mw_ddxdd)
                 dd_order = comp_type.parameters['dd_order']
                 dd_type = comp_type.parameters['dd_type']
                 dd_type_2 = comp_type.parameters.get('dd_type_2', '')
+                dd_ampl = comp_type.parameters.get('dd_ampl_2', None)
                 dd_ampl_2 = comp_type.parameters.get('dd_ampl_2', None)
                 dd_parallel = comp_type.parameters.get('dd_parallel', False)
                 dd_tau = comp_type.parameters.get('dd_tau')
-                dd_rabi_period = comp_type.parameters['rabi_period']
-                dd_rabi_phase = comp_type.parameters['rabi_phase']
+                dd_rabi_period = comp_type.parameters.get('dd_rabi_period', None)
+
+                mwx_rabi_period = comp_type.parameters['rabi_period']
+                mwx_rabi_phase = comp_type.parameters['rabi_phase']
+                mwx_ampl = comp_type.parameters.get('ampl', None)
                 mw_phase_overwrite = comp_type.parameters.get('replace_mw_phase', None)
 
                 flipped_rabi = False
 
-                if dd_ampl_2 is not None and len(mw_amps) == 2:
-                    if nv_order == "1,2":
-                        idx = 1
-                    elif nv_order == "2,1":
-                        idx = 0
-                    else:
-                        raise RuntimeError
-                    # not general (n_lines > 2) preliminary helper to disable MW on NV2
-                    amps[idx] = dd_ampl_2
+                for idx_ampl, ampl in enumerate([dd_ampl, dd_ampl_2]):
+                    if ampl is not None and len(mw_amps) == 2:
+                        if nv_order == "1,2":
+                            idx = 1 if idx_ampl == 1 else 0
+                        elif nv_order == "2,1":
+                            idx = 0 if idx_ampl == 1 else 1
+                        else:
+                            raise RuntimeError
+                        # not general (n_lines > 2) preliminary helper to disable MW on NV2
+                        amps[idx] = ampl
 
                 if comp_type == Comp.mw_dd and dd_order * dd_type.suborder %2 == 1:
                     # uneven dd_order will create a pi flip on NV1, balance by increasing the mw_time
                     flipped_rabi = True
                     pi_x_length += 1
 
-                if dd_rabi_period is not None:
+                if mwx_rabi_period is not None:
                     # compensate calibration
-                    t_length_2pi = dd_rabi_period - ((1/4 - dd_rabi_phase/360)* dd_rabi_period)
+                    t_length_2pi = mwx_rabi_period - ((1/4 - mwx_rabi_phase/360)* mwx_rabi_period)
                     if flipped_rabi:
-                        t_length_2pi = dd_rabi_period - ((1 / 4 + dd_rabi_phase / 360) * dd_rabi_period)
+                        t_length_2pi = mwx_rabi_period - ((1 / 4 + mwx_rabi_phase / 360) * mwx_rabi_period)
 
                     common_rabi_period = rabi_periods[0]     # rabi_periods[on_nv[0]-1]
                     pi_x_length = pi_x_length* t_length_2pi/common_rabi_period
                     t_pix = 1/2*pi_x_length*common_rabi_period
-                    self.log.debug(f"Compensating pi_x_length= {pi_x_length}/{t_pix} for calibrated rabi_period= {dd_rabi_period}"
-                                   f" phase= {dd_rabi_phase}")
+                    self.log.debug(f"Compensating pi_x_length= {pi_x_length}/{t_pix} for calibrated rabi_period= {mwx_rabi_period}"
+                                   f" phase= {mwx_rabi_phase}")
+
+                mw_length = None
+                if dd_rabi_period is not None:
+                    # todo: preliminary helper to chose right fixed mw_length
+                    mw_length = rabi_periods[0] if nv_order == "1,2" else rabi_periods[1]
+                    mw_length = mw_length/2 * pi_x_length
+                    self.log.debug(f"Overwriting rabi_periods for ddxdd: {rabi_periods} -> {dd_rabi_period}."
+                                   f"Fixing mw_length= {mw_length}")
+                    rabi_periods = dd_rabi_period
+
 
                 phase = phases[0]
                 if mw_phase_overwrite is not None:
@@ -5088,14 +5163,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 self.log.debug(f"Mw dd comp pulse (dd={dd_type}) with target rot {pi_x_length} pi, phase {phase}")
                 if is_ddxdd:
                     comp_element = self._get_mw_gate_ddxdd_element(phase, mw_freqs, amps, rabi_periods,
-                                                                pi_x_length=pi_x_length, nv_order=nv_order,
+                                                                pi_x_length=pi_x_length, mw_length=mw_length, nv_order=nv_order,
                                                                 dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
-                                                                dd_tau=dd_tau, dd_parallel=dd_parallel)
+                                                                dd_tau=dd_tau, dd_parallel=dd_parallel, env_type=env_type,
+                                                                ampl_gate=mwx_ampl)
 
                 else:
                     comp_element = self._get_mw_gate_dd_element(phase, mw_freqs, amps, rabi_periods,
                                                                pi_x_length=pi_x_length, nv_order=nv_order,
                                                                dd_type=dd_type, dd_order=dd_order)
+
+
             else:
                 raise ValueError
             return comp_element
@@ -5129,9 +5207,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         elif env_type == Evm.optimal:
+
+            scale_ampl = env_type.parameters.get('scale_ampl', [1])
+            if list(set(scale_ampl))[0] != 1:
+                self.log.debug(f"Scaling OC pulse with scale_ampl= {scale_ampl}")
+
             if np.sum(abs((mw_idle_amps))) != 0:
                 raise NotImplementedError("Ooptimal control pulses support no idle ampl != 0")
-            return self._get_pi_oc_element(phases, fs, on_nv=on_nv, pi_x_length=pi_x_length)
+            return self._get_pi_oc_element(phases, fs, on_nv=on_nv, pi_x_length=pi_x_length, scale_ampl=scale_ampl)
 
         else:
             raise ValueError(f"Envelope type {env_type} not supported.")
