@@ -1329,13 +1329,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                               rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                               dd_type=DDMethods.SE, dd_order=1,
                               read_phase_deg=0, nv_order="1,2",
-                              alternating=False, no_laser=False,composite = False,
+                              alternating=False, no_laser=False,composite = False,norm=False,
                               kwargs_dict=''):
         # Variable verif_gate: Any Unitary Gate U to verify if it's diagonal
         # Variable init_state: Initial state |00> prepared with the operators from the Protocoll. A list of preparations
 
         def init_element(init_state,
-                         verif_gate):  # Prepare of init states for cphase gate with a gate to verifiy
+                         verif_gate,normaliz=norm):  # Prepare of init states for cphase gate with a gate to verifiy
             init_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
         TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
             if init_state not in init_state_set:
@@ -1355,82 +1355,111 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 ValueError(f"Unknown gate for Verification: {verif_gate.name}.")
 
-            if init_state == TomoInit.cphase_none:
-                # Operators: U
-                init_elements = []
-                init_elements.extend(verif_element)
-                self.log.debug(f"Init state for cphase {init_state.name}")
-            elif init_state == TomoInit.cphase_ux180_on_1:
-                # Operators: X1*U*X1
-                if self.pulse_envelope == Evm.optimal:
-                    init_elements = cp.deepcopy(pi_oc_on_1_element)
+            if not normaliz: # if no normalization is used
+                if init_state == TomoInit.cphase_none:
+                    # Operators: U
+                    init_elements = []
                     init_elements.extend(verif_element)
-                    init_elements.extend(pi_oc_on_1_element)
-                    self.log.debug(f"Init {init_state.name} with oc pulse")
-                else:
-                    init_elements = cp.deepcopy(pi_on_1_element)
-                    init_elements.extend(verif_element)
-                    init_elements.extend(pi_on_1_element)
-                    #init_elements.extend(piMin_on_1_element)# negative
-                    self.log.debug(f"Init state for cphase {init_state.name} without oc pulse")
-            elif init_state == TomoInit.cphase_ux180_on_2:
-                # Operators: X2*U'X2
-                if self.pulse_envelope == Evm.optimal:
-                    init_elements = cp.deepcopy(pi_oc_on_2_element)
-                    init_elements.extend(verif_element)
-                    init_elements.extend(pi_oc_on_2_element)
-                    self.log.debug(f"Init {init_state.name} with oc pulse")
-                else:
-                    init_elements = cp.deepcopy(pi_on_2_element)
-                    init_elements.extend(verif_element)
-                    init_elements.extend(pi_on_2_element)
-                #init_elements.extend(piMin_on_2_element)
                     self.log.debug(f"Init state for cphase {init_state.name}")
-            elif init_state == TomoInit.cphase_ux180_on_both:
-                # Operators: X1*X2*U*X1*X2
+                elif init_state == TomoInit.cphase_ux180_on_1:
+                    # Operators: X1*U*X1
+                    if self.pulse_envelope == Evm.optimal:
+                        init_elements = cp.deepcopy(pi_oc_on_1_element)
+                        init_elements.extend(verif_element)
+                        init_elements.extend(pi_oc_on_1_element)
+                        self.log.debug(f"Init {init_state.name} with oc pulse")
+                    else:
+                        init_elements = cp.deepcopy(pi_on_1_element)
+                        init_elements.extend(verif_element)
+                        init_elements.extend(pi_on_1_element)
+                        # init_elements.extend(piMin_on_1_element)# negative
+                        self.log.debug(f"Init state for cphase {init_state.name} without oc pulse")
+                elif init_state == TomoInit.cphase_ux180_on_2:
+                    # Operators: X2*U'X2
+                    if self.pulse_envelope == Evm.optimal:
+                        init_elements = cp.deepcopy(pi_oc_on_2_element)
+                        init_elements.extend(verif_element)
+                        init_elements.extend(pi_oc_on_2_element)
+                        self.log.debug(f"Init {init_state.name} with oc pulse")
+                    else:
+                        init_elements = cp.deepcopy(pi_on_2_element)
+                        init_elements.extend(verif_element)
+                        init_elements.extend(pi_on_2_element)
+                        # init_elements.extend(piMin_on_2_element)
+                        self.log.debug(f"Init state for cphase {init_state.name}")
+                elif init_state == TomoInit.cphase_ux180_on_both:
+                    # Operators: X1*X2*U*X1*X2
 
-                if self.pulse_envelope == Evm.optimal:
-                    init_elements = cp.deepcopy(pi_oc_on_1_element)
-                    init_elements.extend(pi_oc_on_2_element)
+                    if self.pulse_envelope == Evm.optimal:
+                        init_elements = cp.deepcopy(pi_oc_on_1_element)
+                        init_elements.extend(pi_oc_on_2_element)
+                        init_elements.extend(verif_element)
+                        init_elements.extend(pi_oc_on_1_element)
+                        init_elements.extend(pi_oc_on_2_element)
+                        self.log.debug(f"Init {init_state.name} with seriell oc pulse")
+                    else:
+                        # init_elements = pi_on_both_element
+                        init_elements = cp.deepcopy(pi_on_1_element)
+                        init_elements.extend(pi_on_2_element)
+                        init_elements.extend(verif_element)
+                        init_elements.extend(pi_on_2_element)
+                        init_elements.extend(pi_on_1_element)
+                        # init_elements.extend(piMin_on_2_element) # negative
+                        # init_elements.extend(piMin_on_1_element)
+                        self.log.debug(f"Init state for cphase {init_state.name}")
+                elif init_state == TomoInit.cphase_hadamad_1:
+                    # H1 U H1
+                    init_elements = cp.deepcopy(hadamard_on1_element)
                     init_elements.extend(verif_element)
-                    init_elements.extend(pi_oc_on_1_element)
-                    init_elements.extend(pi_oc_on_2_element)
-                    self.log.debug(f"Init {init_state.name} with seriell oc pulse")
-                else:
-                    # init_elements = pi_on_both_element
+                    # init_elements.extend(hadamard_on1_element)
+                    init_elements.extend(hadamardMin_on1_element)
+                elif init_state == TomoInit.cphase_hadamad_2:
+                    # H2 U H2
+                    init_elements = cp.deepcopy(hadamard_on2_element)
+                    init_elements.extend(verif_element)
+                    # init_elements.extend(hadamard_on2_element)
+                    init_elements.extend(hadamardMin_on2_element)
+                elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
+                    # X1 H2 U X1 H2
                     init_elements = cp.deepcopy(pi_on_1_element)
-                    init_elements.extend(pi_on_2_element)
+                    init_elements.extend(hadamard_on2_element)
                     init_elements.extend(verif_element)
-                    init_elements.extend(pi_on_2_element)
+                    # init_elements.extend(piMin_on_1_element)
+                    # init_elements.extend(hadamard_on2_element)
+                    init_elements.extend(hadamardMin_on2_element)
                     init_elements.extend(pi_on_1_element)
-                    #init_elements.extend(piMin_on_2_element) # negative
-                    #init_elements.extend(piMin_on_1_element)
-                    self.log.debug(f"Init state for cphase {init_state.name}")
-            elif init_state == TomoInit.cphase_hadamad_1:
-                # H1 U H1
-                init_elements = cp.deepcopy(hadamard_on1_element)
-                init_elements.extend(verif_element)
-                #init_elements.extend(hadamard_on1_element)
-                init_elements.extend(hadamardMin_on1_element)
-            elif init_state == TomoInit.cphase_hadamad_2:
-                # H2 U H2
-                init_elements = cp.deepcopy(hadamard_on2_element)
-                init_elements.extend(verif_element)
-                #init_elements.extend(hadamard_on2_element)
-                init_elements.extend(hadamardMin_on2_element)
-            elif init_state == TomoInit.cphase_hadamd_2_ux180_on_1:
-                # X1 H2 U X1 H2
-                init_elements = cp.deepcopy(pi_on_1_element)
-                init_elements.extend(hadamard_on2_element)
-                init_elements.extend(verif_element)
-                #init_elements.extend(piMin_on_1_element)
-                #init_elements.extend(hadamard_on2_element)
-                init_elements.extend(hadamardMin_on2_element)
-                init_elements.extend(pi_on_1_element)
-                #init_elements.extend(piMin_on_1_element)
+                    # init_elements.extend(piMin_on_1_element)
 
+                else:
+                    raise ValueError(
+                        f"Unknown init state for cPhase Verification: {init_state.name}")
             else:
-                raise ValueError(f"Unknown init state for cPhase Verification: {init_state.name}")
+                if init_state == TomoInit.cphase_none:
+                    # Operators: U
+                    init_elements = []
+                    init_elements.extend(verif_element)
+                    self.log.debug(f"Init state for cphase {init_state.name}")
+                elif init_state == TomoInit.cphase_ux180_on_1:
+                    # normalize at state 10
+                    if self.pulse_envelope == Evm.optimal:
+                        init_elements = cp.deepcopy(pi_oc_on_1_element)
+                        self.log.debug(f"Init {init_state.name} with oc pulse")
+                    else:
+                        init_elements = cp.deepcopy(pi_on_1_element)
+                        # init_elements.extend(piMin_on_1_element)# negative
+                        self.log.debug(f"Init state for cphase {init_state.name} without oc pulse")
+                elif init_state == TomoInit.cphase_ux180_on_2:
+                    #  normalize at state 01
+                    if self.pulse_envelope == Evm.optimal:
+                        init_elements = cp.deepcopy(pi_oc_on_2_element)
+                        self.log.debug(f"Init {init_state.name} with oc pulse")
+                    else:
+                        init_elements = cp.deepcopy(pi_on_2_element)
+                        self.log.debug(f"Init state for cphase {init_state.name}")
+                else:
+                    raise ValueError(
+                        f"Unknown init state for cPhase Verification: {init_state.name}")
+
             return init_elements
 
 
