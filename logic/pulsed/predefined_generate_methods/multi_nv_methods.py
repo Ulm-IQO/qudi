@@ -4025,6 +4025,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
             # todo: implement compy type via gen settings, like _get_envelope_settings()
             if env_type_pi == Evm.optimal:
+                # above nv_order param in _create_param_array() is used to address correct nv for non OC pulses
+                # need to do this manually here
+                other_nv = 1 if on_nv == 2 else 2
+                on_nv = on_nv if nv_order == "1,2" else other_nv
+
                 # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
                 if env_type_pi.parameters['par_drive_on_func']:
                     func_map = env_type_pi.parameters['par_drive_on_func']
@@ -5022,6 +5027,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         nv_order = [p._on_nv for p in pulses]
         file_i = [x for _, x in sorted(zip(nv_order, file_i))]
         file_q = [x for _, x in sorted(zip(nv_order, file_q))]
+        freqs = [x for _, x in sorted(zip(nv_order, freqs))]
+
+        self.log.debug(f"Loading files I= {file_i}, Q= {file_q} on lines {freqs} "
+                       f"for pix={pi_x_length} on {on_nv}")
 
         generate_method = self._get_generation_method('oc_mw_multi_only')
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(list(freqs)),
