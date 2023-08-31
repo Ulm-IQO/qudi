@@ -3994,6 +3994,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                    ampl_gate=None, mw_length=None,
                                    nv_order='1,2', dd_type=DDMethods.SE, dd_type_2='',
                                    dd_order=1, dd_tau=100e-9, dd_parallel=False, env_type=Evm.from_gen_settings,
+                                   env_type_gate=Evm.from_gen_settings,
                             ):
 
         exact_mw_tau = True
@@ -4010,7 +4011,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs = self._create_param_array(None, mw_freqs, n_nvs=2, order_nvs=nv_order)
         rabi_periods = self._create_param_array(None, rabi_periods, n_nvs=2, order_nvs=nv_order)
 
-        def pi_element_function(xphase, pi_x_length=1., on_nv=1, no_amps_2_idle=True):
+        def pi_element_function(xphase, pi_x_length=1., on_nv=1, no_amps_2_idle=True, env_type_pi=None):
 
             if on_nv == 1:
                 ampl_pi = ampls_on_1
@@ -4019,11 +4020,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise ValueError
 
+            if env_type_pi is None:
+                env_type_pi = Evm.from_gen_settings
+
+            # todo: implement compy type via gen settings, like _get_envelope_settings()
+            if env_type_pi == Evm.optimal:
+                # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
+                if env_type_pi.parameters['par_drive_on_func']:
+                    func_map = env_type_pi.parameters['par_drive_on_func']
+                    on_nv = func_map(on_nv)
+                    ampl_pi = amplitudes
+
             return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
                                    pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
-                                   env_type=Evm.from_gen_settings, on_nv=on_nv)
+                                   env_type=env_type_pi, on_nv=on_nv)
 
-        pix_on1_element = pi_element_function(0, pi_x_length=pi_x_length, on_nv=1)
+        mw_on1_element = pi_element_function(phase, pi_x_length=pi_x_length, on_nv=1,
+                                              env_type_pi=env_type_gate)
         pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
                                            pi_x_length=1, no_amps_2_idle=False,
                                            env_type=Evm.from_gen_settings)
@@ -4035,7 +4048,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
         if mw_length is None:
-            mw_length = MultiNV_Generator.get_element_length(pix_on1_element)
+            mw_length = MultiNV_Generator.get_element_length(mw_on1_element)
 
         if dd_type_2 == '':
             dd_type_2 = DDMethods.MW_DD_SE8
@@ -4053,7 +4066,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if ampl_gate is None:
             ampl_gate = ampls_on_1[0]
 
-        mw_el = self._get_multiple_mw_element(mw_length, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
+        #mw_el = self._get_multiple_mw_element(mw_length, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
         self.log.debug(f"dd_x_dd, parallel= {dd_parallel}, t_mw= {mw_length}, rabi: {rabi_periods},"
                        f" amppl2 {ampls_on_2}, freqs {mw_freqs}, env_type= {env_type}")
         pi_on2_element = self.get_pi_element(dd_type.phases[-1], mw_freqs, ampls_on_2, rabi_periods,
@@ -4161,7 +4174,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         gate_block = []
         gate_block.extend(dd_element_1)
-        gate_block.append(mw_el)
+        gate_block.extend(mw_on1_element)
         gate_block.extend(dd_element_2)
         #gate_block.extend(pi_on2_element)
 
@@ -5163,7 +5176,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 mwx_ampl = comp_type.parameters.get('ampl', None)
                 mw_phase_overwrite = comp_type.parameters.get('replace_mw_phase', None)
 
+                env_type_gate = comp_type.parameters.get('env_type_gate', Evm.from_gen_settings)
+
                 flipped_rabi = False
+
+                if mwx_ampl:
+                    mwx_ampl = mwx_ampl[0] if nv_order == "1,2" else mwx_ampl[1]
+                if mwx_rabi_period:
+                    mwx_rabi_period = mwx_rabi_period[0] if nv_order == "1,2" else mwx_rabi_period[1]
 
                 for idx_ampl, ampl in enumerate([dd_ampl, dd_ampl_2]):
                     if ampl is not None and len(mw_amps) == 2:
@@ -5216,6 +5236,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                                 pi_x_length=pi_x_length, mw_length=mw_length, nv_order=nv_order,
                                                                 dd_type=dd_type, dd_type_2=dd_type_2, dd_order=dd_order,
                                                                 dd_tau=dd_tau, dd_parallel=dd_parallel, env_type=env_type,
+                                                                env_type_gate=env_type_gate,
                                                                 ampl_gate=mwx_ampl)
 
                 else:
