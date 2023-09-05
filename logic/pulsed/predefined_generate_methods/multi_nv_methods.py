@@ -25,7 +25,14 @@ class TomoRotations(IntEnum):
     uy90_on_1 = 3
     uy90_on_2 = 4
     ux45_on_2 = 5
-    ux45min_on_2 = 6
+    ux45_on_1 = 6
+    uy45_on_1 = 35
+    uy45_on_2 = 36
+    ux45min_on_1 = 37
+    ux45min_on_2 = 38
+    uy45min_on_1 = 39
+    uy45min_on_2 = 40
+
     ux90min_on_1 = 7
     ux90min_on_2 = 8
     uy90min_on_1 = 9
@@ -61,7 +68,14 @@ class TomoRotations(IntEnum):
         super().__init__()
 
         self._native_gate_translation = {
+            'ux45_on_1': {'pulse_area': np.pi / 4, 'phase': 0, 'target': [1]},
+            'ux45_on_2': {'pulse_area': np.pi / 4, 'phase': 0, 'target': [2]},
+            'uy45_on_1': {'pulse_area': np.pi / 4, 'phase': 90, 'target': [1]},
+            'uy45_on_2': {'pulse_area': np.pi / 4, 'phase': 90, 'target': [2]},
+            'ux45min_on_1': {'pulse_area': np.pi / 4, 'phase': 180, 'target': [1]},
             'ux45min_on_2': {'pulse_area': np.pi / 4, 'phase': 180, 'target': [2]},
+            'uy45min_on_1': {'pulse_area': np.pi / 4, 'phase': 270, 'target': [1]},
+            'uy45min_on_2': {'pulse_area': np.pi / 4, 'phase': 270, 'target': [2]},
             'ux90_on_1': {'pulse_area': np.pi / 2, 'phase': 0, 'target': [1]},
             'ux90_on_2': {'pulse_area': np.pi / 2, 'phase': 0, 'target': [2]},
             'ux90_on_both': {'pulse_area': np.pi / 2, 'phase': 0, 'target': [1, 2]},
@@ -93,6 +107,24 @@ class TomoRotations(IntEnum):
     @property
     def pulse_parameters(self):
         return self._native_gate_translation[self.name]
+
+    def from_pulse_parameters(self, input_dict):
+        matching_keys = []
+
+        for key, value in self._native_gate_translation.items():
+            if value == input_dict:
+                matching_keys.append(key)
+
+        if len(matching_keys) != 1:
+            raise ValueError
+
+        return self.from_gate_string(matching_keys[0])
+
+    def from_gate_string(self, gate_string):
+        for member in TomoRotations:
+            if member.name == gate_string:
+                return member
+        raise ValueError(f"'{gate_string}' is not a valid enum value")
 
 
 class TomoInit(IntEnum):
@@ -174,9 +206,12 @@ class OptimalControlPulse():
             if len(other_pulse._pi_x) == 1:
                 other_pulse._pi_x = other_pulse._pi_x[0]
 
-        if float(self._on_nv) == float(other_pulse._on_nv) and own_pix == other_pulse._pi_x \
-                and self._par_with_nvs == other_pulse._par_with_nvs:
-            return True
+        try:
+            if float(self._on_nv) == float(other_pulse._on_nv) and own_pix == other_pulse._pi_x \
+                    and self._par_with_nvs == other_pulse._par_with_nvs:
+                return True
+        except ValueError:
+            pass   # didn't find if length of arrays not matching
 
         #print(f"on_nv: {float(self._on_nv) == float(other_pulse._on_nv)}")
         #print(f"pix: {own_pix == other_pulse._pi_x}")
@@ -288,9 +323,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         search_pulse = OptimalControlPulse(on_nv=on_nv, pi_x=pix, par_with_nvs=par_with_nvs)
 
         for pulse in self._optimal_pulses:
-            #self.log.debug(
-            #    f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
-            #   f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
+            self.log.debug(
+                f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
+               f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
             if pulse.equal_target_u(search_pulse) and pulse.available:
                 ret_pulses.append(pulse)
 
@@ -904,7 +939,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             comp_type=Comp.from_gen_settings, env_type=Evm.from_gen_settings,
                             mirror_1q_pulses=False, alternating=False,
-                            init_state_kwargs='', cnot_kwargs='', add_gate_ch=''):
+                            init_state_kwargs='', cnot_kwargs='', add_gate_ch='',
+                            to_basis_pair_rot=''):
         """
         :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
                                         a single data point.
@@ -966,30 +1002,59 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         TomoRotations.uy180min_on_1, TomoRotations.uy180min_on_2,
                         TomoRotations.c2not1, TomoRotations.c2phase1_dd,
                         TomoRotations.none]
-            if rotation not in gate_set:
+
+            if type(rotation) != list:
+                rotation = [rotation]
+
+            if not all(element in gate_set for element in rotation):
                 raise ValueError(
                     f"Found rotation {rotation.name}, type {type(rotation)} which is not in native gate set {gate_set}")
 
-            if rotation == TomoRotations.none:
-                rot_elements = []
-            elif rotation not in [TomoRotations.c2not1, TomoRotations.c2phase1_dd]:
-                params = rotation.pulse_parameters
-                if mirror_1q_pulses:
-                    params['target'] = [1, 2]
-                rot_elements = pi_element_function(params['phase'], pi_x_length=params['pulse_area']/np.pi,
-                                                   on_nv=params['target'])
-            elif rotation == TomoRotations.c2not1:
-                rot_elements = c2not1_element
-                if mirror_1q_pulses:
-                    raise ValueError("Can't mirror c2not1 to other qubit.")
-            elif rotation == TomoRotations.c2phase1_dd:
-                rot_elements = c2phase1_dd_element
-                if mirror_1q_pulses:
-                    raise NotImplementedError
-            else:
-                raise ValueError(f"Unknown random benchmarking rotation: {rotation.name}")
+            if len(rotation) == 1:
+                rotation = rotation[0]
 
-            return rot_elements
+                if rotation == TomoRotations.none:
+                    rot_elements = []
+                elif rotation not in [TomoRotations.c2not1, TomoRotations.c2phase1_dd]:
+                    params = rotation.pulse_parameters
+                    if mirror_1q_pulses:
+                        params['target'] = [1, 2]
+                    rot_elements = pi_element_function(params['phase'], pi_x_length=params['pulse_area']/np.pi,
+                                                       on_nv=params['target'])
+                elif rotation == TomoRotations.c2not1:
+                    rot_elements = c2not1_element
+                    if mirror_1q_pulses:
+                        raise ValueError("Can't mirror c2not1 to other qubit.")
+                elif rotation == TomoRotations.c2phase1_dd:
+                    rot_elements = c2phase1_dd_element
+                    if mirror_1q_pulses:
+                        raise NotImplementedError
+                else:
+                    raise ValueError(f"Unknown random benchmarking rotation: {rotation.name}")
+
+                return rot_elements
+            else:
+                pix_length, phases, targets, is_none = [], [], [], []
+                for rot_i in rotation:
+                    if rot_i == TomoRotations.none:
+                        pix_length.append(0)
+                        is_none.append(True)
+                    else:
+                        params = rot_i.pulse_parameters
+                        pix_length.append(params['pulse_area']/np.pi)
+                        phases.append(params['phase'])
+                        targets.append(params['target'])
+                        is_none.append(False)
+
+                targets = [item for sublist in targets for item in sublist] # flattened targets
+
+                if all(is_none): # for now, all rotation==TomoRotation.none are skpped, not t>0 idling on whole register
+                    return []
+
+                rot_elements = pi_element_function(phases, pi_x_length=pix_length,
+                                                   on_nv=targets)
+                return rot_elements
+
 
         created_blocks, created_ensembles, created_sequences = list(), list(), list()
 
@@ -1016,6 +1081,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         str_lists = csv_2_list(rotations, str_2_val=str, delimiter=';')  # to list of csv strings
         rotations = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
         read_rots = csv_2_list(read_rots, str_2_val=Tk_string.str_2_enum)
+        to_basis_pair_rot = csv_2_list(to_basis_pair_rot)
+        to_basis_pair_rot = None if len(to_basis_pair_rot)==0 else to_basis_pair_rot[0]
+
+        if to_basis_pair_rot != None:
+            rotations = [Tk_Rotations.convert_2_par_basis_rots(rots_exp, basis_rot=to_basis_pair_rot) for rots_exp in rotations]
 
         self.log.debug(f"Rb mes point  Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
@@ -1086,7 +1156,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 rabi_block.extend(pi2_on_2_element)
             for rotation in gate_list:
                 #self.log.debug(f"Adding rot {rotation} of type {type(rotation)}")
-                rabi_block.extend(rotation_element(rotation))
+                try:
+                    rabi_block.extend(rotation_element(rotation))
+                except:
+                    raise ValueError(f"Failed transpiling rot: {rotation}")
                 rabi_block.append(id_element)
             for rotation in read_rots:
                 rabi_block.extend(rotation_element(rotation))
@@ -5027,7 +5100,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         nv_order = [p._on_nv for p in pulses]
         file_i = [x for _, x in sorted(zip(nv_order, file_i))]
         file_q = [x for _, x in sorted(zip(nv_order, file_q))]
-        freqs = [x for _, x in sorted(zip(nv_order, freqs))]
+        freqs = [x for _, x in sorted(zip(freqs, freqs))]   # todo: double check for ddxdd and comp=bare
 
         self.log.debug(f"Loading files I= {file_i}, Q= {file_q} on lines {freqs} "
                        f"for pix={pi_x_length} on {on_nv}")
@@ -5098,16 +5171,18 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             mw_idle_amps = np.asarray([0] * len(mw_freqs))
         assert len(mw_freqs) == len(mw_idle_amps)
 
-        if type(pi_x_length) != list:  # todo: can only happen for OC pulses
+        if type(pi_x_length) != list:  # todo: list can only happen for OC pulses
             if pi_x_length < 0:
                 self.log.debug(f"Pi lengths {pi_x_length} <0 transformed to phase shift +180° for {xphase}")
                 pi_x_length = abs(pi_x_length)
                 xphase = xphase + 180
 
+        if type(xphase) != list:
+            xphase = [xphase]
 
         n_lines = len(mw_amps[mw_amps!=0]) + len(mw_idle_amps[mw_idle_amps!=0])
         lenghts = (pi_x_length * rabi_periods[mw_amps+mw_idle_amps!=0] / 2)
-        phases = [float(xphase)] * n_lines
+        phases = [float(xphase[0])] * n_lines if len(xphase) == 1 else xphase
         amps = mw_amps[(mw_amps+mw_idle_amps)!=0]
         fs = mw_freqs[(mw_amps+mw_idle_amps)!=0]
         if amps.size > 0:
@@ -5611,3 +5686,124 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
 
+class Tk_Rotations():
+
+    @staticmethod
+    def serialize_gate_steps(gates):
+
+        gates_on_1, gates_on_2 = [], []
+        for gate in gates:
+            try:
+                target = gate.pulse_parameters['target']
+            except:
+                target = None  # gates without target -> on_1
+
+            if target in [1, [1], None]:
+                gates_on_1.append(gate)
+            elif target in [2, [2]]:
+                gates_on_2.append(gate)
+            else:
+                raise ValueError
+
+        serialized = Tk_Rotations.alternate_lists(gates_on_1, gates_on_2)
+
+        if len(serialized) != len(gates_on_1) + len(gates_on_2):
+            raise ValueError
+
+        return serialized
+
+    @staticmethod
+    def alternate_lists(list1, list2):
+        combined_list = []
+        min_length = min(len(list1), len(list2))
+
+        for i in range(min_length):
+            combined_list.append(list1[i])
+            combined_list.append(list2[i])
+
+        # Append any remaining elements from longer list (if any)
+        combined_list.extend(list1[min_length:])
+        combined_list.extend(list2[min_length:])
+
+        return combined_list
+
+    @staticmethod
+    def convert_2_basis_rots(gates_exp, basis_rot=np.pi / 2):
+        gates_new = []
+        for idx, gate in enumerate(gates_exp):
+
+            if gate == TomoRotations.none:
+                gates_new.extend([gate])
+                continue
+
+            gate_step = []
+            pulse_rot = gate.pulse_parameters['pulse_area']
+            pulse_phase = gate.pulse_parameters['phase']
+            pulse_target = gate.pulse_parameters['target']
+
+            if pulse_rot == basis_rot:
+                gate_step = [gate]
+                #logger.info(f"{gate.name} => basis")
+            elif pulse_rot > basis_rot:
+                n_mod = pulse_rot / basis_rot
+                n_mod_int = int(n_mod)
+                if not np.isclose(n_mod, n_mod_int, rtol=1e-3):
+                    raise ValueError(
+                        f"Can't replace gate {gate.name} by integer number of basis rots= {basis_rot * np.pi}")
+                try:
+                    gate_step = [TomoRotations(0).from_pulse_parameters({'pulse_area': basis_rot,
+                                                                         'phase': pulse_phase,
+                                                                         'target': pulse_target})] * n_mod_int
+                except:
+                    raise ValueError(f"Error while synthing gate: {gate.name}: ")
+                #logger.info(f"{gate.name} => {gate_step}")
+
+            else:
+                raise ValueError
+
+            gates_new.extend(gate_step)
+            #logger.info(f"{gates_new}")
+
+        return gates_new
+
+    @staticmethod
+    def convert_2_gate_pairs(gates_exp):
+        gate_pairs = []
+        idx = 0
+        while idx < len(gates_exp):
+            gate_pair_i = []
+            gate = gates_exp[idx]
+
+            if idx + 1 < len(gates_exp):
+                if "on_1" in gate.name and "on_2" in gates_exp[idx + 1].name:
+                    gate_pair_i = [gate, gates_exp[idx + 1]]
+                    idx += 2
+                elif "on_1" in gate.name and "on_1" in gates_exp[idx + 1].name:
+                    gate_pair_i = [gate, TomoRotations.none]
+                    idx += 1
+                elif "on_2" in gate.name and "on_2" in gates_exp[idx + 1].name:
+                    gate_pair_i = [TomoRotations.none, gates_exp[idx + 1]]
+                    idx += 1
+                elif "phase" in gate.name:  # eg. for c2phase1
+                    gate_pair_i = [gate]
+                    idx += 1
+                else:
+                    gate_pair_i = [gate, TomoRotations.none]
+                    idx += 1
+            else:
+                gate_pair_i = [gate, TomoRotations.none]
+                idx += 1
+
+            if gate_pair_i:
+                gate_pairs.append(gate_pair_i)
+
+        return gate_pairs
+
+    @staticmethod
+    def convert_2_par_basis_rots(gates, basis_rot=np.pi / 2):
+
+        rots = Tk_Rotations.convert_2_basis_rots(gates, basis_rot=basis_rot)
+        rots = Tk_Rotations.serialize_gate_steps(rots)
+        rots = Tk_Rotations.convert_2_gate_pairs(rots)
+
+        return rots
