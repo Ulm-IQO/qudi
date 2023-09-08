@@ -323,9 +323,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         search_pulse = OptimalControlPulse(on_nv=on_nv, pi_x=pix, par_with_nvs=par_with_nvs)
 
         for pulse in self._optimal_pulses:
-            self.log.debug(
-                f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
-               f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
+            #self.log.debug(
+            #    f"Checking pulse1: on={search_pulse._on_nv},pi={search_pulse._pi_x},par={search_pulse._par_with_nvs},"
+            #   f"pulse2: on={pulse._on_nv},pi={pulse._pi_x},par={pulse._par_with_nvs} ")
             if pulse.equal_target_u(search_pulse) and pulse.available:
                 ret_pulses.append(pulse)
 
@@ -978,7 +978,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 ampl_pi = amplitudes
 
             # todo: implement compy type via gen settings, like _get_envelope_settings()
-            if env_type_pi == Evm.optimal and (comp_type == Comp.bare or comp_type == Comp.from_gen_settings):
+            if env_type_pi == Evm.optimal and (comp_type_pi == Comp.bare or comp_type_pi == Comp.from_gen_settings):
                 # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
                 if env_type_pi.parameters['par_drive_on_func']:
                     func_map = env_type_pi.parameters['par_drive_on_func']
@@ -1010,6 +1010,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 raise ValueError(
                     f"Found rotation {rotation.name}, type {type(rotation)} which is not in native gate set {gate_set}")
 
+            self.log.debug(f"Transpiling gate {rotation}")
+
             if len(rotation) == 1:
                 rotation = rotation[0]
 
@@ -1038,6 +1040,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 for rot_i in rotation:
                     if rot_i == TomoRotations.none:
                         pix_length.append(0)
+                        targets.append([np.nan])  # cant now here, need to determine later
                         is_none.append(True)
                     else:
                         params = rot_i.pulse_parameters
@@ -1046,13 +1049,33 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         targets.append(params['target'])
                         is_none.append(False)
 
-                targets = [item for sublist in targets for item in sublist] # flattened targets
+                targets = np.asarray([item for sublist in targets for item in sublist]) # flattened targets
 
-                if all(is_none): # for now, all rotation==TomoRotation.none are skpped, not t>0 idling on whole register
+                if np.any(np.isnan(targets)):
+                    # ugly: fill up targets of "none" with other_nv
+                    if len(pix_length) == 2:
+                        other_nv = 1 if 2 in targets else 2
+                        targets = np.where(np.isnan(targets), other_nv, targets)
+                    else:
+                        raise NotImplementedError("Don't know which targets to set to none rotation")
+
+                if all(is_none): # for now, all rotation==TomoRotation.none are skipped, not t>0 idling on whole register
                     return []
 
+                comp_type_pi, env_type_pi = None, None
+                non_pairs_to_comp = False
+                if non_pairs_to_comp:
+                    if 0. in pix_length and len(pix_length) == 2:
+                        # todo: preliminiary testing only. Parallel elements: OC/ kron(X,1) elements: ddxdd
+                        pix_length.remove(0)  # ddxdd handley len(pix) == 1
+                        env_type_pi = Evm.from_gen_settings
+                        comp_type_pi = Comp.mw_ddxdd
+                        self.log.debug(f"Overwriting comp= {comp_type_pi.__dict__}, env type {env_type_pi} "
+                                       f"for pix= {pix_length} on {targets}")
+
                 rot_elements = pi_element_function(phases, pi_x_length=pix_length,
-                                                   on_nv=targets)
+                                                   on_nv=targets.tolist(),
+                                                   comp_type_pi=comp_type_pi, env_type_pi=env_type_pi)
                 return rot_elements
 
 
@@ -5039,8 +5062,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             scale_ampl = scale_ampl*len(on_nv)
         if isinstance(pi_x_length, (int, float)):
             # for multi oc pulses, default to identity (pix=0) on other NV
-            if all(on_nv == [1,2]) or all(on_nv == [2,1]):
+            if all(on_nv == [1,2]) or all(on_nv == [2,1]):  # todo, double check
                 pi_x_length = [pi_x_length, 0]
+            #elif all(on_nv == [2,1]):
+            #    pi_x_length = [0, pi_x_length]
             else:
                 pi_x_length = [pi_x_length]
 
@@ -5050,6 +5075,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if not (len(phases) == len(freqs) == len(on_nv)):
             raise ValueError(f"Optimal pulses require same length of phase= {phases}, freq= {freqs},"
                              f" on_nv= {on_nv} arrays.")
+
 
         file_i, file_q, pulses = [],[], []
         for idx_nv, nv in enumerate(on_nv):
@@ -5063,6 +5089,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 if pi_x_length[idx_nv] == 0:
                     # for identity, need pulse that fits to correct length pulse on other NV
                     pi_x_nv = pi_x_length if all(on_nv == [1,2]) else pi_x_length[::-1]
+
+
                 if len(pi_x_length) == 2:
                     # for same operation on both nvs
                     idx_other_nv = 0 if idx_nv == 1 else 1
@@ -5072,13 +5100,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 if len(oc_pulse) == 0:
                     #self.log.debug("Couldn't find")
                     oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length)
+
+                #self.log.debug(f"For pix= {pi_x_nv} found oc pulse on={nv} par= {other_nvs}")
             else:
                 oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length)
+                #self.log.debug(f"For pix= {pi_x_length} found oc pulse on={nv}")
             if len(oc_pulse) != 1:
-                raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_length},"
+                raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_nv},"
                                  f"on_nv= {on_nv})"
                                  f" in {self.optimal_control_assets_path}")
             oc_pulse = oc_pulse[0]
+
 
             pulses.append(oc_pulse)
             """
@@ -5103,7 +5135,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         freqs = [x for _, x in sorted(zip(freqs, freqs))]   # todo: double check for ddxdd and comp=bare
 
         self.log.debug(f"Loading files I= {file_i}, Q= {file_q} on lines {freqs} "
-                       f"for pix={pi_x_length} on {on_nv}")
+                       f"for pix={pi_x_length}/ phases= {phases} on {on_nv}")
 
         generate_method = self._get_generation_method('oc_mw_multi_only')
         oc_blocks, _, _ = generate_method('optimal_pix', mw_freqs=self.list_2_csv(list(freqs)),
