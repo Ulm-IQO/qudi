@@ -124,6 +124,7 @@ class OC_RedCrab(SamplingBase):
 
         # calculate the samples
         samples_arr = self._get_sine_func(time_array, amplitude_func, self.frequency, phase_rad, phase_func)
+        self.log.debug(f'length sample_arr OC_pulse is:{len(samples_arr)}')
 
         # change the amplitude of the pulse (e.g. to simulate amplitude detuning)
         samples_arr = self.amplitude_scaling * samples_arr
