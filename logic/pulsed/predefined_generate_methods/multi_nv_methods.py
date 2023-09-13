@@ -46,6 +46,14 @@ class TomoRotations(IntEnum):
     c2phase1_dd = 24
     c2phase1_rot = 25 # For debug between Roberto's (c2phase1_rot) and Timo's methode (c2phase1_dd)
     xy8_par = 26 # Use of parallel driven xy8-sequence
+    ux90minon1_ux180min_on_2= 27
+    ux180minon1_uy90_on2 = 28
+    ux180min_on_1_ux90min_on_2 = 29
+    uy90min_on_1_ux180min_on_1 = 30
+    uy90min_on_1_uy90min_on_2 =31
+    uy90min_on_1_ux90min_on_2 = 32
+    ux90minon1_uy90min_on_2 = 33
+    ux90min_onboth = 34
 
 class TomoInit(IntEnum):
     none = 0
@@ -3666,10 +3674,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_2QGST_meas(self,name='GST_2Q',Gate_set="[[<TomoRotations.none: 0>,];]",init_state = "[[<TomoInit.none: 0>,];]",meas_state ="[[<TomoRotations.none: 0>,];]" ,
+    def generate_GST_meas(self,name='GST_2Q',Gate_set="[[<TomoRotations.none: 0>,];]",init_state = "[[<TomoInit.none: 0>,];]",meas_state ="[[<TomoRotations.none: 0>,];]" ,
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1,nv_order="1,2",
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", rabi_period_mw_2="100e-9, 100e-9, 100e-9",
-                            alternating=False,cnot_kwargs='',no_laser = False): # The dict are created in the notebook "double_NV"
+                            alternating=False,cnot_kwargs='',no_laser = False): # The measurement scheme is for 2-Qubit systems.The dict are created in the notebook "double_NV"
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
@@ -3700,45 +3708,21 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pihalf_y_on1_element = self.get_pi_element(90, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=0.5)
         pihalf_y_on2_element = self.get_pi_element(90, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=0.5)
 
-        pihalf_x_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_1,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[0, 0])
-        pihalf_x_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 4,
-                                                                         increments=[0, 0],
-                                                                         amps=ampls_on_2,
-                                                                         freqs=mw_freqs,
-                                                                         phases=[0, 0])
+        pihalf_x_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=0.5)
+        pihalf_x_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=0.5)
 
         pihalf_ymin_on1_element =self.get_pi_element(270, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=0.5)
         pihalf_ymin_on2_element = self.get_pi_element(270, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=0.5)
         pihalf_xmin_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=1)
         pihalf_xmin_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=1)
 
-        pi_on_1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                    increments=[0, 0],
-                                                                    amps=ampls_on_1,
-                                                                    freqs=mw_freqs,
-                                                                    phases=[0, 0])
+        pi_on_1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=1)
 
-        pi_on_2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                   increments=[0, 0],
-                                                                   amps=ampls_on_2,
-                                                                   freqs=mw_freqs,
-                                                                   phases=[0, 0])
+        pi_on_2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=1)
 
-        pi_min_on1_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                   increments=[0, 0],
-                                                                   amps=ampls_on_1,
-                                                                   freqs=mw_freqs,
-                                                                   phases=[180, 180])
+        pi_min_on1_element = self.get_pi_element(180, mw_freqs, ampls_on_1, rabi_periods,pi_x_length=1)
 
-        pi_min_on2_element = self._get_multiple_mw_mult_length_element(lengths=rabi_periods / 2,
-                                                                       increments=[0, 0],
-                                                                       amps=ampls_on_2,
-                                                                       freqs=mw_freqs,
-                                                                       phases=[180, 180])
+        pi_min_on2_element = self.get_pi_element(180, mw_freqs, ampls_on_2, rabi_periods,pi_x_length=1)
 
         cphase_element,_,_ = self.generate_c2phase1(tau_start=tau_cnot,tau_step=0,num_of_points=1,dd_type=dd_type_cnot,dd_order=dd_order,
                                                           f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2,
@@ -3766,6 +3750,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 raise ValueError(f"Found Meas_state {meas_state}, type {type(meas_state)} which is not in native gate set {meas_state_set}")
             elif gate_set not in gate_Set:
                 raise ValueError(f"Found Meas_state {gate_set}, type {type(gate_set)} which is not in native gate set {gate_Set}")
+
 
         def init_meas_gate_elements(init_states,meas_states,gate_states):
             if init_states == TomoInit.none:
@@ -3865,17 +3850,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 gate_elements = cp.deepcopy(pihalf_xmin_on1_element)
             elif gate_states == TomoRotations.ux180min_on_both:
                 gate_elements = cp.deepcopy(pi_min_on1_element)
-                meas_elemtns.extend(pi_min_on2_element)
+                gate_elements.extend(pi_min_on2_element)
             elif gate_states == TomoRotations.uy90min_on_2:
                 gate_elements = cp.deepcopy(pihalf_ymin_on2_element)
             elif gate_states == TomoRotations.ux90min_on_2:
                 gate_elements = cp.deepcopy(pihalf_xmin_on2_element)
-            elif gate_states == TomoRotations.ux180minon1_uy90min_on_2:
+            elif gate_states == TomoRotations.ux180minon1_uy90_on2:
                 gate_elements = cp.deepcopy(pi_min_on1_element)
-                meas_elemnts.extend(pihalf_ymin_on2_element)
+                gate_elements.extend(pihalf_ymin_on2_element)
             elif gate_states == TomoRotations.ux180min_on_1_ux90min_on_2:
                 gate_elements = cp.deepcopy(pi_min_on1_element)
-                meas_elemnts.extend(pihalf_xmin_on2_element)
+                gate_elements.extend(pihalf_xmin_on2_element)
             elif gate_states == TomoRotations.uy90min_on_1:
                 gate_elements = cp.deepcopy(pihalf_ymin_on1_element)
             elif gate_states == TomoRotations.uy90min_on_1_ux180min_on_1:
@@ -3883,10 +3868,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 gate_elements.extend(pihalf_ymin_on1_element)
             elif gate_states == TomoRotations.uy90min_on_1_uy90min_on_2:
                 gate_elements = cp.deepcopy(pihalf_ymin_on1_element)
-                meas_elemets.extend(pihalf_ymin_on2_element)
+                gate_elements.extend(pihalf_ymin_on2_element)
             elif gate_states == TomoRotations.uy90min_on_1_ux90min_on_2:
                 gate_elements = cp.deepcopy(pihalf_ymin_on2_element)
-                meas_elemets.extend(pihalf_ymin_on1_element)
+                gate_elements.extend(pihalf_ymin_on1_element)
             elif gate_states == TomoRotations.ux90min_on_1:
                 gate_elements = cp.deepcopy(pihalf_xmin_on1_element)
             elif gate_states == TomoRotations.ux90minon1_ux180min_on_2:
@@ -3898,11 +3883,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             elif gate_states == TomoRotations.ux90min_onboth:
                 gate_elements = cp.deepcopy(pihalf_xmin_on2_element)
                 gate_elements.extend(pihalf_xmin_on1_element)
-            elif gate_state == TomoRotations.c2phase1_rot:
+            elif gate_states == TomoRotations.c2phase1_rot:
                 gate_elements = cp.deepcopy(cphase_element)
             else:
                 self.log.error(
-                    f'The other gate set are not implmented. Current Measstate:{gate_states}')
+                    f'The other gate set are not implemented. Current Gateset:{gate_states}')
 
             return init_elements,gate_elements,meas_elements
 
@@ -3929,8 +3914,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         str_gate_set = csv_2_list(Gate_set, str_2_val=str, delimiter=';')
         gate_set_list = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_gate_set]
-
-        #read_inits = csv_2_list(read_inits, str_2_val=Tk_string.str_2_enum)
+        self.log.debug(f"Gate_set list:{gate_set_list}")
 
         init_state_block = PulseBlock(name=name)
 
@@ -3941,11 +3925,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         if len(init_state_list) == len(meas_state_list) == len(gate_set_list): # if the list of used gates has the same length
             for l, m, n in zip(init_state_list, gate_set_list, meas_state_list):
                 help_element = []
-                int_gate_meas_element = init_meas_gate_elements(l[0], n[0], m[0])
-                for o in int_gate_meas_element:  # This goes through following order: init-gate-meas
-                    self.log.debug(f'the installed elements for GST are:{o}')
-                    init_state_block.extend(o)
-                    help_element.extend(o)
+                int_element,gate_element,meas_element = init_meas_gate_elements(l[0], n[0], m[0])
+                init_state_block.extend(int_element)
+                init_state_block.extend(gate_element)
+                init_state_block.extend(meas_element)
+
+                help_element.extend(init_state_block)
 
                 if not no_laser:
                     init_state_block.append(laser_element)
@@ -3968,11 +3953,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             for q,r in zip(init_state_list, meas_state_list):
                 for s in gate_set_list:
                     help_element = []
-                    int_gate_meas_element = init_meas_gate_elements(q[0], r[0], s[0])
-                    for t in int_gate_meas_element:
-                        self.log.debug(f'the installed elements for GST are:{t}')
-                        init_state_block.extend(t)
-                        help_element.extend(t)
+                    int_element,gate_element,meas_element = init_meas_gate_elements(q[0], r[0], s[0])
+
+                    init_state_block.extend(int_element)
+                    init_state_block.extend(gate_element)
+                    init_state_block.extend(meas_element)
+
+                    help_element.extend(init_state_block)
 
                     if not no_laser:
                         init_state_block.append(laser_element)
@@ -3991,6 +3978,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     idx_array.append(counter)
 
                     counter += 1
+        else:
+            self.log.error(f"Init states are not equal the measured states. Length of initial states:{len(init_state_list)}.Length of measured states:{len(meas_state_list)}.Length Of Gates sets:{len(gate_set_list)}")
 
 
         created_blocks.append(init_state_block)
