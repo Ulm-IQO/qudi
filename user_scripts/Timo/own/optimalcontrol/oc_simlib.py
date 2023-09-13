@@ -599,6 +599,30 @@ class TimeDependentSimulation():
 
         return data_freq_detuning
 
+    def run_sim_timesweep(self,f_res,pulse, B_gauss, sim_params, n_timebins=500, t_idle_extension=-1e-9): # This for looking the behaviour in time domain
+        # for compability reason, accept pulse as dict or ArbPulse object
+        # if supplying a dict, you are responsible for correct units!
+        if type(pulse) == ArbPulse:
+            pulse.set_unit_time('µs')
+            pulse.set_unit_data('MHz')
+            pulse = pulse.as_dict()
+
+        B = B_gauss
+        simp = sim_params
+        oc_length = pulse['timegrid_ampl'][-1] + t_idle_extension * 1e6
+
+        t = np.linspace(0, oc_length, n_timebins)
+        options = qutip.Options(atol=1e-15, rtol=1e-15, nsteps=1e8, store_final_state=True)
+
+        init_state = simp.rho_ms0
+
+        oc_el = TimeDependentSimulation.oc_element(t, pulse['timegrid_ampl'], pulse['data_ampl'], pulse['data_phase'], f_res, B, 1, simp)
+        results_measurement = qutip.mesolve(oc_el, init_state, t, [], [simp.P_nv],
+                                                options=options, progress_bar=True)
+        time_array = results_measurement.expect
+
+        return t,time_array
+
     def run_sim_ampsweep(self, amp_array, pulse, B_gauss, sim_params, n_timebins=500, t_idle_extension=-1e-9):
 
         # for compability reason, accept pulse as dict or ArbPulse object
