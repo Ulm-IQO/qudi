@@ -64,6 +64,17 @@ class TomoRotations(IntEnum):
     c2phase1_rot = 32  # For debug between Roberto's (c2phase1_rot) and Timo's methode (c2phase1_dd)
     xy8_par = 33  # Use of parallel driven xy8-
 
+    # uneven gates from qiskit optimizer
+    ux35d26min_on_2 = 44
+    uy60_on_2 = 45
+    uy120_on_2 = 46
+    ux135_on_2 = 47
+    uy135_on_2 = 48
+    ux135min_on_2 = 49
+    uy135min_on_2 = 50
+    ux144d74min_on_2 = 51
+
+
     def __init__(self, *args):
         super().__init__()
 
@@ -100,6 +111,15 @@ class TomoRotations(IntEnum):
             'uy180min_on_1': {'pulse_area': np.pi / 1, 'phase': 270, 'target': [1]},
             'uy180min_on_2': {'pulse_area': np.pi / 1, 'phase': 270, 'target': [2]},
             'uy180min_on_both': {'pulse_area': np.pi / 1, 'phase': 270, 'target': [1, 2]},
+            ###
+            'ux35d26min_on_2': {'pulse_area': 0.1959133*np.pi, 'phase': 0, 'target': [2]},
+            'uy60_on_2': {'pulse_area': 0.3333333*np.pi, 'phase': 90, 'target': [2]},
+            'uy120_on_2': {'pulse_area': 0.6666667*np.pi, 'phase': 90, 'target': [2]},
+            'ux135_on_2': {'pulse_area': 0.75*np.pi, 'phase': 0, 'target': [2]},
+            'uy135_on_2': {'pulse_area': 0.75*np.pi, 'phase': 90, 'target': [2]},
+            'ux135min_on_2': {'pulse_area': 0.75*np.pi, 'phase': 180, 'target': [2]},
+            'uy135min_on_2': {'pulse_area': 0.75*np.pi, 'phase': 270, 'target': [2]},
+            'ux144d74min_on_2': {'pulse_area': 0.8040867*np.pi, 'phase': 180, 'target': [2]},
             ###
             'c2phase1_dd': {'pulse_area': np.pi / 2, 'phase': np.nan, 'target': [1, 2]},
         }
@@ -973,9 +993,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise ValueError
 
+            ampl_fallback = ampl_pi  # ampl_pi might get ocerwritten for certain comp_types
+            env_fallback = Evm.from_gen_settings
+            comp_fallback = Comp.bare
+
             if comp_type_pi == Comp.bb1_cp2 or comp_type_pi == Comp.mw_dd or comp_type_pi == Comp.mw_ddxdd:
                 # for composite pulses that act on both NVs
                 ampl_pi = amplitudes
+
 
             # todo: implement compy type via gen settings, like _get_envelope_settings()
             if env_type_pi == Evm.optimal and (comp_type_pi == Comp.bare or comp_type_pi == Comp.from_gen_settings):
@@ -985,23 +1010,24 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     on_nv = func_map(on_nv)
                     ampl_pi = amplitudes
 
-            return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
-                                       pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
-                                       env_type=env_type_pi, comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
+            try:
+                mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                                           pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                           env_type=env_type_pi, comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
+            except ValueError: # complex (OC, comp) pulse not synthesized
+                mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_fallback, rabi_periods,
+                                           pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
+                                           env_type=env_fallback, comp_type=comp_fallback, mw_idle_amps=mw_idle_amps)
+
+                self.log.debug(f"Couldn't generate pulse: {pi_x_length} pix, phase={xphase} on={on_nv}. "
+                               f"Falling back to pulses env= {env_fallback}, comp= {comp_fallback}.")
+
+            return mw_el
+
 
         def rotation_element(rotation):
-            # atm, supported (native) gate set is only:
-            gate_set = [TomoRotations.ux45_on_2, TomoRotations.ux45min_on_2,
-                        TomoRotations.ux90_on_1, TomoRotations.ux90_on_2,
-                        TomoRotations.uy90_on_1, TomoRotations.uy90_on_2,
-                        TomoRotations.ux90min_on_1, TomoRotations.ux90min_on_2,
-                        TomoRotations.uy90min_on_1, TomoRotations.uy90min_on_2,
-                        TomoRotations.ux180_on_1, TomoRotations.ux180_on_2,
-                        TomoRotations.uy180_on_1, TomoRotations.uy180_on_2,
-                        TomoRotations.ux180min_on_1, TomoRotations.ux180min_on_2,
-                        TomoRotations.uy180min_on_1, TomoRotations.uy180min_on_2,
-                        TomoRotations.c2not1, TomoRotations.c2phase1_dd,
-                        TomoRotations.none]
+
+            gate_set = [rot for rot in TomoRotations]
 
             if type(rotation) != list:
                 rotation = [rotation]
@@ -1108,7 +1134,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         to_basis_pair_rot = None if len(to_basis_pair_rot)==0 else to_basis_pair_rot[0]
 
         if to_basis_pair_rot != None:
+            self.log.info(f"Converted to basis pairs {to_basis_pair_rot / np.pi} pi.")
             rotations = [Tk_Rotations.convert_2_par_basis_rots(rots_exp, basis_rot=to_basis_pair_rot) for rots_exp in rotations]
+            self.log.debug(f"Converted to basis pairs {to_basis_pair_rot/np.pi} pi: {rotations}")
 
         self.log.debug(f"Rb mes point  Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
@@ -1149,6 +1177,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
 
         # 2 qubit gates
+        """
         c2not1_element, _, _ = self.generate_c2not1('c2not1', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
                                                     f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot,
                                                     rabi_period_mw_2=rabi_period_mw_2_cnot,
@@ -1156,6 +1185,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                     no_laser=True,
                                                     kwargs_dict=cnot_kwargs)
         c2not1_element = c2not1_element[0]
+        """
         c2phase1_dd_element, _, _ = self.generate_c2phase1_dd('c2phase1_dd', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
                                                     f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot,
                                                     rabi_period_mw_2=rabi_period_mw_2_cnot,
@@ -1182,7 +1212,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 try:
                     rabi_block.extend(rotation_element(rotation))
                 except:
-                    raise ValueError(f"Failed transpiling rot: {rotation}")
+                    raise ValueError(f"Failed transpiling gate string {idx} with rot: {rotation.name}")
                 rabi_block.append(id_element)
             for rotation in read_rots:
                 rabi_block.extend(rotation_element(rotation))
@@ -2099,7 +2129,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         adapt_pspacing = False   # take into account init pulse before cphase
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True, scale_ampl=1.,
-                                env_type=Evm.from_gen_settings):
+                                env_type_pi=None):
+
 
             on_nv_oc = on_nv
             if on_nv == '2,1':
@@ -2109,22 +2140,22 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # ampls_on_1/2 take care of nv_order already
             if on_nv == 1:
                 ampl_pi = scale_ampl* ampls_on_1
-                env_type = env_type_1
+                env_type_pi = env_type_1 if env_type_pi is None else env_type_pi
             elif on_nv == 2:
                 ampl_pi = scale_ampl* ampls_on_2
-                env_type = env_type_2
+                env_type_pi = env_type_2 if env_type_pi is None else env_type_pi
             else:
                 raise ValueError
 
-            if env_type.parameters.get('par_drive_on_func'):
+            if env_type_pi.parameters.get('par_drive_on_func'):
                 #self.log.debug(f"Overwriting parallel drive for pulse envelope: {env_type}")
-                func_map = env_type.parameters['par_drive_on_func']
+                func_map = env_type_pi.parameters['par_drive_on_func']
                 on_nv = func_map(on_nv)
                 ampl_pi = amplitudes
 
             return self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
                                        pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
-                                       env_type=env_type, on_nv=on_nv)
+                                       env_type=env_type_pi, on_nv=on_nv)
 
         def get_deer_pos(i_dd_order, dd_order, i_dd_suborder, dd_type, before_pi_on1):
             first = (i_dd_order == 0 and i_dd_suborder == 0 and before_pi_on1)
@@ -2200,8 +2231,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pihalf_start_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
                                                        pi_x_length=start_pix_on_1)
         # elements inside dd come from their own function
-        pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False, env_type=env_type_1)
-        pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=True, env_type=env_type_2)
+        pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
+        pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=True)
         pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
                                                    pi_x_length=init_pix_on_2, no_amps_2_idle=False,
                                                    env_type=env_type_2, on_nv=2)
@@ -2230,10 +2261,12 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dtau = -1 if dtau == 0 else dtau
             tau_array = np.concatenate([np.ones(1)*(tau_array[0] - 2*dtau), tau_array], axis=None)
 
-        pix_end_on2_element = self.get_pi_element(dd_type.phases[0], mw_freqs, ampls_on_2,
-                                                  rabi_periods,
-                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True,
-                                                  env_type=env_type_2, on_nv=2)
+        #pix_end_on2_element = self.get_pi_element(dd_type.phases[0], mw_freqs, ampls_on_2,
+        #                                          rabi_periods,
+        #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+        #                                          env_type=env_type_2, on_nv=2)
+        pix_end_on2_element = pi_element_function(dd_type.phases[0], pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                  env_type_pi=env_type_2, on_nv=2)
 
         start_tau2_pspacing = self.tau_2_pulse_spacing(tau1,
                                                        custom_func=[lambda t:t-t_pi_on1-t_pi_on2,
@@ -2308,28 +2341,37 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
                 dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
                                                     scale_ampl=dd_type.scale_ampl[pulse_number],
-                                                    env_type=env_type_1))
+                                                    env_type_pi=env_type_1))
                 first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
                 if last and not floating_last_pi:
-                    # todo: unify; all pis should be generated by pi_element_funcion
-                    # think about env_type
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                     if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True
-                                                                  )
+                        #pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                        #                                          ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                        #                                          rabi_periods, env_type=env_type_2, on_nv=2,
+                        #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True
+                        #                                          )
+                        if dd_type_2.scale_ampl[pulse_number] != 1.:
+                            raise ValueError(
+                                f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                        pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
+                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                                  env_type_pi=env_type_2, on_nv=2)
                         dd_block.extend(pix_end_on2_element)
                 elif last and floating_last_pi:
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
                                                              floating_last_pi=True, before_pi_on2=True))
                     if end_pix_on_2 != 0:
-                        pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                                                                  ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                                                                  rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                        #pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                        #                                          ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                        #                                          rabi_periods, env_type=env_type_2, on_nv=2,
+                        #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                        if dd_type_2.scale_ampl[pulse_number] != 1.:
+                            raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                        pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
+                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                                  env_type_pi=env_type_2, on_nv=2)
                         dd_block.extend(pix_end_on2_element)
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
                                                              floating_last_pi=True, before_pi_on2=False))
@@ -2337,7 +2379,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 else:
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                     dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
-                                    scale_ampl=dd_type_2.scale_ampl[pulse_number], env_type=env_type_2))
+                                    scale_ampl=dd_type_2.scale_ampl[pulse_number], env_type_pi=env_type_2))
 
         if end_pix_on_1 != 0:
             dd_block.extend(pihalf_on1_read_element)
@@ -2370,26 +2412,27 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
                     dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
                                                         scale_ampl=dd_type.scale_ampl[pulse_number],
-                                                        env_type=env_type_1))
+                                                        env_type_pi=env_type_1))
                     first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
 
                     if last and not floating_last_pi:
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                         if end_pix_on_2 != 0:
-                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                                                                      ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                                                                      rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True
-                                                                      )
+                            if dd_type_2.scale_ampl[pulse_number] != 1.:
+                                raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                            pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
+                                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                                      env_type_pi=env_type_2, on_nv=2)
                             dd_block.extend(pix_end_on2_element)
                     elif last and floating_last_pi:
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
                                                                  floating_last_pi=True, before_pi_on2=True))
                         if end_pix_on_2 != 0:
-                            pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                                                                      ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                                                                      rabi_periods, env_type=env_type_2, on_nv=2,
-                                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True)
+                            if dd_type_2.scale_ampl[pulse_number] != 1.:
+                                raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                            pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
+                                                                      pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                                      env_type_pi=env_type_2, on_nv=2)
                             dd_block.extend(pix_end_on2_element)
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
                                                                  floating_last_pi=True, before_pi_on2=False))
@@ -2398,7 +2441,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                         dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
                                                             scale_ampl=dd_type_2.scale_ampl[pulse_number],
-                                                            env_type=env_type_2))
+                                                            env_type_pi=env_type_2))
 
 
             if end_pix_on_1 != 0:
@@ -4107,12 +4150,13 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         mw_freqs = self._create_param_array(None, mw_freqs, n_nvs=2, order_nvs=nv_order)
         rabi_periods = self._create_param_array(None, rabi_periods, n_nvs=2, order_nvs=nv_order)
 
-        def pi_element_function(xphase, pi_x_length=1., on_nv=1, no_amps_2_idle=True, env_type_pi=None):
+        def pi_element_function(xphase, pi_x_length=1., on_nv=1, no_amps_2_idle=True,
+                                ampl_pi=None, env_type_pi=None):
 
             if on_nv == 1:
-                ampl_pi = ampls_on_1
+                ampl_pi = ampls_on_1 if ampl_pi is None else np.where(ampls_on_1!=0, ampl_pi, ampls_on_1)
             elif on_nv == 2:
-                ampl_pi = ampls_on_2
+                ampl_pi = ampls_on_2 if ampl_pi is None else np.where(ampls_on_2!=0, ampl_pi, ampls_on_2)
             else:
                 raise ValueError
 
@@ -4136,8 +4180,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                    pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
                                    env_type=env_type_pi, on_nv=on_nv)
 
+        if ampl_gate is None:
+            ampl_gate = ampls_on_1[0]
+
         mw_on1_element = pi_element_function(phase, pi_x_length=pi_x_length, on_nv=1,
-                                              env_type_pi=env_type_gate)
+                                              env_type_pi=env_type_gate, ampl_pi=ampl_gate)
         pi_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
                                            pi_x_length=1, no_amps_2_idle=False,
                                            env_type=Evm.from_gen_settings)
@@ -4163,9 +4210,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 self.log.warning(f"Adjusting tau1 to fit t_pi_on2 in: {tau1}"
                                  f"->{1 + abs(t_balance_last) * (t_pi_on2 + t_pi_on1)}")
                 tau1 = (1 + abs(t_balance_last)) * (t_pi_on2 + t_pi_on1)
-
-        if ampl_gate is None:
-            ampl_gate = ampls_on_1[0]
 
         #mw_el = self._get_multiple_mw_element(mw_length, 0, ampl_gate, mw_freqs, [phase]*len(mw_freqs))
         self.log.debug(f"dd_x_dd, parallel= {dd_parallel}, t_mw= {mw_length}, rabi: {rabi_periods},"
@@ -5281,7 +5325,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_order = comp_type.parameters['dd_order']
                 dd_type = comp_type.parameters['dd_type']
                 dd_type_2 = comp_type.parameters.get('dd_type_2', '')
-                dd_ampl = comp_type.parameters.get('dd_ampl_2', None)
+                dd_ampl = comp_type.parameters.get('dd_ampl', None)
                 dd_ampl_2 = comp_type.parameters.get('dd_ampl_2', None)
                 dd_parallel = comp_type.parameters.get('dd_parallel', False)
                 dd_tau = comp_type.parameters.get('dd_tau')
@@ -5298,6 +5342,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
                 if mwx_ampl:
                     mwx_ampl = mwx_ampl[0] if nv_order == "1,2" else mwx_ampl[1]
+                    self.log.debug(f"Ampl Mwx= {mwx_ampl}")
+
                 if mwx_rabi_period:
                     mwx_rabi_period = mwx_rabi_period[0] if nv_order == "1,2" else mwx_rabi_period[1]
 
@@ -5791,7 +5837,8 @@ class Tk_Rotations():
                 #logger.info(f"{gate.name} => {gate_step}")
 
             else:
-                raise ValueError
+                gate_step = [gate]
+                #logger.debug(f"Leaving rot {gate.name} untouched, shorter than basis rot= {basis_rot / np.pi} pi")
 
             gates_new.extend(gate_step)
             #logger.info(f"{gates_new}")
@@ -5808,8 +5855,13 @@ class Tk_Rotations():
 
             if idx + 1 < len(gates_exp):
                 if "on_1" in gate.name and "on_2" in gates_exp[idx + 1].name:
-                    gate_pair_i = [gate, gates_exp[idx + 1]]
-                    idx += 2
+                    # same rotation on both NVs to parallel pair
+                    if gate.pulse_parameters['pulse_area'] == gates_exp[idx + 1].pulse_parameters['pulse_area']:
+                        gate_pair_i = [gate, gates_exp[idx + 1]]
+                        idx += 2
+                    else:
+                        gate_pair_i = [gate, TomoRotations.none]
+                        idx += 1
                 elif "on_1" in gate.name and "on_1" in gates_exp[idx + 1].name:
                     gate_pair_i = [gate, TomoRotations.none]
                     idx += 1
