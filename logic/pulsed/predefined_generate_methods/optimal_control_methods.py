@@ -173,7 +173,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
     def generate_oc_mw_only(self, name='optimal_mw_pulse',  phase=0,
                             filename_amplitude='amplitude.txt', filename_phase='phase.txt',
-                        folder_path=r'C:\Software\qudi_data\optimal_control_assets'):
+                        folder_path=r'C:\Software\qudi_data\optimal_control_assets',wait=False):
 
         """
         wrapper to make _get_mw_element_oc_RedCrab available to sequence methods in other generate method files
@@ -194,7 +194,13 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         qst_block = PulseBlock(name=name)
-        qst_block.append(oc_mw_element)
+        if wait:
+            wait_element = self._get_idle_element(length=self.wait_time, increment=0)
+            qst_block.append(wait_element)
+            qst_block.append(oc_mw_element)
+            qst_block.append(wait_element)
+        else:
+            qst_block.append(oc_mw_element)
         created_blocks.append(qst_block)
 
         # Create block ensemble
