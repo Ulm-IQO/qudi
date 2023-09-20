@@ -22,8 +22,89 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from collections import OrderedDict
-from logic.pulsed.sampling_functions import SamplingBase
 from scipy import interpolate
+import hashlib
+import os
+
+
+from logic.pulsed.sampling_functions import SamplingBase
+
+
+
+class SingletonClass(object):
+  def __new__(cls):
+    if not hasattr(cls, 'instance'):
+      cls.instance = super(SingletonClass, cls).__new__(cls)
+    return cls.instance
+
+class OCFile(SingletonClass):
+
+    def __init__(self, n_max=100):
+        self._loaded_files = [{'fname': None, 'hash': None, 'data_func': None, 'data': None, 'timegrid': None}]
+        self._n_files_max = n_max
+
+    def load(self, fname):
+
+        file_id = OCFile.get_file_hash(fname)
+
+        fname = os.path.abspath(fname)
+
+        pulse_already_exists = any(d["fname"] == fname and d["hash"] == file_id for d in self._loaded_files)
+        if pulse_already_exists:
+            #print(f"Pulse already loaded: {fname}, hash: {file_id}")
+            idx = next((i for i, d in enumerate(self._loaded_files) if d["fname"] == fname and d["hash"] == file_id),
+                       None)
+            found_pulse = self._loaded_files[idx]
+
+        else:
+            found_pulse = self._load(fname)
+            #print(f"Loaded from disk: {fname}, hash: {file_id}")
+            self._append(found_pulse)
+
+        return found_pulse
+
+    def _append(self, pulse):
+        self._loaded_files.append(pulse)
+
+        if len(self._loaded_files) < self._n_files_max:
+            pass
+        else:
+            self._loaded_files.pop(0)
+
+        #print(f"Loaded files ({len(self._loaded_files)}) now: {[el['fname'] for el in self._loaded_files]}")
+
+    def _load(self, fname):
+
+        try:
+            timegrid, data = np.loadtxt(fname, usecols=(0, 1), unpack=True)
+        except IOError:
+            timegrid = [0, 1]
+            data = [0, 0]
+            self.log.error('The pulse file does not exist! '
+                           '\nDefault parameters loaded')
+            raise
+
+        data_func = interpolate.interp1d(timegrid, data)
+
+        pulse = {'fname': fname, 'hash': self.get_file_hash(fname),
+                 'data': data, 'data_func': data_func,
+                 'timegrid': timegrid}
+
+        return pulse
+
+    @staticmethod
+    def get_file_hash(filename, blocksize=4096):
+
+        hsh = hashlib.md5()
+        with open(filename, "rb") as f:
+            while True:
+                buf = f.read(blocksize)
+                if not buf:
+                    break
+                hsh.update(buf)
+        return hsh.hexdigest()
+
+_ocfiles = OCFile()
 
 class OC_RedCrab(SamplingBase):
     """
@@ -101,8 +182,11 @@ class OC_RedCrab(SamplingBase):
 
         # try to load the file
         try:
-            timegrid, amplitude_opt = np.loadtxt(file_path_amplitude, usecols=(0, 1), unpack=True)
-            timegrid, phase_opt = np.loadtxt(file_path_phase, usecols=(0, 1), unpack=True)
+            pulse_ampl = _ocfiles.load(file_path_amplitude)
+            pulse_phase = _ocfiles.load(file_path_phase)
+
+            amplitude_func = pulse_ampl['data_func']
+            phase_func = pulse_phase['data_func']
 
             #self.log.debug(f"Loading oc to samplnig func from: {file_path_amplitude}")
         except IOError:
@@ -111,12 +195,9 @@ class OC_RedCrab(SamplingBase):
             phase_opt = [0, 0]
             self.log.error('The pulse file does not exist! '
                            '\nDefault parameters loaded')
+            raise
 
-        #self.log.warning('Time grid does not match the sampling rate of the AWG! '
-                         #'\nInterpolating the recieved data!')
-
-        amplitude_func = interpolate.interp1d(timegrid, amplitude_opt)
-        phase_func = interpolate.interp1d(timegrid, phase_opt)
+        #self.log.debug(f"freq: {self.frequency}, phase {self.phase}, scale {self.amplitude_scaling}, file {file_path_amplitude}")
 
         # calculate the samples
         samples_arr = self._get_sine_func(time_array, amplitude_func, self.frequency, phase_rad, phase_func)
@@ -126,11 +207,12 @@ class OC_RedCrab(SamplingBase):
 
         # avoid re-scaling by the pg, todo: think of better way
         import scipy
-        if max(abs(samples_arr)) > 0.25:
+        max_val = 0.5 # awg8190 0.25:
+        if max(abs(samples_arr)) > max_val:
             biggest_val = max([abs(np.min(samples_arr)), np.max(samples_arr)])
             self.log.warning(
                 f"Resampling in OC sampling function, because ampl value {biggest_val} exceeds limit")
-            mapper = scipy.interpolate.interp1d([-biggest_val, biggest_val], [-0.25, 0.25])
+            mapper = scipy.interpolate.interp1d([-biggest_val, biggest_val], [-max_val, max_val])
             samples_arr = mapper(samples_arr)
 
         return samples_arr
@@ -205,6 +287,15 @@ class OC_DoubleCarrierSum(SamplingBase):
             self.folder_path = self.params['folder_path']['init']
         else:
             self.folder_path = folder_path
+
+        # DBUEG only
+        #file_path_amplitude = self.folder_path + r'/' + self.filename_i_1 if idx==1 else self.folder_path + r'/' + self.filename_i_2
+        #file_path_phase = self.folder_path + r'/' + self.filename_q_1 if idx==1 else self.folder_path + r'/' + self.filename_q_2
+
+
+        #self.timegrid, self.amplitude_opt = np.loadtxt(file_path_amplitude, usecols=(0, 1), unpack=True)
+        #timegrid, self.phase_opt = np.loadtxt(file_path_phase, usecols=(0, 1), unpack=True)
+
         return
 
 
@@ -230,21 +321,24 @@ class OC_DoubleCarrierSum(SamplingBase):
             file_path_amplitude = self.folder_path + r'/' + self.filename_i_1 if idx==1 else self.folder_path + r'/' + self.filename_i_2
             file_path_phase = self.folder_path + r'/' + self.filename_q_1 if idx==1 else self.folder_path + r'/' + self.filename_q_2
 
+            #self.log.debug(f"{idx:} freq: {freq}, phase {phase}, scale {ampl_scale}, file {file_path_amplitude}")
+
             # try to load the file
             try:
-                timegrid, amplitude_opt = np.loadtxt(file_path_amplitude, usecols=(0, 1), unpack=True)
-                timegrid, phase_opt = np.loadtxt(file_path_phase, usecols=(0, 1), unpack=True)
+                pulse_ampl = _ocfiles.load(file_path_amplitude)
+                pulse_phase = _ocfiles.load(file_path_phase)
+
+                amplitude_func = pulse_ampl['data_func']
+                phase_func = pulse_phase['data_func']
 
                 #self.log.debug(f"Loading oc to samplnig func from: {file_path_amplitude}")
-            except IOError:
+            except (IOError, FileNotFoundError):
                 timegrid = [0, 1]
                 amplitude_opt = [0, 0]
                 phase_opt = [0, 0]
                 self.log.error('The pulse file does not exist! '
                                '\nDefault parameters loaded')
-
-            amplitude_func = interpolate.interp1d(timegrid, amplitude_opt)
-            phase_func = interpolate.interp1d(timegrid, phase_opt)
+                raise
 
             # calculate the samples
             phase_rad = np.pi * phase / 180
@@ -252,17 +346,27 @@ class OC_DoubleCarrierSum(SamplingBase):
 
             # change the amplitude of the pulse (e.g. to simulate amplitude detuning)
             samples_arr = ampl_scale * samples_arr
+
+            #self.log.debug(f"{idx:} samples for sum: {samples_arr[0:10]}")
             samples.append(samples_arr)
 
         samples_arr = sum(samples)
 
+        #self.log.debug(f"sample sum: {samples_arr[0:10]}")
+
         # avoid re-scaling by the pg, todo: think of better way
         import scipy
-        if max(abs(samples_arr)) > 0.25:
+        max_val = 0.5 # awg8190 0.25:
+        if max(abs(samples_arr)) > max_val:
             biggest_val = max([abs(np.min(samples_arr)), np.max(samples_arr)])
             self.log.warning(
                 f"Resampling in OC sampling function, because ampl value {biggest_val} exceeds limit")
-            mapper = scipy.interpolate.interp1d([-biggest_val, biggest_val], [-0.25, 0.25])
+            mapper = scipy.interpolate.interp1d([-biggest_val, biggest_val], [-max_val, max_val])
             samples_arr = mapper(samples_arr)
 
         return samples_arr
+
+
+
+
+
