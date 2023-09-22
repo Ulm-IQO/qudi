@@ -958,7 +958,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             tau_cnot=0e-9, dd_type_cnot=DDMethods.SE, dd_order=1, t_idle=0e-9,
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             comp_type=Comp.from_gen_settings, env_type=Evm.from_gen_settings,
-                            mirror_1q_pulses=False, alternating=False,
+                            mirror_1q_pulses=False, swap_1q_pulses=False, alternating=False,
                             init_state_kwargs='', cnot_kwargs='', add_gate_ch='',
                             to_basis_pair_rot=''):
         """
@@ -1045,10 +1045,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     rot_elements = []
                 elif rotation not in [TomoRotations.c2not1, TomoRotations.c2phase1_dd]:
                     params = rotation.pulse_parameters
+                    target = params['target']
                     if mirror_1q_pulses:
-                        params['target'] = [1, 2]
+                        target = [1, 2]
+                    if swap_1q_pulses:
+                        if target in [1, [1]]:
+                            target = [2]
+                        elif target in [2, [2]]:
+                            target = [1]
+                        else:
+                            raise ValueError
+
                     rot_elements = pi_element_function(params['phase'], pi_x_length=params['pulse_area']/np.pi,
-                                                       on_nv=params['target'])
+                                                       on_nv=target)
                 elif rotation == TomoRotations.c2not1:
                     rot_elements = c2not1_element
                     if mirror_1q_pulses:
@@ -2233,23 +2242,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # elements inside dd come from their own function
         pi_on1_element = pi_element_function(0, on_nv=1, no_amps_2_idle=False)
         pi_on2_element = pi_element_function(0, on_nv=2, no_amps_2_idle=True)
-        pix_init_on2_element = self.get_pi_element(0, mw_freqs, ampls_on_2, rabi_periods,
-                                                   pi_x_length=init_pix_on_2, no_amps_2_idle=False,
-                                                   env_type=env_type_2, on_nv=2)
-        pix_init_on1_element = self.get_pi_element(0, mw_freqs, ampls_on_1, rabi_periods,
-                                                   pi_x_length=init_pix_on_1, no_amps_2_idle=False,
-                                                   env_type=env_type_1, on_nv=1)
+        pix_init_on2_element = pi_element_function(0, on_nv=2, pi_x_length=init_pix_on_2, no_amps_2_idle=False)
+        pix_init_on1_element = pi_element_function(0, on_nv=1, pi_x_length=init_pix_on_1, no_amps_2_idle=False)
 
         # read phase opposite to canonical DD: 0->0 on no phase evolution
-
-        pihalf_on1_read_element = self.get_pi_element(0+read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=end_pix_on_1)
-        pihalf_on1_alt_read_element = self.get_pi_element(180 + read_phase_deg, mw_freqs, ampls_on_1, rabi_periods,
-                                                      pi_x_length=end_pix_on_1)
-        pix_on2_read_element = self.get_pi_element(0+read_phase_deg, mw_freqs, ampls_on_2, rabi_periods,
-                                                      pi_x_length=read_pix_on_2)
-        pix_on2_alt_read_element = self.get_pi_element(180 + read_phase_deg, mw_freqs, ampls_on_2, rabi_periods,
-                                                      pi_x_length=read_pix_on_2)
+        pihalf_on1_read_element = pi_element_function(0+read_phase_deg, on_nv=1, pi_x_length=end_pix_on_1, no_amps_2_idle=False)
+        pihalf_on1_alt_read_element = pi_element_function(180+read_phase_deg, on_nv=1, pi_x_length=end_pix_on_1, no_amps_2_idle=False)
+        pix_on2_read_element = pi_element_function(0+read_phase_deg, on_nv=2, pi_x_length=read_pix_on_2, no_amps_2_idle=False)
+        pix_on2_alt_read_element = pi_element_function(180+read_phase_deg, on_nv=2, pi_x_length=read_pix_on_2, no_amps_2_idle=False)
 
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
@@ -5150,7 +5150,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 oc_pulse = self.get_oc_pulse(on_nv=nv, pix=pi_x_length)
                 #self.log.debug(f"For pix= {pi_x_length} found oc pulse on={nv}")
             if len(oc_pulse) != 1:
-                raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_nv},"
+                raise ValueError(f"Couldn't find optimal pulse with params (pix= {pi_x_length},"
                                  f"on_nv= {on_nv})"
                                  f" in {self.optimal_control_assets_path}")
             oc_pulse = oc_pulse[0]
