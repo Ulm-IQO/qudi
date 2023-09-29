@@ -193,6 +193,7 @@ def _search_end_of_dip(self, direction, data, peak_arg, start_arg, end_arg, sigm
     """
     # Todo: Create doc string
     absolute_min  = data[peak_arg]
+    absolute_min = 1e-9 if absolute_min == 0. else absolute_min
 
     if direction == 'left':
         mult = -1
@@ -281,6 +282,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
 
     #first search for absolute minimum
     absolute_min=data.min()
+    absolute_min = 1e-9 if absolute_min == 0. else absolute_min
     absolute_argmin=data.argmin()
 
     #adjust thresholds
