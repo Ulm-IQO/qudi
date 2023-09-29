@@ -27,6 +27,7 @@ import numpy as np
 from lmfit import Parameters
 from lmfit.models import Model
 from collections import OrderedDict
+import copy as cp
 
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -270,6 +271,16 @@ def make_lorentziantriple_model(self):
     """
 
     return self.make_multiplelorentzian_model(no_of_functions=3)
+
+
+def make_lorentzianquad_model(self):
+    """ Create a model with triple lorentzian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    return self.make_multiplelorentzian_model(no_of_functions=4)
 
 ################################################################################
 #                                                                              #
@@ -958,10 +969,299 @@ def estimate_lorentziantriple_N14(self, x_axis, data, params):
     return error, params
 
 
-def estimate_lorentziantriple_dip(self, x_axis, data, params,
+def estimate_lorentzianquad_dip(self, x_axis, data, params,
+                                  threshold_fraction=0.3,
+                                  minimal_threshold=0.01,
+                                  sigma_threshold_fraction=0.3,
+                                  ampl_minmax=[-np.inf, -1e-2]):
+    """ Provide an estimator for triple lorentzian dip with offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    def _make_two_sigma(corner_idx, center_idx, factor=2, mode='left'):
+        delta = factor*abs(corner_idx - center_idx)
+        if mode == 'left':
+            two_sig_idx = center_idx - delta
+        elif mode == 'right':
+            two_sig_idx = center_idx + delta
+
+        two_sig_idx = int(two_sig_idx)
+        if two_sig_idx >= len(data):
+            two_sig_idx = len(data) - 1
+        if two_sig_idx < 0:
+            two_sig_idx = 0
+        return two_sig_idx
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # smooth with gaussian filter and find offset:
+    data_smooth, offset = self.find_offset_parameter(x_axis, data)
+
+    # level data:
+    data_level = data_smooth - offset
+
+    # search for double lorentzian dip:
+    ret_val = self._search_double_dip(x_axis, data_level, threshold_fraction,
+                                      minimal_threshold,
+                                      sigma_threshold_fraction)
+
+    error = ret_val[0]
+    sigma0_argleft, dip0_arg, sigma0_argright = ret_val[1:4]
+    sigma1_argleft, dip1_arg, sigma1_argright = ret_val[4:7]
+
+    # mask with more margin to make fits more stable
+    sigma0_argleft = _make_two_sigma(sigma0_argleft, dip0_arg, mode='left', factor=1.5)
+    sigma0_argright = _make_two_sigma(sigma0_argright, dip0_arg, mode='right', factor=1.5)
+    sigma1_argleft = _make_two_sigma(sigma1_argleft, dip1_arg, mode='left', factor=1.5)
+    sigma1_argright = _make_two_sigma(sigma1_argright, dip1_arg, mode='right', factor=1.5)
+    #print(f"Found 1/2 dips: {x_axis[dip0_arg], x_axis[dip1_arg]}")
+
+    # in rest of (masked) data, find third dip
+    #print(f"Masking {x_axis[sigma0_argleft], x_axis[sigma0_argright]},"
+    #      f" {x_axis[sigma1_argleft], x_axis[sigma1_argright]}")
+    data_masked = cp.deepcopy(data_level)
+    data_masked[sigma0_argleft:sigma0_argright] = 0
+    data_masked[sigma1_argleft:sigma1_argright] = 0
+    ret_val_thirddip = self._search_double_dip(x_axis, data_masked, threshold_fraction,
+                                      minimal_threshold,
+                                      sigma_threshold_fraction)
+
+    error2 = ret_val_thirddip[0]
+    sigma2_argleft, dip2_arg, sigma2_argright = ret_val_thirddip[1:4]
+    sigma3_argleft, dip3_arg, sigma3_argright = ret_val_thirddip[4:7]
+    #print(f"Found 3/4 dips: {x_axis[dip2_arg], x_axis[dip3_arg]}")
+
+
+    if dip0_arg == dip1_arg:
+        lorentz0_amplitude = data_level[dip0_arg] / 2.
+        lorentz1_amplitude = lorentz0_amplitude
+    else:
+        lorentz0_amplitude = data_level[dip0_arg]
+        lorentz1_amplitude = data_level[dip1_arg]
+
+    lorentz2_amplitude = data_level[dip2_arg]
+    lorentz3_amplitude = data_level[dip3_arg]
+
+    lorentz0_center = x_axis[dip0_arg]
+    lorentz1_center = x_axis[dip1_arg]
+    lorentz2_center = x_axis[dip2_arg]
+    lorentz3_center = x_axis[dip3_arg]
+
+    # Both sigmas are set to the same value
+    # numerical_integral_0 = (np.sum(data_level[sigma0_argleft:sigma0_argright]) *
+    #                    (x_axis[sigma0_argright] - x_axis[sigma0_argleft]) /
+    #                     len(data_level[sigma0_argleft:sigma0_argright]))
+
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level,
+                                            k=smoothing_spline)
+    numerical_integral_0 = fit_function.integral(x_axis[sigma0_argleft],
+                                             x_axis[sigma0_argright])
+    lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
+
+    numerical_integral_1 = numerical_integral_0
+    lorentz1_sigma = abs(numerical_integral_1 / (np.pi * lorentz1_amplitude))
+
+    numerical_integral_2 = numerical_integral_0
+    lorentz2_sigma = abs(numerical_integral_2 / (np.pi * lorentz2_amplitude))
+
+    numerical_integral_3 = numerical_integral_0
+    lorentz3_sigma = abs(numerical_integral_3 / (np.pi * lorentz3_amplitude))
+
+    # esstimate amplitude
+    # lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
+    # lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
+
+    stepsize = x_axis[1] - x_axis[0]
+    full_width = x_axis[-1] - x_axis[0]
+    n_steps = len(x_axis)
+
+    if lorentz0_center < lorentz1_center:
+        params['l0_amplitude'].set(value=lorentz0_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l0_sigma'].set(value=lorentz0_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l0_center'].set(value=lorentz0_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l1_amplitude'].set(value=lorentz1_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1]
+                                   )
+        params['l1_sigma'].set(value=lorentz1_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l1_center'].set(value=lorentz1_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+        params['l2_amplitude'].set(value=lorentz2_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l2_sigma'].set(value=lorentz2_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l2_center'].set(value=lorentz2_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+        params['l3_amplitude'].set(value=lorentz3_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l3_sigma'].set(value=lorentz3_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l3_center'].set(value=lorentz3_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+    else:
+        params['l0_amplitude'].set(value=lorentz1_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l0_sigma'].set(value=lorentz1_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l0_center'].set(value=lorentz1_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l1_amplitude'].set(value=lorentz0_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l1_sigma'].set(value=lorentz0_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l1_center'].set(value=lorentz0_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+        params['l2_amplitude'].set(value=lorentz2_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l2_sigma'].set(value=lorentz2_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l2_center'].set(value=lorentz2_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+        params['l3_amplitude'].set(value=lorentz3_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
+        params['l3_sigma'].set(value=lorentz3_sigma, min=stepsize / 2,
+                               max=full_width * 4)
+        params['l3_center'].set(value=lorentz3_center,
+                                min=(x_axis[0]) - n_steps * stepsize,
+                                max=(x_axis[-1]) + n_steps * stepsize)
+
+    params['offset'].set(value=offset)
+
+    return error, params
+
+def estimate_lorentziantriple_peak(self, x_axis, data, params,
                                   threshold_fraction=0.3,
                                   minimal_threshold=0.01,
                                   sigma_threshold_fraction=0.3):
+    return estimate_lorentziantriple_dip(self, x_axis, data, params,
+                                         threshold_fraction=threshold_fraction,
+                                         minimal_threshold=minimal_threshold,
+                                         sigma_threshold_fraction=sigma_threshold_fraction,
+                                         ampl_minmax=[1e-2, np.inf])
+
+
+
+def make_lorentzianquad_fit(self, x_axis, data, estimator, units=None,
+                            add_params=None, **kwargs):
+    """ Perform a triple lorentzian fit
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    model, params = self.make_lorentzianquad_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    #print(f"Quad fir with estimator {estimator} params: {params}")
+    try:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+    except:
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
+        self.log.error('The quad lorentzian fit did not '
+                       'work: {0}'.format(result.message))
+
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    if units is None:
+        units = ["arb. units"]
+
+    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['l0_center'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Position 2'] = {'value': result.params['l2_center'].value,
+                                     'error': result.params['l2_center'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Position 3'] = {'value': result.params['l3_center'].value,
+                                     'error': result.params['l3_center'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                     'error': result.params['l0_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                     'error': result.params['l1_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
+                                     'error': result.params['l2_contrast'].stderr,
+                                     'unit': '%'}
+    result_str_dict['Contrast 3'] = {'value': abs(result.params['l3_contrast'].value),
+                                     'error': result.params['l3_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['FWHM 0'] = {'value': result.params['l0_sigma'].value,
+                                 'error': result.params['l0_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['FWHM 1'] = {'value': result.params['l1_sigma'].value,
+                                 'error': result.params['l1_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['FWHM 2'] = {'value': result.params['l2_sigma'].value,
+                                 'error': result.params['l2_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['FWHM 3'] = {'value': result.params['l3_sigma'].value,
+                                 'error': result.params['l3_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    result.result_str_dict = result_str_dict
+    return result
+
+
+def estimate_lorentziantriple_dip(self, x_axis, data, params,
+                                  threshold_fraction=0.3,
+                                  minimal_threshold=0.01,
+                                  sigma_threshold_fraction=0.3,
+                                  ampl_minmax=[-np.inf, -1e-2]):
     """ Provide an estimator for triple lorentzian dip with offset.
 
     @param numpy.array x_axis: 1D axis values
@@ -994,8 +1294,8 @@ def estimate_lorentziantriple_dip(self, x_axis, data, params,
     sigma1_argleft, dip1_arg, sigma1_argright = ret_val[4:7]
 
     # in rest of (masked) data, find third dip
-    import copy
-    data_masked = copy.deepcopy(data)
+
+    data_masked = cp.deepcopy(data_level)
     data_masked[sigma0_argleft:sigma0_argright] = offset
     data_masked[sigma1_argleft:sigma1_argright] = offset
     ret_val_thirddip = self._search_double_dip(x_axis, data_masked, threshold_fraction,
@@ -1047,19 +1347,23 @@ def estimate_lorentziantriple_dip(self, x_axis, data, params,
     n_steps = len(x_axis)
 
     if lorentz0_center < lorentz1_center:
-        params['l0_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l0_amplitude'].set(value=lorentz0_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
         params['l0_sigma'].set(value=lorentz0_sigma, min=stepsize / 2,
                                max=full_width * 4)
         params['l0_center'].set(value=lorentz0_center,
                                 min=(x_axis[0]) - n_steps * stepsize,
                                 max=(x_axis[-1]) + n_steps * stepsize)
-        params['l1_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l1_amplitude'].set(value=lorentz1_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1]
+                                   )
         params['l1_sigma'].set(value=lorentz1_sigma, min=stepsize / 2,
                                max=full_width * 4)
         params['l1_center'].set(value=lorentz1_center,
                                 min=(x_axis[0]) - n_steps * stepsize,
                                 max=(x_axis[-1]) + n_steps * stepsize)
-        params['l2_amplitude'].set(value=lorentz2_amplitude, max=0)
+        params['l2_amplitude'].set(value=lorentz2_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
         params['l2_sigma'].set(value=lorentz2_sigma, min=stepsize / 2,
                                max=full_width * 4)
         params['l2_center'].set(value=lorentz2_center,
@@ -1067,19 +1371,22 @@ def estimate_lorentziantriple_dip(self, x_axis, data, params,
                                 max=(x_axis[-1]) + n_steps * stepsize)
 
     else:
-        params['l0_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l0_amplitude'].set(value=lorentz1_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
         params['l0_sigma'].set(value=lorentz1_sigma, min=stepsize / 2,
                                max=full_width * 4)
         params['l0_center'].set(value=lorentz1_center,
                                 min=(x_axis[0]) - n_steps * stepsize,
                                 max=(x_axis[-1]) + n_steps * stepsize)
-        params['l1_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l1_amplitude'].set(value=lorentz0_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
         params['l1_sigma'].set(value=lorentz0_sigma, min=stepsize / 2,
                                max=full_width * 4)
         params['l1_center'].set(value=lorentz0_center,
                                 min=(x_axis[0]) - n_steps * stepsize,
                                 max=(x_axis[-1]) + n_steps * stepsize)
-        params['l2_amplitude'].set(value=lorentz2_amplitude, max=0)
+        params['l2_amplitude'].set(value=lorentz2_amplitude,
+                                   min=ampl_minmax[0], max=ampl_minmax[1])
         params['l2_sigma'].set(value=lorentz2_sigma, min=stepsize / 2,
                                max=full_width * 4)
         params['l2_center'].set(value=lorentz2_center,
@@ -1088,5 +1395,6 @@ def estimate_lorentziantriple_dip(self, x_axis, data, params,
 
     params['offset'].set(value=offset)
 
-    return error, params
+    #print(f"Quad estimator: {params}")
 
+    return error, params
