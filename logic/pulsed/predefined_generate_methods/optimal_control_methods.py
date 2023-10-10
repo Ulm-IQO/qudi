@@ -196,7 +196,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         qst_block = PulseBlock(name=name)
         if wait:
             wait_element = self._get_idle_element(length=self.wait_time, increment=0)
-            qst_block.append(wait_element)
             qst_block.append(oc_mw_element)
             qst_block.append(wait_element)
         else:
