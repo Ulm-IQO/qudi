@@ -81,6 +81,9 @@ class TomoInit(IntEnum):
     cphase_hadamad_1 = 22
     cphase_hadamad_2 = 23
     cphase_hadamd_2_ux180_on_1 = 24
+    cphase_min_ux_90_on_1_uy_90_on_1 = 25
+    cphase_min_ux_90_on_2_uy_90_on_2 = 26
+    cphase_ux180_on_1_min_ux90_on_2_uy_90_on_2 = 27
     #rand_bench = 14
     # GST_2Q = 15
 
@@ -1345,7 +1348,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         def init_element(init_state,
                          verif_gate,normaliz=norm):  # Prepare of init states for cphase gate with a gate to verifiy
             init_state_set = [TomoInit.cphase_none,TomoInit.cphase_ux180_on_1,TomoInit.cphase_ux180_on_2,TomoInit.cphase_ux180_on_both,
-        TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1]
+        TomoInit.cphase_hadamad_1,TomoInit.cphase_hadamad_2,TomoInit.cphase_hadamd_2_ux180_on_1,TomoInit.cphase_min_ux_90_on_1_uy_90_on_1,TomoInit.cphase_min_ux_90_on_2_uy_90_on_2,
+                              TomoInit.cphase_ux180_on_1_min_ux90_on_2_uy_90_on_2]
             if init_state not in init_state_set:
                 raise ValueError(
                     f"Found Init_state {init_state}, type {type(init_state)} which is not in native gate set {init_state_set}")
@@ -1437,6 +1441,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     init_elements.extend(hadamardMin_on2_element)
                     init_elements.extend(pi_on_1_element)
                     # init_elements.extend(piMin_on_1_element)
+                elif init_state == TomoInit.cphase_min_ux_90_on_1_uy_90_on_1:
+                    # X-90_1 U Y90_1
+                    init_elements= cp.deepcopy(pihalf_y_on1_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pihalf_xmin_on1_element)
+                elif init_state == TomoInit.cphase_min_ux_90_on_2_uy_90_on_2:
+                    # X-90_2 U Y90_2
+                    init_elements= cp.deepcopy(pihalf_y_on2_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pihalf_xmin_on2_element)
+                elif init_state == TomoInit.cphase_ux180_on_1_min_ux90_on_2_uy_90_on_2:
+                    # X1 X-90_2 U X1 Y90_1
+                    init_elements= cp.deepcopy(pi_on_1_element)
+                    init_elements.extend(pihalf_y_on2_element)
+                    init_elements.extend(verif_element)
+                    init_elements.extend(pihalf_xmin_on2_element)
+                    init_elements.extend(piMin_on_1_element )
 
                 else:
                     raise ValueError(
