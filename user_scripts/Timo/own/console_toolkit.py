@@ -10,6 +10,8 @@ import difflib
 qudi_path = "C:/Users/Setup3-PC/Desktop/qudi"
 os.chdir(qudi_path)
 
+from core.util.helpers import csv_2_list
+
 try:
     from logic.mfl_irq_driven import MFL_IRQ_Driven
     from logic.mfl_xy8_irq_driven import MFL_IRQ_Driven as MFL_XY8_IRQ_Driven
@@ -107,17 +109,25 @@ class Tk_file():
     def load_pulsed_result(fname):
 
         data = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "z2", "std1", "std2"])
+        data = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "z2", "std1", "std2"])
         if pd.isnull(data.iloc[0, -1]):
             data = pd.read_csv(fname, sep="\t", comment='#', names=["tau", "z1", "std1"])
-        meta = Tk_file.load_pulsed_metadata(fname)
+        try:
+            meta = Tk_file.load_pulsed_metadata(fname)
+        except:
+            meta = {}
 
         mes = {'data': data,
                'file': fname}
         mes = {**mes, **meta}
 
-        fname_params = Tk_file.find_param_file(mes)
-        mes['file_params'] = fname_params
-        exp_params = {'exp_params': Tk_file.load_pulsed_params(mes)}
+        try:
+            fname_params = Tk_file.find_param_file(mes)
+            mes['file_params'] = fname_params
+            exp_params = {'exp_params': Tk_file.load_pulsed_params(mes)}
+        except:
+            fname_params = ""
+            exp_params = {}
 
         mes = {**mes, **exp_params}
 
@@ -166,7 +176,11 @@ class Tk_file():
             except:
                 try:
                     el_manual = Tk_string.str_2_dict(entry)
-                    val_enum = Tk_string.str_2_enum(el_manual[1])
+
+                    # interprete ";" in string as list of strings
+                    str_lists = csv_2_list(el_manual[1], str_2_val=str, delimiter=';')  # to list of csv strings
+                    val_enum = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
+
                     val = el_manual[1] if val_enum is None else val_enum
 
                     entry_dict = {el_manual[0]: val}
@@ -185,7 +199,10 @@ class Tk_file():
     def find_param_file(p_mes):
 
         def diff_letters(a, b):
-            return sum(a[i] != b[i] for i in range(len(a)))
+            n_letters = np.min([len(a), len(b)])
+            n_diff = abs(len(a) - len(b))
+
+            return n_diff + sum(a[i] != b[i] for i in range(n_letters))
 
         # needed, if "Active POI:" property in .dat file is buggy
         path = os.path.normpath(p_mes['file'])
@@ -360,25 +377,34 @@ class Tk_string():
 
     @staticmethod
     def str_2_enum(enum_str):
-
+        import re
         # if enums should be de-derialized
         from logic.pulsed.predefined_generate_methods.multi_nv_methods import DQTAltModes, TomoRotations, TomoInit
 
         # todo: works only if enum is known to toolkit
         # ATTENTION: dangerous eval, but no better way
         if "<" in enum_str and ">" in enum_str:
-            parse_str = re.findall(r'<.+?:', enum_str)[0][1:-1]
+            #parse_str = re.findall(r'<.+?:', enum_str)[0][1:-1]
+            parse_str = re.findall(r'<.+?:', enum_str)
+
+            enums = []
             try:
-                return eval(parse_str)
+                for enum_str in parse_str:
+                    enums.append(eval(enum_str[1:-1]))
             except:
                 pass
+
+            if len(enums) == 1:
+                return enums[0]
+
+            return enums
         return None
 
     @staticmethod
     def str_2_dict(dict_str):
         if ":" in dict_str:
-            key_str = dict_str.split(":", 1)[0][1:-1]
-            val_str = dict_str.split(":", 1)[1][1:]
+            key_str = dict_str.split(":", 1)[0][:-1]
+            val_str = dict_str.split(":", 1)[1][:]
 
             key_str = key_str.replace("'", "")
             val_str = val_str.replace("'", "")
@@ -387,15 +413,31 @@ class Tk_string():
         return None
 
     @staticmethod
-    def params_from_str(in_str, keys=['pix']):
+    def params_from_str(in_str, keys=['pix'], seperators=['='], extractor=None):
         params = {}
+        if extractor is None:
+            extractor = Tk_string.find_num_in_str
+
         in_str = in_str.lower()
 
         for key in keys:
             if f"{key}=" in in_str:
                 try:
-                    substr = in_str.split(f"{key}=", 1)[1]
-                    val = float(Tk_string.find_num_in_str(substr)[0])
+                    substr = in_str
+                    substr = substr.split(f"{key}=", 1)[1]
+                    for sep in seperators:
+                        substr = substr.split(sep)[0]
+                    # for multiple values in string, create list. Else scalar float
+                    vals = extractor(substr)
+                    try:
+                        vals = [float(v) for v in vals]
+                        if len(vals) == 1:
+                            val = vals[0]
+                        else:
+                            val = vals
+                    except:
+                        val = vals
+
                     params[key] = val
                 except IndexError:
                     continue
