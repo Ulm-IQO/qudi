@@ -959,7 +959,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             f_mw_2="1e9,1e9,1e9", ampl_mw_2="0.125, 0, 0", ampl_idle_mult=0., rabi_period_mw_2="100e-9, 100e-9, 100e-9",
                             comp_type=Comp.from_gen_settings, env_type=Evm.from_gen_settings,
                             mirror_1q_pulses=False, swap_1q_pulses=False, alternating=False,
-                            init_state_kwargs='', cnot_kwargs='', add_gate_ch='',
+                            init_state_kwargs='', cnot_kwargs='', add_gate_ch='', incl_detuned_ref=0.,
                             to_basis_pair_rot=''):
         """
         :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
@@ -970,10 +970,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         add_pi2s = False   # for optimal control only! avoid optimization into zero pulse
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True,
-                                env_type_pi=None, comp_type_pi=None):
+                                env_type_pi=None, comp_type_pi=None, scale_oc_ampl=None):
 
             if type(on_nv) != list:
                 on_nv = [on_nv]
+
+            if scale_oc_ampl is None:
+                scale_oc_ampl = [1, 1]
+            if type(scale_oc_ampl) != list:
+                scale_oc_ampl = [scale_oc_ampl]*2
 
             if comp_type_pi is None:
                 comp_type_pi = comp_type
@@ -983,9 +988,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             # ampls_on_1/2 take care of nv_order already
             if on_nv == [1]:
                 ampl_pi = ampls_on_1
+                ampl_pi = ampl_pi * scale_oc_ampl[0] if scale_oc_ampl[0]!= None else ampl_pi
                 mw_idle_amps = ampls_on_2 * ampl_idle_mult
             elif on_nv == [2]:
                 ampl_pi = ampls_on_2
+                ampl_pi = ampl_pi * scale_oc_ampl[1] if scale_oc_ampl[1]!=None else ampl_pi
                 mw_idle_amps = ampls_on_2 * ampl_idle_mult
             elif set(on_nv) == set([1,2]):
                 ampl_pi = amplitudes
@@ -1010,22 +1017,26 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     on_nv = func_map(on_nv)
                     ampl_pi = amplitudes
 
+                if scale_oc_ampl != None:
+                    self.log.debug(f"Scaling oc element with fac= {scale_oc_ampl}")
+                    env_type_pi.parameters['scale_ampl'] = scale_oc_ampl
+
             try:
                 mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
                                            pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
                                            env_type=env_type_pi, comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
-            except ValueError: # complex (OC, comp) pulse not synthesized
+            except ValueError as e: # complex (OC, comp) pulse not synthesized
                 mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_fallback, rabi_periods,
                                            pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
                                            env_type=env_fallback, comp_type=comp_fallback, mw_idle_amps=mw_idle_amps)
 
                 self.log.debug(f"Couldn't generate pulse: {pi_x_length} pix, phase={xphase} on={on_nv}. "
-                               f"Falling back to pulses env= {env_fallback}, comp= {comp_fallback}.")
+                               f"Falling back to pulses env= {env_fallback}, comp= {comp_fallback}: {str(e)}")
 
             return mw_el
 
 
-        def rotation_element(rotation):
+        def rotation_element(rotation, scale_oc_ampl=None):
 
             gate_set = [rot for rot in TomoRotations]
 
@@ -1057,7 +1068,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             raise ValueError
 
                     rot_elements = pi_element_function(params['phase'], pi_x_length=params['pulse_area']/np.pi,
-                                                       on_nv=target)
+                                                       on_nv=target, scale_oc_ampl=scale_oc_ampl)
                 elif rotation == TomoRotations.c2not1:
                     rot_elements = c2not1_element
                     if mirror_1q_pulses:
@@ -1157,12 +1168,24 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         # get tau array for measurement ticks
         idx_array = list(range(len(rotations)))
         xticks = csv_2_list(xticks)
+
         if xticks:
             # expand xaxis. Multiple random sequences for a single n_cliff are collapsed to same tick
             if len(xticks) < len(idx_array):
                 xticks = np.asarray([[x]*int(len(rotations)/len(xticks)) for x in xticks]).flatten()
-        num_of_points = len(idx_array)
 
+        n_per_xtick = 0
+        if incl_detuned_ref != 0.:
+            # todo: ugly
+            n_per_xtick = incl_detuned_ref[1]
+            incl_detuned_ref = incl_detuned_ref[0]
+            # duplicate the last element. Add amplitude "detuning" in for loop below
+            rotations.extend(rotations[-n_per_xtick:])
+            self.log.debug(f"Adding detuned (ampl= {incl_detuned_ref}) {n_per_xtick} last rotations.")
+            xticks.extend([1e-3]*n_per_xtick)
+            idx_array = list(range(len(rotations)))
+
+        num_of_points = len(idx_array)
         # simple rotations
         id_element = self._get_idle_element(t_idle, 0)
 
@@ -1219,7 +1242,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             for rotation in gate_list:
                 #self.log.debug(f"Adding rot {rotation} of type {type(rotation)}")
                 try:
-                    rabi_block.extend(rotation_element(rotation))
+                    scale_oc = incl_detuned_ref if idx>=len(rotations)-n_per_xtick and incl_detuned_ref!=0. else None
+                    rabi_block.extend(rotation_element(rotation, scale_oc_ampl=scale_oc))
                 except:
                     raise ValueError(f"Failed transpiling gate string {idx} with rot: {rotation.name}")
                 rabi_block.append(id_element)
@@ -1239,7 +1263,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     rabi_block.extend(pi2_on_1_element)
                     rabi_block.extend(pi2_on_2_element)
                 for rotation in gate_list:
-                    rabi_block.extend(rotation_element(rotation))
+                    scale_oc = incl_detuned_ref if idx>=len(rotations) - n_per_xtick and incl_detuned_ref != 0. else None
+                    rabi_block.extend(rotation_element(rotation, scale_oc_ampl=scale_oc))
                     rabi_block.append(id_element)
                 # we measure ground state population |00>, so alternating against |11>
                 for rotation in read_rots:
@@ -2322,12 +2347,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         dd_block = PulseBlock(name=name)
+        ref_block = PulseBlock(name=name + "_ref")
 
         if incl_ref:
             if not no_laser:
-                dd_block.append(laser_element)
-                dd_block.append(delay_element)
-                dd_block.append(waiting_element)
+                ref_block.append(laser_element)
+                ref_block.append(delay_element)
+                ref_block.append(waiting_element)
+            if alternating:
+                if init_pix_on_1 != 0:
+                    ref_block.extend(pi_on1_element)
+                if init_pix_on_2 != 0:
+                    ref_block.extend(pi_on2_element)
+
+                if not no_laser:
+                    ref_block.append(laser_element)
+                    ref_block.append(delay_element)
+                    ref_block.append(waiting_element)
 
         if init_pix_on_1 != 0:
             dd_block.extend(pix_init_on1_element)
@@ -2392,14 +2428,6 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             dd_block.append(waiting_element)
 
         if alternating:
-            if incl_ref:
-                dd_block.extend(pi_on1_element)
-                dd_block.extend(pi_on2_element)
-
-                if not no_laser:
-                    dd_block.append(laser_element)
-                    dd_block.append(delay_element)
-                    dd_block.append(waiting_element)
 
             if init_pix_on_1 != 0:
                 dd_block.extend(pix_init_on1_element)
@@ -2454,12 +2482,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                 dd_block.append(delay_element)
                 dd_block.append(waiting_element)
 
-
+        created_blocks.append(ref_block)
         created_blocks.append(dd_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append((dd_block.name, num_of_points - 1))
+        n_rep_sequencer = num_of_points - 1
+        if incl_ref:
+            block_ensemble.append((ref_block.name, 0))
+        block_ensemble.append((dd_block.name, n_rep_sequencer))
 
         # Create and append sync trigger block if needed
         if not no_laser:
