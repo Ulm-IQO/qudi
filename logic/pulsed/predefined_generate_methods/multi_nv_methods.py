@@ -1218,7 +1218,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                                                     kwargs_dict=cnot_kwargs)
         c2not1_element = c2not1_element[0]
         """
-        c2phase1_dd_element, _, _ = self.generate_c2phase1_dd('c2phase1_dd', tau_start=tau_cnot, tau_step=0.0e-6, num_of_points=1,
+        c2phase1_dd_element, _, _ = self.generate_c2phase1_dd('c2phase1_dd', tau_start=tau_cnot, tau_step=0.0e-6,
+                                                              num_of_points=1,
                                                     f_mw_2=f_mw_2, ampl_mw_2=ampl_mw_2_cnot,
                                                     rabi_period_mw_2=rabi_period_mw_2_cnot,
                                                     dd_type=dd_type_cnot, dd_order=dd_order, alternating=False,
@@ -2153,7 +2154,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                              add_gate_ch='d_ch4', env_type_1=Evm.from_gen_settings,
                              env_type_2=Evm.from_gen_settings,
                              scale_tau2_first=1, scale_tau2_last=1, floating_last_pi=True,  # will allow only negative tau2!
-                             alternating=True, no_laser=False, incl_ref=False):
+                             alternating=True, no_laser=False, incl_ref=False, ref_pix_alt=[None, None]):
         """
         Decoupling sequence on both NVs.
         Tau1 is kept constant and the second pi pulse is swept through.
@@ -2256,6 +2257,19 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                        f"envelope= {env_type_1}/{env_type_2}, read pulse phase {read_phase_deg},"
                        f"init=({init_pix_on_1, init_pix_on_2}), start={start_pix_on_1}, end={(end_pix_on_1, end_pix_on_2)}")
 
+        if ref_pix_alt == [None, None]:
+            ref_pix_alt = [0, 1]
+
+        # contrast only from NVs that are init to super position, only ref contrast for these NVs
+        pix_ref_on_1, pix_ref_on_2 = 0, 0
+        pix_ref_on_1_alt, pix_ref_on_2_alt = 0, 0
+        if init_pix_on_1 != 0 and init_pix_on_1 != 1.:
+            pix_ref_on_1 = ref_pix_alt[0]
+            pix_ref_on_1_alt = ref_pix_alt[1]
+        if init_pix_on_2 != 0 and init_pix_on_2 != 1.:
+            pix_ref_on_2 = ref_pix_alt[0]
+            pix_ref_on_2_alt = ref_pix_alt[1]
+
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0,
@@ -2276,15 +2290,23 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         pix_on2_read_element = pi_element_function(0+read_phase_deg, on_nv=2, pi_x_length=read_pix_on_2, no_amps_2_idle=False)
         pix_on2_alt_read_element = pi_element_function(180+read_phase_deg, on_nv=2, pi_x_length=read_pix_on_2, no_amps_2_idle=False)
 
+        pix_on1_ref_element = pi_element_function(0, on_nv=1, pi_x_length=pix_ref_on_1, no_amps_2_idle=False)
+        pix_on1_ref_alt_element = pi_element_function(0, on_nv=1, pi_x_length=pix_ref_on_1_alt, no_amps_2_idle=False)
+        pix_on2_ref_element = pi_element_function(0, on_nv=2, pi_x_length=pix_ref_on_2, no_amps_2_idle=False)
+        pix_on2_ref_alt_element = pi_element_function(0, on_nv=2, pi_x_length=pix_ref_on_2_alt, no_amps_2_idle=False)
+
         t_pi_on1 = MultiNV_Generator.get_element_length(pi_on1_element)
         t_pi_on2 = MultiNV_Generator.get_element_length(pi_on2_element)
 
         # get tau array for measurement ticks
         tau_array = tau_start + np.arange(num_of_points) * tau_step
+
         if incl_ref:
-            dtau = abs(tau_array[-1] - tau_array[0])
-            dtau = -1 if dtau == 0 else dtau
-            tau_array = np.concatenate([np.ones(1)*(tau_array[0] - 2*dtau), tau_array], axis=None)
+            dtau = 0
+            if len(tau_array) > 1:
+                dtau = abs(tau_array[-1] - tau_array[0])
+                dtau = -1 if dtau == 0 else dtau
+                tau_array = np.concatenate([np.ones(1)*(tau_array[0] - 2*dtau), tau_array], axis=None)
 
         #pix_end_on2_element = self.get_pi_element(dd_type.phases[0], mw_freqs, ampls_on_2,
         #                                          rabi_periods,
@@ -2350,85 +2372,24 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         ref_block = PulseBlock(name=name + "_ref")
 
         if incl_ref:
+            self.log.debug(f"Adding ref pix pulses= [{pix_ref_on_1, pix_ref_on_2}],"
+                           f" alt: [{pix_ref_on_1_alt, pix_ref_on_2_alt}] ")
+            ref_block.extend(pix_on1_ref_element)
+            ref_block.extend(pix_on2_ref_element)
             if not no_laser:
                 ref_block.append(laser_element)
                 ref_block.append(delay_element)
                 ref_block.append(waiting_element)
-            if alternating:
-                if init_pix_on_1 != 0:
-                    ref_block.extend(pi_on1_element)
-                if init_pix_on_2 != 0:
-                    ref_block.extend(pi_on2_element)
 
+            if alternating:
+                ref_block.extend(pix_on1_ref_alt_element)
+                ref_block.extend(pix_on2_ref_alt_element)
                 if not no_laser:
                     ref_block.append(laser_element)
                     ref_block.append(delay_element)
                     ref_block.append(waiting_element)
 
-        if init_pix_on_1 != 0:
-            dd_block.extend(pix_init_on1_element)
-        if init_pix_on_2 != 0:
-            dd_block.extend(pix_init_on2_element)
-        if start_pix_on_1 != 0:
-            dd_block.extend(pihalf_start_on1_element)
-        for n in range(dd_order):
-            # create the DD sequence for a single order
-            for pulse_number in range(dd_type.suborder):
-                dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
-                dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
-                                                    scale_ampl=dd_type.scale_ampl[pulse_number],
-                                                    env_type_pi=env_type_1))
-                first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
-
-                if last and not floating_last_pi:
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                    if end_pix_on_2 != 0:
-                        #pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                        #                                          ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                        #                                          rabi_periods, env_type=env_type_2, on_nv=2,
-                        #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True
-                        #                                          )
-                        if dd_type_2.scale_ampl[pulse_number] != 1.:
-                            raise ValueError(
-                                f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
-                        pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True,
-                                                                  env_type_pi=env_type_2, on_nv=2)
-                        dd_block.extend(pix_end_on2_element)
-                elif last and floating_last_pi:
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
-                                                             floating_last_pi=True, before_pi_on2=True))
-                    if end_pix_on_2 != 0:
-                        #pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
-                        #                                          ampls_on_2*dd_type_2.scale_ampl[pulse_number],
-                        #                                          rabi_periods, env_type=env_type_2, on_nv=2,
-                        #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True)
-                        if dd_type_2.scale_ampl[pulse_number] != 1.:
-                            raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
-                        pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
-                                                                  pi_x_length=end_pix_on_2, no_amps_2_idle=True,
-                                                                  env_type_pi=env_type_2, on_nv=2)
-                        dd_block.extend(pix_end_on2_element)
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
-                                                             floating_last_pi=True, before_pi_on2=False))
-
-                else:
-                    dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
-                    dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
-                                    scale_ampl=dd_type_2.scale_ampl[pulse_number], env_type_pi=env_type_2))
-
-        if end_pix_on_1 != 0:
-            dd_block.extend(pihalf_on1_read_element)
-        if read_pix_on_2 != 0:
-            dd_block.extend(pix_on2_read_element)
-
-        if not no_laser:
-            dd_block.append(laser_element)
-            dd_block.append(delay_element)
-            dd_block.append(waiting_element)
-
-        if alternating:
-
+        if num_of_points > 0:
             if init_pix_on_1 != 0:
                 dd_block.extend(pix_init_on1_element)
             if init_pix_on_2 != 0:
@@ -2436,6 +2397,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             if start_pix_on_1 != 0:
                 dd_block.extend(pihalf_start_on1_element)
             for n in range(dd_order):
+                # create the DD sequence for a single order
                 for pulse_number in range(dd_type.suborder):
                     dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
                     dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
@@ -2446,8 +2408,14 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     if last and not floating_last_pi:
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                         if end_pix_on_2 != 0:
+                            #pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                            #                                          ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                            #                                          rabi_periods, env_type=env_type_2, on_nv=2,
+                            #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True
+                            #                                          )
                             if dd_type_2.scale_ampl[pulse_number] != 1.:
-                                raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                                raise ValueError(
+                                    f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
                             pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
                                                                       pi_x_length=end_pix_on_2, no_amps_2_idle=True,
                                                                       env_type_pi=env_type_2, on_nv=2)
@@ -2456,6 +2424,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
                                                                  floating_last_pi=True, before_pi_on2=True))
                         if end_pix_on_2 != 0:
+                            #pix_end_on2_element = self.get_pi_element(dd_type_2.phases[pulse_number], mw_freqs,
+                            #                                          ampls_on_2*dd_type_2.scale_ampl[pulse_number],
+                            #                                          rabi_periods, env_type=env_type_2, on_nv=2,
+                            #                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True)
                             if dd_type_2.scale_ampl[pulse_number] != 1.:
                                 raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
                             pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
@@ -2468,29 +2440,86 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     else:
                         dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
                         dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
-                                                            scale_ampl=dd_type_2.scale_ampl[pulse_number],
-                                                            env_type_pi=env_type_2))
-
+                                        scale_ampl=dd_type_2.scale_ampl[pulse_number], env_type_pi=env_type_2))
 
             if end_pix_on_1 != 0:
-                dd_block.extend(pihalf_on1_alt_read_element)
+                dd_block.extend(pihalf_on1_read_element)
             if read_pix_on_2 != 0:
-                dd_block.extend(pix_on2_alt_read_element)
+                dd_block.extend(pix_on2_read_element)
 
             if not no_laser:
                 dd_block.append(laser_element)
                 dd_block.append(delay_element)
                 dd_block.append(waiting_element)
 
-        created_blocks.append(ref_block)
-        created_blocks.append(dd_block)
+            if alternating:
+
+                if init_pix_on_1 != 0:
+                    dd_block.extend(pix_init_on1_element)
+                if init_pix_on_2 != 0:
+                    dd_block.extend(pix_init_on2_element)
+                if start_pix_on_1 != 0:
+                    dd_block.extend(pihalf_start_on1_element)
+                for n in range(dd_order):
+                    for pulse_number in range(dd_type.suborder):
+                        dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, True))
+                        dd_block.extend(pi_element_function(dd_type.phases[pulse_number], on_nv=1,
+                                                            scale_ampl=dd_type.scale_ampl[pulse_number],
+                                                            env_type_pi=env_type_1))
+                        first, last, in_between = get_deer_pos(n, dd_order, pulse_number, dd_type, False)
+
+                        if last and not floating_last_pi:
+                            dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                            if end_pix_on_2 != 0:
+                                if dd_type_2.scale_ampl[pulse_number] != 1.:
+                                    raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                                pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
+                                                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                                          env_type_pi=env_type_2, on_nv=2)
+                                dd_block.extend(pix_end_on2_element)
+                        elif last and floating_last_pi:
+                            dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
+                                                                     floating_last_pi=True, before_pi_on2=True))
+                            if end_pix_on_2 != 0:
+                                if dd_type_2.scale_ampl[pulse_number] != 1.:
+                                    raise ValueError(f"Scaling= {dd_type_2.scale_ampl[pulse_number]} of dd pulses not supported anymore.")
+                                pix_end_on2_element = pi_element_function(dd_type_2.phases[pulse_number],
+                                                                          pi_x_length=end_pix_on_2, no_amps_2_idle=True,
+                                                                          env_type_pi=env_type_2, on_nv=2)
+                                dd_block.extend(pix_end_on2_element)
+                            dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False,
+                                                                     floating_last_pi=True, before_pi_on2=False))
+
+                        else:
+                            dd_block.append(tauhalf_element_function(n, dd_order, pulse_number, dd_type, False))
+                            dd_block.extend(pi_element_function(dd_type_2.phases[pulse_number], on_nv=2,
+                                                                scale_ampl=dd_type_2.scale_ampl[pulse_number],
+                                                                env_type_pi=env_type_2))
+
+
+                if end_pix_on_1 != 0:
+                    dd_block.extend(pihalf_on1_alt_read_element)
+                if read_pix_on_2 != 0:
+                    dd_block.extend(pix_on2_alt_read_element)
+
+                if not no_laser:
+                    dd_block.append(laser_element)
+                    dd_block.append(delay_element)
+                    dd_block.append(waiting_element)
+
+        if num_of_points > 0:
+            created_blocks.append(dd_block)
+        if incl_ref:
+            created_blocks.append(ref_block)
+
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
         n_rep_sequencer = num_of_points - 1
         if incl_ref:
             block_ensemble.append((ref_block.name, 0))
-        block_ensemble.append((dd_block.name, n_rep_sequencer))
+        if num_of_points > 0:
+            block_ensemble.append((dd_block.name, n_rep_sequencer))
 
         # Create and append sync trigger block if needed
         if not no_laser:
