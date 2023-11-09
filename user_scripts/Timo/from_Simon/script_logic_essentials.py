@@ -37,7 +37,7 @@ setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
 setup['laser_delay'] = 500e-9  #200e-9  # #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
-setup['laser_t_analysis'] = 334e-9
+setup['laser_t_analysis'] = 330e-9
 
 if setup['gated']:
     # need a "sync pulse" at the starting edge of every readout laser
@@ -732,7 +732,7 @@ def set_up_conventional_measurement(qm_dict):
                                                 'norm_start':2.5e-6, 'norm_end': 2.5e-6 + 400e-9}
             # with 2x TTL pulse duplicator
             analy_method = {'method': 'mean_norm', 'signal_start': 1110e-9, 'signal_end': 1110e-9 + setup['laser_t_analysis'],
-                                                'norm_start':3e-6, 'norm_end': 3e-6 + 350e-9}
+                                                'norm_start':2.2e-6, 'norm_end': 2.2e-6 + 1000e-9}
             #analy_method = {'method': 'mean', 'signal_start': 740e-9, 'signal_end': 740e-9 + 400e-9,
             #                                    'norm_start': 740e-9 + 1.7e-6, 'norm_end': 740e-9 + 2.15e-6}
 
@@ -1068,14 +1068,17 @@ def optimize_position(optimize_ch=None, func_toggle_pause=None):
 
     #pulsedmeasurementlogic.fast_counter_pause()
     if optimize_ch is None:
-        logger.info(f"Optimization with laser ch: {setup['optimize_channel']}")
-        nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
-    elif optimize_ch is '':
+        optimize_ch = setup['optimize_channel']
+
+    if optimize_ch is '':
         logger.debug("No opt_ch optimization")
         pass
     else:
         logger.debug(f"Optimization with laser ch: {optimize_ch}")
+        awg8195._write_output_off()
+        time.sleep(0.1)
         nicard.digital_channel_switch(optimize_ch, mode=True)
+
 
     logger.debug("Sleeping before count wait")
     time.sleep(1)
@@ -1101,7 +1104,10 @@ def optimize_position(optimize_ch=None, func_toggle_pause=None):
     time_stop_optimize = time.time()
     additional_time = (time_stop_optimize - time_start_optimize)
 
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+    if setup['optimize_channel'] != '':
+        nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+    time.sleep(0.1)
+    awg8195._write_output_on()
 
     if func_toggle_pause:
         logger.debug("Invoking toggle_func(True)")
@@ -1135,7 +1141,8 @@ def optimize_poi(poi, update_shift=False):
 
     # switch off laser
     logger.debug("Laser off")
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+    if setup['optimize_channel'] != '':
+        nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
     # pulsedmeasurementlogic.fast_counter_continue()
     time_stop_optimize = time.time()
     additional_time = (time_stop_optimize - time_start_optimize)
@@ -1149,7 +1156,15 @@ def laser_on(pulser_on=True):
 
     # laser_on_awg()
     # Turns on the laser via nicard. If pulser_on the pulser is not stopped
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
+
+    # protect awg inputs in case of switch malfunction
+    awg8195._write_output_off()
+    time.sleep(0.1)
+
+    if setup['optimize_channel'] != '':
+        nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
+
+
     return
 
 def laser_on_awg():
@@ -1163,8 +1178,12 @@ def laser_on_awg():
 def laser_off(pulser_on=False):
     # Switches off the laser trigger from nicard
     pulsedmasterlogic.toggle_pulse_generator(pulser_on)
-    nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
-    return
+    if setup['optimize_channel'] != '':
+        nicard.digital_channel_switch(setup['optimize_channel'], mode=False)
+
+    time.sleep(0.1)
+    awg8195._write_output_on()
+
 
 
 ######################################## Microwave frequency optimize functions #########################################
@@ -1374,9 +1393,25 @@ def do_automized_measurements(qm_dict, autoexp):
 
             # fit and update parameters
             if 'fit_experiment' in cur_exp_dict:
+                fitter = pulsedmeasurementlogic.fc
                 if cur_exp_dict['fit_experiment'] != '':
+                    fit_method = cur_exp_dict['fit_experiment']
                     try:
-                        fit_data, fit_result = pulsedmeasurementlogic.do_fit(cur_exp_dict['fit_experiment'])
+                        if 'fit_edit_params' in cur_exp_dict:
+                            # provide initial guesses / fit bounds
+                            edit_params = cur_exp_dict['fit_edit_params']
+                            logger.debug(f"Found fit edit_param: {edit_params}")
+                            save_usefit_params, save_edit_params = cp.copy(fitter.fit_list[fit_method]['use_settings']), cp.copy(fitter.fit_list[fit_method]['parameters'])
+                            for ov_param in edit_params:
+                                if ov_param.name in fitter.fit_list[fit_method]['parameters'].keys():
+                                    fitter.fit_list[fit_method]['use_settings'][ov_param.name] = True
+                                    fitter.fit_list[fit_method]['parameters'][ov_param.name] = ov_param
+                                else:
+                                    logger.warning(f"Couldn't find edit_param: {ov_param}")
+
+                        fitter.clear_result()
+                        fitter.set_current_fit(fit_method)
+                        fit_data, fit_result = pulsedmeasurementlogic.do_fit(fit_method)
                         #pulsedmasterlogic.do_fit(cur_exp_dict['fit_experiment'])
                         # while pulsedmasterlogic.status_dict['fitting_busy']: time.sleep(0.2)
                         #time.sleep(1)
@@ -1385,8 +1420,21 @@ def do_automized_measurements(qm_dict, autoexp):
                         #fit_para = fit_result.best_values[cur_exp_dict['fit_parameter']]
 
                         fit_para = fit_result.result_str_dict[cur_exp_dict['fit_parameter']]['value']
+                        logger.debug(f"Fit result: {fit_result.result_str_dict}")
+
+                        # todo working properly?
+                        """
+                        if 'fit_edit_params' in cur_exp_dict:
+                            # reset fitter to previous values
+                            for ov_param in edit_params:
+                                logger.debug(f"Resetting fit settings for {ov_param.name} to:"
+                                             f" use {save_usefit_params[ov_param.name]}, params: {save_edit_params[ov_param.name]}")
+                                fitter.fit_list[fit_method]['use_settings'][ov_param.name] = save_usefit_params[ov_param.name]
+                                fitter.fit_list[fit_method]['parameters'][ov_param.name] = save_edit_params[ov_param.name]
+                        """
                     except Exception as e:
-                        logger.warning("Couldn't perform fit: {}".format(str(e)))
+                        stack_trace = traceback.format_exc()
+                        logger.warning("Couldn't perform fit: {}".format(stack_trace))
                         fit_para = None
 
                     if 'update_parameters' in cur_exp_dict:
@@ -1418,6 +1466,12 @@ def do_automized_measurements(qm_dict, autoexp):
                                     elif type(update_rule) == dict:
                                         key_param = update_rule['target_name']
                                         func_str = update_rule['func']
+                                        exec_str = update_rule.get('exec')
+
+                                        # execute arb code
+                                        if exec_str:
+                                            exec(exec_str)
+
                                         # replace "_x_" (the fit result) with str for eval()
                                         func_str = func_str.replace("_x_", "fit_para")
                                         try:

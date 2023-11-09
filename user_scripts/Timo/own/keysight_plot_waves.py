@@ -28,7 +28,10 @@ class KeysightPlotter():
         path_ch1, path_ch2 = self.get_waveform_files(path, mode=ext)
         data_ch1 = np.fromfile(path_ch1, dtype=np.uint16, count=-1)
         try:
-            data_ch2 = np.fromfile(path_ch2, dtype=np.uint16, count=-1)
+            if ext == 'bin':
+                data_ch2 = np.fromfile(path_ch2, dtype=np.uint16, count=-1)
+            elif ext == 'bin8':
+                data_ch2 = np.fromfile(path_ch2, dtype=np.uint8, count=-1)
         except:
             pass
 
@@ -54,6 +57,12 @@ class KeysightPlotter():
             t_us_ch1, w_analog_ch1, _, w_sample_marker_ch1, w_sync_marker_ch1 = self.decode_int16_to_wave(data_ch1,
                                                                                                      mode=ext,
                                                                                                      channel_config='marker')
+            if path_ch2:
+                t_us_ch2, w_analog_ch2, _, _, _ = self.decode_int16_to_wave(data_ch2,
+                                                                             mode=ext,
+                                                                             channel_config='no_marker')
+                wave_dict['a_ch2'] = w_analog_ch2
+
             # assuming m8190 channel map in marker mode
             wave_dict['a_ch1'] = w_analog_ch1
             wave_dict['d_ch1'] = w_sample_marker_ch1
@@ -95,18 +104,24 @@ class KeysightPlotter():
 
         return np.asarray(int_analog, dtype=np.int16), np.asarray(bit_marker, dtype=np.bool), np.asarray(bit_sync, dtype=np.bool)
 
-    def decode_m8195_val(self, val_int, channel="a_ch1"):
+    def decode_m8195_val(self, val_int, channel="a_ch1", interleaved=True):
 
-        val_int = np.asarray(val_int).astype('uint16')
-
-        if channel == "a_ch1":
-            val = (val_int & 0x00FF)
-        elif channel == 'd_ch1':
-            val = (val_int >> 8 & 0x1)
-        elif channel == "d_ch2":
-            val = (val_int >> 8 & 0x2) >> 1
+        if interleaved:
+            val_int = np.asarray(val_int).astype('uint16')
         else:
-            raise NotImplementedError
+            val_int = np.asarray(val_int).astype('uint8')
+
+        if interleaved:
+            if channel.startswith("a_ch"):
+                val = (val_int & 0x00FF)
+            elif channel == 'd_ch1':
+                val = (val_int >> 8 & 0x1)
+            elif channel == "d_ch2":
+                val = (val_int >> 8 & 0x2) >> 1
+            else:
+                raise NotImplementedError
+        else:
+            val = val_int & 0xFF   # no mask
 
         val_int = np.asarray(val).astype('int8')
 
@@ -157,9 +172,8 @@ class KeysightPlotter():
             path_ch1 = self.strip_ch_str(fname) + "_ch1" + ".bin"
             path_ch2 = self.strip_ch_str(fname) + "_ch2" + ".bin"
         elif mode == 'bin8':
-            # AWG8195: all in one file
             path_ch1 = self.strip_ch_str(fname) + "_ch1" + ".bin8"
-            path_ch2 = None
+            path_ch2 = self.strip_ch_str(fname) + "_ch2" + ".bin8"
         else:
             raise ValueError("Unknown loading mode: {}".format(mode))
 
@@ -201,6 +215,8 @@ class KeysightPlotter():
                 # marker sync only exist for M8190A
                 bit_marker = self.decode_m8195_val(int_array, 'd_ch1')
                 bit_sync = self.decode_m8195_val(int_array, 'd_ch2')
+            elif channel_config == 'no_marker':
+                int_analog = self.decode_m8195_val(int_array, 'a_ch1', interleaved=False)
             else:
                 raise NotImplementedError
         else:
@@ -347,10 +363,15 @@ if __name__ == "__main__":
         plt.plot(t, wave_dict['d_ch2'] - 3, label="d_ch2", color="green")
 
         try:
-            plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
-            #plt.scatter(t, wave_dict['a_ch2'] - 4, color="blue", label='_nolegend_')
             plt.plot(t, wave_dict['d_ch3'] - 6, label="d_ch3", color="orange")
             plt.plot(t, wave_dict['d_ch4'] - 7, label="d_ch4", color="green")
+            plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
+            #plt.scatter(t, wave_dict['a_ch2'] - 4, color="blue", label='_nolegend_')
+        except:
+            pass  # no a_ch2 for bin8
+
+        try:
+            plt.plot(t, wave_dict['a_ch2'] - 4, label="a_ch2", color="blue")
         except:
             pass  # no a_ch2 for bin8
 
@@ -364,15 +385,24 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rand_benchmark_ch1.bin"
-    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_A_ch1.bin"
+    file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_ddxdd=XY4s-1_par_ch1.bin8"
+    file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rand_benchmark_1q_ch1.bin8"
+    file = r"C:\Software\qudi_data\pulsed_files" + "/" + "wait_fix_t_ref_ch1.bin8"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin8"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin8"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_multi_shaped.bin8"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_shaped_A.bin8"
+    #file = r"C:\Software\qudi_data\pulsed_files\_rand_bench_vs_deer_dd\n=2, init=0.5,0.5" + "/" + "deer_dd_tau_0_fixReverseIni_ch1.bin8"
+    #file = r"E:\Data\2023\06\20230602\CompareWaveforms\deer_dd_vs_rand_bench_1" + "/" + "deer_dd_rect_tau_ch1.bin8"
     #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "nvmin_init_ch1.bin"
-    file2 = r"C:\Software\qudi_data\pulsed_files" + "/" + "deer_dd_tau_18_ch1.bin"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "nvmin_init_ch1.bin"
+    #file2 = r"C:\Software\qudi_data\pulsed_files\_rand_bench_vs_deer_dd\n=2, init=0.5,0.5" + "/" + "rand_benchmark_1_ch1.bin8"
     file = os.path.abspath(file)
-    file2 = os.path.abspath(file2)
+    #file2 = os.path.abspath(file2)
     file2 = None
+    #file2 = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_ddxdd=MW_DD_XY4s-1_n=2_ampl2=0_ch1.bin8"
 
-    plotter = KeysightPlotter(14, 12e9)
+    plotter = KeysightPlotter(8, 16.25e9)
     wave_dict = plotter.load_data(file)
     if file2:
         wave_dict2 = plotter.load_data(file2)
@@ -383,21 +413,22 @@ if __name__ == "__main__":
 
     print(wave_dict.keys())
 
-    idx_slice = 0, 16*100000
+    idx_slice = 0, 12*100000
+    #idx_slice = 0, 24 * 100000
     #idx_slice = 101*100000, 106*100000
 
     #n_samples =  5*100000
     #idx_slice_start_1 = len(wave_dict['a_ch1']) - n_samples
     #idx_slice = idx_slice_start_1, idx_slice_start_1 + n_samples
-    fac_undersample = 4
+    fac_undersample = 1
     #wave_dict = plotter.slice_wave(wave_dict, i_start=0, i_stop=500000)
     #wave_dict = plotter.slice_wave(wave_dict, i_start=-20*100000, i_stop=-1)
     wave_dict = plotter.slice_wave(wave_dict, i_start=idx_slice[0], i_stop=idx_slice[1], i_step=fac_undersample)
 
     plot(wave_dict, title="1")
     if file2:
-        idx_slice_start_2 = 0#len(wave_dict2['a_ch1']) - n_samples
-        idx_slice = idx_slice_start_2, idx_slice_start_2 + n_samples
+        #idx_slice_start_2 = 0#len(wave_dict2['a_ch1']) - n_samples
+        #idx_slice = idx_slice_start_2, idx_slice_start_2 + n_samples
 
         wave_dict2 = plotter.slice_wave(wave_dict2, i_start=idx_slice[0], i_stop=idx_slice[1], i_step=fac_undersample)
         wave_diff = plotter.slice_wave(wave_diff, i_start=idx_slice[0], i_stop=idx_slice[1])
