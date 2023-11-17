@@ -149,6 +149,8 @@ def make_poissonianmultiple_model(self, no_of_functions=1):
 def make_poissoniandouble_model(self):
     return self.make_poissonianmultiple_model(2)
 
+def make_poissoniantriple_model(self):
+    return self.make_poissonianmultiple_model(3)
 ################################################################################
 #                                                                              #
 #                    Poissonian fits and their estimators                      #
@@ -299,6 +301,74 @@ def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_par
 
     return result
 
+def make_poissoniantriple_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
+    """ Perform a double poissonian fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    double_poissonian_model, params = self.make_poissoniantriple_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+
+    try:
+        result = double_poissonian_model.fit(data, x=x_axis, params=params, **kwargs)
+    except:
+        self.log.warning('The double poissonian fit did not work. Check if a '
+                         'poisson distribution is needed or a normal '
+                         'approximation can be used. For values above 10 a '
+                         'normal/ gaussian distribution is a good '
+                         'approximation.')
+        result = double_poissonian_model.fit(data, x=x_axis, params=params, **kwargs)
+
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+    if units is None:
+        units = ["arb. units", 'arb. unit']
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['p0_amplitude'].value,
+                                      'error': result.params['p0_amplitude'].stderr,
+                                      'unit': units[0]}
+
+    result_str_dict['Event rate 1'] = {'value': result.params['p0_mu'].value,
+                                       'error': result.params['p0_mu'].stderr,
+                                       'unit':  units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['p1_amplitude'].value,
+                                      'error': result.params['p1_amplitude'].stderr,
+                                      'unit': units[0]}
+
+    result_str_dict['Event rate 2'] = {'value': result.params['p1_mu'].value,
+                                       'error': result.params['p1_mu'].stderr,
+                                       'unit':  units[1]}
+
+
+    result_str_dict['Amplitude 3'] = {'value': result.params['p2_amplitude'].value,
+                                      'error': result.params['p2_amplitude'].stderr,
+                                      'unit': units[0]}
+
+    result_str_dict['Event rate 3'] = {'value': result.params['p2_mu'].value,
+                                       'error': result.params['p2_mu'].stderr,
+                                       'unit':  units[1]}
+
+    result.result_str_dict = result_str_dict
+
+    return result
+
 
 def estimate_poissoniandouble(self, x_axis, data, params, threshold_fraction=0.4,
                               minimal_threshold=0.1, sigma_threshold_fraction=0.2):
@@ -382,5 +452,95 @@ def estimate_poissoniandouble(self, x_axis, data, params, threshold_fraction=0.4
     params['p1_mu'].set(value=x_axis_interpol[dip1_arg])
     amplitude1 = (data_smooth[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
     params['p1_amplitude'].set(value=amplitude1, min=1e-15)
+
+    return error, params
+
+
+def estimate_poissoniantriple(self, x_axis, data, params, threshold_fraction=0.4,
+                              minimal_threshold=0.1, sigma_threshold_fraction=0.2):
+    """ Provide initial values for a double poissonian fit.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+    @param float threshold_fraction : Threshold to find second poissonian
+    @param float minimal_threshold: Threshold is lowered to minimal this
+                                    value as a fraction
+    @param float sigma_threshold_fraction: Threshold for detecting
+                                           the end of the peak
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+
+    The parameters coming from the physical properties of an experiment
+    done in gated counter:
+                    - positive peak
+                    - no values below 0
+                    - rather broad overlapping functions
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # TODO: make the filter an extra function shared and usable for other functions.
+    # Calculate here also an interpolation factor, which will be based on the
+    # given data set. If the convolution later on has more points, then the fit
+    # has a higher chance to be successful. The interpol_factor multiplies the
+    # number of points.
+    # Set the interpolation factor according to the amount of data. Too much
+    # interpolation is not good for the peak estimation, also too less in not
+    # good.
+
+    if len(x_axis) < 20.:
+        len_x = 5
+        interpol_factor = 8
+    elif len(x_axis) >= 100.:
+        len_x = 10
+        interpol_factor = 1
+    else:
+        if len(x_axis) < 60:
+            interpol_factor = 4
+        else:
+            interpol_factor = 2
+        len_x = int(len(x_axis) / 10.) + 1
+
+    # Create the interpolation function, based on the data:
+    interpol_function = InterpolatedUnivariateSpline(x_axis, data, k=1)
+    # adjust the x_axis to that:
+    x_axis_interpol = np.linspace(x_axis[0], x_axis[-1], len(x_axis) * interpol_factor)
+    # create actually the interpolated data:
+    interpol_data = interpol_function(x_axis_interpol)
+
+    # Use a gaussian function to convolve with the data, to smooth the datatrace.
+    # Then the peak search algorithm performs much better.
+    gaus = gaussian(len_x, len_x)
+    data_smooth = filters.convolve1d(interpol_data, gaus / gaus.sum(), mode='mirror')
+
+    # search for double gaussian
+    search_results = self._search_double_dip(x_axis_interpol,
+                                             data_smooth * (-1),
+                                             threshold_fraction,
+                                             minimal_threshold,
+                                             sigma_threshold_fraction,
+                                             make_prints=False)
+    error = search_results[0]
+    sigma0_argleft, dip0_arg, sigma0_argright = search_results[1:4]
+    sigma1_argleft, dip1_arg, sigma1_argright = search_results[4:7]
+
+    # set the initial values for the fit:
+    params['p0_mu'].set(value=x_axis_interpol[dip0_arg])
+    amplitude0 = (data_smooth[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
+    params['p0_amplitude'].set(value=amplitude0, min=1e-15)
+
+    params['p1_mu'].set(value=x_axis_interpol[dip1_arg])
+    amplitude1 = (data_smooth[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
+    params['p1_amplitude'].set(value=amplitude1, min=1e-15)
+
+    params['p2_mu'].set(value=x_axis_interpol[dip1_arg])
+    amplitude1 = (data_smooth[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
+    params['p2_amplitude'].set(value=amplitude1, min=1e-15)
 
     return error, params

@@ -39,12 +39,19 @@ class DDMethodsHelper():
     @staticmethod
     def get_phases(seq):
         if type(seq) == dict:
-            if len(seq) != 1:
-                raise ValueError("If using dicts as unique phase identifier, must have exactly 1 element.")
             _phases = list(seq.values())[0]
         else:
             _phases = seq
         return _phases
+
+    @staticmethod
+    def get_ampl_scale(dd_method):
+        seq = dd_method.value
+        _ampls = np.ones(len(dd_method.phases))
+        if type(seq) == dict:
+            if 'scale_ampl' in seq.keys():
+                _ampls = seq['scale_ampl']
+        return _ampls
 
 @enum.unique
 class DDMethods(Enum):
@@ -79,12 +86,17 @@ class DDMethods(Enum):
     # def compare_phases_function(xseq1, xseq2):
     #     return [((xseq1[k] - xseq2[k]) % 360.) for k in range(len(xseq2))]
 
+
+    # define phases of pi decoupling pulses
+    # to differentiate same phases for different DD, use dicts with unique keys
     SE = [0., ]
     SE2 = [0., 0.]
     CPMG = [90., 90.]
 
     XY4 = {0: [0., 90., 0., 90.]}
     XY4_leave_2i = [0., float('nan'), 90., float('nan')]
+    XY4_leave_3i = [0., 90 ,  float('nan'), 0]
+    XY4_skip_01_04_06 = [0., np.nan, 90., 0., np.nan, 90., np.nan]
     XY8 = [0., 90., 0., 90., 90., 0., 90., 0.]
     XY8_leave_2i = [0., float('nan'), 90., float('nan'), 0., float('nan'), 90., float('nan'),
                     90., float('nan'), 0., float('nan'), 90., float('nan'), 0.]
@@ -108,6 +120,12 @@ class DDMethods(Enum):
     MW_DD_SE8 = [0, 0, 0, 0, 0, 0, 0, 0]
     MW_DD_XY4s = {1: [0., 90., 0., 90.]}
     MW_DD_XY4s_2nd = {1: [90., 0., 90., 0.]}
+    MW_DD_XY4s_leave_02 = [np.nan, 0, np.nan, np.nan]
+    MW_DD_XY4s_leave_02_2nd = [90, 0, 90, np.nan]
+    MW_DD_XY4s_scale_02_2x =     {0: [0, 0, 90, np.nan], 'scale_ampl': [1, 2, 1, 1]}
+    MW_DD_XY4s_scale_02_2x_2nd = {1: [0, 0, 90, np.nan], 'scale_ampl': [1, 2, 1, 1]}
+    MW_DD_XY4s_skip_01_04_06 = {1: [0., np.nan, 90., 0., np.nan, 90., np.nan]}
+    MW_DD_XY4s_skip_01_04_06_2nd = {1: [np.nan, 90., np.nan, 0, 90., np.nan, 0]}
 
     # define the specific UR sequences to use, reference: DOI:https://doi.org/10.1103/PhysRevLett.118.133202
     UR4 = ur_phases_function(4)
@@ -136,19 +154,24 @@ class DDMethods(Enum):
         return np.array(self._phases)
 
     @property
+    def scale_ampl(self):
+        return DDMethodsHelper.get_ampl_scale(self)
+
+    @property
     def dd_after_mwx(self):
         """
         For use in arbitrary (x) gates embedded in dd_x_dd decoupling.
         Allows to set another DD in 2nd half of composite pulse.
         """
-        after_x = {DDMethods.MW_DD_XY4s: DDMethods.MW_DD_XY4s_2nd}
+        after_x = {DDMethods.MW_DD_XY4s: DDMethods.MW_DD_XY4s_2nd,
+                   DDMethods.MW_DD_XY4s_leave_02: DDMethods.MW_DD_XY4s_leave_02_2nd,
+                   DDMethods.MW_DD_XY4s_scale_02_2x: DDMethods.MW_DD_XY4s_scale_02_2x_2nd,
+                   DDMethods.MW_DD_XY4s_skip_01_04_06: DDMethods.MW_DD_XY4s_skip_01_04_06_2nd}
 
         if self in after_x.keys():
             return after_x[self]
         else:
             return self
-
-
 
 class SamplingBase:
     """

@@ -1630,7 +1630,10 @@ class PulsedMeasurementGui(GUIBase):
                     elif hasattr(widget, 'setText'):
                         widget.setText(settings_dict[param_name])
                     elif hasattr(widget, 'currentText'):
-                        index = widget.findText(str(settings_dict[param_name].name))
+                        try:
+                            index = widget.findText(str(settings_dict[param_name].name))
+                        except:
+                            self.log.exception(f"Error in {param_name}")
                         widget.setCurrentIndex(index)
 
                     widget.blockSignals(False)

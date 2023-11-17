@@ -129,7 +129,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
             if n_carriers == 1:
                 mw_oc_element_RedCrab.pulse_function[self.microwave_channel] = SamplingFunctions.OC_RedCrab(
-                    amplitude_scaling=amplitude_scaling,
+                    amplitude_scaling=amplitude_scaling[0],
                     frequency=freqs[0],
                     phase=phases[0],
                     filename_amplitude=fnames_i[0],
@@ -138,8 +138,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                 )
             elif n_carriers == 2:
                 mw_oc_element_RedCrab.pulse_function[self.microwave_channel] = SamplingFunctions.OC_DoubleCarrierSum(
-                    amplitude_scaling_1=amplitude_scaling,
-                    amplitude_scaling_2=amplitude_scaling,
+                    amplitude_scaling_1=amplitude_scaling[0],
+                    amplitude_scaling_2=amplitude_scaling[1],
                     frequency_1=freqs[0],
                     phase_1=phases[0],
                     frequency_2=freqs[1],
@@ -209,7 +209,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_oc_mw_multi_only(self, name='optimal_mw_pulse',  mw_freqs='1e9', phases='0',
-                            filename_i='amplitude.txt', filename_q='phase.txt',
+                            filename_i='amplitude.txt', filename_q='phase.txt', scale_ampl='1',
                         folder_path=r'C:\Software\qudi_data\optimal_control_assets'):
 
         """
@@ -222,12 +222,13 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         mw_freqs = csv_2_list(mw_freqs)
         phases = csv_2_list(phases)
-        filename_i = csv_2_list(filename_i, str_2_val=str)
-        filename_q = csv_2_list(filename_q, str_2_val=str)
+        ampl_scales = csv_2_list(scale_ampl)
+        filename_i = [f.strip('\'') for f in csv_2_list(filename_i, str_2_val=str, delimiter=";")]
+        filename_q = [f.strip('\'') for f in csv_2_list(filename_q, str_2_val=str, delimiter=";")]
 
         # create the optimized mw element
         oc_mw_element = self._get_mw_element_oc_multi(length=None,
-                                                      amplitude_scaling=1,
+                                                      amplitude_scaling=ampl_scales,
                                                       freqs=mw_freqs, phases=phases,
                                                       fnames_i=filename_i,
                                                       fnames_q=filename_q,

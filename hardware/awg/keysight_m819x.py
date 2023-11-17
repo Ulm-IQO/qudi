@@ -832,6 +832,12 @@ class AWGM819X(Base, PulserInterface):
 
         return total_number_of_samples, waveforms
 
+    @abstractmethod
+    def _create_raw_seg_table_entry(self, wfm_tuple, index, control, sequence_loop_count, segment_loop_count,
+                                    seg_start_offset, seg_end_offset):
+        pass
+
+
     def write_sequence(self, name, sequence_parameters):
         """
         Write a new sequence on the device memory.
@@ -937,42 +943,15 @@ class AWGM819X(Base, PulserInterface):
             self.log.debug(f"For sequence table step {step}:'{seq_step['ensemble']}' "
                            f"with {segment_loop_count} reps: control bit= {control}")
 
-            segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1) \
-                if len(wfm_tuple) >= 1 else -1
-            segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2) \
-                if len(wfm_tuple) == 2 else -1
+            self._create_raw_seg_table_entry(wfm_tuple, index, control,
+                                             sequence_loop_count,
+                                             segment_loop_count,
+                                             seg_start_offset,
+                                             seg_end_offset)
 
-            try:
-                # creates all segments as data entries
-                if segment_id_ch1 > -1:
-                    # STAB will default to STAB1 on 8190A
-                    self.write(':STAB:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
-                               .format(index,
-                                       control,
-                                       sequence_loop_count,
-                                       segment_loop_count,
-                                       segment_id_ch1,
-                                       seg_start_offset,
-                                       seg_end_offset))
-                if segment_id_ch2 > -1:
-                    # todo: for awg8195a only one segment table
-                    self.write(':STAB2:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
-                               .format(index,
-                                       control,
-                                       sequence_loop_count,
-                                       segment_loop_count,
-                                       segment_id_ch2,
-                                       seg_start_offset,
-                                       seg_end_offset))
+            ctr_steps_written += 1
+            self.log.debug("Writing seqtable entry {}: {}".format(index, step))
 
-                if segment_id_ch1 + segment_id_ch2 > -1:
-                    ctr_steps_written += 1
-                    self.log.debug("Writing seqtable entry {}: {}".format(index, step))
-                else:
-                    self.log.error("Failed while writing seqtable entry {}: {}".format(index, step))
-
-            except Exception as e:
-                self.log.error("Unknown error occured while writing to seq table: {}".format(str(e)))
 
         if goto_in_sequence and self.get_constraints().sequence_order == "LINONLY": # SequenceOrderOption.LINONLY:
             self.log.warning("Found go_to in step of sequence {}. Not supported and ignored.".format(name))
@@ -1300,7 +1279,7 @@ class AWGM819X(Base, PulserInterface):
                 segment_id = self._create_segment(chnl_num, name, n_samples,
                                                   to_segment_id=-1,
                                                   no_clear=(idx!=0 and self.internal_mem_mode=='EXT'))
-                segment_id_plus_ch = segment_id + '_ch{:d}'.format(chnl_num)
+                segment_id_plus_ch = f"{segment_id}_ch{chnl_num:d}"
                 self.write_bin(':TRAC{0}:DATA {1}, {2},'.format(chnl_num, segment_id, offset), data)
 
                 self._check_uploaded_wave_name(chnl_num, name, segment_id)
@@ -1659,7 +1638,7 @@ class AWGM819X(Base, PulserInterface):
         self.awg.timeout = self._awg_timeout * 1000
         return int(enum_status_code)
 
-    def write_all_ch(self, command, *args, all_by_one=None):
+    def write_all_ch(self, command, *args, all_by_one=None, d_chs=False):
         """
         :param command: visa command
         :param all_by_one:  dict, eg. {"m8190a": False, "m8195a": True}. Set true when for
@@ -1686,6 +1665,10 @@ class AWGM819X(Base, PulserInterface):
             for a_ch in self._get_all_analog_channels():
                 ch_num = self.chstr_2_chnum(a_ch)
                 self.write(command.format(ch_num, *args))
+            if d_chs:
+                for ch in self._get_all_channels():
+                    ch_num = self.chstr_2_chnum(ch)
+                    self.write(command.format(ch_num, *args))
 
     def query_all_ch(self, command, *args, all_by_one=None):
         """
@@ -2386,7 +2369,10 @@ class AWGM8195A(AWGM819X):
         self.write(':INST:MEM:EXT:RDIV DIV{0}'.format(self._sample_rate_div))  # TODO dependent on DACMode
 
     def _write_output_on(self):
-        self.write_all_ch("OUTP{} ON")
+        self.write_all_ch("OUTP{} ON", d_chs=True)
+
+    def _write_output_off(self):
+        self.write_all_ch("OUTP{} OFF", d_chs=True)
 
     def _compile_bin_samples(self, analog_samples, digital_samples, ch_str):
 
@@ -2557,12 +2543,26 @@ class AWGM8195A(AWGM819X):
         else:
             return self.asset_name_2_id(self._rreplace(name, "_ch2", "_ch1", 1), 1, mode)
 
+    def _create_raw_seg_table_entry(self, wfm_tuple, index, control, sequence_loop_count, segment_loop_count,
+                                    seg_start_offset, seg_end_offset):
+        segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1) \
+            if len(wfm_tuple) >= 1 else -1
+        # only single segment table for all channels. All ch data must be written to segment_id_ch1
+        segment_id_ch2 = -1
 
+        if segment_id_ch1 == -1:
+            raise ValueError(f"Couldn't find the necessary segments: {wfm_tuple}")
 
-    #def _name_with_ch(self, name, ch_num):
-    #    """
-    #    """
-    #    return name
+        if segment_id_ch1 > -1:
+            self.write(':STAB:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
+                       .format(index,
+                               control,
+                               sequence_loop_count,
+                               segment_loop_count,
+                               segment_id_ch1,
+                               seg_start_offset,
+                               seg_end_offset))
+
 
 
 class AWGM8190A(AWGM819X):
@@ -2920,4 +2920,36 @@ class AWGM8190A(AWGM819X):
         control += 0x1 << 24  # always enable markers
 
         return control
+
+    def _create_raw_seg_table_entry(self, wfm_tuple, index, control, sequence_loop_count, segment_loop_count,
+                                    seg_start_offset, seg_end_offset):
+        segment_id_ch1 = self.get_segment_id(self._remove_file_extension(wfm_tuple[0]), 1) \
+            if len(wfm_tuple) >= 1 else -1
+        segment_id_ch2 = self.get_segment_id(self._remove_file_extension(wfm_tuple[1]), 2) \
+            if len(wfm_tuple) == 2 else -1
+
+        if segment_id_ch1 ==-1 or segment_id_ch2 == -1:
+            raise ValueError(f"Couldn't find the necessary segments: {wfm_tuple}")
+
+        # creates all segments as data entries
+        if segment_id_ch1 > -1:
+            # STAB will default to STAB1 on 8190A
+            self.write(':STAB:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
+                       .format(index,
+                               control,
+                               sequence_loop_count,
+                               segment_loop_count,
+                               segment_id_ch1,
+                               seg_start_offset,
+                               seg_end_offset))
+        if segment_id_ch2 > -1:
+            self.write(':STAB2:DATA {0}, {1}, {2}, {3}, {4}, {5}, {6}'
+                       .format(index,
+                               control,
+                               sequence_loop_count,
+                               segment_loop_count,
+                               segment_id_ch2,
+                               seg_start_offset,
+                               seg_end_offset))
+
 

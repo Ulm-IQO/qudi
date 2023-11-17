@@ -28,6 +28,8 @@ class UserGlobals(GenericLogic):
     abort.clear()
     next = threading.Event()
     next.clear()
+    scanner_optimize = threading.Event()
+    scanner_optimize.clear()
 
     # current mes dict
     qmeas = {}

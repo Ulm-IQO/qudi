@@ -272,7 +272,7 @@ def lockfile_aquire(filename, timeout_s=0):
 
             try:
                 with open(filename, 'rb') as file:
-                    lock = pickle.load(file)
+                    lock = pickle.load(file, )
                 success = True
                 #logger.info("Successfully acquired lock {}".format(filename))
                 break

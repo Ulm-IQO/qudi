@@ -25,6 +25,8 @@ from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequ
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.helpers import csv_2_list
+from logic.pulsed.pulse_objects import PulseEnvelopeType as Evm
+from logic.pulsed.sampling_function_defs.sampling_functions_nvision import EnvelopeMethods as Evmn
 
 """
 General Pulse Creation Procedure:
@@ -188,7 +190,8 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_rabi(self, name='rabi', tau_start=10.0e-9, tau_step=10.0e-9,
-                      leave_out_tau_idx='', num_of_points=50, alternating=False):
+                      leave_out_tau_idx='', num_of_points=50, read_pix=0,
+                      alternating=False, add_gate_ch=''):
         """
 
         """
@@ -211,26 +214,43 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
-        pi_element = self._get_mw_element(length=self.rabi_period / 2,
+
+
+        pi_element = self._get_mw_element(length=read_pix*self.rabi_period / 2,
                                           increment=0,
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
+
         laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0)
-        delay_element = self._get_delay_gate_element()
+                                                     increment=0,
+                                                     add_gate_ch=add_gate_ch
+                                                     )
+        """
+        if short_laser > 0: # debug only
+            # debug only: gate at mw already
+            mw_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
+                voltage=self.analog_trigger_voltage)
+            mw_element.digital_high['d_ch4'] = True
+            laser_element = self._get_laser_gate_element(length=self.laser_length/short_laser,
+                                                         add_gate_ch=add_gate_ch,
+                                                         increment=0)
+        """
+        delay_element = self._get_delay_gate_element(add_gate_ch=add_gate_ch)
 
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)
         rabi_block.append(mw_element)
+        rabi_block.append(pi_element)
         rabi_block.append(laser_element)
         rabi_block.append(delay_element)
         rabi_block.append(waiting_element)
 
         if alternating:
             rabi_block.append(mw_element)
+            rabi_block.append(pi_element)
             rabi_block.append(pi_element)
             rabi_block.append(laser_element)
             rabi_block.append(delay_element)
@@ -260,7 +280,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def generate_pulsedodmr(self, name='pulsedODMR', freq_start=2870.0e6, freq_step=0.2e6,
-                            num_of_points=50):
+                            num_of_points=50, add_gate_ch=''):
         """
 
         """
@@ -276,18 +296,40 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                  increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
                                                      increment=0,
-                                                     add_gate_ch='d_ch4')
+                                                     add_gate_ch=add_gate_ch)
         delay_element = self._get_delay_gate_element()
 
         # Create block and append to created_blocks list
         pulsedodmr_block = PulseBlock(name=name)
-        for mw_freq in freq_array:
-            mw_element = self._get_mw_element(length=self.rabi_period / 2,
+        for idx, mw_freq in enumerate(freq_array):
+            pi_element = self._get_mw_element(length=self.rabi_period / 2,
                                               increment=0,
                                               amp=self.microwave_amplitude,
                                               freq=mw_freq,
                                               phase=0)
-            pulsedodmr_block.append(mw_element)
+
+            debug_fastcomtec = False
+            if debug_fastcomtec:
+                if idx == len(freq_array)/2:
+                    laser_element = self._get_laser_gate_element(length=self.laser_length ,
+                                                                increment=0, add_gate_ch=add_gate_ch)
+                    laser_element.digital_high[self.laser_channel] = False
+                #if idx % 3 == 0:
+                #    laser_element = self._get_laser_gate_element(length=self.laser_length/2,
+                #                                                 increment=0,
+                #                                                 add_gate_ch='d_ch4')
+                else:
+                    laser_element = self._get_laser_gate_element(length=self.laser_length,
+                                                                 increment=0,
+                                                                 add_gate_ch=add_gate_ch)
+
+            # use a short gate pulse instead of constant HIGH during laser
+            gate_comtec_element = self._get_idle_element(length=100e-9, increment=0)
+            #laser_element.digital_high[self.gate_channel] = False
+
+            #gate_comtec_element.digital_high[self.gate_channel] = True
+            pulsedodmr_block.append(pi_element)
+            #pulsedodmr_block.append(gate_comtec_element)
             pulsedodmr_block.append(laser_element)
             pulsedodmr_block.append(delay_element)
             pulsedodmr_block.append(waiting_element)

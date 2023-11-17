@@ -981,6 +981,15 @@ class PentaceneMethods(PredefinedGeneratorBase):
 
         idle_between_lasers_element = self._get_idle_element(length=t_wait_between,
                                                              increment=0)
+        if not read_no_fc_gate:
+            # keep read gate high until start of 2nd laser
+            if self.gate_channel:
+                if self.gate_channel.startswith('a'):
+                    idle_between_lasers_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
+                        voltage=self.analog_trigger_voltage)
+                elif self.gate_channel.startswith('d'):
+                    idle_between_lasers_element.digital_high[self.gate_channel] = True
+
 
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         delay_element = self._get_delay_gate_element()
@@ -1894,8 +1903,9 @@ class PentaceneMethods(PredefinedGeneratorBase):
                                                              increment=0)
         laser_init_element = self._get_laser_gate_element(length=t_laser_init,
                                                           increment=0,
-                                                          add_gate_ch='')
-        delay_element = self._get_delay_gate_element()
+                                                          add_gate_ch='',
+                                                          no_fc_gate=True)
+        delay_element = self._get_delay_gate_element(add_gate_ch='', no_fc_gate=True)
 
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)

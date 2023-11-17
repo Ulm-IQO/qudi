@@ -300,9 +300,9 @@ def csv_2_list(csv_string, str_2_val=None, delimiter=","):
     if csv_string == "":
         return []
 
-    csv_string = csv_string.replace('[', '').replace(']', '')  # Remove square brackets
-    csv_string = csv_string.replace('(', '').replace(')', '')  # Remove round brackets
-    csv_string = csv_string.replace('{', '').replace('}', '')  # Remove curly brackets
+    csv_string = csv_string.strip('[').strip(']')  # Remove square brackets
+    csv_string = csv_string.strip('(').strip(')')  # Remove round brackets
+    csv_string = csv_string.strip('{').strip('}')  # Remove curly brackets
     csv_string = csv_string.strip().strip(delimiter)  # Remove trailing/leading blanks and commas
 
     if str_2_val is None:

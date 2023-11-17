@@ -850,6 +850,7 @@ class ConfocalGui(GUIBase):
         "returned" optimal position.
         """
         if caller_tag == 'confocalgui':
+            self.log.debug(f"Setting opt pos to {optimal_pos}")
             self._scanning_logic.set_position(
                 'optimizer',
                 x=optimal_pos[0],

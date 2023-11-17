@@ -25,8 +25,12 @@ import time
 
 from core.module import Base
 from interface.motor_interface import MotorInterface
+from core.configoption import ConfigOption, MissingOption
 
 class MotorAxisDummy:
+
+    _axis_label_list = ConfigOption('axis_labels', default=list(), missing='error')
+
     """ Generic dummy motor representing one axis. """
     def __init__(self, label):
         self.label = label
