@@ -387,7 +387,7 @@ if __name__ == "__main__":
 
     file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_ddxdd=XY4s-1_par_ch1.bin8"
     file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rand_benchmark_1q_ch1.bin8"
-    file = r"C:\Software\qudi_data\pulsed_files" + "/" + "wait_fix_t_ref_ch1.bin8"
+    #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "wait_fix_t_ref_ch1.bin8"
     #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin8"
     #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "deer_dd_rect_tau_ch1.bin8"
     #file = r"C:\Software\qudi_data\pulsed_files" + "/" + "rabi_multi_shaped.bin8"

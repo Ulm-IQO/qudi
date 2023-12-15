@@ -37,6 +37,7 @@ setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
 setup['laser_delay'] = 500e-9  #200e-9  # #p7887: 900e-9 # aom delay, N25 setup3: 510e-9
 setup['laser_safety'] = 200e-9
+setup['laser_safety'] = 550e-9
 setup['laser_t_analysis'] = 330e-9
 
 if setup['gated']:
@@ -723,10 +724,10 @@ def set_up_conventional_measurement(qm_dict):
         if not setup['gated']:
             if pulsedmasterlogic.generation_parameters['laser_length'] > 1.5e-6:
                 analy_method = {'method': 'mean_norm', 'signal_start': 0, 'signal_end': setup['laser_t_analysis'],
-                                'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
+                                'norm_start': 1.7e-6, 'norm_end': 2.45e-6}
             else:
                 analy_method = {'method': 'mean', 'signal_start': 0, 'signal_end': setup['laser_t_analysis'],
-                                'norm_start': 1.7e-6, 'norm_end': 2.15e-6}
+                                'norm_start': 1.7e-6, 'norm_end': 2.45e-6}
         else: # gated
             analy_method = {'method': 'mean_norm', 'signal_start': 740e-9, 'signal_end': 740e-9 + setup['laser_t_analysis'],
                                                 'norm_start':2.5e-6, 'norm_end': 2.5e-6 + 400e-9}
