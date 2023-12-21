@@ -363,6 +363,37 @@ def make_sinetriplewithexpdecay_model(self, prefix=None):
 
     return three_sine_exp_decay_offset, params
 
+def make_sinequadwithexpdecay_model(self, prefix=None):
+    """ Create a model of three summed sine with an exponential decay and offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
+    """
+
+    if prefix is None:
+        add_text = ''
+    else:
+        add_text = prefix
+
+    sine_model1, params = self.make_sinewithoutoffset_model(prefix='s1_'+add_text)
+    sine_model2, params = self.make_sinewithoutoffset_model(prefix='s2_'+add_text)
+    sine_model3, params = self.make_sinewithoutoffset_model(prefix='s3_'+add_text)
+    sine_model4, params = self.make_sinewithoutoffset_model(prefix='s4_' + add_text)
+    bare_exp_decay_model, params = self.make_bareexponentialdecay_model(prefix=prefix)
+
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    quad_sine_exp_decay_offset = (
+        sine_model1 + sine_model2 + sine_model3 + sine_model4) * bare_exp_decay_model + constant_model
+    params = quad_sine_exp_decay_offset.make_params()
+
+    return quad_sine_exp_decay_offset, params
+
+
 #########################################################################
 # Sum of three individual Sinus with offset and three exponential decay #
 #########################################################################
@@ -1608,6 +1639,7 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
 
 
 def estimate_sinetriple(self, x_axis, data, params):
+
     """ Provides an estimator for initial values of three sines with offset fitting.
 
     @param numpy.array x_axis: 1D axis values
@@ -1656,7 +1688,6 @@ def estimate_sinetriple(self, x_axis, data, params):
 ##########################################################################
 # Sum of three individual Sinus with offset and single exponential decay #
 ##########################################################################
-
 
 def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a three sine with one exponential decay offset fit on the provided
@@ -1805,6 +1836,262 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
     result.result_str_dict = result_str_dict
     return result
 
+def make_sinequadwithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
+    """ Perform a three sine with one exponential decay offset fit on the provided
+        data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    three_sine_exp_decay_offset, params = self.make_sinequadwithexpdecay_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params, update_params=add_params)
+    try:
+        result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
+    except:
+        self.log.warning('The sinetriplewithexpdecay fit did not work. '
+                         'Error message: {}'.format(str(result.message)))
+        result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    period1 = 1 / result.params['s1_frequency'].value
+    try:
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
+    except ZeroDivisionError:
+        period1_err = np.inf
+
+    period2 = 1 / result.params['s2_frequency'].value
+    try:
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
+    except ZeroDivisionError:
+        period2_err = np.inf
+
+    period3 = 1 / result.params['s3_frequency'].value
+    try:
+        period3_err = result.params['s3_frequency'].stderr / (result.params['s3_frequency']) ** 2
+    except ZeroDivisionError:
+        period3_err = np.inf
+
+    period4 = 1 / result.params['s4_frequency'].value
+    try:
+        period4_err = result.params['s4_frequency'].stderr / (result.params['s4_frequency']) ** 2
+    except ZeroDivisionError:
+        period4_err = np.inf
+
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
+                                   'unit': units[0]}
+    result_str_dict['Period 3'] = {'value': period3 if period3 else 0.0,
+                                   'error': period3_err if period3_err else 0.0,
+                                   'unit': units[0]}
+    result_str_dict['Period 4'] = {'value': period4 if period4 else 0.0,
+                                   'error': period4_err if period4_err else 0.0,
+                                   'unit': units[0]}
+
+
+
+    result_str_dict['Frequency 1'] = {'value': result.params['s1_frequency'].value,
+                                      'error': result.params['s1_frequency'].stderr,
+                                      'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
+
+    result_str_dict['Frequency 2'] = {'value': result.params['s2_frequency'].value,
+                                      'error': result.params['s2_frequency'].stderr,
+                                      'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
+
+    result_str_dict['Frequency 3'] = {'value': result.params['s3_frequency'].value,
+                                      'error': result.params['s3_frequency'].stderr,
+                                      'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
+    result_str_dict['Frequency 4'] = {'value': result.params['s4_frequency'].value,
+                                      'error': result.params['s4_frequency'].stderr,
+                                      'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
+
+
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['s1_amplitude'].value,
+                                      'error': result.params['s1_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
+                                      'error': result.params['s2_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 3'] = {'value': result.params['s3_amplitude'].value,
+                                      'error': result.params['s3_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 4'] = {'value': result.params['s4_amplitude'].value,
+                                      'error': result.params['s4_amplitude'].stderr,
+                                      'unit': units[1]}
+
+
+    amp_string = 's1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's3_amplitude'
+    result_str_dict['Contrast 3'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+    amp_string = 's4_amplitude'
+    result_str_dict['Contrast 4'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['s3_phase'].value,
+                                  'error': 180/np.pi*result.params['s3_phase'].stderr,
+                                  'unit': 'deg'}
+    result_str_dict['Phase 4'] = {'value': 180/np.pi*result.params['s4_phase'].value,
+                                  'error': 180/np.pi*result.params['s4_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                   'error': result.params['lifetime'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
+    return result
+
+def estimate_sinequadwithexpdecay(self, x_axis, data, params):
+    """ Provides an estimator for initial values of three sine with offset and
+        exponential decay fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make three consecutive
+    # sine exponential decay with offset fits where for the next fit the
+    # previous is subtracted to delete its contribution in the data.
+
+    res1 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
+
+    data_sub1 = data - res1.best_fit
+
+    res2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub1,
+        estimator=self.estimate_sineexponentialdecay)
+
+    data_sub2 = data_sub1 - res2.best_fit
+
+    res3 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub2,
+        estimator=self.estimate_sineexponentialdecay)
+
+    data_sub3 = data_sub2 - res3.best_fit
+
+    res4 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub3,
+        estimator=self.estimate_sineexponentialdecay)
+
+    # Fill the parameter dict:
+    params['s1_amplitude'].set(value=res1.params['amplitude'].value)
+    params['s1_frequency'].set(value=res1.params['frequency'].value)
+    params['s1_phase'].set(value=res1.params['phase'].value)
+
+    params['s2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['s2_frequency'].set(value=res2.params['frequency'].value)
+    params['s2_phase'].set(value=res2.params['phase'].value)
+
+    params['s3_amplitude'].set(value=res3.params['amplitude'].value)
+    params['s3_frequency'].set(value=res3.params['frequency'].value)
+    params['s3_phase'].set(value=res3.params['phase'].value)
+
+    params['s4_amplitude'].set(value=res4.params['amplitude'].value)
+    params['s4_frequency'].set(value=res4.params['frequency'].value)
+    params['s4_phase'].set(value=res4.params['phase'].value)
+
+    lifetime = (res1.params['lifetime'].value + res2.params['lifetime'].value
+                + res3.params['lifetime'].value  + res4.params['lifetime'].value)/4
+    params['lifetime'].set(value=lifetime,
+                           min=2*(x_axis[1]-x_axis[0]))
+    params['offset'].set(value=data.mean())
+
+    return error, params
+
+
 
 def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
     """ Provides an estimator for initial values of three sine with offset and
@@ -1866,6 +2153,68 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
     params['offset'].set(value=data.mean())
 
     return error, params
+
+def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
+    """ Provides an estimator for initial values of three sine with offset and
+        exponential decay fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make three consecutive
+    # sine exponential decay with offset fits where for the next fit the
+    # previous is subtracted to delete its contribution in the data.
+
+    res1 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
+
+    data_sub1 = data - res1.best_fit
+
+    res2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub1,
+        estimator=self.estimate_sineexponentialdecay)
+
+    data_sub2 = data_sub1 - res2.best_fit
+
+    res3 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub2,
+        estimator=self.estimate_sineexponentialdecay)
+
+    # Fill the parameter dict:
+    params['s1_amplitude'].set(value=res1.params['amplitude'].value)
+    params['s1_frequency'].set(value=res1.params['frequency'].value)
+    params['s1_phase'].set(value=res1.params['phase'].value)
+
+    params['s2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['s2_frequency'].set(value=res2.params['frequency'].value)
+    params['s2_phase'].set(value=res2.params['phase'].value)
+
+    params['s3_amplitude'].set(value=res3.params['amplitude'].value)
+    params['s3_frequency'].set(value=res3.params['frequency'].value)
+    params['s3_phase'].set(value=res3.params['phase'].value)
+
+    lifetime = (res1.params['lifetime'].value + res2.params['lifetime'].value + res3.params['lifetime'].value)/3
+    params['lifetime'].set(value=lifetime,
+                           min=2*(x_axis[1]-x_axis[0]))
+    params['offset'].set(value=data.mean())
+
+    return error, params
+
 
 #########################################################################
 # Sum of three individual Sinus with offset and three exponential decay #

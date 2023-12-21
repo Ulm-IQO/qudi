@@ -343,7 +343,7 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
     try:
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
+        result = stret_exp_decay_offset.fickat(data, x=x_axis, params=params, **kwargs)
         self.log.warning('The double exponentialdecay with offset fit did not work. '
                          'Message: {}'.format(str(result.message)))
 

@@ -960,7 +960,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                             comp_type=Comp.from_gen_settings, env_type=Evm.from_gen_settings,
                             mirror_1q_pulses=False, swap_1q_pulses=False, alternating=False,
                             init_state_kwargs='', cnot_kwargs='', add_gate_ch='', incl_detuned_ref=0.,
-                            to_basis_pair_rot=''):
+                            to_basis_pair_rot='', ampl_mw_ref="", rabi_period_ref=""):
         """
         :param rotations: list of list. Each element is a list of gates (given as TomoRotations) and will yield
                                         a single data point.
@@ -970,7 +970,8 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         add_pi2s = False   # for optimal control only! avoid optimization into zero pulse
 
         def pi_element_function(xphase, on_nv=1, pi_x_length=1., no_amps_2_idle=True,
-                                env_type_pi=None, comp_type_pi=None, scale_oc_ampl=None):
+                                env_type_pi=None, comp_type_pi=None, scale_oc_ampl=None,
+                                ampls=None, t_rabis=None):
 
             if type(on_nv) != list:
                 on_nv = [on_nv]
@@ -985,6 +986,7 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             if env_type_pi is None:
                 env_type_pi = env_type
 
+            #if ampls is  None:
             # ampls_on_1/2 take care of nv_order already
             if on_nv == [1]:
                 ampl_pi = ampls_on_1
@@ -1000,6 +1002,15 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             else:
                 raise ValueError
 
+            if ampls is not None:
+                ampl_pi = ampls
+
+            if t_rabis is not None:
+                rabi_periods_pi = t_rabis
+            else:
+                rabi_periods_pi = rabi_periods
+
+
             ampl_fallback = ampl_pi  # ampl_pi might get ocerwritten for certain comp_types
             env_fallback = Evm.from_gen_settings
             comp_fallback = Comp.bare
@@ -1007,8 +1018,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
             if comp_type_pi == Comp.bb1_cp2 or comp_type_pi == Comp.mw_dd or comp_type_pi == Comp.mw_ddxdd:
                 # for composite pulses that act on both NVs
                 ampl_pi = amplitudes
+                if ampls is not None:
+                    raise NotImplementedError("Atm, setting ampls manually only possible for bare pulses.")
 
 
+            #self.log.debug(f"for pi_element, ampls={ampl_pi}, trabi={rabi_periods_pi}, idle_ampl= {mw_idle_amps}")
             # todo: implement compy type via gen settings, like _get_envelope_settings()
             if env_type_pi == Evm.optimal and (comp_type_pi == Comp.bare or comp_type_pi == Comp.from_gen_settings):
                 # optimal pulses that act in parallel. Eg on_nv=1 -> on_nv=[1,2], on_nv=2 -> on_nv=[2,1]
@@ -1022,11 +1036,11 @@ class MultiNV_Generator(PredefinedGeneratorBase):
                     env_type_pi.parameters['scale_ampl'] = scale_oc_ampl
 
             try:
-                mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods,
+                mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_pi, rabi_periods_pi,
                                            pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
                                            env_type=env_type_pi, comp_type=comp_type_pi, on_nv=on_nv, mw_idle_amps=mw_idle_amps)
             except ValueError as e: # complex (OC, comp) pulse not synthesized
-                mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_fallback, rabi_periods,
+                mw_el =  self.get_pi_element(xphase, mw_freqs, ampl_fallback, rabi_periods_pi,
                                            pi_x_length=pi_x_length, no_amps_2_idle=no_amps_2_idle,
                                            env_type=env_fallback, comp_type=comp_fallback, mw_idle_amps=mw_idle_amps)
 
@@ -1140,12 +1154,17 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         ampl_mw_2_cnot = ampl_mw_2 if 'ampl_mw_2' not in cnot_kwargs else \
             cnot_kwargs['ampl_mw_2']
 
+
         # create param arrays
         rabi_periods = self._create_param_array(self.rabi_period, csv_2_list(rabi_period_mw_2), n_nvs=2)
         amplitudes = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), n_nvs=2)
         ampls_on_1 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=0, n_nvs=2)
         ampls_on_2 = self._create_param_array(self.microwave_amplitude, csv_2_list(ampl_mw_2), idx_nv=1, n_nvs=2)
         mw_freqs = self._create_param_array(self.microwave_frequency, csv_2_list(f_mw_2), n_nvs=2)
+        amplitudes_ref =  self._create_param_array(None, csv_2_list(ampl_mw_ref), n_nvs=2) if ampl_mw_ref else None
+        ampls_ref_on_1 = self._create_param_array(None, csv_2_list(ampl_mw_ref), idx_nv=0, n_nvs=2) if ampl_mw_ref else None
+        ampls_ref_on_2 = self._create_param_array(None, csv_2_list(ampl_mw_ref), idx_nv=1, n_nvs=2) if ampl_mw_ref else None
+        rabi_period_ref = self._create_param_array(None, csv_2_list(rabi_period_ref), n_nvs=2) if rabi_period_ref else None
 
         str_lists = csv_2_list(rotations, str_2_val=str, delimiter=';')  # to list of csv strings
         rotations = [csv_2_list(el, str_2_val=Tk_string.str_2_enum) for el in str_lists]
@@ -1161,6 +1180,9 @@ class MultiNV_Generator(PredefinedGeneratorBase):
         self.log.debug(f"Rb mes point  Ampls_both: {amplitudes},"
                        f" ampl_1= {ampls_on_1}, ampl_2= {ampls_on_2}, ampl_2_cnot: {ampl_mw_2_cnot},"
                        f" cnot_kwargs: {cnot_kwargs}, read rots {read_rots}")
+        if rabi_period_ref is not None:
+            self.log.debug(f"Fixed ref pulses: ampl= {amplitudes_ref}, t_rabis={rabi_period_ref}")
+
         if mirror_1q_pulses:
             if len(np.unique(rabi_periods)) != 1:
                 self.log.warning(f"Mirroring with non unique rabi_periods: {rabi_periods} will cause idle times.")
@@ -1191,8 +1213,10 @@ class MultiNV_Generator(PredefinedGeneratorBase):
 
         env_type_readpi = self._get_envelope_settings(Evm.from_gen_settings)
         self.log.debug(f"read pi env: {env_type_readpi}, rotations: {env_type}")
-        pi_on_1_element = pi_element_function(0, on_nv=1, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare)
-        pi_on_2_element = pi_element_function(0, on_nv=2, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare)
+        pi_on_1_element = pi_element_function(0, on_nv=1, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare,
+                                              ampls=ampls_ref_on_1, t_rabis=rabi_period_ref)
+        pi_on_2_element = pi_element_function(0, on_nv=2, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare,
+                                              ampls=ampls_ref_on_2, t_rabis=rabi_period_ref)
 
         pi2_on_1_element = pi_element_function(0, pi_x_length=0.5, on_nv=1, env_type_pi=env_type_readpi, comp_type_pi=Comp.bare)
         pi2min_on_1_element = pi_element_function(180, pi_x_length=0.5, on_nv=1, env_type_pi=env_type_readpi,
