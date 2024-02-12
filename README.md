@@ -2,7 +2,7 @@
 > 
 > The development of this qudi repository has ceased. We strongly recommend migrating to our new [qudi-core project](https://github.com/Ulm-IQO/qudi-core) that is actively developed. Framework functionality is now separated from the measurement toolchains. Most features of the old project can be recovered by installing the qudi-core and qudi-iqo-modules packages.
 
-# qudi
+# qudi (deprecated)
 Qudi is a suite of tools for operating multi-instrument and multi-computer laboratory experiments.
 Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicable framework for controlling experiments.
 
