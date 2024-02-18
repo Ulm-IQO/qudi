@@ -228,9 +228,11 @@ class ODMRGui(GUIBase):
 
                 matrix_range_SpinBox = QtWidgets.QSpinBox(groupBox)
                 matrix_range_SpinBox.setValue(0)
+                matrix_range_SpinBox.setMinimum(-1)
                 matrix_range_SpinBox.setMinimumWidth(75)
                 matrix_range_SpinBox.setMaximumWidth(100)
                 matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+                matrix_range_SpinBox.setToolTip('What range should be displayed? -1 stands for all ranges combined.')
                 gridLayout.addWidget(matrix_range_SpinBox, row + 1, 8, 1, 1)
                 setattr(self._mw.odmr_control_DockWidget, 'matrix_range_SpinBox',
                         matrix_range_SpinBox)
@@ -239,6 +241,7 @@ class ODMRGui(GUIBase):
         setattr(self._mw.odmr_control_DockWidget, 'ranges_groupBox', groupBox)
         self._mw.dockWidgetContents_3_grid_layout = self._mw.dockWidgetContents_3.layout()
         self._mw.fit_range_SpinBox.valueChanged.connect(self.change_fit_range)
+        self._mw.fit_range_SpinBox.valueChanged.connect(self.change_fit_displayed)
         # (QWidget * widget, int row, int column, Qt::Alignment alignment = Qt::Alignment())
 
         self._mw.dockWidgetContents_3_grid_layout.addWidget(groupBox, 7, 1, 1, 5)
@@ -365,7 +368,7 @@ class ODMRGui(GUIBase):
         self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
         self._mw.fit_range_SpinBox.editingFinished.connect(self.update_fit_range)
         self._mw.odmr_control_DockWidget.matrix_range_SpinBox.editingFinished.connect(self.update_matrix_range)
-
+        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.valueChanged.connect(self.update_matrix_range)
         # Control/values-changed signals to logic
         self.sigCwMwOn.connect(self._odmr_logic.mw_cw_on, QtCore.Qt.QueuedConnection)
         self.sigMwOff.connect(self._odmr_logic.mw_off, QtCore.Qt.QueuedConnection)
@@ -941,12 +944,7 @@ class ODMRGui(GUIBase):
         """ Update the shown fit. """
         if current_fit != 'No Fit':
             # display results as formatted text
-            self._mw.odmr_fit_results_DisplayWidget.clear()
-            try:
-                formated_results = units.create_formatted_output(result_str_dict)
-            except:
-                formated_results = 'this fit does not return formatted results'
-            self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
+            self.update_display_widget(result_str_dict)
 
         self._mw.fit_methods_ComboBox.blockSignals(True)
         self._mw.fit_methods_ComboBox.setCurrentFit(current_fit)
@@ -963,6 +961,15 @@ class ODMRGui(GUIBase):
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
+        return
+
+    def update_display_widget(self, result_str_dict):
+        self._mw.odmr_fit_results_DisplayWidget.clear()
+        try:
+            formated_results = units.create_formatted_output(result_str_dict)
+        except:
+            formated_results = 'this fit does not return formatted results'
+        self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
         return
 
     def update_fit_range(self):
@@ -1103,6 +1110,13 @@ class ODMRGui(GUIBase):
         self._odmr_logic.fit_range = self._mw.fit_range_SpinBox.value()
         return
 
+    def change_fit_displayed(self):
+        num = self._mw.fit_range_SpinBox.value()
+        if self._fit_exists(num):
+            odmr_x, odmr_y, result_str, model_str =  self._int_to_fit_credentials(num)
+            self.update_fit(odmr_x, odmr_y, result_str, model_str)
+        return 
+
     def get_frequencies_from_row(self, row):
         object_dict = self.get_objects_from_groupbox_row(row)
         for object_name in object_dict:
@@ -1136,3 +1150,20 @@ class ODMRGui(GUIBase):
 
         self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
         return
+
+    def _map_int_to_fit_id(self, num):
+        fit_id = 'channel: {}, range: {}'.format(self.display_channel, num)
+        return fit_id
+
+    def _int_to_fit_credentials(self, num):
+        fit_id = self._map_int_to_fit_id(num)
+        odmr_x, odmr_y, result, model_str = self._odmr_logic.fits_performed[fit_id]
+        result_str = result.result_str_dict
+        return odmr_x, odmr_y, result_str, model_str
+
+    def _fit_exists(self, num):
+        fit_id = self._map_int_to_fit_id(num)
+        if fit_id in self._odmr_logic.fits_performed.keys():
+            return True
+        else:
+            return False
