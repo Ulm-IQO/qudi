@@ -155,6 +155,7 @@ class Tk_file():
 
         # cut in the right line
         param_str = header_flat.split('parameters: ')[1].replace("OrderedDict(", "")
+
         # need to cut, because current save format breaks starting from "('params'"
         param_str = param_str.split("('params'")[0][:-2]
         param_str = param_str + "]"
@@ -168,11 +169,14 @@ class Tk_file():
         param_str = param_str.replace("'", '"')
 
         param_list = param_str.split(',"')
+        param_list = ['"' + str_el if str_el[0] != '"' else str_el for str_el in
+                      param_list]  # add " that was used to split
+
         param_dict_accepted = {}
 
         for entry in param_list:
             try:
-                entry_dict = ast.literal_eval('{"' + entry + "}")
+                entry_dict = ast.literal_eval('{' + entry + "}")
             except:
                 try:
                     el_manual = Tk_string.str_2_dict(entry)
