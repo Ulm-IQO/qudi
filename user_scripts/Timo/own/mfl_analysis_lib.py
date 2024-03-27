@@ -30,6 +30,9 @@ mfl_lib = imp.load_source('packages', path_mfl_lib)
 LoadedMes = namedtuple('Mes', 'mes filename')
 GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
 
+### evil globals, here for compatibility ###
+save_svg = False
+
 
 ##### Basics #####
 
@@ -467,7 +470,7 @@ def plot_b_vs_epoch(mes_list, savepath=None, is_unit_ut=True):
 
     save_fig(savepath)
 
-   # plt.show()
+    # plt.show()
 
 def plot_hist_taus(mes_list, savepath=None):
 
@@ -1503,7 +1506,7 @@ def move_mes_pngs(dir, new_subdir_name):
         logger.info("moved {} pngs to dir: {}".format(len(png_files), new_dir))
 
 
-def save_fig(fname):
+def save_fig(fname, disable_legend=False):
 
     global save_svg
 
@@ -1541,9 +1544,6 @@ common_params = {'data_path': r"E:\Timo\Data",
 if __name__ == '__main__':
 
     """
-    Call this script on a path with measurement data (E) to create plots in same dir.
-    I usually would copy different version of the created plots and move them to folders P0, P1, etc.
-    
     Plot script assumes a folder structure of a MFL run:
     data (E)
     - calib (C)
@@ -1552,7 +1552,6 @@ if __name__ == '__main__':
         - mfl_.2
     - mfl_.fail.1
     - mfl_.fail.2
-    - _plot_0 (P0)
         
     - folder A: MFL runs are stored that yield a correct result
     - folder E: MFL runs are stored with wrong result. Usually those have .fail indicator in 
@@ -1583,7 +1582,7 @@ if __name__ == '__main__':
     #rc('text.latex', preamble=','.join(r'\usepackage{txfonts}\usepackage{lmodern}'.split()))
 
     save_svg = False
-    disable_legend = False
+
     # for puplicattions
     figsize_cm = [8.6, 3/4*8.6]                 # single fig
     #figsize_cm = [1/2*8.6, 1/2*3/4*8.6]        # inset
