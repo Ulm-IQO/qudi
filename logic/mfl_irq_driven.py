@@ -11,6 +11,7 @@ import os
 # to allow usage as qudi module and start as .py file
 import imp
 qudi_dir = 'C:/Users/Setup3-PC/Desktop/qudi/'
+qudi_dir = r'C:\Users\Timo\OneDrive\_Promotion\Software\qudi'
 path_mfl_lib = qudi_dir + '/jupyter/Timo/own/mfl_sensing_simplelib.py'
 if __name__ == '__main__':  # for debugging
     path_mfl_lib = '../jupyter/Timo/own/mfl_sensing_simplelib.py'
@@ -18,8 +19,8 @@ if __name__ == '__main__':  # for debugging
 mfl_lib = imp.load_source('packages', path_mfl_lib)
 
 
-import line_profiler
-profile = line_profiler.LineProfiler()
+#import line_profiler
+#profile = line_profiler.LineProfiler()
 
 ARRAY_SIZE_MAX = int(5e4)
 GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
@@ -1211,7 +1212,6 @@ class SerialInterface(metaclass=InterfaceMetaclass):
     def output_data(self, data):
         pass
 
-import PyDAQmx as daq
 import numpy as np
 class PatternJumpAdapter(SerialInterface):
     """
